@@ -11,7 +11,7 @@
 // Wrapper for a fpnew
 // Contributor: Davide Schiavone <davide@openhwgroup.org>
 
-module cv32e40p_fp_wrapper import cv32e40p_apu_core_pkg::*;
+module cv32e40x_fp_wrapper import cv32e40x_apu_core_pkg::*;
 (
    // Clock and Reset
    input  logic                                   clk_i,
@@ -33,7 +33,7 @@ module cv32e40p_fp_wrapper import cv32e40p_apu_core_pkg::*;
 );
 
 
-import cv32e40p_pkg::*;
+import cv32e40x_pkg::*;
 import fpnew_pkg::*;
 
 logic [fpnew_pkg::OP_BITS-1:0] fpu_op;
@@ -111,5 +111,5 @@ fpnew_top #(
   .busy_o         ( /* unused */                          )
 );
 
-endmodule // cv32e40p_fp_wrapper
+endmodule // cv32e40x_fp_wrapper
 

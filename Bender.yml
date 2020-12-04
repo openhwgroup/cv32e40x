@@ -24,37 +24,37 @@ sources:
   include_dirs:
     - rtl/include
   files:
-    - rtl/include/cv32e40p_apu_core_pkg.sv
-    - rtl/include/cv32e40p_pkg.sv
-    - rtl/cv32e40p_alu.sv
-    - rtl/cv32e40p_alu_div.sv
-    - rtl/cv32e40p_aligner.sv
-    - rtl/cv32e40p_compressed_decoder.sv
-    - rtl/cv32e40p_controller.sv
-    - rtl/cv32e40p_cs_registers.sv
-    - rtl/cv32e40p_decoder.sv
-    - rtl/cv32e40p_int_controller.sv
-    - rtl/cv32e40p_ex_stage.sv
-    - rtl/cv32e40p_hwloop_controller.sv
-    - rtl/cv32e40p_hwloop_regs.sv
-    - rtl/cv32e40p_id_stage.sv
-    - rtl/cv32e40p_if_stage.sv
-    - rtl/cv32e40p_load_store_unit.sv
-    - rtl/cv32e40p_mult.sv
-    - rtl/cv32e40p_prefetch_buffer.sv
-    - rtl/cv32e40p_obi_interface.sv
-    - rtl/cv32e40p_core.sv
-    - rtl/cv32e40p_apu_disp.sv
-    - rtl/cv32e40p_fetch_fifo.sv
-    - rtl/cv32e40p_popcnt.sv
-    - rtl/cv32e40p_ff_one.sv
-    - rtl/cv32e40p_sleep_unit.sv
+    - rtl/include/cv32e40x_apu_core_pkg.sv
+    - rtl/include/cv32e40x_pkg.sv
+    - rtl/cv32e40x_alu.sv
+    - rtl/cv32e40x_alu_div.sv
+    - rtl/cv32e40x_aligner.sv
+    - rtl/cv32e40x_compressed_decoder.sv
+    - rtl/cv32e40x_controller.sv
+    - rtl/cv32e40x_cs_registers.sv
+    - rtl/cv32e40x_decoder.sv
+    - rtl/cv32e40x_int_controller.sv
+    - rtl/cv32e40x_ex_stage.sv
+    - rtl/cv32e40x_hwloop_controller.sv
+    - rtl/cv32e40x_hwloop_regs.sv
+    - rtl/cv32e40x_id_stage.sv
+    - rtl/cv32e40x_if_stage.sv
+    - rtl/cv32e40x_load_store_unit.sv
+    - rtl/cv32e40x_mult.sv
+    - rtl/cv32e40x_prefetch_buffer.sv
+    - rtl/cv32e40x_obi_interface.sv
+    - rtl/cv32e40x_core.sv
+    - rtl/cv32e40x_apu_disp.sv
+    - rtl/cv32e40x_fetch_fifo.sv
+    - rtl/cv32e40x_popcnt.sv
+    - rtl/cv32e40x_ff_one.sv
+    - rtl/cv32e40x_sleep_unit.sv
     - target: asic
       files:
-        - rtl/cv32e40p_register_file_latch.sv
+        - rtl/cv32e40x_register_file_latch.sv
     - target: not(asic)
       files:
-        - rtl/cv32e40p_register_file_ff.sv
+        - rtl/cv32e40x_register_file_ff.sv
     - target: rtl
       files:
-        - bhv/cv32e40p_sim_clock_gate.sv
+        - bhv/cv32e40x_sim_clock_gate.sv

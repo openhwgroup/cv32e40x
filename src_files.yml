@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cv32e40p_regfile_rtl:
+cv32e40x_regfile_rtl:
   targets: [
     rtl,
     tsmc55,
@@ -22,10 +22,10 @@ cv32e40p_regfile_rtl:
     ./rtl/include,
   ]
   files: [
-    ./rtl/cv32e40p_register_file_latch.sv,
+    ./rtl/cv32e40x_register_file_latch.sv,
   ]
 
-cv32e40p:
+cv32e40x:
   vlog_opts: [
     -L fpnew_lib,
   ]
@@ -34,36 +34,36 @@ cv32e40p:
     ../../rtl/includes,
   ]
   files: [
-    ./rtl/include/cv32e40p_apu_core_pkg.sv,
-    ./rtl/include/cv32e40p_pkg.sv,
-    ./bhv/include/cv32e40p_tracer_pkg.sv,
-    ./rtl/cv32e40p_alu.sv,
-    ./rtl/cv32e40p_alu_div.sv,
-    ./rtl/cv32e40p_ff_one.sv,
-    ./rtl/cv32e40p_popcnt.sv,
-    ./rtl/cv32e40p_compressed_decoder.sv,
-    ./rtl/cv32e40p_controller.sv,
-    ./rtl/cv32e40p_cs_registers.sv,
-    ./rtl/cv32e40p_decoder.sv,
-    ./rtl/cv32e40p_int_controller.sv,
-    ./rtl/cv32e40p_ex_stage.sv,
-    ./rtl/cv32e40p_hwloop_regs.sv,
-    ./rtl/cv32e40p_id_stage.sv,
-    ./rtl/cv32e40p_if_stage.sv,
-    ./rtl/cv32e40p_load_store_unit.sv,
-    ./rtl/cv32e40p_mult.sv,
-    ./rtl/cv32e40p_prefetch_buffer.sv,
-    ./rtl/cv32e40p_prefetch_controller.sv,
-    ./rtl/cv32e40p_obi_interface.sv,
-    ./rtl/cv32e40p_aligner.sv,
-    ./rtl/cv32e40p_sleep_unit.sv,
-    ./rtl/cv32e40p_core.sv,
-    ./rtl/cv32e40p_apu_disp.sv,
-    ./rtl/cv32e40p_fifo.sv,
-    ./rtl/cv32e40p_pmp.sv,
+    ./rtl/include/cv32e40x_apu_core_pkg.sv,
+    ./rtl/include/cv32e40x_pkg.sv,
+    ./bhv/include/cv32e40x_tracer_pkg.sv,
+    ./rtl/cv32e40x_alu.sv,
+    ./rtl/cv32e40x_alu_div.sv,
+    ./rtl/cv32e40x_ff_one.sv,
+    ./rtl/cv32e40x_popcnt.sv,
+    ./rtl/cv32e40x_compressed_decoder.sv,
+    ./rtl/cv32e40x_controller.sv,
+    ./rtl/cv32e40x_cs_registers.sv,
+    ./rtl/cv32e40x_decoder.sv,
+    ./rtl/cv32e40x_int_controller.sv,
+    ./rtl/cv32e40x_ex_stage.sv,
+    ./rtl/cv32e40x_hwloop_regs.sv,
+    ./rtl/cv32e40x_id_stage.sv,
+    ./rtl/cv32e40x_if_stage.sv,
+    ./rtl/cv32e40x_load_store_unit.sv,
+    ./rtl/cv32e40x_mult.sv,
+    ./rtl/cv32e40x_prefetch_buffer.sv,
+    ./rtl/cv32e40x_prefetch_controller.sv,
+    ./rtl/cv32e40x_obi_interface.sv,
+    ./rtl/cv32e40x_aligner.sv,
+    ./rtl/cv32e40x_sleep_unit.sv,
+    ./rtl/cv32e40x_core.sv,
+    ./rtl/cv32e40x_apu_disp.sv,
+    ./rtl/cv32e40x_fifo.sv,
+    ./rtl/cv32e40x_pmp.sv,
   ]
 
-cv32e40p_vip_rtl:
+cv32e40x_vip_rtl:
   targets: [
     rtl,
   ]
@@ -71,11 +71,11 @@ cv32e40p_vip_rtl:
     ./rtl/include,
   ]
   files: [
-    ./bhv/cv32e40p_sim_clock_gate.sv,
-    ./bhv/cv32e40p_wrapper.sv,
-    ./bhv/cv32e40p_tracer.sv,
-    ./bhv/cv32e40p_core_log.sv,
-    ./bhv/cv32e40p_apu_tracer.sv,
+    ./bhv/cv32e40x_sim_clock_gate.sv,
+    ./bhv/cv32e40x_wrapper.sv,
+    ./bhv/cv32e40x_tracer.sv,
+    ./bhv/cv32e40x_core_log.sv,
+    ./bhv/cv32e40x_apu_tracer.sv,
   ]
   defines: [
     CV32E40P_TRACE_EXECUTION,
@@ -85,7 +85,7 @@ cv32e40p_vip_rtl:
     skip_synthesis,
   ]
 
-cv32e40p_regfile_rtl:
+cv32e40x_regfile_rtl:
   targets: [
     rtl,
     tsmc55,
@@ -95,17 +95,17 @@ cv32e40p_regfile_rtl:
     ./rtl/include,
   ]
   files: [
-    ./rtl/cv32e40p_register_file_latch.sv,
+    ./rtl/cv32e40x_register_file_latch.sv,
   ]
 
-cv32e40p_regfile_verilator:
+cv32e40x_regfile_verilator:
   targets: [
     verilator,
   ]
   files: [
-    ./rtl/cv32e40p_register_file_ff.sv,
+    ./rtl/cv32e40x_register_file_ff.sv,
   ]
-cv32e40p_regfile_fpga:
+cv32e40x_regfile_fpga:
   targets: [
     xilinx,
   ]
@@ -113,5 +113,5 @@ cv32e40p_regfile_fpga:
     ./rtl/include,
   ]
   files: [
-    ./rtl/cv32e40p_register_file_ff.sv,
+    ./rtl/cv32e40x_register_file_ff.sv,
   ]

@@ -22,7 +22,7 @@
 //                 interconnect.                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_apu_disp (
+module cv32e40x_apu_disp (
   input logic                           clk_i,
   input logic                           rst_ni,
 

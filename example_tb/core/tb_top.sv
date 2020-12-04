@@ -145,7 +145,7 @@ module tb_top
     end
 
     // wrapper for riscv, the memory system and stdout peripheral
-    cv32e40p_tb_subsystem
+    cv32e40x_tb_subsystem
         #(.INSTR_RDATA_WIDTH ( INSTR_RDATA_WIDTH ),
           .RAM_ADDR_WIDTH    ( RAM_ADDR_WIDTH    ),
           .BOOT_ADDR         ( BOOT_ADDR         ),

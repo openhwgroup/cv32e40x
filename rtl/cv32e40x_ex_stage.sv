@@ -29,7 +29,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_ex_stage import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*;
+module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 #(
   parameter FPU              =  0,
   parameter APU_NARGS_CPU    =  3,
@@ -239,7 +239,7 @@ module cv32e40p_ex_stage import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*
   //                        //
   ////////////////////////////
 
-  cv32e40p_alu alu_i
+  cv32e40x_alu alu_i
   (
     .clk                 ( clk             ),
     .rst_n               ( rst_n           ),
@@ -275,7 +275,7 @@ module cv32e40p_ex_stage import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*
   //                                                            //
   ////////////////////////////////////////////////////////////////
 
-  cv32e40p_mult mult_i
+  cv32e40x_mult mult_i
   (
     .clk             ( clk                  ),
     .rst_n           ( rst_n                ),
@@ -317,7 +317,7 @@ module cv32e40p_ex_stage import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*
          //                                                //
          ////////////////////////////////////////////////////
 
-         cv32e40p_apu_disp apu_disp_i
+         cv32e40x_apu_disp apu_disp_i
          (
          .clk_i              ( clk                            ),
          .rst_ni             ( rst_n                          ),

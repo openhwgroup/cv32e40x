@@ -29,7 +29,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_register_file
+module cv32e40x_register_file
 #(
   parameter ADDR_WIDTH    = 5,
   parameter DATA_WIDTH    = 32,
@@ -114,7 +114,7 @@ module cv32e40p_register_file
    // WRITE : SAMPLE INPUT DATA
    //---------------------------------------------------------------------------
 
-     cv32e40p_clock_gate CG_WE_GLOBAL
+     cv32e40x_clock_gate CG_WE_GLOBAL
      (
       .clk_i        ( clk             ),
       .en_i         ( we_a_i | we_b_i ),
@@ -161,7 +161,7 @@ module cv32e40p_register_file
    generate
       for(x = 1; x < NUM_TOT_WORDS; x++)
         begin : gen_clock_gate
-             cv32e40p_clock_gate clock_gate_i
+             cv32e40x_clock_gate clock_gate_i
              (
               .clk_i        ( clk_int                               ),
               .en_i         ( waddr_onehot_a[x] | waddr_onehot_b[x] ),

@@ -48,15 +48,15 @@ VSIM_SCRIPT             = vsim.tcl
 RTLSRC_HOME             := ../..
 RTLSRC_TB_PKG		:= include/perturbation_pkg.sv
 RTLSRC_TB_TOP		:= tb_top.sv
-RTLSRC_TB		:= $(filter-out cv32e40p_fp_wrapper.sv,\
+RTLSRC_TB		:= $(filter-out cv32e40x_fp_wrapper.sv,\
 				$(wildcard *.sv))
 RTLSRC_INCDIR           := $(RTLSRC_HOME)/rtl/include
-RTLSRC_BHV_PKG		:= $(RTLSRC_HOME)/bhv/include/cv32e40p_tracer_pkg.sv
-RTLSRC_BHV		:= $(filter-out $(RTLSRC_HOME)/bhv/cv32e40p_tracer.sv $(RTLSRC_HOME)/bhv/cv32e40p_core_log.sv $(RTLSRC_HOME)/bhv/cv32e40p_apu_tracer.sv, $(wildcard $(RTLSRC_HOME)/bhv/*.sv))
+RTLSRC_BHV_PKG		:= $(RTLSRC_HOME)/bhv/include/cv32e40x_tracer_pkg.sv
+RTLSRC_BHV		:= $(filter-out $(RTLSRC_HOME)/bhv/cv32e40x_tracer.sv $(RTLSRC_HOME)/bhv/cv32e40x_core_log.sv $(RTLSRC_HOME)/bhv/cv32e40x_apu_tracer.sv, $(wildcard $(RTLSRC_HOME)/bhv/*.sv))
 RTLSRC_BHV_INCDIR	:= $(RTLSRC_HOME)/bhv/include
 RTLSRC_PKG		:= $(addprefix $(RTLSRC_HOME)/rtl/include/,\
-				cv32e40p_apu_core_pkg.sv cv32e40p_fpu_pkg.sv cv32e40p_pkg.sv)
-RTLSRC			:= $(filter-out $(RTLSRC_HOME)/rtl/cv32e40p_register_file_latch.sv,\
+				cv32e40x_apu_core_pkg.sv cv32e40x_fpu_pkg.sv cv32e40x_pkg.sv)
+RTLSRC			:= $(filter-out $(RTLSRC_HOME)/rtl/cv32e40x_register_file_latch.sv,\
 				$(wildcard $(RTLSRC_HOME)/rtl/*.sv))
 RTLSRC_FPNEW_TB		:= $(wildcard *.sv)
 RTLSRC_FPNEW_INCDIR	:= $(RTLSRC_HOME)/rtl/fpnew/src/common_cells/include

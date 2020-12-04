@@ -24,7 +24,7 @@
 // clear_i clears the FIFO for the following cycle. in_addr_i can be sent in
 // this cycle already
 
-module cv32e40p_prefetch_buffer
+module cv32e40x_prefetch_buffer
 #(
   parameter PULP_OBI   = 0,                // Legacy PULP OBI behavior
   parameter PULP_XPULP = 1                 // PULP ISA Extension (including PULP specific CSRs and hardware loop, excluding p.elw)
@@ -62,7 +62,7 @@ module cv32e40p_prefetch_buffer
   localparam FIFO_DEPTH                     = 2; //must be greater or equal to 2 //Set at least to 3 to avoid stalls compared to the master branch
   localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(FIFO_DEPTH);
 
-  // Transaction request (between cv32e40p_prefetch_controller and cv32e40p_obi_interface)
+  // Transaction request (between cv32e40x_prefetch_controller and cv32e40x_obi_interface)
   logic        trans_valid;
   logic        trans_ready;
   logic [31:0] trans_addr;
@@ -75,7 +75,7 @@ module cv32e40p_prefetch_buffer
   logic        fifo_push;
   logic        fifo_pop;
 
-  // Transaction response interface (between cv32e40p_obi_interface and cv32e40p_fetch_fifo)
+  // Transaction response interface (between cv32e40x_obi_interface and cv32e40x_fetch_fifo)
   logic        resp_valid;
   logic [31:0] resp_rdata;
   logic        resp_err;                // Unused for now
@@ -84,7 +84,7 @@ module cv32e40p_prefetch_buffer
   // Prefetch Controller
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40p_prefetch_controller
+  cv32e40x_prefetch_controller
   #(
     .DEPTH          ( FIFO_DEPTH    ),
     .PULP_OBI       ( PULP_OBI      ),
@@ -124,7 +124,7 @@ module cv32e40p_prefetch_buffer
   // Fetch FIFO && fall-through path
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40p_fifo
+  cv32e40x_fifo
   #(
       .FALL_THROUGH ( 1'b0                 ),
       .DATA_WIDTH   ( 32                   ),
@@ -154,7 +154,7 @@ module cv32e40p_prefetch_buffer
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40p_obi_interface
+  cv32e40x_obi_interface
   #(
     .TRANS_STABLE          ( 0                 )        // trans_* is NOT guaranteed stable during waited transfers;
                                                         // this is ignored for legacy PULP behavior (not compliant to OBI)
@@ -196,7 +196,7 @@ module cv32e40p_prefetch_buffer
 `ifdef CV32E40P_ASSERT_ON
 
   // FIFO_DEPTH must be greater than 1. Otherwise, the property
-  // p_hwlp_end_already_gnt_when_hwlp_branch in cv32e40p_prefetch_controller
+  // p_hwlp_end_already_gnt_when_hwlp_branch in cv32e40x_prefetch_controller
   // is not verified, since the prefetcher cannot ask for HWLP_END the cycle
   // in which HWLP_END-4 is being absorbed by ID.
   property p_fifo_depth_gt_1;
@@ -253,4 +253,4 @@ module cv32e40p_prefetch_buffer
 
 `endif
 
-endmodule // cv32e40p_prefetch_buffer
+endmodule // cv32e40x_prefetch_buffer

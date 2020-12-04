@@ -8,24 +8,24 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Wrapper for a cv32e40p, containing cv32e40p, and tracer
+// Wrapper for a cv32e40x, containing cv32e40x, and tracer
 // Contributor: Davide Schiavone <davide@openhwgroup.org>
 
 `ifdef CV32E40P_ASSERT_ON
-  `include "cv32e40p_prefetch_controller_sva.sv"
+  `include "cv32e40x_prefetch_controller_sva.sv"
 `endif
 
-`include "cv32e40p_core_log.sv"
+`include "cv32e40x_core_log.sv"
 
 `ifdef CV32E40P_APU_TRACE
-  `include "cv32e40p_apu_tracer.sv"
+  `include "cv32e40x_apu_tracer.sv"
 `endif
 
 `ifdef CV32E40P_TRACE_EXECUTION
-  `include "cv32e40p_tracer.sv"
+  `include "cv32e40x_tracer.sv"
 `endif
 
-module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
+module cv32e40x_wrapper import cv32e40x_apu_core_pkg::*;
 #(
   parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
@@ -97,9 +97,9 @@ module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
 `ifdef CV32E40P_ASSERT_ON
 
     // RTL Assertions
-    bind cv32e40p_prefetch_controller:
+    bind cv32e40x_prefetch_controller:
       core_i.if_stage_i.prefetch_buffer_i.prefetch_controller_i
-      cv32e40p_prefetch_controller_sva
+      cv32e40x_prefetch_controller_sva
       #(
           .DEPTH           ( DEPTH           ),
           .PULP_XPULP      ( PULP_XPULP      ),
@@ -109,7 +109,7 @@ module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
 
 `endif // CV32E40P_ASSERT_ON
 
-    cv32e40p_core_log
+    cv32e40x_core_log
      #(
           .PULP_XPULP            ( PULP_XPULP            ),
           .PULP_CLUSTER          ( PULP_CLUSTER          ),
@@ -125,7 +125,7 @@ module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
       );
 
 `ifdef CV32E40P_APU_TRACE
-    cv32e40p_apu_tracer apu_tracer_i(
+    cv32e40x_apu_tracer apu_tracer_i(
       .clk_i        ( core_i.rst_ni                ),
       .rst_n        ( core_i.clk_i                 ),
       .hart_id_i    ( core_i.hart_id_i             ),
@@ -136,7 +136,7 @@ module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
 `endif
 
 `ifdef CV32E40P_TRACE_EXECUTION
-    cv32e40p_tracer tracer_i(
+    cv32e40x_tracer tracer_i(
       .clk_i          ( core_i.clk_i                                ), // always-running clock for tracing
       .rst_n          ( core_i.rst_ni                               ),
 
@@ -200,7 +200,7 @@ module cv32e40p_wrapper import cv32e40p_apu_core_pkg::*;
 `endif
 
     // instantiate the core
-    cv32e40p_core
+    cv32e40x_core
         #(
           .PULP_XPULP            ( PULP_XPULP            ),
           .PULP_CLUSTER          ( PULP_CLUSTER          ),

@@ -20,7 +20,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_aligner
+module cv32e40x_aligner
 (
   input  logic           clk,
   input  logic           rst_n,

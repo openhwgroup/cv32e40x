@@ -19,7 +19,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-package cv32e40p_apu_core_pkg;
+package cv32e40x_apu_core_pkg;
 
    // APU interface
   parameter APU_NARGS_CPU    =  3;
@@ -36,4 +36,4 @@ package cv32e40p_apu_core_pkg;
   // mac
   parameter PIPE_REG_MAC     = 2;
 
-endpackage // cv32e40p_apu_core_pkg
+endpackage // cv32e40x_apu_core_pkg

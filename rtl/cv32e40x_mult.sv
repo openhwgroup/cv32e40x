@@ -23,7 +23,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_mult import cv32e40p_pkg::*;
+module cv32e40x_mult import cv32e40x_pkg::*;
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -57,6 +57,7 @@ module cv32e40p_mult import cv32e40p_pkg::*;
   output logic        ready_o,
   input  logic        ex_ready_i
 );
+
 
   ///////////////////////////////////////////////////////////////
   //  ___ _  _ _____ ___ ___ ___ ___   __  __ _   _ _  _____   //

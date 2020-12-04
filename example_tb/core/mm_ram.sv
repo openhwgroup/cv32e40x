@@ -706,7 +706,7 @@ module mm_ram
   assign irq_fast_o     = irq_rnd_lines.irq_fast;
 
 `ifndef VERILATOR
-  cv32e40p_random_stall
+  cv32e40x_random_stall
   #(.ADDR_WIDTH(RAM_ADDR_WIDTH),
     .DATA_WIDTH(INSTR_RDATA_WIDTH))
   instr_random_stalls
@@ -744,7 +744,7 @@ module mm_ram
     .valid_stall_i      ( rnd_stall_regs[8]      )
     );
 
-  cv32e40p_random_stall
+  cv32e40x_random_stall
   #(.ADDR_WIDTH(RAM_ADDR_WIDTH),
     .DATA_WIDTH(32))
   data_random_stalls
@@ -782,7 +782,7 @@ module mm_ram
     .valid_stall_i      ( rnd_stall_regs[9]      )
     );
 
-    cv32e40p_random_interrupt_generator
+    cv32e40x_random_interrupt_generator
     random_interrupt_generator_i
     (
       .rst_ni            ( rst_ni                                                   ),

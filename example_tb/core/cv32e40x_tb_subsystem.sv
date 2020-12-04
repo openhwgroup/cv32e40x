@@ -11,7 +11,7 @@
 // Wrapper for a RI5CY testbench, containing RI5CY, Memory and stdout peripheral
 // Contributor: Robert Balas <balasr@student.ethz.ch>
 
-module cv32e40p_tb_subsystem
+module cv32e40x_tb_subsystem
     #(parameter INSTR_RDATA_WIDTH = 32,
       parameter RAM_ADDR_WIDTH = 20,
       parameter BOOT_ADDR = 'h180,
@@ -30,7 +30,7 @@ module cv32e40p_tb_subsystem
      output logic [31:0] exit_value_o,
      output logic        exit_valid_o);
 
-    import cv32e40p_apu_core_pkg::*;
+    import cv32e40x_apu_core_pkg::*;
 
     // signals connecting core to memory
     logic                         instr_req;
@@ -81,7 +81,7 @@ module cv32e40p_tb_subsystem
     assign debug_req_i = 1'b0;
 
     // instantiate the core
-    cv32e40p_wrapper
+    cv32e40x_wrapper
         #(
           .PULP_XPULP            ( PULP_XPULP            ),
           .PULP_CLUSTER          ( PULP_CLUSTER          ),
@@ -139,7 +139,7 @@ module cv32e40p_tb_subsystem
 
     generate
         if(FPU) begin
-            cv32e40p_fp_wrapper fp_wrapper_i
+            cv32e40x_fp_wrapper fp_wrapper_i
             (
                .clk_i          ( clk_i        ),
                .rst_ni         ( rst_ni       ),
@@ -203,4 +203,4 @@ module cv32e40p_tb_subsystem
          .exit_valid_o   ( exit_valid_o                   ),
          .exit_value_o   ( exit_value_o                   ));
 
-endmodule // cv32e40p_tb_subsystem
+endmodule // cv32e40x_tb_subsystem

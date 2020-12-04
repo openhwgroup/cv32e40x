@@ -28,7 +28,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_core import cv32e40p_apu_core_pkg::*;
+module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 #(
   parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
@@ -97,7 +97,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   output logic        core_sleep_o
 );
 
-  import cv32e40p_pkg::*;
+  import cv32e40x_pkg::*;
 
   // Unused parameters and signals (left in code for future design extensions)
   localparam PULP_SECURE         =  0;
@@ -379,7 +379,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   logic        clk;
   logic        fetch_enable;
 
-  cv32e40p_sleep_unit
+  cv32e40x_sleep_unit
   #(
     .PULP_CLUSTER               ( PULP_CLUSTER         )
   )
@@ -423,7 +423,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   //  |___|_|     |____/ |_/_/   \_\____|_____|   //
   //                                              //
   //////////////////////////////////////////////////
-  cv32e40p_if_stage
+  cv32e40x_if_stage
   #(
     .PULP_XPULP          ( PULP_XPULP        ),
     .PULP_OBI            ( PULP_OBI          ),
@@ -514,7 +514,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   //  |___|____/  |____/ |_/_/   \_\____|_____|  //
   //                                             //
   /////////////////////////////////////////////////
-  cv32e40p_id_stage
+  cv32e40x_id_stage
   #(
     .PULP_XPULP                   ( PULP_XPULP           ),
     .PULP_CLUSTER                 ( PULP_CLUSTER         ),
@@ -749,7 +749,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   //  |_____/_/\_\ |____/ |_/_/   \_\____|_____|     //
   //                                                 //
   /////////////////////////////////////////////////////
-  cv32e40p_ex_stage
+  cv32e40x_ex_stage
   #(
    .FPU              ( FPU                ),
    .APU_NARGS_CPU    ( APU_NARGS_CPU      ),
@@ -880,7 +880,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   //                                                                                    //
   ////////////////////////////////////////////////////////////////////////////////////////
 
-  cv32e40p_load_store_unit
+  cv32e40x_load_store_unit
   #(
     .PULP_OBI              ( PULP_OBI           )
   )
@@ -945,7 +945,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   //   Control and Status Registers   //
   //////////////////////////////////////
 
-  cv32e40p_cs_registers
+  cv32e40x_cs_registers
   #(
     .A_EXTENSION      ( A_EXTENSION           ),
     .FPU              ( FPU                   ),
@@ -1072,7 +1072,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
 
   generate
   if(PULP_SECURE && USE_PMP) begin : gen_pmp
-  cv32e40p_pmp
+  cv32e40x_pmp
   #(
      .N_PMP_ENTRIES(N_PMP_ENTRIES)
   )
@@ -1156,7 +1156,7 @@ module cv32e40p_core import cv32e40p_apu_core_pkg::*;
   always_ff @(posedge rst_ni)
   begin
     if (PULP_XPULP) begin
-      $warning("PULP_XPULP == 1 has not been verified yet and non-backward compatible RTL fixes are expected (see https://github.com/openhwgroup/cv32e40p/issues/452)");
+      $warning("PULP_XPULP == 1 has not been verified yet and non-backward compatible RTL fixes are expected (see https://github.com/openhwgroup/cv32e40x/issues/452)");
     end
     if (PULP_CLUSTER) begin
       $warning("PULP_CLUSTER == 1 has not been verified yet");

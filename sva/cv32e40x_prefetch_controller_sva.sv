@@ -27,7 +27,7 @@
 //                 Prefetch Controller.                                       //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_prefetch_controller_sva
+module cv32e40x_prefetch_controller_sva
 #(
   parameter DEPTH = 4,
   parameter PULP_XPULP = 0,
@@ -165,4 +165,4 @@ module cv32e40p_prefetch_controller_sva
       `uvm_error("Prefetch Controller SVA",
                  $sformatf("hwlp_branch and branch_i happen at the same moment"))
 
-endmodule: cv32e40p_prefetch_controller_sva
+endmodule: cv32e40x_prefetch_controller_sva

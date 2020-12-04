@@ -23,7 +23,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_load_store_unit
+module cv32e40x_load_store_unit
 #(
     parameter PULP_OBI = 0                     // Legacy PULP OBI behavior
 )(
@@ -75,7 +75,7 @@ module cv32e40p_load_store_unit
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
 
-  // Transaction request (to cv32e40p_obi_interface)
+  // Transaction request (to cv32e40x_obi_interface)
   logic         trans_valid;
   logic         trans_ready;
   logic [31:0]  trans_addr;
@@ -84,7 +84,7 @@ module cv32e40p_load_store_unit
   logic [31:0]  trans_wdata;
   logic [5:0]   trans_atop;
 
-  // Transaction response interface (from cv32e40p_obi_interface)
+  // Transaction response interface (from cv32e40x_obi_interface)
   logic         resp_valid;
   logic [31:0]  resp_rdata;
   logic         resp_err;               // Unused for now
@@ -507,7 +507,7 @@ module cv32e40p_load_store_unit
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40p_obi_interface
+  cv32e40x_obi_interface
   #(.TRANS_STABLE          (1                  ))
   data_obi_i
   (

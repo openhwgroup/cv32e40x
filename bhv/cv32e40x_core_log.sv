@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
 //                                                                            //
-// Design Name:    cv32e40p_core_log.sv (cv32e40p_core simulation log)        //
+// Design Name:    cv32e40x_core_log.sv (cv32e40x_core simulation log)        //
 // Project Name:   CV32E40P                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -30,13 +30,13 @@
 //                 - top level parameter settings                             //
 //                 - illegal instructions                                     //
 //                                                                            //
-// Note:           This code was here from cv32e40p_core.sv and               //
-//                 cv32e40p_controller.sv in order to remove the use of       //
+// Note:           This code was here from cv32e40x_core.sv and               //
+//                 cv32e40x_controller.sv in order to remove the use of       //
 //                 global defines in the RTL code.                            //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_core_log
+module cv32e40x_core_log
 #(
   parameter PULP_XPULP          =  1,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw) !!! HARDWARE LOOP IS NOT OPERATIONAL YET !!!
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
@@ -55,7 +55,7 @@ module cv32e40p_core_log
   // Log top level parameter values
   initial
   begin
-    $display("[cv32e40p_core]: PULP_XPULP = %d, PULP_CLUSTER = %d, FPU %d, PULP_ZFINX %d, NUM_MHPMCOUNTERS %d",
+    $display("[cv32e40x_core]: PULP_XPULP = %d, PULP_CLUSTER = %d, FPU %d, PULP_ZFINX %d, NUM_MHPMCOUNTERS %d",
       PULP_XPULP, PULP_CLUSTER, FPU, PULP_ZFINX, NUM_MHPMCOUNTERS);
   end
 
@@ -68,4 +68,4 @@ module cv32e40p_core_log
     end
   end
 
-endmodule // cv32e40p_core_log
+endmodule // cv32e40x_core_log

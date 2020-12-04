@@ -14,7 +14,7 @@
 // Additional contributions by:                                               //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                                                                            //
-// Design Name:    cv32e40p_ff_one                                               //
+// Design Name:    cv32e40x_ff_one                                               //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -22,7 +22,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_ff_one
+module cv32e40x_ff_one
 #(
   parameter LEN = 32
 )

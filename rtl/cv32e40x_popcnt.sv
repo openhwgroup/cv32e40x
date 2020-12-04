@@ -14,7 +14,7 @@
 // Additional contributions by:                                               //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                                                                            //
-// Design Name:    cv32e40p_popcnt                                               //
+// Design Name:    cv32e40x_popcnt                                               //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -22,7 +22,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_popcnt
+module cv32e40x_popcnt
 (
   input  logic [31:0]  in_i,
   output logic [5: 0]  result_o

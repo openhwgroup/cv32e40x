@@ -28,7 +28,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_controller import cv32e40p_pkg::*;
+module cv32e40x_controller import cv32e40x_pkg::*;
 #(
   parameter PULP_CLUSTER = 0,
   parameter PULP_XPULP   = 1
@@ -1586,4 +1586,4 @@ endgenerate
 
 `endif
 
-endmodule // cv32e40p_controller
+endmodule // cv32e40x_controller

@@ -22,7 +22,7 @@
 //                                                                                                              //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_random_stall
+module cv32e40x_random_stall
 
 #(
     parameter MAX_STALL_N = 1,
@@ -63,7 +63,7 @@ module cv32e40p_random_stall
     input logic [31:0]                      valid_stall_i
 );
 
-import cv32e40p_pkg::*;
+import cv32e40x_pkg::*;
 import perturbation_pkg::*;
 
 `ifndef VERILATOR

@@ -24,7 +24,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_compressed_decoder
+module cv32e40x_compressed_decoder
 #(
   parameter FPU = 0
 )
@@ -35,7 +35,7 @@ module cv32e40p_compressed_decoder
   output logic        illegal_instr_o
 );
 
-  import cv32e40p_pkg::*;
+  import cv32e40x_pkg::*;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////
   //   ____                                                 _   ____                     _            //

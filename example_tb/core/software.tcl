@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # add fc execution trace
-set rvcores [find instances -recursive -bydu cv32e40p_core -nodu]
-set tracer [find instances -recursive -bydu cv32e40p_tracer -nodu]
+set rvcores [find instances -recursive -bydu cv32e40x_core -nodu]
+set tracer [find instances -recursive -bydu cv32e40x_tracer -nodu]
 set fpuprivate [find instances -recursive -bydu fpu_private]
 
 if {$rvcores ne ""} {

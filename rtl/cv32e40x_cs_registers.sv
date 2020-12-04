@@ -27,7 +27,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_cs_registers import cv32e40p_pkg::*;
+module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
   parameter N_HWLP           = 2,
   parameter N_HWLP_BITS      = $clog2(N_HWLP),
@@ -314,7 +314,7 @@ module cv32e40p_cs_registers import cv32e40p_pkg::*;
   ////////////////////////////////////////////
 
   // NOTE!!!: Any new CSR register added in this file must also be
-  //   added to the valid CSR register list cv32e40p_decoder.v
+  //   added to the valid CSR register list cv32e40x_decoder.v
 
    genvar j;
 

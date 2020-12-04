@@ -25,7 +25,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_if_stage
+module cv32e40x_if_stage
 #(
   parameter PULP_XPULP      = 0,                        // PULP ISA Extension (including PULP specific CSRs and hardware loop, excluding p.elw)
   parameter PULP_OBI        = 0,                        // Legacy PULP OBI behavior
@@ -100,7 +100,7 @@ module cv32e40p_if_stage
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
 
-  import cv32e40p_pkg::*;
+  import cv32e40x_pkg::*;
 
   logic              if_valid, if_ready;
 
@@ -178,7 +178,7 @@ module cv32e40p_if_stage
   assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
   // prefetch buffer, caches a fixed number of instructions
-  cv32e40p_prefetch_buffer
+  cv32e40x_prefetch_buffer
   #(
     .PULP_OBI          ( PULP_OBI                    ),
     .PULP_XPULP        ( PULP_XPULP                  )
@@ -266,7 +266,7 @@ module cv32e40p_if_stage
   assign if_ready = fetch_valid & id_ready_i;
   assign if_valid = (~halt_if_i) & if_ready;
 
-  cv32e40p_aligner aligner_i
+  cv32e40x_aligner aligner_i
   (
     .clk               ( clk                          ),
     .rst_n             ( rst_n                        ),
@@ -283,7 +283,7 @@ module cv32e40p_if_stage
     .pc_o              ( pc_if_o                      )
   );
 
-  cv32e40p_compressed_decoder
+  cv32e40x_compressed_decoder
     #(
       .FPU(FPU)
      )

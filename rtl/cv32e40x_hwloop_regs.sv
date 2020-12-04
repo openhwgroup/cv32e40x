@@ -22,7 +22,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_hwloop_regs
+module cv32e40x_hwloop_regs
 #(
   parameter N_REGS     = 2,
   parameter N_REG_BITS = $clog2(N_REGS)

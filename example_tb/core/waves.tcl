@@ -29,7 +29,7 @@
 # }
 
 # add fc
-set rvcores [find instances -recursive -bydu cv32e40p_core -nodu]
+set rvcores [find instances -recursive -bydu cv32e40x_core -nodu]
 set fpuprivate [find instances -recursive -bydu fpu_private]
 set tb_top [find instances -recursive -bydu tb_top -nod]
 set mm_ram [find instances -recursive -bydu mm_ram -nod]
@@ -62,7 +62,7 @@ if {$riscv_random_stall ne ""} {
 
 if {$rvcores ne ""} {
 
-  set hwlp [find instances -recursive -bydu cv32e40p_hwloop_controller -nodu]
+  set hwlp [find instances -recursive -bydu cv32e40x_hwloop_controller -nodu]
 
   add wave -group "Core"                                                    $rvcores/*
 

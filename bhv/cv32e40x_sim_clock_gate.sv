@@ -8,11 +8,11 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// !!! cv32e40p_sim_clock_gate file is meant for simulation only !!!
+// !!! cv32e40x_sim_clock_gate file is meant for simulation only !!!
 // !!! It must not be used for ASIC synthesis                    !!!
 // !!! It must not be used for FPGA synthesis                    !!!
 
-module cv32e40p_clock_gate
+module cv32e40x_clock_gate
 (
     input  logic clk_i,
     input  logic en_i,
@@ -30,4 +30,4 @@ module cv32e40p_clock_gate
 
   assign clk_o = clk_i & clk_en;
 
-endmodule // cv32e40p_clock_gate
+endmodule // cv32e40x_clock_gate

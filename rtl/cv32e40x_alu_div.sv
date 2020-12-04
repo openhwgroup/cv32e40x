@@ -23,7 +23,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_alu_div
+module cv32e40x_alu_div
 #(
    parameter C_WIDTH     = 32,
    parameter C_LOG_WIDTH = 6

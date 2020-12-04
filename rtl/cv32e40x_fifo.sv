@@ -12,7 +12,7 @@
 
 // Copy of fifo_v3 from https://github.com/pulp-platform/common_cells b2a4b2d3decdfc152ad9b4564a48ed3b2649fd6c
 
-module cv32e40p_fifo #(
+module cv32e40x_fifo #(
     parameter bit          FALL_THROUGH = 1'b0, // fifo is in fall-through mode
     parameter int unsigned DATA_WIDTH   = 32,   // default data width if the fifo is of type logic
     parameter int unsigned DEPTH        = 8,    // depth can be arbitrary from 0 to 2**32
@@ -168,4 +168,4 @@ module cv32e40p_fifo #(
         else $fatal (1, "Trying to pop data although the FIFO is empty.");
 `endif
 
-endmodule // cv32e40p_fifo
+endmodule // cv32e40x_fifo

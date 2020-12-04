@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
 //                                                                            //
-// Design Name:    cv32e40p_apu_tracer.sv (APU trace)                         //
+// Design Name:    cv32e40x_apu_tracer.sv (APU trace)                         //
 // Project Name:   CV32E40P                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -30,14 +30,14 @@
 //                 - APU register file write address                          //
 //                 - APU register file write data                             //
 //                                                                            //
-// Note:           This code was here from cv32e40p_core.sv in order to       //
+// Note:           This code was here from cv32e40x_core.sv in order to       //
 //                 remove the use of global defines in the RTL code.          //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 `ifdef CV32E40P_APU_TRACE
 
-module cv32e40p_apu_tracer
+module cv32e40x_apu_tracer
 (
   input  logic        clk_i,
   input  logic        rst_n,
@@ -79,6 +79,6 @@ module cv32e40p_apu_tracer
         $fclose(apu_trace);
      end
 
-endmodule // cv32e40p_apu_tracer
+endmodule // cv32e40x_apu_tracer
 
 `endif // CV32E40P_APU_TRACE

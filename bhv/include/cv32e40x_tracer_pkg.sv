@@ -9,8 +9,8 @@
 // specific language governing permissions and limitations under the License.
 
 
-package cv32e40p_tracer_pkg;
-import cv32e40p_pkg::*;
+package cv32e40x_tracer_pkg;
+import cv32e40x_pkg::*;
 
 // settings
 parameter bit SymbolicRegs = 0; // show abi names for registers

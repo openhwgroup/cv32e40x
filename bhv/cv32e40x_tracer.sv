@@ -26,8 +26,8 @@
 
 `include "uvm_macros.svh"
 
-module cv32e40p_tracer
-  import cv32e40p_pkg::*;
+module cv32e40x_tracer
+  import cv32e40x_pkg::*;
   import uvm_pkg::*;
 (
   // Clock and Reset
@@ -96,7 +96,7 @@ module cv32e40p_tracer
   input  logic [ 4:0] imm_clip_type
 );
 
-  import cv32e40p_tracer_pkg::*;
+  import cv32e40x_tracer_pkg::*;
 
   // Make clock a bit to avoid x->0 transitions in tracer logic
   bit clk_i_d;
@@ -113,7 +113,7 @@ module cv32e40p_tracer
   logic [31:0] pc_wb_delay_stage;
   logic [31:0] pc_retire_head_q;
 
-`include "cv32e40p_instr_trace.svh"
+`include "cv32e40x_instr_trace.svh"
 
   string info_tag = "TRACER";
 
@@ -462,7 +462,7 @@ module cv32e40p_tracer
     end
   end
 
-endmodule : cv32e40p_tracer
+endmodule : cv32e40x_tracer
 
 
 `endif // CV32E40P_TRACE_EXECUTION

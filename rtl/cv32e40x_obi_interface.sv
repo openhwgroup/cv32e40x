@@ -35,7 +35,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_obi_interface
+module cv32e40x_obi_interface
 #(
   parameter TRANS_STABLE =  0                   // Are trans_addr_i, trans_we_i, trans_be_i, trans_wdata_i, trans_atop_i signals stable during a non-accepted transaction?
 )
@@ -202,11 +202,11 @@ module cv32e40p_obi_interface
     end
 
     // Always ready to accept a new transfer requests when previous A channel
-    // transfer has been granted. Note that cv32e40p_obi_interface does not limit
+    // transfer has been granted. Note that cv32e40x_obi_interface does not limit
     // the number of outstanding transactions in any way.
     assign trans_ready_o = (state_q == TRANSPARENT);
 
   end
   endgenerate
 
-endmodule // cv32e40p_obi_interface
+endmodule // cv32e40x_obi_interface

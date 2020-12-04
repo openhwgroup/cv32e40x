@@ -17,7 +17,7 @@
 
 /*
 
-HW-Loop realted macros for testing cv32e40p
+HW-Loop realted macros for testing cv32e40x
 
 HW-Loops must start with the first instruction 4-B aligned
 HW-Loops cannot contain Jumps/Branches

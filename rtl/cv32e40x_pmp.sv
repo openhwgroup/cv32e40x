@@ -103,7 +103,7 @@
 
 
 
-module cv32e40p_pmp import cv32e40p_pkg::*;
+module cv32e40x_pmp import cv32e40x_pkg::*;
 #(
    parameter N_PMP_ENTRIES = 16
 )

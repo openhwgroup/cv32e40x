@@ -25,7 +25,7 @@
 //                                                                                                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40p_random_interrupt_generator import cv32e40p_pkg::*;
+module cv32e40x_random_interrupt_generator import cv32e40x_pkg::*;
 (
     input logic                        rst_ni,
     input logic                        clk_i,
