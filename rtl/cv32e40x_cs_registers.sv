@@ -33,7 +33,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter N_HWLP_BITS      = $clog2(N_HWLP),
   parameter APU              = 0,
   parameter A_EXTENSION      = 0,
-  parameter FPU              = 0,
   parameter PULP_SECURE      = 0,
   parameter USE_PMP          = 0,
   parameter N_PMP_ENTRIES    = 16,
@@ -63,10 +62,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     csr_wdata_i,
   input  csr_opcode_e     csr_op_i,
   output logic [31:0]     csr_rdata_o,
-
-  output logic [2:0]         frm_o,
-  input  logic [C_FFLAG-1:0] fflags_i,
-  input  logic               fflags_we_i,
 
   // Interrupts
   output logic [31:0]     mie_bypass_o,
@@ -167,7 +162,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     | (1                               <<  2)  // C - Compressed extension
     | (0                               <<  3)  // D - Double precision floating-point extension
     | (0                               <<  4)  // E - RV32E base ISA
-    | (32'(FPU)                        <<  5)  // F - Single precision floating-point extension
+    | (32'(0)                          <<  5)  // F - Single precision floating-point extension
     | (1                               <<  8)  // I - RV32I/64I/128I base ISA
     | (1                               << 12)  // M - Integer Multiply/Divide extension
     | (0                               << 13)  // N - User level interrupts supported
@@ -226,8 +221,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] csr_wdata_int;
   logic [31:0] csr_rdata_int;
   logic        csr_we_int;
-  logic [C_RM-1:0]     frm_q, frm_n;
-  logic [C_FFLAG-1:0]  fflags_q, fflags_n;
 
   // Interrupt control signals
   logic [31:0] mepc_q, mepc_n;
@@ -324,11 +317,6 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_read_logic
   always_comb
   begin
     case (csr_addr_i)
-      // fcsr: Floating-Point Control and Status Register (frm + fflags).
-      CSR_FFLAGS : csr_rdata_int = (FPU == 1) ? {27'b0, fflags_q}        : '0;
-      CSR_FRM    : csr_rdata_int = (FPU == 1) ? {29'b0, frm_q}           : '0;
-      CSR_FCSR   : csr_rdata_int = (FPU == 1) ? {24'b0, frm_q, fflags_q} : '0;
-
       // mstatus
       CSR_MSTATUS: csr_rdata_int = {
                                   14'b0,
@@ -510,10 +498,6 @@ end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
   begin
 
     case (csr_addr_i)
-      // fcsr: Floating-Point Control and Status Register (frm + fflags).
-      CSR_FFLAGS : csr_rdata_int = (FPU == 1) ? {27'b0, fflags_q}        : '0;
-      CSR_FRM    : csr_rdata_int = (FPU == 1) ? {29'b0, frm_q}           : '0;
-      CSR_FCSR   : csr_rdata_int = (FPU == 1) ? {24'b0, frm_q, fflags_q} : '0;
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = {
                                   14'b0,
@@ -662,8 +646,6 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_write_logic
   // write logic
   always_comb
   begin
-    fflags_n                 = fflags_q;
-    frm_n                    = frm_q;
     mscratch_n               = mscratch_q;
     mepc_n                   = mepc_q;
     uepc_n                   = uepc_q;
@@ -690,17 +672,8 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_write_logic
 
     mie_n                    = mie_q;
 
-    if (FPU == 1) if (fflags_we_i) fflags_n = fflags_i | fflags_q;
 
     case (csr_addr_i)
-      // fcsr: Floating-Point Control and Status Register (frm, fflags, fprec).
-      CSR_FFLAGS : if (csr_we_int) fflags_n = (FPU == 1) ? csr_wdata_int[C_FFLAG-1:0] : '0;
-      CSR_FRM    : if (csr_we_int) frm_n    = (FPU == 1) ? csr_wdata_int[C_RM-1:0]    : '0;
-      CSR_FCSR   : if (csr_we_int) begin
-         fflags_n = (FPU == 1) ? csr_wdata_int[C_FFLAG-1:0]            : '0;
-         frm_n    = (FPU == 1) ? csr_wdata_int[C_RM+C_FFLAG-1:C_FFLAG] : '0;
-      end
-
       // mstatus: IE bit
       CSR_MSTATUS: if (csr_we_int) begin
         mstatus_n = '{
@@ -937,8 +910,6 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
   // write logic
   always_comb
   begin
-    fflags_n                 = fflags_q;
-    frm_n                    = frm_q;
     mscratch_n               = mscratch_q;
     mepc_n                   = mepc_q;
     uepc_n                   = 'b0;             // Not used if PULP_SECURE == 0
@@ -966,17 +937,8 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
     mtvec_mode_n             = mtvec_mode_q;
     utvec_mode_n             = '0;              // Not used if PULP_SECURE == 0
 
-    if (FPU == 1) if (fflags_we_i) fflags_n = fflags_i | fflags_q;
 
     case (csr_addr_i)
-      // fcsr: Floating-Point Control and Status Register (frm, fflags, fprec).
-      CSR_FFLAGS : if (csr_we_int) fflags_n = (FPU == 1) ? csr_wdata_int[C_FFLAG-1:0] : '0;
-      CSR_FRM    : if (csr_we_int) frm_n    = (FPU == 1) ? csr_wdata_int[C_RM-1:0]    : '0;
-      CSR_FCSR   : if (csr_we_int) begin
-         fflags_n = (FPU == 1) ? csr_wdata_int[C_FFLAG-1:0]            : '0;
-         frm_n    = (FPU == 1) ? csr_wdata_int[C_RM+C_FFLAG-1:C_FFLAG] : '0;
-      end
-
       // mstatus: IE bit
       CSR_MSTATUS: if (csr_we_int) begin
         mstatus_n = '{
@@ -1129,7 +1091,6 @@ end //PULP_SECURE
   assign u_irq_enable_o  = mstatus_q.uie && !(dcsr_q.step && !dcsr_q.stepie);
   assign priv_lvl_o      = priv_lvl_q;
   assign sec_lvl_o       = priv_lvl_q[0];
-  assign frm_o           = (FPU == 1) ? frm_q : '0;
 
   assign mtvec_o         = mtvec_q;
   assign utvec_o         = utvec_q;
@@ -1214,8 +1175,6 @@ end //PULP_SECURE
   begin
     if (rst_n == 1'b0)
     begin
-      frm_q      <= '0;
-      fflags_q   <= '0;
       mstatus_q  <= '{
               uie:  1'b0,
               mie:  1'b0,
@@ -1244,13 +1203,6 @@ end //PULP_SECURE
     else
     begin
       // update CSRs
-      if(FPU == 1) begin
-        frm_q      <= frm_n;
-        fflags_q   <= fflags_n;
-      end else begin
-        frm_q      <= 'b0;
-        fflags_q   <= 'b0;
-      end
       if (PULP_SECURE == 1) begin
         mstatus_q      <= mstatus_n ;
       end else begin

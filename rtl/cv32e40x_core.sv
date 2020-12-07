@@ -32,7 +32,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 #(
   parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
-  parameter FPU                 =  0,                   // Floating Point Unit (interfaced via APU interface)
   parameter PULP_ZFINX          =  0,                   // Float-in-General Purpose registers
   parameter NUM_MHPMCOUNTERS    =  1
 )
@@ -122,7 +121,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 
   localparam N_HWLP      = 2;
   localparam N_HWLP_BITS = $clog2(N_HWLP);
-  localparam APU         = (FPU==1) ? 1 : 0;
+  localparam APU         = 0;
 
 
   // IF/ID signals
@@ -196,10 +195,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic [ 1:0] mult_clpx_shift_ex;
   logic        mult_clpx_img_ex;
 
-  // FPU
-  logic [C_RM-1:0]            frm_csr;
-  logic [C_FFLAG-1:0]         fflags_csr;
-  logic                       fflags_we;
 
   // APU
   logic                        apu_en_ex;
@@ -222,16 +217,16 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic                        perf_apu_wb;
 
   // Register Write Control
-  logic [5:0]  regfile_waddr_ex;
+  logic [4:0]  regfile_waddr_ex;
   logic        regfile_we_ex;
-  logic [5:0]  regfile_waddr_fw_wb_o;        // From WB to ID
+  logic [4:0]  regfile_waddr_fw_wb_o;        // From WB to ID
   logic        regfile_we_wb;
   logic [31:0] regfile_wdata;
 
-  logic [5:0]  regfile_alu_waddr_ex;
+  logic [4:0]  regfile_alu_waddr_ex;
   logic        regfile_alu_we_ex;
 
-  logic [5:0]  regfile_alu_waddr_fw;
+  logic [4:0]  regfile_alu_waddr_fw;
   logic        regfile_alu_we_fw;
   logic [31:0] regfile_alu_wdata_fw;
 
@@ -365,7 +360,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 
   // APU master signals
   assign apu_flags_o = apu_flags_ex;
-  assign fflags_csr  = apu_flags_i;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
@@ -427,8 +421,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   #(
     .PULP_XPULP          ( PULP_XPULP        ),
     .PULP_OBI            ( PULP_OBI          ),
-    .PULP_SECURE         ( PULP_SECURE       ),
-    .FPU                 ( FPU               )
+    .PULP_SECURE         ( PULP_SECURE       )
   )
   if_stage_i
   (
@@ -523,7 +516,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .USE_PMP                      ( USE_PMP              ),
     .A_EXTENSION                  ( A_EXTENSION          ),
     .APU                          ( APU                  ),
-    .FPU                          ( FPU                  ),
     .PULP_ZFINX                   ( PULP_ZFINX           ),
     .APU_NARGS_CPU                ( APU_NARGS_CPU        ),
     .APU_WOP_CPU                  ( APU_WOP_CPU          ),
@@ -619,8 +611,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .mult_clpx_shift_ex_o         ( mult_clpx_shift_ex   ), // from ID to EX stage
     .mult_clpx_img_ex_o           ( mult_clpx_img_ex     ), // from ID to EX stage
 
-    // FPU
-    .frm_i                        ( frm_csr                 ),
 
     // APU
     .apu_en_ex_o                  ( apu_en_ex               ),
@@ -751,7 +741,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   /////////////////////////////////////////////////////
   cv32e40x_ex_stage
   #(
-   .FPU              ( FPU                ),
    .APU_NARGS_CPU    ( APU_NARGS_CPU      ),
    .APU_WOP_CPU      ( APU_WOP_CPU        ),
    .APU_NDSFLAGS_CPU ( APU_NDSFLAGS_CPU   ),
@@ -795,9 +784,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .mult_clpx_img_i            ( mult_clpx_img_ex             ), // from ID/EX pipe registers
 
     .mult_multicycle_o          ( mult_multicycle              ), // to ID/EX pipe registers
-
-    // FPU
-    .fpu_fflags_we_o            ( fflags_we                    ),
 
     // APU
     .apu_en_i                   ( apu_en_ex                    ),
@@ -948,7 +934,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   cv32e40x_cs_registers
   #(
     .A_EXTENSION      ( A_EXTENSION           ),
-    .FPU              ( FPU                   ),
     .APU              ( APU                   ),
     .PULP_SECURE      ( PULP_SECURE           ),
     .USE_PMP          ( USE_PMP               ),
@@ -977,10 +962,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .csr_wdata_i                ( csr_wdata              ),
     .csr_op_i                   ( csr_op                 ),
     .csr_rdata_o                ( csr_rdata              ),
-
-    .frm_o                      ( frm_csr                ),
-    .fflags_i                   ( fflags_csr             ),
-    .fflags_we_i                ( fflags_we              ),
 
     // Interrupt related control signals
     .mie_bypass_o               ( mie_bypass             ),
@@ -1152,7 +1133,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-  // PULP_XPULP, PULP_CLUSTER, FPU, PULP_ZFINX
+  // PULP_XPULP, PULP_CLUSTER, PULP_ZFINX
   always_ff @(posedge rst_ni)
   begin
     if (PULP_XPULP) begin
@@ -1160,9 +1141,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     end
     if (PULP_CLUSTER) begin
       $warning("PULP_CLUSTER == 1 has not been verified yet");
-    end
-    if (FPU) begin
-      $warning("FPU == 1 has not been verified yet");
     end
     if (PULP_ZFINX) begin
       $warning("PULP_ZFINX == 1 has not been verified yet");

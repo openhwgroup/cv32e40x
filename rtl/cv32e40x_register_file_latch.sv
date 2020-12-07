@@ -23,9 +23,6 @@
 // Description:    Register file with 31x 32 bit wide registers. Register 0   //
 //                 is fixed to 0. This register file is based on latches and  //
 //                 is thus smaller than the flip-flop based register file.    //
-//                 Also supports the fp-register file now if FPU=1            //
-//                 If PULP_ZFINX is 1, floating point operations take values  //
-//                 from the X register file                                   //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,7 +30,6 @@ module cv32e40x_register_file
 #(
   parameter ADDR_WIDTH    = 5,
   parameter DATA_WIDTH    = 32,
-  parameter FPU           = 0,
   parameter PULP_ZFINX    = 0
 )
 (
@@ -67,10 +63,8 @@ module cv32e40x_register_file
 );
 
    // number of integer registers
-   localparam    NUM_WORDS     = 2**(ADDR_WIDTH-1);
-   // number of floating point registers
-   localparam    NUM_FP_WORDS  = 2**(ADDR_WIDTH-1);
-   localparam    NUM_TOT_WORDS = FPU ? ( PULP_ZFINX ? NUM_WORDS : NUM_WORDS + NUM_FP_WORDS ) : NUM_WORDS;
+   localparam    NUM_WORDS     = 2**(ADDR_WIDTH);
+   localparam    NUM_TOT_WORDS =  NUM_WORDS;
 
    // integer register file
    logic [DATA_WIDTH-1:0]         mem[NUM_WORDS];
@@ -86,9 +80,6 @@ module cv32e40x_register_file
 
    logic                          clk_int;
 
-   // fp register file
-   logic [DATA_WIDTH-1:0]         mem_fp[NUM_FP_WORDS];
-
    int                            unsigned i;
    int                            unsigned j;
    int                            unsigned k;
@@ -100,15 +91,9 @@ module cv32e40x_register_file
    //-----------------------------------------------------------------------------
    //-- READ : Read address decoder RAD
    //-----------------------------------------------------------------------------
-   if (FPU == 1 && PULP_ZFINX == 0) begin
-      assign rdata_a_o = raddr_a_i[5] ? mem_fp[raddr_a_i[4:0]] : mem[raddr_a_i[4:0]];
-      assign rdata_b_o = raddr_b_i[5] ? mem_fp[raddr_b_i[4:0]] : mem[raddr_b_i[4:0]];
-      assign rdata_c_o = raddr_c_i[5] ? mem_fp[raddr_c_i[4:0]] : mem[raddr_c_i[4:0]];
-   end else begin
-      assign rdata_a_o = mem[raddr_a_i[4:0]];
-      assign rdata_b_o = mem[raddr_b_i[4:0]];
-      assign rdata_c_o = mem[raddr_c_i[4:0]];
-   end
+   assign rdata_a_o = mem[raddr_a_i[4:0]];
+   assign rdata_b_o = mem[raddr_b_i[4:0]];
+   assign rdata_c_o = mem[raddr_c_i[4:0]];
 
    //-----------------------------------------------------------------------------
    // WRITE : SAMPLE INPUT DATA
@@ -195,19 +180,4 @@ module cv32e40x_register_file
           end
      end
 
-   if (FPU == 1 && PULP_ZFINX == 0) begin
-   // Floating point registers
-   always_latch
-      begin : latch_wdata_fp
-        if (FPU == 1) begin
-           for(l = 0; l < NUM_FP_WORDS; l++)
-             begin : w_WordIter
-                if (~rst_n)
-                  mem_fp[l] = '0;
-                else if(mem_clocks[l+NUM_WORDS] == 1'b1)
-                  mem_fp[l] = waddr_onehot_b_q[l+NUM_WORDS] ? wdata_b_q : wdata_a_q;
-             end
-        end
-      end
-   end
 endmodule

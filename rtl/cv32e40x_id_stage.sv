@@ -37,7 +37,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   parameter USE_PMP           =  0,
   parameter A_EXTENSION       =  0,
   parameter APU               =  0,
-  parameter FPU               =  0,
   parameter PULP_ZFINX        =  0,
   parameter APU_NARGS_CPU     =  3,
   parameter APU_WOP_CPU       =  6,
@@ -101,10 +100,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     output logic [ 1:0] imm_vec_ext_ex_o,
     output logic [ 1:0] alu_vec_mode_ex_o,
 
-    output logic [5:0]  regfile_waddr_ex_o,
+    output logic [4:0]  regfile_waddr_ex_o,
     output logic        regfile_we_ex_o,
 
-    output logic [5:0]  regfile_alu_waddr_ex_o,
+    output logic [4:0]  regfile_alu_waddr_ex_o,
     output logic        regfile_alu_we_ex_o,
 
     // ALU
@@ -148,7 +147,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     input  logic                       apu_write_dep_i,
     output logic                       apu_perf_dep_o,
     input  logic                       apu_busy_i,
-    input  logic [C_RM-1:0]            frm_i,
 
     // CSR ID/EX
     output logic        csr_access_ex_o,
@@ -222,11 +220,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     output logic        wake_from_sleep_o,
 
     // Forward Signals
-    input  logic [5:0]  regfile_waddr_wb_i,
+    input  logic [4:0]  regfile_waddr_wb_i,
     input  logic        regfile_we_wb_i,
     input  logic [31:0] regfile_wdata_wb_i, // From wb_stage: selects data from data memory, ex_stage result and sp rdata
 
-    input  logic [5:0]  regfile_alu_waddr_fw_i,
+    input  logic [4:0]  regfile_alu_waddr_fw_i,
     input  logic        regfile_alu_we_fw_i,
     input  logic [31:0] regfile_alu_wdata_fw_i,
 
@@ -329,19 +327,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic [4:0] irq_id_ctrl;
 
   // Register file interface
-  logic [5:0]  regfile_addr_ra_id;
-  logic [5:0]  regfile_addr_rb_id;
-  logic [5:0]  regfile_addr_rc_id;
+  logic [4:0]  regfile_addr_ra_id;
+  logic [4:0]  regfile_addr_rb_id;
+  logic [4:0]  regfile_addr_rc_id;
 
-  logic        regfile_fp_a;
-  logic        regfile_fp_b;
-  logic        regfile_fp_c;
-  logic        regfile_fp_d;
 
-  logic        fregfile_ena; // whether the fp register file is enabled/present
-
-  logic [5:0]  regfile_waddr_id;
-  logic [5:0]  regfile_alu_waddr_id;
+  logic [4:0]  regfile_waddr_id;
+  logic [4:0]  regfile_alu_waddr_id;
   logic        regfile_alu_we_id, regfile_alu_we_dec_id;
 
   logic [31:0] regfile_data_ra_id;
@@ -369,11 +361,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic        mult_dot_en;      // use dot product
   logic [1:0]  mult_dot_signed;  // Signed mode dot products (can be mixed types)
 
-  // FPU signals
-  logic [cv32e40x_fpu_pkg::FP_FORMAT_BITS-1:0]  fpu_src_fmt;
-  logic [cv32e40x_fpu_pkg::FP_FORMAT_BITS-1:0]  fpu_dst_fmt;
-  logic [cv32e40x_fpu_pkg::INT_FORMAT_BITS-1:0] fpu_int_fmt;
-
   // APU signals
   logic                        apu_en;
   logic [APU_WOP_CPU-1:0]      apu_op;
@@ -388,7 +375,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic [1:0]                 apu_write_regs_valid;
 
   logic                       apu_stall;
-  logic [2:0]                 fp_rnd_mode;
 
   // Register Write Control
   logic        regfile_we_id;
@@ -510,32 +496,27 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   // The end result is a mask that has 1's set in the lower part
   assign imm_clip_type    = (32'h1 << instr[24:20]) - 1;
 
-  //-----------------------------------------------------------------------------
-  //-- FPU Register file enable:
-  //-- Taken from Cluster Config Reg if FPU reg file exists, or always disabled
-  //-----------------------------------------------------------------------------
-  assign fregfile_ena = FPU && !PULP_ZFINX ? 1'b1 : 1'b0;
 
   //---------------------------------------------------------------------------
   // source register selection regfile_fp_x=1 <=> CV32E40P_REG_x is a FP-register
   //---------------------------------------------------------------------------
-  assign regfile_addr_ra_id = {fregfile_ena & regfile_fp_a, instr[REG_S1_MSB:REG_S1_LSB]};
-  assign regfile_addr_rb_id = {fregfile_ena & regfile_fp_b, instr[REG_S2_MSB:REG_S2_LSB]};
+  assign regfile_addr_ra_id = instr[REG_S1_MSB:REG_S1_LSB];
+  assign regfile_addr_rb_id = instr[REG_S2_MSB:REG_S2_LSB];
 
   // register C mux
   always_comb begin
     unique case (regc_mux)
       REGC_ZERO:  regfile_addr_rc_id = '0;
-      REGC_RD:    regfile_addr_rc_id = {fregfile_ena & regfile_fp_c, instr[REG_D_MSB:REG_D_LSB]};
-      REGC_S1:    regfile_addr_rc_id = {fregfile_ena & regfile_fp_c, instr[REG_S1_MSB:REG_S1_LSB]};
-      REGC_S4:    regfile_addr_rc_id = {fregfile_ena & regfile_fp_c, instr[REG_S4_MSB:REG_S4_LSB]};
+      REGC_RD:    regfile_addr_rc_id = instr[REG_D_MSB:REG_D_LSB];
+      REGC_S1:    regfile_addr_rc_id = instr[REG_S1_MSB:REG_S1_LSB];
+      REGC_S4:    regfile_addr_rc_id = instr[REG_S4_MSB:REG_S4_LSB];
     endcase
   end
 
   //---------------------------------------------------------------------------
   // destination registers regfile_fp_d=1 <=> REG_D is a FP-register
   //---------------------------------------------------------------------------
-  assign regfile_waddr_id = {fregfile_ena & regfile_fp_d, instr[REG_D_MSB:REG_D_LSB]};
+  assign regfile_waddr_id = instr[REG_D_MSB:REG_D_LSB];
 
   // Second Register Write Address Selection
   // Used for prepost load/store and multiplier
@@ -800,7 +781,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
       assign apu_waddr = regfile_alu_waddr_id;
 
       // flags
-      assign apu_flags = (FPU == 1) ? {fpu_int_fmt, fpu_src_fmt, fpu_dst_fmt, fp_rnd_mode} : '0;
+      assign apu_flags = '0;
 
       // dependency checks
       always_comb begin
@@ -902,9 +883,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
   cv32e40x_register_file
   #(
-    .ADDR_WIDTH         ( 6                  ),
+    .ADDR_WIDTH         ( 5                  ),
     .DATA_WIDTH         ( 32                 ),
-    .FPU                ( FPU                ),
     .PULP_ZFINX         ( PULP_ZFINX         )
   )
   register_file_i
@@ -952,7 +932,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
       .PULP_XPULP          ( PULP_XPULP           ),
       .PULP_CLUSTER        ( PULP_CLUSTER         ),
       .A_EXTENSION         ( A_EXTENSION          ),
-      .FPU                 ( FPU                  ),
       .PULP_SECURE         ( PULP_SECURE          ),
       .USE_PMP             ( USE_PMP              ),
       .APU_WOP_CPU         ( APU_WOP_CPU          ),
@@ -982,11 +961,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .rega_used_o                     ( rega_used_dec             ),
     .regb_used_o                     ( regb_used_dec             ),
     .regc_used_o                     ( regc_used_dec             ),
-
-    .reg_fp_a_o                      ( regfile_fp_a              ),
-    .reg_fp_b_o                      ( regfile_fp_b              ),
-    .reg_fp_c_o                      ( regfile_fp_c              ),
-    .reg_fp_d_o                      ( regfile_fp_d              ),
 
     .bmask_a_mux_o                   ( bmask_a_mux               ),
     .bmask_b_mux_o                   ( bmask_b_mux               ),
@@ -1022,14 +996,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .mult_dot_signed_o               ( mult_dot_signed           ),
 
     // FPU / APU signals
-    .frm_i                           ( frm_i                     ),
-    .fpu_src_fmt_o                   ( fpu_src_fmt               ),
-    .fpu_dst_fmt_o                   ( fpu_dst_fmt               ),
-    .fpu_int_fmt_o                   ( fpu_int_fmt               ),
     .apu_en_o                        ( apu_en                    ),
     .apu_op_o                        ( apu_op                    ),
     .apu_lat_o                       ( apu_lat                   ),
-    .fp_rnd_mode_o                   ( fp_rnd_mode               ),
 
     // Register file control signals
     .regfile_mem_we_o                ( regfile_we_id             ),
@@ -1683,13 +1652,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   // Assertions
   //----------------------------------------------------------------------------
   `ifdef CV32E40P_ASSERT_ON
-
-    always_comb begin
-      if (FPU==1) begin
-        assert (APU_NDSFLAGS_CPU >= C_RM+2*cv32e40x_fpu_pkg::FP_FORMAT_BITS+cv32e40x_fpu_pkg::INT_FORMAT_BITS)
-          else $error("[apu] APU_NDSFLAGS_CPU APU flagbits is smaller than %0d", C_RM+2*cv32e40x_fpu_pkg::FP_FORMAT_BITS+cv32e40x_fpu_pkg::INT_FORMAT_BITS);
-      end
-    end
 
     // make sure that branch decision is valid when jumping
     a_br_decision : assert property (

@@ -21,9 +21,6 @@
 //                                                                            //
 // Description:    Register file with 31x 32 bit wide registers. Register 0   //
 //                 is fixed to 0. This register file is based on flip-flops.  //
-//                 Also supports the fp-register file now if FPU=1            //
-//                 If PULP_ZFINX is 1, floating point operations take values  //
-//                 from the X register file                                   //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,7 +28,6 @@ module cv32e40x_register_file
 #(
     parameter ADDR_WIDTH    = 5,
     parameter DATA_WIDTH    = 32,
-    parameter FPU           = 0,
     parameter PULP_ZFINX    = 0
 )
 (
@@ -65,16 +61,11 @@ module cv32e40x_register_file
 );
 
   // number of integer registers
-  localparam    NUM_WORDS     = 2**(ADDR_WIDTH-1);
-  // number of floating point registers
-  localparam    NUM_FP_WORDS  = 2**(ADDR_WIDTH-1);
-  localparam    NUM_TOT_WORDS = FPU ? ( PULP_ZFINX ? NUM_WORDS : NUM_WORDS + NUM_FP_WORDS ) : NUM_WORDS;
+  localparam    NUM_WORDS     = 2**(ADDR_WIDTH);
+  localparam    NUM_TOT_WORDS = NUM_WORDS;
 
   // integer register file
   logic [NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
-
-  // fp register file
-  logic [NUM_FP_WORDS-1:0][DATA_WIDTH-1:0]  mem_fp;
 
   // masked write addresses
   logic [ADDR_WIDTH-1:0]                    waddr_a;
@@ -88,23 +79,14 @@ module cv32e40x_register_file
   //-----------------------------------------------------------------------------
   //-- READ : Read address decoder RAD
   //-----------------------------------------------------------------------------
-  generate
-    if (FPU == 1 && PULP_ZFINX == 0) begin : gen_mem_fp_read
-       assign rdata_a_o = raddr_a_i[5] ? mem_fp[raddr_a_i[4:0]] : mem[raddr_a_i[4:0]];
-       assign rdata_b_o = raddr_b_i[5] ? mem_fp[raddr_b_i[4:0]] : mem[raddr_b_i[4:0]];
-       assign rdata_c_o = raddr_c_i[5] ? mem_fp[raddr_c_i[4:0]] : mem[raddr_c_i[4:0]];
-    end else begin : gen_mem_read
-       assign rdata_a_o = mem[raddr_a_i[4:0]];
-       assign rdata_b_o = mem[raddr_b_i[4:0]];
-       assign rdata_c_o = mem[raddr_c_i[4:0]];
-    end
-  endgenerate
+  assign rdata_a_o = mem[raddr_a_i[4:0]];
+  assign rdata_b_o = mem[raddr_b_i[4:0]];
+  assign rdata_c_o = mem[raddr_c_i[4:0]];
 
   //-----------------------------------------------------------------------------
   //-- WRITE : Write Address Decoder (WAD), combinatorial process
   //-----------------------------------------------------------------------------
 
-  // Mask top bit of write address to disable fp regfile
   assign waddr_a = waddr_a_i;
   assign waddr_b = waddr_b_i;
 
@@ -149,23 +131,6 @@ module cv32e40x_register_file
         end
       end
 
-    end
-
-    if (FPU == 1 && PULP_ZFINX == 0) begin : gen_mem_fp_write
-      // Floating point registers
-      for(l = 0; l < NUM_FP_WORDS; l++) begin
-        always_ff @(posedge clk, negedge rst_n)
-        begin : fp_regs
-          if (rst_n==1'b0)
-            mem_fp[l] <= '0;
-          else if(we_b_dec[l+NUM_WORDS] == 1'b1)
-            mem_fp[l] <= wdata_b_i;
-          else if(we_a_dec[l+NUM_WORDS] == 1'b1)
-            mem_fp[l] <= wdata_a_i;
-        end
-      end
-    end else begin : gen_no_mem_fp_write
-      assign mem_fp = 'b0;
     end
 
   endgenerate

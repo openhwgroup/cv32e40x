@@ -31,7 +31,6 @@
 
 module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 #(
-  parameter FPU              =  0,
   parameter APU_NARGS_CPU    =  3,
   parameter APU_WOP_CPU      =  6,
   parameter APU_NDSFLAGS_CPU = 15,
@@ -75,9 +74,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
   output logic        mult_multicycle_o,
 
-  // FPU signals
-  output logic                        fpu_fflags_we_o,
-
   // APU signals
   input  logic                        apu_en_i,
   input  logic [APU_WOP_CPU-1:0]      apu_op_i,
@@ -116,24 +112,24 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
   // input from ID stage
   input  logic        branch_in_ex_i,
-  input  logic [5:0]  regfile_alu_waddr_i,
+  input  logic [4:0]  regfile_alu_waddr_i,
   input  logic        regfile_alu_we_i,
 
   // directly passed through to WB stage, not used in EX
   input  logic        regfile_we_i,
-  input  logic [5:0]  regfile_waddr_i,
+  input  logic [4:0]  regfile_waddr_i,
 
   // CSR access
   input  logic        csr_access_i,
   input  logic [31:0] csr_rdata_i,
 
   // Output of EX stage pipeline
-  output logic [5:0]  regfile_waddr_wb_o,
+  output logic [4:0]  regfile_waddr_wb_o,
   output logic        regfile_we_wb_o,
   output logic [31:0] regfile_wdata_wb_o,
 
   // Forwarding ports : to ID stage
-  output logic  [5:0] regfile_alu_waddr_fw_o,
+  output logic  [4:0] regfile_alu_waddr_fw_o,
   output logic        regfile_alu_we_fw_o,
   output logic [31:0] regfile_alu_wdata_fw_o,    // forward to RF and ID/EX pipe, ALU & MUL
 
@@ -156,7 +152,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic           alu_cmp_result;
 
   logic           regfile_we_lsu;
-  logic [5:0]     regfile_waddr_lsu;
+  logic [4:0]     regfile_waddr_lsu;
 
   logic           wb_contention;
   logic           wb_contention_lsu;
@@ -306,64 +302,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .ex_ready_i      ( ex_ready_o           )
   );
 
-   generate
-      if (FPU == 1) begin : gen_apu
-         ////////////////////////////////////////////////////
-         //     _    ____  _   _   ____ ___ ____  ____     //
-         //    / \  |  _ \| | | | |  _ \_ _/ ___||  _ \    //
-         //   / _ \ | |_) | | | | | | | | |\___ \| |_) |   //
-         //  / ___ \|  __/| |_| | | |_| | | ___) |  __/    //
-         // /_/   \_\_|    \___/  |____/___|____/|_|       //
-         //                                                //
-         ////////////////////////////////////////////////////
-
-         cv32e40x_apu_disp apu_disp_i
-         (
-         .clk_i              ( clk                            ),
-         .rst_ni             ( rst_n                          ),
-
-         .enable_i           ( apu_en_i                       ),
-         .apu_lat_i          ( apu_lat_i                      ),
-         .apu_waddr_i        ( apu_waddr_i                    ),
-
-         .apu_waddr_o        ( apu_waddr                      ),
-         .apu_multicycle_o   ( apu_multicycle                 ),
-         .apu_singlecycle_o  ( apu_singlecycle                ),
-
-         .active_o           ( apu_active                     ),
-         .stall_o            ( apu_stall                      ),
-
-         .is_decoding_i      ( is_decoding_i                  ),
-         .read_regs_i        ( apu_read_regs_i                ),
-         .read_regs_valid_i  ( apu_read_regs_valid_i          ),
-         .read_dep_o         ( apu_read_dep_o                 ),
-         .write_regs_i       ( apu_write_regs_i               ),
-         .write_regs_valid_i ( apu_write_regs_valid_i         ),
-         .write_dep_o        ( apu_write_dep_o                ),
-
-         .perf_type_o        ( apu_perf_type_o                ),
-         .perf_cont_o        ( apu_perf_cont_o                ),
-
-         // apu-interconnect
-         // handshake signals
-         .apu_req_o          ( apu_req                        ),
-         .apu_gnt_i          ( apu_gnt                        ),
-         // response channel
-         .apu_rvalid_i       ( apu_valid                      )
-         );
-
-         assign apu_perf_wb_o  = wb_contention | wb_contention_lsu;
-         assign apu_ready_wb_o = ~(apu_active | apu_en_i | apu_stall) | apu_valid;
-
-         assign apu_req_o       = apu_req;
-         assign apu_gnt         = apu_gnt_i;
-         assign apu_valid       = apu_rvalid_i;
-         assign apu_operands_o  = apu_operands_i;
-         assign apu_op_o        = apu_op_i;
-         assign apu_result      = apu_result_i;
-         assign fpu_fflags_we_o = apu_valid;
-      end
-      else begin : gen_no_apu
          // default assignements for the case when no FPU/APU is attached.
          assign apu_req_o         = '0;
          assign apu_operands_o[0] = '0;
@@ -385,10 +323,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
          assign apu_multicycle    = 1'b0;
          assign apu_read_dep_o    = 1'b0;
          assign apu_write_dep_o   = 1'b0;
-         assign fpu_fflags_we_o   = 1'b0;
 
-      end
-   endgenerate
 
    assign apu_busy_o = apu_active;
 
