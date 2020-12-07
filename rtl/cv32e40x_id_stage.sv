@@ -37,7 +37,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   parameter USE_PMP           =  0,
   parameter A_EXTENSION       =  0,
   parameter APU               =  0,
-  parameter PULP_ZFINX        =  0,
   parameter APU_NARGS_CPU     =  3,
   parameter APU_WOP_CPU       =  6,
   parameter APU_NDSFLAGS_CPU  = 15,
@@ -884,8 +883,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   cv32e40x_register_file
   #(
     .ADDR_WIDTH         ( 5                  ),
-    .DATA_WIDTH         ( 32                 ),
-    .PULP_ZFINX         ( PULP_ZFINX         )
+    .DATA_WIDTH         ( 32                 )
   )
   register_file_i
   (

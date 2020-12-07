@@ -32,7 +32,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 #(
   parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
-  parameter PULP_ZFINX          =  0,                   // Float-in-General Purpose registers
   parameter NUM_MHPMCOUNTERS    =  1
 )
 (
@@ -516,7 +515,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .USE_PMP                      ( USE_PMP              ),
     .A_EXTENSION                  ( A_EXTENSION          ),
     .APU                          ( APU                  ),
-    .PULP_ZFINX                   ( PULP_ZFINX           ),
     .APU_NARGS_CPU                ( APU_NARGS_CPU        ),
     .APU_WOP_CPU                  ( APU_WOP_CPU          ),
     .APU_NDSFLAGS_CPU             ( APU_NDSFLAGS_CPU     ),
@@ -1133,7 +1131,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-  // PULP_XPULP, PULP_CLUSTER, PULP_ZFINX
+  // PULP_XPULP, PULP_CLUSTER
   always_ff @(posedge rst_ni)
   begin
     if (PULP_XPULP) begin
@@ -1141,9 +1139,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     end
     if (PULP_CLUSTER) begin
       $warning("PULP_CLUSTER == 1 has not been verified yet");
-    end
-    if (PULP_ZFINX) begin
-      $warning("PULP_ZFINX == 1 has not been verified yet");
     end
   end
 

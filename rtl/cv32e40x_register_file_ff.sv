@@ -27,8 +27,7 @@
 module cv32e40x_register_file
 #(
     parameter ADDR_WIDTH    = 5,
-    parameter DATA_WIDTH    = 32,
-    parameter PULP_ZFINX    = 0
+    parameter DATA_WIDTH    = 32
 )
 (
     // Clock and Reset
