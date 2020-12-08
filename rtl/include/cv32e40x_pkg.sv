@@ -54,17 +54,6 @@ parameter OPCODE_STORE_FP  = 7'h27;
 parameter OPCODE_LOAD_FP   = 7'h07;
 parameter OPCODE_AMO       = 7'h2F;
 
-// those opcodes are now used for PULP custom instructions
-// parameter OPCODE_CUST0     = 7'h0b
-// parameter OPCODE_CUST1     = 7'h2b
-
-// PULP custom
-parameter OPCODE_LOAD_POST  = 7'h0b;
-parameter OPCODE_STORE_POST = 7'h2b;
-parameter OPCODE_PULP_OP    = 7'h5b;
-parameter OPCODE_VECOP      = 7'h57;
-parameter OPCODE_HWLOOP     = 7'h7b;
-
 parameter REGC_S1   = 2'b10;
 parameter REGC_S4   = 2'b00;
 parameter REGC_RD   = 2'b01;
@@ -191,7 +180,7 @@ parameter VEC_MODE8  = 2'b11;
 // FSM state encoding
 typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
                    DECODE, IRQ_FLUSH_ELW, ELW_EXE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
-                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH, DECODE_HWLOOP } ctrl_state_e;
+                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -242,14 +231,6 @@ typedef enum logic[11:0] {
   ///////////////////////////////////////////////////////
   // User Custom CSRs
   ///////////////////////////////////////////////////////
-
-  // Hardware Loop
-  CSR_LPSTART0       = 12'h800,         // Custom CSR. Included if PULP_HWLP = 1
-  CSR_LPEND0         = 12'h801,         // Custom CSR. Included if PULP_HWLP = 1
-  CSR_LPCOUNT0       = 12'h802,         // Custom CSR. Included if PULP_HWLP = 1
-  CSR_LPSTART1       = 12'h804,         // Custom CSR. Included if PULP_HWLP = 1
-  CSR_LPEND1         = 12'h805,         // Custom CSR. Included if PULP_HWLP = 1
-  CSR_LPCOUNT1       = 12'h806,         // Custom CSR. Included if PULP_HWLP = 1
 
   // User Hart ID
   CSR_UHARTID        = 12'hCC0,         // Custom CSR. User Hart ID
@@ -638,7 +619,6 @@ parameter PC_FENCEI        = 4'b0001;
 parameter PC_MRET          = 4'b0101;
 parameter PC_URET          = 4'b0110;
 parameter PC_DRET          = 4'b0111;
-parameter PC_HWLOOP        = 4'b1000;
 
 // Exception PC mux selector defines
 parameter EXC_PC_EXCEPTION = 3'b000;

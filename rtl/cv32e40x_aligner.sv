@@ -37,20 +37,16 @@ module cv32e40x_aligner
   input  logic [31:0]    branch_addr_i,
   input  logic           branch_i,         // Asserted if we are branching/jumping now
 
-  input  logic [31:0]    hwlp_addr_i,
-  input  logic           hwlp_update_pc_i,
-
   output logic [31:0]    pc_o
 );
 
   enum logic [2:0]  {ALIGNED32, MISALIGNED32, MISALIGNED16, BRANCH_MISALIGNED, WAIT_VALID_BRANCH} state, next_state;
 
   logic [15:0]       r_instr_h;
-  logic [31:0]       hwlp_addr_q;
   logic [31:0]       pc_q, pc_n;
   logic              update_state;
   logic [31:0]       pc_plus4, pc_plus2;
-  logic              aligner_ready_q, hwlp_update_pc_q;
+  logic              aligner_ready_q;
 
   assign pc_o      = pc_q;
 
@@ -62,23 +58,14 @@ module cv32e40x_aligner
     if(~rst_n) begin
        state            <= ALIGNED32;
        r_instr_h        <= '0;
-       hwlp_addr_q      <= '0;
        pc_q             <= '0;
        aligner_ready_q  <= 1'b0;
-       hwlp_update_pc_q <= 1'b0;
     end else begin
         if(update_state) begin
           pc_q             <= pc_n;
           state            <= next_state;
           r_instr_h        <= fetch_rdata_i[31:16];
           aligner_ready_q  <= aligner_ready_o;
-          hwlp_update_pc_q <= 1'b0;
-        end else begin
-          if(hwlp_update_pc_i) begin
-              hwlp_addr_q      <= hwlp_addr_i;  // Save the JUMP target address to keep pc_n up to date during the stall
-              hwlp_update_pc_q <= 1'b1;
-          end
-
         end
     end
   end
@@ -108,8 +95,7 @@ module cv32e40x_aligner
                 instr_aligned_o  = fetch_rdata_i;
                 //gate id_valid with fetch_valid as the next state should be evaluated only if mem content is valid
                 update_state     = fetch_valid_i & if_valid_i;
-                if(hwlp_update_pc_i || hwlp_update_pc_q)
-                  pc_n = hwlp_update_pc_i ? hwlp_addr_i : hwlp_addr_q;
+                
             end else begin
                 /*
                   Before we fetched a 32bit aligned instruction
@@ -235,15 +221,6 @@ module cv32e40x_aligner
   // Assertions
   //////////////////////////////////////////////////////////////////////////////
 
-`ifdef CV32E40P_ASSERT_ON
 
-  // Hardware Loop check
-  property p_hwlp_update_pc;
-     @(posedge clk) disable iff (!rst_n) (1'b1) |-> ( !(hwlp_update_pc_i && hwlp_update_pc_q) );
-  endproperty
-
-  a_hwlp_update_pc : assert property(p_hwlp_update_pc);
-
-`endif
 
 endmodule

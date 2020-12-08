@@ -29,15 +29,12 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter N_HWLP           = 2,
-  parameter N_HWLP_BITS      = $clog2(N_HWLP),
   parameter APU              = 0,
   parameter A_EXTENSION      = 0,
   parameter PULP_SECURE      = 0,
   parameter USE_PMP          = 0,
   parameter N_PMP_ENTRIES    = 16,
   parameter NUM_MHPMCOUNTERS = 1,
-  parameter PULP_XPULP       = 0,
   parameter PULP_CLUSTER     = 0,
   parameter DEBUG_TRIGGER_EN = 1
 )
@@ -109,15 +106,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [5:0]      csr_cause_i,
   //coming from controller
   input  logic            csr_save_cause_i,
-  // Hardware loops
-  input  logic [N_HWLP-1:0] [31:0] hwlp_start_i,
-  input  logic [N_HWLP-1:0] [31:0] hwlp_end_i,
-  input  logic [N_HWLP-1:0] [31:0] hwlp_cnt_i,
-
-  output logic [31:0]              hwlp_data_o,
-  output logic [N_HWLP_BITS-1:0]   hwlp_regid_o,
-  output logic [2:0]               hwlp_we_o,
-
+  
   // Performance Counters
   input  logic                 mhpmevent_minstret_i,
   input  logic                 mhpmevent_load_i,
@@ -168,7 +157,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     | (0                               << 13)  // N - User level interrupts supported
     | (0                               << 18)  // S - Supervisor mode implemented
     | (32'(PULP_SECURE)                << 20)  // U - User mode implemented
-    | (32'(PULP_XPULP || PULP_CLUSTER) << 23)  // X - Non-standard extensions present
+    | (32'(0) << 23)  // X - Non-standard extensions present
     | (32'(MXL)                        << 30); // M-XLEN
 
   localparam MHPMCOUNTER_WIDTH  = 64;
@@ -448,14 +437,6 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_read_logic
       CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
         csr_rdata_int = mhpmevent_q[csr_addr_i[4:0]];
 
-      // hardware loops  (not official)
-      CSR_LPSTART0 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_start_i[0];
-      CSR_LPEND0   : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_end_i[0]  ;
-      CSR_LPCOUNT0 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_cnt_i[0]  ;
-      CSR_LPSTART1 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_start_i[1];
-      CSR_LPEND1   : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_end_i[1]  ;
-      CSR_LPCOUNT1 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_cnt_i[1]  ;
-
       // PMP config registers
       CSR_PMPCFG0: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[0] : '0;
       CSR_PMPCFG1: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[1] : '0;
@@ -479,14 +460,14 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_read_logic
       // utvec: user trap-handler base address
       CSR_UTVEC: csr_rdata_int = {utvec_q, 6'h0, utvec_mode_q};
       // duplicated mhartid: unique hardware thread id (not official)
-      CSR_UHARTID: csr_rdata_int = !PULP_XPULP ? 'b0 : hart_id_i;
+      CSR_UHARTID: csr_rdata_int = 'b0;
       // uepc: exception program counter
       CSR_UEPC: csr_rdata_int = uepc_q;
       // ucause: exception cause
       CSR_UCAUSE: csr_rdata_int = {ucause_q[5], 26'h0, ucause_q[4:0]};
 
       // current priv level (not official)
-      CSR_PRIVLV: csr_rdata_int = !PULP_XPULP ? 'b0 : {30'h0, priv_lvl_q};
+      CSR_PRIVLV: csr_rdata_int = 'b0;
 
       default:
         csr_rdata_int = '0;
@@ -623,19 +604,11 @@ end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
       CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
         csr_rdata_int = mhpmevent_q[csr_addr_i[4:0]];
 
-      // hardware loops  (not official)
-      CSR_LPSTART0 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_start_i[0] ;
-      CSR_LPEND0   : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_end_i[0]   ;
-      CSR_LPCOUNT0 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_cnt_i[0]   ;
-      CSR_LPSTART1 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_start_i[1] ;
-      CSR_LPEND1   : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_end_i[1]   ;
-      CSR_LPCOUNT1 : csr_rdata_int = !PULP_XPULP ? 'b0 : hwlp_cnt_i[1]   ;
-
       /* USER CSR */
       // dublicated mhartid: unique hardware thread id (not official)
-      CSR_UHARTID: csr_rdata_int = !PULP_XPULP ? 'b0 : hart_id_i;
+      CSR_UHARTID: csr_rdata_int = 'b0;
       // current priv level (not official)
-      CSR_PRIVLV: csr_rdata_int = !PULP_XPULP ? 'b0 : {30'h0, priv_lvl_q};
+      CSR_PRIVLV: csr_rdata_int = 'b0;
       default:
         csr_rdata_int = '0;
     endcase
@@ -657,8 +630,6 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_write_logic
     mstatus_n                = mstatus_q;
     mcause_n                 = mcause_q;
     ucause_n                 = ucause_q;
-    hwlp_we_o                = '0;
-    hwlp_regid_o             = '0;
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
     mtvec_n                  = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q;
@@ -744,14 +715,7 @@ if(PULP_SECURE==1) begin : gen_pulp_secure_write_logic
                     dscratch1_n = csr_wdata_int;
                end
 
-      // hardware loops
-      CSR_LPSTART0 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b001; hwlp_regid_o = 1'b0; end
-      CSR_LPEND0   : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b010; hwlp_regid_o = 1'b0; end
-      CSR_LPCOUNT0 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b100; hwlp_regid_o = 1'b0; end
-      CSR_LPSTART1 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b001; hwlp_regid_o = 1'b1; end
-      CSR_LPEND1   : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b010; hwlp_regid_o = 1'b1; end
-      CSR_LPCOUNT1 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b100; hwlp_regid_o = 1'b1; end
-
+      
       // PMP config registers
       CSR_PMPCFG0: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[0] = csr_wdata_int; pmpcfg_we[3:0]   = 4'b1111; end
       CSR_PMPCFG1: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[1] = csr_wdata_int; pmpcfg_we[7:4]   = 4'b1111; end
@@ -921,8 +885,6 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
     mstatus_n                = mstatus_q;
     mcause_n                 = mcause_q;
     ucause_n                 = '0;              // Not used if PULP_SECURE == 0
-    hwlp_we_o                = '0;
-    hwlp_regid_o             = '0;
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
     mtvec_n                  = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q;
@@ -1008,13 +970,6 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
                     dscratch1_n = csr_wdata_int;
                end
 
-      // hardware loops
-      CSR_LPSTART0 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b001; hwlp_regid_o = 1'b0; end
-      CSR_LPEND0   : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b010; hwlp_regid_o = 1'b0; end
-      CSR_LPCOUNT0 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b100; hwlp_regid_o = 1'b0; end
-      CSR_LPSTART1 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b001; hwlp_regid_o = 1'b1; end
-      CSR_LPEND1   : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b010; hwlp_regid_o = 1'b1; end
-      CSR_LPCOUNT1 : if (PULP_XPULP && csr_we_int) begin hwlp_we_o = 3'b100; hwlp_regid_o = 1'b1; end
     endcase
 
     // exception controller gets priority over other writes
@@ -1063,8 +1018,6 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
     endcase
   end
 end //PULP_SECURE
-
-  assign hwlp_data_o = (PULP_XPULP) ? csr_wdata_int : '0;
 
   // CSR operation logic
   always_comb

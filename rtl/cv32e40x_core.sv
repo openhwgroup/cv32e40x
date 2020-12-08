@@ -30,7 +30,6 @@
 
 module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 #(
-  parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
   parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
   parameter NUM_MHPMCOUNTERS    =  1
 )
@@ -118,8 +117,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic                           irq_sec_i;
   logic                           sec_lvl_o;
 
-  localparam N_HWLP      = 2;
-  localparam N_HWLP_BITS = $clog2(N_HWLP);
   localparam APU         = 0;
 
 
@@ -305,19 +302,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic        trigger_match;
   logic        debug_p_elw_no_sleep;
 
-  // Hardware loop controller signals
-  logic [N_HWLP-1:0] [31:0] hwlp_start;
-  logic [N_HWLP-1:0] [31:0] hwlp_end;
-  logic [N_HWLP-1:0] [31:0] hwlp_cnt;
-
-  logic              [31:0] hwlp_target;
-  logic                     hwlp_jump;
-
-  // used to write from CS registers to hardware loop registers
-  logic   [N_HWLP_BITS-1:0] csr_hwlp_regid;
-  logic               [2:0] csr_hwlp_we;
-  logic              [31:0] csr_hwlp_data;
-
   // Performance Counters
   logic        mhpmevent_minstret;
   logic        mhpmevent_load;
@@ -418,7 +402,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   //////////////////////////////////////////////////
   cv32e40x_if_stage
   #(
-    .PULP_XPULP          ( PULP_XPULP        ),
     .PULP_OBI            ( PULP_OBI          ),
     .PULP_SECURE         ( PULP_SECURE       )
   )
@@ -480,11 +463,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 
     .csr_mtvec_init_o    ( csr_mtvec_init    ),
 
-    // from hwloop registers
-    .hwlp_jump_i         ( hwlp_jump         ),
-    .hwlp_target_i       ( hwlp_target       ),
-
-
     // Jump targets
     .jump_target_id_i    ( jump_target_id    ),
     .jump_target_ex_i    ( jump_target_ex    ),
@@ -508,9 +486,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .PULP_XPULP                   ( PULP_XPULP           ),
     .PULP_CLUSTER                 ( PULP_CLUSTER         ),
-    .N_HWLP                       ( N_HWLP               ),
     .PULP_SECURE                  ( PULP_SECURE          ),
     .USE_PMP                      ( USE_PMP              ),
     .A_EXTENSION                  ( A_EXTENSION          ),
@@ -642,19 +618,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .csr_restore_dret_id_o        ( csr_restore_dret_id  ), // control signal to restore pc
 
     .csr_save_cause_o             ( csr_save_cause       ),
-
-    // hardware loop signals to IF hwlp controller
-    .hwlp_start_o                 ( hwlp_start           ),
-    .hwlp_end_o                   ( hwlp_end             ),
-    .hwlp_cnt_o                   ( hwlp_cnt             ),
-
-    .hwlp_jump_o                  ( hwlp_jump            ),
-    .hwlp_target_o                ( hwlp_target          ),
-
-    // hardware loop signals from CSR
-    .csr_hwlp_regid_i             ( csr_hwlp_regid       ),
-    .csr_hwlp_we_i                ( csr_hwlp_we          ),
-    .csr_hwlp_data_i              ( csr_hwlp_data        ),
 
     // LSU
     .data_req_ex_o                ( data_req_ex          ), // to load store unit
@@ -937,7 +900,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .USE_PMP          ( USE_PMP               ),
     .N_PMP_ENTRIES    ( N_PMP_ENTRIES         ),
     .NUM_MHPMCOUNTERS ( NUM_MHPMCOUNTERS      ),
-    .PULP_XPULP       ( PULP_XPULP            ),
     .PULP_CLUSTER     ( PULP_CLUSTER          ),
     .DEBUG_TRIGGER_EN ( DEBUG_TRIGGER_EN      )
   )
@@ -1003,15 +965,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 
     .csr_cause_i                ( csr_cause              ),
     .csr_save_cause_i           ( csr_save_cause         ),
-
-    // from hwloop registers
-    .hwlp_start_i               ( hwlp_start             ),
-    .hwlp_end_i                 ( hwlp_end               ),
-    .hwlp_cnt_i                 ( hwlp_cnt               ),
-
-    .hwlp_regid_o               ( csr_hwlp_regid         ),
-    .hwlp_we_o                  ( csr_hwlp_we            ),
-    .hwlp_data_o                ( csr_hwlp_data          ),
 
     // performance counter related signals
     .mhpmevent_minstret_i       ( mhpmevent_minstret     ),
@@ -1131,12 +1084,9 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-  // PULP_XPULP, PULP_CLUSTER
+  // PULP_CLUSTER
   always_ff @(posedge rst_ni)
   begin
-    if (PULP_XPULP) begin
-      $warning("PULP_XPULP == 1 has not been verified yet and non-backward compatible RTL fixes are expected (see https://github.com/openhwgroup/cv32e40x/issues/452)");
-    end
     if (PULP_CLUSTER) begin
       $warning("PULP_CLUSTER == 1 has not been verified yet");
     end
@@ -1163,7 +1113,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   endgenerate
 
   generate
-  if (!PULP_XPULP) begin : gen_no_pulp_xpulp_assertions
+  begin : gen_no_pulp_xpulp_assertions
 
     // Illegal, ECALL, EBRK checks excluded for PULP due to other definition for for Hardware Loop
 

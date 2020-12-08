@@ -26,8 +26,7 @@
 
 module cv32e40x_prefetch_buffer
 #(
-  parameter PULP_OBI   = 0,                // Legacy PULP OBI behavior
-  parameter PULP_XPULP = 1                 // PULP ISA Extension (including PULP specific CSRs and hardware loop, excluding p.elw)
+  parameter PULP_OBI   = 0                // Legacy PULP OBI behavior
 )
 (
   input  logic        clk,
@@ -36,9 +35,6 @@ module cv32e40x_prefetch_buffer
   input  logic        req_i,
   input  logic        branch_i,
   input  logic [31:0] branch_addr_i,
-
-  input  logic        hwlp_jump_i,
-  input  logic [31:0] hwlp_target_i,
 
   input  logic        fetch_ready_i,
   output logic        fetch_valid_o,
@@ -87,8 +83,8 @@ module cv32e40x_prefetch_buffer
   cv32e40x_prefetch_controller
   #(
     .DEPTH          ( FIFO_DEPTH    ),
-    .PULP_OBI       ( PULP_OBI      ),
-    .PULP_XPULP     ( PULP_XPULP    )
+    .PULP_OBI       ( PULP_OBI      )
+    
   )
   prefetch_controller_i
   (
@@ -99,9 +95,6 @@ module cv32e40x_prefetch_buffer
     .branch_i                 ( branch_i             ),
     .branch_addr_i            ( branch_addr_i        ),
     .busy_o                   ( busy_o               ),
-
-    .hwlp_jump_i              ( hwlp_jump_i          ),
-    .hwlp_target_i            ( hwlp_target_i        ),
 
     .trans_valid_o            ( trans_valid          ),
     .trans_ready_i            ( trans_ready          ),

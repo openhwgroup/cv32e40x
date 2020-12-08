@@ -27,7 +27,6 @@
 
 module cv32e40x_if_stage
 #(
-  parameter PULP_XPULP      = 0,                        // PULP ISA Extension (including PULP specific CSRs and hardware loop, excluding p.elw)
   parameter PULP_OBI        = 0,                        // Legacy PULP OBI behavior
   parameter PULP_SECURE     = 0
 )
@@ -85,10 +84,6 @@ module cv32e40x_if_stage
     // jump and branch target and decision
     input  logic [31:0] jump_target_id_i,      // jump target address
     input  logic [31:0] jump_target_ex_i,      // jump target address
-
-    // from hwloop controller
-    input  logic        hwlp_jump_i,
-    input  logic [31:0] hwlp_target_i,
 
     // pipeline stall
     input  logic        halt_if_i,
@@ -166,7 +161,6 @@ module cv32e40x_if_stage
       PC_URET:      branch_addr_n = uepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = depc_i; //
       PC_FENCEI:    branch_addr_n = pc_id_o + 4; // jump to next instr forces prefetch buffer reload
-      PC_HWLOOP:    branch_addr_n = hwlp_target_i;
       default:;
     endcase
   end
@@ -179,8 +173,7 @@ module cv32e40x_if_stage
   // prefetch buffer, caches a fixed number of instructions
   cv32e40x_prefetch_buffer
   #(
-    .PULP_OBI          ( PULP_OBI                    ),
-    .PULP_XPULP        ( PULP_XPULP                  )
+    .PULP_OBI          ( PULP_OBI                    )
   )
   prefetch_buffer_i
   (
@@ -191,9 +184,6 @@ module cv32e40x_if_stage
 
     .branch_i          ( branch_req                  ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
-
-    .hwlp_jump_i       ( hwlp_jump_i                 ),
-    .hwlp_target_i     ( hwlp_target_i               ),
 
     .fetch_ready_i     ( fetch_ready                 ),
     .fetch_valid_o     ( fetch_valid                 ),
@@ -277,8 +267,6 @@ module cv32e40x_if_stage
     .instr_valid_o     ( instr_valid                  ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0}  ),
     .branch_i          ( branch_req                   ),
-    .hwlp_addr_i       ( hwlp_target_i                ),
-    .hwlp_update_pc_i  ( hwlp_jump_i                  ),
     .pc_o              ( pc_if_o                      )
   );
 
@@ -297,20 +285,7 @@ module cv32e40x_if_stage
 
 `ifdef CV32E40P_ASSERT_ON
 
-  generate
-  if (!PULP_XPULP) begin : gen_no_pulp_xpulp_assertions
-
-    // Check that PC Mux cannot select Hardware Loop address iF PULP extensions are not included
-    property p_pc_mux_0;
-       @(posedge clk) disable iff (!rst_n) (1'b1) |-> (pc_mux_i != PC_HWLOOP);
-    endproperty
-
-    a_pc_mux_0 : assert property(p_pc_mux_0);
-
-  end
-  endgenerate
-
- generate
+generate
   if (!PULP_SECURE) begin : gen_no_pulp_secure_assertions
 
     // Check that PC Mux cannot select URET address if User Mode is not included
