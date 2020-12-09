@@ -29,7 +29,6 @@
 
 module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 #(
-  parameter PULP_CLUSTER      =  0,
   parameter PULP_SECURE       =  0,
   parameter USE_PMP           =  0,
   parameter A_EXTENSION       =  0,
@@ -164,7 +163,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     output logic [1:0]  data_type_ex_o,
     output logic [1:0]  data_sign_ext_ex_o,
     output logic [1:0]  data_reg_offset_ex_o,
-    output logic        data_load_event_ex_o,
 
     output logic        data_misaligned_ex_o,
 
@@ -369,7 +367,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic [1:0]  data_sign_ext_id;
   logic [1:0]  data_reg_offset_id;
   logic        data_req_id;
-  logic        data_load_event_id;
 
   // Atomic memory instruction
   logic [5:0]  atop_id;
@@ -434,7 +431,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   // Performance counters
   logic        id_valid_q;
   logic        minstret;
-  logic        perf_pipeline_stall;
 
   assign instr = instr_rdata_i;
 
@@ -897,7 +893,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
   cv32e40x_decoder
     #(
-      .PULP_CLUSTER        ( PULP_CLUSTER         ),
       .A_EXTENSION         ( A_EXTENSION          ),
       .PULP_SECURE         ( PULP_SECURE          ),
       .USE_PMP             ( USE_PMP              ),
@@ -986,7 +981,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .data_type_o                     ( data_type_id              ),
     .data_sign_extension_o           ( data_sign_ext_id          ),
     .data_reg_offset_o               ( data_reg_offset_id        ),
-    .data_load_event_o               ( data_load_event_id        ),
 
     // Atomic memory access
     .atop_o                          ( atop_id                   ),
@@ -1015,9 +1009,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   ////////////////////////////////////////////////////////////////////
 
   cv32e40x_controller
-  #(
-    .PULP_CLUSTER ( PULP_CLUSTER )
-  )
   controller_i
   (
     .clk                            ( clk                    ),         // Gated clock
@@ -1069,7 +1060,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .data_req_ex_i                  ( data_req_ex_o          ),
     .data_we_ex_i                   ( data_we_ex_o           ),
     .data_misaligned_i              ( data_misaligned_i      ),
-    .data_load_event_i              ( data_load_event_id     ),
     .data_err_i                     ( data_err_i             ),
     .data_err_ack_o                 ( data_err_ack_o         ),
 
@@ -1106,7 +1096,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .debug_ebreakm_i                ( debug_ebreakm_i        ),
     .debug_ebreaku_i                ( debug_ebreaku_i        ),
     .trigger_match_i                ( trigger_match_i        ),
-    .debug_p_elw_no_sleep_o         ( debug_p_elw_no_sleep_o ),
     .debug_wfi_no_sleep_o           ( debug_wfi_no_sleep     ),
     .debug_havereset_o              ( debug_havereset_o      ),
     .debug_running_o                ( debug_running_o        ),
@@ -1169,10 +1158,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
     .ex_valid_i                     ( ex_valid_i             ),
 
-    .wb_ready_i                     ( wb_ready_i             ),
+    .wb_ready_i                     ( wb_ready_i             )
 
-    // Performance Counters
-    .perf_pipeline_stall_o          ( perf_pipeline_stall    )
   );
 
 
@@ -1282,7 +1269,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
       data_sign_ext_ex_o          <= 2'b0;
       data_reg_offset_ex_o        <= 2'b0;
       data_req_ex_o               <= 1'b0;
-      data_load_event_ex_o        <= 1'b0;
       atop_ex_o                   <= 5'b0;
 
       data_misaligned_ex_o        <= 1'b0;
@@ -1388,10 +1374,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
           data_type_ex_o            <= data_type_id;
           data_sign_ext_ex_o        <= data_sign_ext_id;
           data_reg_offset_ex_o      <= data_reg_offset_id;
-          data_load_event_ex_o      <= data_load_event_id;
           atop_ex_o                 <= atop_id;
-        end else begin
-          data_load_event_ex_o      <= 1'b0;
         end
 
         data_misaligned_ex_o        <= 1'b0;
@@ -1412,8 +1395,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
         csr_op_ex_o                 <= CSR_OP_READ;
 
         data_req_ex_o               <= 1'b0;
-
-        data_load_event_ex_o        <= 1'b0;
 
         data_misaligned_ex_o        <= 1'b0;
 
@@ -1480,7 +1461,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
       // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
       mhpmevent_ld_stall_o       <= load_stall && !halt_id && id_valid_q;
       // ELW
-      mhpmevent_pipe_stall_o     <= perf_pipeline_stall;
+      mhpmevent_pipe_stall_o     <= 0; // X-remove?
     end
   end
 

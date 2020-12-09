@@ -35,7 +35,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter USE_PMP          = 0,
   parameter N_PMP_ENTRIES    = 16,
   parameter NUM_MHPMCOUNTERS = 1,
-  parameter PULP_CLUSTER     = 0,
   parameter DEBUG_TRIGGER_EN = 1
 )
 (
@@ -1277,7 +1276,7 @@ end //PULP_SECURE
   assign hpm_events[8]  = mhpmevent_branch_i;                            // nr of branches (conditional)
   assign hpm_events[9]  = mhpmevent_branch_taken_i;                      // nr of taken branches (conditional)
   assign hpm_events[10] = mhpmevent_compressed_i;                        // compressed instruction counter
-  assign hpm_events[11] = PULP_CLUSTER ? mhpmevent_pipe_stall_i : 1'b0 ; // extra cycles from ELW
+  assign hpm_events[11] = 1'b0 ; // extra cycles from ELW
   assign hpm_events[12] = !APU ? 1'b0 : apu_typeconflict_i && !apu_dep_i;
   assign hpm_events[13] = !APU ? 1'b0 : apu_contention_i;
   assign hpm_events[14] = !APU ? 1'b0 : apu_dep_i && !apu_contention_i;

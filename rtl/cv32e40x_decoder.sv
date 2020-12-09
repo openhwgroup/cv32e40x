@@ -27,7 +27,6 @@
 
 module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 #(
-  parameter PULP_CLUSTER      = 0,
   parameter A_EXTENSION       = 0,
   parameter PULP_SECURE       = 0,
   parameter USE_PMP           = 0,
@@ -115,7 +114,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
   output logic [1:0]  data_type_o,             // data type on data memory: byte, half word or word
   output logic [1:0]  data_sign_extension_o,   // sign extension on read data from data memory / NaN boxing
   output logic [1:0]  data_reg_offset_o,       // offset in byte inside register for stores
-  output logic        data_load_event_o,       // data request is in the special event range
+  
 
   // Atomic memory access
   output  logic [5:0] atop_o,
@@ -205,7 +204,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
     data_sign_extension_o       = 2'b00;
     data_reg_offset_o           = 2'b00;
     data_req                    = 1'b0;
-    data_load_event_o           = 1'b0;
 
     atop_o                      = 6'b000000;
 
@@ -376,12 +374,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 
           // special p.elw (event load)
           if (instr_rdata_i[14:12] == 3'b110) begin
-            if (PULP_CLUSTER && (instr_rdata_i[6:0] == OPCODE_LOAD)) begin
-              data_load_event_o = 1'b1;
-            end else begin
-              // p.elw only valid for PULP_CLUSTER = 1; p.elw with post increment does not exist
-              illegal_insn_o = 1'b1;
-            end
+            illegal_insn_o = 1'b1;
           end
 
           if (instr_rdata_i[14:12] == 3'b011) begin

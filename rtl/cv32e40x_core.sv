@@ -30,7 +30,6 @@
 
 module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 #(
-  parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
   parameter NUM_MHPMCOUNTERS    =  1
 )
 (
@@ -38,7 +37,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   input  logic        clk_i,
   input  logic        rst_ni,
 
-  input  logic        pulp_clock_en_i,                  // PULP clock enable (only used if PULP_CLUSTER = 1)
   input  logic        scan_cg_en_i,                     // Enable all clock gates for testing
 
   // Core ID, Cluster ID, debug mode halt address and boot address are considered more or less static
@@ -159,7 +157,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic        lsu_busy;
   logic        apu_busy;
 
-  logic [31:0] pc_ex; // PC of last executed branch or p.elw
+  logic [31:0] pc_ex; // PC of last executed branch
 
   // ALU Control
   logic        alu_en_ex;
@@ -247,11 +245,7 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic [1:0]  data_sign_ext_ex;
   logic [1:0]  data_reg_offset_ex;
   logic        data_req_ex;
-  logic        data_load_event_ex;
   logic        data_misaligned_ex;
-
-  logic        p_elw_start;             // Start of p.elw load (when data_req_o is sent)
-  logic        p_elw_finish;            // Finish of p.elw load (when data_rvalid_i is received)
 
   logic [31:0] lsu_rdata;
 
@@ -300,7 +294,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic        debug_ebreakm;
   logic        debug_ebreaku;
   logic        trigger_match;
-  logic        debug_p_elw_no_sleep;
 
   // Performance Counters
   logic        mhpmevent_minstret;
@@ -357,9 +350,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   logic        fetch_enable;
 
   cv32e40x_sleep_unit
-  #(
-    .PULP_CLUSTER               ( PULP_CLUSTER         )
-  )
   sleep_unit_i
   (
     // Clock, reset interface
@@ -380,12 +370,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .ctrl_busy_i                ( ctrl_busy            ),
     .lsu_busy_i                 ( lsu_busy             ),
     .apu_busy_i                 ( apu_busy             ),
-
-    // PULP cluster
-    .pulp_clock_en_i            ( pulp_clock_en_i      ),
-    .p_elw_start_i              ( p_elw_start          ),
-    .p_elw_finish_i             ( p_elw_finish         ),
-    .debug_p_elw_no_sleep_i     ( debug_p_elw_no_sleep ),
 
     // WFI wake
     .wake_from_sleep_i          ( wake_from_sleep      )
@@ -486,7 +470,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .PULP_CLUSTER                 ( PULP_CLUSTER         ),
     .PULP_SECURE                  ( PULP_SECURE          ),
     .USE_PMP                      ( USE_PMP              ),
     .A_EXTENSION                  ( A_EXTENSION          ),
@@ -626,7 +609,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .data_type_ex_o               ( data_type_ex         ), // to load store unit
     .data_sign_ext_ex_o           ( data_sign_ext_ex     ), // to load store unit
     .data_reg_offset_ex_o         ( data_reg_offset_ex   ), // to load store unit
-    .data_load_event_ex_o         ( data_load_event_ex   ), // to load store unit
 
     .data_misaligned_ex_o         ( data_misaligned_ex   ), // to load store unit
 
@@ -657,7 +639,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .debug_ebreakm_i              ( debug_ebreakm        ),
     .debug_ebreaku_i              ( debug_ebreaku        ),
     .trigger_match_i              ( trigger_match        ),
-    .debug_p_elw_no_sleep_o       ( debug_p_elw_no_sleep ),
 
     // Wakeup Signal
     .wake_from_sleep_o            ( wake_from_sleep      ),
@@ -856,7 +837,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .data_type_ex_i        ( data_type_ex       ),
     .data_wdata_ex_i       ( alu_operand_c_ex   ),
     .data_reg_offset_ex_i  ( data_reg_offset_ex ),
-    .data_load_event_ex_i  ( data_load_event_ex ),
     .data_sign_ext_ex_i    ( data_sign_ext_ex   ),  // sign extension
 
     .data_rdata_ex_o       ( lsu_rdata          ),
@@ -867,9 +847,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 
     .data_misaligned_ex_i  ( data_misaligned_ex ), // from ID/EX pipeline
     .data_misaligned_o     ( data_misaligned    ),
-
-    .p_elw_start_o         ( p_elw_start        ),
-    .p_elw_finish_o        ( p_elw_finish       ),
 
     // control signals
     .lsu_ready_ex_o        ( lsu_ready_ex       ),
@@ -900,7 +877,6 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
     .USE_PMP          ( USE_PMP               ),
     .N_PMP_ENTRIES    ( N_PMP_ENTRIES         ),
     .NUM_MHPMCOUNTERS ( NUM_MHPMCOUNTERS      ),
-    .PULP_CLUSTER     ( PULP_CLUSTER          ),
     .DEBUG_TRIGGER_EN ( DEBUG_TRIGGER_EN      )
   )
   cs_registers_i
@@ -1055,45 +1031,12 @@ module cv32e40x_core import cv32e40x_apu_core_pkg::*;
 `ifdef CV32E40P_ASSERT_ON
 
   //----------------------------------------------------------------------------
-  // Assumptions
-  //----------------------------------------------------------------------------
-
-  generate
-  if (PULP_CLUSTER) begin : gen_pulp_cluster_assumptions
-
-    // Assumptions/requirements on the environment when pulp_clock_en_i = 0
-    property p_env_req_0;
-       @(posedge clk_i) disable iff (!rst_ni) (pulp_clock_en_i == 1'b0) |-> (irq_i == 'b0) && (debug_req_i == 1'b0) &&
-                                                                            (instr_rvalid_i == 1'b0) && (instr_gnt_i == 1'b0) &&
-                                                                            (data_rvalid_i == 1'b0) && (data_gnt_i == 1'b0);
-    endproperty
-
-    a_env_req_0 : assume property(p_env_req_0);
-
-    // Assumptions/requirements on the environment when core_sleep_o = 0
-    property p_env_req_1;
-       @(posedge clk_i) disable iff (!rst_ni) (core_sleep_o == 1'b0) |-> (pulp_clock_en_i == 1'b1);
-    endproperty
-
-    a_env_req_1 : assume property(p_env_req_1);
-
-  end
-  endgenerate
-
-  //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
 
-  // PULP_CLUSTER
-  always_ff @(posedge rst_ni)
-  begin
-    if (PULP_CLUSTER) begin
-      $warning("PULP_CLUSTER == 1 has not been verified yet");
-    end
-  end
-
+  
   generate
-  if (!PULP_CLUSTER) begin : gen_no_pulp_cluster_assertions
+  begin : gen_no_pulp_cluster_assertions
     // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
     property p_irq_enabled_0;
        @(posedge clk) disable iff (!rst_ni) (pc_set && (pc_mux_id == PC_EXCEPTION) && (exc_pc_mux_id == EXC_PC_IRQ)) |->

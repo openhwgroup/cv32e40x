@@ -29,9 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller import cv32e40x_pkg::*;
-#(
-  parameter PULP_CLUSTER = 0
-)
 (
   input  logic        clk,                        // Gated clock
   input  logic        clk_ungated_i,              // Ungated clock
@@ -82,7 +79,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
   input  logic        data_we_ex_i,
   input  logic        data_misaligned_i,
-  input  logic        data_load_event_i,
   input  logic        data_err_i,
   output logic        data_err_ack_o,
 
@@ -122,7 +118,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic         debug_ebreakm_i,
   input  logic         debug_ebreaku_i,
   input  logic         trigger_match_i,
-  output logic         debug_p_elw_no_sleep_o,
   output logic         debug_wfi_no_sleep_o,
   output logic         debug_havereset_o,
   output logic         debug_running_o,
@@ -183,10 +178,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        ex_valid_i,                 // EX stage is done
 
-  input  logic        wb_ready_i,                 // WB stage is ready
+  input  logic        wb_ready_i                 // WB stage is ready
 
-  // Performance Counters
-  output logic        perf_pipeline_stall_o       // stall due to elw extra cycles
 );
 
   // FSM state encoding
@@ -283,8 +276,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     debug_req_entry_n       = debug_req_entry_q;
 
     debug_force_wakeup_n    = debug_force_wakeup_q;
-
-    perf_pipeline_stall_o   = 1'b0;
 
     unique case (ctrl_fsm_cs)
       // We were just reset, wait for fetch_enable
@@ -557,11 +548,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                       ctrl_fsm_ns   = id_ready_i ? FLUSH_EX : DECODE;
                     end
 
-                    data_load_event_i: begin
-                      ctrl_fsm_ns   = id_ready_i ? ELW_EXE : DECODE;
-                      halt_if_o     = 1'b1;
-                    end
-
                     default: begin
                       ctrl_fsm_ns = DECODE;
                     end
@@ -616,7 +602,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           end  //valid block
           else begin
             is_decoding_o         = 1'b0;
-            perf_pipeline_stall_o = data_load_event_i;
           end
       end
 
@@ -665,70 +650,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
             endcase // unique case (1'b1)
           end
 
-        end
-      end
-
-      IRQ_FLUSH_ELW:
-      begin
-        if (PULP_CLUSTER == 1'b1) begin
-          is_decoding_o = 1'b0;
-
-          halt_if_o     = 1'b1;
-          halt_id_o     = 1'b1;
-
-          ctrl_fsm_ns   = DECODE;
-
-          perf_pipeline_stall_o = data_load_event_i;
-
-          if (irq_req_ctrl_i && ~(debug_req_pending || debug_mode_q)) begin
-            // Taken IRQ
-            is_decoding_o     = 1'b0;
-            halt_if_o         = 1'b1;
-            halt_id_o         = 1'b1;
-
-            pc_set_o          = 1'b1;
-            pc_mux_o          = PC_EXCEPTION;
-            exc_pc_mux_o      = EXC_PC_IRQ;
-            exc_cause_o       = irq_id_ctrl_i;
-            csr_irq_sec_o     = irq_sec_ctrl_i;
-
-            // IRQ interface
-            irq_ack_o         = 1'b1;
-            irq_id_o          = irq_id_ctrl_i;
-
-            if (irq_sec_ctrl_i)
-              trap_addr_mux_o  = TRAP_MACHINE;
-            else
-              trap_addr_mux_o  = current_priv_lvl_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
-
-            csr_save_cause_o  = 1'b1;
-            csr_cause_o       = {1'b1,irq_id_ctrl_i};
-            csr_save_id_o     = 1'b1;
-          end
-        end
-      end
-
-      ELW_EXE:
-      begin
-        if (PULP_CLUSTER == 1'b1) begin
-          is_decoding_o = 1'b0;
-
-          halt_if_o   = 1'b1;
-          halt_id_o   = 1'b1;
-
-          //if we are here, a elw is executing now in the EX stage
-          //or if an interrupt has been received
-          //the ID stage contains the PC_ID of the elw, therefore halt_id is set to invalid the instruction
-          //If an interrupt occurs, we replay the ELW
-          //No needs to check irq_int_req_i since in the EX stage there is only the elw, no CSR pendings
-          if(id_ready_i)
-            ctrl_fsm_ns = ((debug_req_pending || trigger_match_i) & ~debug_mode_q) ? DBG_FLUSH : IRQ_FLUSH_ELW;
-            // if from the ELW EXE we go to IRQ_FLUSH_ELW, it is assumed that if there was an IRQ req together with the grant and IE was valid, then
-            // there must be no hazard due to xIE
-          else
-            ctrl_fsm_ns = ELW_EXE;
-
-          perf_pipeline_stall_o = data_load_event_i;
         end
       end
 
@@ -938,8 +859,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         halt_if_o   = 1'b1;
         halt_id_o   = 1'b1;
 
-        perf_pipeline_stall_o = data_load_event_i;
-
         if (data_err_i)
         begin //data error
             // the current LW or SW have been blocked by the PMP
@@ -954,7 +873,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           if(debug_mode_q                          |
              trigger_match_i                       |
              (ebrk_force_debug_mode & ebrk_insn_i) |
-             data_load_event_i                     |
              debug_req_entry_q                     )
             begin
               ctrl_fsm_ns = DBG_TAKEN_ID;
@@ -1114,15 +1032,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign debug_mode_o = debug_mode_q;
   assign debug_req_pending = debug_req_i || debug_req_q;
 
-  // Do not let p.elw cause core_sleep_o during debug
-  assign debug_p_elw_no_sleep_o = debug_mode_q || debug_req_q || debug_single_step_i || trigger_match_i;
-
+  
   // Do not let WFI cause core_sleep_o (but treat as NOP):
   //
   // - During debug
-  // - For PULP Cluster (only p.elw can trigger sleep)
+  
 
-  assign debug_wfi_no_sleep_o = debug_mode_q || debug_req_pending || debug_single_step_i || trigger_match_i || PULP_CLUSTER;
+  assign debug_wfi_no_sleep_o = debug_mode_q || debug_req_pending || debug_single_step_i || trigger_match_i;
 
   // Gate off wfi 
   assign wfi_active = wfi_i & ~debug_wfi_no_sleep_o;
@@ -1200,20 +1116,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // possible without branch prediction in the IF stage
   assert property (
     @(posedge clk) (branch_taken_ex_i) |=> (~branch_taken_ex_i) ) else $warning("Two branches back-to-back are taken");
-
-  // ELW_EXE and IRQ_FLUSH_ELW states are only used for PULP_CLUSTER = 1
-  property p_pulp_cluster_only_states;
-     @(posedge clk) (1'b1) |-> ( !((PULP_CLUSTER == 1'b0) && ((ctrl_fsm_cs == ELW_EXE) || (ctrl_fsm_cs == IRQ_FLUSH_ELW))) );
-  endproperty
-
-  a_pulp_cluster_only_states : assert property(p_pulp_cluster_only_states);
-
-  // WAIT_SLEEP and SLEEP states are never used for PULP_CLUSTER = 1
-  property p_pulp_cluster_excluded_states;
-     @(posedge clk) (1'b1) |-> ( !((PULP_CLUSTER == 1'b1) && ((ctrl_fsm_cs == SLEEP) || (ctrl_fsm_cs == WAIT_SLEEP))) );
-  endproperty
-
-  a_pulp_cluster_excluded_states : assert property(p_pulp_cluster_excluded_states);
 
   
   // Ensure DBG_TAKEN_IF can only be enterred if in single step mode or woken
