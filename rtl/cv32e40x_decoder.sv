@@ -25,12 +25,11 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
+module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION       = 0,
   parameter PULP_SECURE       = 0,
   parameter USE_PMP           = 0,
-  parameter APU_WOP_CPU       = 6,
   parameter DEBUG_TRIGGER_EN  = 1
 )
 (
@@ -90,11 +89,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
   output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
   output logic [1:0]  mult_dot_signed_o,       // Dot product in signed mode
 
-  // APU
-  output logic                apu_en_o,
-  output logic [APU_WOP_CPU-1:0]  apu_op_o,
-  output logic [1:0]          apu_lat_o,
-
   // register file related signals
   output logic        regfile_mem_we_o,        // write enable for regfile
   output logic        regfile_alu_we_o,        // write enable for 2nd regfile port
@@ -143,8 +137,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
   logic       alu_en;
   logic       mult_int_en;
   logic       mult_dot_en;
-  logic       apu_en;
-
+ 
 
   /////////////////////////////////////////////
   //   ____                     _            //
@@ -179,10 +172,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
     mult_signed_mode_o          = 2'b00;
     mult_sel_subword_o          = 1'b0;
     mult_dot_signed_o           = 2'b00;
-
-    apu_en                      = 1'b0;
-    apu_op_o                    = '0;
-    apu_lat_o                   = '0;
 
     regfile_mem_we              = 1'b0;
     regfile_alu_we              = 1'b0;
@@ -895,7 +884,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
 
   // deassert we signals (in case of stalls)
   assign alu_en_o                    = (deassert_we_i) ? 1'b0          : alu_en;
-  assign apu_en_o                    = (deassert_we_i) ? 1'b0          : apu_en;
   assign mult_int_en_o               = (deassert_we_i) ? 1'b0          : mult_int_en;
   assign mult_dot_en_o               = (deassert_we_i) ? 1'b0          : mult_dot_en;
   assign regfile_mem_we_o            = (deassert_we_i) ? 1'b0          : regfile_mem_we;

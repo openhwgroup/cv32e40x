@@ -25,17 +25,10 @@
 // Description:    Execution stage: Hosts ALU and MAC unit                    //
 //                 ALU: computes additions/subtractions/comparisons           //
 //                 MULT: computes normal multiplications                      //
-//                 APU_DISP: offloads instructions to the shared unit.        //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*;
-#(
-  parameter APU_NARGS_CPU    =  3,
-  parameter APU_WOP_CPU      =  6,
-  parameter APU_NDSFLAGS_CPU = 15,
-  parameter APU_NUSFLAGS_CPU =  5
-)
+module cv32e40x_ex_stage import cv32e40x_pkg::*;
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -73,39 +66,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   input  logic        mult_clpx_img_i,
 
   output logic        mult_multicycle_o,
-
-  // APU signals
-  input  logic                        apu_en_i,
-  input  logic [APU_WOP_CPU-1:0]      apu_op_i,
-  input  logic [1:0]                  apu_lat_i,
-  input  logic [APU_NARGS_CPU-1:0][31:0] apu_operands_i,
-  input  logic [5:0]                  apu_waddr_i,
-  input  logic [APU_NDSFLAGS_CPU-1:0] apu_flags_i,
-
-  input  logic [2:0][5:0]             apu_read_regs_i,
-  input  logic [2:0]                  apu_read_regs_valid_i,
-  output logic                        apu_read_dep_o,
-  input  logic [1:0][5:0]             apu_write_regs_i,
-  input  logic [1:0]                  apu_write_regs_valid_i,
-  output logic                        apu_write_dep_o,
-
-  output logic                        apu_perf_type_o,
-  output logic                        apu_perf_cont_o,
-  output logic                        apu_perf_wb_o,
-
-  output logic                        apu_busy_o,
-  output logic                        apu_ready_wb_o,
-
-  // apu-interconnect
-  // handshake signals
-  output logic                        apu_req_o,
-  input logic                         apu_gnt_i,
-  // request channel
-  output logic [APU_NARGS_CPU-1:0][31:0] apu_operands_o,
-  output logic [APU_WOP_CPU-1:0]         apu_op_o,
-  // response channel
-  input logic                        apu_rvalid_i,
-  input logic [31:0]                 apu_result_i,
 
   input  logic        lsu_en_i,
   input  logic [31:0] lsu_rdata_i,
@@ -160,17 +120,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   logic           alu_ready;
   logic           mult_ready;
 
-  // APU signals
-  logic           apu_valid;
-  logic [5:0]     apu_waddr;
-  logic [31:0]    apu_result;
-  logic           apu_stall;
-  logic           apu_active;
-  logic           apu_singlecycle;
-  logic           apu_multicycle;
-  logic           apu_req;
-  logic           apu_gnt;
-
   // ALU write port mux
   always_comb
   begin
@@ -179,25 +128,15 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     regfile_alu_we_fw_o    = '0;
     wb_contention          = 1'b0;
 
-    // APU single cycle operations, and multicycle operations (>2cycles) are written back on ALU port
-    if (apu_valid & (apu_singlecycle | apu_multicycle)) begin
-      regfile_alu_we_fw_o    = 1'b1;
-      regfile_alu_waddr_fw_o = apu_waddr;
-      regfile_alu_wdata_fw_o = apu_result;
-
-      if(regfile_alu_we_i & ~apu_en_i) begin
-        wb_contention = 1'b1;
-      end
-    end else begin
-      regfile_alu_we_fw_o      = regfile_alu_we_i & ~apu_en_i; // private fpu incomplete?
-      regfile_alu_waddr_fw_o   = regfile_alu_waddr_i;
-      if (alu_en_i)
-        regfile_alu_wdata_fw_o = alu_result;
-      if (mult_en_i)
-        regfile_alu_wdata_fw_o = mult_result;
-      if (csr_access_i)
-        regfile_alu_wdata_fw_o = csr_rdata_i;
-    end
+    regfile_alu_we_fw_o      = regfile_alu_we_i;
+    regfile_alu_waddr_fw_o   = regfile_alu_waddr_i;
+    if (alu_en_i)
+      regfile_alu_wdata_fw_o = alu_result;
+    if (mult_en_i)
+      regfile_alu_wdata_fw_o = mult_result;
+    if (csr_access_i)
+      regfile_alu_wdata_fw_o = csr_rdata_i;
+    
   end
 
   // LSU write port mux
@@ -210,14 +149,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
 
     if (regfile_we_lsu) begin
       regfile_we_wb_o = 1'b1;
-      if (apu_valid & (!apu_singlecycle & !apu_multicycle)) begin
-         wb_contention_lsu = 1'b1;
-      end
-    // APU two-cycle operations are written back on LSU port
-    end else if (apu_valid & (!apu_singlecycle & !apu_multicycle)) begin
-      regfile_we_wb_o    = 1'b1;
-      regfile_waddr_wb_o = apu_waddr;
-      regfile_wdata_wb_o = apu_result;
     end
   end
 
@@ -302,31 +233,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
     .ex_ready_i      ( ex_ready_o           )
   );
 
-         // default assignements for the case when no FPU/APU is attached.
-         assign apu_req_o         = '0;
-         assign apu_operands_o[0] = '0;
-         assign apu_operands_o[1] = '0;
-         assign apu_operands_o[2] = '0;
-         assign apu_op_o          = '0;
-         assign apu_req           = 1'b0;
-         assign apu_gnt           = 1'b0;
-         assign apu_result        = 32'b0;
-         assign apu_valid         = 1'b0;
-         assign apu_waddr         = 6'b0;
-         assign apu_stall         = 1'b0;
-         assign apu_active        = 1'b0;
-         assign apu_ready_wb_o    = 1'b1;
-         assign apu_perf_wb_o     = 1'b0;
-         assign apu_perf_cont_o   = 1'b0;
-         assign apu_perf_type_o   = 1'b0;
-         assign apu_singlecycle   = 1'b0;
-         assign apu_multicycle    = 1'b0;
-         assign apu_read_dep_o    = 1'b0;
-         assign apu_write_dep_o   = 1'b0;
-
-
-   assign apu_busy_o = apu_active;
-
   ///////////////////////////////////////
   // EX/WB Pipeline Register           //
   ///////////////////////////////////////
@@ -356,9 +262,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*; import cv32e40x_apu_core_pkg::*
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
-  assign ex_ready_o = (~apu_stall & alu_ready & mult_ready & lsu_ready_ex_i
+  assign ex_ready_o = (alu_ready & mult_ready & lsu_ready_ex_i
                        & wb_ready_i & ~wb_contention) | (branch_in_ex_i);
-  assign ex_valid_o = (apu_valid | alu_en_i | mult_en_i | csr_access_i | lsu_en_i)
+  assign ex_valid_o = (alu_en_i | mult_en_i | csr_access_i | lsu_en_i)
                        & (alu_ready & mult_ready & lsu_ready_ex_i & wb_ready_i);
 
 endmodule

@@ -85,13 +85,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // from ALU
   input  logic        mult_multicycle_i,          // multiplier is taken multiple cycles and uses op c as storage
 
-  // APU dependency checks
-  input  logic        apu_en_i,
-  input  logic        apu_read_dep_i,
-  input  logic        apu_write_dep_i,
-
-  output logic        apu_stall_o,
-
   // jump/branch signals
   input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
   input  logic [1:0]  ctrl_transfer_insn_in_id_i,               // jump is being calculated in ALU
@@ -949,9 +942,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // stall because of misaligned data access
   assign misaligned_stall_o = data_misaligned_i;
 
-  // APU dependency stalls (data hazards)
-  assign apu_stall_o = apu_read_dep_i | (apu_write_dep_i & ~apu_en_i);
-
+  
   // Forwarding control unit
   always_comb
   begin

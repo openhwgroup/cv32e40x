@@ -29,7 +29,6 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter APU              = 0,
   parameter A_EXTENSION      = 0,
   parameter PULP_SECURE      = 0,
   parameter USE_PMP          = 0,
@@ -117,11 +116,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                 mhpmevent_jr_stall_i,
   input  logic                 mhpmevent_imiss_i,
   input  logic                 mhpmevent_ld_stall_i,
-  input  logic                 mhpmevent_pipe_stall_i,
-  input  logic                 apu_typeconflict_i,
-  input  logic                 apu_contention_i,
-  input  logic                 apu_dep_i,
-  input  logic                 apu_wb_i
+  input  logic                 mhpmevent_pipe_stall_i
+
 );
 
   localparam NUM_HPM_EVENTS    =   16;
@@ -1277,10 +1273,10 @@ end //PULP_SECURE
   assign hpm_events[9]  = mhpmevent_branch_taken_i;                      // nr of taken branches (conditional)
   assign hpm_events[10] = mhpmevent_compressed_i;                        // compressed instruction counter
   assign hpm_events[11] = 1'b0 ; // extra cycles from ELW
-  assign hpm_events[12] = !APU ? 1'b0 : apu_typeconflict_i && !apu_dep_i;
-  assign hpm_events[13] = !APU ? 1'b0 : apu_contention_i;
-  assign hpm_events[14] = !APU ? 1'b0 : apu_dep_i && !apu_contention_i;
-  assign hpm_events[15] = !APU ? 1'b0 : apu_wb_i;
+  assign hpm_events[12] = 1'b0 ;
+  assign hpm_events[13] = 1'b0 ;
+  assign hpm_events[14] = 1'b0 ;
+  assign hpm_events[15] = 1'b0 ;
 
   // ------------------------
   // address decoder for performance counter registers

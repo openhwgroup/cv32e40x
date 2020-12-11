@@ -72,7 +72,6 @@ module cv32e40x_sleep_unit
   input  logic        if_busy_i,
   input  logic        ctrl_busy_i,
   input  logic        lsu_busy_i,
-  input  logic        apu_busy_i,
 
   // WFI wake
   input  logic        wake_from_sleep_i
@@ -96,7 +95,7 @@ module cv32e40x_sleep_unit
   
 
    // Busy when any of the sub units is busy (typically wait for the instruction buffer to fill up)
-   assign core_busy_d = if_busy_i || ctrl_busy_i || lsu_busy_i || apu_busy_i;
+   assign core_busy_d = if_busy_i || ctrl_busy_i || lsu_busy_i;
 
    // Enable the clock only after the initial fetch enable while busy or waking up to become busy
    assign clock_en = fetch_enable_q && (wake_from_sleep_i || core_busy_q);
