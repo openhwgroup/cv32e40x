@@ -699,12 +699,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
           // Determine if CSR access is illegal
           case (instr_rdata_i[31:20])
-            // Floating point
-            CSR_FFLAGS,
-              CSR_FRM,
-              CSR_FCSR :
-                csr_illegal = 1'b1;
-
             //  Writes to read only CSRs results in illegal instruction
             CSR_MVENDORID,
               CSR_MARCHID,
