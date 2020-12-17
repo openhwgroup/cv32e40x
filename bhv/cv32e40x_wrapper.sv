@@ -25,12 +25,8 @@
   `include "cv32e40x_tracer.sv"
 `endif
 
-module cv32e40x_wrapper import cv32e40x_apu_core_pkg::*;
+module cv32e40x_wrapper
 #(
-  parameter PULP_XPULP          =  0,                   // PULP ISA Extension (incl. custom CSRs and hardware loop, excl. p.elw)
-  parameter PULP_CLUSTER        =  0,                   // PULP Cluster interface (incl. p.elw)
-  parameter FPU                 =  0,                   // Floating Point Unit (interfaced via APU interface)
-  parameter PULP_ZFINX          =  0,                   // Float-in-General Purpose registers
   parameter NUM_MHPMCOUNTERS    =  1
 )
 (
@@ -64,19 +60,6 @@ module cv32e40x_wrapper import cv32e40x_apu_core_pkg::*;
   output logic [31:0] data_addr_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
-
-  // apu-interconnect
-  // handshake signals
-  output logic                           apu_req_o,
-  input logic                            apu_gnt_i,
-  // request channel
-  output logic [APU_NARGS_CPU-1:0][31:0] apu_operands_o,
-  output logic [APU_WOP_CPU-1:0]         apu_op_o,
-  output logic [APU_NDSFLAGS_CPU-1:0]    apu_flags_o,
-  // response channel
-  input logic                            apu_rvalid_i,
-  input logic [31:0]                     apu_result_i,
-  input logic [APU_NUSFLAGS_CPU-1:0]     apu_flags_i,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
