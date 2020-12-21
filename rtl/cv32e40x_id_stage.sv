@@ -171,7 +171,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        debug_ebreakm_i,
     input  logic        debug_ebreaku_i,
     input  logic        trigger_match_i,
-    output logic        debug_p_elw_no_sleep_o,
     output logic        debug_havereset_o,
     output logic        debug_running_o,
     output logic        debug_halted_o,
@@ -241,7 +240,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic        rega_used_dec;
   logic        regb_used_dec;
-  logic        regc_used_dec;
 
   logic        branch_taken_ex;
   logic [1:0]  ctrl_transfer_insn_in_id;
@@ -287,7 +285,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register file interface
   logic [4:0]  regfile_addr_ra_id;
   logic [4:0]  regfile_addr_rb_id;
-  logic [4:0]  regfile_addr_rc_id;
+  //logic [4:0]  regfile_addr_rc_id;
 
 
   logic [4:0]  regfile_waddr_id;
@@ -304,7 +302,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [2:0]  alu_op_a_mux_sel;
   logic [2:0]  alu_op_b_mux_sel;
   logic [1:0]  alu_op_c_mux_sel;
-  logic [1:0]  regc_mux;
 
   logic [0:0]  imm_a_mux_sel;
   logic [3:0]  imm_b_mux_sel;
@@ -376,13 +373,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Forwarding detection signals
   logic        reg_d_ex_is_reg_a_id;
   logic        reg_d_ex_is_reg_b_id;
-  logic        reg_d_ex_is_reg_c_id;
   logic        reg_d_wb_is_reg_a_id;
   logic        reg_d_wb_is_reg_b_id;
-  logic        reg_d_wb_is_reg_c_id;
   logic        reg_d_alu_is_reg_a_id;
   logic        reg_d_alu_is_reg_b_id;
-  logic        reg_d_alu_is_reg_c_id;
 
   logic        is_clpx, is_subrot;
 
@@ -430,15 +424,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign regfile_addr_ra_id = instr[REG_S1_MSB:REG_S1_LSB];
   assign regfile_addr_rb_id = instr[REG_S2_MSB:REG_S2_LSB];
 
-  // register C mux
-  always_comb begin
-    unique case (regc_mux)
-      REGC_ZERO:  regfile_addr_rc_id = '0;
-      REGC_RD:    regfile_addr_rc_id = instr[REG_D_MSB:REG_D_LSB];
-      REGC_S1:    regfile_addr_rc_id = instr[REG_S1_MSB:REG_S1_LSB];
-      REGC_S4:    regfile_addr_rc_id = instr[REG_S4_MSB:REG_S4_LSB];
-    endcase
-  end
 
   //---------------------------------------------------------------------------
   // destination registers regfile_fp_d=1 <=> REG_D is a FP-register
@@ -453,13 +438,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Forwarding control signals
   assign reg_d_ex_is_reg_a_id  = (regfile_waddr_ex_o     == regfile_addr_ra_id) && (rega_used_dec == 1'b1) && (regfile_addr_ra_id != '0);
   assign reg_d_ex_is_reg_b_id  = (regfile_waddr_ex_o     == regfile_addr_rb_id) && (regb_used_dec == 1'b1) && (regfile_addr_rb_id != '0);
-  assign reg_d_ex_is_reg_c_id  = (regfile_waddr_ex_o     == regfile_addr_rc_id) && (regc_used_dec == 1'b1) && (regfile_addr_rc_id != '0);
   assign reg_d_wb_is_reg_a_id  = (regfile_waddr_wb_i     == regfile_addr_ra_id) && (rega_used_dec == 1'b1) && (regfile_addr_ra_id != '0);
   assign reg_d_wb_is_reg_b_id  = (regfile_waddr_wb_i     == regfile_addr_rb_id) && (regb_used_dec == 1'b1) && (regfile_addr_rb_id != '0);
-  assign reg_d_wb_is_reg_c_id  = (regfile_waddr_wb_i     == regfile_addr_rc_id) && (regc_used_dec == 1'b1) && (regfile_addr_rc_id != '0);
   assign reg_d_alu_is_reg_a_id = (regfile_alu_waddr_fw_i == regfile_addr_ra_id) && (rega_used_dec == 1'b1) && (regfile_addr_ra_id != '0);
   assign reg_d_alu_is_reg_b_id = (regfile_alu_waddr_fw_i == regfile_addr_rb_id) && (regb_used_dec == 1'b1) && (regfile_addr_rb_id != '0);
-  assign reg_d_alu_is_reg_c_id = (regfile_alu_waddr_fw_i == regfile_addr_rc_id) && (regc_used_dec == 1'b1) && (regfile_addr_rc_id != '0);
 
 
   // kill instruction in the IF/ID stage by setting the instr_valid_id control
@@ -509,7 +491,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (alu_op_a_mux_sel)
       OP_A_REGA_OR_FWD:  alu_operand_a = operand_a_fw_id;
       OP_A_REGB_OR_FWD:  alu_operand_a = operand_b_fw_id;
-      OP_A_REGC_OR_FWD:  alu_operand_a = operand_c_fw_id;
       OP_A_CURRPC:       alu_operand_a = pc_id_i;
       OP_A_IMM:          alu_operand_a = imm_a;
       default:           alu_operand_a = operand_a_fw_id;
@@ -565,7 +546,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (alu_op_b_mux_sel)
       OP_B_REGA_OR_FWD:  operand_b = operand_a_fw_id;
       OP_B_REGB_OR_FWD:  operand_b = operand_b_fw_id;
-      OP_B_REGC_OR_FWD:  operand_b = operand_c_fw_id;
       OP_B_IMM:          operand_b = imm_b;
       OP_B_BMASK:        operand_b = $unsigned(operand_b_fw_id[4:0]);
       default:           operand_b = operand_b_fw_id;
@@ -611,7 +591,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU OP C Mux
   always_comb begin : alu_operand_c_mux
     case (alu_op_c_mux_sel)
-      OP_C_REGC_OR_FWD:  operand_c = operand_c_fw_id;
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw_id;
       OP_C_JT:           operand_c = jump_target;
       default:           operand_c = operand_c_fw_id;
@@ -631,18 +610,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // choose normal or scalar replicated version of operand b
   assign alu_operand_c = (scalar_replication_c == 1'b1) ? operand_c_vec : operand_c;
 
-
   // Operand c forwarding mux
   always_comb begin : operand_c_fw_mux
     case (operand_c_fw_mux_sel)
       SEL_FW_EX:    operand_c_fw_id = regfile_alu_wdata_fw_i;
       SEL_FW_WB:    operand_c_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_c_fw_id = regfile_data_rc_id;
-      default:      operand_c_fw_id = regfile_data_rc_id;
+      SEL_REGFILE:  operand_c_fw_id = 32'h00000000;
+      default:      operand_c_fw_id = 32'h00000000;
     endcase; // case (operand_c_fw_mux_sel)
   end
-
-
+ 
   ///////////////////////////////////////////////////////////////////////////
   //  ___                              _ _       _              ___ ____   //
   // |_ _|_ __ ___  _ __ ___   ___  __| (_) __ _| |_ ___  ___  |_ _|  _ \  //
@@ -720,8 +697,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .rdata_b_o          ( regfile_data_rb_id ),
 
     // Read port c
-    .raddr_c_i          ( regfile_addr_rc_id ),
-    .rdata_c_o          ( regfile_data_rc_id ),
+    //.raddr_c_i          ( regfile_addr_rc_id ),
+    //.rdata_c_o          ( regfile_data_rc_id ),
 
     // Write port a
     .waddr_a_i          ( regfile_waddr_wb_i ),
@@ -774,7 +751,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     .rega_used_o                     ( rega_used_dec             ),
     .regb_used_o                     ( regb_used_dec             ),
-    .regc_used_o                     ( regc_used_dec             ),
 
     .bmask_a_mux_o                   ( bmask_a_mux               ),
     .bmask_b_mux_o                   ( bmask_b_mux               ),
@@ -796,7 +772,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .scalar_replication_c_o          ( scalar_replication_c      ),
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
     .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
-    .regc_mux_o                      ( regc_mux                  ),
     .is_clpx_o                       ( is_clpx                   ),
     .is_subrot_o                     ( is_subrot                 ),
 
@@ -972,13 +947,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Forwarding detection signals
     .reg_d_ex_is_reg_a_i            ( reg_d_ex_is_reg_a_id   ),
     .reg_d_ex_is_reg_b_i            ( reg_d_ex_is_reg_b_id   ),
-    .reg_d_ex_is_reg_c_i            ( reg_d_ex_is_reg_c_id   ),
     .reg_d_wb_is_reg_a_i            ( reg_d_wb_is_reg_a_id   ),
     .reg_d_wb_is_reg_b_i            ( reg_d_wb_is_reg_b_id   ),
-    .reg_d_wb_is_reg_c_i            ( reg_d_wb_is_reg_c_id   ),
     .reg_d_alu_is_reg_a_i           ( reg_d_alu_is_reg_a_id  ),
     .reg_d_alu_is_reg_b_i           ( reg_d_alu_is_reg_b_id  ),
-    .reg_d_alu_is_reg_c_i           ( reg_d_alu_is_reg_c_id  ),
 
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),

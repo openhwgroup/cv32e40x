@@ -45,8 +45,8 @@ module cv32e40x_register_file
     output logic [DATA_WIDTH-1:0]  rdata_b_o,
 
     //Read port R3
-    input  logic [ADDR_WIDTH-1:0]  raddr_c_i,
-    output logic [DATA_WIDTH-1:0]  rdata_c_o,
+    //input  logic [ADDR_WIDTH-1:0]  raddr_c_i,
+    //output logic [DATA_WIDTH-1:0]  rdata_c_o,
 
     // Write port W1
     input logic [ADDR_WIDTH-1:0]   waddr_a_i,
@@ -80,7 +80,7 @@ module cv32e40x_register_file
   //-----------------------------------------------------------------------------
   assign rdata_a_o = mem[raddr_a_i[4:0]];
   assign rdata_b_o = mem[raddr_b_i[4:0]];
-  assign rdata_c_o = mem[raddr_c_i[4:0]];
+  //assign rdata_c_o = mem[raddr_c_i[4:0]];
 
   //-----------------------------------------------------------------------------
   //-- WRITE : Write Address Decoder (WAD), combinatorial process

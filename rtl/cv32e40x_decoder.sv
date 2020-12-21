@@ -54,7 +54,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   output logic        rega_used_o,             // rs1 is used by current instruction
   output logic        regb_used_o,             // rs2 is used by current instruction
-  output logic        regc_used_o,             // rs3 is used by current instruction
 
   output logic [ 0:0] bmask_a_mux_o,           // bit manipulation mask a mux
   output logic [ 1:0] bmask_b_mux_o,           // bit manipulation mask b mux
@@ -76,7 +75,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        scalar_replication_c_o,  // scalar replication enable for operand C
   output logic [0:0]  imm_a_mux_sel_o,         // immediate selection for operand a
   output logic [3:0]  imm_b_mux_sel_o,         // immediate selection for operand b
-  output logic [1:0]  regc_mux_o,              // register c selection: S3, RD or 0
   output logic        is_clpx_o,               // whether the instruction is complex (pulpv3) or not
   output logic        is_subrot_o,
 
@@ -158,10 +156,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     alu_op_a_mux_sel_o          = OP_A_REGA_OR_FWD;
     alu_op_b_mux_sel_o          = OP_B_REGB_OR_FWD;
     alu_op_c_mux_sel_o          = OP_C_REGC_OR_FWD;
+    
     alu_vec_mode_o              = VEC_MODE32;
     scalar_replication_o        = 1'b0;
     scalar_replication_c_o      = 1'b0;
-    regc_mux_o                  = REGC_ZERO;
     imm_a_mux_sel_o             = IMMA_ZERO;
     imm_b_mux_sel_o             = IMMB_I;
 
@@ -205,7 +203,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
     rega_used_o                 = 1'b0;
     regb_used_o                 = 1'b0;
-    regc_used_o                 = 1'b0;
+    
 
     bmask_a_mux_o               = BMASK_A_ZERO;
     bmask_b_mux_o               = BMASK_B_ZERO;
@@ -520,28 +518,21 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
               alu_en          = 1'b0;
               mult_int_en     = 1'b1;
               mult_operator_o = MUL_MAC32;
-              regc_mux_o      = REGC_ZERO;
             end
             {6'b00_0001, 3'b001}: begin // mulh
               alu_en             = 1'b0;
-              regc_used_o        = 1'b1;
-              regc_mux_o         = REGC_ZERO;
               mult_signed_mode_o = 2'b11;
               mult_int_en        = 1'b1;
               mult_operator_o    = MUL_H;
             end
             {6'b00_0001, 3'b010}: begin // mulhsu
               alu_en             = 1'b0;
-              regc_used_o        = 1'b1;
-              regc_mux_o         = REGC_ZERO;
               mult_signed_mode_o = 2'b01;
               mult_int_en        = 1'b1;
               mult_operator_o    = MUL_H;
             end
             {6'b00_0001, 3'b011}: begin // mulhu
               alu_en             = 1'b0;
-              regc_used_o        = 1'b1;
-              regc_mux_o         = REGC_ZERO;
               mult_signed_mode_o = 2'b00;
               mult_int_en        = 1'b1;
               mult_operator_o    = MUL_H;

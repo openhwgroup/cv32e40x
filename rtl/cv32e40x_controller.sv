@@ -150,13 +150,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // forwarding detection signals
   input logic         reg_d_ex_is_reg_a_i,
   input logic         reg_d_ex_is_reg_b_i,
-  input logic         reg_d_ex_is_reg_c_i,
   input logic         reg_d_wb_is_reg_a_i,
   input logic         reg_d_wb_is_reg_b_i,
-  input logic         reg_d_wb_is_reg_c_i,
   input logic         reg_d_alu_is_reg_a_i,
   input logic         reg_d_alu_is_reg_b_i,
-  input logic         reg_d_alu_is_reg_c_i,
 
   // stall signals
   output logic        halt_if_o,
@@ -912,7 +909,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           ( (data_req_ex_i == 1'b1) && (regfile_we_ex_i == 1'b1) ||
            (wb_ready_i == 1'b0) && (regfile_we_wb_i == 1'b1)
           ) &&
-          ( (reg_d_ex_is_reg_a_i == 1'b1) || (reg_d_ex_is_reg_b_i == 1'b1) || (reg_d_ex_is_reg_c_i == 1'b1) ||
+          ( (reg_d_ex_is_reg_a_i == 1'b1) || (reg_d_ex_is_reg_b_i == 1'b1) ||
             (is_decoding_o && (regfile_we_id_i && !data_misaligned_i) && (regfile_waddr_ex_i == regfile_alu_waddr_id_i)) )
        )
     begin
@@ -958,8 +955,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         operand_a_fw_mux_sel_o = SEL_FW_WB;
       if (reg_d_wb_is_reg_b_i == 1'b1)
         operand_b_fw_mux_sel_o = SEL_FW_WB;
-      if (reg_d_wb_is_reg_c_i == 1'b1)
-        operand_c_fw_mux_sel_o = SEL_FW_WB;
     end
 
     // Forwarding EX -> ID
@@ -969,8 +964,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
        operand_a_fw_mux_sel_o = SEL_FW_EX;
      if (reg_d_alu_is_reg_b_i == 1'b1)
        operand_b_fw_mux_sel_o = SEL_FW_EX;
-     if (reg_d_alu_is_reg_c_i == 1'b1)
-       operand_c_fw_mux_sel_o = SEL_FW_EX;
     end
 
     // for misaligned memory accesses
