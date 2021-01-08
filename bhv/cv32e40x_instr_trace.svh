@@ -123,24 +123,6 @@
         INSTR_PAVG:       this.printRInstr("p.avg");
         INSTR_PAVGU:      this.printRInstr("p.avgu");
 
-        INSTR_PADDN:      this.printAddNInstr("p.addN");
-        INSTR_PADDUN:     this.printAddNInstr("p.adduN");
-        INSTR_PADDRN:     this.printAddNInstr("p.addRN");
-        INSTR_PADDURN:    this.printAddNInstr("p.adduRN");
-        INSTR_PSUBN:      this.printAddNInstr("p.subN");
-        INSTR_PSUBUN:     this.printAddNInstr("p.subuN");
-        INSTR_PSUBRN:     this.printAddNInstr("p.subRN");
-        INSTR_PSUBURN:    this.printAddNInstr("p.subuRN");
-
-        INSTR_PADDNR:     this.printR3Instr("p.addNr");
-        INSTR_PADDUNR:    this.printR3Instr("p.adduNr");
-        INSTR_PADDRNR:    this.printR3Instr("p.addRNr");
-        INSTR_PADDURNR:   this.printR3Instr("p.adduRNr");
-        INSTR_PSUBNR:     this.printR3Instr("p.subNr");
-        INSTR_PSUBUNR:    this.printR3Instr("p.subuNr");
-        INSTR_PSUBRNR:    this.printR3Instr("p.subRNr");
-        INSTR_PSUBURNR:   this.printR3Instr("p.subuRNr");
-
         INSTR_PSLET:      this.printRInstr("p.slet");
         INSTR_PSLETU:     this.printRInstr("p.sletu");
         INSTR_PMIN:       this.printRInstr("p.min");
@@ -203,22 +185,6 @@
         // PULP MULTIPLIER
         INSTR_PMAC:       this.printR3Instr("p.mac");
         INSTR_PMSU:       this.printR3Instr("p.msu");
-        INSTR_PMULS     : this.printMulInstr();
-        INSTR_PMULHLSN  : this.printMulInstr();
-        INSTR_PMULRS    : this.printMulInstr();
-        INSTR_PMULRHLSN : this.printMulInstr();
-        INSTR_PMULU     : this.printMulInstr();
-        INSTR_PMULUHLU  : this.printMulInstr();
-        INSTR_PMULRU    : this.printMulInstr();
-        INSTR_PMULRUHLU : this.printMulInstr();
-        INSTR_PMACS     : this.printMulInstr();
-        INSTR_PMACHLSN  : this.printMulInstr();
-        INSTR_PMACRS    : this.printMulInstr();
-        INSTR_PMACRHLSN : this.printMulInstr();
-        INSTR_PMACU     : this.printMulInstr();
-        INSTR_PMACUHLU  : this.printMulInstr();
-        INSTR_PMACRU    : this.printMulInstr();
-        INSTR_PMACRUHLU : this.printMulInstr();
 
         // FP-OP
         INSTR_FMADD:      this.printF3Instr("fmadd.s");
@@ -262,12 +228,8 @@
         // opcodes with custom decoding
         {25'b?, OPCODE_LOAD}:       this.printLoadInstr();
         {25'b?, OPCODE_LOAD_FP}:    this.printLoadInstr();
-        {25'b?, OPCODE_LOAD_POST}:  this.printLoadInstr();
         {25'b?, OPCODE_STORE}:      this.printStoreInstr();
         {25'b?, OPCODE_STORE_FP}:   this.printStoreInstr();
-        {25'b?, OPCODE_STORE_POST}: this.printStoreInstr();
-        {25'b?, OPCODE_HWLOOP}:     this.printHwloopInstr();
-        {25'b?, OPCODE_VECOP}:      this.printVecInstr();
         default: this.printMnemonic("INVALID");
       endcase // unique case (instr)
 
@@ -596,26 +558,13 @@
 
         if (instr[14:12] != 3'b111) begin
           // regular load
-          if (instr[6:0] != OPCODE_LOAD_POST) begin
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("%-16s x%0d, %0d(x%0d)", mnemonic, rd, $signed(imm_i_type), rs1);
-          end else begin
-            regs_read.push_back('{rs1, rs1_value, 0});
-            regs_write.push_back('{rs1, 'x, 0});
-            str = $sformatf("p.%-14s x%0d, %0d(x%0d!)", mnemonic, rd, $signed(imm_i_type), rs1);
-          end
+          regs_read.push_back('{rs1, rs1_value, 0});
+          str = $sformatf("%-16s x%0d, %0d(x%0d)", mnemonic, rd, $signed(imm_i_type), rs1);
         end else begin
           // reg-reg load
-          if (instr[6:0] != OPCODE_LOAD_POST) begin
-            regs_read.push_back('{rs2, rs2_value,0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("%-16s x%0d, x%0d(x%0d)", mnemonic, rd, rs2, rs1);
-          end else begin
-            regs_read.push_back('{rs2, rs2_value,0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            regs_write.push_back('{rs1, 'x, 0});
-            str = $sformatf("p.%-14s x%0d, x%0d(x%0d!)", mnemonic, rd, rs2, rs1);
-          end
+          regs_read.push_back('{rs2, rs2_value,0});
+          regs_read.push_back('{rs1, rs1_value, 0});
+          str = $sformatf("%-16s x%0d, x%0d(x%0d)", mnemonic, rd, rs2, rs1);
         end
       end
     endfunction
@@ -637,30 +586,15 @@
 
         if (instr[14] == 1'b0) begin
           // regular store
-          if (instr[6:0] != OPCODE_STORE_POST) begin
-            regs_read.push_back('{rs2, rs2_value, 0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("%-16s x%0d, %0d(x%0d)", mnemonic, rs2, $signed(imm_s_type), rs1);
-          end else begin
-            regs_read.push_back('{rs2, rs2_value, 0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            regs_write.push_back('{rs1, 'x, 0});
-            str = $sformatf("p.%-14s x%0d, %0d(x%0d!)", mnemonic, rs2, $signed(imm_s_type), rs1);
-          end
+          regs_read.push_back('{rs2, rs2_value, 0});
+          regs_read.push_back('{rs1, rs1_value, 0});
+          str = $sformatf("%-16s x%0d, %0d(x%0d)", mnemonic, rs2, $signed(imm_s_type), rs1);
         end else begin
           // reg-reg store
-          if (instr[6:0] != OPCODE_STORE_POST) begin
-            regs_read.push_back('{rs2, rs2_value, 0});
-            regs_read.push_back('{rs3, rs3_value, 0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("p.%-14s x%0d, x%0d(x%0d)", mnemonic, rs2, rs3, rs1);
-          end else begin
-            regs_read.push_back('{rs2, rs2_value, 0});
-            regs_read.push_back('{rs3, rs3_value, 0});
-            regs_read.push_back('{rs1, rs1_value, 0});
-            regs_write.push_back('{rs1, 'x, 0});
-            str = $sformatf("p.%-14s x%0d, x%0d(x%0d!)", mnemonic, rs2, rs3, rs1);
-          end
+          regs_read.push_back('{rs2, rs2_value, 0});
+          regs_read.push_back('{rs3, rs3_value, 0});
+          regs_read.push_back('{rs1, rs1_value, 0});
+          str = $sformatf("p.%-14s x%0d, x%0d(x%0d)", mnemonic, rs2, rs3, rs1);
         end
       end
     endfunction // printSInstr

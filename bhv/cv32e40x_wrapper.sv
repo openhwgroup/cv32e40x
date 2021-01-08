@@ -85,7 +85,6 @@ module cv32e40x_wrapper
       cv32e40x_prefetch_controller_sva
       #(
           .DEPTH           ( DEPTH           ),
-          .PULP_XPULP      ( PULP_XPULP      ),
           .PULP_OBI        ( PULP_OBI        ),
           .FIFO_ADDR_DEPTH ( FIFO_ADDR_DEPTH ))
       prefetch_controller_sva (.*);
@@ -94,10 +93,10 @@ module cv32e40x_wrapper
 
     cv32e40x_core_log
      #(
-          .PULP_XPULP            ( PULP_XPULP            ),
-          .PULP_CLUSTER          ( PULP_CLUSTER          ),
-          .FPU                   ( FPU                   ),
-          .PULP_ZFINX            ( PULP_ZFINX            ),
+          .PULP_XPULP            ( 0 ),
+          .PULP_CLUSTER          ( 0 ),
+          .FPU                   ( 0 ),
+          .PULP_ZFINX            ( 0 ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
@@ -137,11 +136,6 @@ module cv32e40x_wrapper
       .rs2_value      ( core_i.id_stage_i.operand_b_fw_id           ),
       .rs3_value      ( core_i.id_stage_i.alu_operand_c             ),
       .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b             ),
-
-      .rs1_is_fp      ( core_i.id_stage_i.regfile_fp_a              ),
-      .rs2_is_fp      ( core_i.id_stage_i.regfile_fp_b              ),
-      .rs3_is_fp      ( core_i.id_stage_i.regfile_fp_c              ),
-      .rd_is_fp       ( core_i.id_stage_i.regfile_fp_d              ),
 
       .ex_valid       ( core_i.ex_valid                             ),
       .ex_reg_addr    ( core_i.regfile_alu_waddr_fw                 ),
@@ -185,10 +179,10 @@ module cv32e40x_wrapper
     // instantiate the core
     cv32e40x_core
         #(
-          .PULP_XPULP            ( PULP_XPULP            ),
-          .PULP_CLUSTER          ( PULP_CLUSTER          ),
-          .FPU                   ( FPU                   ),
-          .PULP_ZFINX            ( PULP_ZFINX            ),
+          .PULP_XPULP            ( 0 ),
+          .PULP_CLUSTER          ( 0 ),
+          .FPU                   ( 0 ),
+          .PULP_ZFINX            ( 0 ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_i (.*);
 
