@@ -766,11 +766,9 @@ module cv32e40x_core
   cv32e40x_cs_registers
   #(
     .A_EXTENSION      ( A_EXTENSION           ),
-    .PULP_SECURE      ( PULP_SECURE           ),
     .USE_PMP          ( USE_PMP               ),
     .N_PMP_ENTRIES    ( N_PMP_ENTRIES         ),
-    .NUM_MHPMCOUNTERS ( NUM_MHPMCOUNTERS      ),
-    .DEBUG_TRIGGER_EN ( DEBUG_TRIGGER_EN      )
+    .NUM_MHPMCOUNTERS ( NUM_MHPMCOUNTERS      )
   )
   cs_registers_i
   (
@@ -809,7 +807,7 @@ module cv32e40x_core
     .debug_mode_i               ( debug_mode             ),
     .debug_cause_i              ( debug_cause            ),
     .debug_csr_save_i           ( debug_csr_save         ),
-    .depc_o                     ( depc                   ),
+    .dpc_o                      ( depc                   ),
     .debug_single_step_o        ( debug_single_step      ),
     .debug_ebreakm_o            ( debug_ebreakm          ),
     .debug_ebreaku_o            ( debug_ebreaku          ),

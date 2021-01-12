@@ -30,11 +30,9 @@
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION      = 0,
-  parameter PULP_SECURE      = 0,
   parameter USE_PMP          = 0,
   parameter N_PMP_ENTRIES    = 16,
-  parameter NUM_MHPMCOUNTERS = 1,
-  parameter DEBUG_TRIGGER_EN = 1
+  parameter NUM_MHPMCOUNTERS = 1
 )
 (
   // Clock and Reset
@@ -76,7 +74,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic            debug_mode_i,
   input  logic  [2:0]     debug_cause_i,
   input  logic            debug_csr_save_i,
-  output logic [31:0]     depc_o,
+  output logic [31:0]     dpc_o,
   output logic            debug_single_step_o,
   output logic            debug_ebreakm_o,
   output logic            debug_ebreaku_o,
@@ -151,55 +149,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     | (1                               << 12)  // M - Integer Multiply/Divide extension
     | (0                               << 13)  // N - User level interrupts supported
     | (0                               << 18)  // S - Supervisor mode implemented
-    | (32'(PULP_SECURE)                << 20)  // U - User mode implemented
-    | (32'(0) << 23)  // X - Non-standard extensions present
+    | (0                               << 20)  // U - User mode implemented
+    | (32'(0)                          << 23)  // X - Non-standard extensions present
     | (32'(MXL)                        << 30); // M-XLEN
 
   localparam MHPMCOUNTER_WIDTH  = 64;
 
-  // This local parameter when set to 1 makes the Perf Counters not compliant with RISC-V
-  // as it does not implement mcycle and minstret
-  // but only HPMCOUNTERs (depending on NUM_MHPMCOUNTERS)
-  localparam PULP_PERF_COUNTERS = 0;
 
   typedef struct packed {
-    logic uie;
-    // logic sie;      - unimplemented, hardwired to '0
-    // logic hie;      - unimplemented, hardwired to '0
-    logic mie;
-    logic upie;
-    // logic spie;     - unimplemented, hardwired to '0
-    // logic hpie;     - unimplemented, hardwired to '0
-    logic mpie;
-    // logic spp;      - unimplemented, hardwired to '0
-    // logic[1:0] hpp; - unimplemented, hardwired to '0
-    PrivLvl_t mpp;
-    logic mprv;
-  } Status_t;
-
-  typedef struct packed{
-      logic [31:28] xdebugver;
-      logic [27:16] zero2;
-      logic         ebreakm;
-      logic         zero1;
-      logic         ebreaks;
-      logic         ebreaku;
-      logic         stepie;
-      logic         stopcount;
-      logic         stoptime;
-      logic [8:6]   cause;
-      logic         zero0;
-      logic         mprven;
-      logic         nmip;
-      logic         step;
-      PrivLvl_t     prv;
-  } Dcsr_t;
-
-  typedef struct packed {
-   logic  [MAX_N_PMP_ENTRIES-1:0] [31:0] pmpaddr;
-   logic  [MAX_N_PMP_CFG-1:0]     [31:0] pmpcfg_packed;
-   logic  [MAX_N_PMP_ENTRIES-1:0] [ 7:0] pmpcfg;
-  } Pmp_t;
+    logic  [MAX_N_PMP_ENTRIES-1:0] [31:0] pmpaddr;
+    logic  [MAX_N_PMP_CFG-1:0]     [31:0] pmpcfg_packed;
+    logic  [MAX_N_PMP_ENTRIES-1:0] [ 7:0] pmpcfg;
+   } Pmp_t;
+Vet ikk
 
   // CSR update logic
   logic [31:0] csr_wdata_int;
@@ -208,30 +170,41 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Interrupt control signals
   logic [31:0] mepc_q, mepc_n;
+  logic mepc_we;
   logic [31:0] uepc_q, uepc_n;
+
   // Trigger
   logic [31:0] tmatch_control_rdata;
   logic [31:0] tmatch_value_rdata;
   logic [15:0] tinfo_types;
   // Debug
   Dcsr_t       dcsr_q, dcsr_n;
-  logic [31:0] depc_q, depc_n;
+  logic dcsr_we;
+  logic [31:0] dpc_q, dpc_n;
+  logic dpc_we;
   logic [31:0] dscratch0_q, dscratch0_n;
+  logic dscratch0_we, dscratch1_we;
   logic [31:0] dscratch1_q, dscratch1_n;
+
   logic [31:0] mscratch_q, mscratch_n;
+  logic mscratch_we;
 
   logic [31:0] exception_pc;
   Status_t mstatus_q, mstatus_n;
-  logic [ 5:0] mcause_q, mcause_n;
+  logic mstatus_we;
+
+  Mcause_t mcause_q, mcause_n;
+  logic mcause_we;
   logic [ 5:0] ucause_q, ucause_n;
-  //not implemented yet
-  logic [23:0] mtvec_n, mtvec_q;
+  
+  Mtvec_t mtvec_n, mtvec_q;
+  logic mtvec_we;
   logic [23:0] utvec_n, utvec_q;
-  logic [ 1:0] mtvec_mode_n, mtvec_mode_q;
   logic [ 1:0] utvec_mode_n, utvec_mode_q;
 
   logic [31:0] mip;                     // Bits are masked according to IRQ_MASK
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
+  logic mie_we;
 
   logic [31:0] csr_mie_wdata;
   logic        csr_mie_we;
@@ -296,198 +269,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
    genvar j;
 
 
-if(PULP_SECURE==1) begin : gen_pulp_secure_read_logic
-  // read logic
-  always_comb
-  begin
-    case (csr_addr_i)
-      // mstatus
-      CSR_MSTATUS: csr_rdata_int = {
-                                  14'b0,
-                                  mstatus_q.mprv,
-                                  4'b0,
-                                  mstatus_q.mpp,
-                                  3'b0,
-                                  mstatus_q.mpie,
-                                  2'h0,
-                                  mstatus_q.upie,
-                                  mstatus_q.mie,
-                                  2'h0,
-                                  mstatus_q.uie
-                                };
 
-      // misa: machine isa register
-      CSR_MISA: csr_rdata_int = MISA_VALUE;
-
-      // mie: machine interrupt enable
-      CSR_MIE: begin
-        csr_rdata_int = mie_q;
-      end
-
-      // mtvec: machine trap-handler base address
-      CSR_MTVEC: csr_rdata_int = {mtvec_q, 6'h0, mtvec_mode_q};
-      // mscratch: machine scratch
-      CSR_MSCRATCH: csr_rdata_int = mscratch_q;
-      // mepc: exception program counter
-      CSR_MEPC: csr_rdata_int = mepc_q;
-      // mcause: exception cause
-      CSR_MCAUSE: csr_rdata_int = {mcause_q[5], 26'b0, mcause_q[4:0]};
-      // mip: interrupt pending
-      CSR_MIP: begin
-        csr_rdata_int = mip;
-      end
-
-      // mhartid: unique hardware thread id
-      CSR_MHARTID: csr_rdata_int = hart_id_i;
-
-      // mvendorid: Machine Vendor ID
-      CSR_MVENDORID: csr_rdata_int = {MVENDORID_BANK, MVENDORID_OFFSET};
-
-      // marchid: Machine Architecture ID
-      CSR_MARCHID: csr_rdata_int = MARCHID;
-
-      // unimplemented, read 0 CSRs
-      CSR_MIMPID,
-        CSR_MTVAL :
-          csr_rdata_int = 'b0;
-
-      // mcounteren: Machine Counter-Enable
-      CSR_MCOUNTEREN: csr_rdata_int = mcounteren_q;
-
-      CSR_TSELECT,
-        CSR_TDATA3,
-        CSR_MCONTEXT,
-        CSR_SCONTEXT:
-               csr_rdata_int = 'b0; // Always read 0
-      CSR_TDATA1:
-               csr_rdata_int = tmatch_control_rdata;
-      CSR_TDATA2:
-               csr_rdata_int = tmatch_value_rdata;
-      CSR_TINFO:
-               csr_rdata_int = tinfo_types;
-
-      CSR_DCSR:
-               csr_rdata_int = dcsr_q;//
-      CSR_DPC:
-               csr_rdata_int = depc_q;
-      CSR_DSCRATCH0:
-               csr_rdata_int = dscratch0_q;//
-      CSR_DSCRATCH1:
-               csr_rdata_int = dscratch1_q;//
-
-      // Hardware Performance Monitor
-      CSR_MCYCLE,
-      CSR_MINSTRET,
-      CSR_MHPMCOUNTER3,
-      CSR_MHPMCOUNTER4,  CSR_MHPMCOUNTER5,  CSR_MHPMCOUNTER6,  CSR_MHPMCOUNTER7,
-      CSR_MHPMCOUNTER8,  CSR_MHPMCOUNTER9,  CSR_MHPMCOUNTER10, CSR_MHPMCOUNTER11,
-      CSR_MHPMCOUNTER12, CSR_MHPMCOUNTER13, CSR_MHPMCOUNTER14, CSR_MHPMCOUNTER15,
-      CSR_MHPMCOUNTER16, CSR_MHPMCOUNTER17, CSR_MHPMCOUNTER18, CSR_MHPMCOUNTER19,
-      CSR_MHPMCOUNTER20, CSR_MHPMCOUNTER21, CSR_MHPMCOUNTER22, CSR_MHPMCOUNTER23,
-      CSR_MHPMCOUNTER24, CSR_MHPMCOUNTER25, CSR_MHPMCOUNTER26, CSR_MHPMCOUNTER27,
-      CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31,
-      CSR_CYCLE,
-      CSR_INSTRET,
-      CSR_HPMCOUNTER3,
-      CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
-      CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
-      CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
-      CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
-      CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
-      CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
-      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
-        csr_rdata_int = mhpmcounter_q[csr_addr_i[4:0]][31:0];
-
-      CSR_MCYCLEH,
-      CSR_MINSTRETH,
-      CSR_MHPMCOUNTER3H,
-      CSR_MHPMCOUNTER4H,  CSR_MHPMCOUNTER5H,  CSR_MHPMCOUNTER6H,  CSR_MHPMCOUNTER7H,
-      CSR_MHPMCOUNTER8H,  CSR_MHPMCOUNTER9H,  CSR_MHPMCOUNTER10H, CSR_MHPMCOUNTER11H,
-      CSR_MHPMCOUNTER12H, CSR_MHPMCOUNTER13H, CSR_MHPMCOUNTER14H, CSR_MHPMCOUNTER15H,
-      CSR_MHPMCOUNTER16H, CSR_MHPMCOUNTER17H, CSR_MHPMCOUNTER18H, CSR_MHPMCOUNTER19H,
-      CSR_MHPMCOUNTER20H, CSR_MHPMCOUNTER21H, CSR_MHPMCOUNTER22H, CSR_MHPMCOUNTER23H,
-      CSR_MHPMCOUNTER24H, CSR_MHPMCOUNTER25H, CSR_MHPMCOUNTER26H, CSR_MHPMCOUNTER27H,
-      CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H,
-      CSR_CYCLEH,
-      CSR_INSTRETH,
-      CSR_HPMCOUNTER3H,
-      CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
-      CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
-      CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
-      CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
-      CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
-      CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
-      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
-        csr_rdata_int = mhpmcounter_q[csr_addr_i[4:0]][63:32];
-
-      CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
-
-      CSR_MHPMEVENT3,
-      CSR_MHPMEVENT4,  CSR_MHPMEVENT5,  CSR_MHPMEVENT6,  CSR_MHPMEVENT7,
-      CSR_MHPMEVENT8,  CSR_MHPMEVENT9,  CSR_MHPMEVENT10, CSR_MHPMEVENT11,
-      CSR_MHPMEVENT12, CSR_MHPMEVENT13, CSR_MHPMEVENT14, CSR_MHPMEVENT15,
-      CSR_MHPMEVENT16, CSR_MHPMEVENT17, CSR_MHPMEVENT18, CSR_MHPMEVENT19,
-      CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
-      CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
-      CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
-        csr_rdata_int = mhpmevent_q[csr_addr_i[4:0]];
-
-      // PMP config registers
-      CSR_PMPCFG0: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[0] : '0;
-      CSR_PMPCFG1: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[1] : '0;
-      CSR_PMPCFG2: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[2] : '0;
-      CSR_PMPCFG3: csr_rdata_int = USE_PMP ? pmp_reg_q.pmpcfg_packed[3] : '0;
-
-      CSR_PMPADDR0, CSR_PMPADDR1, CSR_PMPADDR2, CSR_PMPADDR3,
-      CSR_PMPADDR4, CSR_PMPADDR5, CSR_PMPADDR6, CSR_PMPADDR7,
-      CSR_PMPADDR8, CSR_PMPADDR9, CSR_PMPADDR10, CSR_PMPADDR11,
-      CSR_PMPADDR12, CSR_PMPADDR13, CSR_PMPADDR14, CSR_PMPADDR15 :
-          csr_rdata_int = USE_PMP ? pmp_reg_q.pmpaddr[csr_addr_i[3:0]] : '0;
-
-      /* USER CSR */
-      // ustatus
-      CSR_USTATUS: csr_rdata_int = {
-                                  27'b0,
-                                  mstatus_q.upie,
-                                  3'h0,
-                                  mstatus_q.uie
-                                };
-      // utvec: user trap-handler base address
-      CSR_UTVEC: csr_rdata_int = {utvec_q, 6'h0, utvec_mode_q};
-      // duplicated mhartid: unique hardware thread id (not official)
-      CSR_UHARTID: csr_rdata_int = 'b0;
-      // uepc: exception program counter
-      CSR_UEPC: csr_rdata_int = uepc_q;
-      // ucause: exception cause
-      CSR_UCAUSE: csr_rdata_int = {ucause_q[5], 26'h0, ucause_q[4:0]};
-
-      // current priv level (not official)
-      CSR_PRIVLV: csr_rdata_int = 'b0;
-
-      default:
-        csr_rdata_int = '0;
-    endcase
-  end
-end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
   // read logic
   always_comb
   begin
 
     case (csr_addr_i)
       // mstatus: always M-mode, contains IE bit
-      CSR_MSTATUS: csr_rdata_int = {
-                                  14'b0,
-                                  mstatus_q.mprv,
-                                  4'b0,
-                                  mstatus_q.mpp,
-                                  3'b0,
-                                  mstatus_q.mpie,
-                                  2'h0,
-                                  mstatus_q.upie,
-                                  mstatus_q.mie,
-                                  2'h0,
-                                  mstatus_q.uie
-                                };
+      CSR_MSTATUS: csr_rdata_int = mstatus_q;
       // misa: machine isa register
       CSR_MISA: csr_rdata_int = MISA_VALUE;
       // mie: machine interrupt enable
@@ -496,13 +285,13 @@ end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
       end
 
       // mtvec: machine trap-handler base address
-      CSR_MTVEC: csr_rdata_int = {mtvec_q, 6'h0, mtvec_mode_q};
+      CSR_MTVEC: csr_rdata_int = mtvec_q;
       // mscratch: machine scratch
       CSR_MSCRATCH: csr_rdata_int = mscratch_q;
       // mepc: exception program counter
       CSR_MEPC: csr_rdata_int = mepc_q;
       // mcause: exception cause
-      CSR_MCAUSE: csr_rdata_int = {mcause_q[5], 26'b0, mcause_q[4:0]};
+      CSR_MCAUSE: csr_rdata_int = mcause_q;
       // mip: interrupt pending
       CSR_MIP: begin
         csr_rdata_int = mip;
@@ -536,7 +325,7 @@ end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
       CSR_DCSR:
                csr_rdata_int = dcsr_q;//
       CSR_DPC:
-               csr_rdata_int = depc_q;
+               csr_rdata_int = dpc_q;
       CSR_DSCRATCH0:
                csr_rdata_int = dscratch0_q;//
       CSR_DSCRATCH1:
@@ -608,281 +397,38 @@ end else begin : gen_no_pulp_secure_read_logic // PULP_SECURE == 0
         csr_rdata_int = '0;
     endcase
   end
-end //PULP_SECURE
 
-if(PULP_SECURE==1) begin : gen_pulp_secure_write_logic
+
+
   // write logic
   always_comb
   begin
     mscratch_n               = mscratch_q;
+    mscratch_we              = 1'b0;
     mepc_n                   = mepc_q;
-    uepc_n                   = uepc_q;
-    depc_n                   = depc_q;
-    dcsr_n                   = dcsr_q;
-    dscratch0_n              = dscratch0_q;
-    dscratch1_n              = dscratch1_q;
-
-    mstatus_n                = mstatus_q;
-    mcause_n                 = mcause_q;
-    ucause_n                 = ucause_q;
-    exception_pc             = pc_id_i;
-    priv_lvl_n               = priv_lvl_q;
-    mtvec_n                  = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q;
-    utvec_n                  = utvec_q;
-    mtvec_mode_n             = mtvec_mode_q;
-    utvec_mode_n             = utvec_mode_q;
-    pmp_reg_n.pmpaddr        = pmp_reg_q.pmpaddr;
-    pmp_reg_n.pmpcfg_packed  = pmp_reg_q.pmpcfg_packed;
-    pmpaddr_we               = '0;
-    pmpcfg_we                = '0;
-
-    mie_n                    = mie_q;
-
-
-    case (csr_addr_i)
-      // mstatus: IE bit
-      CSR_MSTATUS: if (csr_we_int) begin
-        mstatus_n = '{
-          uie:  csr_wdata_int[MSTATUS_UIE_BIT],
-          mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-          upie: csr_wdata_int[MSTATUS_UPIE_BIT],
-          mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-          mpp:  PrivLvl_t'(csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
-          mprv: csr_wdata_int[MSTATUS_MPRV_BIT]
-        };
-      end
-      // mie: machine interrupt enable
-      CSR_MIE: if (csr_we_int) begin
-        mie_n = csr_wdata_int & IRQ_MASK;
-      end
-      // mtvec: machine trap-handler base address
-      CSR_MTVEC: if (csr_we_int) begin
-        mtvec_n      = csr_wdata_int[31:8];
-        mtvec_mode_n = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
-      end
-      // mscratch: machine scratch
-      CSR_MSCRATCH: if (csr_we_int) begin
-        mscratch_n = csr_wdata_int;
-      end
-      // mepc: exception program counter
-      CSR_MEPC: if (csr_we_int) begin
-        mepc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
-      end
-      // mcause
-      CSR_MCAUSE: if (csr_we_int) mcause_n = {csr_wdata_int[31], csr_wdata_int[4:0]};
-
-      // Debug
-      CSR_DCSR:
-               if (csr_we_int)
-               begin
-                    // Following are read-only and never assigned here (dcsr_q value is used):
-                    //
-                    // - xdebugver
-                    // - cause
-                    // - nmip
-
-                    dcsr_n.ebreakm   = csr_wdata_int[15];
-                    dcsr_n.ebreaks   = 1'b0;                            // ebreaks (implemented as WARL)
-                    dcsr_n.ebreaku   = csr_wdata_int[12];
-                    dcsr_n.stepie    = csr_wdata_int[11];               // stepie
-                    dcsr_n.stopcount = 1'b0;                            // stopcount
-                    dcsr_n.stoptime  = 1'b0;                            // stoptime
-                    dcsr_n.mprven    = 1'b0;                            // mprven
-                    dcsr_n.step      = csr_wdata_int[2];
-                    dcsr_n.prv       = (PrivLvl_t'(csr_wdata_int[1:0]) == PRIV_LVL_M) ? PRIV_LVL_M : PRIV_LVL_U; // prv (implemented as WARL)
-               end
-
-      CSR_DPC:
-               if (csr_we_int)
-               begin
-                    depc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
-               end
-
-      CSR_DSCRATCH0:
-               if (csr_we_int)
-               begin
-                    dscratch0_n = csr_wdata_int;
-               end
-
-      CSR_DSCRATCH1:
-               if (csr_we_int)
-               begin
-                    dscratch1_n = csr_wdata_int;
-               end
-
-      
-      // PMP config registers
-      CSR_PMPCFG0: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[0] = csr_wdata_int; pmpcfg_we[3:0]   = 4'b1111; end
-      CSR_PMPCFG1: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[1] = csr_wdata_int; pmpcfg_we[7:4]   = 4'b1111; end
-      CSR_PMPCFG2: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[2] = csr_wdata_int; pmpcfg_we[11:8]  = 4'b1111; end
-      CSR_PMPCFG3: if (csr_we_int) begin pmp_reg_n.pmpcfg_packed[3] = csr_wdata_int; pmpcfg_we[15:12] = 4'b1111; end
-
-      CSR_PMPADDR0, CSR_PMPADDR1, CSR_PMPADDR2, CSR_PMPADDR3,
-      CSR_PMPADDR4, CSR_PMPADDR5, CSR_PMPADDR6, CSR_PMPADDR7,
-      CSR_PMPADDR8, CSR_PMPADDR9, CSR_PMPADDR10, CSR_PMPADDR11,
-      CSR_PMPADDR12, CSR_PMPADDR13, CSR_PMPADDR14, CSR_PMPADDR15 :
-        if (csr_we_int) begin pmp_reg_n.pmpaddr[csr_addr_i[3:0]]   = csr_wdata_int; pmpaddr_we[csr_addr_i[3:0]] = 1'b1;  end
-
-
-      /* USER CSR */
-      // ucause: exception cause
-      CSR_USTATUS: if (csr_we_int) begin
-        mstatus_n = '{
-          uie:  csr_wdata_int[MSTATUS_UIE_BIT],
-          mie:  mstatus_q.mie,
-          upie: csr_wdata_int[MSTATUS_UPIE_BIT],
-          mpie: mstatus_q.mpie,
-          mpp:  mstatus_q.mpp,
-          mprv: mstatus_q.mprv
-        };
-      end
-      // utvec: user trap-handler base address
-      CSR_UTVEC: if (csr_we_int) begin
-        utvec_n      = csr_wdata_int[31:8];
-        utvec_mode_n = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
-      end
-      // uepc: exception program counter
-      CSR_UEPC: if (csr_we_int) begin
-        uepc_n     = csr_wdata_int;
-      end
-      // ucause: exception cause
-      CSR_UCAUSE: if (csr_we_int) ucause_n = {csr_wdata_int[31], csr_wdata_int[4:0]};
-    endcase
-
-    // exception controller gets priority over other writes
-    unique case (1'b1)
-
-      csr_save_cause_i: begin
-
-        unique case (1'b1)
-          csr_save_if_i:
-            exception_pc = pc_if_i;
-          csr_save_id_i:
-            exception_pc = pc_id_i;
-          csr_save_ex_i:
-            exception_pc = pc_ex_i;
-          default:;
-        endcase
-
-        unique case (priv_lvl_q)
-
-          PRIV_LVL_U: begin
-            if(~is_irq) begin
-              //Exceptions, Ecall U --> M
-              priv_lvl_n     = PRIV_LVL_M;
-              mstatus_n.mpie = mstatus_q.uie;
-              mstatus_n.mie  = 1'b0;
-              mstatus_n.mpp  = PRIV_LVL_U;
-              if (debug_csr_save_i)
-                  depc_n = exception_pc;
-              else
-                  mepc_n = exception_pc;
-              mcause_n       = csr_cause_i;
-
-            end
-            else begin
-              if(~csr_irq_sec_i) begin
-              //U --> U
-                priv_lvl_n     = PRIV_LVL_U;
-                mstatus_n.upie = mstatus_q.uie;
-                mstatus_n.uie  = 1'b0;
-                if (debug_csr_save_i)
-                    depc_n = exception_pc;
-                else
-                    uepc_n = exception_pc;
-                ucause_n       = csr_cause_i;
-
-              end else begin
-              //U --> M
-                priv_lvl_n     = PRIV_LVL_M;
-                mstatus_n.mpie = mstatus_q.uie;
-                mstatus_n.mie  = 1'b0;
-                mstatus_n.mpp  = PRIV_LVL_U;
-                if (debug_csr_save_i)
-                    depc_n = exception_pc;
-                else
-                    mepc_n = exception_pc;
-                mcause_n       = csr_cause_i;
-              end
-            end
-          end //PRIV_LVL_U
-
-          PRIV_LVL_M: begin
-            if (debug_csr_save_i) begin
-                // all interrupts are masked, don't update cause, epc, tval dpc
-                // and mpstatus
-                dcsr_n.prv   = PRIV_LVL_M;
-                dcsr_n.cause = debug_cause_i;
-                depc_n       = exception_pc;
-            end else begin
-                //Exceptions or Interrupts from PRIV_LVL_M always do M --> M
-                priv_lvl_n     = PRIV_LVL_M;
-                mstatus_n.mpie = mstatus_q.mie;
-                mstatus_n.mie  = 1'b0;
-                mstatus_n.mpp  = PRIV_LVL_M;
-                mepc_n         = exception_pc;
-                mcause_n       = csr_cause_i;
-            end
-          end //PRIV_LVL_M
-          default:;
-
-        endcase
-
-      end //csr_save_cause_i
-
-      csr_restore_uret_i: begin //URET
-        //mstatus_q.upp is implicitly 0, i.e PRIV_LVL_U
-        mstatus_n.uie  = mstatus_q.upie;
-        priv_lvl_n     = PRIV_LVL_U;
-        mstatus_n.upie = 1'b1;
-      end //csr_restore_uret_i
-
-      csr_restore_mret_i: begin //MRET
-        unique case (mstatus_q.mpp)
-          PRIV_LVL_U: begin
-            mstatus_n.uie  = mstatus_q.mpie;
-            priv_lvl_n     = PRIV_LVL_U;
-            mstatus_n.mpie = 1'b1;
-            mstatus_n.mpp  = PRIV_LVL_U;
-          end
-          PRIV_LVL_M: begin
-            mstatus_n.mie  = mstatus_q.mpie;
-            priv_lvl_n     = PRIV_LVL_M;
-            mstatus_n.mpie = 1'b1;
-            mstatus_n.mpp  = PRIV_LVL_U;
-          end
-          default:;
-        endcase
-      end //csr_restore_mret_i
-
-
-      csr_restore_dret_i: begin //DRET
-          // Restore to the recorded privilege level
-          priv_lvl_n = dcsr_q.prv;
-
-      end //csr_restore_dret_i
-
-      default:;
-    endcase
-  end
-end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
-  // write logic
-  always_comb
-  begin
-    mscratch_n               = mscratch_q;
-    mepc_n                   = mepc_q;
+    mepc_we                  = 1'b0;
     uepc_n                   = 'b0;             // Not used if PULP_SECURE == 0
-    depc_n                   = depc_q;
+    dpc_n                    = dpc_q;
+    dpc_we                   = 1'b0; 
     dcsr_n                   = dcsr_q;
+    dcsr_we                  = 1'b0;
     dscratch0_n              = dscratch0_q;
+    dscratch0_we             = 1'b0;
     dscratch1_n              = dscratch1_q;
+    dscratch1_we             = 1'b0;
 
     mstatus_n                = mstatus_q;
+    mstatus_we               = 1'b0;
     mcause_n                 = mcause_q;
+    mcause_we                = 1'b0;
     ucause_n                 = '0;              // Not used if PULP_SECURE == 0
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
-    mtvec_n                  = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q;
+    mtvec_n.base_rw          = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.base_rw;
+    mtvec_n.base_ro          = mtvec_q.base_ro;
+    mtvec_n.mode             = mtvec_q.mode;
+    mtvec_we                 = csr_mtvec_init_i;
+
     utvec_n                  = '0;              // Not used if PULP_SECURE == 0
     pmp_reg_n.pmpaddr        = '0;              // Not used if PULP_SECURE == 0
     pmp_reg_n.pmpcfg_packed  = '0;              // Not used if PULP_SECURE == 0
@@ -891,81 +437,83 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
     pmpcfg_we                = '0;
 
     mie_n                    = mie_q;
-    mtvec_mode_n             = mtvec_mode_q;
+    mie_we                   = 1'b0;
+    
     utvec_mode_n             = '0;              // Not used if PULP_SECURE == 0
+  
+    if (csr_we_int) begin
+      case (csr_addr_i)
+        // mstatus: IE bit
+        CSR_MSTATUS: begin
+          mstatus_n = '{
+            mprv: 1'b0,
+            mpp:  PRIV_LVL_M,
+            mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+            mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+            default: 'b0
+          };
+          mstatus_we = 1'b1;
+        end
+        // mie: machine interrupt enable
+        CSR_MIE: begin
+              mie_n = csr_wdata_int & IRQ_MASK;
+              mie_we = 1'b1;
+        end
+        // mtvec: machine trap-handler base address
+        CSR_MTVEC: begin
+              mtvec_n.base_rw      = csr_wdata_int[31:8];
+              mtvec_n.mode = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
+              mtvec_we = 1'b1;
+        end
+        // mscratch: machine scratch
+        CSR_MSCRATCH: begin
+              mscratch_n = csr_wdata_int;
+              mscratch_we = 1'b1;
+        end
+        // mepc: exception program counter
+        CSR_MEPC: begin
+              mepc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
+              mepc_we = 1'b1;
+        end
+        // mcause
+        CSR_MCAUSE: begin 
+                mcause_n = {csr_wdata_int[31], 26'd0, csr_wdata_int[4:0]};
+                mcause_we = 1'b1;
+        end
+        CSR_DCSR: begin
+              // Following are read-only and never assigned here (dcsr_q value is used):
+              //
+              // - xdebugver
+              // - cause
+              // - nmip
 
+              dcsr_n.ebreakm   = csr_wdata_int[15];
+              dcsr_n.ebreaks   = 1'b0;                            // ebreaks (implemented as WARL)
+              dcsr_n.ebreaku   = 1'b0;                            // ebreaku (implemented as WARL)
+              dcsr_n.stepie    = csr_wdata_int[11];               // stepie
+              dcsr_n.stopcount = 1'b0;                            // stopcount
+              dcsr_n.stoptime  = 1'b0;                            // stoptime
+              dcsr_n.mprven    = 1'b0;                            // mprven
+              dcsr_n.step      = csr_wdata_int[2];
+              dcsr_n.prv       = PRIV_LVL_M;                      // prv (implemendted as WARL)
 
-    case (csr_addr_i)
-      // mstatus: IE bit
-      CSR_MSTATUS: if (csr_we_int) begin
-        mstatus_n = '{
-          uie:  csr_wdata_int[MSTATUS_UIE_BIT],
-          mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-          upie: csr_wdata_int[MSTATUS_UPIE_BIT],
-          mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-          mpp:  PrivLvl_t'(csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
-          mprv: csr_wdata_int[MSTATUS_MPRV_BIT]
-        };
-      end
-      // mie: machine interrupt enable
-      CSR_MIE: if(csr_we_int) begin
-        mie_n = csr_wdata_int & IRQ_MASK;
-      end
-      // mtvec: machine trap-handler base address
-      CSR_MTVEC: if (csr_we_int) begin
-        mtvec_n      = csr_wdata_int[31:8];
-        mtvec_mode_n = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
-      end
-      // mscratch: machine scratch
-      CSR_MSCRATCH: if (csr_we_int) begin
-        mscratch_n = csr_wdata_int;
-      end
-      // mepc: exception program counter
-      CSR_MEPC: if (csr_we_int) begin
-        mepc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
-      end
-      // mcause
-      CSR_MCAUSE: if (csr_we_int) mcause_n = {csr_wdata_int[31], csr_wdata_int[4:0]};
-
-      CSR_DCSR:
-               if (csr_we_int)
-               begin
-                    // Following are read-only and never assigned here (dcsr_q value is used):
-                    //
-                    // - xdebugver
-                    // - cause
-                    // - nmip
-
-                    dcsr_n.ebreakm   = csr_wdata_int[15];
-                    dcsr_n.ebreaks   = 1'b0;                            // ebreaks (implemented as WARL)
-                    dcsr_n.ebreaku   = 1'b0;                            // ebreaku (implemented as WARL)
-                    dcsr_n.stepie    = csr_wdata_int[11];               // stepie
-                    dcsr_n.stopcount = 1'b0;                            // stopcount
-                    dcsr_n.stoptime  = 1'b0;                            // stoptime
-                    dcsr_n.mprven    = 1'b0;                            // mprven
-                    dcsr_n.step      = csr_wdata_int[2];
-                    dcsr_n.prv       = PRIV_LVL_M;                      // prv (implemendted as WARL)
-               end
-
-      CSR_DPC:
-               if (csr_we_int)
-               begin
-                    depc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
-               end
-
-      CSR_DSCRATCH0:
-               if (csr_we_int)
-               begin
-                    dscratch0_n = csr_wdata_int;
-               end
-
-      CSR_DSCRATCH1:
-               if (csr_we_int)
-               begin
-                    dscratch1_n = csr_wdata_int;
-               end
-
-    endcase
+              dcsr_we = 1'b1;
+        end
+        CSR_DPC: begin
+                dpc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
+                dpc_we = 1'b1;
+        end
+        CSR_DSCRATCH0: begin
+                dscratch0_n = csr_wdata_int;
+                dscratch0_we = 1'b1;
+        end
+        CSR_DSCRATCH1: begin
+                dscratch1_n = csr_wdata_int;
+                dscratch1_we = 1'b1;
+        end
+                
+      endcase
+    end
 
     // exception controller gets priority over other writes
     unique case (1'b1)
@@ -986,14 +534,22 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
             // mpstatus
             dcsr_n.prv   = PRIV_LVL_M;
             dcsr_n.cause = debug_cause_i;
-            depc_n       = exception_pc;
+            dcsr_we = 1'b1;
+
+            dpc_n       = exception_pc;
+            dpc_we = 1'b1;
         end else begin
             priv_lvl_n     = PRIV_LVL_M;
             mstatus_n.mpie = mstatus_q.mie;
             mstatus_n.mie  = 1'b0;
             mstatus_n.mpp  = PRIV_LVL_M;
+            mstatus_we = 1'b1;
+
             mepc_n = exception_pc;
-            mcause_n       = csr_cause_i;
+            mepc_we = 1'b1;
+
+            mcause_n       = {csr_cause_i[5], 26'd0, csr_cause_i[4:0]};
+            mcause_we = 1'b1;
         end
       end //csr_save_cause_i
 
@@ -1002,6 +558,7 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
         priv_lvl_n     = PRIV_LVL_M;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_M;
+        mstatus_we = 1'b1;
       end //csr_restore_mret_i
 
       csr_restore_dret_i: begin //DRET
@@ -1012,7 +569,7 @@ end else begin : gen_no_pulp_secure_write_logic //PULP_SECURE == 0
       default:;
     endcase
   end
-end //PULP_SECURE
+
 
   // CSR operation logic
   always_comb
@@ -1032,25 +589,182 @@ end //PULP_SECURE
     endcase
   end
 
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) dscratch0_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (dscratch0_n),
+    .wr_en_i    (dscratch0_we),
+    .rd_data_o  (dscratch0_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) dscratch1_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (dscratch1_n),
+    .wr_en_i    (dscratch1_we),
+    .rd_data_o  (dscratch1_q),
+    .rd_error_o ()
+  );
+
+  localparam Dcsr_t DCSR_RESET_VAL = '{
+      xdebugver : XDEBUGVER_STD,
+      cause:      DBG_CAUSE_NONE,
+      prv:        PRIV_LVL_M,
+      default:    '0}; 
+      
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (DCSR_RESET_VAL)
+  ) dcsr_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (dcsr_n),
+    .wr_en_i    (dcsr_we),
+    .rd_data_o  (dcsr_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) dpc_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (dpc_n),
+    .wr_en_i    (dpc_we),
+    .rd_data_o  (dpc_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) mepc_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mepc_n),
+    .wr_en_i    (mepc_we),
+    .rd_data_o  (mepc_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) mscratch_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mscratch_n),
+    .wr_en_i    (mscratch_we),
+    .rd_data_o  (mscratch_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) mie_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mie_n),
+    .wr_en_i    (mie_we),
+    .rd_data_o  (mie_q),
+    .rd_error_o ()
+  );
+
+  localparam Status_t MSTATUS_RESET_VAL = '{
+    hardwire0_0: 'b0, // Reserved, hardwired zero
+    mprv: 1'b0, // hardwired zero
+    hardwire0_1: 'b0, // Unimplemented, hardwired zero
+    mpp: PRIV_LVL_M, // Hardwire to 2'b11 when user mode is not enabled
+    hardwire0_2: 'b0,
+    mpie: 1'b0,
+    hardwire0_3: 'b0,
+    upie: 1'b0, // Tie to zero
+    mie: 1'b0,
+    hardwire0_4: 'b0, // Unimplemented, hardwired zero
+    uie: 1'b0, // Tie to zero when user mode is not enabled
+    default: 'b0
+  };
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (MSTATUS_RESET_VAL)
+  ) mstatus_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mstatus_n),
+    .wr_en_i    (mstatus_we),
+    .rd_data_o  (mstatus_q),
+    .rd_error_o ()
+  );
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) mcause_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mcause_n),
+    .wr_en_i    (mcause_we),
+    .rd_data_o  (mcause_q),
+    .rd_error_o ()
+  );
+
+  localparam Mtvec_t MTVEC_RESET_VAL = '{
+    base_rw: 'd0,
+    base_ro: 'd0,
+    mode:  MTVEC_MODE
+  };
+
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (MTVEC_RESET_VAL)
+  ) mtvec_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (mtvec_n),
+    .wr_en_i    (mtvec_we),
+    .rd_data_o  (mtvec_q),
+    .rd_error_o ()
+  );
+
   assign csr_rdata_o = csr_rdata_int;
 
   // directly output some registers
   assign m_irq_enable_o  = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
-  assign u_irq_enable_o  = mstatus_q.uie && !(dcsr_q.step && !dcsr_q.stepie);
+  assign u_irq_enable_o  = 1'b0;
   assign priv_lvl_o      = priv_lvl_q;
   assign sec_lvl_o       = priv_lvl_q[0];
 
-  assign mtvec_o         = mtvec_q;
+  assign mtvec_o         = mtvec_q.base_rw;
   assign utvec_o         = utvec_q;
-  assign mtvec_mode_o    = mtvec_mode_q;
+  assign mtvec_mode_o    = mtvec_q.mode;
   assign utvec_mode_o    = utvec_mode_q;
 
   assign mepc_o          = mepc_q;
   assign uepc_o          = uepc_q;
 
-  assign mcounteren_o    = PULP_SECURE ? mcounteren_q : '0;
+  assign mcounteren_o    = '0;
 
-  assign depc_o          = depc_q;
+  assign dpc_o          = dpc_q;
 
   assign pmp_addr_o     = pmp_reg_q.pmpaddr;
   assign pmp_cfg_o      = pmp_reg_q.pmpcfg;
@@ -1059,122 +773,17 @@ end //PULP_SECURE
   assign debug_ebreakm_o      = dcsr_q.ebreakm;
   assign debug_ebreaku_o      = dcsr_q.ebreaku;
 
-  generate
-  if (PULP_SECURE == 1)
-  begin : gen_pmp_user
+  
+  // Tieoff signals related to pulp_secure
+  assign pmp_reg_q    = '0;
+  assign uepc_q       = '0;
+  assign ucause_q     = '0;
+  assign utvec_q      = '0;
+  assign utvec_mode_q = '0;
+  assign priv_lvl_q   = PRIV_LVL_M;
+  
 
-    for(j=0;j<N_PMP_ENTRIES;j++)
-    begin : CS_PMP_CFG
-      assign pmp_reg_n.pmpcfg[j]                                 = pmp_reg_n.pmpcfg_packed[j/4][8*((j%4)+1)-1:8*(j%4)];
-      assign pmp_reg_q.pmpcfg_packed[j/4][8*((j%4)+1)-1:8*(j%4)] = pmp_reg_q.pmpcfg[j];
-    end
 
-    for(j=0;j<N_PMP_ENTRIES;j++)
-    begin : CS_PMP_REGS_FF
-      always_ff @(posedge clk, negedge rst_n)
-      begin
-          if (rst_n == 1'b0)
-          begin
-            pmp_reg_q.pmpcfg[j]   <= '0;
-            pmp_reg_q.pmpaddr[j]  <= '0;
-          end
-          else
-          begin
-            if(pmpcfg_we[j])
-              pmp_reg_q.pmpcfg[j]    <= USE_PMP ? pmp_reg_n.pmpcfg[j]  : '0;
-            if(pmpaddr_we[j])
-              pmp_reg_q.pmpaddr[j]   <= USE_PMP ? pmp_reg_n.pmpaddr[j] : '0;
-          end
-        end
-      end //CS_PMP_REGS_FF
-
-      always_ff @(posedge clk, negedge rst_n)
-      begin
-          if (rst_n == 1'b0)
-          begin
-            uepc_q         <= '0;
-            ucause_q       <= '0;
-            utvec_q        <= '0;
-            utvec_mode_q   <= MTVEC_MODE;
-            priv_lvl_q     <= PRIV_LVL_M;
-          end
-          else
-          begin
-            uepc_q         <= uepc_n;
-            ucause_q       <= ucause_n;
-            utvec_q        <= utvec_n;
-            utvec_mode_q   <= utvec_mode_n;
-            priv_lvl_q     <= priv_lvl_n;
-          end
-        end
-  end
-  else begin : gen_no_pmp_user
-        assign pmp_reg_q    = '0;
-        assign uepc_q       = '0;
-        assign ucause_q     = '0;
-        assign utvec_q      = '0;
-        assign utvec_mode_q = '0;
-        assign priv_lvl_q   = PRIV_LVL_M;
-  end
-  endgenerate
-
-  // actual registers
-  always_ff @(posedge clk, negedge rst_n)
-  begin
-    if (rst_n == 1'b0)
-    begin
-      mstatus_q  <= '{
-              uie:  1'b0,
-              mie:  1'b0,
-              upie: 1'b0,
-              mpie: 1'b0,
-              mpp:  PRIV_LVL_M,
-              mprv: 1'b0
-            };
-      mepc_q      <= '0;
-      mcause_q    <= '0;
-
-      depc_q      <= '0;
-      dcsr_q         <= '{
-          xdebugver: XDEBUGVER_STD,
-          cause:     DBG_CAUSE_NONE, // 3'h0
-          prv:       PRIV_LVL_M,
-          default:   '0
-      };
-      dscratch0_q  <= '0;
-      dscratch1_q  <= '0;
-      mscratch_q   <= '0;
-      mie_q        <= '0;
-      mtvec_q      <= '0;
-      mtvec_mode_q <= MTVEC_MODE;
-    end
-    else
-    begin
-      // update CSRs
-      if (PULP_SECURE == 1) begin
-        mstatus_q      <= mstatus_n ;
-      end else begin
-        mstatus_q  <= '{
-                uie:  1'b0,
-                mie:  mstatus_n.mie,
-                upie: 1'b0,
-                mpie: mstatus_n.mpie,
-                mpp:  PRIV_LVL_M,
-                mprv: 1'b0
-              };
-      end
-      mepc_q       <= mepc_n;
-      mcause_q     <= mcause_n;
-      depc_q       <= depc_n;
-      dcsr_q       <= dcsr_n;
-      dscratch0_q  <= dscratch0_n;
-      dscratch1_q  <= dscratch1_n;
-      mscratch_q   <= mscratch_n;
-      mie_q        <= mie_n;
-      mtvec_q      <= mtvec_n;
-      mtvec_mode_q <= mtvec_mode_n;
-    end
-  end
  ////////////////////////////////////////////////////////////////////////
  //  ____       _                   _____     _                        //
  // |  _ \  ___| |__  _   _  __ _  |_   _| __(_) __ _  __ _  ___ _ __  //
@@ -1184,71 +793,97 @@ end //PULP_SECURE
  //                         |___/               |___/ |___/            //
  ////////////////////////////////////////////////////////////////////////
 
-  if (DEBUG_TRIGGER_EN) begin : gen_trigger_regs
-    // Register values
-    logic        tmatch_control_exec_q;
-    logic [31:0] tmatch_value_q;
-    // Write enables
-    logic tmatch_control_we;
-    logic tmatch_value_we;
+  
+  // Register values
+  logic [31:0] tmatch_control_q, tmatch_control_n;
+  logic [31:0] tmatch_value_q, tmatch_value_n;
+  // Write enables
+  logic tmatch_control_we;
+  logic tmatch_value_we;
 
-    // Write select
-    assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA1);
-    assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA2);
+  // Write select
+  assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA1);
+  assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA2);
 
+  // All supported trigger types
+  assign tinfo_types = 1 << TTYPE_MCONTROL;
 
-    // Registers
-    always_ff @(posedge clk or negedge rst_n) begin
-      if (!rst_n) begin
-        tmatch_control_exec_q <= 'b0;
-        tmatch_value_q        <= 'b0;
-      end else begin
-        if(tmatch_control_we)
-          tmatch_control_exec_q <= csr_wdata_int[2];
-        if(tmatch_value_we)
-          tmatch_value_q        <= csr_wdata_int[31:0];
-     end
-    end
+  // Assign write data
+  // TDATA0 - only support simple address matching
+  assign tmatch_control_n =
+              {
+              TTYPE_MCONTROL,        // type    : address/data match
+              1'b1,                  // dmode   : access from D mode only
+              6'h00,                 // maskmax : exact match only
+              1'b0,                  // hit     : not supported
+              1'b0,                  // select  : address match only
+              1'b0,                  // timing  : match before execution
+              2'b00,                 // sizelo  : match any access
+              4'h1,                  // action  : enter debug mode
+              1'b0,                  // chain   : not supported
+              4'h0,                  // match   : simple match
+              1'b1,                  // m       : match in m-mode
+              1'b0,                  // 0       : zero
+              1'b0,                  // s       : not supported
+              1'b0,                  // u       : match in u-mode
+              csr_wdata_int[2],      // execute : match instruction address
+              1'b0,                  // store   : not supported
+              1'b0};                 // load    : not supported
 
-    // All supported trigger types
-    assign tinfo_types = 1 << TTYPE_MCONTROL;
+  localparam logic [31:0] TMATCH_CONTROL_RST_VAL = {
+    TTYPE_MCONTROL,        // type    : address/data match
+    1'b1,                  // dmode   : access from D mode only
+    6'h00,                 // maskmax : exact match only
+    1'b0,                  // hit     : not supported
+    1'b0,                  // select  : address match only
+    1'b0,                  // timing  : match before execution
+    2'b00,                 // sizelo  : match any access
+    4'h1,                  // action  : enter debug mode
+    1'b0,                  // chain   : not supported
+    4'h0,                  // match   : simple match
+    1'b1,                  // m       : match in m-mode
+    1'b0,                  // 0       : zero
+    1'b0,                  // s       : not supported
+    1'b0,                  // u       : match in u-mode
+    1'b0,      // execute : match instruction address
+    1'b0,                  // store   : not supported
+    1'b0};                 // load    : not supported  
 
-    // Assign read data
-    // TDATA0 - only support simple address matching
-    assign tmatch_control_rdata =
-               {
-                TTYPE_MCONTROL,        // type    : address/data match
-                1'b1,                  // dmode   : access from D mode only
-                6'h00,                 // maskmax : exact match only
-                1'b0,                  // hit     : not supported
-                1'b0,                  // select  : address match only
-                1'b0,                  // timing  : match before execution
-                2'b00,                 // sizelo  : match any access
-                4'h1,                  // action  : enter debug mode
-                1'b0,                  // chain   : not supported
-                4'h0,                  // match   : simple match
-                1'b1,                  // m       : match in m-mode
-                1'b0,                  // 0       : zero
-                1'b0,                  // s       : not supported
-                PULP_SECURE==1,        // u       : match in u-mode
-                tmatch_control_exec_q, // execute : match instruction address
-                1'b0,                  // store   : not supported
-                1'b0};                 // load    : not supported
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (TMATCH_CONTROL_RST_VAL)
+  ) tmatch_control_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (tmatch_control_n),
+    .wr_en_i    (tmatch_control_we),
+    .rd_data_o  (tmatch_control_q),
+    .rd_error_o ()
+  );   
+  
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) tmatch_value_csr_i (
+    .clk_i      (clk),
+    .rst_ni     (rst_n),
+    .wr_data_i  (csr_wdata_int),
+    .wr_en_i    (tmatch_value_we),
+    .rd_data_o  (tmatch_value_q),
+    .rd_error_o ()
+  );  
+  
+  assign tmatch_control_rdata = tmatch_control_q;
+  // TDATA1 - address match value only
+  assign tmatch_value_rdata = tmatch_value_q;
 
-    // TDATA1 - address match value only
-    assign tmatch_value_rdata = tmatch_value_q;
+  // Breakpoint matching
+  // We match against the next address, as the breakpoint must be taken before execution
+  assign trigger_match_o = tmatch_control_q[2] &
+                            (pc_id_i[31:0] == tmatch_value_q[31:0]);
 
-    // Breakpoint matching
-    // We match against the next address, as the breakpoint must be taken before execution
-    assign trigger_match_o = tmatch_control_exec_q &
-                              (pc_id_i[31:0] == tmatch_value_q[31:0]);
-
-  end else begin : gen_no_trigger_regs
-    assign tinfo_types          = 'b0;
-    assign tmatch_control_rdata = 'b0;
-    assign tmatch_value_rdata   = 'b0;
-    assign trigger_match_o      = 'b0;
-  end
 
   /////////////////////////////////////////////////////////////////
   //   ____            __     ____                  _            //
@@ -1333,10 +968,7 @@ end //PULP_SECURE
       mcountinhibit_n = mcountinhibit_q;
       mhpmevent_n     = mhpmevent_q;
 
-      // User Mode Enable
-      if(PULP_SECURE && mcounteren_we)
-        mcounteren_n = csr_wdata_int;
-
+      
       // Inhibit Control
       if(mcountinhibit_we)
         mcountinhibit_n = csr_wdata_int;
@@ -1358,34 +990,28 @@ end //PULP_SECURE
                                                   csr_we_int && (csr_addr_i == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
 
       // Increment counter
-      if (!PULP_PERF_COUNTERS) begin : gen_no_pulp_perf_counters
-        if (wcnt_gidx == 0) begin : gen_mhpmcounter_mcycle
-          // mcycle = mhpmcounter[0] : count every cycle (if not inhibited)
-          assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                          !mhpmcounter_write_upper[wcnt_gidx] &&
-                                                          !mcountinhibit_q[wcnt_gidx];
-        end else if (wcnt_gidx == 2) begin : gen_mhpmcounter_minstret
-          // minstret = mhpmcounter[2]  : count every retired instruction (if not inhibited)
-          assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                          !mhpmcounter_write_upper[wcnt_gidx] &&
-                                                          !mcountinhibit_q[wcnt_gidx] &&
-                                                          hpm_events[1];
-        end else if( (wcnt_gidx>2) && (wcnt_gidx<(NUM_MHPMCOUNTERS+3))) begin : gen_mhpmcounter
-          // add +1 if any event is enabled and active
-          assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                          !mhpmcounter_write_upper[wcnt_gidx] &&
-                                                          !mcountinhibit_q[wcnt_gidx] &&
-                                                          |(hpm_events & mhpmevent_q[wcnt_gidx][NUM_HPM_EVENTS-1:0]);
-        end else begin : gen_mhpmcounter_not_implemented
-          assign mhpmcounter_write_increment[wcnt_gidx] = 1'b0;
-        end
-      end else begin : gen_pulp_perf_counters
-        // PULP PERF COUNTERS share all events in one register (not compliant with RISC-V)
+      
+      if (wcnt_gidx == 0) begin : gen_mhpmcounter_mcycle
+        // mcycle = mhpmcounter[0] : count every cycle (if not inhibited)
+        assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
+                                                        !mhpmcounter_write_upper[wcnt_gidx] &&
+                                                        !mcountinhibit_q[wcnt_gidx];
+      end else if (wcnt_gidx == 2) begin : gen_mhpmcounter_minstret
+        // minstret = mhpmcounter[2]  : count every retired instruction (if not inhibited)
+        assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
+                                                        !mhpmcounter_write_upper[wcnt_gidx] &&
+                                                        !mcountinhibit_q[wcnt_gidx] &&
+                                                        hpm_events[1];
+      end else if( (wcnt_gidx>2) && (wcnt_gidx<(NUM_MHPMCOUNTERS+3))) begin : gen_mhpmcounter
+        // add +1 if any event is enabled and active
         assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
                                                         !mhpmcounter_write_upper[wcnt_gidx] &&
                                                         !mcountinhibit_q[wcnt_gidx] &&
                                                         |(hpm_events & mhpmevent_q[wcnt_gidx][NUM_HPM_EVENTS-1:0]);
+      end else begin : gen_mhpmcounter_not_implemented
+        assign mhpmcounter_write_increment[wcnt_gidx] = 1'b0;
       end
+       
     end
   endgenerate
 
@@ -1409,17 +1035,15 @@ end //PULP_SECURE
           if (!rst_n) begin
             mhpmcounter_q[cnt_gidx] <= 'b0;
           end else begin
-            if (PULP_PERF_COUNTERS && (cnt_gidx == 2 || cnt_gidx == 0)) begin
-              mhpmcounter_q[cnt_gidx] <= 'b0;
-            end else begin
-              if (mhpmcounter_write_lower[cnt_gidx]) begin
-                mhpmcounter_q[cnt_gidx][31:0] <= csr_wdata_int;
-              end else if (mhpmcounter_write_upper[cnt_gidx]) begin
-                mhpmcounter_q[cnt_gidx][63:32] <= csr_wdata_int;
-              end else if (mhpmcounter_write_increment[cnt_gidx]) begin
-                mhpmcounter_q[cnt_gidx] <= mhpmcounter_increment[cnt_gidx];
-              end
+            
+            if (mhpmcounter_write_lower[cnt_gidx]) begin
+              mhpmcounter_q[cnt_gidx][31:0] <= csr_wdata_int;
+            end else if (mhpmcounter_write_upper[cnt_gidx]) begin
+              mhpmcounter_q[cnt_gidx][63:32] <= csr_wdata_int;
+            end else if (mhpmcounter_write_increment[cnt_gidx]) begin
+              mhpmcounter_q[cnt_gidx] <= mhpmcounter_increment[cnt_gidx];
             end
+            
           end
       end
     end
@@ -1452,19 +1076,9 @@ end //PULP_SECURE
   genvar en_gidx;
   generate
     for (en_gidx = 0; en_gidx < 32; en_gidx++) begin : gen_mcounteren
-      if( (PULP_SECURE == 0) ||
-          (en_gidx == 1) ||
-          (en_gidx >= (NUM_MHPMCOUNTERS+3) ) )
-        begin : gen_non_implemented
+      
         assign mcounteren_q[en_gidx] = 'b0;
-      end
-      else begin : gen_implemented
-        always_ff @(posedge clk, negedge rst_n)
-          if (!rst_n)
-            mcounteren_q[en_gidx] <= 'b0; // default disable
-          else
-            mcounteren_q[en_gidx] <= mcounteren_n[en_gidx];
-      end
+      
     end
   endgenerate
 

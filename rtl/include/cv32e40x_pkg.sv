@@ -503,6 +503,55 @@ parameter MVENDORID_BANK = 25'hC;       // Number of continuation codes
 // Machine Architecture ID (https://github.com/riscv/riscv-isa-manual/blob/master/marchid.md)
 parameter MARCHID = 32'h4;
 
+// Types for packed struct CSRs
+typedef struct packed {
+  logic [31:18] hardwire0_0; // Reserved, hardwired zero
+  logic         mprv; // hardwired zero
+  logic [16:13] hardwire0_1; // Unimplemented, hardwired zero
+  logic [12:11] mpp; // Hardwire to 2'b11 when user mode is not enabled
+  logic [10:8]  hardwire0_2;
+  logic         mpie;
+  logic [6:5]   hardwire0_3;
+  logic         upie; // Tie to zero
+  logic         mie;
+  logic [2:1]   hardwire0_4; // Unimplemented, hardwired zero
+  logic         uie; // Tie to zero when user mode is not enabled
+
+} Status_t;
+
+typedef struct packed{
+    logic [31:28] xdebugver;
+    logic [27:16] zero2;
+    logic         ebreakm;
+    logic         zero1;
+    logic         ebreaks;
+    logic         ebreaku;
+    logic         stepie;
+    logic         stopcount;
+    logic         stoptime;
+    logic [8:6]   cause;
+    logic         zero0;
+    logic         mprven;
+    logic         nmip;
+    logic         step;
+    PrivLvl_t     prv;
+} Dcsr_t;
+
+typedef struct packed {
+  logic           interrupt;
+  logic [30:5]    hardwire0;
+  logic [4:0]     exception_code;
+} Mcause_t;
+
+typedef struct packed {
+  logic [31:8] base_rw;
+  logic [7:2]  base_ro;
+  logic [1:0]  mode;
+} Mtvec_t;
+
+
+
+
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //
 //  |_ _|  _ \  / ___|| |_ __ _  __ _  ___   //
