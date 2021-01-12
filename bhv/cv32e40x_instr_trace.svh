@@ -116,43 +116,6 @@
         INSTR_SRA:        this.printRInstr("sra");
         INSTR_OR:         this.printRInstr("or");
         INSTR_AND:        this.printRInstr("and");
-        INSTR_EXTHS:      this.printRInstr("p.exths");
-        INSTR_EXTHZ:      this.printRInstr("p.exthz");
-        INSTR_EXTBS:      this.printRInstr("p.extbs");
-        INSTR_EXTBZ:      this.printRInstr("p.extbz");
-        INSTR_PAVG:       this.printRInstr("p.avg");
-        INSTR_PAVGU:      this.printRInstr("p.avgu");
-
-        INSTR_PSLET:      this.printRInstr("p.slet");
-        INSTR_PSLETU:     this.printRInstr("p.sletu");
-        INSTR_PMIN:       this.printRInstr("p.min");
-        INSTR_PMINU:      this.printRInstr("p.minu");
-        INSTR_PMAX:       this.printRInstr("p.max");
-        INSTR_PMAXU:      this.printRInstr("p.maxu");
-        INSTR_PABS:       this.printR1Instr("p.abs");
-        INSTR_PCLIP:      this.printClipInstr("p.clip");
-        INSTR_PCLIPU:     this.printClipInstr("p.clipu");
-        INSTR_PBEXT:      this.printBit1Instr("p.extract");
-        INSTR_PBEXTU:     this.printBit1Instr("p.extractu");
-        INSTR_PBINS:      this.printBit2Instr("p.insert");
-        INSTR_PBCLR:      this.printBit1Instr("p.bclr");
-        INSTR_PBSET:      this.printBit1Instr("p.bset");
-        INSTR_PBREV:      this.printBitRevInstr("p.bitrev");
-
-        INSTR_PCLIPR:     this.printRInstr("p.clipr");
-        INSTR_PCLIPUR:    this.printRInstr("p.clipur");
-        INSTR_PBEXTR:     this.printRInstr("p.extractr");
-        INSTR_PBEXTUR:    this.printRInstr("p.extractur");
-        INSTR_PBINSR:     this.printR3Instr("p.insertr");
-        INSTR_PBCLRR:     this.printRInstr("p.bclrr");
-        INSTR_PBSETR:     this.printRInstr("p.bsetr");
-
-
-        INSTR_FF1:        this.printR1Instr("p.ff1");
-        INSTR_FL1:        this.printR1Instr("p.fl1");
-        INSTR_CLB:        this.printR1Instr("p.clb");
-        INSTR_CNT:        this.printR1Instr("p.cnt");
-        INSTR_ROR:        this.printRInstr("p.ror");
 
         // FENCE
         INSTR_FENCE:      this.printMnemonic("fence");
@@ -182,9 +145,6 @@
         INSTR_DIVU:       this.printRInstr("divu");
         INSTR_REM:        this.printRInstr("rem");
         INSTR_REMU:       this.printRInstr("remu");
-        // PULP MULTIPLIER
-        INSTR_PMAC:       this.printR3Instr("p.mac");
-        INSTR_PMSU:       this.printR3Instr("p.msu");
 
         // FP-OP
         INSTR_FMADD:      this.printF3Instr("fmadd.s");
