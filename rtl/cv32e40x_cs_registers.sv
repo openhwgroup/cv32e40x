@@ -159,7 +159,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     logic  [MAX_N_PMP_CFG-1:0]     [31:0] pmpcfg_packed;
     logic  [MAX_N_PMP_ENTRIES-1:0] [ 7:0] pmpcfg;
    } Pmp_t;
-Vet ikk
+
 
   // CSR update logic
   logic [31:0] csr_wdata_int;
