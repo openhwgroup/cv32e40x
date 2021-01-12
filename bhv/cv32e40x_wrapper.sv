@@ -101,10 +101,6 @@ module cv32e40x_wrapper
 
     cv32e40x_core_log
      #(
-          .PULP_XPULP            ( 0 ),
-          .PULP_CLUSTER          ( 0 ),
-          .FPU                   ( 0 ),
-          .PULP_ZFINX            ( 0 ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
