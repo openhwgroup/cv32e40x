@@ -90,6 +90,11 @@ module cv32e40x_wrapper
       prefetch_controller_sva (
           .hwlp_jump_i('0),
           .hwlp_target_i('0),
+          .hwlp_wait_resp_flush('0),
+          .hwlp_flush_after_resp('0),
+          .hwlp_flush_cnt_delayed_q('0),
+          .hwlp_flush_resp_delayed('0),
+          .hwlp_flush_resp('0),
           .*);
 
 `endif // CV32E40P_ASSERT_ON
@@ -140,6 +145,11 @@ module cv32e40x_wrapper
       .rs3_value      ( core_i.id_stage_i.alu_operand_c             ),
       .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b             ),
 
+      .rs1_is_fp('0),
+      .rs2_is_fp('0),
+      .rs3_is_fp('0),
+      .rd_is_fp('0),
+
       .ex_valid       ( core_i.ex_valid                             ),
       .ex_reg_addr    ( core_i.regfile_alu_waddr_fw                 ),
       .ex_reg_we      ( core_i.regfile_alu_we_fw                    ),
@@ -182,10 +192,6 @@ module cv32e40x_wrapper
     // instantiate the core
     cv32e40x_core
         #(
-          .PULP_XPULP            ( 0 ),
-          .PULP_CLUSTER          ( 0 ),
-          .FPU                   ( 0 ),
-          .PULP_ZFINX            ( 0 ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_i (.*);
 

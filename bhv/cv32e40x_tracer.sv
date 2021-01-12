@@ -59,7 +59,7 @@ module cv32e40x_tracer
   input  logic        rs3_is_fp,
 
   input  logic        ex_valid,
-  input  logic [ 5:0] ex_reg_addr,
+  input  logic [ 4:0] ex_reg_addr,
   input  logic        ex_reg_we,
   input  logic [31:0] ex_reg_wdata,
 
@@ -77,7 +77,7 @@ module cv32e40x_tracer
   input  logic        wb_bypass,
 
   input  logic        wb_valid,
-  input  logic [ 5:0] wb_reg_addr,
+  input  logic [ 4:0] wb_reg_addr,
   input  logic        wb_reg_we,
   input  logic [31:0] wb_reg_wdata,
 
