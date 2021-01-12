@@ -47,16 +47,6 @@ Instantiation Template
       .data_we_o                (),
       .data_rdata_i             (),
 
-      // Auxiliary Processing Unit (APU) interface
-      .apu_req_o                (),
-      .apu_gnt_i                (),
-      .apu_operands_o           (),
-      .apu_op_o                 (),
-      .apu_flags_o              (),
-      .apu_rvalid_i             (),
-      .apu_result_i             (),
-      .apu_flags_i              (),
-
        // Interrupt interface
       .irq_i                    (),
       .irq_ack_o                (),
@@ -158,8 +148,6 @@ Interfaces
 | ``instr_*``             | Instruction fetch interface, see :ref:`instruction-fetch`                  |
 +-------------------------+----------------------------------------------------------------------------+
 | ``data_*``              | Load-store unit interface, see :ref:`load-store-unit`                      |
-+-------------------------+----------------------------------------------------------------------------+
-| ``apu_*``               | Auxiliary Processing Unit (APU) interface, see :ref:`apu`                  |
 +-------------------------+----------------------------------------------------------------------------+
 | ``irq_*``               | Interrupt inputs, see :ref:`exceptions-interrupts`                         |
 +-------------------------+----------------------------------------------------------------------------+

@@ -166,10 +166,8 @@ Contents
  * :ref:`pipeline-details` described the overal pipeline structure.
  * The instruction and data interfaces of CV32E40P are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
  * The two register-file flavors are described in :ref:`register-file`.
- * :ref:`apu` describes the Auxiliary Processing Unit (APU).
  * :ref:`fpu` describes the Floating Point Unit (FPU).
  * :ref:`sleep_unit` describes the Sleep unit including the PULP Cluster extension.
- * :ref:`hwloop-specs` describes the PULP Hardware Loop extension.
  * The control and status registers are explained in :ref:`cs-registers`.
  * :ref:`performance-counters` gives an overview of the performance monitors and event counters available in CV32E40P.
  * :ref:`exceptions-interrupts` deals with the infrastructure for handling exceptions and interrupts.

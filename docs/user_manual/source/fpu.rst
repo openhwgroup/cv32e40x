@@ -6,8 +6,6 @@ Floating Point Unit (FPU)
 The RV32F ISA extension for floating-point support in the form of IEEE-754 single
 precision can be enabled by setting the parameter **FPU** of the toplevel file
 ``cv32e40p_core.sv`` to 1. This will extend the CV32E40P decoder accordingly.
-The actual Floating Point Unit (FPU) is instantiated outside the
-CV32E40P and is accessed via the APU interface (see :ref:`apu`).
 The FPU repository used by the CV32E40P core is available at
 https://github.com/pulp-platform/fpnew.
 In the core repository, a wrapper showing how the FPU is connected
