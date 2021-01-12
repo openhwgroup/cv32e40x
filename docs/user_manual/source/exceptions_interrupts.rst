@@ -90,7 +90,7 @@ CV32E40P can trigger an exception due to the following exception causes:
 
 The illegal instruction exception and M-Mode ECALL instruction exceptions cannot be disabled and are always active.
 The core raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding is configured as a custom CV32E40P instruction for specific parameter settings as defined in (see :ref:custom-isa-extensions).
-For example, in case the parameter FPU is set to 0, the CV32E40P raises an illegal instruction exception for any RVF instruction. The same concerns for XPULP extensions everytime the parameter PULP_XPULP is set to 0 (see :ref:core-integration).
+For example, in case the parameter FPU is set to 0, the CV32E40P raises an illegal instruction exception for any RVF instruction.
 
 .. only:: PMP
 

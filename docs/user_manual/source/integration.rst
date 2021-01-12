@@ -13,10 +13,7 @@ Instantiation Template
 
   cv32e40p_core #(
       .FPU                      ( 0 ),
-      .NUM_MHPMCOUNTERS         ( 1 ),
-      .PULP_CLUSTER             ( 0 ),
-      .PULP_XPULP               ( 0 ),
-      .PULP_ZFINX               ( 0 )
+      .NUM_MHPMCOUNTERS         ( 1 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -60,22 +57,14 @@ Instantiation Template
 
       // Special control signals
       .fetch_enable_i           (),
-      .core_sleep_o             (),
-      .pulp_clock_en_i          ()
+      .core_sleep_o             ()
   );
 
 Parameters
 ----------
 
 .. note::
-   The non-default (i.e. non-zero) settings of ``FPU``, ``PULP_CLUSTER``, ``PULP_XPULP`` and ``PULP_ZFINX`` have not
-   been verified yet. The default parameter value for ``PULP_XPULP`` will be changed to 1 once it has been verified.
-   The default configuration reflected below is currently under verification and this verification effort will be
-   completed first.
-
-.. note::
-   The instruction encodings for the PULP instructions is expected to change in a non-backward-compatible manner, 
-   see https://github.com/openhwgroup/cv32e40p/issues/452.
+   The non-default (i.e. non-zero) settings of ``FPU`` have not been verified yet.
 
 +------------------------------+-------------+------------+------------------------------------------------------------------+
 | Name                         | Type/Range  | Default    | Description                                                      |
@@ -84,23 +73,6 @@ Parameters
 +------------------------------+-------------+------------+------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``         | int (0..29) | 1          | Number of MHPMCOUNTER performance counters, see                  |
 |                              |             |            | :ref:`performance-counters`                                      |
-+------------------------------+-------------+------------+------------------------------------------------------------------+
-| ``PULP_CLUSTER``             | bit         | 0          | Enable PULP Cluster support, see :ref:`pulp_cluster`             |
-+------------------------------+-------------+------------+------------------------------------------------------------------+
-| ``PULP_XPULP``               | bit         | 0          | Enable all of the custom PULP ISA extensions (except **cv.elw**) |
-|                              |             |            | (see :ref:`custom-isa-extensions`) and all custom CSRs           |
-|                              |             |            | (see :ref:`cs-registers`).                                       |
-|                              |             |            |                                                                  |
-|                              |             |            | Examples of PULP ISA                                             |
-|                              |             |            | extensions are post-incrementing load and stores                 |
-|                              |             |            | (see :ref:`corev_load_store`) and hardware loops                 |
-|                              |             |            | (see :ref:`corev_hardware_loop`).                                |
-|                              |             |            |                                                                  |
-+------------------------------+-------------+------------+------------------------------------------------------------------+
-| ``PULP_ZFINX``               | bit         | 0          | Enable Floating Point instructions to use the General Purpose    |
-|                              |             |            | register file instead of requiring a dedicated Floating Point    |
-|                              |             |            | register file, see :ref:`fpu`. Only allowed to be set to 1       |
-|                              |             |            | if ``FPU`` = 1                                                   |
 +------------------------------+-------------+------------+------------------------------------------------------------------+
 
 Interfaces
@@ -142,8 +114,7 @@ Interfaces
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``hart_id_i``           | 32                      | in  | Hart ID, usually static, can be read from  |
-|                         |                         |     | :ref:`csr-mhartid` and :ref:`csr-uhartid`  |
-|                         |                         |     | CSRs                                       |
+|                         |                         |     | :ref:`csr-mhartid` CSR                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``instr_*``             | Instruction fetch interface, see :ref:`instruction-fetch`                  |
 +-------------------------+----------------------------------------------------------------------------+
@@ -163,8 +134,4 @@ Interfaces
 |                         |                         |     | ``fetch_enable_i`` is ignored.             |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``core_sleep_o``        | 1                       | out | Core is sleeping, see :ref:`sleep_unit`.   |
-+-------------------------+-------------------------+-----+--------------------------------------------+
-| ``pulp_clock_en_i``     | 1                       | in  | PULP clock enable (only used when          |
-|                         |                         |     | ``PULP_CLUSTER`` = 1, tie to 0 otherwise), |
-|                         |                         |     | see :ref:`sleep_unit`                      |
 +-------------------------+-------------------------+-----+--------------------------------------------+

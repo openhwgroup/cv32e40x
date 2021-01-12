@@ -81,27 +81,6 @@ In addition, the following standard instruction set extensions are available.
      - 2.2
      - optionally enabled based on ``FPU`` parameter
 
-The following custom instruction set extensions are available.
-
-.. list-table:: CV32E40P Custom Instruction Set Extensions
-   :header-rows: 1
-
-   * - Custom Extension
-     - Version
-     - Configurability
-
-   * - **Xcorev**: CORE-V ISA Extensions (excluding **cv.elw**)
-     - 1.0
-     - optionally enabled based on ``PULP_XPULP`` parameter
-
-   * - **Xpulpcluster**: PULP Cluster Extension
-     - 1.0
-     - optionally enabled based on ``PULP_CLUSTER`` parameter
-
-   * - **Xpulpzfinx**: PULP Share Integer (X) Registers with Floating Point (F) Register Extension
-     - 1.0
-     - optionally enabled based on ``PULP_ZFINX`` parameter
-
 Most content of the RISC-V privileged specification is optional.
 CV32E40P currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
 
@@ -167,7 +146,7 @@ Contents
  * The instruction and data interfaces of CV32E40P are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
  * The two register-file flavors are described in :ref:`register-file`.
  * :ref:`fpu` describes the Floating Point Unit (FPU).
- * :ref:`sleep_unit` describes the Sleep unit including the PULP Cluster extension.
+ * :ref:`sleep_unit` describes the Sleep unit.
  * The control and status registers are explained in :ref:`cs-registers`.
  * :ref:`performance-counters` gives an overview of the performance monitors and event counters available in CV32E40P.
  * :ref:`exceptions-interrupts` deals with the infrastructure for handling exceptions and interrupts.
