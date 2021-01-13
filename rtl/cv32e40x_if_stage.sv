@@ -71,7 +71,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic [31:0] mepc_i,                // address used to restore PC when the interrupt/exception is served
     input  logic [31:0] uepc_i,                // address used to restore PC when the interrupt/exception is served
 
-    input  logic [31:0] depc_i,                // address used to restore PC when the debug is served
+    input  logic [31:0] dpc_i,                // address used to restore PC when the debug is served
 
     input  pc_mux_e     pc_mux_i,              // sel for pc multiplexer
     input  exc_pc_mux_e exc_pc_mux_i,          // selects ISR address
@@ -156,7 +156,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_URET:      branch_addr_n = uepc_i; // PC is restored when returning from IRQ/exception
-      PC_DRET:      branch_addr_n = depc_i; //
+      PC_DRET:      branch_addr_n = dpc_i; //
       PC_FENCEI:    branch_addr_n = pc_id_o + 4; // jump to next instr forces prefetch buffer reload
       default:;
     endcase

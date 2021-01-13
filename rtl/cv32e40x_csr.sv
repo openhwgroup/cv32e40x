@@ -12,8 +12,8 @@ module cv32e40x_csr #(
     parameter bit             SHADOWCOPY = 1'b0,
     parameter bit [WIDTH-1:0] RESETVALUE = '0
  ) (
-    input  logic             clk_i,
-    input  logic             rst_ni,
+    input  logic             clk,
+    input  logic             rst_n,
 
     input  logic [WIDTH-1:0] wr_data_i,
     input  logic             wr_en_i,
@@ -24,8 +24,8 @@ module cv32e40x_csr #(
 
   logic [WIDTH-1:0] rdata_q;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
       rdata_q <= RESETVALUE;
     end else if (wr_en_i) begin
       rdata_q <= wr_data_i;
@@ -37,8 +37,8 @@ module cv32e40x_csr #(
   if (SHADOWCOPY) begin : gen_shadow
     logic [WIDTH-1:0] shadow_q;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
         shadow_q <= ~RESETVALUE;
       end else if (wr_en_i) begin
         shadow_q <= ~wr_data_i;

@@ -41,8 +41,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Hart ID
   input  logic [31:0]     hart_id_i,
-  output logic [23:0]     mtvec_o,
-  output logic [23:0]     utvec_o,
+  output logic [23:0]     mtvec_addr_o,
+  output logic [23:0]     utvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
   output logic  [1:0]     utvec_mode_o,
 
@@ -116,42 +116,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                 mhpmevent_ld_stall_i
 );
 
-  localparam NUM_HPM_EVENTS    =   16;
-
-  localparam MTVEC_MODE        = 2'b01;
-
-  localparam MAX_N_PMP_ENTRIES = 16;
-  localparam MAX_N_PMP_CFG     =  4;
   localparam N_PMP_CFG         = N_PMP_ENTRIES % 4 == 0 ? N_PMP_ENTRIES/4 : N_PMP_ENTRIES/4 + 1;
-
-  localparam MSTATUS_UIE_BIT      = 0;
-  localparam MSTATUS_SIE_BIT      = 1;
-  localparam MSTATUS_MIE_BIT      = 3;
-  localparam MSTATUS_UPIE_BIT     = 4;
-  localparam MSTATUS_SPIE_BIT     = 5;
-  localparam MSTATUS_MPIE_BIT     = 7;
-  localparam MSTATUS_SPP_BIT      = 8;
-  localparam MSTATUS_MPP_BIT_HIGH = 12;
-  localparam MSTATUS_MPP_BIT_LOW  = 11;
-  localparam MSTATUS_MPRV_BIT     = 17;
-
-  // misa
-  localparam logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
   localparam logic [31:0] MISA_VALUE =
-      (32'(A_EXTENSION)                <<  0)  // A - Atomic Instructions extension
-    | (1                               <<  2)  // C - Compressed extension
-    | (0                               <<  3)  // D - Double precision floating-point extension
-    | (0                               <<  4)  // E - RV32E base ISA
-    | (32'(0)                          <<  5)  // F - Single precision floating-point extension
-    | (1                               <<  8)  // I - RV32I/64I/128I base ISA
-    | (1                               << 12)  // M - Integer Multiply/Divide extension
-    | (0                               << 13)  // N - User level interrupts supported
-    | (0                               << 18)  // S - Supervisor mode implemented
-    | (0                               << 20)  // U - User mode implemented
-    | (32'(0)                          << 23)  // X - Non-standard extensions present
-    | (32'(MXL)                        << 30); // M-XLEN
-
-  localparam MHPMCOUNTER_WIDTH  = 64;
+  (32'(A_EXTENSION)                     <<  0)  // A - Atomic Instructions extension
+| (32'(1)                               <<  2)  // C - Compressed extension
+| (32'(0)                               <<  3)  // D - Double precision floating-point extension
+| (32'(0)                               <<  4)  // E - RV32E base ISA
+| (32'(0)                               <<  5)  // F - Single precision floating-point extension
+| (32'(1)                               <<  8)  // I - RV32I/64I/128I base ISA
+| (32'(1)                               << 12)  // M - Integer Multiply/Divide extension
+| (32'(0)                               << 13)  // N - User level interrupts supported
+| (32'(0)                               << 18)  // S - Supervisor mode implemented
+| (32'(0)                               << 20)  // U - User mode implemented
+| (32'(0)                          << 23)  // X - Non-standard extensions present
+| (32'(MXL)                        << 30); // M-XLEN
 
 
   typedef struct packed {
@@ -169,6 +147,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Interrupt control signals
   logic [31:0] mepc_q, mepc_n;
   logic mepc_we;
+  logic mepc_rd_error;
   logic [31:0] uepc_q, uepc_n;
 
   // Trigger
@@ -178,31 +157,42 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Debug
   Dcsr_t       dcsr_q, dcsr_n;
   logic dcsr_we;
+  logic dcsr_rd_error;
   logic [31:0] dpc_q, dpc_n;
   logic dpc_we;
+  logic dpc_rd_error;
+
   logic [31:0] dscratch0_q, dscratch0_n;
   logic dscratch0_we, dscratch1_we;
+  logic dscratch0_rd_error, dscratch1_rd_error;
   logic [31:0] dscratch1_q, dscratch1_n;
 
   logic [31:0] mscratch_q, mscratch_n;
   logic mscratch_we;
+  logic mscratch_rd_error;
 
   logic [31:0] exception_pc;
   Status_t mstatus_q, mstatus_n;
   logic mstatus_we;
+  logic mstatus_rd_error;
 
   Mcause_t mcause_q, mcause_n;
   logic mcause_we;
+  logic mcause_rd_error;
+
   logic [ 5:0] ucause_q, ucause_n;
   
   Mtvec_t mtvec_n, mtvec_q;
   logic mtvec_we;
+  logic mtvec_rd_error;
+
   logic [23:0] utvec_n, utvec_q;
   logic [ 1:0] utvec_mode_n, utvec_mode_q;
 
   logic [31:0] mip;                     // Bits are masked according to IRQ_MASK
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
   logic mie_we;
+  logic mie_rd_error;
 
   logic [31:0] csr_mie_wdata;
   logic        csr_mie_we;
@@ -321,13 +311,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                csr_rdata_int = tinfo_types;
 
       CSR_DCSR:
-               csr_rdata_int = dcsr_q;//
+               csr_rdata_int = dcsr_q;
       CSR_DPC:
                csr_rdata_int = dpc_q;
       CSR_DSCRATCH0:
-               csr_rdata_int = dscratch0_q;//
+               csr_rdata_int = dscratch0_q;
       CSR_DSCRATCH1:
-               csr_rdata_int = dscratch1_q;//
+               csr_rdata_int = dscratch1_q;
 
       // Hardware Performance Monitor
       CSR_MCYCLE,
@@ -423,7 +413,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
     mtvec_n.base_rw          = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.base_rw;
-    mtvec_n.base_ro          = mtvec_q.base_ro;
+    mtvec_n.zero0            = mtvec_q.zero0;
     mtvec_n.mode             = mtvec_q.mode;
     mtvec_we                 = csr_mtvec_init_i;
 
@@ -593,12 +583,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dscratch0_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (dscratch0_n),
     .wr_en_i    (dscratch0_we),
     .rd_data_o  (dscratch0_q),
-    .rd_error_o ()
+    .rd_error_o (dscratch0_rd_error)
   );
 
   cv32e40x_csr #(
@@ -606,31 +596,25 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dscratch1_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (dscratch1_n),
     .wr_en_i    (dscratch1_we),
     .rd_data_o  (dscratch1_q),
-    .rd_error_o ()
+    .rd_error_o (dscratch1_rd_error)
   );
 
-  localparam Dcsr_t DCSR_RESET_VAL = '{
-      xdebugver : XDEBUGVER_STD,
-      cause:      DBG_CAUSE_NONE,
-      prv:        PRIV_LVL_M,
-      default:    '0}; 
-      
-  cv32e40x_csr #(
+ cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
     .RESETVALUE (DCSR_RESET_VAL)
   ) dcsr_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (dcsr_n),
     .wr_en_i    (dcsr_we),
     .rd_data_o  (dcsr_q),
-    .rd_error_o ()
+    .rd_error_o (dcsr_rd_error)
   );
 
   cv32e40x_csr #(
@@ -638,12 +622,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dpc_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (dpc_n),
     .wr_en_i    (dpc_we),
     .rd_data_o  (dpc_q),
-    .rd_error_o ()
+    .rd_error_o (dpc_rd_error)
   );
 
   cv32e40x_csr #(
@@ -651,12 +635,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mepc_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mepc_n),
     .wr_en_i    (mepc_we),
     .rd_data_o  (mepc_q),
-    .rd_error_o ()
+    .rd_error_o (mepc_rd_error)
   );
 
   cv32e40x_csr #(
@@ -664,12 +648,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mscratch_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mscratch_n),
     .wr_en_i    (mscratch_we),
     .rd_data_o  (mscratch_q),
-    .rd_error_o ()
+    .rd_error_o (mscratch_rd_error)
   );
 
   cv32e40x_csr #(
@@ -677,39 +661,25 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mie_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mie_n),
     .wr_en_i    (mie_we),
     .rd_data_o  (mie_q),
-    .rd_error_o ()
+    .rd_error_o (mie_rd_error)
   );
 
-  localparam Status_t MSTATUS_RESET_VAL = '{
-    hardwire0_0: 'b0, // Reserved, hardwired zero
-    mprv: 1'b0, // hardwired zero
-    hardwire0_1: 'b0, // Unimplemented, hardwired zero
-    mpp: PRIV_LVL_M, // Hardwire to 2'b11 when user mode is not enabled
-    hardwire0_2: 'b0,
-    mpie: 1'b0,
-    hardwire0_3: 'b0,
-    upie: 1'b0, // Tie to zero
-    mie: 1'b0,
-    hardwire0_4: 'b0, // Unimplemented, hardwired zero
-    uie: 1'b0, // Tie to zero when user mode is not enabled
-    default: 'b0
-  };
   cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
     .RESETVALUE (MSTATUS_RESET_VAL)
   ) mstatus_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mstatus_n),
     .wr_en_i    (mstatus_we),
     .rd_data_o  (mstatus_q),
-    .rd_error_o ()
+    .rd_error_o (mstatus_rd_error)
   );
 
   cv32e40x_csr #(
@@ -717,31 +687,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mcause_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mcause_n),
     .wr_en_i    (mcause_we),
     .rd_data_o  (mcause_q),
-    .rd_error_o ()
+    .rd_error_o (mcause_rd_error)
   );
 
-  localparam Mtvec_t MTVEC_RESET_VAL = '{
-    base_rw: 'd0,
-    base_ro: 'd0,
-    mode:  MTVEC_MODE
-  };
+  
 
   cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
     .RESETVALUE (MTVEC_RESET_VAL)
   ) mtvec_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (mtvec_n),
     .wr_en_i    (mtvec_we),
     .rd_data_o  (mtvec_q),
-    .rd_error_o ()
+    .rd_error_o (mtvec_rd_error)
   );
 
   assign csr_rdata_o = csr_rdata_int;
@@ -752,8 +718,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign priv_lvl_o      = priv_lvl_q;
   assign sec_lvl_o       = priv_lvl_q[0];
 
-  assign mtvec_o         = mtvec_q.base_rw;
-  assign utvec_o         = utvec_q;
+  assign mtvec_addr_o    = mtvec_q.base_rw;
+  assign utvec_addr_o    = utvec_q;
   assign mtvec_mode_o    = mtvec_q.mode;
   assign utvec_mode_o    = utvec_mode_q;
 
@@ -798,6 +764,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Write enables
   logic tmatch_control_we;
   logic tmatch_value_we;
+  logic tmatch_control_rd_error;
+  logic tmatch_value_rd_error;
 
   // Write select
   assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA1);
@@ -828,36 +796,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               1'b0,                  // store   : not supported
               1'b0};                 // load    : not supported
 
-  localparam logic [31:0] TMATCH_CONTROL_RST_VAL = {
-    TTYPE_MCONTROL,        // type    : address/data match
-    1'b1,                  // dmode   : access from D mode only
-    6'h00,                 // maskmax : exact match only
-    1'b0,                  // hit     : not supported
-    1'b0,                  // select  : address match only
-    1'b0,                  // timing  : match before execution
-    2'b00,                 // sizelo  : match any access
-    4'h1,                  // action  : enter debug mode
-    1'b0,                  // chain   : not supported
-    4'h0,                  // match   : simple match
-    1'b1,                  // m       : match in m-mode
-    1'b0,                  // 0       : zero
-    1'b0,                  // s       : not supported
-    1'b0,                  // u       : match in u-mode
-    1'b0,      // execute : match instruction address
-    1'b0,                  // store   : not supported
-    1'b0};                 // load    : not supported  
+   
 
   cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
     .RESETVALUE (TMATCH_CONTROL_RST_VAL)
   ) tmatch_control_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (tmatch_control_n),
     .wr_en_i    (tmatch_control_we),
     .rd_data_o  (tmatch_control_q),
-    .rd_error_o ()
+    .rd_error_o (tmactch_control_rd_error)
   );   
   
   cv32e40x_csr #(
@@ -865,12 +816,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) tmatch_value_csr_i (
-    .clk_i      (clk),
-    .rst_ni     (rst_n),
+    .clk      (clk),
+    .rst_n     (rst_n),
     .wr_data_i  (csr_wdata_int),
     .wr_en_i    (tmatch_value_we),
     .rd_data_o  (tmatch_value_q),
-    .rd_error_o ()
+    .rd_error_o (tmatch_value_rd_error)
   );  
   
   assign tmatch_control_rdata = tmatch_control_q;

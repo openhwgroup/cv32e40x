@@ -181,7 +181,7 @@ module cv32e40x_core
   // CSR control
   logic        csr_access_ex;
   csr_opcode_e csr_op_ex;
-  logic [23:0] mtvec, utvec;
+  logic [23:0] mtvec_addr, utvec_addr;
   logic [1:0]  mtvec_mode;
   logic [1:0]  utvec_mode;
 
@@ -221,7 +221,7 @@ module cv32e40x_core
   // Interrupts
   logic        m_irq_enable, u_irq_enable;
   logic        csr_irq_sec;
-  logic [31:0] mepc, uepc, depc;
+  logic [31:0] mepc, uepc, dpc;
   logic [31:0] mie_bypass;
   logic [31:0] mip;
 
@@ -349,8 +349,8 @@ module cv32e40x_core
     .dm_halt_addr_i      ( dm_halt_addr_i[31:0] ),
 
     // trap vector location
-    .m_trap_base_addr_i  ( mtvec             ),
-    .u_trap_base_addr_i  ( utvec             ),
+    .m_trap_base_addr_i  ( mtvec_addr        ),
+    .u_trap_base_addr_i  ( utvec_addr        ),
     .trap_addr_mux_i     ( trap_addr_mux     ),
 
     // instruction request control
@@ -377,7 +377,7 @@ module cv32e40x_core
     .mepc_i              ( mepc              ), // exception return address
     .uepc_i              ( uepc              ), // exception return address
 
-    .depc_i              ( depc              ), // debug return address
+    .dpc_i              ( dpc              ), // debug return address
 
     .pc_mux_i            ( pc_mux_id         ), // sel for pc multiplexer
     .exc_pc_mux_i        ( exc_pc_mux_id     ),
@@ -764,8 +764,8 @@ module cv32e40x_core
 
     // Hart ID from outside
     .hart_id_i                  ( hart_id_i              ),
-    .mtvec_o                    ( mtvec                  ),
-    .utvec_o                    ( utvec                  ),
+    .mtvec_addr_o               ( mtvec_addr             ),
+    .utvec_addr_o               ( utvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),
     .utvec_mode_o               ( utvec_mode             ),
     // mtvec address
@@ -794,7 +794,7 @@ module cv32e40x_core
     .debug_mode_i               ( debug_mode             ),
     .debug_cause_i              ( debug_cause            ),
     .debug_csr_save_i           ( debug_csr_save         ),
-    .dpc_o                      ( depc                   ),
+    .dpc_o                      ( dpc                   ),
     .debug_single_step_o        ( debug_single_step      ),
     .debug_ebreakm_o            ( debug_ebreakm          ),
     .debug_ebreaku_o            ( debug_ebreaku          ),

@@ -507,18 +507,40 @@ parameter MVENDORID_BANK = 25'hC;       // Number of continuation codes
 // Machine Architecture ID (https://github.com/riscv/riscv-isa-manual/blob/master/marchid.md)
 parameter MARCHID = 32'h4;
 
+parameter MTVEC_MODE        = 2'b01;
+parameter NUM_HPM_EVENTS    =   16;
+
+parameter MAX_N_PMP_ENTRIES = 16;
+parameter MAX_N_PMP_CFG     =  4;
+
+
+parameter MSTATUS_UIE_BIT      = 0;
+parameter MSTATUS_SIE_BIT      = 1;
+parameter MSTATUS_MIE_BIT      = 3;
+parameter MSTATUS_UPIE_BIT     = 4;
+parameter MSTATUS_SPIE_BIT     = 5;
+parameter MSTATUS_MPIE_BIT     = 7;
+parameter MSTATUS_SPP_BIT      = 8;
+parameter MSTATUS_MPP_BIT_HIGH = 12;
+parameter MSTATUS_MPP_BIT_LOW  = 11;
+parameter MSTATUS_MPRV_BIT     = 17;
+
+// misa
+parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
+
+parameter MHPMCOUNTER_WIDTH  = 64;
 // Types for packed struct CSRs
 typedef struct packed {
-  logic [31:18] hardwire0_0; // Reserved, hardwired zero
+  logic [31:18] zero4; // Reserved, hardwired zero
   logic         mprv; // hardwired zero
-  logic [16:13] hardwire0_1; // Unimplemented, hardwired zero
+  logic [16:13] zero3; // Unimplemented, hardwired zero
   logic [12:11] mpp; // Hardwire to 2'b11 when user mode is not enabled
-  logic [10:8]  hardwire0_2;
+  logic [10:8]  zero2;
   logic         mpie;
-  logic [6:5]   hardwire0_3;
+  logic [6:5]   zero1;
   logic         upie; // Tie to zero
   logic         mie;
-  logic [2:1]   hardwire0_4; // Unimplemented, hardwired zero
+  logic [2:1]   zero0; // Unimplemented, hardwired zero
   logic         uie; // Tie to zero when user mode is not enabled
 
 } Status_t;
@@ -543,17 +565,60 @@ typedef struct packed{
 
 typedef struct packed {
   logic           interrupt;
-  logic [30:5]    hardwire0;
+  logic [30:5]    zero0;
   logic [4:0]     exception_code;
 } Mcause_t;
 
 typedef struct packed {
   logic [31:8] base_rw;
-  logic [7:2]  base_ro;
+  logic [7:2]  zero0;
   logic [1:0]  mode;
 } Mtvec_t;
 
 
+parameter Dcsr_t DCSR_RESET_VAL = '{
+  xdebugver : XDEBUGVER_STD,
+  cause:      DBG_CAUSE_NONE,
+  prv:        PRIV_LVL_M,
+  default:    '0}; 
+
+parameter Mtvec_t MTVEC_RESET_VAL = '{
+  base_rw: 'd0,
+  zero0: 'd0,
+  mode:  MTVEC_MODE};
+
+parameter Status_t MSTATUS_RESET_VAL = '{
+  zero4: 'b0, // Reserved, hardwired zero
+  mprv: 1'b0, // hardwired zero
+  zero3: 'b0, // Unimplemented, hardwired zero
+  mpp: PRIV_LVL_M, // Hardwire to 2'b11 when user mode is not enabled
+  zero2: 'b0,
+  mpie: 1'b0,
+  zero1: 'b0,
+  upie: 1'b0, // Tie to zero
+  mie: 1'b0,
+  zero0: 'b0, // Unimplemented, hardwired zero
+  uie: 1'b0, // Tie to zero when user mode is not enabled
+  default: 'b0};
+
+parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
+  TTYPE_MCONTROL,        // type    : address/data match
+  1'b1,                  // dmode   : access from D mode only
+  6'h00,                 // maskmax : exact match only
+  1'b0,                  // hit     : not supported
+  1'b0,                  // select  : address match only
+  1'b0,                  // timing  : match before execution
+  2'b00,                 // sizelo  : match any access
+  4'h1,                  // action  : enter debug mode
+  1'b0,                  // chain   : not supported
+  4'h0,                  // match   : simple match
+  1'b1,                  // m       : match in m-mode
+  1'b0,                  // 0       : zero
+  1'b0,                  // s       : not supported
+  1'b0,                  // u       : match in u-mode
+  1'b0,      // execute : match instruction address
+  1'b0,                  // store   : not supported
+  1'b0};                 // load    : not supported 
 
 
 ///////////////////////////////////////////////
