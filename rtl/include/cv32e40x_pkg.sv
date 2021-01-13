@@ -545,6 +545,41 @@ typedef struct packed {
 
 } Status_t;
 
+// Debug Cause
+parameter DBG_CAUSE_NONE       = 3'h0;
+parameter DBG_CAUSE_EBREAK     = 3'h1;
+parameter DBG_CAUSE_TRIGGER    = 3'h2;
+parameter DBG_CAUSE_HALTREQ    = 3'h3;
+parameter DBG_CAUSE_STEP       = 3'h4;
+parameter DBG_CAUSE_RSTHALTREQ = 3'h5;
+
+// Debug module
+parameter DBG_SETS_W = 6;
+
+parameter DBG_SETS_IRQ    = 5;
+parameter DBG_SETS_ECALL  = 4;
+parameter DBG_SETS_EILL   = 3;
+parameter DBG_SETS_ELSU   = 2;
+parameter DBG_SETS_EBRK   = 1;
+parameter DBG_SETS_SSTE   = 0;
+
+parameter DBG_CAUSE_HALT   = 6'h1F;
+
+// Constants for the dcsr.xdebugver fields
+typedef enum logic[3:0] {
+   XDEBUGVER_NO     = 4'd0, // no external debug support
+   XDEBUGVER_STD    = 4'd4, // external debug according to RISC-V debug spec
+   XDEBUGVER_NONSTD = 4'd15 // debug not conforming to RISC-V debug spec
+} x_debug_ver_e;
+
+// Trigger types
+typedef enum logic [3:0] {
+  TTYPE_MCONTROL = 4'h2,
+  TTYPE_ICOUNT = 4'h3,
+  TTYPE_ITRIGGER = 4'h4,
+  TTYPE_ETRIGGER = 4'h5
+} trigger_type_e;
+
 typedef struct packed{
     logic [31:28] xdebugver;
     logic [27:16] zero2;
@@ -762,40 +797,7 @@ typedef enum logic[1:0] {
  TRAP_USER         = 2'b01
 } trap_mux_e;
 
-// Debug Cause
-parameter DBG_CAUSE_NONE       = 3'h0;
-parameter DBG_CAUSE_EBREAK     = 3'h1;
-parameter DBG_CAUSE_TRIGGER    = 3'h2;
-parameter DBG_CAUSE_HALTREQ    = 3'h3;
-parameter DBG_CAUSE_STEP       = 3'h4;
-parameter DBG_CAUSE_RSTHALTREQ = 3'h5;
 
-// Debug module
-parameter DBG_SETS_W = 6;
-
-parameter DBG_SETS_IRQ    = 5;
-parameter DBG_SETS_ECALL  = 4;
-parameter DBG_SETS_EILL   = 3;
-parameter DBG_SETS_ELSU   = 2;
-parameter DBG_SETS_EBRK   = 1;
-parameter DBG_SETS_SSTE   = 0;
-
-parameter DBG_CAUSE_HALT   = 6'h1F;
-
-// Constants for the dcsr.xdebugver fields
-typedef enum logic[3:0] {
-   XDEBUGVER_NO     = 4'd0, // no external debug support
-   XDEBUGVER_STD    = 4'd4, // external debug according to RISC-V debug spec
-   XDEBUGVER_NONSTD = 4'd15 // debug not conforming to RISC-V debug spec
-} x_debug_ver_e;
-
-// Trigger types
-typedef enum logic [3:0] {
-  TTYPE_MCONTROL = 4'h2,
-  TTYPE_ICOUNT = 4'h3,
-  TTYPE_ITRIGGER = 4'h4,
-  TTYPE_ETRIGGER = 4'h5
-} trigger_type_e;
 
 // Instruction aligner FSM state encoding
 typedef enum logic [2:0]  {ALIGNED32,
