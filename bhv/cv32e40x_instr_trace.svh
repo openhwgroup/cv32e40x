@@ -582,10 +582,7 @@
           3'b111: str_suf = "hhsR";
         endcase
 
-        if (instr[12])
-          mnemonic = "p.mac";
-        else
-          mnemonic = "p.mul";
+        mnemonic = "p.mul";
 
         if (imm_s3_type[4:0] != 5'b00000)
           str_asm = $sformatf("%s%sN", mnemonic, str_suf);
