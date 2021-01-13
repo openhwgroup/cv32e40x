@@ -80,8 +80,6 @@ parameter INSTR_PMUL     =  { 7'b0000001, 10'b?, 3'b000, 5'b?, OPCODE_OP };
 parameter INSTR_PMUH     =  { 7'b0000001, 10'b?, 3'b001, 5'b?, OPCODE_OP };
 parameter INSTR_PMULHSU  =  { 7'b0000001, 10'b?, 3'b010, 5'b?, OPCODE_OP };
 parameter INSTR_PMULHU   =  { 7'b0000001, 10'b?, 3'b011, 5'b?, OPCODE_OP };
-parameter INSTR_PMAC     =  { 7'b0100001, 10'b?, 3'b000, 5'b?, OPCODE_OP };
-parameter INSTR_PMSU     =  { 7'b0100001, 10'b?, 3'b001, 5'b?, OPCODE_OP };
 
 // RV32F
 parameter INSTR_FMADD    =  { 5'b?,     2'b00, 10'b?,      3'b?,   5'b?, OPCODE_OP_FMADD  };

@@ -93,8 +93,6 @@
         INSTR_BGE:        this.printSBInstr("bge");
         INSTR_BLTU:       this.printSBInstr("bltu");
         INSTR_BGEU:       this.printSBInstr("bgeu");
-        INSTR_BEQIMM:     this.printSBallInstr("p.beqimm");
-        INSTR_BNEIMM:     this.printSBallInstr("p.bneimm");
         // OPIMM
         INSTR_ADDI:       this.printIInstr("addi");
         INSTR_SLTI:       this.printIInstr("slti");
@@ -505,7 +503,6 @@
           3'b010: mnemonic = "lw";
           3'b100: mnemonic = "lbu";
           3'b101: mnemonic = "lhu";
-          3'b110: mnemonic = "p.elw";
           3'b011,
           3'b111: begin
             printMnemonic("INVALID");
@@ -559,48 +556,6 @@
       end
     endfunction // printSInstr
 
-    function void printHwloopInstr();
-      string mnemonic;
-      begin
-        // set mnemonic
-        case (instr[14:12])
-          3'b000: mnemonic = "lp.starti";
-          3'b001: mnemonic = "lp.endi";
-          3'b010: mnemonic = "lp.count";
-          3'b011: mnemonic = "lp.counti";
-          3'b100: mnemonic = "lp.setup";
-          3'b101: mnemonic = "lp.setupi";
-          3'b111: begin
-            printMnemonic("INVALID");
-            return;
-          end
-        endcase
-
-        // decode and print instruction
-        case (instr[14:12])
-          // lp.starti and lp.endi
-          3'b000,
-          3'b001: str = $sformatf("%-16s 0x%0d, 0x%0h", mnemonic, rd, imm_iz_type);
-          // lp.count
-          3'b010: begin
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("%-16s 0x%0d, x%0d", mnemonic, rd, rs1);
-          end
-          // lp.counti
-          3'b011: str = $sformatf("%-16s x%0d, 0x%0h", mnemonic, rd, imm_iz_type);
-          // lp.setup
-          3'b100: begin
-            regs_read.push_back('{rs1, rs1_value, 0});
-            str = $sformatf("%-16s 0x%0d, x%0d, 0x%0h", mnemonic, rd, rs1, imm_iz_type);
-          end
-          // lp.setupi
-          3'b101: begin
-            str = $sformatf("%-16s 0x%0d, 0x%0h, 0x%0h", mnemonic, rd, imm_iz_type, rs1);
-          end
-        endcase
-      end
-    endfunction
-
     function void printMulInstr();
       string mnemonic;
       string str_suf;
@@ -644,158 +599,4 @@
       end
     endfunction
 
-    function void printVecInstr();
-      string mnemonic;
-      string str_asm;
-      string str_args;
-      string str_hb;
-      string str_sci;
-      string str_imm;
-      begin
-
-        // always read rs1 and write rd
-        regs_read.push_back('{rs1, rs1_value, 0});
-        regs_write.push_back('{rd, 'x, 0});
-
-        case (instr[14:13])
-          2'b00: str_sci = "";
-          2'b10: str_sci = ".sc";
-          2'b11: str_sci = ".sci";
-        endcase
-
-        if (instr[12])
-          str_hb = ".b";
-        else
-          str_hb = ".h";
-
-        // set mnemonic
-        case (instr[31:26])
-          6'b000000: begin mnemonic = "pv.add";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000010: begin mnemonic = "pv.sub";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000100: begin mnemonic = "pv.avg";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000110: begin mnemonic = "pv.avgu";     str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b001000: begin mnemonic = "pv.min";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b001010: begin mnemonic = "pv.minu";     str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b001100: begin mnemonic = "pv.max";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b001110: begin mnemonic = "pv.maxu";     str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b010000: begin mnemonic = "pv.srl";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b010010: begin mnemonic = "pv.sra";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b010100: begin mnemonic = "pv.sll";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b010110: begin mnemonic = "pv.or";       str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b011000: begin mnemonic = "pv.xor";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b011010: begin mnemonic = "pv.and";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b011100: begin mnemonic = "pv.abs";      str_imm = $sformatf("0x%0d", imm_vs_type); end
-
-          6'b011110: begin mnemonic = "pv.extract";  str_imm = $sformatf("0x%0d", imm_vs_type); str_sci = ""; end
-          6'b100100: begin mnemonic = "pv.extractu"; str_imm = $sformatf("0x%0d", imm_vu_type); str_sci = ""; end
-          6'b101100: begin mnemonic = "pv.insert";   str_imm = $sformatf("0x%0d", imm_vs_type); end
-
-          // shuffle/pack
-          6'b110000: begin
-            if (instr[14:12] == 3'b001) begin
-                mnemonic = "pv.shuffle";
-            end else begin
-                mnemonic = "pv.shufflei0";
-                str_imm = $sformatf("0x%0d", imm_shuffle_type);
-            end
-          end
-          6'b111010: begin mnemonic = "pv.shufflei1"; str_imm = $sformatf("0x%0d", imm_shuffle_type);  end
-          6'b111100: begin mnemonic = "pv.shufflei2"; str_imm = $sformatf("0x%0d", imm_shuffle_type);  end
-          6'b111110: begin mnemonic = "pv.shufflei3"; str_imm = $sformatf("0x%0d", imm_shuffle_type);  end
-
-          6'b110010: begin mnemonic = "pv.shuffle2"; end
-
-          6'b110100: begin mnemonic = instr[25] ? "pv.pack.h" : "pv.pack"; end
-          6'b110110: begin mnemonic = "pv.packhi";                         end
-          6'b111000: begin mnemonic = "pv.packlo";                         end
-
-          // comparisons
-          6'b000001: begin mnemonic = "pv.cmpeq";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000011: begin mnemonic = "pv.cmpne";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000101: begin mnemonic = "pv.cmpgt";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b000111: begin mnemonic = "pv.cmpge";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b001001: begin mnemonic = "pv.cmplt";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b001011: begin mnemonic = "pv.cmple";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b001101: begin mnemonic = "pv.cmpgtu";   str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b001111: begin mnemonic = "pv.cmpgeu";   str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b010001: begin mnemonic = "pv.cmpltu";   str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b010011: begin mnemonic = "pv.cmpleu";   str_imm = $sformatf("0x%0d", imm_vu_type); end
-
-          // dotproducts
-          6'b100000: begin mnemonic = "pv.dotup";    str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b100010: begin mnemonic = "pv.dotusp";   str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b100110: begin mnemonic = "pv.dotsp";    str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b101000: begin mnemonic = "pv.sdotup";   str_imm = $sformatf("0x%0d", imm_vu_type); end
-          6'b101010: begin mnemonic = "pv.sdotusp";  str_imm = $sformatf("0x%0d", imm_vs_type); end
-          6'b101110: begin mnemonic = "pv.sdotsp";   str_imm = $sformatf("0x%0d", imm_vs_type); end
-
-          6'b010101: begin
-            unique case (instr[14:13])
-               2'b00: mnemonic = instr[25] == 1'b0 ? "pv.cplxmul.r"      : "pv.cplxmul.i";
-               2'b01: mnemonic = instr[25] == 1'b0 ? "pv.cplxmul.r.div2" : "pv.cplxmul.i.div2";
-               2'b10: mnemonic = instr[25] == 1'b0 ? "pv.cplxmul.r.div4" : "pv.cplxmul.i.div4";
-               2'b11: mnemonic = instr[25] == 1'b0 ? "pv.cplxmul.r.div8" : "pv.cplxmul.i.div8";
-            endcase
-            str_sci = "";
-          end
-
-          6'b011011: begin
-            unique case (instr[14:13])
-               2'b00: mnemonic = "pv.subrotmj";
-               2'b01: mnemonic = "pv.subrotmj.div2";
-               2'b10: mnemonic = "pv.subrotmj.div4";
-               2'b11: mnemonic = "pv.subrotmj.div8";
-            endcase
-            str_sci = "";
-          end
-
-          6'b010111: begin
-            mnemonic = "pv.cplxconj";
-            str_sci  = "";
-          end
-
-          6'b011101: begin
-            unique case (instr[14:13])
-               2'b01: mnemonic = "pv.add.div2";
-               2'b10: mnemonic = "pv.add.div4";
-               2'b11: mnemonic = "pv.add.div8";
-            endcase
-            str_sci = "";
-          end
-
-          6'b011001: begin
-            unique case (instr[14:13])
-               2'b01: mnemonic = "pv.sub.div2";
-               2'b10: mnemonic = "pv.sub.div4";
-               2'b11: mnemonic = "pv.sub.div8";
-            endcase
-            str_sci = "";
-          end
-
-          default: begin
-            printMnemonic("INVALID");
-            return;
-          end
-        endcase
-
-        if(mnemonic == "pv.cplxconj") begin
-            //special case, one operand only
-          str_args = $sformatf("x%0d, x%0d", rd, rs1);
-        end else begin
-            if (str_sci == "") begin
-              regs_read.push_back('{rs2, rs2_value,0});
-              str_args = $sformatf("x%0d, x%0d, x%0d", rd, rs1, rs2);
-            end else if (str_sci == ".sc") begin
-              regs_read.push_back('{rs2, rs2_value_vec, 0});
-              str_args = $sformatf("x%0d, x%0d, x%0d", rd, rs1, rs2);
-            end else if (str_sci == ".sci") begin
-              str_args = $sformatf("x%0d, x%0d, %s", rd, rs1, str_imm);
-            end
-        end
-
-        str_asm = $sformatf("%s%s%s", mnemonic, str_sci, str_hb);
-
-        str = $sformatf("%-16s %s", str_asm, str_args);
-      end
-    endfunction
   endclass
