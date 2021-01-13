@@ -88,13 +88,6 @@ module cv32e40x_wrapper
           .PULP_OBI        ( PULP_OBI        ),
           .FIFO_ADDR_DEPTH ( FIFO_ADDR_DEPTH ))
       prefetch_controller_sva (
-          .hwlp_jump_i('0),
-          .hwlp_target_i('0),
-          .hwlp_wait_resp_flush('0),
-          .hwlp_flush_after_resp('0),
-          .hwlp_flush_cnt_delayed_q('0),
-          .hwlp_flush_resp_delayed('0),
-          .hwlp_flush_resp('0),
           .*);
 
 `endif // CV32E40P_ASSERT_ON
