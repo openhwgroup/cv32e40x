@@ -412,7 +412,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     ucause_n                 = '0;              // Not used if PULP_SECURE == 0
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
-    mtvec_n.base_rw          = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.base_rw;
+    mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.addr;
     mtvec_n.zero0            = mtvec_q.zero0;
     mtvec_n.mode             = mtvec_q.mode;
     mtvec_we                 = csr_mtvec_init_i;
@@ -449,7 +449,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
-              mtvec_n.base_rw      = csr_wdata_int[31:8];
+              mtvec_n.addr      = csr_wdata_int[31:8];
               mtvec_n.mode = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
               mtvec_we = 1'b1;
         end
@@ -718,7 +718,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign priv_lvl_o      = priv_lvl_q;
   assign sec_lvl_o       = priv_lvl_q[0];
 
-  assign mtvec_addr_o    = mtvec_q.base_rw;
+  assign mtvec_addr_o    = mtvec_q.addr;
   assign utvec_addr_o    = utvec_q;
   assign mtvec_mode_o    = mtvec_q.mode;
   assign utvec_mode_o    = utvec_mode_q;

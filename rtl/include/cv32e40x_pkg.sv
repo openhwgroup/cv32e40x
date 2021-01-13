@@ -605,7 +605,7 @@ typedef struct packed {
 } Mcause_t;
 
 typedef struct packed {
-  logic [31:8] base_rw;
+  logic [31:8] addr;
   logic [7:2]  zero0;
   logic [1:0]  mode;
 } Mtvec_t;
@@ -618,7 +618,7 @@ parameter Dcsr_t DCSR_RESET_VAL = '{
   default:    '0}; 
 
 parameter Mtvec_t MTVEC_RESET_VAL = '{
-  base_rw: 'd0,
+  addr: 'd0,
   zero0: 'd0,
   mode:  MTVEC_MODE};
 
