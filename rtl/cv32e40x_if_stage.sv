@@ -34,8 +34,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        rst_n,
 
     // Used to calculate the exception offsets
-    input  logic [23:0] m_trap_base_addr_i,
-    input  logic [23:0] u_trap_base_addr_i,
+    input  logic [23:0] mtvec_addr,
+    input  logic [23:0] utvec_addr,
     input  trap_mux_e   trap_addr_mux_i,
     // Boot address
     input  logic [31:0] boot_addr_i,
@@ -123,9 +123,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   always_comb
   begin : EXC_PC_MUX
     unique case (trap_addr_mux_i)
-      TRAP_MACHINE:  trap_base_addr = m_trap_base_addr_i;
-      TRAP_USER:     trap_base_addr = u_trap_base_addr_i;
-      default:       trap_base_addr = m_trap_base_addr_i;
+      TRAP_MACHINE:  trap_base_addr = mtvec_addr;
+      TRAP_USER:     trap_base_addr = utvec_addr;
+      default:       trap_base_addr = mtvec_addr;
     endcase
 
     unique case (trap_addr_mux_i)

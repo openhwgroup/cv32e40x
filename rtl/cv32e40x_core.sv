@@ -349,8 +349,8 @@ module cv32e40x_core
     .dm_halt_addr_i      ( dm_halt_addr_i[31:0] ),
 
     // trap vector location
-    .m_trap_base_addr_i  ( mtvec_addr        ),
-    .u_trap_base_addr_i  ( utvec_addr        ),
+    .mtvec_addr  ( mtvec_addr        ),
+    .utvec_addr  ( utvec_addr        ),
     .trap_addr_mux_i     ( trap_addr_mux     ),
 
     // instruction request control
