@@ -8,7 +8,7 @@ hardware loops, post-increment load and store instructions and
 additional ALU instructions that are not part of the standard RISC-V
 ISA. :numref:`blockdiagram` shows a block diagram of the core.
 
-.. figure:: ../images/CV32E40P_Block_Diagram.png
+.. figure:: ../images/CV32E40X_Block_Diagram.png
    :name: blockdiagram
    :align: center
    :alt:

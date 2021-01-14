@@ -1,6 +1,6 @@
 .. _pipeline-details:
 
-.. figure:: ../images/CV32E40P_Pipeline.png
+.. figure:: ../images/CV32E40X_Pipeline.png
    :name: |corev_lc|\ -pipeline
    :align: center
 
