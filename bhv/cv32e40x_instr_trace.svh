@@ -135,10 +135,10 @@
         INSTR_DRET:       this.printMnemonic("dret");
 
         // RV32M
-        INSTR_PMUL:       this.printRInstr("mul");
-        INSTR_PMUH:       this.printRInstr("mulh");
-        INSTR_PMULHSU:    this.printRInstr("mulhsu");
-        INSTR_PMULHU:     this.printRInstr("mulhu");
+        INSTR_MUL:        this.printRInstr("mul");
+        INSTR_MUH:        this.printRInstr("mulh");
+        INSTR_MULHSU:     this.printRInstr("mulhsu");
+        INSTR_MULHU:      this.printRInstr("mulhu");
         INSTR_DIV:        this.printRInstr("div");
         INSTR_DIVU:       this.printRInstr("divu");
         INSTR_REM:        this.printRInstr("rem");

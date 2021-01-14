@@ -76,10 +76,10 @@ parameter INSTR_DIV      =  { 7'b0000001, 10'b?, 3'b100, 5'b?, OPCODE_OP };
 parameter INSTR_DIVU     =  { 7'b0000001, 10'b?, 3'b101, 5'b?, OPCODE_OP };
 parameter INSTR_REM      =  { 7'b0000001, 10'b?, 3'b110, 5'b?, OPCODE_OP };
 parameter INSTR_REMU     =  { 7'b0000001, 10'b?, 3'b111, 5'b?, OPCODE_OP };
-parameter INSTR_PMUL     =  { 7'b0000001, 10'b?, 3'b000, 5'b?, OPCODE_OP };
-parameter INSTR_PMUH     =  { 7'b0000001, 10'b?, 3'b001, 5'b?, OPCODE_OP };
-parameter INSTR_PMULHSU  =  { 7'b0000001, 10'b?, 3'b010, 5'b?, OPCODE_OP };
-parameter INSTR_PMULHU   =  { 7'b0000001, 10'b?, 3'b011, 5'b?, OPCODE_OP };
+parameter INSTR_MUL      =  { 7'b0000001, 10'b?, 3'b000, 5'b?, OPCODE_OP };
+parameter INSTR_MUH      =  { 7'b0000001, 10'b?, 3'b001, 5'b?, OPCODE_OP };
+parameter INSTR_MULHSU   =  { 7'b0000001, 10'b?, 3'b010, 5'b?, OPCODE_OP };
+parameter INSTR_MULHU    =  { 7'b0000001, 10'b?, 3'b011, 5'b?, OPCODE_OP };
 
 // RV32F
 parameter INSTR_FMADD    =  { 5'b?,     2'b00, 10'b?,      3'b?,   5'b?, OPCODE_OP_FMADD  };
