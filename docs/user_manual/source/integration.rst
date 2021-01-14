@@ -124,7 +124,7 @@ Interfaces
 +-------------------------+----------------------------------------------------------------------------+
 | ``debug_*``             | Debug interface, see :ref:`debug-support`                                  |
 +-------------------------+-------------------------+-----+--------------------------------------------+
-| ``fetch_enable_i``      | 1                       | in  | Enable the instruction fetch of CV32E40P.  |
+| ``fetch_enable_i``      | 1                       | in  | Enable the instruction fetch of |corev|.   |
 |                         |                         |     | The first instruction fetch after reset    |
 |                         |                         |     | de-assertion will not happen as long as    |
 |                         |                         |     | this signal is 0. ``fetch_enable_i`` needs |

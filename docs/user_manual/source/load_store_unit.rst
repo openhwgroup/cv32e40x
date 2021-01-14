@@ -51,10 +51,10 @@ Protocol
 
 The data bus interface is compliant to the OBI (Open Bus Interface) protocol.
 See https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.0.pdf
-for details about the protocol. The CV32E40P data interface does not implement
+for details about the protocol. The |corev| data interface does not implement
 the following optional OBI signals: auser, wuser, aid, rready, err, ruser, rid.
 These signals can be thought of as being tied off as specified in the OBI
-specification. The CV32E40P data interface can cause up to two outstanding
+specification. The |corev| data interface can cause up to two outstanding
 transactions.
 
 The OBI protocol that is used by the LSU to communicate with a memory works
@@ -128,7 +128,7 @@ to reduce the loop overhead significantly.
   Physical Memory Protection (PMP) Unit
   -------------------------------------
 
-  The CV32E40P core has a PMP module which is optionally enabled.
+  The |corev| core has a PMP module which is optionally enabled.
   Such unit has a configurable number of entries (up to 16) and
   supports all the modes as TOR, NAPOT and NA4. Every fetch, load and
   store access executed in USER MODE are first filtered by the PMP unit

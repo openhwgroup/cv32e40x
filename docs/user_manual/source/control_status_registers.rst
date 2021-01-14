@@ -3,7 +3,7 @@
 Control and Status Registers
 ============================
 
-CV32E40P does not implement all control and status registers specified in
+|corev| does not implement all control and status registers specified in
 the RISC-V privileged specifications, but is limited to the registers
 that were needed for the PULP system. The reason for this is that we
 wanted to keep the footprint of the core as low as possible and avoid
@@ -24,7 +24,7 @@ The **Privilege** column indicates the access mode of a CSR.  The first letter
 indicates the lowest privilege level required to access the CSR.  Attempts to
 access a CSR with a higher privilege level than the core is currently running
 in will throw an illegal instruction exception.  This is largely a moot point
-for the CV32E40P as it only supports machine and debug modes.  The remaining
+for the |corev| as it only supports machine and debug modes.  The remaining
 letters indicate the read and/or write behavior of the CSR when accessed by
 the indicated or higher privilge level:
 
@@ -620,7 +620,7 @@ Accessible in Debug Mode or M-Mode.
 +-------------+-----------+----------------------------------------------------------------------------------------+
 |   Bit #     |   Mode    |   Description                                                                          |
 +=============+===========+========================================================================================+
-| 31:0        | RO        | CV32E40P implements a single trigger, therefore this register will always read as zero |
+| 31:0        | RO        | |corev| implements a single trigger, therefore this register will always read as zero  |
 +-------------+-----------+----------------------------------------------------------------------------------------+
 
 
@@ -638,7 +638,7 @@ Since native triggers are not supported, writes to this register from M-Mode wil
 
 .. note::
 
-   CV32E40P only implements one type of trigger, Match Control. Most fields of this register will read as a fixed value to
+   |corev| only implements one type of trigger, Match Control. Most fields of this register will read as a fixed value to
    reflect the single mode that is supported, in particular, instruction address match as described in the Debug Specification
    0.13.2 section 5.2.2 & 5.2.9. The **type**, **dmode**, **hit**, **select**, **timing**, **sizelo**, **action**, **chain**,
    **match**, **m**, **s**, **u**,  **store** and  **load** bitfields of this CSR, which are marked as R/W in Debug Specification
@@ -720,7 +720,7 @@ Detailed:
 +-------+------+------------------------------------------------------------------+
 
 Accessible in Debug Mode or M-Mode.
-CV32E40P does not support the features requiring this register. Writes are ignored and reads will always return zero.
+|corev| does not support the features requiring this register. Writes are ignored and reads will always return zero.
 
 .. _csr-tinfo:
 
@@ -764,7 +764,7 @@ Detailed:
 +-------+------+------------------------------------------------------------------+
 
 Accessible in Debug Mode or M-Mode.
-CV32E40P does not support the features requiring this register. Writes are ignored and
+|corev| does not support the features requiring this register. Writes are ignored and
 reads will always return zero.
 
 Supervisor Context Register (``scontext``)
@@ -783,7 +783,7 @@ Detailed:
 +-------+------+------------------------------------------------------------------+
 
 Accessible in Debug Mode or M-Mode.
-CV32E40P does not support the features requiring this register. Writes are ignored and
+|corev| does not support the features requiring this register. Writes are ignored and
 reads will always return zero.
 
 .. _csr-dcsr:
@@ -798,7 +798,7 @@ Reset Value: 0x4000_0003
 .. note::
 
    The **ebreaks**, **ebreaku** and **prv** bitfields of this CSR are marked as R/W in Debug Specification 0.13.2. However,
-   as CV32E40P only supports machine mode, these bitfields are implemented as WARL bitfields (corresponding to how these bitfields will
+   as |corev| only supports machine mode, these bitfields are implemented as WARL bitfields (corresponding to how these bitfields will
    be specified in the forthcoming Debug Specification 0.14.0).
 
 Detailed:
@@ -1005,7 +1005,7 @@ Detailed:
 +-------------+-----------+------------------------------------------------------------------------+
 |   Bit #     |   Mode    |   Description                                                          |
 +=============+===========+========================================================================+
-| 31:0        | RO        | Machine Architecture ID of CV32E40P is 4                               |
+| 31:0        | RO        | Machine Architecture ID of |corev| is 4                                |
 +-------------+-----------+------------------------------------------------------------------------+
 
 Machine Implementation ID (``mimpid``)

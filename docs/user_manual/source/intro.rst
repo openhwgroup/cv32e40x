@@ -1,8 +1,8 @@
 Introduction
 =============
 
-CV32E40P is a 4-stage in-order 32-bit RISC-V
-processor core. The ISA of CV32E40P
+|corev| is a 4-stage in-order 32-bit RISC-V
+processor core. The ISA of |corev|
 has been extended to support multiple additional instructions including
 hardware loops, post-increment load and store instructions and
 additional ALU instructions that are not part of the standard RISC-V
@@ -13,7 +13,7 @@ ISA. :numref:`blockdiagram` shows a block diagram of the core.
    :align: center
    :alt:
 
-   Block Diagram of CV32E40P RISC-V Core
+   Block Diagram of |corev| RISC-V Core
 
 License
 -------
@@ -34,23 +34,23 @@ limitations under the License.
 Standards Compliance
 --------------------
 
-CV32E40P is a standards-compliant 32-bit RISC-V processor.
+|corev| is a standards-compliant 32-bit RISC-V processor.
 It follows these specifications:
 
 * `RISC-V Instruction Set Manual, Volume I: User-Level ISA, Document Version 20191213 (December 13, 2019) <https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf>`_
 * `RISC-V Instruction Set Manual, Volume II: Privileged Architecture, document version 20190608-Base-Ratified (June 8, 2019) <https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf>`_.
-  CV32E40P implements the Machine ISA version 1.11.
+  |corev| implements the Machine ISA version 1.11.
 * `RISC-V External Debug Support, version 0.13.2 <https://content.riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf>`_
 
-Many features in the RISC-V specification are optional, and CV32E40P can be parametrized to enable or disable some of them.
+Many features in the RISC-V specification are optional, and |corev| can be parametrized to enable or disable some of them.
 
-CV32E40P supports the following base instruction set.
+|corev| supports the following base instruction set.
 
 * The RV32I Base Integer Instruction Set, version 2.1
 
 In addition, the following standard instruction set extensions are available.
 
-.. list-table:: CV32E40P Standard Instruction Set Extensions
+.. list-table:: |corev| Standard Instruction Set Extensions
    :header-rows: 1
 
    * - Standard Extension
@@ -82,7 +82,7 @@ In addition, the following standard instruction set extensions are available.
      - optionally enabled based on ``FPU`` parameter
 
 Most content of the RISC-V privileged specification is optional.
-CV32E40P currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
+|corev| currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
 
 * M-Mode
 * All CSRs listed in :ref:`cs-registers`
@@ -93,7 +93,7 @@ CV32E40P currently supports the following features according to the RISC-V Privi
 Synthesis guidelines
 --------------------
 
-The CV32E40P core is fully synthesizable.
+The |corev| core is fully synthesizable.
 It has been designed mainly for ASIC designs, but FPGA synthesis
 is supported as well.
 
@@ -110,7 +110,7 @@ The ``constraints/cv32e40p_core.sdc`` file provides an example of synthesis cons
 ASIC Synthesis
 ^^^^^^^^^^^^^^
 
-ASIC synthesis is supported for CV32E40P. The whole design is completely
+ASIC synthesis is supported for |corev|. The whole design is completely
 synchronous and uses positive-edge triggered flip-flops, except for the
 register file, which can be implemented either with latches or with
 flip-flops. See :ref:`register-file` for more details. The
@@ -123,7 +123,7 @@ be provided.
 FPGA Synthesis
 ^^^^^^^^^^^^^^^
 
-FPGA synthesis is supported for CV32E40P when the flip-flop based register
+FPGA synthesis is supported for |corev| when the flip-flop based register
 file is used. Since latches are not well supported on FPGAs, it is
 crucial to select the flip-flop based register file. The user needs to provide
 a technology specific implementation of a clock gating cell as described
@@ -132,7 +132,7 @@ in :ref:`clock-gating-cell`.
 Verification
 ------------
 
-The verification environment (testbenches, testcases, etc.) for the CV32E40P
+The verification environment (testbenches, testcases, etc.) for the |corev|
 core can be found at  `core-v-verif <https://github.com/openhwgroup/core-v-verif>`_.
 It is recommended that you start by reviewing the
 `CORE-V Verification Strategy <https://core-v-docs-verif-strat.readthedocs.io/en/latest/>`_.
@@ -140,15 +140,15 @@ It is recommended that you start by reviewing the
 Contents
 --------
 
- * :ref:`getting-started` discusses the requirements and initial steps to start using CV32E40P.
+ * :ref:`getting-started` discusses the requirements and initial steps to start using |corev|.
  * :ref:`core-integration` provides the instantiation template and gives descriptions of the design parameters as well as the input and output ports.
  * :ref:`pipeline-details` described the overal pipeline structure.
- * The instruction and data interfaces of CV32E40P are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
+ * The instruction and data interfaces of |corev| are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
  * The two register-file flavors are described in :ref:`register-file`.
  * :ref:`fpu` describes the Floating Point Unit (FPU).
  * :ref:`sleep_unit` describes the Sleep unit.
  * The control and status registers are explained in :ref:`cs-registers`.
- * :ref:`performance-counters` gives an overview of the performance monitors and event counters available in CV32E40P.
+ * :ref:`performance-counters` gives an overview of the performance monitors and event counters available in |corev|.
  * :ref:`exceptions-interrupts` deals with the infrastructure for handling exceptions and interrupts.
  * :ref:`debug-support` gives a brief overview on the debug infrastructure.
  * :ref:`tracer` gives a brief overview of the tracer module.
@@ -157,8 +157,7 @@ Contents
 
 History
 -------
-
-CV32E40P started its life as a fork of the OR10N CPU core that is based on the OpenRISC ISA. Then, under the name of RI5CY, it became a RISC-V core (2016), and it has been maintained by the PULP platform <https://pulp-platform.org> team until February 2020, when it has been contributed to OpenHW Group https://www.openhwgroup.org>.
+|corev| started its life as a fork of the CV32E40P from the OpenHW Group <https://www.openhwgroup.org>.
 
 References
 ----------

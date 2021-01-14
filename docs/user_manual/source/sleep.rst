@@ -6,7 +6,7 @@ Sleep Unit
 Source File: :file:`rtl/cv32e40p_sleep_unit.sv`
 
 The Sleep Unit contains and controls the instantiated clock gate, see :ref:`clock-gating-cell`, that gates ``clk_i`` and produces a gated clock
-for use by the other modules inside CV32E40P. The Sleep Unit is the only place in which ``clk_i`` itself is used; all
+for use by the other modules inside |corev|. The Sleep Unit is the only place in which ``clk_i`` itself is used; all
 other modules use the gated version of ``clk_i``.
 
 The clock gating in the Sleep Unit is impacted by the following:
@@ -35,7 +35,7 @@ The clock gating in the Sleep Unit is impacted by the following:
 Startup behavior
 ----------------
 
-``clk_i`` is internally gated off (while signaling ``core_sleep_o`` = 0) during CV32E40P startup:
+``clk_i`` is internally gated off (while signaling ``core_sleep_o`` = 0) during |corev| startup:
 
  * ``clk_i`` is internally gated off during ``rst_ni`` assertion
  * ``clk_i`` is internally gated off from ``rst_ni`` deassertion until ``fetch_enable_i`` = 1

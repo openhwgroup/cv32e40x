@@ -1,13 +1,13 @@
 Core Versions and RTL Freeze Rules
 ==================================
 
-The CV32E40P is defined by the ``marchid`` and ``mimpid`` tuple.
+The |corev| is defined by the ``marchid`` and ``mimpid`` tuple.
 The tuple identify which sets of parameters have been verified
 by OpenHW Group, and once RTL Freeze is achieved, no further
 non-logically equivalent changes are allowed on that set of parameters.
 
 The RTL Freeze version of the core is indentified by a GitHub
-tag with the format cv32e40p_vMAJOR.MINOR.PATCH (e.g. cv32e40p_v1.0.0).
+tag with the format |corev_lc|\ _vMAJOR.MINOR.PATCH (e.g. |corev_lc|\ _v1.0.0).
 In addition, the release date is reported in the documentation.
 
 What happens after RTL Freeze?
@@ -49,7 +49,7 @@ However, a new GitHub tag should be release and changes documented.
    :align: center
    :alt:
 
-   Versions control of CV32E40P
+   Versions control of |corev|
 
 
 Released core versions
@@ -61,7 +61,7 @@ and dates are reported here.
 ``mimpid=0``
 ------------
 
-The ``mimpid=0`` refers to the CV32E40P core verified with the following parameters:
+The ``mimpid=0`` refers to the |corev| core verified with the following parameters:
 
 +---------------------------+-------+
 | Name                      | Value |

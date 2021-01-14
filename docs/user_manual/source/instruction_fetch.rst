@@ -3,7 +3,7 @@
 Instruction Fetch
 =================
 
-The Instruction Fetch (IF) stage of the CV32E40P is able to supply one instruction to
+The Instruction Fetch (IF) stage of the |corev| is able to supply one instruction to
 the Instruction Decode (ID ) stage per cycle if the external bus interface is able
 to serve one instruction per cycle. In case of executing compressed instructions,
 on average less than one 32-bit instruction fetch will we needed per instruction
@@ -15,7 +15,7 @@ an externally connected instruction memory or instruction cache.
 
 The prefetch unit performs word-aligned 32-bit prefetches and stores the
 fetched words in a FIFO with four entries. As a result of this (speculative)
-prefetch, CV32E40P can fetch up to four words outside of the code region
+prefetch, |corev| can fetch up to four words outside of the code region
 and care should therefore be taken that no unwanted read side effects occur
 for such prefetches outside of the actual code region.
 
@@ -54,10 +54,10 @@ Protocol
 
 The instruction bus interface is compliant to the OBI (Open Bus Interface) protocol.
 See https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.0.pdf
-for details about the protocol. The CV32E40P instruction fetch interface does not
+for details about the protocol. The |corev| instruction fetch interface does not
 implement the following optional OBI signals: we, be, wdata, auser, wuser, aid,
 rready, err, ruser, rid. These signals can be thought of as being tied off as
-specified in the OBI specification. The CV32E40P instruction fetch interface can
+specified in the OBI specification. The |corev| instruction fetch interface can
 cause up to two outstanding transactions.
 
 :numref:`obi-instruction-basic` and :numref:`obi-instruction-multiple-outstanding` show example timing diagrams of the protocol.

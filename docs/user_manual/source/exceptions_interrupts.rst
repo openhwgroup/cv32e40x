@@ -3,7 +3,7 @@
 Exceptions and Interrupts
 =========================
 
-CV32E40P implements trap handling for interrupts and exceptions according to the RISC-V Privileged Specification, version 1.11.
+|corev| implements trap handling for interrupts and exceptions according to the RISC-V Privileged Specification, version 1.11.
 The ``irq_i[31:16]`` interrupts are a custom extension.
 
 When entering an interrupt/exception handler, the core sets the ``mepc`` CSR to the current program counter and saves ``mstatus``.MIE to ``mstatus``.MPIE.
@@ -32,7 +32,7 @@ Interrupt Interface
   +=========================+===========+==================================================+
   | ``irq_i[31:0]``         | input     | Active high, level sensistive interrupt inputs.  |
   |                         |           | Not all interrupt inputs can be used on          |
-  |                         |           | CV32E40P. Specifically irq_i[15:12],             |
+  |                         |           | |corev|. Specifically irq_i[15:12],              |
   |                         |           | irq_i[10:8], irq_i[6:4] and irq_i[2:0] shall be  |
   |                         |           | tied to 0 externally as they are reserved for    |
   |                         |           | future standard use (or for cores which are not  |
@@ -42,7 +42,7 @@ Interrupt Interface
   |                         |           | Interrupt (MEI), Machine Timer Interrupt (MTI),  |
   |                         |           | and Machine Software Interrupt (MSI)             |
   |                         |           | respectively. The irq_i[31:16] interrupts        |
-  |                         |           | are a CV32E40P specific extension to the RISC-V  |
+  |                         |           | are a |corev| specific extension to the RISC-V   |
   |                         |           | Basic (a.k.a. CLINT) interrupt scheme.           |
   +-------------------------+-----------+--------------------------------------------------+
   | ``irq_ack_o``           | output    | Interrupt acknowledge.  Set to 1 for one cycle   |
@@ -56,7 +56,7 @@ Interrupt Interface
 Interrupts
 ----------
 
-The ``irq_i[31:0]`` interrupts are controlled via the ``mstatus``, ``mie`` and ``mip`` CSRs. CV32E40P uses the upper 16 bits of ``mie`` and ``mip`` for custom interrupts (``irq_i[31:16]``),
+The ``irq_i[31:0]`` interrupts are controlled via the ``mstatus``, ``mie`` and ``mip`` CSRs. |corev| uses the upper 16 bits of ``mie`` and ``mip`` for custom interrupts (``irq_i[31:16]``),
 which reflects an intended custom extension in the RISC-V Basic (a.k.a. CLINT) interrupt architecture.
 After reset, all interrupts are disabled.
 To enable interrupts, both the global interrupt enable (MIE) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set.
@@ -76,7 +76,7 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the
 Exceptions
 ----------
 
-CV32E40P can trigger an exception due to the following exception causes:
+|corev| can trigger an exception due to the following exception causes:
 
 +----------------+---------------------------------------------------------------+
 | Exception Code | Description                                                   |
@@ -89,8 +89,8 @@ CV32E40P can trigger an exception due to the following exception causes:
 +----------------+---------------------------------------------------------------+
 
 The illegal instruction exception and M-Mode ECALL instruction exceptions cannot be disabled and are always active.
-The core raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding is configured as a custom CV32E40P instruction for specific parameter settings as defined in (see :ref:custom-isa-extensions).
-For example, in case the parameter FPU is set to 0, the CV32E40P raises an illegal instruction exception for any RVF instruction.
+The core raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:custom-isa-extensions).
+For example, in case the parameter FPU is set to 0, the |corev| raises an illegal instruction exception for any RVF instruction.
 
 .. only:: PMP
 
@@ -120,7 +120,7 @@ For example, in case the parameter FPU is set to 0, the CV32E40P raises an illeg
 Nested Interrupt/Exception Handling
 -----------------------------------
 
-CV32E40P does support nested interrupt/exception handling in software.
+|corev| does support nested interrupt/exception handling in software.
 The hardware automatically disables interrupts upon entering an interrupt/exception handler.
 Otherwise, interrupts/exceptions during the critical part of the handler, i.e. before software has saved the ``mepc`` and ``mstatus`` CSRs, would cause those CSRs to be overwritten.
 If desired, software can explicitly enable interrupts by setting ``mstatus``.MIE to 1 from within the handler.

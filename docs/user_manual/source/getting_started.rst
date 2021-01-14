@@ -1,14 +1,14 @@
 .. _getting-started:
 
-Getting Started with CV32E40P
+Getting Started with |corev|
 =============================
 
-This page discusses initial steps and requirements to start using CV32E40P in your design.
+This page discusses initial steps and requirements to start using |corev| in your design.
 
 Register File
 -------------
 
-CV32E40P comes with two different register file implementations.
+|corev| comes with two different register file implementations.
 Depending on the target technology, either the implementation in ``cv32e40p_register_file_ff.sv`` or the one in ``cv32e40p_register_file_latch.sv`` should be selected in the manifest file.
 For more information about the two register file implementations and their trade-offs, check out :ref:`register-file`.
 
@@ -17,7 +17,7 @@ For more information about the two register file implementations and their trade
 Clock Gating Cell
 -----------------
 
-CV32E40P requires clock gating cells.
+|corev| requires clock gating cells.
 These cells are usually specific to the selected target technology and thus not provided as part of the RTL design.
 A simulation-only version of the clock gating cell is provided in ``cv32e40p_sim_clock_gate.sv``. This file contains
 a module called ``cv32e40p_clock_gate`` that has the following ports:
@@ -27,7 +27,7 @@ a module called ``cv32e40p_clock_gate`` that has the following ports:
 * ``scan_cg_en_i``: Scan Clock Gate Enable Input (activates the clock even though ``en_i`` is not set)
 * ``clk_o``: Gated Clock Output
 
-Inside CV32E40P, clock gating cells are used both in ``cv32e40p_sleep_unit.sv`` and ``cv32e40p_register_file_latch.sv``.
+Inside |corev|, clock gating cells are used both in ``cv32e40p_sleep_unit.sv`` and ``cv32e40p_register_file_latch.sv``.
 For more information on the expected behavior of the clock gating cell when using the latch-based register file check out :ref:`register-file`.
 
 The ``cv32e40p_sim_clock_gate.sv`` file is not intended for synthesis. For ASIC synthesis and FPGA synthesis the manifest

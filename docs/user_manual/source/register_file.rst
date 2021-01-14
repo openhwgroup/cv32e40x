@@ -5,7 +5,7 @@ Register File
 
 Source files: :file:`rtl/cv32e40p_register_file_ff.sv` :file:`rtl/cv32e40p_register_file_latch.sv`
 
-CV32E40P has 31 32-bit wide registers which form registers ``x1`` to ``x31``.
+|corev| has 31 32-bit wide registers which form registers ``x1`` to ``x31``.
 Register ``x0`` is statically bound to 0 and can only be read, it does not
 contain any sequential logic.
 

@@ -1,4 +1,4 @@
-OpenHW Group CV32E40P User Manual
+OpenHW Group |corev| User Manual
 =================================
 Editor: **Davide Schiavone**
 `davide@openhwgroup.org <mailto:davide@openhwgroup.org?subject=CV32E40P%20User%20Manual>`__

@@ -3,10 +3,10 @@
 Performance Counters
 ====================
 
-CV32E40P implements performance counters according to the RISC-V Privileged Specification, version 1.11 (see Hardware Performance Monitor, Section 3.1.11).
+|corev| implements performance counters according to the RISC-V Privileged Specification, version 1.11 (see Hardware Performance Monitor, Section 3.1.11).
 The performance counters are placed inside the Control and Status Registers (CSRs) and can be accessed with the ``CSRRW(I)`` and ``CSRRS/C(I)`` instructions.
 
-CV32E40P implements the clock cycle counter ``mcycle(h)``, the retired instruction counter ``minstret(h)``, as well as the parameterizable number of event counters ``mhpmcounter3(h)`` - ``mhpmcounter31(h)`` and the corresponding event selector CSRs ``mhpmevent3`` - ``mhpmevent31``, and the ``mcountinhibit`` CSR to individually enable/disable the counters.
+|corev| implements the clock cycle counter ``mcycle(h)``, the retired instruction counter ``minstret(h)``, as well as the parameterizable number of event counters ``mhpmcounter3(h)`` - ``mhpmcounter31(h)`` and the corresponding event selector CSRs ``mhpmevent3`` - ``mhpmevent31``, and the ``mcountinhibit`` CSR to individually enable/disable the counters.
 ``mcycle(h)`` and ``minstret(h)`` are always available.
 
 All counters are 64 bit wide.
@@ -25,7 +25,7 @@ Unimplemented counters always read 0.
 Event Selector
 --------------
 
-The following events can be monitored using the performance counters of CV32E40P.
+The following events can be monitored using the performance counters of |corev|.
 
 
 +-------------+-----------------+-------------------------------------------+
