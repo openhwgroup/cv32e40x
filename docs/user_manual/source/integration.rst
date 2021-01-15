@@ -3,7 +3,7 @@
 Core Integration
 ================
 
-The main module is named ``cv32e40p_core`` and can be found in ``cv32e40p_core.sv``.
+The main module is named ``cv32e40x_core`` and can be found in ``cv32e40x_core.sv``.
 Below, the instantiation template is given and the parameters and interfaces are described.
 
 Instantiation Template
@@ -11,7 +11,7 @@ Instantiation Template
 
 .. code-block:: verilog
 
-  cv32e40p_core #(
+  cv32e40x_core #(
       .FPU                      ( 0 ),
       .NUM_MHPMCOUNTERS         ( 1 )
   ) u_core (

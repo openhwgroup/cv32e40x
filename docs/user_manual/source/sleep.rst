@@ -3,7 +3,7 @@
 Sleep Unit
 ==========
 
-Source File: :file:`rtl/cv32e40p_sleep_unit.sv`
+Source File: :file:`rtl/cv32e40x_sleep_unit.sv`
 
 The Sleep Unit contains and controls the instantiated clock gate, see :ref:`clock-gating-cell`, that gates ``clk_i`` and produces a gated clock
 for use by the other modules inside |corev|. The Sleep Unit is the only place in which ``clk_i`` itself is used; all
