@@ -791,29 +791,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
               csr_illegal = 1'b1;
               
 
-            // PMP register access
-            CSR_PMPCFG0,
-              CSR_PMPCFG1,
-              CSR_PMPCFG2,
-              CSR_PMPCFG3,
-              CSR_PMPADDR0,
-              CSR_PMPADDR1,
-              CSR_PMPADDR2,
-              CSR_PMPADDR3,
-              CSR_PMPADDR4,
-              CSR_PMPADDR5,
-              CSR_PMPADDR6,
-              CSR_PMPADDR7,
-              CSR_PMPADDR8,
-              CSR_PMPADDR9,
-              CSR_PMPADDR10,
-              CSR_PMPADDR11,
-              CSR_PMPADDR12,
-              CSR_PMPADDR13,
-              CSR_PMPADDR14,
-              CSR_PMPADDR15 :
-                if(!USE_PMP) csr_illegal = 1'b1;
-
             // User register access
             CSR_USTATUS,
               CSR_UEPC,

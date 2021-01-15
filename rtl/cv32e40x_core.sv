@@ -81,10 +81,11 @@ module cv32e40x_core
   
   // Unused parameters and signals (left in code for future design extensions)
   localparam PULP_SECURE         =  0;
-  localparam N_PMP_ENTRIES       = 16;
-  localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
   localparam A_EXTENSION         =  0;
   localparam DEBUG_TRIGGER_EN    =  1;
+
+  localparam N_PMP_ENTRIES       = 16;
+  localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
 
   // Unused signals related to above unused parameters
   // Left in code (with their original _i, _o postfixes) for future design extensions;
@@ -264,19 +265,13 @@ module cv32e40x_core
   // Wake signal
   logic        wake_from_sleep;
 
-  // PMP signals
-  logic  [N_PMP_ENTRIES-1:0] [31:0] pmp_addr;
-  logic  [N_PMP_ENTRIES-1:0] [7:0]  pmp_cfg;
-
-  logic                             data_req_pmp;
-  logic [31:0]                      data_addr_pmp;
-  logic                             data_gnt_pmp;
-  logic                             data_err_pmp;
-  logic                             data_err_ack;
-  logic                             instr_req_pmp;
-  logic                             instr_gnt_pmp;
-  logic [31:0]                      instr_addr_pmp;
-  logic                             instr_err_pmp;
+  logic                             data_req;
+  logic [31:0]                      data_addr;
+  logic                             data_gnt;
+  logic                             instr_req;
+  logic                             instr_gnt;
+  logic [31:0]                      instr_addr;
+  logic                             instr_err;
 
   // Mux selector for vectored IRQ PC
   assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
@@ -357,13 +352,12 @@ module cv32e40x_core
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .instr_req_o         ( instr_req_pmp     ),
-    .instr_addr_o        ( instr_addr_pmp    ),
-    .instr_gnt_i         ( instr_gnt_pmp     ),
+    .instr_req_o         ( instr_req     ),
+    .instr_addr_o        ( instr_addr    ),
+    .instr_gnt_i         ( instr_gnt     ),
     .instr_rvalid_i      ( instr_rvalid_i    ),
     .instr_rdata_i       ( instr_rdata_i     ),
     .instr_err_i         ( 1'b0              ),  // Bus error (not used yet)
-    .instr_err_pmp_i     ( instr_err_pmp     ),  // PMP error
 
     // outputs to ID stage
     .instr_valid_id_o    ( instr_valid_id    ),
@@ -453,7 +447,6 @@ module cv32e40x_core
     .exc_cause_o                  ( exc_cause            ),
     .trap_addr_mux_o              ( trap_addr_mux        ),
 
-    .is_fetch_failed_i            ( is_fetch_failed_id   ),
 
     .pc_id_i                      ( pc_id                ),
 
@@ -538,8 +531,6 @@ module cv32e40x_core
 
     .prepost_useincr_ex_o         ( useincr_addr_ex      ),
     .data_misaligned_i            ( data_misaligned      ),
-    .data_err_i                   ( data_err_pmp         ),
-    .data_err_ack_o               ( data_err_ack         ),
 
     // Interrupt Signals
     .irq_i                        ( irq_i                ),
@@ -676,7 +667,6 @@ module cv32e40x_core
     // stall control
     .is_decoding_i              ( is_decoding                  ),
     .lsu_ready_ex_i             ( lsu_ready_ex                 ),
-    .lsu_err_i                  ( data_err_pmp                 ),
 
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
@@ -699,13 +689,12 @@ module cv32e40x_core
     .rst_n                 ( rst_ni             ),
 
     //output to data memory
-    .data_req_o            ( data_req_pmp       ),
-    .data_gnt_i            ( data_gnt_pmp       ),
+    .data_req_o            ( data_req       ),
+    .data_gnt_i            ( data_gnt       ),
     .data_rvalid_i         ( data_rvalid_i      ),
     .data_err_i            ( 1'b0               ),  // Bus error (not used yet)
-    .data_err_pmp_i        ( data_err_pmp       ),  // PMP error
 
-    .data_addr_o           ( data_addr_pmp      ),
+    .data_addr_o           ( data_addr      ),
     .data_we_o             ( data_we_o          ),
     .data_atop_o           ( data_atop_o        ),
     .data_be_o             ( data_be_o          ),
@@ -802,9 +791,6 @@ module cv32e40x_core
 
     .priv_lvl_o                 ( current_priv_lvl       ),
 
-    .pmp_addr_o                 ( pmp_addr               ),
-    .pmp_cfg_o                  ( pmp_cfg                ),
-
     .pc_if_i                    ( pc_if                  ),
     .pc_id_i                    ( pc_id                  ),
     .pc_ex_i                    ( pc_ex                  ),
@@ -851,55 +837,17 @@ module cv32e40x_core
   //                       //
   ///////////////////////////
 
-  generate
-  if(PULP_SECURE && USE_PMP) begin : gen_pmp
-  cv32e40x_pmp
-  #(
-     .N_PMP_ENTRIES(N_PMP_ENTRIES)
-  )
-  pmp_unit_i
-  (
-    .clk                     ( clk                ),
-    .rst_n                   ( rst_ni             ),
+  
+  assign instr_req_o   = instr_req;
+  assign instr_addr_o  = instr_addr;
+  assign instr_gnt = instr_gnt_i;
+  assign instr_err = 1'b0;
 
-    .pmp_privil_mode_i       ( current_priv_lvl   ),
-
-    .pmp_addr_i              ( pmp_addr           ),
-    .pmp_cfg_i               ( pmp_cfg            ),
-
-
-    .data_req_i              ( data_req_pmp       ),
-    .data_addr_i             ( data_addr_pmp      ),
-    .data_we_i               ( data_we_o          ),
-    .data_gnt_o              ( data_gnt_pmp       ),
-
-    .data_req_o              ( data_req_o         ),
-    .data_gnt_i              ( data_gnt_i         ),
-    .data_addr_o             ( data_addr_o        ),
-    .data_err_o              ( data_err_pmp       ),
-    .data_err_ack_i          ( data_err_ack       ),
-
-    .instr_req_i             ( instr_req_pmp      ),
-    .instr_addr_i            ( instr_addr_pmp     ),
-    .instr_gnt_o             ( instr_gnt_pmp      ),
-
-    .instr_req_o             ( instr_req_o        ),
-    .instr_gnt_i             ( instr_gnt_i        ),
-    .instr_addr_o            ( instr_addr_o       ),
-    .instr_err_o             ( instr_err_pmp      )
-  );
-  end else begin : gen_no_pmp
-    assign instr_req_o   = instr_req_pmp;
-    assign instr_addr_o  = instr_addr_pmp;
-    assign instr_gnt_pmp = instr_gnt_i;
-    assign instr_err_pmp = 1'b0;
-
-    assign data_req_o    = data_req_pmp;
-    assign data_addr_o   = data_addr_pmp;
-    assign data_gnt_pmp  = data_gnt_i;
-    assign data_err_pmp  = 1'b0;
-  end
-  endgenerate
+  assign data_req_o    = data_req;
+  assign data_addr_o   = data_addr;
+  assign data_gnt  = data_gnt_i;
+  assign data_err  = 1'b0;
+ 
 
 `ifdef CV32E40P_ASSERT_ON
 

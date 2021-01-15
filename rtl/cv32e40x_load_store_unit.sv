@@ -33,7 +33,6 @@ module cv32e40x_load_store_unit
     input  logic         data_gnt_i,
     input  logic         data_rvalid_i,
     input  logic         data_err_i,           // External bus error (validity defined by data_rvalid_i) (not used yet)
-    input  logic         data_err_pmp_i,       // PMP error (validity defined by data_gnt_i)
 
     output logic [31:0]  data_addr_o,
     output logic         data_we_o,
@@ -354,8 +353,8 @@ module cv32e40x_load_store_unit
   assign misaligned_st   = data_misaligned_ex_i;
 
   // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
-  assign load_err_o      = data_gnt_i && data_err_pmp_i && ~data_we_o;  // Not currently used
-  assign store_err_o     = data_gnt_i && data_err_pmp_i && data_we_o;   // Not currently used
+  assign load_err_o      = 1'b0; // Not currently used
+  assign store_err_o     = 1'b0; // Not currently used
 
 
   // check for misaligned accesses that need a second memory access
@@ -523,20 +522,7 @@ module cv32e40x_load_store_unit
 
 `ifdef CV32E40P_ASSERT_ON
 
-  // External data bus errors are not supported yet. PMP errors are not supported yet.
-  // 
-  // Note: Once PMP is re-introduced please consider to make data_err_pmp_i a 'data' signal
-  // that is qualified with data_req_o && data_gnt_i (instead of suppressing data_gnt_i 
-  // as is currently done. This will keep the data_req_o/data_gnt_i protocol intact.
-  //
-  // JUST RE-ENABLING the PMP VIA ITS USE_PMP LOCALPARAM WILL NOT WORK AS DATA_ERR_PMP_I 
-  // NO LONGER FEEDS INTO LSU_READY_EX_O.
-
-  property p_no_error;
-     @(posedge clk) (1'b1) |-> ((data_err_i == 1'b0) && (data_err_pmp_i == 1'b0));
-  endproperty
-
-  a_no_error : assert property(p_no_error);
+  
 
   // Check that outstanding transaction count will not overflow DEPTH
   property p_no_transaction_count_overflow_0;

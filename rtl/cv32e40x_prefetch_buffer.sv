@@ -44,7 +44,6 @@ module cv32e40x_prefetch_buffer
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_rvalid_i,
   input  logic        instr_err_i,      // Not used yet (future addition)
-  input  logic        instr_err_pmp_i,  // Not used yet (future addition)
 
   // Prefetch Buffer Status
   output logic        busy_o
@@ -221,17 +220,12 @@ module cv32e40x_prefetch_buffer
 
   a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo);
 
-  // External instruction bus errors are not supported yet. PMP errors are not supported yet.
+  // External instruction bus errors are not supported yet. PMP errors are not supported.
   //
-  // Note: Once PMP is re-introduced please consider to make instr_err_pmp_i a 'data' signal
-  // that is qualified with instr_req_o && instr_gnt_i (instead of suppressing instr_gnt_i
-  // as is currently done. This will keep the instr_req_o/instr_gnt_i protocol intact.
-  //
-  // JUST RE-ENABLING the PMP VIA ITS USE_PMP LOCALPARAM WILL NOT WORK BECAUSE OF THE
-  // GRANT SUPPRESSION IN THE PMP.
 
+ 
   property p_no_error;
-     @(posedge clk) (1'b1) |-> ((instr_err_i == 1'b0) && (instr_err_pmp_i == 1'b0));
+     @(posedge clk) (1'b1) |-> ((instr_err_i == 1'b0));
   endproperty
 
   a_no_error : assert property(p_no_error);

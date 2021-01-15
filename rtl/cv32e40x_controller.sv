@@ -37,7 +37,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        fetch_enable_i,             // Start the decoding
   output logic        ctrl_busy_o,                // Core is busy processing instructions
   output logic        is_decoding_o,              // Core is in decoding state
-  input  logic        is_fetch_failed_i,
 
   // decoder related signals
   output logic        deassert_we_o,              // deassert write enable for next instruction
@@ -79,8 +78,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
   input  logic        data_we_ex_i,
   input  logic        data_misaligned_i,
-  input  logic        data_err_i,
-  output logic        data_err_ack_o,
 
   // from ALU
   input  logic        mult_multicycle_i,          // multiplier is taken multiple cycles and uses op c as storage
@@ -180,7 +177,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   logic jump_done, jump_done_q, jump_in_dec, branch_in_id_dec, branch_in_id;
 
-  logic data_err_q;
 
   logic debug_mode_q, debug_mode_n;
   logic ebrk_force_debug_mode;
@@ -210,7 +206,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     instr_req_o            = 1'b1;
 
-    data_err_ack_o         = 1'b0;
 
     csr_save_if_o          = 1'b0;
     csr_save_id_o          = 1'b0;
@@ -384,41 +379,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
           end  //taken branch
 
-          else if (data_err_i)
-          begin //data error
-            // the current LW or SW have been blocked by the PMP
-
-            is_decoding_o     = 1'b0;
-            halt_if_o         = 1'b1;
-            halt_id_o         = 1'b1;
-            csr_save_ex_o     = 1'b1;
-            csr_save_cause_o  = 1'b1;
-            data_err_ack_o    = 1'b1;
-            //no jump in this stage as we have to wait one cycle to go to Machine Mode
-
-            csr_cause_o       = {1'b0, data_we_ex_i ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT};
-            ctrl_fsm_ns       = FLUSH_WB;
-
-          end  //data error
-
-          else if (is_fetch_failed_i)
-          begin
-
-            // the current instruction has been blocked by the PMP
-
-            is_decoding_o     = 1'b0;
-            halt_id_o         = 1'b1;
-            halt_if_o         = 1'b1;
-            csr_save_if_o     = 1'b1;
-            csr_save_cause_o  = !debug_mode_q;
-
-            //no jump in this stage as we have to wait one cycle to go to Machine Mode
-
-            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_FAULT};
-            ctrl_fsm_ns       = FLUSH_WB;
-
-
-          end
           // decode and execute instructions only if the current conditional
           // branch in the EX stage is either not taken, or there is no
           // conditional branch in the EX stage
@@ -603,20 +563,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         halt_if_o = 1'b1;
         halt_id_o = 1'b1;
 
-        if (data_err_i)
-        begin //data error
-            // the current LW or SW have been blocked by the PMP
-            csr_save_ex_o     = 1'b1;
-            csr_save_cause_o  = 1'b1;
-            data_err_ack_o    = 1'b1;
-            //no jump in this stage as we have to wait one cycle to go to Machine Mode
-            csr_cause_o       = {1'b0, data_we_ex_i ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT};
-            ctrl_fsm_ns       = FLUSH_WB;
-            //putting illegal to 0 as if it was 1, the core is going to jump to the exception of the EX stage,
-            //so the illegal was never executed
-            illegal_insn_n    = 1'b0;
-        end  //data erro
-        else if (ex_valid_i) begin
+        if (ex_valid_i) begin
           //check done to prevent data harzard in the CSR registers
           ctrl_fsm_ns = FLUSH_WB;
 
@@ -653,89 +600,70 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
         ctrl_fsm_ns = DECODE;
 
-        if(data_err_q) begin
-            //PMP data_error
-            pc_mux_o              = PC_EXCEPTION;
-            pc_set_o              = 1'b1;
-            trap_addr_mux_o       = TRAP_MACHINE;
-            //little hack during testing
-            exc_pc_mux_o          = EXC_PC_EXCEPTION;
-            exc_cause_o           = data_we_ex_i ? EXC_CAUSE_LOAD_FAULT : EXC_CAUSE_STORE_FAULT;
-
-        end
-        else if (is_fetch_failed_i) begin
-            //instruction fetch error
+        
+        if(illegal_insn_q) begin
+            //exceptions
             pc_mux_o              = PC_EXCEPTION;
             pc_set_o              = 1'b1;
             trap_addr_mux_o       = TRAP_MACHINE;
             exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-            exc_cause_o           = EXC_CAUSE_INSTR_FAULT;
+            illegal_insn_n        = 1'b0;
+            if (debug_single_step_i && ~debug_mode_q)
+                ctrl_fsm_ns = DBG_TAKEN_IF;
+        end else begin
+          unique case(1'b1)
+            ebrk_insn_i: begin
+                //ebreak
+                pc_mux_o              = PC_EXCEPTION;
+                pc_set_o              = 1'b1;
+                trap_addr_mux_o       = TRAP_MACHINE;
+                exc_pc_mux_o          = EXC_PC_EXCEPTION;
 
+                if (debug_single_step_i && ~debug_mode_q)
+                    ctrl_fsm_ns = DBG_TAKEN_IF;
+            end
+            ecall_insn_i: begin
+                //ecall
+                pc_mux_o              = PC_EXCEPTION;
+                pc_set_o              = 1'b1;
+                trap_addr_mux_o       = TRAP_MACHINE;
+                exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
+
+                if (debug_single_step_i && ~debug_mode_q)
+                    ctrl_fsm_ns = DBG_TAKEN_IF;
+            end
+
+            mret_insn_i: begin
+                csr_restore_mret_id_o =  !debug_mode_q;
+                ctrl_fsm_ns           = XRET_JUMP;
+            end
+            uret_insn_i: begin
+                csr_restore_uret_id_o =  !debug_mode_q;
+                ctrl_fsm_ns           = XRET_JUMP;
+            end
+            dret_insn_i: begin
+                csr_restore_dret_id_o = 1'b1;
+                ctrl_fsm_ns           = XRET_JUMP;
+            end
+
+            wfi_i: begin
+                if ( debug_req_pending) begin
+                    ctrl_fsm_ns = DBG_TAKEN_IF;
+                    debug_force_wakeup_n = 1'b1;
+                end else begin
+                  ctrl_fsm_ns = WAIT_SLEEP;
+                end
+            end
+            fencei_insn_i: begin
+                // we just jump to instruction after the fence.i since that
+                // forces the instruction cache to refetch
+                pc_mux_o              = PC_FENCEI;
+                pc_set_o              = 1'b1;
+            end
+            default:;
+          endcase
         end
-        else begin
-          if(illegal_insn_q) begin
-              //exceptions
-              pc_mux_o              = PC_EXCEPTION;
-              pc_set_o              = 1'b1;
-              trap_addr_mux_o       = TRAP_MACHINE;
-              exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-              illegal_insn_n        = 1'b0;
-              if (debug_single_step_i && ~debug_mode_q)
-                  ctrl_fsm_ns = DBG_TAKEN_IF;
-          end else begin
-            unique case(1'b1)
-              ebrk_insn_i: begin
-                  //ebreak
-                  pc_mux_o              = PC_EXCEPTION;
-                  pc_set_o              = 1'b1;
-                  trap_addr_mux_o       = TRAP_MACHINE;
-                  exc_pc_mux_o          = EXC_PC_EXCEPTION;
-
-                  if (debug_single_step_i && ~debug_mode_q)
-                      ctrl_fsm_ns = DBG_TAKEN_IF;
-              end
-              ecall_insn_i: begin
-                  //ecall
-                  pc_mux_o              = PC_EXCEPTION;
-                  pc_set_o              = 1'b1;
-                  trap_addr_mux_o       = TRAP_MACHINE;
-                  exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-
-                  if (debug_single_step_i && ~debug_mode_q)
-                      ctrl_fsm_ns = DBG_TAKEN_IF;
-              end
-
-              mret_insn_i: begin
-                 csr_restore_mret_id_o =  !debug_mode_q;
-                 ctrl_fsm_ns           = XRET_JUMP;
-              end
-              uret_insn_i: begin
-                 csr_restore_uret_id_o =  !debug_mode_q;
-                 ctrl_fsm_ns           = XRET_JUMP;
-              end
-              dret_insn_i: begin
-                  csr_restore_dret_id_o = 1'b1;
-                  ctrl_fsm_ns           = XRET_JUMP;
-              end
-
-              wfi_i: begin
-                  if ( debug_req_pending) begin
-                      ctrl_fsm_ns = DBG_TAKEN_IF;
-                      debug_force_wakeup_n = 1'b1;
-                  end else begin
-                    ctrl_fsm_ns = WAIT_SLEEP;
-                  end
-              end
-              fencei_insn_i: begin
-                  // we just jump to instruction after the fence.i since that
-                  // forces the instruction cache to refetch
-                  pc_mux_o              = PC_FENCEI;
-                  pc_set_o              = 1'b1;
-              end
-              default:;
-            endcase
-          end
-        end
+        
 
       end
 
@@ -849,30 +777,19 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         halt_if_o   = 1'b1;
         halt_id_o   = 1'b1;
 
-        if (data_err_i)
-        begin //data error
-            // the current LW or SW have been blocked by the PMP
-            csr_save_ex_o     = 1'b1;
-            csr_save_cause_o  = 1'b1;
-            data_err_ack_o    = 1'b1;
-            //no jump in this stage as we have to wait one cycle to go to Machine Mode
-            csr_cause_o       = {1'b0, data_we_ex_i ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT};
-            ctrl_fsm_ns       = FLUSH_WB;
-        end  //data error
-        else begin
-          if(debug_mode_q                          |
-             trigger_match_i                       |
-             (ebrk_force_debug_mode & ebrk_insn_i) |
-             debug_req_entry_q                     )
-            begin
-              ctrl_fsm_ns = DBG_TAKEN_ID;
-            end else
-            begin
-              // else must be debug_single_step_i
-              ctrl_fsm_ns = DBG_TAKEN_IF;
-            end
+        if(debug_mode_q                          |
+            trigger_match_i                       |
+            (ebrk_force_debug_mode & ebrk_insn_i) |
+            debug_req_entry_q                     )
+          begin
+            ctrl_fsm_ns = DBG_TAKEN_ID;
+          end else
+          begin
+            // else must be debug_single_step_i
+            ctrl_fsm_ns = DBG_TAKEN_IF;
+          end
         end
-      end
+      
       // Debug end
 
       default: begin
@@ -983,7 +900,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     begin
       ctrl_fsm_cs        <= RESET;
       jump_done_q        <= 1'b0;
-      data_err_q         <= 1'b0;
 
       debug_mode_q       <= 1'b0;
       illegal_insn_q     <= 1'b0;
@@ -998,7 +914,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       // clear when id is valid (no instruction incoming)
       jump_done_q        <= jump_done & (~id_ready_i);
 
-      data_err_q         <= data_err_i;
 
       debug_mode_q       <= debug_mode_n;
 

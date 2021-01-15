@@ -54,7 +54,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic                   instr_rvalid_i,
     input  logic            [31:0] instr_rdata_i,
     input  logic                   instr_err_i,      // External bus error (validity defined by instr_rvalid_i) (not used yet)
-    input  logic                   instr_err_pmp_i,  // PMP error (validity defined by instr_gnt_i)
 
     // Output of IF Pipeline stage
     output logic              instr_valid_id_o,      // instruction in IF/ID pipeline is valid
@@ -188,7 +187,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .instr_gnt_i       ( instr_gnt_i                 ),
     .instr_rvalid_i    ( instr_rvalid_i              ),
     .instr_err_i       ( instr_err_i                 ),     // Not supported (yet)
-    .instr_err_pmp_i   ( instr_err_pmp_i             ),     // Not supported (yet)
     .instr_rdata_i     ( instr_rdata_i               ),
 
     // Prefetch Buffer Status

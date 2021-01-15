@@ -839,7 +839,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .fetch_enable_i                 ( fetch_enable_i         ),
     .ctrl_busy_o                    ( ctrl_busy_o            ),
     .is_decoding_o                  ( is_decoding_o          ),
-    .is_fetch_failed_i              ( is_fetch_failed_i      ),
 
     // decoder related signals
     .deassert_we_o                  ( deassert_we            ),
@@ -881,8 +880,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_req_ex_i                  ( data_req_ex_o          ),
     .data_we_ex_i                   ( data_we_ex_o           ),
     .data_misaligned_i              ( data_misaligned_i      ),
-    .data_err_i                     ( data_err_i             ),
-    .data_err_ack_o                 ( data_err_ack_o         ),
 
     // ALU
     .mult_multicycle_i              ( mult_multicycle_i      ),

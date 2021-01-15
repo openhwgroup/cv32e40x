@@ -80,11 +80,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic            debug_ebreaku_o,
   output logic            trigger_match_o,
 
-
-  output logic  [N_PMP_ENTRIES-1:0] [31:0] pmp_addr_o,
-  output logic  [N_PMP_ENTRIES-1:0] [7:0]  pmp_cfg_o,
-
-  output PrivLvl_t        priv_lvl_o,
+output PrivLvl_t        priv_lvl_o,
 
   input  logic [31:0]     pc_if_i,
   input  logic [31:0]     pc_id_i,
@@ -116,7 +112,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                 mhpmevent_ld_stall_i
 );
 
-  localparam N_PMP_CFG         = N_PMP_ENTRIES % 4 == 0 ? N_PMP_ENTRIES/4 : N_PMP_ENTRIES/4 + 1;
+  
   localparam logic [31:0] MISA_VALUE =
   (32'(A_EXTENSION)                     <<  0)  // A - Atomic Instructions extension
 | (32'(1)                               <<  2)  // C - Compressed extension
@@ -130,13 +126,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 | (32'(0)                               << 20)  // U - User mode implemented
 | (32'(0)                          << 23)  // X - Non-standard extensions present
 | (32'(MXL)                        << 30); // M-XLEN
-
-
-  typedef struct packed {
-    logic  [MAX_N_PMP_ENTRIES-1:0] [31:0] pmpaddr;
-    logic  [MAX_N_PMP_CFG-1:0]     [31:0] pmpcfg_packed;
-    logic  [MAX_N_PMP_ENTRIES-1:0] [ 7:0] pmpcfg;
-   } Pmp_t;
 
 
   // CSR update logic
@@ -199,10 +188,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   logic is_irq;
   PrivLvl_t priv_lvl_n, priv_lvl_q;
-  Pmp_t pmp_reg_q, pmp_reg_n;
-  //clock gating for pmp regs
-  logic [MAX_N_PMP_ENTRIES-1:0] pmpaddr_we;
-  logic [MAX_N_PMP_ENTRIES-1:0] pmpcfg_we;
 
   // Performance Counter Signals
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters
@@ -418,12 +403,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_we                 = csr_mtvec_init_i;
 
     utvec_n                  = '0;              // Not used if PULP_SECURE == 0
-    pmp_reg_n.pmpaddr        = '0;              // Not used if PULP_SECURE == 0
-    pmp_reg_n.pmpcfg_packed  = '0;              // Not used if PULP_SECURE == 0
-    pmp_reg_n.pmpcfg         = '0;              // Not used if PULP_SECURE == 0
-    pmpaddr_we               = '0;
-    pmpcfg_we                = '0;
-
+    
     mie_n                    = mie_q;
     mie_we                   = 1'b0;
     
@@ -730,16 +710,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign dpc_o          = dpc_q;
 
-  assign pmp_addr_o     = pmp_reg_q.pmpaddr;
-  assign pmp_cfg_o      = pmp_reg_q.pmpcfg;
-
   assign debug_single_step_o  = dcsr_q.step;
   assign debug_ebreakm_o      = dcsr_q.ebreakm;
   assign debug_ebreaku_o      = dcsr_q.ebreaku;
 
   
   // Tieoff signals related to pulp_secure
-  assign pmp_reg_q    = '0;
   assign uepc_q       = '0;
   assign ucause_q     = '0;
   assign utvec_q      = '0;
