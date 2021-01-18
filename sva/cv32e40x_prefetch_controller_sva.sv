@@ -30,7 +30,6 @@
 module cv32e40x_prefetch_controller_sva
 #(
   parameter DEPTH = 4,
-  parameter PULP_OBI = 0 ,
   parameter FIFO_ADDR_DEPTH = (DEPTH > 1) ? $clog2(DEPTH) : 1
 )(
   input  logic        clk,

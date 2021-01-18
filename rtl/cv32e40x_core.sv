@@ -921,7 +921,7 @@ module cv32e40x_core
     // Check that a taken IRQ was for an enabled cause and that mstatus.mie gets disabled
     property p_irq_enabled_1;
        @(posedge clk) disable iff (!rst_ni) (pc_set && (pc_mux_id == PC_EXCEPTION) && (exc_pc_mux_id == EXC_PC_IRQ)) |=>
-         (cs_registers_i.mcause_q[5] && cs_registers_i.mie_q[cs_registers_i.mcause_q[4:0]] && !cs_registers_i.mstatus_q.mie);
+         (cs_registers_i.mcause_q[31] && cs_registers_i.mie_q[cs_registers_i.mcause_q[4:0]] && !cs_registers_i.mstatus_q.mie);
     endproperty
 
     a_irq_enabled_1 : assert property(p_irq_enabled_1);

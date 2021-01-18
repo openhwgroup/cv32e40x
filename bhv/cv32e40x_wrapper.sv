@@ -85,7 +85,6 @@ module cv32e40x_wrapper
       cv32e40x_prefetch_controller_sva
       #(
           .DEPTH           ( DEPTH           ),
-          .PULP_OBI        ( PULP_OBI        ),
           .FIFO_ADDR_DEPTH ( FIFO_ADDR_DEPTH ))
       prefetch_controller_sva (
           .*);
