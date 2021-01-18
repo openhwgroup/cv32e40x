@@ -170,7 +170,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] csr_mie_wdata;
   logic        csr_mie_we;
 
-  logic is_irq;
   PrivLvl_t priv_lvl_n, priv_lvl_q;
 
   // Performance Counter Signals
@@ -183,8 +182,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                         mhpmcounter_write_upper;          // write 32 upper bits mhpmcounter_q
   logic [31:0]                         mhpmcounter_write_increment;      // write increment of mhpmcounter_q
 
-  assign is_irq = csr_cause_i[5];
-
+  
   // mip CSR
   assign mip = mip_i;
 
@@ -731,7 +729,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               1'b0,                  // store   : not supported
               1'b0};                 // load    : not supported
 
-   
+  assign tmatch_value_n = csr_wdata_int; 
 
   cv32e40x_csr #(
     .WIDTH      (32),
@@ -753,7 +751,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   ) tmatch_value_csr_i (
     .clk      (clk),
     .rst_n     (rst_n),
-    .wr_data_i  (csr_wdata_int),
+    .wr_data_i  (tmatch_value_n),
     .wr_en_i    (tmatch_value_we),
     .rd_data_o  (tmatch_value_q),
     .rd_error_o (tmatch_value_rd_error)
