@@ -170,7 +170,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Debug state
   debug_state_e debug_fsm_cs, debug_fsm_ns;
 
-  logic jump_done, jump_done_q, jump_in_dec, branch_in_id_dec, branch_in_id;
+  logic jump_done, jump_done_q, jump_in_dec, branch_in_id;
 
 
   logic debug_mode_q, debug_mode_n;
@@ -234,10 +234,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     jump_in_dec            = ctrl_transfer_insn_in_dec_i == BRANCH_JALR || ctrl_transfer_insn_in_dec_i == BRANCH_JAL;
 
     branch_in_id           = ctrl_transfer_insn_in_id_i == BRANCH_COND;
-    branch_in_id_dec       = ctrl_transfer_insn_in_dec_i == BRANCH_COND;
 
-    ebrk_force_debug_mode  = (debug_ebreakm_i && current_priv_lvl_i == PRIV_LVL_M) ||
-                             (debug_ebreaku_i && current_priv_lvl_i == PRIV_LVL_U);
+    ebrk_force_debug_mode  = (debug_ebreakm_i && current_priv_lvl_i == PRIV_LVL_M);
     debug_csr_save_o       = 1'b0;
     debug_cause_o          = DBG_CAUSE_EBREAK;
     debug_mode_n           = debug_mode_q;
@@ -566,7 +564,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
               ecall_insn_i: begin
                 csr_save_id_o     = 1'b1;
                 csr_save_cause_o  = !debug_mode_q;
-                csr_cause_o       = {1'b0, current_priv_lvl_i == PRIV_LVL_U ? EXC_CAUSE_ECALL_UMODE : EXC_CAUSE_ECALL_MMODE};
+                csr_cause_o       = {1'b0, EXC_CAUSE_ECALL_MMODE};
               end
               default:;
             endcase // unique case (1'b1)
