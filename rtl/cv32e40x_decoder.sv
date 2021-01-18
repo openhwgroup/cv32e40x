@@ -52,11 +52,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        rega_used_o,             // rs1 is used by current instruction
   output logic        regb_used_o,             // rs2 is used by current instruction
 
-  output logic [ 0:0] bmask_a_mux_o,           // bit manipulation mask a mux
-  output logic [ 1:0] bmask_b_mux_o,           // bit manipulation mask b mux
-  output logic        alu_bmask_a_mux_sel_o,   // bit manipulation mask a mux (reg or imm)
-  output logic        alu_bmask_b_mux_sel_o,   // bit manipulation mask b mux (reg or imm)
-
   // from IF/ID pipeline
   input  logic [31:0] instr_rdata_i,           // instruction read from instr memory/cache
   input  logic        illegal_c_insn_i,        // compressed instruction decode failed
@@ -67,28 +62,20 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic [2:0]  alu_op_a_mux_sel_o,      // operand a selection: reg value, PC, immediate or zero
   output logic [2:0]  alu_op_b_mux_sel_o,      // operand b selection: reg value or immediate
   output logic [1:0]  alu_op_c_mux_sel_o,      // operand c selection: reg value or jump target
-  output logic [1:0]  alu_vec_mode_o,          // selects between 32 bit, 16 bit and 8 bit vectorial modes
-  output logic        scalar_replication_o,    // scalar replication enable
-  output logic        scalar_replication_c_o,  // scalar replication enable for operand C
   output logic [0:0]  imm_a_mux_sel_o,         // immediate selection for operand a
   output logic [3:0]  imm_b_mux_sel_o,         // immediate selection for operand b
-  output logic        is_clpx_o,               // whether the instruction is complex (pulpv3) or not
-  output logic        is_subrot_o,
 
   // MUL related control signals
   output mul_opcode_e mult_operator_o,         // Multiplication operation selection
   output logic        mult_int_en_o,           // perform integer multiplication
-  output logic        mult_dot_en_o,           // perform dot multiplication
   output logic [0:0]  mult_imm_mux_o,          // Multiplication immediate mux selector
   output logic        mult_sel_subword_o,      // Select subwords for 16x16 bit of multiplier
   output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
-  output logic [1:0]  mult_dot_signed_o,       // Dot product in signed mode
-
+  
   // register file related signals
   output logic        regfile_mem_we_o,        // write enable for regfile
   output logic        regfile_alu_we_o,        // write enable for 2nd regfile port
   output logic        regfile_alu_we_dec_o,    // write enable for 2nd regfile port without deassert
-  output logic        regfile_alu_waddr_sel_o, // Select register write address for ALU/MUL operations
 
   // CSR manipulation
   output logic        csr_access_o,            // access to CSR
@@ -129,7 +116,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   logic       alu_en;
   logic       mult_int_en;
-  logic       mult_dot_en;
  
 
   /////////////////////////////////////////////
@@ -152,23 +138,17 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     alu_op_b_mux_sel_o          = OP_B_REGB_OR_FWD;
     alu_op_c_mux_sel_o          = OP_C_REGC_OR_FWD;
     
-    alu_vec_mode_o              = VEC_MODE32;
-    scalar_replication_o        = 1'b0;
-    scalar_replication_c_o      = 1'b0;
     imm_a_mux_sel_o             = IMMA_ZERO;
     imm_b_mux_sel_o             = IMMB_I;
 
     mult_operator_o             = MUL_MAC32;
     mult_int_en                 = 1'b0;
-    mult_dot_en                 = 1'b0;
     mult_imm_mux_o              = MIMM_ZERO;
     mult_signed_mode_o          = 2'b00;
     mult_sel_subword_o          = 1'b0;
-    mult_dot_signed_o           = 2'b00;
 
     regfile_mem_we              = 1'b0;
     regfile_alu_we              = 1'b0;
-    regfile_alu_waddr_sel_o     = 1'b1;
 
     prepost_useincr_o           = 1'b1;
 
@@ -197,15 +177,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
     rega_used_o                 = 1'b0;
     regb_used_o                 = 1'b0;
-    
-
-    bmask_a_mux_o               = BMASK_A_ZERO;
-    bmask_b_mux_o               = BMASK_B_ZERO;
-    alu_bmask_a_mux_sel_o       = BMASK_A_IMM;
-    alu_bmask_b_mux_sel_o       = BMASK_B_IMM;
-
-    is_clpx_o                   = 1'b0;
-    is_subrot_o                 = 1'b0;
 
     mret_dec_o                  = 1'b0;
     dret_dec_o                  = 1'b0;
@@ -649,11 +620,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             default: csr_illegal = 1'b1;
           endcase
 
-          if (instr_rdata_i[29:28] > current_priv_lvl_i) begin
-            // No access to higher privilege CSR
-            csr_illegal = 1'b1;
-          end
-
+          
           // Determine if CSR access is illegal
           case (instr_rdata_i[31:20])
             //  Writes to read only CSRs results in illegal instruction
@@ -797,7 +764,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // deassert we signals (in case of stalls)
   assign alu_en_o                    = (deassert_we_i) ? 1'b0          : alu_en;
   assign mult_int_en_o               = (deassert_we_i) ? 1'b0          : mult_int_en;
-  assign mult_dot_en_o               = (deassert_we_i) ? 1'b0          : mult_dot_en;
   assign regfile_mem_we_o            = (deassert_we_i) ? 1'b0          : regfile_mem_we;
   assign regfile_alu_we_o            = (deassert_we_i) ? 1'b0          : regfile_alu_we;
   assign data_req_o                  = (deassert_we_i) ? 1'b0          : data_req;

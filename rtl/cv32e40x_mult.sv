@@ -41,16 +41,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   input  logic [ 4:0] imm_i,
 
-
-  // dot multiplier
-  input  logic [ 1:0] dot_signed_i,
-  input  logic [31:0] dot_op_a_i,
-  input  logic [31:0] dot_op_b_i,
-  input  logic [31:0] dot_op_c_i,
-  input  logic        is_clpx_i,
-  input  logic [ 1:0] clpx_shift_i,
-  input  logic        clpx_img_i,
-
   output logic [31:0] result_o,
 
   output logic        multicycle_o,
@@ -241,10 +231,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
    a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
    |-> (((operator_i == MUL_MAC32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
 
-   // Ensure no use of dot operations or complex operations (will only work if PULP_XPULP == 0)
-   a_mul_dot_cplx : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-   |-> ((dot_signed_i == 'b0) && (dot_op_a_i == 'b0) && (dot_op_b_i == 'b0) && (dot_op_c_i == 'b0) && (is_clpx_i == 'b0) && (clpx_shift_i == 'b0) && (clpx_img_i == 'b0)));
-
+  
   // check multiplication result for mulh
   assert property (
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))

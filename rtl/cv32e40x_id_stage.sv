@@ -84,10 +84,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic [31:0] alu_operand_a_ex_o,
     output logic [31:0] alu_operand_b_ex_o,
     output logic [31:0] alu_operand_c_ex_o,
-    output logic [ 4:0] bmask_a_ex_o,
-    output logic [ 4:0] bmask_b_ex_o,
-    output logic [ 1:0] imm_vec_ext_ex_o,
-    output logic [ 1:0] alu_vec_mode_ex_o,
 
     output logic [4:0]  regfile_waddr_ex_o,
     output logic        regfile_we_ex_o,
@@ -98,9 +94,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // ALU
     output logic        alu_en_ex_o,
     output alu_opcode_e alu_operator_ex_o,
-    output logic        alu_is_clpx_ex_o,
-    output logic        alu_is_subrot_ex_o,
-    output logic [ 1:0] alu_clpx_shift_ex_o,
 
     // MUL
     output mul_opcode_e  mult_operator_ex_o,
@@ -111,14 +104,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic         mult_sel_subword_ex_o,
     output logic [ 1:0]  mult_signed_mode_ex_o,
     output logic [ 4:0]  mult_imm_ex_o,
-
-    output logic [31:0] mult_dot_op_a_ex_o,
-    output logic [31:0] mult_dot_op_b_ex_o,
-    output logic [31:0] mult_dot_op_c_ex_o,
-    output logic [ 1:0] mult_dot_signed_ex_o,
-    output logic        mult_is_clpx_ex_o,
-    output logic [ 1:0] mult_clpx_shift_ex_o,
-    output logic        mult_clpx_img_ex_o,
 
     // CSR ID/EX
     output logic        csr_access_ex_o,
@@ -253,15 +238,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] imm_u_type;
   logic [31:0] imm_uj_type;
   logic [31:0] imm_z_type;
-  logic [31:0] imm_s2_type;
-  logic [31:0] imm_bi_type;
-  logic [31:0] imm_s3_type;
-  logic [31:0] imm_vs_type;
   logic [31:0] imm_vu_type;
-  logic [31:0] imm_shuffleb_type;
-  logic [31:0] imm_shuffleh_type;
-  logic [31:0] imm_shuffle_type;
-  logic [31:0] imm_clip_type;
 
   logic [31:0] imm_a;       // contains the immediate for operand b
   logic [31:0] imm_b;       // contains the immediate for operand b
@@ -304,12 +281,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        mult_int_en;      // use integer multiplier
   logic        mult_sel_subword; // Select a subword when doing multiplications
   logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
-  logic        mult_dot_en;      // use dot product
-  logic [1:0]  mult_dot_signed;  // Signed mode dot products (can be mixed types)
 
   // Register Write Control
   logic        regfile_we_id;
-  logic        regfile_alu_waddr_mux_sel;
 
   // Data Memory Control
   logic        data_we_id;
@@ -336,30 +310,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] operand_b_fw_id;
   logic [31:0] operand_c_fw_id;
 
-  logic [31:0] operand_b, operand_b_vec;
-  logic [31:0] operand_c, operand_c_vec;
+  logic [31:0] operand_b;
+  logic [31:0] operand_c;
 
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
   logic [31:0] alu_operand_c;
 
   // Immediates for ID
-  logic [0:0]  bmask_a_mux;
-  logic [1:0]  bmask_b_mux;
-  logic        alu_bmask_a_mux_sel;
-  logic        alu_bmask_b_mux_sel;
   logic [0:0]  mult_imm_mux;
 
-  logic [ 4:0] bmask_a_id_imm;
-  logic [ 4:0] bmask_b_id_imm;
-  logic [ 4:0] bmask_a_id;
-  logic [ 4:0] bmask_b_id;
-  logic [ 1:0] imm_vec_ext_id;
   logic [ 4:0] mult_imm_id;
-
-  logic [ 1:0] alu_vec_mode;
-  logic        scalar_replication;
-  logic        scalar_replication_c;
 
   // Forwarding detection signals
   logic        reg_d_ex_is_reg_a_id;
@@ -368,8 +329,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        reg_d_wb_is_reg_b_id;
   logic        reg_d_alu_is_reg_a_id;
   logic        reg_d_alu_is_reg_b_id;
-
-  logic        is_clpx, is_subrot;
 
   logic        mret_dec;
   logic        dret_dec;
@@ -392,21 +351,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // immediate for CSR manipulatin (zero extended)
   assign imm_z_type  = { 27'b0, instr[REG_S1_MSB:REG_S1_LSB] };
 
-  assign imm_s2_type = { 27'b0, instr[24:20] };
-  assign imm_bi_type = { {27{instr[24]}}, instr[24:20] };
-  assign imm_s3_type = { 27'b0, instr[29:25] };
-  assign imm_vs_type = { {26 {instr[24]}}, instr[24:20], instr[25] };
-  assign imm_vu_type = { 26'b0, instr[24:20], instr[25] };
-
-  // same format as rS2 for shuffle needs, expands immediate
-  assign imm_shuffleb_type = {6'b0, instr[28:27], 6'b0, instr[24:23], 6'b0, instr[22:21], 6'b0, instr[20], instr[25]};
-  assign imm_shuffleh_type = {15'h0, instr[20], 15'h0, instr[25]};
-
-  // clipping immediate, uses a small barrel shifter to pre-process the
-  // immediate and an adder to subtract 1
-  // The end result is a mask that has 1's set in the lower part
-  assign imm_clip_type    = (32'h1 << instr[24:20]) - 1;
-
 
   //---------------------------------------------------------------------------
   // source register selection regfile_fp_x=1 <=> CV32E40P_REG_x is a FP-register
@@ -422,8 +366,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Second Register Write Address Selection
   // Used for prepost load/store and multiplier
-  assign regfile_alu_waddr_id = regfile_alu_waddr_mux_sel ?
-                                regfile_waddr_id : regfile_addr_ra_id;
+  assign regfile_alu_waddr_id = regfile_waddr_id;
 
   // Forwarding control signals
   assign reg_d_ex_is_reg_a_id  = (regfile_waddr_ex_o     == regfile_addr_ra_id) && (rega_used_dec == 1'b1) && (regfile_addr_ra_id != '0);
@@ -441,7 +384,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign branch_taken_ex = branch_in_ex_o && branch_decision_i;
 
 
-  assign mult_en = mult_int_en | mult_dot_en;
+  assign mult_en = mult_int_en;
 
 
   //////////////////////////////////////////////////////////////////
@@ -520,13 +463,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       IMMB_S:      imm_b = imm_s_type;
       IMMB_U:      imm_b = imm_u_type;
       IMMB_PCINCR: imm_b = is_compressed_i ? 32'h2 : 32'h4;
-      IMMB_S2:     imm_b = imm_s2_type;
-      IMMB_BI:     imm_b = imm_bi_type;
-      IMMB_S3:     imm_b = imm_s3_type;
-      IMMB_VS:     imm_b = imm_vs_type;
-      IMMB_VU:     imm_b = imm_vu_type;
-      IMMB_SHUF:   imm_b = imm_shuffle_type;
-      IMMB_CLIP:   imm_b = {1'b0, imm_clip_type[31:1]};
       default:     imm_b = imm_i_type;
     endcase
   end
@@ -537,25 +473,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       OP_B_REGA_OR_FWD:  operand_b = operand_a_fw_id;
       OP_B_REGB_OR_FWD:  operand_b = operand_b_fw_id;
       OP_B_IMM:          operand_b = imm_b;
-      OP_B_BMASK:        operand_b = $unsigned(operand_b_fw_id[4:0]);
       default:           operand_b = operand_b_fw_id;
     endcase // case (alu_op_b_mux_sel)
   end
 
 
-  // scalar replication for operand B and shuffle type
-  always_comb begin
-    if (alu_vec_mode == VEC_MODE8) begin
-      operand_b_vec    = {4{operand_b[7:0]}};
-      imm_shuffle_type = imm_shuffleb_type;
-    end else begin
-      operand_b_vec    = {2{operand_b[15:0]}};
-      imm_shuffle_type = imm_shuffleh_type;
-    end
-  end
-
   // choose normal or scalar replicated version of operand b
-  assign alu_operand_b = (scalar_replication == 1'b1) ? operand_b_vec : operand_b;
+  assign alu_operand_b = operand_b;
 
 
   // Operand b forwarding mux
@@ -587,25 +511,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     endcase // case (alu_op_c_mux_sel)
   end
 
-
-  // scalar replication for operand C and shuffle type
-  always_comb begin
-    if (alu_vec_mode == VEC_MODE8) begin
-      operand_c_vec    = {4{operand_c[7:0]}};
-    end else begin
-      operand_c_vec    = {2{operand_c[15:0]}};
-    end
-  end
-
-  // choose normal or scalar replicated version of operand b
-  assign alu_operand_c = (scalar_replication_c == 1'b1) ? operand_c_vec : operand_c;
+// choose normal or scalar replicated version of operand b
+  assign alu_operand_c = operand_c;
 
   // Operand c forwarding mux
   always_comb begin : operand_c_fw_mux
     case (operand_c_fw_mux_sel)
       SEL_FW_EX:    operand_c_fw_id = regfile_alu_wdata_fw_i;
-      SEL_FW_WB:    operand_c_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_c_fw_id = 32'h00000000;
       default:      operand_c_fw_id = 32'h00000000;
     endcase; // case (operand_c_fw_mux_sel)
   end
@@ -619,41 +531,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                                                                       //
   ///////////////////////////////////////////////////////////////////////////
 
-  always_comb begin
-    unique case (bmask_a_mux)
-      BMASK_A_ZERO: bmask_a_id_imm = '0;
-      BMASK_A_S3:   bmask_a_id_imm = imm_s3_type[4:0];
-    endcase
-  end
-  always_comb begin
-    unique case (bmask_b_mux)
-      BMASK_B_ZERO: bmask_b_id_imm = '0;
-      BMASK_B_ONE:  bmask_b_id_imm = 5'd1;
-      BMASK_B_S2:   bmask_b_id_imm = imm_s2_type[4:0];
-      BMASK_B_S3:   bmask_b_id_imm = imm_s3_type[4:0];
-    endcase
-  end
-
-  always_comb begin
-    unique case (alu_bmask_a_mux_sel)
-      BMASK_A_IMM: bmask_a_id = bmask_a_id_imm;
-      BMASK_A_REG: bmask_a_id = operand_b_fw_id[9:5];
-    endcase
-  end
-  always_comb begin
-    unique case (alu_bmask_b_mux_sel)
-      BMASK_B_IMM: bmask_b_id = bmask_b_id_imm;
-      BMASK_B_REG: bmask_b_id = operand_b_fw_id[4:0];
-    endcase
-  end
-
-  assign imm_vec_ext_id = imm_vu_type[1:0];
-
+  
 
   always_comb begin
     unique case (mult_imm_mux)
       MIMM_ZERO: mult_imm_id = '0;
-      MIMM_S3:   mult_imm_id = imm_s3_type[4:0];
     endcase
   end
 
@@ -739,11 +621,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .rega_used_o                     ( rega_used_dec             ),
     .regb_used_o                     ( regb_used_dec             ),
 
-    .bmask_a_mux_o                   ( bmask_a_mux               ),
-    .bmask_b_mux_o                   ( bmask_b_mux               ),
-    .alu_bmask_a_mux_sel_o           ( alu_bmask_a_mux_sel       ),
-    .alu_bmask_b_mux_sel_o           ( alu_bmask_b_mux_sel       ),
-
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
     .illegal_c_insn_i                ( illegal_c_insn_i          ),
@@ -754,13 +631,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .alu_op_a_mux_sel_o              ( alu_op_a_mux_sel          ),
     .alu_op_b_mux_sel_o              ( alu_op_b_mux_sel          ),
     .alu_op_c_mux_sel_o              ( alu_op_c_mux_sel          ),
-    .alu_vec_mode_o                  ( alu_vec_mode              ),
-    .scalar_replication_o            ( scalar_replication        ),
-    .scalar_replication_c_o          ( scalar_replication_c      ),
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
     .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
-    .is_clpx_o                       ( is_clpx                   ),
-    .is_subrot_o                     ( is_subrot                 ),
 
     // MUL signals
     .mult_operator_o                 ( mult_operator             ),
@@ -768,14 +640,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .mult_sel_subword_o              ( mult_sel_subword          ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
     .mult_imm_mux_o                  ( mult_imm_mux              ),
-    .mult_dot_en_o                   ( mult_dot_en               ),
-    .mult_dot_signed_o               ( mult_dot_signed           ),
 
     // Register file control signals
     .regfile_mem_we_o                ( regfile_we_id             ),
     .regfile_alu_we_o                ( regfile_alu_we_id         ),
     .regfile_alu_we_dec_o            ( regfile_alu_we_dec_id     ),
-    .regfile_alu_waddr_sel_o         ( regfile_alu_waddr_mux_sel ),
 
     // CSR control signals
     .csr_access_o                    ( csr_access                ),
@@ -1000,13 +869,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       alu_operand_a_ex_o          <= '0;
       alu_operand_b_ex_o          <= '0;
       alu_operand_c_ex_o          <= '0;
-      bmask_a_ex_o                <= '0;
-      bmask_b_ex_o                <= '0;
-      imm_vec_ext_ex_o            <= '0;
-      alu_vec_mode_ex_o           <= '0;
-      alu_clpx_shift_ex_o         <= 2'b0;
-      alu_is_clpx_ex_o            <= 1'b0;
-      alu_is_subrot_ex_o          <= 1'b0;
 
       mult_operator_ex_o          <= MUL_MAC32;
       mult_operand_a_ex_o         <= '0;
@@ -1016,14 +878,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       mult_sel_subword_ex_o       <= 1'b0;
       mult_signed_mode_ex_o       <= 2'b00;
       mult_imm_ex_o               <= '0;
-
-      mult_dot_op_a_ex_o          <= '0;
-      mult_dot_op_b_ex_o          <= '0;
-      mult_dot_op_c_ex_o          <= '0;
-      mult_dot_signed_ex_o        <= '0;
-      mult_is_clpx_ex_o           <= 1'b0;
-      mult_clpx_shift_ex_o        <= 2'b0;
-      mult_clpx_img_ex_o          <= 1'b0;
 
       regfile_waddr_ex_o          <= 6'b0;
       regfile_we_ex_o             <= 1'b0;
@@ -1083,13 +937,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           alu_operand_a_ex_o        <= alu_operand_a;
           alu_operand_b_ex_o        <= alu_operand_b;
           alu_operand_c_ex_o        <= alu_operand_c;
-          bmask_a_ex_o              <= bmask_a_id;
-          bmask_b_ex_o              <= bmask_b_id;
-          imm_vec_ext_ex_o          <= imm_vec_ext_id;
-          alu_vec_mode_ex_o         <= alu_vec_mode;
-          alu_is_clpx_ex_o          <= is_clpx;
-          alu_clpx_shift_ex_o       <= instr[14:13];
-          alu_is_subrot_ex_o        <= is_subrot;
         end
 
         mult_en_ex_o                <= mult_en;
@@ -1102,17 +949,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           mult_operand_c_ex_o       <= alu_operand_c;
           mult_imm_ex_o             <= mult_imm_id;
         end
-        if (mult_dot_en) begin
-          mult_operator_ex_o        <= mult_operator;
-          mult_dot_signed_ex_o      <= mult_dot_signed;
-          mult_dot_op_a_ex_o        <= alu_operand_a;
-          mult_dot_op_b_ex_o        <= alu_operand_b;
-          mult_dot_op_c_ex_o        <= alu_operand_c;
-          mult_is_clpx_ex_o         <= is_clpx;
-          mult_clpx_shift_ex_o      <= instr[14:13];
-          mult_clpx_img_ex_o        <= instr[25];
-        end
-
+        
         regfile_we_ex_o             <= regfile_we_id;
         if (regfile_we_id) begin
           regfile_waddr_ex_o        <= regfile_waddr_id;
@@ -1246,7 +1083,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
                                                                           (alu_en == 1'b0) &&
                                                                           (mult_en == 1'b0) && (mult_int_en == 1'b0) &&
-                                                                          (mult_dot_en == 1'b0) && (regfile_we_id == 1'b0) &&
+                                                                          (regfile_we_id == 1'b0) &&
                                                                           (regfile_alu_we_id == 1'b0) && (data_req_id == 1'b0));
     endproperty
 
@@ -1294,7 +1131,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     property p_illegal_2;
        @(posedge clk) disable iff (!rst_n) (illegal_insn_dec == 1'b1) |-> !(ebrk_insn_dec || mret_insn_dec || dret_insn_dec ||
                                                                             ecall_insn_dec || wfi_insn_dec || fencei_insn_dec ||
-                                                                            alu_en || mult_int_en || mult_dot_en ||
+                                                                            alu_en || mult_int_en ||
                                                                             regfile_we_id || regfile_alu_we_id ||
                                                                             csr_op != CSR_OP_READ || data_req_id);
     endproperty

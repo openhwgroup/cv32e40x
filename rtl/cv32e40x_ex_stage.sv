@@ -39,13 +39,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic [31:0] alu_operand_b_i,
   input  logic [31:0] alu_operand_c_i,
   input  logic        alu_en_i,
-  input  logic [ 4:0] bmask_a_i,
-  input  logic [ 4:0] bmask_b_i,
-  input  logic [ 1:0] imm_vec_ext_i,
-  input  logic [ 1:0] alu_vec_mode_i,
-  input  logic        alu_is_clpx_i,
-  input  logic        alu_is_subrot_i,
-  input  logic [ 1:0] alu_clpx_shift_i,
 
   // Multiplier signals
   input  mul_opcode_e mult_operator_i,
@@ -56,14 +49,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        mult_sel_subword_i,
   input  logic [ 1:0] mult_signed_mode_i,
   input  logic [ 4:0] mult_imm_i,
-
-  input  logic [31:0] mult_dot_op_a_i,
-  input  logic [31:0] mult_dot_op_b_i,
-  input  logic [31:0] mult_dot_op_c_i,
-  input  logic [ 1:0] mult_dot_signed_i,
-  input  logic        mult_is_clpx_i,
-  input  logic [ 1:0] mult_clpx_shift_i,
-  input  logic        mult_clpx_img_i,
 
   output logic        mult_multicycle_o,
 
@@ -175,15 +160,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .operand_b_i         ( alu_operand_b_i ),
     .operand_c_i         ( alu_operand_c_i ),
 
-    .vector_mode_i       ( alu_vec_mode_i  ),
-    .bmask_a_i           ( bmask_a_i       ),
-    .bmask_b_i           ( bmask_b_i       ),
-    .imm_vec_ext_i       ( imm_vec_ext_i   ),
-
-    .is_clpx_i           ( alu_is_clpx_i   ),
-    .clpx_shift_i        ( alu_clpx_shift_i),
-    .is_subrot_i         ( alu_is_subrot_i ),
-
     .result_o            ( alu_result      ),
     .comparison_result_o ( alu_cmp_result  ),
 
@@ -216,14 +192,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .op_b_i          ( mult_operand_b_i     ),
     .op_c_i          ( mult_operand_c_i     ),
     .imm_i           ( mult_imm_i           ),
-
-    .dot_op_a_i      ( mult_dot_op_a_i      ),
-    .dot_op_b_i      ( mult_dot_op_b_i      ),
-    .dot_op_c_i      ( mult_dot_op_c_i      ),
-    .dot_signed_i    ( mult_dot_signed_i    ),
-    .is_clpx_i       ( mult_is_clpx_i       ),
-    .clpx_shift_i    ( mult_clpx_shift_i    ),
-    .clpx_img_i      ( mult_clpx_img_i      ),
 
     .result_o        ( mult_result          ),
 

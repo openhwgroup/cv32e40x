@@ -35,15 +35,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   input  logic [31:0]              operand_b_i,
   input  logic [31:0]              operand_c_i,
 
-  input  logic [ 1:0]              vector_mode_i,
-  input  logic [ 4:0]              bmask_a_i,
-  input  logic [ 4:0]              bmask_b_i,
-  input  logic [ 1:0]              imm_vec_ext_i,
-
-  input  logic                     is_clpx_i,
-  input  logic                     is_subrot_i,
-  input  logic [ 1:0]              clpx_shift_i,
-
   output logic [31:0]              result_o,
   output logic                     comparison_result_o,
 
@@ -392,12 +383,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
          (operator_i != ALU_SHUF2) && (operator_i != ALU_PCKLO) &&
          (operator_i != ALU_PCKHI)));
 
-    // Ensure no use of vector operations or complex operations
-    a_mul_dot_cplx : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> ((vector_mode_i == 'b0) && (bmask_a_i == 'b0) && (bmask_b_i == 'b0) && (is_clpx_i == 'b0) && (is_subrot_i == 'b0)));
+    
 
-    // Note: clpx_shift_i is not guaranteed to be 0 (depends directly on instruction encoding) (only used when is_clpx_i != 'b0 however)
-    // Note: imm_vec_ext_i is not guaranteed to be 0 (depends directly on instruction encoding) (only used when vector_mode_i != 'b0 however)
 
     // Ensure only basic RV32I + DIV*/REM* used
     a_alu_operator_1 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
