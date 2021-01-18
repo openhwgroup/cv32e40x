@@ -197,8 +197,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        mhpmevent_imiss_o,
     output logic        mhpmevent_ld_stall_o,
 
-    input  logic        perf_imiss_i,
-    input  logic [31:0] mcounteren_i
+    input  logic        perf_imiss_i
 );
 
   // Source/Destination register instruction index
@@ -802,10 +801,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // jump/branches
     .ctrl_transfer_insn_in_dec_o     ( ctrl_transfer_insn_in_dec    ),
     .ctrl_transfer_insn_in_id_o      ( ctrl_transfer_insn_in_id     ),
-    .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel ),
-
-    // HPM related control signals
-    .mcounteren_i                    ( mcounteren_i              )
+    .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
 
   );
 

@@ -114,10 +114,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // jump/branches
   output logic [1:0]  ctrl_transfer_insn_in_dec_o,  // control transfer instruction without deassert
   output logic [1:0]  ctrl_transfer_insn_in_id_o,   // control transfer instructio is decoded
-  output logic [1:0]  ctrl_transfer_target_mux_sel_o,        // jump target selection
+  output logic [1:0]  ctrl_transfer_target_mux_sel_o        // jump target selection
 
-  // HPM related control signals
-  input  logic [31:0] mcounteren_i
 );
 
   // write enable/request control

@@ -60,8 +60,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic            m_irq_enable_o,
   
   output logic [31:0]     mepc_o,
-  //mcounteren_o is always 0 if PULP_SECURE is zero
-  output logic [31:0]     mcounteren_o,
 
   // debug
   input  logic            debug_mode_i,
@@ -178,7 +176,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Performance Counter Signals
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters
   logic [31:0] [31:0]                  mhpmevent_q, mhpmevent_n;         // event enable
-  logic [31:0]                         mcounteren_q, mcounteren_n;       // user mode counter enable
   logic [31:0]                         mcountinhibit_q, mcountinhibit_n; // performance counter enable
   logic [NUM_HPM_EVENTS-1:0]           hpm_events;                       // events for performance counters
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_increment;            // increment of mhpmcounter_q
@@ -676,9 +673,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_mode_o    = mtvec_q.mode;
   
   assign mepc_o          = mepc_q;
-  
-  assign mcounteren_o    = '0;
-
   assign dpc_o          = dpc_q;
 
   assign debug_single_step_o  = dcsr_q.step;
@@ -805,11 +799,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // ------------------------
   // address decoder for performance counter registers
-  logic mcounteren_we;
   logic mcountinhibit_we;
   logic mhpmevent_we;
 
-  assign mcounteren_we    = csr_we_int & (  csr_addr_i == CSR_MCOUNTEREN);
   assign mcountinhibit_we = csr_we_int & (  csr_addr_i == CSR_MCOUNTINHIBIT);
   assign mhpmevent_we     = csr_we_int & ( (csr_addr_i == CSR_MHPMEVENT3  )||
                                            (csr_addr_i == CSR_MHPMEVENT4  ) ||
@@ -854,7 +846,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // next value for performance counters and control registers
   always_comb
     begin
-      mcounteren_n    = mcounteren_q;
       mcountinhibit_n = mcountinhibit_q;
       mhpmevent_n     = mhpmevent_q;
 
@@ -962,15 +953,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-  //  Enable Regsiter: mcounteren_q
-  genvar en_gidx;
-  generate
-    for (en_gidx = 0; en_gidx < 32; en_gidx++) begin : gen_mcounteren
-      
-        assign mcounteren_q[en_gidx] = 'b0;
-      
-    end
-  endgenerate
+
 
   //  Inhibit Regsiter: mcountinhibit_q
   //  Note: implemented counters are disabled out of reset to save power

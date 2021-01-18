@@ -228,9 +228,6 @@ module cv32e40x_core
   logic        csr_restore_dret_id;
   logic        csr_mtvec_init;
 
-  // HPM related control signals
-  logic [31:0] mcounteren;
-
   // debug mode and dcsr configuration
   logic        debug_mode;
   logic [2:0]  debug_cause;
@@ -559,8 +556,7 @@ module cv32e40x_core
     .mhpmevent_imiss_o            ( mhpmevent_imiss      ),
     .mhpmevent_ld_stall_o         ( mhpmevent_ld_stall   ),
 
-    .perf_imiss_i                 ( perf_imiss           ),
-    .mcounteren_i                 ( mcounteren           )
+    .perf_imiss_i                 ( perf_imiss           )
   );
 
 
@@ -747,9 +743,6 @@ module cv32e40x_core
     .m_irq_enable_o             ( m_irq_enable           ),
     .mepc_o                     ( mepc                   ),
     
-    // HPM related control signals
-    .mcounteren_o               ( mcounteren             ),
-
     // debug
     .debug_mode_i               ( debug_mode             ),
     .debug_cause_i              ( debug_cause            ),
