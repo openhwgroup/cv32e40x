@@ -44,12 +44,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
   input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
   input  logic        mret_insn_i,                // decoder encountered an mret instruction
-  input  logic        uret_insn_i,                // decoder encountered an uret instruction
 
   input  logic        dret_insn_i,                // decoder encountered an dret instruction
 
   input  logic        mret_dec_i,
-  input  logic        uret_dec_i,
   input  logic        dret_dec_i,
 
   input  logic        wfi_i,                      // decoder wants to execute a WFI
@@ -89,7 +87,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,
-  input  logic        irq_sec_ctrl_i,
   input  logic [4:0]  irq_id_ctrl_i,
   input  logic        irq_wu_ctrl_i,
   input  PrivLvl_t    current_priv_lvl_i,
@@ -120,9 +117,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        csr_save_id_o,
   output logic        csr_save_ex_o,
   output logic [5:0]  csr_cause_o,
-  output logic        csr_irq_sec_o,
   output logic        csr_restore_mret_id_o,
-  output logic        csr_restore_uret_id_o,
 
   output logic        csr_restore_dret_id_o,
 
@@ -211,7 +206,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     csr_save_id_o          = 1'b0;
     csr_save_ex_o          = 1'b0;
     csr_restore_mret_id_o  = 1'b0;
-    csr_restore_uret_id_o  = 1'b0;
 
     csr_restore_dret_id_o  = 1'b0;
 
@@ -222,7 +216,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     trap_addr_mux_o        = TRAP_MACHINE;
 
     csr_cause_o            = '0;
-    csr_irq_sec_o          = 1'b0;
 
     pc_mux_o               = PC_BOOT;
     pc_set_o               = 1'b0;
@@ -344,16 +337,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           pc_mux_o          = PC_EXCEPTION;
           exc_pc_mux_o      = EXC_PC_IRQ;
           exc_cause_o       = irq_id_ctrl_i;
-          csr_irq_sec_o     = irq_sec_ctrl_i;
 
           // IRQ interface
           irq_ack_o         = 1'b1;
           irq_id_o          = irq_id_ctrl_i;
 
-          if (irq_sec_ctrl_i)
-            trap_addr_mux_o  = TRAP_MACHINE;
-          else
-            trap_addr_mux_o  = current_priv_lvl_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
+          trap_addr_mux_o  = TRAP_MACHINE;
 
           csr_save_cause_o  = 1'b1;
           csr_cause_o       = {1'b1,irq_id_ctrl_i};
@@ -408,16 +397,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 pc_mux_o          = PC_EXCEPTION;
                 exc_pc_mux_o      = EXC_PC_IRQ;
                 exc_cause_o       = irq_id_ctrl_i;
-                csr_irq_sec_o     = irq_sec_ctrl_i;
 
                 // IRQ interface
                 irq_ack_o         = 1'b1;
                 irq_id_o          = irq_id_ctrl_i;
 
-                if (irq_sec_ctrl_i)
-                  trap_addr_mux_o  = TRAP_MACHINE;
-                else
-                  trap_addr_mux_o  = current_priv_lvl_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
+                trap_addr_mux_o  = TRAP_MACHINE;
 
                 csr_save_cause_o  = 1'b1;
                 csr_cause_o       = {1'b1,irq_id_ctrl_i};
@@ -487,7 +472,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                       ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
                     end
 
-                    mret_insn_i | uret_insn_i | dret_insn_i: begin
+                    mret_insn_i | dret_insn_i: begin
                       halt_if_o     = 1'b1;
                       halt_id_o     = 1'b0;
                       ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
@@ -530,7 +515,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                             ctrl_fsm_ns = FLUSH_EX;
                         end
 
-                        mret_insn_i | uret_insn_i:
+                        mret_insn_i:
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
@@ -637,10 +622,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 csr_restore_mret_id_o =  !debug_mode_q;
                 ctrl_fsm_ns           = XRET_JUMP;
             end
-            uret_insn_i: begin
-                csr_restore_uret_id_o =  !debug_mode_q;
-                ctrl_fsm_ns           = XRET_JUMP;
-            end
             dret_insn_i: begin
                 csr_restore_dret_id_o = 1'b1;
                 ctrl_fsm_ns           = XRET_JUMP;
@@ -675,12 +656,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           mret_dec_i: begin
               //mret
               pc_mux_o              = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              pc_set_o              = 1'b1;
-              exc_pc_mux_o          = EXC_PC_DBE; // only used if in debug_mode
-          end
-          uret_dec_i: begin
-              //uret
-              pc_mux_o              = debug_mode_q ? PC_EXCEPTION : PC_URET;
               pc_set_o              = 1'b1;
               exc_pc_mux_o          = EXC_PC_DBE; // only used if in debug_mode
           end

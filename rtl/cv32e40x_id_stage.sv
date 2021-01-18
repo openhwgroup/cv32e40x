@@ -29,7 +29,6 @@
 
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
-  parameter PULP_SECURE       =  0,
   parameter USE_PMP           =  0,
   parameter A_EXTENSION       =  0,
   parameter DEBUG_TRIGGER_EN  =  1
@@ -125,13 +124,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        csr_access_ex_o,
     output csr_opcode_e csr_op_ex_o,
     input  PrivLvl_t    current_priv_lvl_i,
-    output logic        csr_irq_sec_o,
     output logic [5:0]  csr_cause_o,
     output logic        csr_save_if_o,
     output logic        csr_save_id_o,
     output logic        csr_save_ex_o,
     output logic        csr_restore_mret_id_o,
-    output logic        csr_restore_uret_id_o,
     output logic        csr_restore_dret_id_o,
     output logic        csr_save_cause_o,
 
@@ -153,11 +150,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // Interrupt signals
     input  logic [31:0] irq_i,
-    input  logic        irq_sec_i,
     input  logic [31:0] mie_bypass_i,           // MIE CSR (bypass)
     output logic [31:0] mip_o,                  // MIP CSR
     input  logic        m_irq_enable_i,
-    input  logic        u_irq_enable_i,
     output logic        irq_ack_o,
     output logic [4:0]  irq_id_o,
     output logic [4:0]  exc_cause_o,
@@ -228,7 +223,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        illegal_insn_dec;
   logic        ebrk_insn_dec;
   logic        mret_insn_dec;
-  logic        uret_insn_dec;
 
   logic        dret_insn_dec;
 
@@ -277,7 +271,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Signals running between controller and int_controller
   logic       irq_req_ctrl;
-  logic       irq_sec_ctrl;
   logic       irq_wu_ctrl;
   logic [4:0] irq_id_ctrl;
 
@@ -380,7 +373,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        is_clpx, is_subrot;
 
   logic        mret_dec;
-  logic        uret_dec;
   logic        dret_dec;
 
   // Performance counters
@@ -723,7 +715,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   cv32e40x_decoder
     #(
       .A_EXTENSION         ( A_EXTENSION          ),
-      .PULP_SECURE         ( PULP_SECURE          ),
       .USE_PMP             ( USE_PMP              ),
       .DEBUG_TRIGGER_EN    ( DEBUG_TRIGGER_EN     )
       )
@@ -736,11 +727,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ebrk_insn_o                     ( ebrk_insn_dec             ),
 
     .mret_insn_o                     ( mret_insn_dec             ),
-    .uret_insn_o                     ( uret_insn_dec             ),
     .dret_insn_o                     ( dret_insn_dec             ),
 
     .mret_dec_o                      ( mret_dec                  ),
-    .uret_dec_o                      ( uret_dec                  ),
     .dret_dec_o                      ( dret_dec                  ),
 
     .ecall_insn_o                    ( ecall_insn_dec            ),
@@ -846,12 +835,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .illegal_insn_i                 ( illegal_insn_dec       ),
     .ecall_insn_i                   ( ecall_insn_dec         ),
     .mret_insn_i                    ( mret_insn_dec          ),
-    .uret_insn_i                    ( uret_insn_dec          ),
 
     .dret_insn_i                    ( dret_insn_dec          ),
 
     .mret_dec_i                     ( mret_dec               ),
-    .uret_dec_i                     ( uret_dec               ),
     .dret_dec_i                     ( dret_dec               ),
 
 
@@ -892,7 +879,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Interrupt signals
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
-    .irq_sec_ctrl_i                 ( irq_sec_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
     .current_priv_lvl_i             ( current_priv_lvl_i     ),
     .irq_ack_o                      ( irq_ack_o              ),
@@ -922,11 +908,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_save_id_o                  ( csr_save_id_o          ),
     .csr_save_ex_o                  ( csr_save_ex_o          ),
     .csr_restore_mret_id_o          ( csr_restore_mret_id_o  ),
-    .csr_restore_uret_id_o          ( csr_restore_uret_id_o  ),
 
     .csr_restore_dret_id_o          ( csr_restore_dret_id_o  ),
-
-    .csr_irq_sec_o                  ( csr_irq_sec_o          ),
 
     // Write targets from ID
     .regfile_we_id_i                ( regfile_alu_we_dec_id  ),
@@ -982,9 +965,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 ////////////////////////////////////////////////////////////////////////
 
   cv32e40x_int_controller
-  #(
-    .PULP_SECURE(PULP_SECURE)
-   )
   int_controller_i
   (
     .clk                  ( clk                ),
@@ -992,11 +972,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // External interrupt lines
     .irq_i                ( irq_i              ),
-    .irq_sec_i            ( irq_sec_i          ),
 
     // To cv32e40x_controller
     .irq_req_ctrl_o       ( irq_req_ctrl       ),
-    .irq_sec_ctrl_o       ( irq_sec_ctrl       ),
     .irq_id_ctrl_o        ( irq_id_ctrl        ),
     .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
@@ -1004,7 +982,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .mie_bypass_i         ( mie_bypass_i       ),
     .mip_o                ( mip_o              ),
     .m_ie_i               ( m_irq_enable_i     ),
-    .u_ie_i               ( u_irq_enable_i     ),
     .current_priv_lvl_i   ( current_priv_lvl_i )
   );
 
@@ -1285,9 +1262,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        @(posedge clk) disable iff (!rst_n) (pc_set_o && (pc_mux_o == PC_EXCEPTION) && ((exc_pc_mux_o == EXC_PC_EXCEPTION) || (exc_pc_mux_o == EXC_PC_IRQ)) &&
                                             csr_access_ex_o && (csr_op_ex_o != CSR_OP_READ)) |->
                                            ((alu_operand_b_ex_o[11:0] != CSR_MSTATUS) && (alu_operand_b_ex_o[11:0] != CSR_USTATUS) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MEPC) && (alu_operand_b_ex_o[11:0] != CSR_UEPC) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MCAUSE) && (alu_operand_b_ex_o[11:0] != CSR_UCAUSE) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MTVEC) && (alu_operand_b_ex_o[11:0] != CSR_UTVEC));
+                                            (alu_operand_b_ex_o[11:0] != CSR_MEPC) &&
+                                            (alu_operand_b_ex_o[11:0] != CSR_MCAUSE) &&
+                                            (alu_operand_b_ex_o[11:0] != CSR_MTVEC));
     endproperty
 
     a_irq_csr : assert property(p_irq_csr);
@@ -1296,7 +1273,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
     // as its write action happens before the xret CSR usage
     property p_xret_csr;
-       @(posedge clk) disable iff (!rst_n) (pc_set_o && ((pc_mux_o == PC_MRET) || (pc_mux_o == PC_URET) || (pc_mux_o == PC_DRET))) |->
+       @(posedge clk) disable iff (!rst_n) (pc_set_o && ((pc_mux_o == PC_MRET) || (pc_mux_o == PC_DRET))) |->
                                            (!(csr_access_ex_o && (csr_op_ex_o != CSR_OP_READ)));
     endproperty
 
@@ -1319,7 +1296,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
    // Check that illegal instruction has no other side effects
     property p_illegal_2;
-       @(posedge clk) disable iff (!rst_n) (illegal_insn_dec == 1'b1) |-> !(ebrk_insn_dec || mret_insn_dec || uret_insn_dec || dret_insn_dec ||
+       @(posedge clk) disable iff (!rst_n) (illegal_insn_dec == 1'b1) |-> !(ebrk_insn_dec || mret_insn_dec || dret_insn_dec ||
                                                                             ecall_insn_dec || wfi_insn_dec || fencei_insn_dec ||
                                                                             alu_en || mult_int_en || mult_dot_en ||
                                                                             regfile_we_id || regfile_alu_we_id ||

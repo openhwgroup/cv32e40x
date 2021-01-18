@@ -28,7 +28,6 @@
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION       = 0,
-  parameter PULP_SECURE       = 0,
   parameter USE_PMP           = 0,
   parameter DEBUG_TRIGGER_EN  = 1
 )
@@ -40,11 +39,9 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        ebrk_insn_o,             // trap instruction encountered
 
   output logic        mret_insn_o,             // return from exception instruction encountered (M)
-  output logic        uret_insn_o,             // return from exception instruction encountered (S)
   output logic        dret_insn_o,             // return from debug (M)
 
   output logic        mret_dec_o,              // return from exception instruction encountered (M) without deassert
-  output logic        uret_dec_o,              // return from exception instruction encountered (S) without deassert
   output logic        dret_dec_o,              // return from debug (M) without deassert
 
   output logic        ecall_insn_o,            // environment call (syscall) instruction encountered
@@ -182,7 +179,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     csr_illegal                 = 1'b0;
     csr_op                      = CSR_OP_READ;
     mret_insn_o                 = 1'b0;
-    uret_insn_o                 = 1'b0;
 
     dret_insn_o                 = 1'b0;
 
@@ -214,7 +210,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     is_subrot_o                 = 1'b0;
 
     mret_dec_o                  = 1'b0;
-    uret_dec_o                  = 1'b0;
     dret_dec_o                  = 1'b0;
 
     unique case (instr_rdata_i[6:0])
@@ -598,16 +593,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
               12'h302:  // mret
               begin
-                illegal_insn_o = (PULP_SECURE) ? current_priv_lvl_i != PRIV_LVL_M : 1'b0;
-                mret_insn_o    = ~illegal_insn_o;
+                mret_insn_o    = 1'b1;
                 mret_dec_o     = 1'b1;
-              end
-
-              12'h002:  // uret
-              begin
-                illegal_insn_o = (PULP_SECURE) ? 1'b0 : 1'b1;
-                uret_insn_o    = ~illegal_insn_o;
-                uret_dec_o     = 1'b1;
               end
 
               12'h7b2:  // dret
@@ -728,6 +715,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
                 csr_status_o = 1'b1;
 
             // Hardware Performance Monitor (unprivileged read-only mirror CSRs)
+            // Removal of these is not SEC equivalent
             CSR_CYCLE,
               CSR_INSTRET,
               CSR_HPMCOUNTER3,
@@ -749,19 +737,11 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
               CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
               CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H :
                 // Read-only and readable from user mode only if the bit of mcounteren is set
-                if((csr_op != CSR_OP_READ) || (PULP_SECURE && (current_priv_lvl_i != PRIV_LVL_M) && !mcounteren_i[instr_rdata_i[24:20]])) begin
+                if((csr_op != CSR_OP_READ)) begin
                   csr_illegal = 1'b1;
                 end else begin
                   csr_status_o = 1'b1;
                 end
-
-            // This register only exists in user mode
-            CSR_MCOUNTEREN :
-              if(!PULP_SECURE) begin
-                csr_illegal = 1'b1;
-              end else begin
-                csr_status_o = 1'b1;
-              end
 
             // Debug register access
             CSR_DCSR,
@@ -791,16 +771,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
               csr_illegal = 1'b1;
               
 
-            // User register access
-            CSR_USTATUS,
-              CSR_UEPC,
-              CSR_UTVEC,
-              CSR_UCAUSE :
-                if (!PULP_SECURE) begin
-                  csr_illegal = 1'b1;
-                end else begin
-                  csr_status_o = 1'b1;
-                end
+            
 
             default : csr_illegal = 1'b1;
 

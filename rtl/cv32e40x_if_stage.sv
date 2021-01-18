@@ -26,16 +26,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
-#(
-  parameter PULP_SECURE     = 0
-)
 (
     input  logic        clk,
     input  logic        rst_n,
 
     // Used to calculate the exception offsets
     input  logic [23:0] mtvec_addr,
-    input  logic [23:0] utvec_addr,
     input  trap_mux_e   trap_addr_mux_i,
     // Boot address
     input  logic [31:0] boot_addr_i,
@@ -68,7 +64,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        clear_instr_valid_i,   // clear instruction valid bit in IF/ID pipe
     input  logic        pc_set_i,              // set the program counter to a new value
     input  logic [31:0] mepc_i,                // address used to restore PC when the interrupt/exception is served
-    input  logic [31:0] uepc_i,                // address used to restore PC when the interrupt/exception is served
 
     input  logic [31:0] dpc_i,                // address used to restore PC when the debug is served
 
@@ -76,7 +71,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  exc_pc_mux_e exc_pc_mux_i,          // selects ISR address
 
     input  logic  [4:0] m_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
-    input  logic  [4:0] u_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
     output logic        csr_mtvec_init_o,      // tell CS regfile to init mtvec
 
     // jump and branch target and decision
@@ -123,13 +117,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   begin : EXC_PC_MUX
     unique case (trap_addr_mux_i)
       TRAP_MACHINE:  trap_base_addr = mtvec_addr;
-      TRAP_USER:     trap_base_addr = utvec_addr;
       default:       trap_base_addr = mtvec_addr;
     endcase
 
     unique case (trap_addr_mux_i)
       TRAP_MACHINE:  exc_vec_pc_mux = m_exc_vec_pc_mux_i;
-      TRAP_USER:     exc_vec_pc_mux = u_exc_vec_pc_mux_i;
       default:       exc_vec_pc_mux = m_exc_vec_pc_mux_i;
     endcase
 
@@ -154,7 +146,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_BRANCH:    branch_addr_n = jump_target_ex_i;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
-      PC_URET:      branch_addr_n = uepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
       PC_FENCEI:    branch_addr_n = pc_id_o + 4; // jump to next instr forces prefetch buffer reload
       default:;
@@ -276,18 +267,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
 `ifdef CV32E40P_ASSERT_ON
 
-generate
-  if (!PULP_SECURE) begin : gen_no_pulp_secure_assertions
 
-    // Check that PC Mux cannot select URET address if User Mode is not included
-    property p_pc_mux_1;
-       @(posedge clk) disable iff (!rst_n) (1'b1) |-> (pc_mux_i != PC_URET);
-    endproperty
-
-    a_pc_mux_1 : assert property(p_pc_mux_1);
-
-  end
-  endgenerate
 
 `endif
 

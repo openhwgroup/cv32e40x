@@ -80,9 +80,7 @@ module cv32e40x_core
   import cv32e40x_pkg::*;
   
   // Unused parameters and signals (left in code for future design extensions)
-  localparam PULP_SECURE         =  0;
   localparam A_EXTENSION         =  0;
-  localparam DEBUG_TRIGGER_EN    =  1;
 
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
@@ -92,8 +90,6 @@ module cv32e40x_core
   // these used to be former inputs/outputs of RI5CY
 
   logic [5:0]                     data_atop_o;  // atomic operation, only active if parameter `A_EXTENSION != 0`
-  logic                           irq_sec_i;
-  logic                           sec_lvl_o;
 
   // IF/ID signals
   logic              instr_valid_id;
@@ -108,7 +104,6 @@ module cv32e40x_core
   pc_mux_e           pc_mux_id;         // Mux selector for next PC
   exc_pc_mux_e       exc_pc_mux_id; // Mux selector for exception PC
   logic [4:0]        m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
-  logic [4:0]        u_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
   logic [4:0]        exc_cause;
 
   trap_mux_e         trap_addr_mux;
@@ -182,9 +177,8 @@ module cv32e40x_core
   // CSR control
   logic        csr_access_ex;
   csr_opcode_e csr_op_ex;
-  logic [23:0] mtvec_addr, utvec_addr;
+  logic [23:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
-  logic [1:0]  utvec_mode;
 
   csr_opcode_e csr_op;
   csr_num_e    csr_addr;
@@ -220,9 +214,8 @@ module cv32e40x_core
   logic        instr_req_int;    // Id stage asserts a req to instruction core interface
 
   // Interrupts
-  logic        m_irq_enable, u_irq_enable;
-  logic        csr_irq_sec;
-  logic [31:0] mepc, uepc, dpc;
+  logic        m_irq_enable;
+  logic [31:0] mepc, dpc;
   logic [31:0] mie_bypass;
   logic [31:0] mip;
 
@@ -232,7 +225,6 @@ module cv32e40x_core
   logic        csr_save_ex;
   logic [5:0]  csr_cause;
   logic        csr_restore_mret_id;
-  logic        csr_restore_uret_id;
   logic        csr_restore_dret_id;
   logic        csr_mtvec_init;
 
@@ -275,10 +267,7 @@ module cv32e40x_core
 
   // Mux selector for vectored IRQ PC
   assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
-  assign u_exc_vec_pc_mux_id = (utvec_mode == 2'b0) ? 5'h0 : exc_cause;
 
-  // PULP_SECURE == 0
-  assign irq_sec_i = 1'b0;
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////
@@ -328,9 +317,6 @@ module cv32e40x_core
   //                                              //
   //////////////////////////////////////////////////
   cv32e40x_if_stage
-  #(
-    .PULP_SECURE         ( PULP_SECURE       )
-  )
   if_stage_i
   (
     .clk                 ( clk               ),
@@ -345,7 +331,6 @@ module cv32e40x_core
 
     // trap vector location
     .mtvec_addr  ( mtvec_addr        ),
-    .utvec_addr  ( utvec_addr        ),
     .trap_addr_mux_i     ( trap_addr_mux     ),
 
     // instruction request control
@@ -369,7 +354,6 @@ module cv32e40x_core
     .pc_set_i            ( pc_set            ),
 
     .mepc_i              ( mepc              ), // exception return address
-    .uepc_i              ( uepc              ), // exception return address
 
     .dpc_i              ( dpc              ), // debug return address
 
@@ -384,7 +368,6 @@ module cv32e40x_core
     .illegal_c_insn_id_o ( illegal_c_insn_id ),
 
     .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
-    .u_exc_vec_pc_mux_i  ( u_exc_vec_pc_mux_id ),
 
     .csr_mtvec_init_o    ( csr_mtvec_init    ),
 
@@ -411,10 +394,8 @@ module cv32e40x_core
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .PULP_SECURE                  ( PULP_SECURE          ),
     .USE_PMP                      ( USE_PMP              ),
-    .A_EXTENSION                  ( A_EXTENSION          ),
-    .DEBUG_TRIGGER_EN             ( DEBUG_TRIGGER_EN     )
+    .A_EXTENSION                  ( A_EXTENSION          )
   )
   id_stage_i
   (
@@ -507,13 +488,11 @@ module cv32e40x_core
     .csr_access_ex_o              ( csr_access_ex        ),
     .csr_op_ex_o                  ( csr_op_ex            ),
     .current_priv_lvl_i           ( current_priv_lvl     ),
-    .csr_irq_sec_o                ( csr_irq_sec          ),
     .csr_cause_o                  ( csr_cause            ),
     .csr_save_if_o                ( csr_save_if          ), // control signal to save pc
     .csr_save_id_o                ( csr_save_id          ), // control signal to save pc
     .csr_save_ex_o                ( csr_save_ex          ), // control signal to save pc
     .csr_restore_mret_id_o        ( csr_restore_mret_id  ), // control signal to restore pc
-    .csr_restore_uret_id_o        ( csr_restore_uret_id  ), // control signal to restore pc
 
     .csr_restore_dret_id_o        ( csr_restore_dret_id  ), // control signal to restore pc
 
@@ -534,11 +513,9 @@ module cv32e40x_core
 
     // Interrupt Signals
     .irq_i                        ( irq_i                ),
-    .irq_sec_i                    ( (PULP_SECURE) ? irq_sec_i : 1'b0 ),
     .mie_bypass_i                 ( mie_bypass           ),
     .mip_o                        ( mip                  ),
     .m_irq_enable_i               ( m_irq_enable         ),
-    .u_irq_enable_i               ( u_irq_enable         ),
     .irq_ack_o                    ( irq_ack_o            ),
     .irq_id_o                     ( irq_id_o             ),
 
@@ -754,9 +731,7 @@ module cv32e40x_core
     // Hart ID from outside
     .hart_id_i                  ( hart_id_i              ),
     .mtvec_addr_o               ( mtvec_addr             ),
-    .utvec_addr_o               ( utvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),
-    .utvec_mode_o               ( utvec_mode             ),
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init         ),
@@ -770,12 +745,8 @@ module cv32e40x_core
     .mie_bypass_o               ( mie_bypass             ),
     .mip_i                      ( mip                    ),
     .m_irq_enable_o             ( m_irq_enable           ),
-    .u_irq_enable_o             ( u_irq_enable           ),
-    .csr_irq_sec_i              ( csr_irq_sec            ),
-    .sec_lvl_o                  ( sec_lvl_o              ),
     .mepc_o                     ( mepc                   ),
-    .uepc_o                     ( uepc                   ),
-
+    
     // HPM related control signals
     .mcounteren_o               ( mcounteren             ),
 
@@ -799,8 +770,6 @@ module cv32e40x_core
     .csr_save_id_i              ( csr_save_id            ),
     .csr_save_ex_i              ( csr_save_ex            ),
     .csr_restore_mret_i         ( csr_restore_mret_id    ),
-    .csr_restore_uret_i         ( csr_restore_uret_id    ),
-
     .csr_restore_dret_i         ( csr_restore_dret_id    ),
 
     .csr_cause_i                ( csr_cause              ),

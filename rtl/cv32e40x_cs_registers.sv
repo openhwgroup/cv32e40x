@@ -42,10 +42,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Hart ID
   input  logic [31:0]     hart_id_i,
   output logic [23:0]     mtvec_addr_o,
-  output logic [23:0]     utvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
-  output logic  [1:0]     utvec_mode_o,
-
+  
   // Used for mtvec address
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
@@ -60,13 +58,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     mie_bypass_o,
   input  logic [31:0]     mip_i,
   output logic            m_irq_enable_o,
-  output logic            u_irq_enable_o,
-
-  //csr_irq_sec_i is always 0 if PULP_SECURE is zero
-  input  logic            csr_irq_sec_i,
-  output logic            sec_lvl_o,
+  
   output logic [31:0]     mepc_o,
-  output logic [31:0]     uepc_o,
   //mcounteren_o is always 0 if PULP_SECURE is zero
   output logic [31:0]     mcounteren_o,
 
@@ -80,7 +73,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic            debug_ebreaku_o,
   output logic            trigger_match_o,
 
-output PrivLvl_t        priv_lvl_o,
+  output PrivLvl_t        priv_lvl_o,
 
   input  logic [31:0]     pc_if_i,
   input  logic [31:0]     pc_id_i,
@@ -91,8 +84,7 @@ output PrivLvl_t        priv_lvl_o,
   input  logic            csr_save_ex_i,
 
   input  logic            csr_restore_mret_i,
-  input  logic            csr_restore_uret_i,
-
+  
   input  logic            csr_restore_dret_i,
   //coming from controller
   input  logic [5:0]      csr_cause_i,
@@ -137,7 +129,6 @@ output PrivLvl_t        priv_lvl_o,
   logic [31:0] mepc_q, mepc_n;
   logic mepc_we;
   logic mepc_rd_error;
-  logic [31:0] uepc_q, uepc_n;
 
   // Trigger
   logic [31:0] tmatch_control_rdata;
@@ -169,14 +160,9 @@ output PrivLvl_t        priv_lvl_o,
   logic mcause_we;
   logic mcause_rd_error;
 
-  logic [ 5:0] ucause_q, ucause_n;
-  
   Mtvec_t mtvec_n, mtvec_q;
   logic mtvec_we;
   logic mtvec_rd_error;
-
-  logic [23:0] utvec_n, utvec_q;
-  logic [ 1:0] utvec_mode_n, utvec_mode_q;
 
   logic [31:0] mip;                     // Bits are masked according to IRQ_MASK
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
@@ -361,11 +347,7 @@ output PrivLvl_t        priv_lvl_o,
       CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
         csr_rdata_int = mhpmevent_q[csr_addr_i[4:0]];
 
-      /* USER CSR */
-      // dublicated mhartid: unique hardware thread id (not official)
-      CSR_UHARTID: csr_rdata_int = 'b0;
-      // current priv level (not official)
-      CSR_PRIVLV: csr_rdata_int = 'b0;
+      
       default:
         csr_rdata_int = '0;
     endcase
@@ -380,7 +362,6 @@ output PrivLvl_t        priv_lvl_o,
     mscratch_we              = 1'b0;
     mepc_n                   = mepc_q;
     mepc_we                  = 1'b0;
-    uepc_n                   = 'b0;             // Not used if PULP_SECURE == 0
     dpc_n                    = dpc_q;
     dpc_we                   = 1'b0; 
     dcsr_n                   = dcsr_q;
@@ -394,7 +375,6 @@ output PrivLvl_t        priv_lvl_o,
     mstatus_we               = 1'b0;
     mcause_n                 = mcause_q;
     mcause_we                = 1'b0;
-    ucause_n                 = '0;              // Not used if PULP_SECURE == 0
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.addr;
@@ -402,12 +382,8 @@ output PrivLvl_t        priv_lvl_o,
     mtvec_n.mode             = mtvec_q.mode;
     mtvec_we                 = csr_mtvec_init_i;
 
-    utvec_n                  = '0;              // Not used if PULP_SECURE == 0
-    
     mie_n                    = mie_q;
     mie_we                   = 1'b0;
-    
-    utvec_mode_n             = '0;              // Not used if PULP_SECURE == 0
   
     if (csr_we_int) begin
       case (csr_addr_i)
@@ -694,18 +670,13 @@ output PrivLvl_t        priv_lvl_o,
 
   // directly output some registers
   assign m_irq_enable_o  = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
-  assign u_irq_enable_o  = 1'b0;
   assign priv_lvl_o      = priv_lvl_q;
-  assign sec_lvl_o       = priv_lvl_q[0];
-
+  
   assign mtvec_addr_o    = mtvec_q.addr;
-  assign utvec_addr_o    = utvec_q;
   assign mtvec_mode_o    = mtvec_q.mode;
-  assign utvec_mode_o    = utvec_mode_q;
-
+  
   assign mepc_o          = mepc_q;
-  assign uepc_o          = uepc_q;
-
+  
   assign mcounteren_o    = '0;
 
   assign dpc_o          = dpc_q;
@@ -714,12 +685,6 @@ output PrivLvl_t        priv_lvl_o,
   assign debug_ebreakm_o      = dcsr_q.ebreakm;
   assign debug_ebreaku_o      = dcsr_q.ebreaku;
 
-  
-  // Tieoff signals related to pulp_secure
-  assign uepc_q       = '0;
-  assign ucause_q     = '0;
-  assign utvec_q      = '0;
-  assign utvec_mode_q = '0;
   assign priv_lvl_q   = PRIV_LVL_M;
   
 
