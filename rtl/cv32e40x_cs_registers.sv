@@ -352,101 +352,86 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // write logic
   always_comb
   begin
-    mscratch_n               = mscratch_q;
+    mscratch_n               = csr_wdata_int;
     mscratch_we              = 1'b0;
-    mepc_n                   = mepc_q;
+    mepc_n                   = csr_wdata_int & ~32'b1;
     mepc_we                  = 1'b0;
-    dpc_n                    = dpc_q;
+    dpc_n                    = csr_wdata_int & ~32'b1;
     dpc_we                   = 1'b0; 
-    dcsr_n                   = dcsr_q;
+
+    dcsr_n                   = '{
+                                xdebugver : dcsr_q.xdebugver,
+                                ebreakm   : csr_wdata_int[15],
+                                stepie    : csr_wdata_int[11],
+                                step      : csr_wdata_int[2],
+                                prv       : PRIV_LVL_M,
+                                cause     : dcsr_q.cause,
+                                default   : 'd0
+                             };
     dcsr_we                  = 1'b0;
-    dscratch0_n              = dscratch0_q;
+
+    dscratch0_n              = csr_wdata_int;
     dscratch0_we             = 1'b0;
-    dscratch1_n              = dscratch1_q;
+    dscratch1_n              = csr_wdata_int;
     dscratch1_we             = 1'b0;
 
-    mstatus_n                = mstatus_q;
+    mstatus_n                = '{
+                              mprv: 1'b0,
+                              mpp:  PRIV_LVL_M,
+                              mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                              mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                              default: 'b0
+                            };
     mstatus_we               = 1'b0;
-    mcause_n                 = mcause_q;
+    mcause_n                 = {csr_wdata_int[31], 26'd0, csr_wdata_int[4:0]};
     mcause_we                = 1'b0;
     exception_pc             = pc_id_i;
     priv_lvl_n               = priv_lvl_q;
-    mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : mtvec_q.addr;
+
+    mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
     mtvec_n.zero0            = mtvec_q.zero0;
-    mtvec_n.mode             = mtvec_q.mode;
+    mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
 
-    mie_n                    = mie_q;
+    mie_n                    = csr_wdata_int & IRQ_MASK;
     mie_we                   = 1'b0;
   
     if (csr_we_int) begin
       case (csr_addr_i)
         // mstatus: IE bit
         CSR_MSTATUS: begin
-          mstatus_n = '{
-            mprv: 1'b0,
-            mpp:  PRIV_LVL_M,
-            mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-            mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-            default: 'b0
-          };
           mstatus_we = 1'b1;
         end
         // mie: machine interrupt enable
         CSR_MIE: begin
-              mie_n = csr_wdata_int & IRQ_MASK;
               mie_we = 1'b1;
         end
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
-              mtvec_n.addr      = csr_wdata_int[31:8];
-              mtvec_n.mode = {1'b0, csr_wdata_int[0]}; // Only direct and vectored mode are supported
               mtvec_we = 1'b1;
         end
         // mscratch: machine scratch
         CSR_MSCRATCH: begin
-              mscratch_n = csr_wdata_int;
               mscratch_we = 1'b1;
         end
         // mepc: exception program counter
         CSR_MEPC: begin
-              mepc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
               mepc_we = 1'b1;
         end
         // mcause
         CSR_MCAUSE: begin 
-                mcause_n = {csr_wdata_int[31], 26'd0, csr_wdata_int[4:0]};
                 mcause_we = 1'b1;
         end
         CSR_DCSR: begin
-              // Following are read-only and never assigned here (dcsr_q value is used):
-              //
-              // - xdebugver
-              // - cause
-              // - nmip
-
-              dcsr_n.ebreakm   = csr_wdata_int[15];
-              dcsr_n.ebreaks   = 1'b0;                            // ebreaks (implemented as WARL)
-              dcsr_n.ebreaku   = 1'b0;                            // ebreaku (implemented as WARL)
-              dcsr_n.stepie    = csr_wdata_int[11];               // stepie
-              dcsr_n.stopcount = 1'b0;                            // stopcount
-              dcsr_n.stoptime  = 1'b0;                            // stoptime
-              dcsr_n.mprven    = 1'b0;                            // mprven
-              dcsr_n.step      = csr_wdata_int[2];
-              dcsr_n.prv       = PRIV_LVL_M;                      // prv (implemendted as WARL)
-
               dcsr_we = 1'b1;
         end
         CSR_DPC: begin
-                dpc_n = csr_wdata_int & ~32'b1; // force 16-bit alignment
                 dpc_we = 1'b1;
         end
         CSR_DSCRATCH0: begin
-                dscratch0_n = csr_wdata_int;
                 dscratch0_we = 1'b1;
         end
         CSR_DSCRATCH1: begin
-                dscratch1_n = csr_wdata_int;
                 dscratch1_we = 1'b1;
         end
                 
@@ -470,8 +455,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (debug_csr_save_i) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
             // mpstatus
-            dcsr_n.prv   = PRIV_LVL_M;
-            dcsr_n.cause = debug_cause_i;
+            dcsr_n = '{
+              xdebugver : dcsr_q.xdebugver,
+              ebreakm   : dcsr_q.ebreakm,
+              stepie    : dcsr_q.stepie,
+              step      : dcsr_q.step,
+              prv       : PRIV_LVL_M,
+              cause     : debug_cause_i,
+              default   : 'd0
+            };
             dcsr_we = 1'b1;
 
             dpc_n       = exception_pc;
