@@ -240,13 +240,6 @@ module cv32e40x_core
   // Wake signal
   logic        wake_from_sleep;
 
-  logic                             data_req;
-  logic [31:0]                      data_addr;
-  logic                             data_gnt;
-  logic                             instr_req;
-  logic                             instr_gnt;
-  logic [31:0]                      instr_addr;
-  logic                             instr_err;
 
   // Mux selector for vectored IRQ PC
   assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
@@ -320,9 +313,9 @@ module cv32e40x_core
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .instr_req_o         ( instr_req     ),
-    .instr_addr_o        ( instr_addr    ),
-    .instr_gnt_i         ( instr_gnt     ),
+    .instr_req_o         ( instr_req_o     ),
+    .instr_addr_o        ( instr_addr_o    ),
+    .instr_gnt_i         ( instr_gnt_i     ),
     .instr_rvalid_i      ( instr_rvalid_i    ),
     .instr_rdata_i       ( instr_rdata_i     ),
     .instr_err_i         ( 1'b0              ),  // Bus error (not used yet)
@@ -618,12 +611,12 @@ module cv32e40x_core
     .rst_n                 ( rst_ni             ),
 
     //output to data memory
-    .data_req_o            ( data_req       ),
-    .data_gnt_i            ( data_gnt       ),
+    .data_req_o            ( data_req_o       ),
+    .data_gnt_i            ( data_gnt_i       ),
     .data_rvalid_i         ( data_rvalid_i      ),
     .data_err_i            ( 1'b0               ),  // Bus error (not used yet)
 
-    .data_addr_o           ( data_addr      ),
+    .data_addr_o           ( data_addr_o      ),
     .data_we_o             ( data_we_o          ),
     .data_atop_o           ( data_atop_o        ),
     .data_be_o             ( data_be_o          ),
@@ -744,26 +737,6 @@ module cv32e40x_core
   assign csr_addr_int = csr_num_e'(csr_access_ex ? alu_operand_b_ex[11:0] : '0);
 
 
-
-  ///////////////////////////
-  //   ____  __  __ ____   //
-  //  |  _ \|  \/  |  _ \  //
-  //  | |_) | |\/| | |_) | //
-  //  |  __/| |  | |  __/  //
-  //  |_|   |_|  |_|_|     //
-  //                       //
-  ///////////////////////////
-
-  
-  assign instr_req_o   = instr_req;
-  assign instr_addr_o  = instr_addr;
-  assign instr_gnt = instr_gnt_i;
-  assign instr_err = 1'b0;
-
-  assign data_req_o    = data_req;
-  assign data_addr_o   = data_addr;
-  assign data_gnt  = data_gnt_i;
-  assign data_err  = 1'b0;
  
 
 `ifdef CV32E40P_ASSERT_ON
