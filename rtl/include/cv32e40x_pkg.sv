@@ -686,20 +686,13 @@ parameter OP_B_REGB_OR_FWD = 3'b000;
 parameter OP_B_REGC_OR_FWD = 3'b001;
 parameter OP_B_IMM         = 3'b010;
 parameter OP_B_REGA_OR_FWD = 3'b011;
-//parameter OP_B_BMASK       = 3'b100;
 
 // immediate b selection
 parameter IMMB_I      = 4'b0000;
 parameter IMMB_S      = 4'b0001;
 parameter IMMB_U      = 4'b0010;
 parameter IMMB_PCINCR = 4'b0011;
-//parameter IMMB_S2     = 4'b0100;
-//parameter IMMB_S3     = 4'b0101;
-//parameter IMMB_VS     = 4'b0110;
-//parameter IMMB_VU     = 4'b0111;
-//parameter IMMB_SHUF   = 4'b1000;
 parameter IMMB_CLIP   = 4'b1001;
-//parameter IMMB_BI     = 4'b1011;
 
 // bit mask selection
 parameter BMASK_A_ZERO = 1'b0;

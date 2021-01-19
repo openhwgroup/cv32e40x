@@ -149,7 +149,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        debug_req_i,
     input  logic        debug_single_step_i,
     input  logic        debug_ebreakm_i,
-    input  logic        debug_ebreaku_i,
     input  logic        trigger_match_i,
     output logic        debug_havereset_o,
     output logic        debug_running_o,
@@ -232,13 +231,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Immediate decoding and sign extension
   logic [31:0] imm_i_type;
-  logic [31:0] imm_iz_type;
   logic [31:0] imm_s_type;
   logic [31:0] imm_sb_type;
   logic [31:0] imm_u_type;
   logic [31:0] imm_uj_type;
   logic [31:0] imm_z_type;
-  logic [31:0] imm_vu_type;
 
   logic [31:0] imm_a;       // contains the immediate for operand b
   logic [31:0] imm_b;       // contains the immediate for operand b
@@ -262,7 +259,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] regfile_data_ra_id;
   logic [31:0] regfile_data_rb_id;
-  logic [31:0] regfile_data_rc_id;
 
   // ALU Control
   logic        alu_en;
@@ -318,8 +314,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] alu_operand_c;
 
   // Immediates for ID
-  logic [0:0]  mult_imm_mux;
-
   logic [ 4:0] mult_imm_id;
 
   // Forwarding detection signals
@@ -342,7 +336,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // immediate extraction and sign extension
   assign imm_i_type  = { {20 {instr[31]}}, instr[31:20] };
-  assign imm_iz_type = {            20'b0, instr[31:20] };
   assign imm_s_type  = { {20 {instr[31]}}, instr[31:25], instr[11:7] };
   assign imm_sb_type = { {19 {instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0 };
   assign imm_u_type  = { instr[31:12], 12'b0 };
@@ -534,9 +527,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   
 
   always_comb begin
-    unique case (mult_imm_mux)
-      MIMM_ZERO: mult_imm_id = '0;
-    endcase
+    mult_imm_id = '0;
   end
 
   /////////////////////////////////////////////////////////
@@ -567,10 +558,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Read port b
     .raddr_b_i          ( regfile_addr_rb_id ),
     .rdata_b_o          ( regfile_data_rb_id ),
-
-    // Read port c
-    //.raddr_c_i          ( regfile_addr_rc_id ),
-    //.rdata_c_o          ( regfile_data_rc_id ),
 
     // Write port a
     .waddr_a_i          ( regfile_waddr_wb_i ),
@@ -639,7 +626,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .mult_int_en_o                   ( mult_int_en               ),
     .mult_sel_subword_o              ( mult_sel_subword          ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
-    .mult_imm_mux_o                  ( mult_imm_mux              ),
 
     // Register file control signals
     .regfile_mem_we_o                ( regfile_we_id             ),
@@ -756,7 +742,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .debug_req_i                    ( debug_req_i            ),
     .debug_single_step_i            ( debug_single_step_i    ),
     .debug_ebreakm_i                ( debug_ebreakm_i        ),
-    .debug_ebreaku_i                ( debug_ebreaku_i        ),
     .trigger_match_i                ( trigger_match_i        ),
     .debug_wfi_no_sleep_o           ( debug_wfi_no_sleep     ),
     .debug_havereset_o              ( debug_havereset_o      ),
@@ -773,7 +758,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_save_id_o                  ( csr_save_id_o          ),
     .csr_save_ex_o                  ( csr_save_ex_o          ),
     .csr_restore_mret_id_o          ( csr_restore_mret_id_o  ),
-
     .csr_restore_dret_id_o          ( csr_restore_dret_id_o  ),
 
     // Write targets from ID

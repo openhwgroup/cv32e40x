@@ -221,7 +221,6 @@ module cv32e40x_core
   logic        debug_csr_save;
   logic        debug_single_step;
   logic        debug_ebreakm;
-  logic        debug_ebreaku;
   logic        trigger_match;
 
   // Performance Counters
@@ -498,7 +497,6 @@ module cv32e40x_core
     .debug_halted_o               ( debug_halted_o       ),
     .debug_single_step_i          ( debug_single_step    ),
     .debug_ebreakm_i              ( debug_ebreakm        ),
-    .debug_ebreaku_i              ( debug_ebreaku        ),
     .trigger_match_i              ( trigger_match        ),
 
     // Wakeup Signal
@@ -708,7 +706,6 @@ module cv32e40x_core
     .dpc_o                      ( dpc                   ),
     .debug_single_step_o        ( debug_single_step      ),
     .debug_ebreakm_o            ( debug_ebreakm          ),
-    .debug_ebreaku_o            ( debug_ebreaku          ),
     .trigger_match_o            ( trigger_match          ),
 
     .priv_lvl_o                 ( current_priv_lvl       ),

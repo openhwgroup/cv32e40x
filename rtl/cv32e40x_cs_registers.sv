@@ -68,7 +68,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     dpc_o,
   output logic            debug_single_step_o,
   output logic            debug_ebreakm_o,
-  output logic            debug_ebreaku_o,
   output logic            trigger_match_o,
 
   output PrivLvl_t        priv_lvl_o,
@@ -675,7 +674,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign debug_single_step_o  = dcsr_q.step;
   assign debug_ebreakm_o      = dcsr_q.ebreakm;
-  assign debug_ebreaku_o      = dcsr_q.ebreaku;
 
   assign priv_lvl_q   = PRIV_LVL_M;
   
@@ -741,7 +739,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .wr_data_i  (tmatch_control_n),
     .wr_en_i    (tmatch_control_we),
     .rd_data_o  (tmatch_control_q),
-    .rd_error_o (tmactch_control_rd_error)
+    .rd_error_o (tmatch_control_rd_error)
   );   
   
   cv32e40x_csr #(

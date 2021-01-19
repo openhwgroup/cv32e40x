@@ -68,7 +68,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // MUL related control signals
   output mul_opcode_e mult_operator_o,         // Multiplication operation selection
   output logic        mult_int_en_o,           // perform integer multiplication
-  output logic [0:0]  mult_imm_mux_o,          // Multiplication immediate mux selector
   output logic        mult_sel_subword_o,      // Select subwords for 16x16 bit of multiplier
   output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
   
@@ -143,7 +142,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
     mult_operator_o             = MUL_MAC32;
     mult_int_en                 = 1'b0;
-    mult_imm_mux_o              = MIMM_ZERO;
     mult_signed_mode_o          = 2'b00;
     mult_sel_subword_o          = 1'b0;
 

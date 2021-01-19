@@ -103,7 +103,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic         debug_req_i,
   input  logic         debug_single_step_i,
   input  logic         debug_ebreakm_i,
-  input  logic         debug_ebreaku_i,
   input  logic         trigger_match_i,
   output logic         debug_wfi_no_sleep_o,
   output logic         debug_havereset_o,
