@@ -48,7 +48,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        mult_en_i,
   input  logic        mult_sel_subword_i,
   input  logic [ 1:0] mult_signed_mode_i,
-  input  logic [ 4:0] mult_imm_i,
 
   output logic        mult_multicycle_o,
 
@@ -191,7 +190,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .op_a_i          ( mult_operand_a_i     ),
     .op_b_i          ( mult_operand_b_i     ),
     .op_c_i          ( mult_operand_c_i     ),
-    .imm_i           ( mult_imm_i           ),
 
     .result_o        ( mult_result          ),
 

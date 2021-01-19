@@ -39,8 +39,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  logic [31:0] op_b_i,
   input  logic [31:0] op_c_i,
 
-  input  logic [ 4:0] imm_i,
-
   output logic [31:0] result_o,
 
   output logic        multicycle_o,
@@ -99,7 +97,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   assign short_result     = $signed({short_shift_arith & short_mac_msb1, short_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> short_imm;
 
   // choose between normal short multiplication operation and mulh operation
-  assign short_imm         = mulh_active ? mulh_imm         : imm_i;
+  assign short_imm         = mulh_active ? mulh_imm         : 'd0;
   assign short_subword     = mulh_active ? mulh_subword     : {2{short_subword_i}};
   assign short_signed      = mulh_active ? mulh_signed      : short_signed_i;
   assign short_shift_arith = mulh_active ? mulh_shift_arith : short_signed_i[0];

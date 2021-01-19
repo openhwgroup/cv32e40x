@@ -103,7 +103,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic         mult_en_ex_o,
     output logic         mult_sel_subword_ex_o,
     output logic [ 1:0]  mult_signed_mode_ex_o,
-    output logic [ 4:0]  mult_imm_ex_o,
 
     // CSR ID/EX
     output logic        csr_access_ex_o,
@@ -313,9 +312,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] alu_operand_b;
   logic [31:0] alu_operand_c;
 
-  // Immediates for ID
-  logic [ 4:0] mult_imm_id;
-
   // Forwarding detection signals
   logic        reg_d_ex_is_reg_a_id;
   logic        reg_d_ex_is_reg_b_id;
@@ -511,25 +507,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   always_comb begin : operand_c_fw_mux
     case (operand_c_fw_mux_sel)
       SEL_FW_EX:    operand_c_fw_id = regfile_alu_wdata_fw_i;
+      SEL_REGFILE:  operand_c_fw_id = 32'h00000000;
       default:      operand_c_fw_id = 32'h00000000;
     endcase; // case (operand_c_fw_mux_sel)
   end
  
-  ///////////////////////////////////////////////////////////////////////////
-  //  ___                              _ _       _              ___ ____   //
-  // |_ _|_ __ ___  _ __ ___   ___  __| (_) __ _| |_ ___  ___  |_ _|  _ \  //
-  //  | || '_ ` _ \| '_ ` _ \ / _ \/ _` | |/ _` | __/ _ \/ __|  | || | | | //
-  //  | || | | | | | | | | | |  __/ (_| | | (_| | ||  __/\__ \  | || |_| | //
-  // |___|_| |_| |_|_| |_| |_|\___|\__,_|_|\__,_|\__\___||___/ |___|____/  //
-  //                                                                       //
-  ///////////////////////////////////////////////////////////////////////////
-
-  
-
-  always_comb begin
-    mult_imm_id = '0;
-  end
-
   /////////////////////////////////////////////////////////
   //  ____  _____ ____ ___ ____ _____ _____ ____  ____   //
   // |  _ \| ____/ ___|_ _/ ___|_   _| ____|  _ \/ ___|  //
@@ -861,7 +843,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       mult_en_ex_o                <= 1'b0;
       mult_sel_subword_ex_o       <= 1'b0;
       mult_signed_mode_ex_o       <= 2'b00;
-      mult_imm_ex_o               <= '0;
 
       regfile_waddr_ex_o          <= 6'b0;
       regfile_we_ex_o             <= 1'b0;
@@ -931,7 +912,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           mult_operand_a_ex_o       <= alu_operand_a;
           mult_operand_b_ex_o       <= alu_operand_b;
           mult_operand_c_ex_o       <= alu_operand_c;
-          mult_imm_ex_o             <= mult_imm_id;
         end
         
         regfile_we_ex_o             <= regfile_we_id;

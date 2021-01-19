@@ -145,7 +145,6 @@ module cv32e40x_core
   logic        mult_en_ex;
   logic        mult_sel_subword_ex;
   logic [ 1:0] mult_signed_mode_ex;
-  logic [ 4:0] mult_imm_ex;
 
 // Register Write Control
   logic [4:0]  regfile_waddr_ex;
@@ -443,7 +442,6 @@ module cv32e40x_core
     .mult_operand_a_ex_o          ( mult_operand_a_ex    ), // from ID to EX stage
     .mult_operand_b_ex_o          ( mult_operand_b_ex    ), // from ID to EX stage
     .mult_operand_c_ex_o          ( mult_operand_c_ex    ), // from ID to EX stage
-    .mult_imm_ex_o                ( mult_imm_ex          ), // from ID to EX stage
 
     // CSR ID/EX
     .csr_access_ex_o              ( csr_access_ex        ),
@@ -553,7 +551,6 @@ module cv32e40x_core
     .mult_en_i                  ( mult_en_ex                   ), // from ID/EX pipe registers
     .mult_sel_subword_i         ( mult_sel_subword_ex          ), // from ID/EX pipe registers
     .mult_signed_mode_i         ( mult_signed_mode_ex          ), // from ID/EX pipe registers
-    .mult_imm_i                 ( mult_imm_ex                  ), // from ID/EX pipe registers
 
     .mult_multicycle_o          ( mult_multicycle              ), // to ID/EX pipe registers
 
