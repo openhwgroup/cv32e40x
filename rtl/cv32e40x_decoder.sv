@@ -728,14 +728,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
                 if(DEBUG_TRIGGER_EN != 1)
                   csr_illegal = 1'b1;
 
-            
-            // PRIVLV access
-            CSR_PRIVLV :
-              csr_illegal = 1'b1;
-              
-
-            
-
             default : csr_illegal = 1'b1;
 
           endcase // case (instr_rdata_i[31:20])

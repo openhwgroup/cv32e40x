@@ -66,7 +66,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        pc_set_o,                   // jump to address set by pc_mux
   output pc_mux_e     pc_mux_o,                   // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
   output exc_pc_mux_e exc_pc_mux_o,               // Selects target PC for exception
-  output trap_mux_e   trap_addr_mux_o,            // Selects trap address base
 
   input  logic [31:0]       pc_id_i,
   input  logic              is_compressed_i,
@@ -212,7 +211,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     exc_cause_o            = '0;
     exc_pc_mux_o           = EXC_PC_IRQ;
-    trap_addr_mux_o        = TRAP_MACHINE;
 
     csr_cause_o            = '0;
 
@@ -339,8 +337,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           irq_ack_o         = 1'b1;
           irq_id_o          = irq_id_ctrl_i;
 
-          trap_addr_mux_o  = TRAP_MACHINE;
-
           csr_save_cause_o  = 1'b1;
           csr_cause_o       = {1'b1,irq_id_ctrl_i};
           csr_save_if_o     = 1'b1;
@@ -398,8 +394,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 // IRQ interface
                 irq_ack_o         = 1'b1;
                 irq_id_o          = irq_id_ctrl_i;
-
-                trap_addr_mux_o  = TRAP_MACHINE;
 
                 csr_save_cause_o  = 1'b1;
                 csr_cause_o       = {1'b1,irq_id_ctrl_i};
@@ -587,7 +581,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
             //exceptions
             pc_mux_o              = PC_EXCEPTION;
             pc_set_o              = 1'b1;
-            trap_addr_mux_o       = TRAP_MACHINE;
             exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
             illegal_insn_n        = 1'b0;
             if (debug_single_step_i && ~debug_mode_q)
@@ -598,7 +591,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 //ebreak
                 pc_mux_o              = PC_EXCEPTION;
                 pc_set_o              = 1'b1;
-                trap_addr_mux_o       = TRAP_MACHINE;
                 exc_pc_mux_o          = EXC_PC_EXCEPTION;
 
                 if (debug_single_step_i && ~debug_mode_q)
@@ -608,7 +600,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 //ecall
                 pc_mux_o              = PC_EXCEPTION;
                 pc_set_o              = 1'b1;
-                trap_addr_mux_o       = TRAP_MACHINE;
                 exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
 
                 if (debug_single_step_i && ~debug_mode_q)

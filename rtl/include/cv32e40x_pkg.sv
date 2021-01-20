@@ -210,32 +210,19 @@ typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_FINISH} div_state_e;
 /////////////////////////////////////////////////////////
 
 // CSRs mnemonics
-// imported form IBEX, some regs may be still not implemented
 typedef enum logic[11:0] {
 
   ///////////////////////////////////////////////////////
   // User CSRs
   ///////////////////////////////////////////////////////
 
-  // User trap setup
-  CSR_USTATUS        = 12'h000,         // Not included (PULP_SECURE = 0)
-
-  // User trap setup
-  CSR_UTVEC          = 12'h005,         // Not included (PULP_SECURE = 0)
-
-  // User trap handling
-  CSR_UEPC           = 12'h041,         // Not included (PULP_SECURE = 0)
-  CSR_UCAUSE         = 12'h042,         // Not included (PULP_SECURE = 0)
+  // None
 
   ///////////////////////////////////////////////////////
   // User Custom CSRs
   ///////////////////////////////////////////////////////
 
-  // User Hart ID
-  CSR_UHARTID        = 12'hCC0,         // Custom CSR. User Hart ID
-
-  // Privilege
-  CSR_PRIVLV         = 12'hCC1,         // Custom CSR. Privilege Level
+  // None
 
   ///////////////////////////////////////////////////////
   // Machine CSRs
@@ -783,14 +770,6 @@ parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
-
-// Trap mux selector
-typedef enum logic[1:0] {
- TRAP_MACHINE      = 2'b00,
- TRAP_USER         = 2'b01
-} trap_mux_e;
-
-
 
 // Instruction aligner FSM state encoding
 typedef enum logic [2:0]  {ALIGNED32,

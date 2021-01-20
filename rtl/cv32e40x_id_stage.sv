@@ -61,8 +61,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        pc_set_o,
     output pc_mux_e     pc_mux_o,
     output exc_pc_mux_e exc_pc_mux_o,
-    output trap_mux_e   trap_addr_mux_o,
-
 
     input  logic        is_fetch_failed_i,
 
@@ -691,7 +689,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .pc_mux_o                       ( pc_mux_o               ),
     .exc_pc_mux_o                   ( exc_pc_mux_o           ),
     .exc_cause_o                    ( exc_cause_o            ),
-    .trap_addr_mux_o                ( trap_addr_mux_o        ),
 
     .pc_id_i                        ( pc_id_i                ),
     .is_compressed_i                ( is_compressed_i        ),
@@ -1058,7 +1055,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     property p_irq_csr;
        @(posedge clk) disable iff (!rst_n) (pc_set_o && (pc_mux_o == PC_EXCEPTION) && ((exc_pc_mux_o == EXC_PC_EXCEPTION) || (exc_pc_mux_o == EXC_PC_IRQ)) &&
                                             csr_access_ex_o && (csr_op_ex_o != CSR_OP_READ)) |->
-                                           ((alu_operand_b_ex_o[11:0] != CSR_MSTATUS) && (alu_operand_b_ex_o[11:0] != CSR_USTATUS) &&
+                                           ((alu_operand_b_ex_o[11:0] != CSR_MSTATUS) &&
                                             (alu_operand_b_ex_o[11:0] != CSR_MEPC) &&
                                             (alu_operand_b_ex_o[11:0] != CSR_MCAUSE) &&
                                             (alu_operand_b_ex_o[11:0] != CSR_MTVEC));

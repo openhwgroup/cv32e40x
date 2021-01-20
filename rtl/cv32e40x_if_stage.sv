@@ -32,7 +32,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     // Used to calculate the exception offsets
     input  logic [23:0] mtvec_addr,
-    input  trap_mux_e   trap_addr_mux_i,
+
     // Boot address
     input  logic [31:0] boot_addr_i,
     input  logic [31:0] dm_exception_addr_i,
@@ -99,8 +99,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic       [31:0] exc_pc;
 
-  logic [23:0]       trap_base_addr;
-  logic  [4:0]       exc_vec_pc_mux;
   logic              fetch_failed;
 
   logic              aligner_ready;
@@ -111,26 +109,15 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic [31:0]       instr_decompressed;
   logic              instr_compressed_int;
 
-
   // exception PC selection mux
   always_comb
   begin : EXC_PC_MUX
-    unique case (trap_addr_mux_i)
-      TRAP_MACHINE:  trap_base_addr = mtvec_addr;
-      default:       trap_base_addr = mtvec_addr;
-    endcase
-
-    unique case (trap_addr_mux_i)
-      TRAP_MACHINE:  exc_vec_pc_mux = m_exc_vec_pc_mux_i;
-      default:       exc_vec_pc_mux = m_exc_vec_pc_mux_i;
-    endcase
-
     unique case (exc_pc_mux_i)
-      EXC_PC_EXCEPTION:                        exc_pc = { trap_base_addr, 8'h0 }; //1.10 all the exceptions go to base address
-      EXC_PC_IRQ:                              exc_pc = { trap_base_addr, 1'b0, exc_vec_pc_mux, 2'b0 }; // interrupts are vectored
+      EXC_PC_EXCEPTION:                        exc_pc = { mtvec_addr, 8'h0 }; //1.10 all the exceptions go to base address
+      EXC_PC_IRQ:                              exc_pc = { mtvec_addr, 1'b0, m_exc_vec_pc_mux_i, 2'b0 }; // interrupts are vectored
       EXC_PC_DBD:                              exc_pc = { dm_halt_addr_i[31:2], 2'b0 };
       EXC_PC_DBE:                              exc_pc = { dm_exception_addr_i[31:2], 2'b0 };
-      default:                                 exc_pc = { trap_base_addr, 8'h0 };
+      default:                                 exc_pc = { mtvec_addr, 8'h0 };
     endcase
   end
 

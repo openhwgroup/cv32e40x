@@ -106,8 +106,6 @@ module cv32e40x_core
   logic [4:0]        m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
   logic [4:0]        exc_cause;
 
-  trap_mux_e         trap_addr_mux;
-
   logic [31:0]       pc_if;             // Program counter in IF stage
   logic [31:0]       pc_id;             // Program counter in ID stage
 
@@ -305,16 +303,15 @@ module cv32e40x_core
     .dm_halt_addr_i      ( dm_halt_addr_i[31:0] ),
 
     // trap vector location
-    .mtvec_addr  ( mtvec_addr        ),
-    .trap_addr_mux_i     ( trap_addr_mux     ),
+    .mtvec_addr          ( mtvec_addr        ),
 
     // instruction request control
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .instr_req_o         ( instr_req_o     ),
-    .instr_addr_o        ( instr_addr_o    ),
-    .instr_gnt_i         ( instr_gnt_i     ),
+    .instr_req_o         ( instr_req_o       ),
+    .instr_addr_o        ( instr_addr_o      ),
+    .instr_gnt_i         ( instr_gnt_i       ),
     .instr_rvalid_i      ( instr_rvalid_i    ),
     .instr_rdata_i       ( instr_rdata_i     ),
     .instr_err_i         ( 1'b0              ),  // Bus error (not used yet)
@@ -330,7 +327,7 @@ module cv32e40x_core
 
     .mepc_i              ( mepc              ), // exception return address
 
-    .dpc_i              ( dpc              ), // debug return address
+    .dpc_i               ( dpc               ), // debug return address
 
     .pc_mux_i            ( pc_mux_id         ), // sel for pc multiplexer
     .exc_pc_mux_i        ( exc_pc_mux_id     ),
@@ -401,8 +398,6 @@ module cv32e40x_core
     .pc_mux_o                     ( pc_mux_id            ),
     .exc_pc_mux_o                 ( exc_pc_mux_id        ),
     .exc_cause_o                  ( exc_cause            ),
-    .trap_addr_mux_o              ( trap_addr_mux        ),
-
 
     .pc_id_i                      ( pc_id                ),
 
