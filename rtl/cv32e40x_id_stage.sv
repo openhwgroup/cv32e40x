@@ -592,7 +592,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     .fencei_insn_o                   ( fencei_insn_dec           ),
 
-    .reg_used_o                      ( reg_used_dec             ),
+    .reg_used_o                      ( reg_used_dec              ),
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),

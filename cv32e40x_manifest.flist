@@ -33,7 +33,8 @@ ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_tracer_pkg.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_csr.sv
 ${DESIGN_RTL_DIR}/cv32e40x_cs_registers.sv
-${DESIGN_RTL_DIR}/cv32e40x_register_file_ff.sv
+${DESIGN_RTL_DIR}/cv32e40x_register_file.sv
+${DESIGN_RTL_DIR}/cv32e40x_register_file_wrapper.sv
 ${DESIGN_RTL_DIR}/cv32e40x_load_store_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_id_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_aligner.sv
@@ -41,7 +42,6 @@ ${DESIGN_RTL_DIR}/cv32e40x_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_compressed_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_fifo.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetch_buffer.sv
-${DESIGN_RTL_DIR}/cv32e40x_hwloop_regs.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv
 ${DESIGN_RTL_DIR}/cv32e40x_int_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ex_stage.sv
