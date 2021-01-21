@@ -24,28 +24,26 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_register_file
+module cv32e40x_register_file import cv32e40x_pkg::*;
 #(
     parameter ADDR_WIDTH      = 5,
     parameter DATA_WIDTH      = 32,
-    parameter NUM_READ_PORTS  = 2,
-    parameter NUM_WRITE_PORTS = 2
+    parameter REGFILE_NUM_READ_PORTS  = 2,
+    parameter REGFILE_NUM_WRITE_PORTS = 2
 )
 (
     // Clock and Reset
     input  logic         clk,
     input  logic         rst_n,
 
-    input  logic         scan_cg_en_i,
-
     // Read ports
-    input  logic [NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
-    output logic [NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
+    input  logic [REGFILE_NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
+    output logic [REGFILE_NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
 
     // Write ports
-    input logic [NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
-    input logic [NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
-    input logic [NUM_WRITE_PORTS-1:0] we_i
+    input logic [REGFILE_NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
+    input logic [REGFILE_NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
+    input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
 
     
 );
@@ -57,7 +55,7 @@ module cv32e40x_register_file
   logic [NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
 
 // write enable signals for all registers
-  logic [NUM_WRITE_PORTS-1:0][NUM_WORDS-1:0]      we_dec;
+  logic [REGFILE_NUM_WRITE_PORTS-1:0][NUM_WORDS-1:0]      we_dec;
   
 
   //-----------------------------------------------------------------------------
@@ -65,7 +63,7 @@ module cv32e40x_register_file
   //-----------------------------------------------------------------------------
   genvar ridx;
   generate
-    for (ridx=0; ridx<NUM_READ_PORTS; ridx++) begin
+    for (ridx=0; ridx<REGFILE_NUM_READ_PORTS; ridx++) begin : gen_regfile_rdata
       assign rdata_o[ridx] = mem[raddr_i[ridx]];
     end
   endgenerate
@@ -78,7 +76,7 @@ module cv32e40x_register_file
   genvar reg_index, port_index;
   generate
     for (reg_index=0; reg_index<NUM_WORDS; reg_index++) begin : gen_we_decoder
-      for (port_index=0; port_index<NUM_WRITE_PORTS; port_index++) begin : gen_we_ports
+      for (port_index=0; port_index<REGFILE_NUM_WRITE_PORTS; port_index++) begin : gen_we_ports
         assign we_dec[port_index][reg_index] = (waddr_i[port_index] == reg_index) ? we_i[port_index] : 1'b0;
       end // gen_we_ports
     end // gen_we_decoder
@@ -111,7 +109,7 @@ module cv32e40x_register_file
           mem[i] <= 32'b0;
         end else begin
           // Highest indexed write port will have priority
-          for(int j=0; j<NUM_WRITE_PORTS; j++) begin : rf_write_ports
+          for(int j=0; j<REGFILE_NUM_WRITE_PORTS; j++) begin : rf_write_ports
             if(we_dec[j][i] == 1'b1) begin
               mem[i] <= wdata_i[j];
             end

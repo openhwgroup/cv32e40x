@@ -29,8 +29,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION       = 0,
   parameter USE_PMP           = 0,
-  parameter DEBUG_TRIGGER_EN  = 1,
-  parameter REGFILE_NUM_READ_PORTS = 2
+  parameter DEBUG_TRIGGER_EN  = 1
 )
 (
   // singals running to/from controller
@@ -211,7 +210,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         alu_operator_o      = ALU_ADD;
         regfile_alu_we      = 1'b1;
         // Calculate jump target (= RS1 + I imm)
-        reg_used_o[0]         = 1'b1;
+        reg_used_o[0]       = 1'b1;
 
         if (instr_rdata_i[14:12] != 3'b0) begin
           ctrl_transfer_insn = BRANCH_NONE;
@@ -224,8 +223,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         ctrl_transfer_target_mux_sel_o = JT_COND;
         ctrl_transfer_insn    = BRANCH_COND;
         alu_op_c_mux_sel_o    = OP_C_JT;
-        reg_used_o[0]           = 1'b1;
-        reg_used_o[1]           = 1'b1;
+        reg_used_o[0]         = 1'b1;
+        reg_used_o[1]         = 1'b1;
 
         unique case (instr_rdata_i[14:12])
           3'b000: alu_operator_o = ALU_EQ;
@@ -255,8 +254,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       OPCODE_STORE: begin
         data_req       = 1'b1;
         data_we_o      = 1'b1;
-        reg_used_o[0]    = 1'b1;
-        reg_used_o[1]    = 1'b1;
+        reg_used_o[0]  = 1'b1;
+        reg_used_o[1]  = 1'b1;
         alu_operator_o = ALU_ADD;
         // pass write data through ALU operand c
         alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD;
@@ -285,7 +284,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       OPCODE_LOAD: begin
         data_req        = 1'b1;
         regfile_mem_we  = 1'b1;
-        reg_used_o[0]     = 1'b1;
+        reg_used_o[0]   = 1'b1;
         data_type_o     = 2'b00;
         // offset from immediate
         alu_operator_o      = ALU_ADD;
@@ -324,8 +323,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
           if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
             data_req          = 1'b1;
             data_type_o       = 2'b00;
-            reg_used_o[0]       = 1'b1;
-            reg_used_o[1]       = 1'b1;
+            reg_used_o[0]     = 1'b1;
+            reg_used_o[1]     = 1'b1;
             regfile_mem_we    = 1'b1;
             prepost_useincr_o = 1'b0; // only use alu_operand_a as address (not a+b)
             alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
@@ -394,7 +393,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         alu_op_b_mux_sel_o  = OP_B_IMM;
         imm_b_mux_sel_o     = IMMB_I;
         regfile_alu_we      = 1'b1;
-        reg_used_o[0]         = 1'b1;
+        reg_used_o[0]       = 1'b1;
 
         unique case (instr_rdata_i[14:12])
           3'b000: alu_operator_o = ALU_ADD;  // Add Immediate
@@ -438,7 +437,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         // PREFIX 00/01
         else begin
           regfile_alu_we = 1'b1;
-          reg_used_o[0]    = 1'b1;
+          reg_used_o[0]  = 1'b1;
 
           if (~instr_rdata_i[28]) reg_used_o[1] = 1'b1;
 
@@ -482,25 +481,25 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             {6'b00_0001, 3'b100}: begin // div
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]        = 1'b1;
+              reg_used_o[1]      = 1'b1;
               alu_operator_o     = ALU_DIV;
             end
             {6'b00_0001, 3'b101}: begin // divu
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]        = 1'b1;
+              reg_used_o[1]      = 1'b1;
               alu_operator_o     = ALU_DIVU;
             end
             {6'b00_0001, 3'b110}: begin // rem
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]        = 1'b1;
+              reg_used_o[1]      = 1'b1;
               alu_operator_o     = ALU_REM;
             end
             {6'b00_0001, 3'b111}: begin // remu
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]        = 1'b1;
+              reg_used_o[1]      = 1'b1;
               alu_operator_o     = ALU_REMU;
             end
 
@@ -603,7 +602,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             // rs1 field is used as immediate
             alu_op_a_mux_sel_o = OP_A_IMM;
           end else begin
-            reg_used_o[0]        = 1'b1;
+            reg_used_o[0]      = 1'b1;
             alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
           end
 

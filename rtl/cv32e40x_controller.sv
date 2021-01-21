@@ -29,10 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller import cv32e40x_pkg::*;
- #(
-    parameter REGFILE_NUM_READ_PORTS  = 2,
-    parameter REGFILE_NUM_WRITE_PORTS = 2
-)
 (
   input  logic        clk,                        // Gated clock
   input  logic        clk_ungated_i,              // Ungated clock

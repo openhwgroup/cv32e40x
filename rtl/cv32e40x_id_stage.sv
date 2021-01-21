@@ -31,9 +31,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter USE_PMP                 =  0,
   parameter A_EXTENSION             =  0,
-  parameter DEBUG_TRIGGER_EN        =  1,
-  parameter REGFILE_NUM_READ_PORTS  =  2,
-  parameter REGFILE_NUM_WRITE_PORTS =  2
+  parameter DEBUG_TRIGGER_EN        =  1
 )
 (
     input  logic        clk,                    // Gated clock
@@ -246,8 +244,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [4:0] irq_id_ctrl;
 
   // Register file read interface
-  logic [REGFILE_NUM_READ_PORTS-1:0][4:0]  regfile_raddr;
-  logic [REGFILE_NUM_READ_PORTS-1:0][31:0] regfile_rdata;
+  logic [REGFILE_NUM_READ_PORTS-1:0][4:0]  regfile_raddr_id;
+  logic [REGFILE_NUM_READ_PORTS-1:0][31:0] regfile_rdata_id;
 
   // Register file write interface
   logic [REGFILE_NUM_WRITE_PORTS-1:0] [4:0] regfile_waddr;
@@ -343,8 +341,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //---------------------------------------------------------------------------
   // source register selection regfile_fp_x=1 <=> CV32E40P_REG_x is a FP-register
   //---------------------------------------------------------------------------
-  assign regfile_raddr[0] = instr[REG_S1_MSB:REG_S1_LSB];
-  assign regfile_raddr[1] = instr[REG_S2_MSB:REG_S2_LSB];
+  assign regfile_raddr_id[0] = instr[REG_S1_MSB:REG_S1_LSB];
+  assign regfile_raddr_id[1] = instr[REG_S2_MSB:REG_S2_LSB];
 
 
   //---------------------------------------------------------------------------
@@ -360,9 +358,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   genvar i;
   generate
     for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
-      assign reg_in_ex_matches_reg_in_dec[i]  = (regfile_waddr_ex_o     == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
-      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i     == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
-      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
+      assign reg_in_ex_matches_reg_in_dec[i]  = (regfile_waddr_ex_o     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
+      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
+      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
     end
   endgenerate
 
@@ -391,8 +389,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       JT_COND: jump_target = pc_id_i + imm_sb_type;
 
       // JALR: Cannot forward RS1, since the path is too long
-      JT_JALR: jump_target = regfile_rdata[0] + imm_i_type;
-      default:  jump_target = regfile_rdata[0] + imm_i_type;
+      JT_JALR: jump_target = regfile_rdata_id[0] + imm_i_type;
+      default:  jump_target = regfile_rdata_id[0] + imm_i_type;
     endcase
   end
 
@@ -431,8 +429,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (operand_a_fw_mux_sel)
       SEL_FW_EX:    operand_a_fw_id = regfile_alu_wdata_fw_i;
       SEL_FW_WB:    operand_a_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_a_fw_id = regfile_rdata[0];
-      default:      operand_a_fw_id = regfile_rdata[0];
+      SEL_REGFILE:  operand_a_fw_id = regfile_rdata_id[0];
+      default:      operand_a_fw_id = regfile_rdata_id[0];
     endcase; // case (operand_a_fw_mux_sel)
   end
 
@@ -476,8 +474,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (operand_b_fw_mux_sel)
       SEL_FW_EX:    operand_b_fw_id = regfile_alu_wdata_fw_i;
       SEL_FW_WB:    operand_b_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_b_fw_id = regfile_rdata[1];
-      default:      operand_b_fw_id = regfile_rdata[1];
+      SEL_REGFILE:  operand_b_fw_id = regfile_rdata_id[1];
+      default:      operand_b_fw_id = regfile_rdata_id[1];
     endcase; // case (operand_b_fw_mux_sel)
   end
 
@@ -534,20 +532,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   cv32e40x_register_file_wrapper
   #(
     .ADDR_WIDTH         ( 5                      ),
-    .DATA_WIDTH         ( 32                     ),
-    .NUM_READ_PORTS     ( REGFILE_NUM_READ_PORTS ),
-    .NUM_WRITE_PORTS    ( REGFILE_NUM_WRITE_PORTS)
+    .DATA_WIDTH         ( 32                     )
   )
   register_file_wrapper_i
   (
     .clk                ( clk                ),
     .rst_n              ( rst_n              ),
 
-    .scan_cg_en_i       ( scan_cg_en_i       ),
-
     // Read ports
-    .raddr_i            ( regfile_raddr      ),
-    .rdata_o            ( regfile_rdata      ),
+    .raddr_i            ( regfile_raddr_id      ),
+    .rdata_o            ( regfile_rdata_id      ),
 
     // Write ports
     .waddr_i            ( regfile_waddr      ),
@@ -570,8 +564,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     #(
       .A_EXTENSION             ( A_EXTENSION            ),
       .USE_PMP                 ( USE_PMP                ),
-      .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       ),
-      .REGFILE_NUM_READ_PORTS ( REGFILE_NUM_READ_PORTS )
+      .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       )
       )
   decoder_i
   (
@@ -656,10 +649,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////
 
   cv32e40x_controller
-  #(
-    .REGFILE_NUM_READ_PORTS     ( REGFILE_NUM_READ_PORTS ),
-    .REGFILE_NUM_WRITE_PORTS    ( REGFILE_NUM_WRITE_PORTS)
-  )
   controller_i
   (
     .clk                            ( clk                    ),         // Gated clock

@@ -28,28 +28,24 @@
 // Description:    Wrapper for the register file                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_register_file_wrapper
+module cv32e40x_register_file_wrapper import cv32e40x_pkg::*;
     #(
         parameter ADDR_WIDTH      = 5,
-        parameter DATA_WIDTH      = 32,
-        parameter NUM_READ_PORTS  = 2,
-        parameter NUM_WRITE_PORTS = 2
+        parameter DATA_WIDTH      = 32
     )
     (
         // Clock and Reset
         input  logic         clk,
         input  logic         rst_n,
     
-        input  logic         scan_cg_en_i,
-    
         // Read ports
-        input  logic [NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
-        output logic [NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
+        input  logic [REGFILE_NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
+        output logic [REGFILE_NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
     
         // Write ports
-        input logic [NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
-        input logic [NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
-        input logic [NUM_WRITE_PORTS-1:0] we_i
+        input logic [REGFILE_NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
+        input logic [REGFILE_NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
+        input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
     
         
     );
@@ -57,16 +53,12 @@ module cv32e40x_register_file_wrapper
     cv32e40x_register_file
     #(
       .ADDR_WIDTH         ( ADDR_WIDTH             ),
-      .DATA_WIDTH         ( DATA_WIDTH             ),
-      .NUM_READ_PORTS     ( NUM_READ_PORTS ),
-      .NUM_WRITE_PORTS    ( NUM_WRITE_PORTS)
+      .DATA_WIDTH         ( DATA_WIDTH             )
     )
     register_file_i
     (
       .clk                ( clk                ),
       .rst_n              ( rst_n              ),
-    
-      .scan_cg_en_i       ( scan_cg_en_i       ),
     
       // Read ports
       .raddr_i            ( raddr_i            ),

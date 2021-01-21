@@ -652,6 +652,10 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
 //                              |___/        //
 ///////////////////////////////////////////////
 
+  // Register file read/write ports
+parameter REGFILE_NUM_READ_PORTS  = 2;
+parameter REGFILE_NUM_WRITE_PORTS = 2;
+
 // forwarding operand mux
 parameter SEL_REGFILE      = 2'b00;
 parameter SEL_FW_EX        = 2'b01;
