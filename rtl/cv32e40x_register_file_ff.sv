@@ -26,8 +26,10 @@
 
 module cv32e40x_register_file
 #(
-    parameter ADDR_WIDTH    = 5,
-    parameter DATA_WIDTH    = 32
+    parameter ADDR_WIDTH      = 5,
+    parameter DATA_WIDTH      = 32,
+    parameter NUM_READ_PORTS  = 2,
+    parameter NUM_WRITE_PORTS = 2
 )
 (
     // Clock and Reset
@@ -36,27 +38,16 @@ module cv32e40x_register_file
 
     input  logic         scan_cg_en_i,
 
-    //Read port R1
-    input  logic [ADDR_WIDTH-1:0]  raddr_a_i,
-    output logic [DATA_WIDTH-1:0]  rdata_a_o,
+    // Read ports
+    input  logic [NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
+    output logic [NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
 
-    //Read port R2
-    input  logic [ADDR_WIDTH-1:0]  raddr_b_i,
-    output logic [DATA_WIDTH-1:0]  rdata_b_o,
+    // Write ports
+    input logic [NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
+    input logic [NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
+    input logic [NUM_WRITE_PORTS-1:0] we_i
 
-    //Read port R3
-    //input  logic [ADDR_WIDTH-1:0]  raddr_c_i,
-    //output logic [DATA_WIDTH-1:0]  rdata_c_o,
-
-    // Write port W1
-    input logic [ADDR_WIDTH-1:0]   waddr_a_i,
-    input logic [DATA_WIDTH-1:0]   wdata_a_i,
-    input logic                    we_a_i,
-
-    // Write port W2
-    input logic [ADDR_WIDTH-1:0]   waddr_b_i,
-    input logic [DATA_WIDTH-1:0]   wdata_b_i,
-    input logic                    we_b_i
+    
 );
 
   // number of integer registers
@@ -65,38 +56,35 @@ module cv32e40x_register_file
   // integer register file
   logic [NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
 
-  // masked write addresses
-  logic [ADDR_WIDTH-1:0]                    waddr_a;
-  logic [ADDR_WIDTH-1:0]                    waddr_b;
-
-  // write enable signals for all registers
-  logic [NUM_WORDS-1:0]                    we_a_dec;
-  logic [NUM_WORDS-1:0]                    we_b_dec;
-
+// write enable signals for all registers
+  logic [NUM_WRITE_PORTS-1:0][NUM_WORDS-1:0]      we_dec;
+  
 
   //-----------------------------------------------------------------------------
   //-- READ : Read address decoder RAD
   //-----------------------------------------------------------------------------
-  assign rdata_a_o = mem[raddr_a_i[4:0]];
-  assign rdata_b_o = mem[raddr_b_i[4:0]];
-  //assign rdata_c_o = mem[raddr_c_i[4:0]];
+  genvar ridx;
+  generate
+    for (ridx=0; ridx<NUM_READ_PORTS; ridx++) begin
+      assign rdata_o[ridx] = mem[raddr_i[ridx]];
+    end
+  endgenerate
 
   //-----------------------------------------------------------------------------
   //-- WRITE : Write Address Decoder (WAD), combinatorial process
   //-----------------------------------------------------------------------------
 
-  assign waddr_a = waddr_a_i;
-  assign waddr_b = waddr_b_i;
 
-  genvar gidx;
+  genvar reg_index, port_index;
   generate
-    for (gidx=0; gidx<NUM_WORDS; gidx++) begin : gen_we_decoder
-      assign we_a_dec[gidx] = (waddr_a == gidx) ? we_a_i : 1'b0;
-      assign we_b_dec[gidx] = (waddr_b == gidx) ? we_b_i : 1'b0;
-    end
+    for (reg_index=0; reg_index<NUM_WORDS; reg_index++) begin : gen_we_decoder
+      for (port_index=0; port_index<NUM_WRITE_PORTS; port_index++) begin : gen_we_ports
+        assign we_dec[port_index][reg_index] = (waddr_i[port_index] == reg_index) ? we_i[port_index] : 1'b0;
+      end // gen_we_ports
+    end // gen_we_decoder
   endgenerate
 
-  genvar i,l;
+  genvar i;
   generate
 
     //-----------------------------------------------------------------------------
@@ -122,10 +110,12 @@ module cv32e40x_register_file
         if (rst_n==1'b0) begin
           mem[i] <= 32'b0;
         end else begin
-          if(we_b_dec[i] == 1'b1)
-            mem[i] <= wdata_b_i;
-          else if(we_a_dec[i] == 1'b1)
-            mem[i] <= wdata_a_i;
+          // Highest indexed write port will have priority
+          for(int j=0; j<NUM_WRITE_PORTS; j++) begin : rf_write_ports
+            if(we_dec[j][i] == 1'b1) begin
+              mem[i] <= wdata_i[j];
+            end
+          end
         end
       end
 

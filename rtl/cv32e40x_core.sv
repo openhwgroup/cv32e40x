@@ -79,9 +79,11 @@ module cv32e40x_core
 
   import cv32e40x_pkg::*;
   
+  localparam REGFILE_NUM_READ_PORTS  = 2;
+  localparam REGFILE_NUM_WRITE_PORTS = 2;
+
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
-
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
 
@@ -366,8 +368,10 @@ module cv32e40x_core
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .USE_PMP                      ( USE_PMP              ),
-    .A_EXTENSION                  ( A_EXTENSION          )
+    .USE_PMP                      ( USE_PMP                ),
+    .A_EXTENSION                  ( A_EXTENSION            ),
+    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS ),
+    .REGFILE_NUM_WRITE_PORTS      ( REGFILE_NUM_WRITE_PORTS) 
   )
   id_stage_i
   (
