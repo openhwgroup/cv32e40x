@@ -26,9 +26,7 @@
 
 module cv32e40x_register_file import cv32e40x_pkg::*;
 #(
-    parameter DATA_WIDTH      = 32,
-    parameter REGFILE_NUM_READ_PORTS  = 2,
-    parameter REGFILE_NUM_WRITE_PORTS = 2
+    parameter DATA_WIDTH      = 32
 )
 (
     // Clock and Reset
