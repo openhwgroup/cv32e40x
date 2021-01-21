@@ -531,14 +531,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign regfile_we[0] = regfile_we_wb_i;
   assign regfile_we[1] = regfile_alu_we_fw_i;
 
-  cv32e40x_register_file
+  cv32e40x_register_file_wrapper
   #(
     .ADDR_WIDTH         ( 5                      ),
     .DATA_WIDTH         ( 32                     ),
     .NUM_READ_PORTS     ( REGFILE_NUM_READ_PORTS ),
     .NUM_WRITE_PORTS    ( REGFILE_NUM_WRITE_PORTS)
   )
-  register_file_i
+  register_file_wrapper_i
   (
     .clk                ( clk                ),
     .rst_n              ( rst_n              ),
