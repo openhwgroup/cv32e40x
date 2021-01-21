@@ -29,6 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller import cv32e40x_pkg::*;
+ #(
+    parameter REGFILE_NUM_READ_PORTS  = 2,
+    parameter REGFILE_NUM_WRITE_PORTS = 2
+)
 (
   input  logic        clk,                        // Gated clock
   input  logic        clk_ungated_i,              // Ungated clock
@@ -138,12 +142,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic [1:0]  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
 
   // forwarding detection signals
-  input logic         reg_d_ex_is_reg_a_i,
-  input logic         reg_d_ex_is_reg_b_i,
-  input logic         reg_d_wb_is_reg_a_i,
-  input logic         reg_d_wb_is_reg_b_i,
-  input logic         reg_d_alu_is_reg_a_i,
-  input logic         reg_d_alu_is_reg_b_i,
+  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_ex_matches_reg_in_dec_i,
+  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_wb_matches_reg_in_dec_i,
+  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_alu_matches_reg_in_dec_i,
+
 
   // stall signals
   output logic        halt_if_o,
@@ -789,7 +791,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           ( (data_req_ex_i == 1'b1) && (regfile_we_ex_i == 1'b1) ||
            (wb_ready_i == 1'b0) && (regfile_we_wb_i == 1'b1)
           ) &&
-          ( (reg_d_ex_is_reg_a_i == 1'b1) || (reg_d_ex_is_reg_b_i == 1'b1) ||
+          ( ( |reg_in_ex_matches_reg_in_dec_i) ||
             (is_decoding_o && (regfile_we_id_i && !data_misaligned_i) && (regfile_waddr_ex_i == regfile_alu_waddr_id_i)) )
        )
     begin
@@ -802,9 +804,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
     if ((ctrl_transfer_insn_in_dec_i == BRANCH_JALR) &&
-        (((regfile_we_wb_i == 1'b1) && (reg_d_wb_is_reg_a_i == 1'b1)) ||
-         ((regfile_we_ex_i == 1'b1) && (reg_d_ex_is_reg_a_i == 1'b1)) ||
-         ((regfile_alu_we_fw_i == 1'b1) && (reg_d_alu_is_reg_a_i == 1'b1))) )
+        (((regfile_we_wb_i == 1'b1)     && (reg_in_wb_matches_reg_in_dec_i[0]  == 1'b1)) ||
+         ((regfile_we_ex_i == 1'b1)     && (reg_in_ex_matches_reg_in_dec_i[0]  == 1'b1)) ||
+         ((regfile_alu_we_fw_i == 1'b1) && (reg_in_alu_matches_reg_in_dec_i[0] == 1'b1))) )
     begin
       jr_stall_o      = 1'b1;
       deassert_we_o   = 1'b1;
@@ -831,18 +833,18 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // Forwarding WB -> ID
     if (regfile_we_wb_i == 1'b1)
     begin
-      if (reg_d_wb_is_reg_a_i == 1'b1)
+      if (reg_in_wb_matches_reg_in_dec_i[0] == 1'b1)
         operand_a_fw_mux_sel_o = SEL_FW_WB;
-      if (reg_d_wb_is_reg_b_i == 1'b1)
+      if (reg_in_wb_matches_reg_in_dec_i[1] == 1'b1)
         operand_b_fw_mux_sel_o = SEL_FW_WB;
     end
 
     // Forwarding EX -> ID
     if (regfile_alu_we_fw_i == 1'b1)
     begin
-     if (reg_d_alu_is_reg_a_i == 1'b1)
+     if (reg_in_alu_matches_reg_in_dec_i[0] == 1'b1)
        operand_a_fw_mux_sel_o = SEL_FW_EX;
-     if (reg_d_alu_is_reg_b_i == 1'b1)
+     if (reg_in_alu_matches_reg_in_dec_i[1] == 1'b1)
        operand_b_fw_mux_sel_o = SEL_FW_EX;
     end
 

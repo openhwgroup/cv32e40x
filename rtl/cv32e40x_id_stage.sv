@@ -213,8 +213,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic        fencei_insn_dec;
 
-  logic        rega_used_dec;
-  logic        regb_used_dec;
+  logic [REGFILE_NUM_READ_PORTS-1:0] reg_used_dec;
 
   logic        branch_taken_ex;
   logic [1:0]  ctrl_transfer_insn_in_id;
@@ -314,12 +313,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] alu_operand_c;
 
   // Forwarding detection signals
-  logic        reg_d_ex_is_reg_a_id;
-  logic        reg_d_ex_is_reg_b_id;
-  logic        reg_d_wb_is_reg_a_id;
-  logic        reg_d_wb_is_reg_b_id;
-  logic        reg_d_alu_is_reg_a_id;
-  logic        reg_d_alu_is_reg_b_id;
+  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_ex_matches_reg_in_dec;
+  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_wb_matches_reg_in_dec;
+  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_alu_matches_reg_in_dec;
 
   logic        mret_dec;
   logic        dret_dec;
@@ -361,15 +357,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign regfile_alu_waddr_id = regfile_waddr_id;
 
   // Forwarding control signals
-  assign reg_d_ex_is_reg_a_id  = (regfile_waddr_ex_o     == regfile_raddr[0]) && (rega_used_dec == 1'b1) && (regfile_raddr[0] != '0);
-  assign reg_d_ex_is_reg_b_id  = (regfile_waddr_ex_o     == regfile_raddr[1]) && (regb_used_dec == 1'b1) && (regfile_raddr[1] != '0);
-
-  assign reg_d_wb_is_reg_a_id  = (regfile_waddr_wb_i     == regfile_raddr[0]) && (rega_used_dec == 1'b1) && (regfile_raddr[0] != '0);
-  assign reg_d_wb_is_reg_b_id  = (regfile_waddr_wb_i     == regfile_raddr[1]) && (regb_used_dec == 1'b1) && (regfile_raddr[1] != '0);
-
-  assign reg_d_alu_is_reg_a_id = (regfile_alu_waddr_fw_i == regfile_raddr[0]) && (rega_used_dec == 1'b1) && (regfile_raddr[0] != '0);
-  assign reg_d_alu_is_reg_b_id = (regfile_alu_waddr_fw_i == regfile_raddr[1]) && (regb_used_dec == 1'b1) && (regfile_raddr[1] != '0);
-
+  genvar i;
+  generate
+    for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
+      assign reg_in_ex_matches_reg_in_dec[i]  = (regfile_waddr_ex_o     == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
+      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i     == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
+      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i == regfile_raddr[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr[i] != '0);
+    end
+  endgenerate
 
   // kill instruction in the IF/ID stage by setting the instr_valid_id control
   // signal to 0 for instructions that are done
@@ -573,9 +568,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   cv32e40x_decoder
     #(
-      .A_EXTENSION         ( A_EXTENSION          ),
-      .USE_PMP             ( USE_PMP              ),
-      .DEBUG_TRIGGER_EN    ( DEBUG_TRIGGER_EN     )
+      .A_EXTENSION             ( A_EXTENSION            ),
+      .USE_PMP                 ( USE_PMP                ),
+      .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       ),
+      .REGFILE_NUM_READ_PORTS ( REGFILE_NUM_READ_PORTS )
       )
   decoder_i
   (
@@ -596,9 +592,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     .fencei_insn_o                   ( fencei_insn_dec           ),
 
-    .rega_used_o                     ( rega_used_dec             ),
-    .regb_used_o                     ( regb_used_dec             ),
-
+    .reg_used_o                      ( reg_used_dec             ),
+    
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
     .illegal_c_insn_i                ( illegal_c_insn_i          ),
@@ -661,6 +656,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////
 
   cv32e40x_controller
+  #(
+    .REGFILE_NUM_READ_PORTS     ( REGFILE_NUM_READ_PORTS ),
+    .REGFILE_NUM_WRITE_PORTS    ( REGFILE_NUM_WRITE_PORTS)
+  )
   controller_i
   (
     .clk                            ( clk                    ),         // Gated clock
@@ -763,13 +762,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .regfile_alu_we_fw_i            ( regfile_alu_we_fw_i    ),
 
     // Forwarding detection signals
-    .reg_d_ex_is_reg_a_i            ( reg_d_ex_is_reg_a_id   ),
-    .reg_d_ex_is_reg_b_i            ( reg_d_ex_is_reg_b_id   ),
-    .reg_d_wb_is_reg_a_i            ( reg_d_wb_is_reg_a_id   ),
-    .reg_d_wb_is_reg_b_i            ( reg_d_wb_is_reg_b_id   ),
-    .reg_d_alu_is_reg_a_i           ( reg_d_alu_is_reg_a_id  ),
-    .reg_d_alu_is_reg_b_i           ( reg_d_alu_is_reg_b_id  ),
-
+    .reg_in_ex_matches_reg_in_dec_i    ( reg_in_ex_matches_reg_in_dec  ),
+    .reg_in_wb_matches_reg_in_dec_i    ( reg_in_wb_matches_reg_in_dec  ),
+    .reg_in_alu_matches_reg_in_dec_i   ( reg_in_alu_matches_reg_in_dec ),
+    
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),
     .operand_b_fw_mux_sel_o         ( operand_b_fw_mux_sel   ),
