@@ -83,11 +83,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic [31:0] alu_operand_b_ex_o,
     output logic [31:0] alu_operand_c_ex_o,
 
-    output logic [4:0]  regfile_waddr_ex_o,
-    output logic        regfile_we_ex_o,
+    output regfile_addr_t  regfile_waddr_ex_o,
+    output logic           regfile_we_ex_o,
 
-    output logic [4:0]  regfile_alu_waddr_ex_o,
-    output logic        regfile_alu_we_ex_o,
+    output regfile_addr_t  regfile_alu_waddr_ex_o,
+    output logic           regfile_alu_we_ex_o,
 
     // ALU
     output logic        alu_en_ex_o,
@@ -155,13 +155,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        wake_from_sleep_o,
 
     // Forward Signals
-    input  logic [4:0]  regfile_waddr_wb_i,
-    input  logic        regfile_we_wb_i,
-    input  logic [31:0] regfile_wdata_wb_i, // From wb_stage: selects data from data memory, ex_stage result and sp rdata
+    input  regfile_addr_t  regfile_waddr_wb_i,
+    input  logic           regfile_we_wb_i,
+    input  logic [31:0]    regfile_wdata_wb_i, // From wb_stage: selects data from data memory, ex_stage result and sp rdata
 
-    input  logic [4:0]  regfile_alu_waddr_fw_i,
-    input  logic        regfile_alu_we_fw_i,
-    input  logic [31:0] regfile_alu_wdata_fw_i,
+    input  regfile_addr_t  regfile_alu_waddr_fw_i,
+    input  logic           regfile_alu_we_fw_i,
+    input  logic [31:0]    regfile_alu_wdata_fw_i,
 
     // from ALU
     input  logic        mult_multicycle_i,    // when we need multiple cycles in the multiplier and use op c as storage
@@ -244,17 +244,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [4:0] irq_id_ctrl;
 
   // Register file read interface
-  logic [REGFILE_NUM_READ_PORTS-1:0][4:0]  regfile_raddr_id;
-  logic [REGFILE_NUM_READ_PORTS-1:0][31:0] regfile_rdata_id;
+  regfile_addr_t [REGFILE_NUM_READ_PORTS-1:0]  regfile_raddr_id;
+  logic [REGFILE_NUM_READ_PORTS-1:0][31:0]     regfile_rdata_id;
 
   // Register file write interface
-  logic [REGFILE_NUM_WRITE_PORTS-1:0] [4:0] regfile_waddr;
-  logic [REGFILE_NUM_WRITE_PORTS-1:0] [31:0] regfile_wdata;
-  logic [REGFILE_NUM_WRITE_PORTS-1:0] regfile_we;
+  regfile_addr_t [REGFILE_NUM_WRITE_PORTS-1:0] regfile_waddr;
+  logic [REGFILE_NUM_WRITE_PORTS-1:0] [31:0]   regfile_wdata;
+  logic [REGFILE_NUM_WRITE_PORTS-1:0]          regfile_we;
   
-  logic [4:0]  regfile_waddr_id;
-  logic [4:0]  regfile_alu_waddr_id;
-  logic        regfile_alu_we_id, regfile_alu_we_dec_id;
+  regfile_addr_t  regfile_waddr_id;
+  regfile_addr_t  regfile_alu_waddr_id;
+  logic           regfile_alu_we_id, regfile_alu_we_dec_id;
 
   
   // ALU Control
@@ -531,7 +531,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   cv32e40x_register_file_wrapper
   #(
-    .ADDR_WIDTH         ( 5                      ),
     .DATA_WIDTH         ( 32                     )
   )
   register_file_wrapper_i

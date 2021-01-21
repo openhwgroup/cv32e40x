@@ -55,27 +55,27 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic [31:0] lsu_rdata_i,
 
   // input from ID stage
-  input  logic        branch_in_ex_i,
-  input  logic [4:0]  regfile_alu_waddr_i,
-  input  logic        regfile_alu_we_i,
+  input  logic          branch_in_ex_i,
+  input  regfile_addr_t regfile_alu_waddr_i,
+  input  logic          regfile_alu_we_i,
 
   // directly passed through to WB stage, not used in EX
-  input  logic        regfile_we_i,
-  input  logic [4:0]  regfile_waddr_i,
+  input  logic          regfile_we_i,
+  input  regfile_addr_t regfile_waddr_i,
 
   // CSR access
   input  logic        csr_access_i,
   input  logic [31:0] csr_rdata_i,
 
   // Output of EX stage pipeline
-  output logic [4:0]  regfile_waddr_wb_o,
-  output logic        regfile_we_wb_o,
-  output logic [31:0] regfile_wdata_wb_o,
+  output regfile_addr_t regfile_waddr_wb_o,
+  output logic          regfile_we_wb_o,
+  output logic [31:0]   regfile_wdata_wb_o,
 
   // Forwarding ports : to ID stage
-  output logic  [4:0] regfile_alu_waddr_fw_o,
-  output logic        regfile_alu_we_fw_o,
-  output logic [31:0] regfile_alu_wdata_fw_o,    // forward to RF and ID/EX pipe, ALU & MUL
+  output regfile_addr_t regfile_alu_waddr_fw_o,
+  output logic          regfile_alu_we_fw_o,
+  output logic [31:0]   regfile_alu_wdata_fw_o,    // forward to RF and ID/EX pipe, ALU & MUL
 
   // To IF: Jump and branch target and decision
   output logic [31:0] jump_target_o,
@@ -95,7 +95,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           alu_cmp_result;
 
   logic           regfile_we_lsu;
-  logic [4:0]     regfile_waddr_lsu;
+  regfile_addr_t  regfile_waddr_lsu;
 
   logic           wb_contention;
   logic           wb_contention_lsu;

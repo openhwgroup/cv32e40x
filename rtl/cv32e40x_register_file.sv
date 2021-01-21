@@ -26,7 +26,6 @@
 
 module cv32e40x_register_file import cv32e40x_pkg::*;
 #(
-    parameter ADDR_WIDTH      = 5,
     parameter DATA_WIDTH      = 32,
     parameter REGFILE_NUM_READ_PORTS  = 2,
     parameter REGFILE_NUM_WRITE_PORTS = 2
@@ -37,25 +36,22 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     input  logic         rst_n,
 
     // Read ports
-    input  logic [REGFILE_NUM_READ_PORTS-1:0][ADDR_WIDTH-1:0] raddr_i,
+    input  regfile_addr_t [REGFILE_NUM_READ_PORTS-1:0] raddr_i,
     output logic [REGFILE_NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
 
     // Write ports
-    input logic [REGFILE_NUM_WRITE_PORTS-1:0] [ADDR_WIDTH-1:0] waddr_i,
+    input regfile_addr_t [REGFILE_NUM_WRITE_PORTS-1:0] waddr_i,
     input logic [REGFILE_NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
     input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
 
     
 );
 
-  // number of integer registers
-  localparam    NUM_WORDS     = 2**(ADDR_WIDTH);
-
   // integer register file
-  logic [NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
+  logic [REGFILE_NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
 
 // write enable signals for all registers
-  logic [REGFILE_NUM_WRITE_PORTS-1:0][NUM_WORDS-1:0]      we_dec;
+  logic [REGFILE_NUM_WRITE_PORTS-1:0][REGFILE_NUM_WORDS-1:0]      we_dec;
   
 
   //-----------------------------------------------------------------------------
@@ -75,7 +71,7 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
 
   genvar reg_index, port_index;
   generate
-    for (reg_index=0; reg_index<NUM_WORDS; reg_index++) begin : gen_we_decoder
+    for (reg_index=0; reg_index<REGFILE_NUM_WORDS; reg_index++) begin : gen_we_decoder
       for (port_index=0; port_index<REGFILE_NUM_WRITE_PORTS; port_index++) begin : gen_we_ports
         assign we_dec[port_index][reg_index] = (waddr_i[port_index] == reg_index) ? we_i[port_index] : 1'b0;
       end // gen_we_ports
@@ -100,7 +96,7 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     end
 
     // loop from 1 to NUM_WORDS-1 as R0 is nil
-    for (i = 1; i < NUM_WORDS; i++)
+    for (i = 1; i < REGFILE_NUM_WORDS; i++)
     begin : gen_rf
 
       always_ff @(posedge clk, negedge rst_n)

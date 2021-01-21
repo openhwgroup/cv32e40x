@@ -145,18 +145,18 @@ module cv32e40x_core
   logic [ 1:0] mult_signed_mode_ex;
 
 // Register Write Control
-  logic [4:0]  regfile_waddr_ex;
-  logic        regfile_we_ex;
-  logic [4:0]  regfile_waddr_fw_wb_o;        // From WB to ID
-  logic        regfile_we_wb;
-  logic [31:0] regfile_wdata;
+  regfile_addr_t  regfile_waddr_ex;
+  logic           regfile_we_ex;
+  regfile_addr_t  regfile_waddr_fw_wb_o;        // From WB to ID
+  logic           regfile_we_wb;
+  logic [31:0]    regfile_wdata;
 
-  logic [4:0]  regfile_alu_waddr_ex;
-  logic        regfile_alu_we_ex;
+  regfile_addr_t  regfile_alu_waddr_ex;
+  logic           regfile_alu_we_ex;
 
-  logic [4:0]  regfile_alu_waddr_fw;
-  logic        regfile_alu_we_fw;
-  logic [31:0] regfile_alu_wdata_fw;
+  regfile_addr_t  regfile_alu_waddr_fw;
+  logic           regfile_alu_we_fw;
+  logic [31:0]    regfile_alu_wdata_fw;
 
   // CSR control
   logic        csr_access_ex;

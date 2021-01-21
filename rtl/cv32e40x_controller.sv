@@ -123,14 +123,14 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
 
   // Regfile target
-  input  logic        regfile_we_id_i,            // currently decoded we enable
-  input  logic [4:0]  regfile_alu_waddr_id_i,     // currently decoded target address
+  input  logic           regfile_we_id_i,            // currently decoded we enable
+  input  regfile_addr_t  regfile_alu_waddr_id_i,     // currently decoded target address
 
   // Forwarding signals from regfile
-  input  logic        regfile_we_ex_i,            // FW: write enable from  EX stage
-  input  logic [4:0]  regfile_waddr_ex_i,         // FW: write address from EX stage
-  input  logic        regfile_we_wb_i,            // FW: write enable from  WB stage
-  input  logic        regfile_alu_we_fw_i,        // FW: ALU/MUL write enable from  EX stage
+  input  logic           regfile_we_ex_i,            // FW: write enable from  EX stage
+  input  regfile_addr_t  regfile_waddr_ex_i,         // FW: write address from EX stage
+  input  logic           regfile_we_wb_i,            // FW: write enable from  WB stage
+  input  logic           regfile_alu_we_fw_i,        // FW: ALU/MUL write enable from  EX stage
 
   // forwarding signals
   output logic [1:0]  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
