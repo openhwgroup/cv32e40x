@@ -167,7 +167,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mie_rd_error;
 
   logic [31:0] csr_mie_wdata;
-  logic        csr_mie_we;
 
   PrivLvl_t priv_lvl_n, priv_lvl_q;
 
@@ -192,7 +191,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
     csr_mie_wdata = csr_wdata_i;
-    csr_mie_we    = 1'b1;
 
     case (csr_op_i)
       CSR_OP_WRITE: csr_mie_wdata = csr_wdata_i;
@@ -200,12 +198,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_OP_CLEAR: csr_mie_wdata = (~csr_wdata_i) & mie_q;
       CSR_OP_READ: begin
         csr_mie_wdata = csr_wdata_i;
-        csr_mie_we    = 1'b0;
       end
     endcase
   end
 
-  assign mie_bypass_o = ((csr_addr_i == CSR_MIE) && csr_mie_we) ? csr_mie_wdata & IRQ_MASK : mie_q;
+  assign mie_bypass_o = mie_we ? csr_mie_wdata & IRQ_MASK : mie_q;
 
   ////////////////////////////////////////////
   //   ____ ____  ____    ____              //
