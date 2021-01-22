@@ -41,7 +41,7 @@ module cv32e40x_register_file_wrapper import cv32e40x_pkg::*;
         // Write ports
         input regfile_addr_t waddr_i [REGFILE_NUM_WRITE_PORTS],
         input regfile_data_t wdata_i [REGFILE_NUM_READ_PORTS],
-        input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
+        input logic             we_i [REGFILE_NUM_WRITE_PORTS]
     
         
     );

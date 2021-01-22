@@ -250,7 +250,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register file write interface
   regfile_addr_t regfile_waddr[REGFILE_NUM_WRITE_PORTS];
   regfile_data_t regfile_wdata[REGFILE_NUM_WRITE_PORTS];
-  logic [REGFILE_NUM_WRITE_PORTS-1:0]          regfile_we;
+  logic          regfile_we   [REGFILE_NUM_WRITE_PORTS];
   
   regfile_addr_t  regfile_waddr_id;
   regfile_addr_t  regfile_alu_waddr_id;

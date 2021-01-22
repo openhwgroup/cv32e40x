@@ -37,17 +37,16 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     // Write ports
     input regfile_addr_t waddr_i [REGFILE_NUM_WRITE_PORTS],
     input regfile_data_t wdata_i [REGFILE_NUM_READ_PORTS],
-    input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
+    input logic             we_i [REGFILE_NUM_WRITE_PORTS]
 
     
 );
 
   // integer register file
-  logic [REGFILE_NUM_WORDS-1:0][REGFILE_DATA_WIDTH-1:0]     mem;
+  regfile_data_t mem [REGFILE_NUM_WORDS];
 
-// write enable signals for all registers
-  logic [REGFILE_NUM_WRITE_PORTS-1:0][REGFILE_NUM_WORDS-1:0]      we_dec;
-  
+  // write enable signals for all registers
+  logic [REGFILE_NUM_WORDS-1:0] we_dec[REGFILE_NUM_WRITE_PORTS];
 
   //-----------------------------------------------------------------------------
   //-- READ : Read address decoder RAD
