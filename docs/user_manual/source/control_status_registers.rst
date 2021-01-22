@@ -3,12 +3,6 @@
 Control and Status Registers
 ============================
 
-|corev| does not implement all control and status registers specified in
-the RISC-V privileged specifications, but is limited to the registers
-that were needed for the PULP system. The reason for this is that we
-wanted to keep the footprint of the core as low as possible and avoid
-any overhead that we do not explicitly need.
-
 CSR Map
 -------
 
@@ -165,14 +159,6 @@ instruction exception.
     +-------------------+----------------+------------+------------------------------------------+
     |                   |                |            |                                          |
     +===================+================+============+==========================================+
-    | 0x000             | ``ustatus``    | URW        | User Status                              |
-    +-------------------+----------------+------------+------------------------------------------+
-    | 0x005             | ``utvec``      | URW        | User Trap-Handler Base Address           |
-    +-------------------+----------------+------------+------------------------------------------+
-    | 0x041             | ``uepc``       | URW        | User Exception Program Counter           |
-    +-------------------+----------------+------------+------------------------------------------+
-    | 0x042             | ``ucause``     | URW        | User Trap Cause                          |
-    +-------------------+----------------+------------+------------------------------------------+
     | 0x306             | ``mcounteren`` | MRW        | Machine Counter Enable                   |
     +-------------------+----------------+------------+------------------------------------------+
 
@@ -288,25 +274,6 @@ Reset Value: 0x0000_1800
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | 0           | RO        | **User Interrupt Enable:** If you want to enable user level interrupt handling in your exception handler, set the Interrupt Enable UIE to 1 inside your handler code.                                                                                               |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-.. only:: USER
-
-  User Status (``ustatus``)
-  ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  CSR Address: 0x000
-
-  Reset Value: 0x0000_0000
-
-  Detailed:
-
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-  |   Bit #     |   Mode    |   Description                                                                                                                                                                                                                                                       |
-  +=============+===========+=====================================================================================================================================================================================================================================================================+
-  | 4           | RW        | **Previous User Interrupt Enable:** If user mode is enabled, when an exception is encountered, UPIE will be set to UIE. When the uret instruction is executed, the value of UPIE will be stored to UIE.                                                             |
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-  | 0           | RW        | **User Interrupt Enable:** If you want to enable user level interrupt handling in your exception handler, set the Interrupt Enable UIE to 1 inside your handler code.                                                                                               |
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Machine ISA (``misa``)
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -1037,70 +1004,6 @@ Reset Value: Defined
 +=============+===========+================================================================+
 | 31:0        | RO        | Hardware Thread ID **hart_id_i**, see  :ref:`core-integration` |
 +-------------+-----------+----------------------------------------------------------------+
-
-.. Comment: no attempt has been made to update these "USER" CSR descriptions
-.. only:: USER
-
-  User Trap-Vector Base Address (``utvec``)
-  -----------------------------------------
-
-  CSR Address: 0x005
-
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-  |   Bit #     |   Mode    |   Description                                                                                                 |
-  +=============+===========+===============================================================================================================+
-  | 31 : 2      |   RW      | BASE: The trap-handler base address, always aligned to 256 bytes, i.e., utvec[7:2] is always set to 0.        |
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-  |  1          |   RO      | MODE[1]: Always 0                                                                                             |
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-  |  0          |   RW      | MODE[0]: 0 = direct mode, 1 = vectored mode.                                                                  |
-  +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-
-  When an exception is encountered in user-mode, the core jumps to the
-  corresponding handler using the content of the UTVEC[31:8] as base
-  address. Only 8-byte aligned addresses are allowed. Both direct mode
-  and vectored mode are supported.
-
-  User Exception PC (``uepc``)
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  CSR Address: 0x041
-
-  Reset Value: 0x0000_0000
-
-  +------+-------+
-  | 31   | 30: 0 |
-  +======+=======+
-  | UEPC |       |
-  +------+-------+
-
-  When an exception is encountered in user mode, the current program
-  counter is saved in UEPC, and the core jumps to the exception address.
-  When a uret instruction is executed, the value from UEPC replaces the
-  current program counter.
-
-  User Cause (``ucause``)
-  ~~~~~~~~~~~~~~~~~~~~~~~
-
-  CSR Address: 0x042
-
-  Reset Value: 0x0000_0000
-
-  Detailed:
-
-  +-------------+-----------+------------------------------------------------------------------------------------+
-  |   Bit #     |   Mode    |   Description                                                                      |
-  +=============+===========+====================================================================================+
-  | 31          | RW        | **Interrupt:** This bit is set when the exception was triggered by an interrupt.   |
-  +-------------+-----------+------------------------------------------------------------------------------------+
-  | 30:5        |   RO (0)  | Always 0                                                                           |
-  +-------------+-----------+------------------------------------------------------------------------------------+
-  | 4:0         |   RW      | **Exception Code**   (See note below)                                              |
-  +-------------+-----------+------------------------------------------------------------------------------------+
-
-**NOTE**: software accesses to `ucause[4:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
-when `ucause[31]` is set, writing 0x1 to `ucause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
-
 
 .. only:: PMP
 

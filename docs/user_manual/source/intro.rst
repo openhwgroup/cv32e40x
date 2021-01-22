@@ -2,11 +2,7 @@ Introduction
 =============
 
 |corev| is a 4-stage in-order 32-bit RISC-V
-processor core. The ISA of |corev|
-has been extended to support multiple additional instructions including
-hardware loops, post-increment load and store instructions and
-additional ALU instructions that are not part of the standard RISC-V
-ISA. :numref:`blockdiagram` shows a block diagram of the core.
+processor core. :numref:`blockdiagram` shows a block diagram of the core.
 
 .. figure:: ../images/CV32E40X_Block_Diagram.png
    :name: blockdiagram
@@ -101,11 +97,8 @@ All the files in the ``rtl`` and ``rtl/include`` folders are synthesizable.
 The user should first decide whether to use the flip-flop or latch-based register-file ( see :ref:`register-file`).
 Secondly, the user must provide a clock-gating module that instantiates the clock-gating cells of the target technology. This file must have the same interface and module name of the one provided for simulation-only purposes
 at ``bhv/cv32e40x_sim_clock_gate.sv`` (see :ref:`clock-gating-cell`).
-The  ``rtl/cv32e40x_pmp.sv`` should not be included in the synthesis scripts as it is not supported.
-This file is kept in the repository as a starting-point for users that want to implement their own.
 
 The ``constraints/cv32e40x_core.sdc`` file provides an example of synthesis constraints.
-
 
 ASIC Synthesis
 ^^^^^^^^^^^^^^
@@ -144,7 +137,7 @@ Contents
  * :ref:`core-integration` provides the instantiation template and gives descriptions of the design parameters as well as the input and output ports.
  * :ref:`pipeline-details` described the overal pipeline structure.
  * The instruction and data interfaces of |corev| are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
- * The two register-file flavors are described in :ref:`register-file`.
+ * The register-file is described in :ref:`register-file`.
  * :ref:`fpu` describes the Floating Point Unit (FPU).
  * :ref:`sleep_unit` describes the Sleep unit.
  * The control and status registers are explained in :ref:`cs-registers`.

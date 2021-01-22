@@ -5,13 +5,6 @@ Getting Started with |corev|
 
 This page discusses initial steps and requirements to start using |corev| in your design.
 
-Register File
--------------
-
-|corev| comes with two different register file implementations.
-Depending on the target technology, either the implementation in ``cv32e40x_register_file_ff.sv`` or the one in ``cv32e40x_register_file_latch.sv`` should be selected in the manifest file.
-For more information about the two register file implementations and their trade-offs, check out :ref:`register-file`.
-
 .. _clock-gating-cell:
 
 Clock Gating Cell
@@ -27,10 +20,8 @@ a module called ``cv32e40x_clock_gate`` that has the following ports:
 * ``scan_cg_en_i``: Scan Clock Gate Enable Input (activates the clock even though ``en_i`` is not set)
 * ``clk_o``: Gated Clock Output
 
-Inside |corev|, clock gating cells are used both in ``cv32e40x_sleep_unit.sv`` and ``cv32e40x_register_file_latch.sv``.
-For more information on the expected behavior of the clock gating cell when using the latch-based register file check out :ref:`register-file`.
+Inside |corev|, the clock gating cell is used in ``cv32e40x_sleep_unit.sv``.
 
 The ``cv32e40x_sim_clock_gate.sv`` file is not intended for synthesis. For ASIC synthesis and FPGA synthesis the manifest
 should be adapted to use a customer specific file that implements the ``cv32e40x_clock_gate`` module using design primitives
 that are appropriate for the intended synthesis target technology.
-

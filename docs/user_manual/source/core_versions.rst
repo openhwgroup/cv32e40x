@@ -40,17 +40,7 @@ Non-logically equivalent PPA optimizations and new features are not allowed on a
 of RTL frozen parameters (e.g., a faster divider).
 If PPA optimizations are logically-equivalent instead, they can be applied without
 changing the ``mimpid`` value (as such changes are not visible in software).
-However, a new GitHub tag should be release and changes documented.
-
-:numref:`rtl_freeze_rules` shows the aforementioned rules.
-
-.. figure:: ../images/rtl_freeze_rules.png
-   :name: rtl_freeze_rules
-   :align: center
-   :alt:
-
-   Versions control of |corev|
-
+However, a new GitHub tag should be released and changes documented.
 
 Released core versions
 ----------------------
@@ -58,29 +48,3 @@ Released core versions
 The verified parameter sets of the core, their implementation version, GitHub tags,
 and dates are reported here.
 
-``mimpid=0``
-------------
-
-The ``mimpid=0`` refers to the |corev| core verified with the following parameters:
-
-+---------------------------+-------+
-| Name                      | Value |
-+===========================+=======+
-| ``FPU``                   |   0   |
-+---------------------------+-------+
-| ``NUM_MHPMCOUNTERS``      |   1   |
-+---------------------------+-------+
-
-Following, all the GitHub tags related to ``mimpid=0``.
-
-+--------------------+-------------------+------------+--------------------+---------+
-| Git Tag            | Tagged By         | Date       | Reason for Release | Comment |
-+====================+===================+============+====================+=========+
-| cv32e40p_v1.0.0    | Arjan Bink        | 2020-12-10 | RTL Freeze         |         |
-+--------------------+-------------------+------------+--------------------+---------+
-
-The list of open (waived) issues at the time of applying the cv32e40p_v1.0.0 tag can be found at:
-
-* https://github.com/openhwgroup/core-v-docs/blob/master/program/milestones/CV32E40P/RTL_Freeze_v1.0.0/Design_openissues.md
-* https://github.com/openhwgroup/core-v-docs/blob/master/program/milestones/CV32E40P/RTL_Freeze_v1.0.0/Verification_openissues.md
-* https://github.com/openhwgroup/core-v-docs/blob/master/program/milestones/CV32E40P/RTL_Freeze_v1.0.0/Documentation_openissues.md

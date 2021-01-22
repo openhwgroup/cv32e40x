@@ -107,22 +107,6 @@ one ``data_rvalid_i`` will be signalled for each of them, in the order they were
 
    Multiple Outstanding Memory Transactions
 
-Post-Incrementing Load and Store Instructions
----------------------------------------------
-
-Post-incrementing load and store instructions perform a load/store
-operation from/to the data memory while at the same time increasing the
-base address by the specified offset. For the memory access, the base
-address without offset is used.
-
-Post-incrementing load and stores reduce the number of required
-instructions to execute code with regular data access patterns, which
-can typically be found in loops. These post-incrementing load/store
-instructions allow the address increment to be embedded in the memory
-access instructions and get rid of separate instructions to handle
-pointers. Coupled with hardware loop extension, these instructions allow
-to reduce the loop overhead significantly.
-
 .. only:: PMP
 
   Physical Memory Protection (PMP) Unit

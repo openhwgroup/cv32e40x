@@ -54,16 +54,6 @@ The following events can be monitored using the performance counters of |corev|.
 +-------------+-----------------+-------------------------------------------+
 | 10          | COMP_INSTR      | Number of compressed instructions retired |
 +-------------+-----------------+-------------------------------------------+
-| 11          | PIPE_STALL      | Cycles from stalled pipeline              |
-+-------------+-----------------+-------------------------------------------+
-| 12          | APU_TYPE        | Numbe of type conflicts on APU/FP         |
-+-------------+-----------------+-------------------------------------------+
-| 13          | APU_CONT        | Number of contentions on APU/FP           |
-+-------------+-----------------+-------------------------------------------+
-| 14          | APU_DEP         | Number of dependency stall on APU/FP      |
-+-------------+-----------------+-------------------------------------------+
-| 15          | APU_WB          | Number of write backs on APUB/FP          |
-+-------------+-----------------+-------------------------------------------+
 
 The event selector CSRs ``mhpmevent3`` - ``mhpmevent31`` define which of these events are counted by the event counters ``mhpmcounter3(h)`` - ``mhpmcounter31(h)``.
 If a specific bit in an event selector CSR is set to 1, this means that events with this ID are being counted by the counter associated with that selector CSR.

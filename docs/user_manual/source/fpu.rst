@@ -8,8 +8,6 @@ precision can be enabled by setting the parameter **FPU** of the toplevel file
 ``cv32e40x_core.sv`` to 1. This will extend the |corev| decoder accordingly.
 The FPU repository used by the |corev| core is available at
 https://github.com/pulp-platform/fpnew.
-In the core repository, a wrapper showing how the FPU is connected
-to the core is available at ``example_tb/core/cv32e40x_fp_wrapper.sv``.
 A dedicated register file consisting of 32
 floating-point registers, ``f0``-``f31``, is instantiated.
 

@@ -18,10 +18,10 @@ Instruction Decode (ID)
   Decodes fetched instruction and performs required registerfile reads. Jumps are taken from the ID stage.
 
 Execute (EX)
-  Executes the instructions. The EX stage contains the ALU, Multiplier and Divider. Branches (with their condition met) are taken from the EX stage. Multi-cycle instructions will stall this stage until they are complete. The ALU, Multiplier and Divider instructions write back their result to the register file from the EX stage. The address generation part of the load-store-unit (LSU) is contained in EX as well.
+  Executes the instructions. The EX stage contains the ALU, Multiplier and Divider. Branches (with their condition met) are taken from the EX stage. Multi-cycle instructions will stall this stage until they are complete. The address generation part of the load-store-unit (LSU) is contained in EX as well.
 
 Writeback (WB)
-  Writes the result of Load instructions back to the register file.
+  Writes the result of ALU, Multiplier, Divider, or Load instructions instructions back to the register file.
 
 Multi- and Single-Cycle Instructions
 ------------------------------------
@@ -52,10 +52,8 @@ and zero stall on the data-side memory interface.
   |                       | 2 (non-word aligned word             | transfers and for halfword transfers that cross a word      |
   |                       | transfer)                            | boundary 2 bus transactions are performed using EX and WB   |
   |                       |                                      | stages for 2 cycles each.                                   |
-  |                       | 2 (halfword transfer crossing        | A **cv.elw** takes 4 cycles.                                |
+  |                       | 2 (halfword transfer crossing        |                                                             |
   |                       | word boundary)                       |                                                             |
-  |                       |                                      |                                                             |
-  |                       | 4 (cv.elw)                           |                                                             |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
   | Multiplication        | 1 (mul)                              | |corev| uses a single-cycle 32-bit x 32-bit multiplier      |
   |                       |                                      | with a 32-bit result. The multiplications with upper-word   |
