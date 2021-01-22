@@ -741,9 +741,12 @@ module cv32e40x_core
   generate
   begin : gen_no_pulp_cluster_assertions
     // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
+    // The actual mie_n value may be different from mie_q if mie is not
+    // written to. Changed to mie_bypass_o as this will always
+    // correctly reflect the new/old value of mie
     property p_irq_enabled_0;
        @(posedge clk) disable iff (!rst_ni) (pc_set && (pc_mux_id == PC_EXCEPTION) && (exc_pc_mux_id == EXC_PC_IRQ)) |->
-         (cs_registers_i.mie_n[exc_cause] && cs_registers_i.mstatus_q.mie);
+         (cs_registers_i.mie_bypass_o[exc_cause] && cs_registers_i.mstatus_q.mie);
     endproperty
 
     a_irq_enabled_0 : assert property(p_irq_enabled_0);

@@ -973,7 +973,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   a_mie_bypass : assert property
   (
     @(posedge clk) disable iff (!rst_n)
-    (1'b1)
+    (mie_we)
     |-> (mie_bypass_o == mie_n));
 
 `endif
