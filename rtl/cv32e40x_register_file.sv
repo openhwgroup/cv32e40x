@@ -25,28 +25,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_register_file import cv32e40x_pkg::*;
-#(
-    parameter DATA_WIDTH      = 32
-)
 (
     // Clock and Reset
     input  logic         clk,
     input  logic         rst_n,
 
     // Read ports
-    input  regfile_addr_t [REGFILE_NUM_READ_PORTS-1:0] raddr_i,
-    output logic [REGFILE_NUM_READ_PORTS-1:0][DATA_WIDTH-1:0] rdata_o,
+    input  regfile_addr_t raddr_i [REGFILE_NUM_READ_PORTS],
+    output regfile_data_t rdata_o [REGFILE_NUM_READ_PORTS],
 
     // Write ports
-    input regfile_addr_t [REGFILE_NUM_WRITE_PORTS-1:0] waddr_i,
-    input logic [REGFILE_NUM_WRITE_PORTS-1:0] [DATA_WIDTH-1:0] wdata_i,
+    input regfile_addr_t waddr_i [REGFILE_NUM_WRITE_PORTS],
+    input regfile_data_t wdata_i [REGFILE_NUM_READ_PORTS],
     input logic [REGFILE_NUM_WRITE_PORTS-1:0] we_i
 
     
 );
 
   // integer register file
-  logic [REGFILE_NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
+  logic [REGFILE_NUM_WORDS-1:0][REGFILE_DATA_WIDTH-1:0]     mem;
 
 // write enable signals for all registers
   logic [REGFILE_NUM_WRITE_PORTS-1:0][REGFILE_NUM_WORDS-1:0]      we_dec;

@@ -659,11 +659,17 @@ parameter REGFILE_NUM_WRITE_PORTS = 2;
 // Address width of register file
 parameter REGFILE_ADDR_WIDTH = 5;
 
+// Data width of register file
+parameter REGFILE_DATA_WIDTH = 32;
+
 // Number of regfile integer registers
 parameter REGFILE_NUM_WORDS = 2**(REGFILE_ADDR_WIDTH);
 
 // Register file address type
 typedef logic [REGFILE_ADDR_WIDTH-1:0] regfile_addr_t;
+
+// Register file data type
+typedef logic [REGFILE_DATA_WIDTH-1:0] regfile_data_t;
 
 // forwarding operand mux
 parameter SEL_REGFILE      = 2'b00;

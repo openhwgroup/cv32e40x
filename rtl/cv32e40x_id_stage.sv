@@ -244,12 +244,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [4:0] irq_id_ctrl;
 
   // Register file read interface
-  regfile_addr_t [REGFILE_NUM_READ_PORTS-1:0]  regfile_raddr_id;
-  logic [REGFILE_NUM_READ_PORTS-1:0][31:0]     regfile_rdata_id;
+  regfile_addr_t regfile_raddr_id[REGFILE_NUM_READ_PORTS];
+  regfile_data_t regfile_rdata_id[REGFILE_NUM_READ_PORTS];
 
   // Register file write interface
-  regfile_addr_t [REGFILE_NUM_WRITE_PORTS-1:0] regfile_waddr;
-  logic [REGFILE_NUM_WRITE_PORTS-1:0] [31:0]   regfile_wdata;
+  regfile_addr_t regfile_waddr[REGFILE_NUM_WRITE_PORTS];
+  regfile_data_t regfile_wdata[REGFILE_NUM_WRITE_PORTS];
   logic [REGFILE_NUM_WRITE_PORTS-1:0]          regfile_we;
   
   regfile_addr_t  regfile_waddr_id;
@@ -530,9 +530,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign regfile_we[1] = regfile_alu_we_fw_i;
 
   cv32e40x_register_file_wrapper
-  #(
-    .DATA_WIDTH         ( 32                     )
-  )
   register_file_wrapper_i
   (
     .clk                ( clk                ),
