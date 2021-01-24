@@ -25,25 +25,17 @@
 
 module cv32e40x_mult import cv32e40x_pkg::*;
 (
-  input  logic        clk,
-  input  logic        rst_n,
+  input logic 	      clk,
+  input logic 	      rst_n,
 
-  input  logic        enable_i,
-  input  mul_opcode_e operator_i,
-
-  // integer and short multiplier
-  input  logic        short_subword_i,
-  input  logic [ 1:0] short_signed_i,
-
-  input  logic [31:0] op_a_i,
-  input  logic [31:0] op_b_i,
-  input  logic [31:0] op_c_i,
+  // ID/EX pipeline
+  input id_ex_pipe_t  id_ex_pipe_i,
 
   output logic [31:0] result_o,
 
-  output logic        multicycle_o,
-  output logic        ready_o,
-  input  logic        ex_ready_i
+  output logic 	      multicycle_o,
+  output logic 	      ready_o,
+  input logic 	      ex_ready_i
 );
 
 
@@ -82,25 +74,25 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   mult_state_e mulh_CS, mulh_NS;
 
   // perform subword selection and sign extensions
-  assign short_op_a[15:0] = short_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
-  assign short_op_b[15:0] = short_subword[1] ? op_b_i[31:16] : op_b_i[15:0];
+  assign short_op_a[15:0] = short_subword[0] ? id_ex_pipe_i.mult_operand_a[31:16] : id_ex_pipe_i.mult_operand_a[15:0];
+  assign short_op_b[15:0] = short_subword[1] ? id_ex_pipe_i.mult_operand_b[31:16] : id_ex_pipe_i.mult_operand_b[15:0];
 
   assign short_op_a[16]   = short_signed[0] & short_op_a[15];
   assign short_op_b[16]   = short_signed[1] & short_op_b[15];
 
-  assign short_op_c       = mulh_active ? $signed({mulh_carry_q, op_c_i}) : $signed(op_c_i);
+  assign short_op_c       = mulh_active ? $signed({mulh_carry_q, id_ex_pipe_i.mult_operand_c}) : $signed(id_ex_pipe_i.mult_operand_c);
 
   assign short_mul        = $signed(short_op_a) * $signed(short_op_b);
   assign short_mac        = $signed(short_op_c) + $signed(short_mul);
 
-   //we use only short_signed_i[0] as it cannot be short_signed_i[1] 1 and short_signed_i[0] 0
+   //we use only id_ex_pipe_i.mult_signed_mode[0] as it cannot be id_ex_pipe_i.mult_signed_mode[1] 1 and id_ex_pipe_i.mult_signed_mode[0] 0
   assign short_result     = $signed({short_shift_arith & short_mac_msb1, short_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> short_imm;
 
   // choose between normal short multiplication operation and mulh operation
   assign short_imm         = mulh_active ? mulh_imm         : 'd0;
-  assign short_subword     = mulh_active ? mulh_subword     : {2{short_subword_i}};
-  assign short_signed      = mulh_active ? mulh_signed      : short_signed_i;
-  assign short_shift_arith = mulh_active ? mulh_shift_arith : short_signed_i[0];
+  assign short_subword     = mulh_active ? mulh_subword     : {2{id_ex_pipe_i.mult_sel_subword}};
+  assign short_signed      = mulh_active ? mulh_signed      : id_ex_pipe_i.mult_signed_mode;
+  assign short_shift_arith = mulh_active ? mulh_shift_arith : id_ex_pipe_i.mult_signed_mode[0];
 
   assign short_mac_msb1    = mulh_active ? short_mac[33] : short_mac[31];
   assign short_mac_msb0    = mulh_active ? short_mac[32] : short_mac[31];
@@ -123,7 +115,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         mulh_active = 1'b0;
         mulh_ready  = 1'b1;
         mulh_save   = 1'b0;
-        if ((operator_i == MUL_H) && enable_i) begin
+        if ((id_ex_pipe_i.mult_operator == MUL_H) && id_ex_pipe_i.mult_en) begin
           mulh_ready  = 1'b0;
           mulh_NS     = STEP0;
         end
@@ -142,7 +134,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       STEP1: begin
         multicycle_o = 1'b1;
         //AL*BH is signed iff B is signed
-        mulh_signed      = {short_signed_i[1], 1'b0};
+        mulh_signed      = {id_ex_pipe_i.mult_signed_mode[1], 1'b0};
         mulh_subword     = 2'b10;
         mulh_save        = 1'b1;
         mulh_shift_arith = 1'b1;
@@ -156,7 +148,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       STEP2: begin
         multicycle_o = 1'b1;
         //AH*BL is signed iff A is signed
-        mulh_signed      = {1'b0, short_signed_i[0]};
+        mulh_signed      = {1'b0, id_ex_pipe_i.mult_signed_mode[0]};
         mulh_subword     = 2'b01;
         mulh_imm         = 5'd16;
         mulh_save        = 1'b1;
@@ -169,7 +161,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       FINISH: begin
-        mulh_signed  = short_signed_i;
+        mulh_signed  = id_ex_pipe_i.mult_signed_mode;
         mulh_subword = 2'b11;
         mulh_ready   = 1'b1;
         if (ex_ready_i)
@@ -197,7 +189,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   // 32x32 = 32-bit multiplier
   logic [31:0] int_result;
 
-  assign int_result = $signed(op_a_i) * $signed(op_b_i);
+  assign int_result = $signed(id_ex_pipe_i.mult_operand_a) * $signed(id_ex_pipe_i.mult_operand_b);
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -210,7 +202,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   always_comb
   begin
-    if (operator_i == MUL_MAC32) begin
+    if (id_ex_pipe_i.mult_operator == MUL_MAC32) begin
       result_o = int_result[31:0];
     end else begin
       result_o = short_result[31:0];
@@ -226,27 +218,27 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 `ifdef CV32E40P_ASSERT_ON
 
    // Ensure only MUL, MULH, MULHSU, MULHU used (will only work if PULP_XPULP == 0)
-   a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
-   |-> (((operator_i == MUL_MAC32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
+   a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (id_ex_pipe_i.mult_en)
+   |-> (((id_ex_pipe_i.mult_operator == MUL_MAC32) && (id_ex_pipe_i.mult_operand_c == 'b0)) || (id_ex_pipe_i.mult_operator == MUL_H)));
 
   
   // check multiplication result for mulh
   assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
+    @(posedge clk) ((mulh_CS == FINISH) && (id_ex_pipe_i.mult_operator == MUL_H) && (id_ex_pipe_i.mult_signed_mode == 2'b11))
     |->
-    (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) );
+    (result_o == (($signed({{32{id_ex_pipe_i.mult_operand_a[31]}}, id_ex_pipe_i.mult_operand_a}) * $signed({{32{id_ex_pipe_i.mult_operand_b[31]}}, id_ex_pipe_i.mult_operand_b})) >>> 32) ) );
 
   // check multiplication result for mulhsu
   assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
+    @(posedge clk) ((mulh_CS == FINISH) && (id_ex_pipe_i.mult_operator == MUL_H) && (id_ex_pipe_i.mult_signed_mode == 2'b01))
     |->
-    (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) );
+    (result_o == (($signed({{32{id_ex_pipe_i.mult_operand_a[31]}}, id_ex_pipe_i.mult_operand_a}) * {32'b0, id_ex_pipe_i.mult_operand_b}) >> 32) ) );
 
   // check multiplication result for mulhu
   assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
+    @(posedge clk) ((mulh_CS == FINISH) && (id_ex_pipe_i.mult_operator == MUL_H) && (id_ex_pipe_i.mult_signed_mode == 2'b00))
     |->
-    (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) );
+    (result_o == (({32'b0, id_ex_pipe_i.mult_operand_a} * {32'b0, id_ex_pipe_i.mult_operand_b}) >> 32) ) );
 
 `endif
 

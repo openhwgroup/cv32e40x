@@ -112,55 +112,31 @@ module cv32e40x_core
   // ID performance counter signals
   logic        is_decoding;
 
-  logic        useincr_addr_ex;   // Active when post increment
   logic        data_misaligned;
 
   logic        mult_multicycle;
 
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id, jump_target_ex;
-  logic        branch_in_ex;
   logic        branch_decision;
 
   logic        ctrl_busy;
   logic        if_busy;
   logic        lsu_busy;
- 
-  logic [31:0] pc_ex; // PC of last executed branch
 
-  // ALU Control
-  logic        alu_en_ex;
-  alu_opcode_e alu_operator_ex;
-  logic [31:0] alu_operand_a_ex;
-  logic [31:0] alu_operand_b_ex;
-  logic [31:0] alu_operand_c_ex;
+  // ID/EX pipeline
+  id_ex_pipe_t id_ex_pipe;
 
-  // Multiplier Control
-  mul_opcode_e mult_operator_ex;
-  logic [31:0] mult_operand_a_ex;
-  logic [31:0] mult_operand_b_ex;
-  logic [31:0] mult_operand_c_ex;
-  logic        mult_en_ex;
-  logic        mult_sel_subword_ex;
-  logic [ 1:0] mult_signed_mode_ex;
-
-// Register Write Control
-  regfile_addr_t  regfile_waddr_ex;
-  logic           regfile_we_ex;
+  // Register Write Control
   regfile_addr_t  regfile_waddr_fw_wb_o;        // From WB to ID
-  logic           regfile_we_wb;
-  logic [31:0]    regfile_wdata;
-
-  regfile_addr_t  regfile_alu_waddr_ex;
-  logic           regfile_alu_we_ex;
+  logic        regfile_we_wb;
+  logic [31:0] regfile_wdata;
 
   regfile_addr_t  regfile_alu_waddr_fw;
   logic           regfile_alu_we_fw;
   logic [31:0]    regfile_alu_wdata_fw;
 
   // CSR control
-  logic        csr_access_ex;
-  csr_opcode_e csr_op_ex;
   logic [23:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
@@ -170,15 +146,6 @@ module cv32e40x_core
   logic [31:0] csr_rdata;
   logic [31:0] csr_wdata;
   PrivLvl_t    current_priv_lvl;
-
-  // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
-  logic        data_we_ex;
-  logic [5:0]  data_atop_ex;
-  logic [1:0]  data_type_ex;
-  logic [1:0]  data_sign_ext_ex;
-  logic [1:0]  data_reg_offset_ex;
-  logic        data_req_ex;
-  logic        data_misaligned_ex;
 
   logic [31:0] lsu_rdata;
 
@@ -388,7 +355,6 @@ module cv32e40x_core
     .instr_req_o                  ( instr_req_int        ),
 
     // Jumps and branches
-    .branch_in_ex_o               ( branch_in_ex         ),
     .branch_decision_i            ( branch_decision      ),
     .jump_target_o                ( jump_target_id       ),
 
@@ -414,33 +380,10 @@ module cv32e40x_core
     .id_valid_o                   ( id_valid             ),
     .ex_valid_i                   ( ex_valid             ),
 
-    // From the Pipeline ID/EX
-    .pc_ex_o                      ( pc_ex                ),
-
-    .alu_en_ex_o                  ( alu_en_ex            ),
-    .alu_operator_ex_o            ( alu_operator_ex      ),
-    .alu_operand_a_ex_o           ( alu_operand_a_ex     ),
-    .alu_operand_b_ex_o           ( alu_operand_b_ex     ),
-    .alu_operand_c_ex_o           ( alu_operand_c_ex     ),
-    
-    .regfile_waddr_ex_o           ( regfile_waddr_ex     ),
-    .regfile_we_ex_o              ( regfile_we_ex        ),
-
-    .regfile_alu_we_ex_o          ( regfile_alu_we_ex    ),
-    .regfile_alu_waddr_ex_o       ( regfile_alu_waddr_ex ),
-
-    // MUL
-    .mult_operator_ex_o           ( mult_operator_ex     ), // from ID to EX stage
-    .mult_en_ex_o                 ( mult_en_ex           ), // from ID to EX stage
-    .mult_sel_subword_ex_o        ( mult_sel_subword_ex  ), // from ID to EX stage
-    .mult_signed_mode_ex_o        ( mult_signed_mode_ex  ), // from ID to EX stage
-    .mult_operand_a_ex_o          ( mult_operand_a_ex    ), // from ID to EX stage
-    .mult_operand_b_ex_o          ( mult_operand_b_ex    ), // from ID to EX stage
-    .mult_operand_c_ex_o          ( mult_operand_c_ex    ), // from ID to EX stage
+    // ID/EX pipeline
+    .id_ex_pipe_o                 ( id_ex_pipe           ),
 
     // CSR ID/EX
-    .csr_access_ex_o              ( csr_access_ex        ),
-    .csr_op_ex_o                  ( csr_op_ex            ),
     .current_priv_lvl_i           ( current_priv_lvl     ),
     .csr_cause_o                  ( csr_cause            ),
     .csr_save_if_o                ( csr_save_if          ), // control signal to save pc
@@ -452,17 +395,7 @@ module cv32e40x_core
 
     .csr_save_cause_o             ( csr_save_cause       ),
 
-    // LSU
-    .data_req_ex_o                ( data_req_ex          ), // to load store unit
-    .data_we_ex_o                 ( data_we_ex           ), // to load store unit
-    .atop_ex_o                    ( data_atop_ex         ),
-    .data_type_ex_o               ( data_type_ex         ), // to load store unit
-    .data_sign_ext_ex_o           ( data_sign_ext_ex     ), // to load store unit
-    .data_reg_offset_ex_o         ( data_reg_offset_ex   ), // to load store unit
-
-    .data_misaligned_ex_o         ( data_misaligned_ex   ), // to load store unit
-
-    .prepost_useincr_ex_o         ( useincr_addr_ex      ),
+   // LSU
     .data_misaligned_i            ( data_misaligned      ),
 
     // Interrupt Signals
@@ -531,38 +464,15 @@ module cv32e40x_core
     .clk                        ( clk                          ),
     .rst_n                      ( rst_ni                       ),
 
-    // Alu signals from ID stage
-    .alu_en_i                   ( alu_en_ex                    ),
-    .alu_operator_i             ( alu_operator_ex              ), // from ID/EX pipe registers
-    .alu_operand_a_i            ( alu_operand_a_ex             ), // from ID/EX pipe registers
-    .alu_operand_b_i            ( alu_operand_b_ex             ), // from ID/EX pipe registers
-    .alu_operand_c_i            ( alu_operand_c_ex             ), // from ID/EX pipe registers
-
-    // Multipler
-    .mult_operator_i            ( mult_operator_ex             ), // from ID/EX pipe registers
-    .mult_operand_a_i           ( mult_operand_a_ex            ), // from ID/EX pipe registers
-    .mult_operand_b_i           ( mult_operand_b_ex            ), // from ID/EX pipe registers
-    .mult_operand_c_i           ( mult_operand_c_ex            ), // from ID/EX pipe registers
-    .mult_en_i                  ( mult_en_ex                   ), // from ID/EX pipe registers
-    .mult_sel_subword_i         ( mult_sel_subword_ex          ), // from ID/EX pipe registers
-    .mult_signed_mode_i         ( mult_signed_mode_ex          ), // from ID/EX pipe registers
+    // ID/EX pipeline
+    .id_ex_pipe_i               ( id_ex_pipe                   ),
 
     .mult_multicycle_o          ( mult_multicycle              ), // to ID/EX pipe registers
-
-    .lsu_en_i                   ( data_req_ex                  ),
+   
     .lsu_rdata_i                ( lsu_rdata                    ),
 
     // interface with CSRs
-    .csr_access_i               ( csr_access_ex                ),
     .csr_rdata_i                ( csr_rdata                    ),
-
-    // From ID Stage: Regfile control signals
-    .branch_in_ex_i             ( branch_in_ex                 ),
-    .regfile_alu_waddr_i        ( regfile_alu_waddr_ex         ),
-    .regfile_alu_we_i           ( regfile_alu_we_ex            ),
-
-    .regfile_waddr_i            ( regfile_waddr_ex             ),
-    .regfile_we_i               ( regfile_we_ex                ),
 
     // Output of ex stage pipeline
     .regfile_waddr_wb_o         ( regfile_waddr_fw_wb_o        ),
@@ -615,21 +525,10 @@ module cv32e40x_core
     .data_wdata_o          ( data_wdata_o       ),
     .data_rdata_i          ( data_rdata_i       ),
 
-    // signal from ex stage
-    .data_we_ex_i          ( data_we_ex         ),
-    .data_atop_ex_i        ( data_atop_ex       ),
-    .data_type_ex_i        ( data_type_ex       ),
-    .data_wdata_ex_i       ( alu_operand_c_ex   ),
-    .data_reg_offset_ex_i  ( data_reg_offset_ex ),
-    .data_sign_ext_ex_i    ( data_sign_ext_ex   ),  // sign extension
-
+    // ID/EX pipeline
+    .id_ex_pipe_i          ( id_ex_pipe         ),
+   
     .data_rdata_ex_o       ( lsu_rdata          ),
-    .data_req_ex_i         ( data_req_ex        ),
-    .operand_a_ex_i        ( alu_operand_a_ex   ),
-    .operand_b_ex_i        ( alu_operand_b_ex   ),
-    .addr_useincr_ex_i     ( useincr_addr_ex    ),
-
-    .data_misaligned_ex_i  ( data_misaligned_ex ), // from ID/EX pipeline
     .data_misaligned_o     ( data_misaligned    ),
 
     // control signals
@@ -697,7 +596,7 @@ module cv32e40x_core
 
     .pc_if_i                    ( pc_if                  ),
     .pc_id_i                    ( pc_id                  ),
-    .pc_ex_i                    ( pc_ex                  ),
+    .pc_ex_i                    ( id_ex_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
     .csr_save_id_i              ( csr_save_id            ),
@@ -723,10 +622,10 @@ module cv32e40x_core
 
   //  CSR access
   assign csr_addr     =  csr_addr_int;
-  assign csr_wdata    =  alu_operand_a_ex;
-  assign csr_op       =  csr_op_ex;
+  assign csr_wdata    =  id_ex_pipe.alu_operand_a;
+  assign csr_op       =  id_ex_pipe.csr_op;
 
-  assign csr_addr_int = csr_num_e'(csr_access_ex ? alu_operand_b_ex[11:0] : '0);
+  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_access ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
 
  

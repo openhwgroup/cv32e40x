@@ -33,38 +33,14 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
-  // ALU signals from ID stage
-  input  alu_opcode_e alu_operator_i,
-  input  logic [31:0] alu_operand_a_i,
-  input  logic [31:0] alu_operand_b_i,
-  input  logic [31:0] alu_operand_c_i,
-  input  logic        alu_en_i,
-
-  // Multiplier signals
-  input  mul_opcode_e mult_operator_i,
-  input  logic [31:0] mult_operand_a_i,
-  input  logic [31:0] mult_operand_b_i,
-  input  logic [31:0] mult_operand_c_i,
-  input  logic        mult_en_i,
-  input  logic        mult_sel_subword_i,
-  input  logic [ 1:0] mult_signed_mode_i,
+  // ID/EX pipeline
+  input id_ex_pipe_t  id_ex_pipe_i,
 
   output logic        mult_multicycle_o,
 
-  input  logic        lsu_en_i,
   input  logic [31:0] lsu_rdata_i,
 
-  // input from ID stage
-  input  logic          branch_in_ex_i,
-  input  regfile_addr_t regfile_alu_waddr_i,
-  input  logic          regfile_alu_we_i,
-
-  // directly passed through to WB stage, not used in EX
-  input  logic          regfile_we_i,
-  input  regfile_addr_t regfile_waddr_i,
-
   // CSR access
-  input  logic        csr_access_i,
   input  logic [31:0] csr_rdata_i,
 
   // Output of EX stage pipeline
@@ -111,13 +87,13 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     regfile_alu_we_fw_o    = '0;
     wb_contention          = 1'b0;
 
-    regfile_alu_we_fw_o      = regfile_alu_we_i;
-    regfile_alu_waddr_fw_o   = regfile_alu_waddr_i;
-    if (alu_en_i)
+    regfile_alu_we_fw_o      = id_ex_pipe_i.regfile_alu_we;
+    regfile_alu_waddr_fw_o   = id_ex_pipe_i.regfile_alu_waddr;
+    if (id_ex_pipe_i.alu_en)
       regfile_alu_wdata_fw_o = alu_result;
-    if (mult_en_i)
+    if (id_ex_pipe_i.mult_en)
       regfile_alu_wdata_fw_o = mult_result;
-    if (csr_access_i)
+    if (id_ex_pipe_i.csr_access)
       regfile_alu_wdata_fw_o = csr_rdata_i;
     
   end
@@ -137,7 +113,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // branch handling
   assign branch_decision_o = alu_cmp_result;
-  assign jump_target_o     = alu_operand_c_i;
+  assign jump_target_o     = id_ex_pipe_i.alu_operand_c;
 
 
   ////////////////////////////
@@ -153,11 +129,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   (
     .clk                 ( clk             ),
     .rst_n               ( rst_n           ),
-    .enable_i            ( alu_en_i        ),
-    .operator_i          ( alu_operator_i  ),
-    .operand_a_i         ( alu_operand_a_i ),
-    .operand_b_i         ( alu_operand_b_i ),
-    .operand_c_i         ( alu_operand_c_i ),
+    .id_ex_pipe_i        ( id_ex_pipe_i    ),
 
     .result_o            ( alu_result      ),
     .comparison_result_o ( alu_cmp_result  ),
@@ -181,15 +153,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .clk             ( clk                  ),
     .rst_n           ( rst_n                ),
 
-    .enable_i        ( mult_en_i            ),
-    .operator_i      ( mult_operator_i      ),
-
-    .short_subword_i ( mult_sel_subword_i   ),
-    .short_signed_i  ( mult_signed_mode_i   ),
-
-    .op_a_i          ( mult_operand_a_i     ),
-    .op_b_i          ( mult_operand_b_i     ),
-    .op_c_i          ( mult_operand_c_i     ),
+    .id_ex_pipe_i    ( id_ex_pipe_i         ),
 
     .result_o        ( mult_result          ),
 
@@ -212,9 +176,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o) // wb_ready_i is implied
       begin
-        regfile_we_lsu    <= regfile_we_i;
-        if (regfile_we_i) begin
-          regfile_waddr_lsu <= regfile_waddr_i;
+        regfile_we_lsu    <= id_ex_pipe_i.regfile_we;
+        if (id_ex_pipe_i.regfile_we) begin
+          regfile_waddr_lsu <= id_ex_pipe_i.regfile_waddr;
         end
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
@@ -228,8 +192,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready & mult_ready & lsu_ready_ex_i
-                       & wb_ready_i & ~wb_contention) | (branch_in_ex_i);
-  assign ex_valid_o = (alu_en_i | mult_en_i | csr_access_i | lsu_en_i)
+                       & wb_ready_i & ~wb_contention) | (id_ex_pipe_i.branch_in);
+  assign ex_valid_o = (id_ex_pipe_i.alu_en | id_ex_pipe_i.mult_en | id_ex_pipe_i.csr_access | id_ex_pipe_i.data_req)
                        & (alu_ready & mult_ready & lsu_ready_ex_i & wb_ready_i);
 
 endmodule

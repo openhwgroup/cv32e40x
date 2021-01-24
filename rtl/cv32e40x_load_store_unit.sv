@@ -23,7 +23,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_load_store_unit
+module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 (
     input  logic         clk,
     input  logic         rst_n,
@@ -40,23 +40,12 @@ module cv32e40x_load_store_unit
     output logic [31:0]  data_wdata_o,
     input  logic [31:0]  data_rdata_i,
 
-    // signals from ex stage
-    input  logic         data_we_ex_i,         // write enable                      -> from ex stage
-    input  logic [1:0]   data_type_ex_i,       // Data type word, halfword, byte    -> from ex stage
-    input  logic [31:0]  data_wdata_ex_i,      // data to write to memory           -> from ex stage
-    input  logic [1:0]   data_reg_offset_ex_i, // offset inside register for stores -> from ex stage
-    input  logic [1:0]   data_sign_ext_ex_i,   // sign extension                    -> from ex stage
+    // ID/EX pipeline
+    input id_ex_pipe_t   id_ex_pipe_i,
 
     output logic [31:0]  data_rdata_ex_o,      // requested data                    -> to ex stage
-    input  logic         data_req_ex_i,        // data request                      -> from ex stage
-    input  logic [31:0]  operand_a_ex_i,       // operand a from RF for address     -> from ex stage
-    input  logic [31:0]  operand_b_ex_i,       // operand b from RF for address     -> from ex stage
-    input  logic         addr_useincr_ex_i,    // use a + b or just a for address   -> from ex stage
-
-    input  logic         data_misaligned_ex_i, // misaligned access in last ld/st   -> from ID/EX pipeline
     output logic         data_misaligned_o,    // misaligned access was detected    -> to controller
 
-    input  logic [5:0]   data_atop_ex_i,       // atomic instructions signal        -> from ex stage
     output logic [5:0]   data_atop_o,          // atomic instruction signal         -> core output
 
     // stall signal
@@ -111,7 +100,7 @@ module cv32e40x_load_store_unit
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
   begin
-    case (data_type_ex_i) // Data type 00 Word, 01 Half word, 11,10 byte
+    case (id_ex_pipe_i.data_type) // Data type 00 Word, 01 Half word, 11,10 byte
       2'b00:
       begin // Writing a word
         if (misaligned_st == 1'b0)
@@ -160,20 +149,20 @@ module cv32e40x_load_store_unit
           2'b11: data_be = 4'b1000;
         endcase; // case (data_addr_int[1:0])
       end
-    endcase; // case (data_type_ex_i)
+    endcase; // case (id_ex_pipe_i.data_type)
   end
 
   // prepare data to be written to the memory
   // we handle misaligned accesses, half word and byte accesses and
   // register offsets here
-  assign wdata_offset = data_addr_int[1:0] - data_reg_offset_ex_i[1:0];
+  assign wdata_offset = data_addr_int[1:0] - id_ex_pipe_i.data_reg_offset[1:0];
   always_comb
   begin
     case (wdata_offset)
-      2'b00: data_wdata = data_wdata_ex_i[31:0];
-      2'b01: data_wdata = {data_wdata_ex_i[23:0], data_wdata_ex_i[31:24]};
-      2'b10: data_wdata = {data_wdata_ex_i[15:0], data_wdata_ex_i[31:16]};
-      2'b11: data_wdata = {data_wdata_ex_i[ 7:0], data_wdata_ex_i[31: 8]};
+      2'b00: data_wdata = id_ex_pipe_i.alu_operand_c[31:0];
+      2'b01: data_wdata = {id_ex_pipe_i.alu_operand_c[23:0], id_ex_pipe_i.alu_operand_c[31:24]};
+      2'b10: data_wdata = {id_ex_pipe_i.alu_operand_c[15:0], id_ex_pipe_i.alu_operand_c[31:16]};
+      2'b11: data_wdata = {id_ex_pipe_i.alu_operand_c[ 7:0], id_ex_pipe_i.alu_operand_c[31: 8]};
     endcase; // case (wdata_offset)
   end
 
@@ -190,10 +179,10 @@ module cv32e40x_load_store_unit
     end
     else if (ctrl_update) // request was granted, we wait for rvalid and can continue to WB
     begin
-      data_type_q       <= data_type_ex_i;
+      data_type_q       <= id_ex_pipe_i.data_type;
       rdata_offset_q    <= data_addr_int[1:0];
-      data_sign_ext_q   <= data_sign_ext_ex_i;
-      data_we_q         <= data_we_ex_i;
+      data_sign_ext_q   <= id_ex_pipe_i.data_sign_ext;
+      data_we_q         <= id_ex_pipe_i.data_we;
     end
   end
 
@@ -339,7 +328,7 @@ module cv32e40x_load_store_unit
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if ((data_misaligned_ex_i == 1'b1) || (data_misaligned_o == 1'b1))
+        if ((id_ex_pipe_i.data_misaligned == 1'b1) || (data_misaligned_o == 1'b1))
           rdata_q  <= resp_rdata;
         else
           rdata_q  <= data_rdata_ext;
@@ -350,7 +339,7 @@ module cv32e40x_load_store_unit
   // output to register file
   assign data_rdata_ex_o = (resp_valid == 1'b1) ? data_rdata_ext : rdata_q;
 
-  assign misaligned_st   = data_misaligned_ex_i;
+  assign misaligned_st   = id_ex_pipe_i.data_misaligned;
 
   // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
   assign load_err_o      = 1'b0; // Not currently used
@@ -364,9 +353,9 @@ module cv32e40x_load_store_unit
   begin
     data_misaligned_o = 1'b0;
 
-    if((data_req_ex_i == 1'b1) && (data_misaligned_ex_i == 1'b0))
+    if((id_ex_pipe_i.data_req == 1'b1) && (id_ex_pipe_i.data_misaligned == 1'b0))
     begin
-      case (data_type_ex_i)
+      case (id_ex_pipe_i.data_type)
         2'b00: // word
         begin
           if(data_addr_int[1:0] != 2'b00)
@@ -377,12 +366,12 @@ module cv32e40x_load_store_unit
           if(data_addr_int[1:0] == 2'b11)
             data_misaligned_o = 1'b1;
         end
-      endcase // case (data_type_ex_i)
+      endcase // case (id_ex_pipe_i.data_type)
     end
   end
 
   // generate address from operands
-  assign data_addr_int = (addr_useincr_ex_i) ? (operand_a_ex_i + operand_b_ex_i) : operand_a_ex_i;
+  assign data_addr_int = (id_ex_pipe_i.prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b) : id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   assign busy_o = (cnt_q != 2'b00) || trans_valid;
@@ -392,21 +381,21 @@ module cv32e40x_load_store_unit
   //
   // Assumes that corresponding response is at least 1 cycle after request
   //
-  // - Only request transaction when EX stage requires data transfer (data_req_ex_i), and
+  // - Only request transaction when EX stage requires data transfer (id_ex_pipe_i.data_req), and
   // - maximum number of outstanding transactions will not be exceeded (cnt_q < DEPTH)
   //////////////////////////////////////////////////////////////////////////////
 
   // For last phase of misaligned transfer the address needs to be word aligned (as LSB of data_be will be set)
-  assign trans_addr  = data_misaligned_ex_i ? {data_addr_int[31:2], 2'b00} : data_addr_int;
-  assign trans_we    = data_we_ex_i;
+  assign trans_addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
+  assign trans_we    = id_ex_pipe_i.data_we;
   assign trans_be    = data_be;
   assign trans_wdata = data_wdata;
-  assign trans_atop  = data_atop_ex_i;
+  assign trans_atop  = id_ex_pipe_i.atop;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = data_req_ex_i && (cnt_q < DEPTH);
+  assign trans_valid = id_ex_pipe_i.data_req && (cnt_q < DEPTH);
 
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
@@ -415,7 +404,7 @@ module cv32e40x_load_store_unit
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
-  // - A data request (data_req_ex_i) has been forwarded/accepted (trans_valid && trans_ready)
+  // - A data request (id_ex_pipe_i.data_req) has been forwarded/accepted (trans_valid && trans_ready)
   // - The LSU WB stage is available such that EX and WB can be updated in lock step
   //
   // Default (if there is not even a data request) LSU EX is signaled to be ready, else
@@ -424,13 +413,13 @@ module cv32e40x_load_store_unit
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o = (data_req_ex_i == 1'b0) ? 1'b1 :
-                          (cnt_q == 2'b00) ? (              trans_valid && trans_ready) : 
-                          (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) : 
-                                              resp_valid;
+  assign lsu_ready_ex_o = (id_ex_pipe_i.data_req == 1'b0) ? 1'b1 :
+                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready) : 
+                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) : 
+                                                            resp_valid;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = lsu_ready_ex_o && data_req_ex_i;
+  assign ctrl_update = lsu_ready_ex_o && id_ex_pipe_i.data_req;
 
 
   //////////////////////////////////////////////////////////////////////////////

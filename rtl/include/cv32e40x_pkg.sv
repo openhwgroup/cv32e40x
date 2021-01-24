@@ -531,7 +531,7 @@ typedef struct packed {
   logic         uie; // Tie to zero when user mode is not enabled
 
 } Status_t;
-
+  
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
 parameter DBG_CAUSE_EBREAK     = 3'h1;
@@ -748,6 +748,54 @@ parameter AMO_MAX  = 5'b10100;
 parameter AMO_MINU = 5'b11000;
 parameter AMO_MAXU = 5'b11100;
 
+// ID/EX pipeline
+typedef struct packed {
+
+  // ALU Control
+  logic 	 alu_en;
+  alu_opcode_e alu_operator;      
+  logic [31:0] alu_operand_a;     
+  logic [31:0] alu_operand_b;     
+  logic [31:0] alu_operand_c;     
+
+  // Multiplier control
+  mul_opcode_e mult_operator;     
+  logic [31:0] mult_operand_a;    
+  logic [31:0] mult_operand_b;    
+  logic [31:0] mult_operand_c;    
+  logic mult_en;           
+  logic mult_sel_subword;  
+  logic [ 1:0] mult_signed_mode;  
+
+  // Register write control
+  regfile_addr_t regfile_waddr;     
+  logic regfile_we;        
+
+  regfile_addr_t regfile_alu_waddr; 
+  logic regfile_alu_we;    
+  logic prepost_useincr;   
+
+  // CSR control
+  logic csr_access;
+  csr_opcode_e csr_op;            
+
+  // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
+  logic data_we;           
+  logic [1:0] data_type;         
+  logic [1:0] data_sign_ext;     
+  logic [1:0] data_reg_offset;   
+  logic data_req;          
+  logic [5:0] atop;              
+  logic data_misaligned;   
+
+  // PC of last executed branch
+  logic [31:0] pc;
+
+  // Branch target
+  logic branch_in;
+  
+} id_ex_pipe_t;
+  
 ///////////////////////////////////////////////
 //   ___ _____   ____  _                     //
 //  |_ _|  ___| / ___|| |_ __ _  __ _  ___   //

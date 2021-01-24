@@ -52,7 +52,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic              illegal_c_insn_i,
 
     // Jumps and branches
-    output logic        branch_in_ex_o,
     input  logic        branch_decision_i,
     output logic [31:0] jump_target_o,
 
@@ -76,35 +75,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        id_valid_o,     // ID stage is done
     input  logic        ex_valid_i,     // EX stage is done
 
-    // Pipeline ID/EX
-    output logic [31:0] pc_ex_o,
+    // ID/EX pipeline 
+    output id_ex_pipe_t id_ex_pipe_o,
 
-    output logic [31:0] alu_operand_a_ex_o,
-    output logic [31:0] alu_operand_b_ex_o,
-    output logic [31:0] alu_operand_c_ex_o,
-
-    output regfile_addr_t  regfile_waddr_ex_o,
-    output logic           regfile_we_ex_o,
-
-    output regfile_addr_t  regfile_alu_waddr_ex_o,
-    output logic           regfile_alu_we_ex_o,
-
-    // ALU
-    output logic        alu_en_ex_o,
-    output alu_opcode_e alu_operator_ex_o,
-
-    // MUL
-    output mul_opcode_e  mult_operator_ex_o,
-    output logic [31:0]  mult_operand_a_ex_o,
-    output logic [31:0]  mult_operand_b_ex_o,
-    output logic [31:0]  mult_operand_c_ex_o,
-    output logic         mult_en_ex_o,
-    output logic         mult_sel_subword_ex_o,
-    output logic [ 1:0]  mult_signed_mode_ex_o,
-
-    // CSR ID/EX
-    output logic        csr_access_ex_o,
-    output csr_opcode_e csr_op_ex_o,
     input  PrivLvl_t    current_priv_lvl_i,
     output logic [5:0]  csr_cause_o,
     output logic        csr_save_if_o,
@@ -114,21 +87,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        csr_restore_dret_id_o,
     output logic        csr_save_cause_o,
 
-    // Interface to load store unit
-    output logic        data_req_ex_o,
-    output logic        data_we_ex_o,
-    output logic [1:0]  data_type_ex_o,
-    output logic [1:0]  data_sign_ext_ex_o,
-    output logic [1:0]  data_reg_offset_ex_o,
-
-    output logic        data_misaligned_ex_o,
-
-    output logic        prepost_useincr_ex_o,
     input  logic        data_misaligned_i,
     input  logic        data_err_i,
     output logic        data_err_ack_o,
-
-    output logic [5:0]  atop_ex_o,
 
     // Interrupt signals
     input  logic [31:0] irq_i,
@@ -358,9 +319,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   genvar i;
   generate
     for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
-      assign reg_in_ex_matches_reg_in_dec[i]  = (regfile_waddr_ex_o     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
-      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
-      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
+      assign reg_in_ex_matches_reg_in_dec[i]  = (id_ex_pipe_o.regfile_waddr == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
+      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i         == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
+      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
     end
   endgenerate
 
@@ -368,7 +329,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o | halt_id | branch_taken_ex;
 
-  assign branch_taken_ex = branch_in_ex_o && branch_decision_i;
+  assign branch_taken_ex = id_ex_pipe_o.branch_in && branch_decision_i;
 
 
   assign mult_en = mult_int_en;
@@ -689,8 +650,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .is_compressed_i                ( is_compressed_i        ),
 
     // LSU
-    .data_req_ex_i                  ( data_req_ex_o          ),
-    .data_we_ex_i                   ( data_we_ex_o           ),
+    .data_req_ex_i                  ( id_ex_pipe_o.data_req  ),
+    .data_we_ex_i                   ( id_ex_pipe_o.data_we   ),
     .data_misaligned_i              ( data_misaligned_i      ),
 
     // ALU
@@ -739,9 +700,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .regfile_alu_waddr_id_i         ( regfile_alu_waddr_id   ),
 
     // Forwarding signals from regfile
-    .regfile_we_ex_i                ( regfile_we_ex_o        ),
-    .regfile_waddr_ex_i             ( regfile_waddr_ex_o     ),
-    .regfile_we_wb_i                ( regfile_we_wb_i        ),
+    .regfile_we_ex_i                ( id_ex_pipe_o.regfile_we   ),
+    .regfile_waddr_ex_i             ( id_ex_pipe_o.regfile_waddr),
+    .regfile_we_wb_i                ( regfile_we_wb_i           ),
 
     // regfile port 2
     .regfile_alu_we_fw_i            ( regfile_alu_we_fw_i    ),
@@ -819,42 +780,42 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
-      alu_en_ex_o                 <= '0;
-      alu_operator_ex_o           <= ALU_SLTU;
-      alu_operand_a_ex_o          <= '0;
-      alu_operand_b_ex_o          <= '0;
-      alu_operand_c_ex_o          <= '0;
+      id_ex_pipe_o.alu_en                 <= '0;
+      id_ex_pipe_o.alu_operator           <= ALU_SLTU;
+      id_ex_pipe_o.alu_operand_a          <= '0;
+      id_ex_pipe_o.alu_operand_b          <= '0;
+      id_ex_pipe_o.alu_operand_c          <= '0;
 
-      mult_operator_ex_o          <= MUL_MAC32;
-      mult_operand_a_ex_o         <= '0;
-      mult_operand_b_ex_o         <= '0;
-      mult_operand_c_ex_o         <= '0;
-      mult_en_ex_o                <= 1'b0;
-      mult_sel_subword_ex_o       <= 1'b0;
-      mult_signed_mode_ex_o       <= 2'b00;
+      id_ex_pipe_o.mult_operator          <= MUL_MAC32;
+      id_ex_pipe_o.mult_operand_a         <= '0;
+      id_ex_pipe_o.mult_operand_b         <= '0;
+      id_ex_pipe_o.mult_operand_c         <= '0;
+      id_ex_pipe_o.mult_en                <= 1'b0;
+      id_ex_pipe_o.mult_sel_subword       <= 1'b0;
+      id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
-      regfile_waddr_ex_o          <= 6'b0;
-      regfile_we_ex_o             <= 1'b0;
+      id_ex_pipe_o.regfile_waddr          <= 6'b0;
+      id_ex_pipe_o.regfile_we             <= 1'b0;
 
-      regfile_alu_waddr_ex_o      <= 6'b0;
-      regfile_alu_we_ex_o         <= 1'b0;
-      prepost_useincr_ex_o        <= 1'b0;
+      id_ex_pipe_o.regfile_alu_waddr      <= 6'b0;
+      id_ex_pipe_o.regfile_alu_we         <= 1'b0;
+      id_ex_pipe_o.prepost_useincr        <= 1'b0;
 
-      csr_access_ex_o             <= 1'b0;
-      csr_op_ex_o                 <= CSR_OP_READ;
+      id_ex_pipe_o.csr_access             <= 1'b0;
+      id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
-      data_we_ex_o                <= 1'b0;
-      data_type_ex_o              <= 2'b0;
-      data_sign_ext_ex_o          <= 2'b0;
-      data_reg_offset_ex_o        <= 2'b0;
-      data_req_ex_o               <= 1'b0;
-      atop_ex_o                   <= 5'b0;
+      id_ex_pipe_o.data_we                <= 1'b0;
+      id_ex_pipe_o.data_type              <= 2'b0;
+      id_ex_pipe_o.data_sign_ext          <= 2'b0;
+      id_ex_pipe_o.data_reg_offset        <= 2'b0;
+      id_ex_pipe_o.data_req               <= 1'b0;
+      id_ex_pipe_o.atop                   <= 5'b0;
 
-      data_misaligned_ex_o        <= 1'b0;
+      id_ex_pipe_o.data_misaligned        <= 1'b0;
 
-      pc_ex_o                     <= '0;
+      id_ex_pipe_o.pc                     <= '0;
 
-      branch_in_ex_o              <= 1'b0;
+      id_ex_pipe_o.branch_in              <= 1'b0;
 
     end
     else if (data_misaligned_i) begin
@@ -865,103 +826,103 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         // if we are using post increments, then we have to use the
         // original value of the register for the second memory access
         // => keep it stalled
-        if (prepost_useincr_ex_o == 1'b1)
+        if (id_ex_pipe_o.prepost_useincr == 1'b1)
         begin
-          alu_operand_a_ex_o        <= operand_a_fw_id;
+          id_ex_pipe_o.alu_operand_a        <= operand_a_fw_id;
         end
 
-        alu_operand_b_ex_o          <= 32'h4;
-        regfile_alu_we_ex_o         <= 1'b0;
-        prepost_useincr_ex_o        <= 1'b1;
+        id_ex_pipe_o.alu_operand_b          <= 32'h4;
+        id_ex_pipe_o.regfile_alu_we         <= 1'b0;
+        id_ex_pipe_o.prepost_useincr        <= 1'b1;
 
-        data_misaligned_ex_o        <= 1'b1;
+        id_ex_pipe_o.data_misaligned        <= 1'b1;
       end
     end else if (mult_multicycle_i) begin
-      mult_operand_c_ex_o <= operand_c_fw_id;
+      id_ex_pipe_o.mult_operand_c <= operand_c_fw_id;
     end
     else begin
       // normal pipeline unstall case
 
       if (id_valid_o)
       begin // unstall the whole pipeline
-        alu_en_ex_o                 <= alu_en;
+        id_ex_pipe_o.alu_en                 <= alu_en;
         if (alu_en)
         begin
-          alu_operator_ex_o         <= alu_operator;
-          alu_operand_a_ex_o        <= alu_operand_a;
-          alu_operand_b_ex_o        <= alu_operand_b;
-          alu_operand_c_ex_o        <= alu_operand_c;
+          id_ex_pipe_o.alu_operator         <= alu_operator;
+          id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
+          id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
+          id_ex_pipe_o.alu_operand_c        <= alu_operand_c;
         end
 
-        mult_en_ex_o                <= mult_en;
+        id_ex_pipe_o.mult_en                <= mult_en;
         if (mult_int_en) begin
-          mult_operator_ex_o        <= mult_operator;
-          mult_sel_subword_ex_o     <= mult_sel_subword;
-          mult_signed_mode_ex_o     <= mult_signed_mode;
-          mult_operand_a_ex_o       <= alu_operand_a;
-          mult_operand_b_ex_o       <= alu_operand_b;
-          mult_operand_c_ex_o       <= alu_operand_c;
+          id_ex_pipe_o.mult_operator        <= mult_operator;
+          id_ex_pipe_o.mult_sel_subword     <= mult_sel_subword;
+          id_ex_pipe_o.mult_signed_mode     <= mult_signed_mode;
+          id_ex_pipe_o.mult_operand_a       <= alu_operand_a;
+          id_ex_pipe_o.mult_operand_b       <= alu_operand_b;
+          id_ex_pipe_o.mult_operand_c       <= alu_operand_c;
         end
         
-        regfile_we_ex_o             <= regfile_we_id;
+        id_ex_pipe_o.regfile_we             <= regfile_we_id;
         if (regfile_we_id) begin
-          regfile_waddr_ex_o        <= regfile_waddr_id;
+          id_ex_pipe_o.regfile_waddr        <= regfile_waddr_id;
         end
 
-        regfile_alu_we_ex_o         <= regfile_alu_we_id;
+        id_ex_pipe_o.regfile_alu_we         <= regfile_alu_we_id;
         if (regfile_alu_we_id) begin
-          regfile_alu_waddr_ex_o    <= regfile_alu_waddr_id;
+          id_ex_pipe_o.regfile_alu_waddr    <= regfile_alu_waddr_id;
         end
 
-        prepost_useincr_ex_o        <= prepost_useincr;
+        id_ex_pipe_o.prepost_useincr        <= prepost_useincr;
 
-        csr_access_ex_o             <= csr_access;
-        csr_op_ex_o                 <= csr_op;
+        id_ex_pipe_o.csr_access             <= csr_access;
+        id_ex_pipe_o.csr_op                 <= csr_op;
 
-        data_req_ex_o               <= data_req_id;
+        id_ex_pipe_o.data_req               <= data_req_id;
         if (data_req_id)
         begin // only needed for LSU when there is an active request
-          data_we_ex_o              <= data_we_id;
-          data_type_ex_o            <= data_type_id;
-          data_sign_ext_ex_o        <= data_sign_ext_id;
-          data_reg_offset_ex_o      <= data_reg_offset_id;
-          atop_ex_o                 <= atop_id;
+          id_ex_pipe_o.data_we              <= data_we_id;
+          id_ex_pipe_o.data_type            <= data_type_id;
+          id_ex_pipe_o.data_sign_ext        <= data_sign_ext_id;
+          id_ex_pipe_o.data_reg_offset      <= data_reg_offset_id;
+          id_ex_pipe_o.atop                 <= atop_id;
         end
 
-        data_misaligned_ex_o        <= 1'b0;
+        id_ex_pipe_o.data_misaligned        <= 1'b0;
 
         if ((ctrl_transfer_insn_in_id == BRANCH_COND) || data_req_id) begin
-          pc_ex_o                   <= pc_id_i;
+          id_ex_pipe_o.pc                   <= pc_id_i;
         end
 
-        branch_in_ex_o              <= ctrl_transfer_insn_in_id == BRANCH_COND;
+        id_ex_pipe_o.branch_in              <= ctrl_transfer_insn_in_id == BRANCH_COND;
       end else if(ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
 
-        regfile_we_ex_o             <= 1'b0;
+        id_ex_pipe_o.regfile_we             <= 1'b0;
 
-        regfile_alu_we_ex_o         <= 1'b0;
+        id_ex_pipe_o.regfile_alu_we         <= 1'b0;
 
-        csr_op_ex_o                 <= CSR_OP_READ;
+        id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
-        data_req_ex_o               <= 1'b0;
+        id_ex_pipe_o.data_req               <= 1'b0;
 
-        data_misaligned_ex_o        <= 1'b0;
+        id_ex_pipe_o.data_misaligned        <= 1'b0;
 
-        branch_in_ex_o              <= 1'b0;
+        id_ex_pipe_o.branch_in              <= 1'b0;
 
-        alu_operator_ex_o           <= ALU_SLTU;
+        id_ex_pipe_o.alu_operator           <= ALU_SLTU;
 
-        mult_en_ex_o                <= 1'b0;
+        id_ex_pipe_o.mult_en                <= 1'b0;
 
-        alu_en_ex_o                 <= 1'b1;
+        id_ex_pipe_o.alu_en                 <= 1'b1;
 
-      end else if (csr_access_ex_o) begin
+      end else if (id_ex_pipe_o.csr_access) begin
        //In the EX stage there was a CSR access, to avoid multiple
-       //writes to the RF, disable regfile_alu_we_ex_o.
+       //writes to the RF, disable regfile_alu_we.
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       regfile_alu_we_ex_o         <= 1'b0;
+       id_ex_pipe_o.regfile_alu_we         <= 1'b0;
       end
     end
   end
@@ -1024,7 +985,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // make sure that branch decision is valid when jumping
     a_br_decision : assert property (
-      @(posedge clk) (branch_in_ex_o) |-> (branch_decision_i !== 1'bx) ) else begin $warning("%t, Branch decision is X in module %m", $time); $stop; end
+      @(posedge clk) (id_ex_pipe_o.branch_in) |-> (branch_decision_i !== 1'bx) ) else begin $warning("%t, Branch decision is X in module %m", $time); $stop; end
 
     // the instruction delivered to the ID stage should always be valid
     a_valid_instr : assert property (
@@ -1046,11 +1007,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // MIE is excluded from the check because it has a bypass.
     property p_irq_csr;
        @(posedge clk) disable iff (!rst_n) (pc_set_o && (pc_mux_o == PC_EXCEPTION) && ((exc_pc_mux_o == EXC_PC_EXCEPTION) || (exc_pc_mux_o == EXC_PC_IRQ)) &&
-                                            csr_access_ex_o && (csr_op_ex_o != CSR_OP_READ)) |->
-                                           ((alu_operand_b_ex_o[11:0] != CSR_MSTATUS) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MEPC) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MCAUSE) &&
-                                            (alu_operand_b_ex_o[11:0] != CSR_MTVEC));
+                                            id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)) |->
+                                           ((id_ex_pipe_o.alu_operand_b[11:0] != CSR_MSTATUS) &&
+                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MEPC) &&
+                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MCAUSE) &&
+                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MTVEC));
     endproperty
 
     a_irq_csr : assert property(p_irq_csr);
@@ -1060,7 +1021,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // as its write action happens before the xret CSR usage
     property p_xret_csr;
        @(posedge clk) disable iff (!rst_n) (pc_set_o && ((pc_mux_o == PC_MRET) || (pc_mux_o == PC_DRET))) |->
-                                           (!(csr_access_ex_o && (csr_op_ex_o != CSR_OP_READ)));
+                                           (!(id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)));
     endproperty
 
     a_xret_csr : assert property(p_xret_csr);
