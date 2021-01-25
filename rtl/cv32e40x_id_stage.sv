@@ -329,7 +329,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o | halt_id | branch_taken_ex;
 
-  assign branch_taken_ex = id_ex_pipe_o.branch_in && branch_decision_i;
+  assign branch_taken_ex = id_ex_pipe_o.branch_in_ex && branch_decision_i;
 
 
   assign mult_en = mult_int_en;
@@ -815,7 +815,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       id_ex_pipe_o.pc                     <= '0;
 
-      id_ex_pipe_o.branch_in              <= 1'b0;
+      id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
     end
     else if (data_misaligned_i) begin
@@ -895,7 +895,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.pc                   <= pc_id_i;
         end
 
-        id_ex_pipe_o.branch_in              <= ctrl_transfer_insn_in_id == BRANCH_COND;
+        id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_in_id == BRANCH_COND;
       end else if(ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
@@ -910,7 +910,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.data_misaligned        <= 1'b0;
 
-        id_ex_pipe_o.branch_in              <= 1'b0;
+        id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
         id_ex_pipe_o.alu_operator           <= ALU_SLTU;
 
@@ -985,7 +985,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // make sure that branch decision is valid when jumping
     a_br_decision : assert property (
-      @(posedge clk) (id_ex_pipe_o.branch_in) |-> (branch_decision_i !== 1'bx) ) else begin $warning("%t, Branch decision is X in module %m", $time); $stop; end
+      @(posedge clk) (id_ex_pipe_o.branch_in_ex) |-> (branch_decision_i !== 1'bx) ) else begin $warning("%t, Branch decision is X in module %m", $time); $stop; end
 
     // the instruction delivered to the ID stage should always be valid
     a_valid_instr : assert property (

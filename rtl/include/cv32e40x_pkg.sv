@@ -792,7 +792,7 @@ typedef struct packed {
   logic [31:0] pc;
 
   // Branch target
-  logic branch_in;
+  logic branch_in_ex;
   
 } id_ex_pipe_t;
   

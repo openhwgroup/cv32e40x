@@ -192,7 +192,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready & mult_ready & lsu_ready_ex_i
-                       & wb_ready_i & ~wb_contention) | (id_ex_pipe_i.branch_in);
+                       & wb_ready_i & ~wb_contention) | (id_ex_pipe_i.branch_in_ex);
   assign ex_valid_o = (id_ex_pipe_i.alu_en | id_ex_pipe_i.mult_en | id_ex_pipe_i.csr_access | id_ex_pipe_i.data_req)
                        & (alu_ready & mult_ready & lsu_ready_ex_i & wb_ready_i);
 
