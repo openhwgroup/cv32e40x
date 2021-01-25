@@ -386,12 +386,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
 `ifdef CV32E40P_ASSERT_ON
  
-    // Ensure only basic RV32I + DIV*/REM* used
-    a_alu_operator_1 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> ((operator_i == ALU_ADD) || (operator_i == ALU_SUB) || (operator_i == ALU_XOR) || (operator_i == ALU_OR) || (operator_i == ALU_AND) ||
-         (operator_i == ALU_SRA) || (operator_i == ALU_SRL) || (operator_i == ALU_SLL) || (operator_i == ALU_LTS) || (operator_i == ALU_LTU) ||
-         (operator_i == ALU_GES) || (operator_i == ALU_GEU) || (operator_i == ALU_EQ) || (operator_i == ALU_NE) || (operator_i == ALU_SLTS) ||
-         (operator_i == ALU_SLTU) || (operator_i == ALU_DIVU) || (operator_i == ALU_DIV) || (operator_i == ALU_REMU) || (operator_i == ALU_REM)));
 
 `endif
 
