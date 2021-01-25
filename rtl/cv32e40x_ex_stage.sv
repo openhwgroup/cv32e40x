@@ -127,15 +127,19 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   cv32e40x_alu alu_i
   (
-    .clk                 ( clk             ),
-    .rst_n               ( rst_n           ),
-    .id_ex_pipe_i        ( id_ex_pipe_i    ),
+    .clk                 ( clk                        ),
+    .rst_n               ( rst_n                      ),
+    .enable_i            ( id_ex_pipe_i.alu_en        ),
+    .operator_i          ( id_ex_pipe_i.alu_operator  ),
+    .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
+    .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
+    .operand_c_i         ( id_ex_pipe_i.alu_operand_c ),
 
-    .result_o            ( alu_result      ),
-    .comparison_result_o ( alu_cmp_result  ),
+    .result_o            ( alu_result                 ),
+    .comparison_result_o ( alu_cmp_result             ),
 
-    .ready_o             ( alu_ready       ),
-    .ex_ready_i          ( ex_ready_o      )
+    .ready_o             ( alu_ready                  ),
+    .ex_ready_i          ( ex_ready_o                 )
   );
 
 
@@ -150,16 +154,24 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   cv32e40x_mult mult_i
   (
-    .clk             ( clk                  ),
-    .rst_n           ( rst_n                ),
+    .clk             ( clk                           ),
+    .rst_n           ( rst_n                         ),
 
-    .id_ex_pipe_i    ( id_ex_pipe_i         ),
+    .enable_i        ( id_ex_pipe_i.mult_en          ),
+    .operator_i      ( id_ex_pipe_i.mult_operator    ),
 
-    .result_o        ( mult_result          ),
+    .short_subword_i ( id_ex_pipe_i.mult_sel_subword ),
+    .short_signed_i  ( id_ex_pipe_i.mult_signed_mode ),
 
-    .multicycle_o    ( mult_multicycle_o    ),
-    .ready_o         ( mult_ready           ),
-    .ex_ready_i      ( ex_ready_o           )
+    .op_a_i          ( id_ex_pipe_i.mult_operand_a   ),
+    .op_b_i          ( id_ex_pipe_i.mult_operand_b   ),
+    .op_c_i          ( id_ex_pipe_i.mult_operand_c   ),
+
+    .result_o        ( mult_result                   ),
+					             
+    .multicycle_o    ( mult_multicycle_o             ),
+    .ready_o         ( mult_ready                    ),
+    .ex_ready_i      ( ex_ready_o                    )
   );
 
   ///////////////////////////////////////

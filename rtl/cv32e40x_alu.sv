@@ -29,8 +29,11 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 (
   input  logic                     clk,
   input  logic                     rst_n,
-  
-  input id_ex_pipe_t               id_ex_pipe_i,
+  input  logic                     enable_i,
+  input  alu_opcode_e              operator_i,
+  input  logic [31:0]              operand_a_i,
+  input  logic [31:0]              operand_b_i,
+  input  logic [31:0]              operand_c_i,
 
   output logic [31:0]              result_o,
   output logic                     comparison_result_o,
@@ -43,14 +46,14 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] operand_a_neg;
   logic [31:0] operand_a_neg_rev;
 
-  assign operand_a_neg = ~id_ex_pipe_i.alu_operand_a;
+  assign operand_a_neg = ~operand_a_i;
 
   // bit reverse operand_a for left shifts and bit counting
   generate
     genvar k;
     for(k = 0; k < 32; k++)
     begin : gen_operand_a_rev
-      assign operand_a_rev[k] = id_ex_pipe_i.alu_operand_a[31-k];
+      assign operand_a_rev[k] = operand_a_i[31-k];
     end
   endgenerate
 
@@ -65,7 +68,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   logic [31:0] operand_b_neg;
 
-  assign operand_b_neg = ~id_ex_pipe_i.alu_operand_b;
+  assign operand_b_neg = ~operand_b_i;
 
 
   logic [5:0]  div_shift;
@@ -86,13 +89,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] adder_result;
   logic [33:0] adder_result_expanded;
 
-  assign adder_op_b_negate = (id_ex_pipe_i.alu_operator == ALU_SUB);
+  assign adder_op_b_negate = (operator_i == ALU_SUB);
 
   // prepare operand a
-  assign adder_op_a = id_ex_pipe_i.alu_operand_a;
+  assign adder_op_a = operand_a_i;
 
   // prepare operand b
-  assign adder_op_b = adder_op_b_negate ? operand_b_neg : id_ex_pipe_i.alu_operand_b;
+  assign adder_op_b = adder_op_b_negate ? operand_b_neg : operand_b_i;
 
   // prepare carry
   assign adder_in_a = {adder_op_a, 1'b1};
@@ -125,23 +128,23 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] shift_left_result;
 
   // shifter is also used for preparing operand for division
-  assign shift_amt = div_valid ? div_shift : id_ex_pipe_i.alu_operand_b;
+  assign shift_amt = div_valid ? div_shift : operand_b_i;
 
   // by reversing the bits of the input, we also have to reverse the order of shift amounts
   assign shift_amt_left[31:0] = shift_amt[31:0];
 
-  assign shift_left = (id_ex_pipe_i.alu_operator == ALU_SLL) ||
-                      (id_ex_pipe_i.alu_operator == ALU_DIV) || (id_ex_pipe_i.alu_operator == ALU_DIVU) ||
-                      (id_ex_pipe_i.alu_operator == ALU_REM) || (id_ex_pipe_i.alu_operator == ALU_REMU);
+  assign shift_left = (operator_i == ALU_SLL) ||
+                      (operator_i == ALU_DIV) || (operator_i == ALU_DIVU) ||
+                      (operator_i == ALU_REM) || (operator_i == ALU_REMU);
 
-  assign shift_use_round = (id_ex_pipe_i.alu_operator == ALU_ADD) || (id_ex_pipe_i.alu_operator == ALU_SUB);
+  assign shift_use_round = (operator_i == ALU_ADD) || (operator_i == ALU_SUB);
 
-  assign shift_arithmetic = (id_ex_pipe_i.alu_operator == ALU_SRA) ||
-                            (id_ex_pipe_i.alu_operator == ALU_ADD) || (id_ex_pipe_i.alu_operator == ALU_SUB);
+  assign shift_arithmetic = (operator_i == ALU_SRA) ||
+                            (operator_i == ALU_ADD) || (operator_i == ALU_SUB);
 
   // choose the bit reversed or the normal input for shift operand a
   assign shift_op_a    = shift_left ? operand_a_rev :
-                          (shift_use_round ? adder_result : id_ex_pipe_i.alu_operand_a);
+                          (shift_use_round ? adder_result : operand_a_i);
   assign shift_amt_int = shift_use_round ? 32'b0 :
                           (shift_left ? shift_amt_left : shift_amt);
 
@@ -181,7 +184,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   begin
     cmp_signed = 1'b0;
 
-    unique case (id_ex_pipe_i.alu_operator)
+    unique case (operator_i)
       ALU_GES,
       ALU_LTS,
       ALU_SLTS: begin
@@ -192,8 +195,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     endcase
   end
 
-  assign is_equal = (id_ex_pipe_i.alu_operand_a == id_ex_pipe_i.alu_operand_b);
-  assign is_greater = $signed({id_ex_pipe_i.alu_operand_a[31] & cmp_signed, id_ex_pipe_i.alu_operand_a}) > $signed({id_ex_pipe_i.alu_operand_b[31] & cmp_signed, id_ex_pipe_i.alu_operand_b});
+  assign is_equal = (operand_a_i == operand_b_i);
+  assign is_greater = $signed({operand_a_i[31] & cmp_signed, operand_a_i}) > $signed({operand_b_i[31] & cmp_signed, operand_b_i});
 
   // generate comparison result
   logic cmp_result;
@@ -201,7 +204,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   always_comb
   begin
     cmp_result = is_equal;
-    unique case (id_ex_pipe_i.alu_operator)
+    unique case (operator_i)
       ALU_EQ:            cmp_result = is_equal;
       ALU_NE:            cmp_result = ~is_equal;
       ALU_GES, ALU_GEU:  cmp_result = is_greater | is_equal;
@@ -231,21 +234,21 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   cv32e40x_popcnt popcnt_i
   (
-    .in_i        ( id_ex_pipe_i.alu_operand_a ),
-    .result_o    ( cnt_result                 )
+    .in_i        ( operand_a_i ),
+    .result_o    ( cnt_result  )
   );
 
   always_comb
   begin
     ff_input = '0;
 
-    case (id_ex_pipe_i.alu_operator)
+    case (operator_i)
       ALU_DIVU,
       ALU_REMU: ff_input = operand_a_rev;
 
       ALU_DIV,
       ALU_REM: begin
-        if (id_ex_pipe_i.alu_operand_a[31])
+        if (operand_a_i[31])
           ff_input = operand_a_neg_rev;
         else
           ff_input = operand_a_rev;
@@ -279,37 +282,37 @@ module cv32e40x_alu import cv32e40x_pkg::*;
    logic        div_op_a_signed;
    logic [5:0]  div_shift_int;
 
-   assign div_signed = id_ex_pipe_i.alu_operator[0];
+   assign div_signed = operator_i[0];
 
-   assign div_op_a_signed = id_ex_pipe_i.alu_operand_a[31] & div_signed;
+   assign div_op_a_signed = operand_a_i[31] & div_signed;
 
    assign div_shift_int = ff_no_one ? 6'd31 : clb_result;
    assign div_shift = div_shift_int + (div_op_a_signed ? 6'd0 : 6'd1);
 
-   assign div_valid = id_ex_pipe_i.alu_en & ((id_ex_pipe_i.alu_operator == ALU_DIV) || (id_ex_pipe_i.alu_operator == ALU_DIVU) ||
-                      (id_ex_pipe_i.alu_operator == ALU_REM) || (id_ex_pipe_i.alu_operator == ALU_REMU));
+   assign div_valid = enable_i & ((operator_i == ALU_DIV) || (operator_i == ALU_DIVU) ||
+                      (operator_i == ALU_REM) || (operator_i == ALU_REMU));
 
    // inputs A and B are swapped
    cv32e40x_alu_div alu_div_i
      (
-      .Clk_CI       ( clk                            ),
-      .Rst_RBI      ( rst_n                          ),
+      .Clk_CI       ( clk               ),
+      .Rst_RBI      ( rst_n             ),
 
       // input IF
-      .OpA_DI       ( id_ex_pipe_i.alu_operand_b     ),
-      .OpB_DI       ( shift_left_result              ),
-      .OpBShift_DI  ( div_shift                      ),
-      .OpBIsZero_SI ( (cnt_result == 0)              ),
+      .OpA_DI       ( operand_b_i       ),
+      .OpB_DI       ( shift_left_result ),
+      .OpBShift_DI  ( div_shift         ),
+      .OpBIsZero_SI ( (cnt_result == 0) ),
 
-      .OpBSign_SI   ( div_op_a_signed                ),
-      .OpCode_SI    ( id_ex_pipe_i.alu_operator[1:0] ), // todo: this should not depend on encoding like this: instead change divider to have two inputs, e.g. unsigned, rem
+      .OpBSign_SI   ( div_op_a_signed   ),
+      .OpCode_SI    ( operator_i[1:0]   ), // todo: this should not depend on encoding like this: instead change divider to have two inputs, e.g. unsigned, rem
 
-      .Res_DO       ( result_div                     ),
+      .Res_DO       ( result_div        ),
 
       // Hand-Shake
-      .InVld_SI     ( div_valid                      ),
-      .OutRdy_SI    ( ex_ready_i                     ),
-      .OutVld_SO    ( div_ready                      )
+      .InVld_SI     ( div_valid         ),
+      .OutRdy_SI    ( ex_ready_i        ),
+      .OutVld_SO    ( div_ready         )
       );
 
   ////////////////////////////////////////////////////////
@@ -325,11 +328,11 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   begin
     result_o   = '0;
 
-    unique case (id_ex_pipe_i.alu_operator)
+    unique case (operator_i)
       // Standard Operations
-      ALU_AND:  result_o = id_ex_pipe_i.alu_operand_a & id_ex_pipe_i.alu_operand_b;
-      ALU_OR:   result_o = id_ex_pipe_i.alu_operand_a | id_ex_pipe_i.alu_operand_b;
-      ALU_XOR:  result_o = id_ex_pipe_i.alu_operand_a ^ id_ex_pipe_i.alu_operand_b;
+      ALU_AND:  result_o = operand_a_i & operand_b_i;
+      ALU_OR:   result_o = operand_a_i | operand_b_i;
+      ALU_XOR:  result_o = operand_a_i ^ operand_b_i;
 
       // Shift Operations
       ALU_ADD,
@@ -360,42 +363,42 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
     // Check that certain ALU operations are not used when PULP extension is not enabled
     a_alu_operator_0 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> ((id_ex_pipe_i.alu_operator != ALU_ADDU ) && (id_ex_pipe_i.alu_operator != ALU_SUBU ) &&
-         (id_ex_pipe_i.alu_operator != ALU_ADDR ) && (id_ex_pipe_i.alu_operator != ALU_SUBR ) &&
-         (id_ex_pipe_i.alu_operator != ALU_ADDUR) && (id_ex_pipe_i.alu_operator != ALU_SUBUR) &&
-         (id_ex_pipe_i.alu_operator != ALU_ROR) && (id_ex_pipe_i.alu_operator != ALU_BEXT) &&
-         (id_ex_pipe_i.alu_operator != ALU_BEXTU) && (id_ex_pipe_i.alu_operator != ALU_BINS) &&
-         (id_ex_pipe_i.alu_operator != ALU_BCLR) && (id_ex_pipe_i.alu_operator != ALU_BSET) &&
-         (id_ex_pipe_i.alu_operator != ALU_BREV) && (id_ex_pipe_i.alu_operator != ALU_FF1) &&
-         (id_ex_pipe_i.alu_operator != ALU_FL1) && (id_ex_pipe_i.alu_operator != ALU_CNT) &&
-         (id_ex_pipe_i.alu_operator != ALU_CLB) && (id_ex_pipe_i.alu_operator != ALU_EXTS) &&
-         (id_ex_pipe_i.alu_operator != ALU_EXT) && (id_ex_pipe_i.alu_operator != ALU_LES) &&
-         (id_ex_pipe_i.alu_operator != ALU_LEU) && (id_ex_pipe_i.alu_operator != ALU_GTS) &&
-         (id_ex_pipe_i.alu_operator != ALU_GTU) && (id_ex_pipe_i.alu_operator != ALU_SLETS) &&
-         (id_ex_pipe_i.alu_operator != ALU_SLETU) && (id_ex_pipe_i.alu_operator != ALU_ABS) &&
-         (id_ex_pipe_i.alu_operator != ALU_CLIP) && (id_ex_pipe_i.alu_operator != ALU_CLIPU) &&
-         (id_ex_pipe_i.alu_operator != ALU_INS) && (id_ex_pipe_i.alu_operator != ALU_MIN) &&
-         (id_ex_pipe_i.alu_operator != ALU_MINU) && (id_ex_pipe_i.alu_operator != ALU_MAX) &&
-         (id_ex_pipe_i.alu_operator != ALU_MAXU) && (id_ex_pipe_i.alu_operator != ALU_SHUF) &&
-         (id_ex_pipe_i.alu_operator != ALU_SHUF2) && (id_ex_pipe_i.alu_operator != ALU_PCKLO) &&
-         (id_ex_pipe_i.alu_operator != ALU_PCKHI)));
+    |-> ((operator_i != ALU_ADDU ) && (operator_i != ALU_SUBU ) &&
+         (operator_i != ALU_ADDR ) && (operator_i != ALU_SUBR ) &&
+         (operator_i != ALU_ADDUR) && (operator_i != ALU_SUBUR) &&
+         (operator_i != ALU_ROR) && (operator_i != ALU_BEXT) &&
+         (operator_i != ALU_BEXTU) && (operator_i != ALU_BINS) &&
+         (operator_i != ALU_BCLR) && (operator_i != ALU_BSET) &&
+         (operator_i != ALU_BREV) && (operator_i != ALU_FF1) &&
+         (operator_i != ALU_FL1) && (operator_i != ALU_CNT) &&
+         (operator_i != ALU_CLB) && (operator_i != ALU_EXTS) &&
+         (operator_i != ALU_EXT) && (operator_i != ALU_LES) &&
+         (operator_i != ALU_LEU) && (operator_i != ALU_GTS) &&
+         (operator_i != ALU_GTU) && (operator_i != ALU_SLETS) &&
+         (operator_i != ALU_SLETU) && (operator_i != ALU_ABS) &&
+         (operator_i != ALU_CLIP) && (operator_i != ALU_CLIPU) &&
+         (operator_i != ALU_INS) && (operator_i != ALU_MIN) &&
+         (operator_i != ALU_MINU) && (operator_i != ALU_MAX) &&
+         (operator_i != ALU_MAXU) && (operator_i != ALU_SHUF) &&
+         (operator_i != ALU_SHUF2) && (operator_i != ALU_PCKLO) &&
+         (operator_i != ALU_PCKHI)));
 
     
 
 
     // Ensure only basic RV32I + DIV*/REM* used
     a_alu_operator_1 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> ((id_ex_pipe_i.alu_operator == ALU_ADD) || (id_ex_pipe_i.alu_operator == ALU_SUB) || (id_ex_pipe_i.alu_operator == ALU_XOR) || (id_ex_pipe_i.alu_operator == ALU_OR) || (id_ex_pipe_i.alu_operator == ALU_AND) ||
-         (id_ex_pipe_i.alu_operator == ALU_SRA) || (id_ex_pipe_i.alu_operator == ALU_SRL) || (id_ex_pipe_i.alu_operator == ALU_SLL) || (id_ex_pipe_i.alu_operator == ALU_LTS) || (id_ex_pipe_i.alu_operator == ALU_LTU) ||
-         (id_ex_pipe_i.alu_operator == ALU_GES) || (id_ex_pipe_i.alu_operator == ALU_GEU) || (id_ex_pipe_i.alu_operator == ALU_EQ) || (id_ex_pipe_i.alu_operator == ALU_NE) || (id_ex_pipe_i.alu_operator == ALU_SLTS) ||
-         (id_ex_pipe_i.alu_operator == ALU_SLTU) || (id_ex_pipe_i.alu_operator == ALU_DIVU) || (id_ex_pipe_i.alu_operator == ALU_DIV) || (id_ex_pipe_i.alu_operator == ALU_REMU) || (id_ex_pipe_i.alu_operator == ALU_REM)));
+    |-> ((operator_i == ALU_ADD) || (operator_i == ALU_SUB) || (operator_i == ALU_XOR) || (operator_i == ALU_OR) || (operator_i == ALU_AND) ||
+         (operator_i == ALU_SRA) || (operator_i == ALU_SRL) || (operator_i == ALU_SLL) || (operator_i == ALU_LTS) || (operator_i == ALU_LTU) ||
+         (operator_i == ALU_GES) || (operator_i == ALU_GEU) || (operator_i == ALU_EQ) || (operator_i == ALU_NE) || (operator_i == ALU_SLTS) ||
+         (operator_i == ALU_SLTU) || (operator_i == ALU_DIVU) || (operator_i == ALU_DIV) || (operator_i == ALU_REMU) || (operator_i == ALU_REM)));
 
     // Ensure basic RV32I + DIV*/REM* are encoded such that other operators can be optimized away
     a_alu_operator_2 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> (((id_ex_pipe_i.alu_operator == ALU_ADD) || (id_ex_pipe_i.alu_operator == ALU_SUB) || (id_ex_pipe_i.alu_operator == ALU_XOR) || (id_ex_pipe_i.alu_operator == ALU_OR) || (id_ex_pipe_i.alu_operator == ALU_AND) ||
-          (id_ex_pipe_i.alu_operator == ALU_SRA) || (id_ex_pipe_i.alu_operator == ALU_SRL) || (id_ex_pipe_i.alu_operator == ALU_SLL) || (id_ex_pipe_i.alu_operator == ALU_LTS) || (id_ex_pipe_i.alu_operator == ALU_LTU) ||
-          (id_ex_pipe_i.alu_operator == ALU_GES) || (id_ex_pipe_i.alu_operator == ALU_GEU) || (id_ex_pipe_i.alu_operator == ALU_EQ) || (id_ex_pipe_i.alu_operator == ALU_NE) || (id_ex_pipe_i.alu_operator == ALU_SLTS) ||
-          (id_ex_pipe_i.alu_operator == ALU_SLTU) || (id_ex_pipe_i.alu_operator == ALU_DIVU) || (id_ex_pipe_i.alu_operator == ALU_DIV) || (id_ex_pipe_i.alu_operator == ALU_REMU) || (id_ex_pipe_i.alu_operator == ALU_REM)) == (id_ex_pipe_i.alu_operator[6] == 1'b0)));
+    |-> (((operator_i == ALU_ADD) || (operator_i == ALU_SUB) || (operator_i == ALU_XOR) || (operator_i == ALU_OR) || (operator_i == ALU_AND) ||
+          (operator_i == ALU_SRA) || (operator_i == ALU_SRL) || (operator_i == ALU_SLL) || (operator_i == ALU_LTS) || (operator_i == ALU_LTU) ||
+          (operator_i == ALU_GES) || (operator_i == ALU_GEU) || (operator_i == ALU_EQ) || (operator_i == ALU_NE) || (operator_i == ALU_SLTS) ||
+          (operator_i == ALU_SLTU) || (operator_i == ALU_DIVU) || (operator_i == ALU_DIV) || (operator_i == ALU_REMU) || (operator_i == ALU_REM)) == (operator_i[6] == 1'b0)));
 
 `endif
 
