@@ -139,7 +139,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     imm_a_mux_sel_o             = IMMA_ZERO;
     imm_b_mux_sel_o             = IMMB_I;
 
-    mult_operator_o             = MUL_MAC32;
+    mult_operator_o             = MUL_M32;
     mult_int_en                 = 1'b0;
     mult_signed_mode_o          = 2'b00;
     mult_sel_subword_o          = 1'b0;
@@ -458,7 +458,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             {6'b00_0001, 3'b000}: begin // mul
               alu_en          = 1'b0;
               mult_int_en     = 1'b1;
-              mult_operator_o = MUL_MAC32;
+              mult_operator_o = MUL_M32;
             end
             {6'b00_0001, 3'b001}: begin // mulh
               alu_en             = 1'b0;

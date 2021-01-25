@@ -210,7 +210,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   always_comb
   begin
-    if (operator_i == MUL_MAC32) begin
+    if (operator_i == MUL_M32) begin
       result_o = int_result[31:0];
     end else begin
       result_o = short_result[31:0];
@@ -227,7 +227,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
    // Ensure only MUL, MULH, MULHSU, MULHU used (will only work if PULP_XPULP == 0)
    a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
-   |-> (((operator_i == MUL_MAC32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
+   |-> (((operator_i == MUL_M32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
 
   
   // check multiplication result for mulh

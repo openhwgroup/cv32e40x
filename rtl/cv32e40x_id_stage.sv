@@ -786,7 +786,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.alu_operand_b          <= '0;
       id_ex_pipe_o.alu_operand_c          <= '0;
 
-      id_ex_pipe_o.mult_operator          <= MUL_MAC32;
+      id_ex_pipe_o.mult_operator          <= MUL_M32;
       id_ex_pipe_o.mult_operand_a         <= '0;
       id_ex_pipe_o.mult_operand_b         <= '0;
       id_ex_pipe_o.mult_operand_c         <= '0;

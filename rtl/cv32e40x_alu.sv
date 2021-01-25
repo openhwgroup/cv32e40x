@@ -385,47 +385,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //----------------------------------------------------------------------------
 
 `ifdef CV32E40P_ASSERT_ON
-
-    // Check that no PULP_XPULP features are used
-
-    // Check that certain ALU operations are not used when PULP extension is not enabled
-    a_alu_operator_0 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> ((operator_i != ALU_ADDU ) && (operator_i != ALU_SUBU ) &&
-         (operator_i != ALU_ADDR ) && (operator_i != ALU_SUBR ) &&
-         (operator_i != ALU_ADDUR) && (operator_i != ALU_SUBUR) &&
-         (operator_i != ALU_ROR) && (operator_i != ALU_BEXT) &&
-         (operator_i != ALU_BEXTU) && (operator_i != ALU_BINS) &&
-         (operator_i != ALU_BCLR) && (operator_i != ALU_BSET) &&
-         (operator_i != ALU_BREV) && (operator_i != ALU_FF1) &&
-         (operator_i != ALU_FL1) && (operator_i != ALU_CNT) &&
-         (operator_i != ALU_CLB) && (operator_i != ALU_EXTS) &&
-         (operator_i != ALU_EXT) && (operator_i != ALU_LES) &&
-         (operator_i != ALU_LEU) && (operator_i != ALU_GTS) &&
-         (operator_i != ALU_GTU) && (operator_i != ALU_SLETS) &&
-         (operator_i != ALU_SLETU) && (operator_i != ALU_ABS) &&
-         (operator_i != ALU_CLIP) && (operator_i != ALU_CLIPU) &&
-         (operator_i != ALU_INS) && (operator_i != ALU_MIN) &&
-         (operator_i != ALU_MINU) && (operator_i != ALU_MAX) &&
-         (operator_i != ALU_MAXU) && (operator_i != ALU_SHUF) &&
-         (operator_i != ALU_SHUF2) && (operator_i != ALU_PCKLO) &&
-         (operator_i != ALU_PCKHI)));
-
-    
-
-
+ 
     // Ensure only basic RV32I + DIV*/REM* used
     a_alu_operator_1 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
     |-> ((operator_i == ALU_ADD) || (operator_i == ALU_SUB) || (operator_i == ALU_XOR) || (operator_i == ALU_OR) || (operator_i == ALU_AND) ||
          (operator_i == ALU_SRA) || (operator_i == ALU_SRL) || (operator_i == ALU_SLL) || (operator_i == ALU_LTS) || (operator_i == ALU_LTU) ||
          (operator_i == ALU_GES) || (operator_i == ALU_GEU) || (operator_i == ALU_EQ) || (operator_i == ALU_NE) || (operator_i == ALU_SLTS) ||
          (operator_i == ALU_SLTU) || (operator_i == ALU_DIVU) || (operator_i == ALU_DIV) || (operator_i == ALU_REMU) || (operator_i == ALU_REM)));
-
-    // Ensure basic RV32I + DIV*/REM* are encoded such that other operators can be optimized away
-    a_alu_operator_2 : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
-    |-> (((operator_i == ALU_ADD) || (operator_i == ALU_SUB) || (operator_i == ALU_XOR) || (operator_i == ALU_OR) || (operator_i == ALU_AND) ||
-          (operator_i == ALU_SRA) || (operator_i == ALU_SRL) || (operator_i == ALU_SLL) || (operator_i == ALU_LTS) || (operator_i == ALU_LTU) ||
-          (operator_i == ALU_GES) || (operator_i == ALU_GEU) || (operator_i == ALU_EQ) || (operator_i == ALU_NE) || (operator_i == ALU_SLTS) ||
-          (operator_i == ALU_SLTU) || (operator_i == ALU_DIVU) || (operator_i == ALU_DIV) || (operator_i == ALU_REMU) || (operator_i == ALU_REM)) == (operator_i[6] == 1'b0)));
 
 `endif
 
