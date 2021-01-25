@@ -84,15 +84,9 @@ module cv32e40x_tracer
   input  logic [31:0] imm_u_type,
   input  logic [31:0] imm_uj_type,
   input  logic [31:0] imm_i_type,
-  input  logic [11:0] imm_iz_type,
   input  logic [31:0] imm_z_type,
   input  logic [31:0] imm_s_type,
   input  logic [31:0] imm_sb_type,
-  input  logic [31:0] imm_s2_type,
-  input  logic [31:0] imm_s3_type,
-  input  logic [31:0] imm_vs_type,
-  input  logic [31:0] imm_vu_type,
-  input  logic [31:0] imm_shuffle_type,
   input  logic [ 4:0] imm_clip_type
 );
 

@@ -294,15 +294,6 @@
       end
     endfunction // printRInstr
 
-    function void printAddNInstr(input string mnemonic);
-      begin
-        regs_read.push_back('{rs1, rs1_value, 0});
-        regs_read.push_back('{rs2, rs2_value,0});
-        regs_write.push_back('{rd, 'x, 0});
-        str = $sformatf("%-16s x%0d, x%0d, x%0d, 0x%0d", mnemonic, rd, rs1, rs2, $unsigned(imm_s3_type[4:0]));
-      end
-    endfunction // printAddNInstr
-
     function void printR1Instr(input string mnemonic);
       begin
         regs_read.push_back('{rs1, rs1_value, 0});
@@ -449,31 +440,6 @@
       end
     endfunction // printCSRInstr
 
-    function void printBit1Instr(input string mnemonic);
-      begin
-        regs_read.push_back('{rs1, rs1_value, 0});
-        regs_write.push_back('{rd, 'x, 0});
-        str =  $sformatf("%-16s x%0d, x%0d, %0d, %0d", mnemonic, rd, rs1, imm_s3_type, imm_s2_type);
-      end
-    endfunction
-
-    function void printBitRevInstr(input string mnemonic);
-      begin
-        regs_read.push_back('{rs1, rs1_value, 0});
-        regs_write.push_back('{rd, 'x, 0});
-        str =  $sformatf("%-16s x%0d, x%0d, %0d, %0d", mnemonic, rd, rs1, imm_s2_type, imm_s3_type);
-      end
-    endfunction
-
-    function void printBit2Instr(input string mnemonic);
-      begin
-        regs_read.push_back('{rd, rs3_value, 0});
-        regs_read.push_back('{rs1, rs1_value, 0});
-        regs_write.push_back('{rd, 'x, 0});
-        str =  $sformatf("%-16s x%0d, x%0d, %0d, %0d", mnemonic, rd, rs1, imm_s3_type, imm_s2_type);
-      end
-    endfunction
-
     function void printAtomicInstr(input string mnemonic);
       begin
         regs_read.push_back('{rs1, rs1_value, 0});
@@ -584,15 +550,9 @@
 
         mnemonic = "p.mul";
 
-        if (imm_s3_type[4:0] != 5'b00000)
-          str_asm = $sformatf("%s%sN", mnemonic, str_suf);
-        else
-          str_asm = $sformatf("%s%s", mnemonic, str_suf);
+        str_asm = $sformatf("%s%s", mnemonic, str_suf);
 
-        if (instr[29:25] != 5'b00000)
-          str = $sformatf("%-16s x%0d, x%0d, x%0d, %0d", str_asm, rd, rs1, rs2, $unsigned(imm_s3_type[4:0]));
-        else
-          str = $sformatf("%-16s x%0d, x%0d, x%0d", str_asm, rd, rs1, rs2);
+        str = $sformatf("%-16s x%0d, x%0d, x%0d", str_asm, rd, rs1, rs2);
       end
     endfunction
 
