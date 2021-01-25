@@ -38,7 +38,9 @@ module cv32e40x_alu_div import cv32e40x_pkg::*;
     input  logic                    OpBIsZero_SI,
     //
     input  logic                    OpBSign_SI, // gate this to 0 in case of unsigned ops
-    input  logic [1:0]              OpCode_SI,  // 0: udiv, 2: urem, 1: div, 3: rem
+    input logic                     DivSigned_SI,
+    input logic                     DivRem_SI,
+
     // handshake
     input  logic                    InVld_SI,
     // output IF
@@ -78,7 +80,7 @@ module cv32e40x_alu_div import cv32e40x_pkg::*;
   // datapath
   ///////////////////////////////////////////////////////////////////////////////
 
-  assign PmSel_S     = LoadEn_S & ~(OpCode_SI[0] & (OpA_DI[$high(OpA_DI)] ^ OpBSign_SI));
+  assign PmSel_S     = LoadEn_S & ~(DivSigned_SI & (OpA_DI[$high(OpA_DI)] ^ OpBSign_SI));
 
   // muxes
   assign AddMux_D    = (LoadEn_S) ? OpA_DI  : BReg_DP;
@@ -178,9 +180,9 @@ module cv32e40x_alu_div import cv32e40x_pkg::*;
   ///////////////////////////////////////////////////////////////////////////////
 
   // get flags
-  assign RemSel_SN  = (LoadEn_S) ? OpCode_SI[1] : RemSel_SP;
+  assign RemSel_SN  = (LoadEn_S) ? DivRem_SI : RemSel_SP;
   assign CompInv_SN = (LoadEn_S) ? OpBSign_SI   : CompInv_SP;
-  assign ResInv_SN  = (LoadEn_S) ? (~OpBIsZero_SI | OpCode_SI[1]) & OpCode_SI[0] & (OpA_DI[$high(OpA_DI)] ^ OpBSign_SI) : ResInv_SP;
+  assign ResInv_SN  = (LoadEn_S) ? (~OpBIsZero_SI | DivRem_SI) & DivSigned_SI & (OpA_DI[$high(OpA_DI)] ^ OpBSign_SI) : ResInv_SP;
 
   assign AReg_DN   = (ARegEn_S)   ? AddOut_D : AReg_DP;
   assign BReg_DN   = (BRegEn_S)   ? BMux_D   : BReg_DP;

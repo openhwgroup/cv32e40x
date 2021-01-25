@@ -279,18 +279,45 @@ module cv32e40x_alu import cv32e40x_pkg::*;
    logic [31:0] result_div;
    logic        div_ready;
    logic        div_signed;
+   logic        div_rem;
    logic        div_op_a_signed;
    logic [5:0]  div_shift_int;
 
-   assign div_signed = operator_i[0];
+   // Decode operator
+   always_comb begin
+
+     div_signed = 1'b0;
+     div_rem    = 1'b0;
+     div_valid  = 1'b0;
+
+     unique case(operator_i)
+       ALU_DIVU: begin
+	 div_valid  = enable_i;
+         div_signed = 1'b0;
+         div_rem    = 1'b0;
+       end
+       ALU_DIV : begin
+	 div_valid  = enable_i;
+         div_signed = 1'b1;
+         div_rem    = 1'b0;
+       end
+       ALU_REMU: begin
+	 div_valid  = enable_i;
+         div_signed = 1'b0;
+         div_rem    = 1'b1;
+       end
+       ALU_REM : begin
+	 div_valid  = enable_i;
+         div_signed = 1'b1;
+         div_rem    = 1'b1;
+       end
+       default: ; // default case to suppress unique warning
+     endcase
+   end
 
    assign div_op_a_signed = operand_a_i[31] & div_signed;
-
    assign div_shift_int = ff_no_one ? 6'd31 : clb_result;
    assign div_shift = div_shift_int + (div_op_a_signed ? 6'd0 : 6'd1);
-
-   assign div_valid = enable_i & ((operator_i == ALU_DIV) || (operator_i == ALU_DIVU) ||
-                      (operator_i == ALU_REM) || (operator_i == ALU_REMU));
 
    // inputs A and B are swapped
    cv32e40x_alu_div alu_div_i
@@ -305,8 +332,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       .OpBIsZero_SI ( (cnt_result == 0) ),
 
       .OpBSign_SI   ( div_op_a_signed   ),
-      .OpCode_SI    ( operator_i[1:0]   ), // todo: this should not depend on encoding like this: instead change divider to have two inputs, e.g. unsigned, rem
-
+      .DivSigned_SI ( div_signed        ),
+      .DivRem_SI    ( div_rem           ),
       .Res_DO       ( result_div        ),
 
       // Hand-Shake
