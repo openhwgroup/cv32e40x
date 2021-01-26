@@ -77,6 +77,10 @@ module cv32e40x_wrapper
   output logic        core_sleep_o
 );
 
+// obi interfaces for (temporary) connection
+if_obi_instruction instr_bus();
+if_obi_data data_bus();
+
 `ifdef CV32E40P_ASSERT_ON
 
     // RTL Assertions
@@ -143,18 +147,18 @@ module cv32e40x_wrapper
       .ex_reg_we      ( core_i.regfile_alu_we_fw                    ),
       .ex_reg_wdata   ( core_i.regfile_alu_wdata_fw                 ),
 
-      .ex_data_addr   ( core_i.data_addr_o                          ),
-      .ex_data_req    ( core_i.data_req_o                           ),
-      .ex_data_gnt    ( core_i.data_gnt_i                           ),
-      .ex_data_we     ( core_i.data_we_o                            ),
-      .ex_data_wdata  ( core_i.data_wdata_o                         ),
+      .ex_data_addr   ( core_i.data_bus.a_payload.addr              ),
+      .ex_data_req    ( core_i.data_bus.req                         ),
+      .ex_data_gnt    ( core_i.data_bus.gnt                         ),
+      .ex_data_we     ( core_i.data_bus.a_payload.we                ),
+      .ex_data_wdata  ( core_i.data_bus.a_payload.wdata             ),
       .data_misaligned ( core_i.data_misaligned                     ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn_dec             ),
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( core_i.id_stage_i.controller_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( core_i.ex_stage_i.branch_in_ex_i            ),
+      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex   ),
 
       .wb_valid       ( core_i.wb_valid                             ),
       .wb_reg_addr    ( core_i.regfile_waddr_fw_wb_o                ),
@@ -176,5 +180,21 @@ module cv32e40x_wrapper
         #(
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_i (.*);
+
+    // Connect systemverilog instances of core to io on wrapper
+    assign instr_req_o = instr_bus.req;
+    assign instr_addr_o = instr_bus.a_payload.addr;
+    assign instr_bus.gnt = instr_gnt_i;
+    assign instr_bus.rvalid = instr_rvalid_i;
+    assign instr_bus.r_payload.rdata = instr_rdata_i;
+
+    assign data_req_o = data_bus.req;
+    assign data_we_o  = data_bus.a_payload.we;
+    assign data_be_o  = data_bus.a_payload.be;
+    assign data_addr_o  = data_bus.a_payload.addr;
+    assign data_wdata_o  = data_bus.a_payload.wdata;
+    assign data_bus.gnt = data_gnt_i;
+    assign data_bus.rvalid = data_rvalid_i;
+    assign data_bus.r_payload.rdata = data_rdata_i;
 
 endmodule

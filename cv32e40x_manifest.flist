@@ -29,6 +29,7 @@
 +incdir+${DESIGN_RTL_DIR}/../sva
 
 ${DESIGN_RTL_DIR}/include/cv32e40x_pkg.sv
+${DESIGN_RTL_DIR}/include/cv32e40x_if_obi.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_tracer_pkg.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_csr.sv
@@ -51,7 +52,8 @@ ${DESIGN_RTL_DIR}/cv32e40x_ff_one.sv
 ${DESIGN_RTL_DIR}/cv32e40x_popcnt.sv
 ${DESIGN_RTL_DIR}/cv32e40x_apu_disp.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller.sv
-${DESIGN_RTL_DIR}/cv32e40x_obi_interface.sv
+${DESIGN_RTL_DIR}/cv32e40x_instr_obi_interface.sv
+${DESIGN_RTL_DIR}/cv32e40x_data_obi_interface.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetch_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_sleep_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_core.sv
