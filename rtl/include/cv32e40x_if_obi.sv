@@ -39,7 +39,7 @@ endinterface : if_obi_instruction
   
 
 // OBI interface definitions for data bus
-interface if_obi_data;
+interface if_obi_data; import cv32e40x_pkg::*;
 
     // A channel signals
     logic                      req;

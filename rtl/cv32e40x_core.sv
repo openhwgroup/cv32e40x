@@ -48,14 +48,7 @@ module cv32e40x_core
   if_obi_instruction.master  instr_bus,
 
   // Data memory interface
-  output logic        data_req_o,
-  input  logic        data_gnt_i,
-  input  logic        data_rvalid_i,
-  output logic        data_we_o,
-  output logic [3:0]  data_be_o,
-  output logic [31:0] data_addr_o,
-  output logic [31:0] data_wdata_o,
-  input  logic [31:0] data_rdata_i,
+  if_obi_data.master data_bus,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
@@ -504,18 +497,7 @@ module cv32e40x_core
     .rst_n                 ( rst_ni             ),
 
     //output to data memory
-    .data_req_o            ( data_req_o       ),
-    .data_gnt_i            ( data_gnt_i       ),
-    .data_rvalid_i         ( data_rvalid_i      ),
-    .data_err_i            ( 1'b0               ),  // Bus error (not used yet)
-
-    .data_addr_o           ( data_addr_o      ),
-    .data_we_o             ( data_we_o          ),
-    .data_atop_o           ( data_atop_o        ),
-    .data_be_o             ( data_be_o          ),
-    .data_wdata_o          ( data_wdata_o       ),
-    .data_rdata_i          ( data_rdata_i       ),
-
+    .data_bus              ( data_bus           ),
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
    

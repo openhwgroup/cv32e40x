@@ -29,16 +29,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input  logic         rst_n,
 
     // output to data memory
-    output logic         data_req_o,
-    input  logic         data_gnt_i,
-    input  logic         data_rvalid_i,
-    input  logic         data_err_i,           // External bus error (validity defined by data_rvalid_i) (not used yet)
-
-    output logic [31:0]  data_addr_o,
-    output logic         data_we_o,
-    output logic [3:0]   data_be_o,
-    output logic [31:0]  data_wdata_o,
-    input  logic [31:0]  data_rdata_i,
+    if_obi_data.master data_bus,
 
     // ID/EX pipeline
     input id_ex_pipe_t   id_ex_pipe_i,
@@ -473,8 +464,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40x_obi_interface
-  #(.TRANS_STABLE          (1                  ))
+  cv32e40x_data_obi_interface
   data_obi_i
   (
     .clk                   ( clk               ),
@@ -492,16 +482,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .resp_rdata_o          ( resp_rdata        ),
     .resp_err_o            ( resp_err          ),       // Unused for now
 
-    .obi_req_o             ( data_req_o        ),
-    .obi_gnt_i             ( data_gnt_i        ),
-    .obi_addr_o            ( data_addr_o       ),
-    .obi_we_o              ( data_we_o         ),
-    .obi_be_o              ( data_be_o         ),
-    .obi_wdata_o           ( data_wdata_o      ),
-    .obi_atop_o            ( data_atop_o       ),       // Not (yet) defined in OBI 1.0 spec
-    .obi_rdata_i           ( data_rdata_i      ),
-    .obi_rvalid_i          ( data_rvalid_i     ),
-    .obi_err_i             ( data_err_i        )        // External bus error (validity defined by obi_rvalid_i)
+    .obi_bus               ( data_bus          )
   );
 
 
@@ -528,14 +509,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Check that an rvalid only occurs when there are outstanding transaction(s)
   property p_no_spurious_rvalid;
-     @(posedge clk) (data_rvalid_i == 1'b1) |-> (cnt_q > 0);
+     @(posedge clk) (data_bus.rvalid == 1'b1) |-> (cnt_q > 0);
   endproperty
 
   a_no_spurious_rvalid : assert property(p_no_spurious_rvalid);
 
   // Check that the address/we/be/atop does not contain X when request is sent
   property p_address_phase_signals_defined;
-     @(posedge clk) (data_req_o == 1'b1) |-> (!($isunknown(data_addr_o) || $isunknown(data_we_o) || $isunknown(data_be_o) || $isunknown(data_atop_o)));
+     @(posedge clk) (data_bus.req == 1'b1) |-> (!($isunknown(data_bus.a_payload.addr) || $isunknown(data_bus.a_payload.we) || $isunknown(data_bus.a_payload.be) || $isunknown(data_bus.a_payload.atop)));
   endproperty
 
   a_address_phase_signals_defined : assert property(p_address_phase_signals_defined);
