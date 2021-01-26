@@ -44,12 +44,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        req_i,
 
     // instruction cache interface
-    output logic                   instr_req_o,
-    output logic            [31:0] instr_addr_o,
-    input  logic                   instr_gnt_i,
-    input  logic                   instr_rvalid_i,
-    input  logic            [31:0] instr_rdata_i,
-    input  logic                   instr_err_i,      // External bus error (validity defined by instr_rvalid_i) (not used yet)
+    if_obi_instruction.master  instr_bus,
 
     // Output of IF Pipeline stage
     output logic              instr_valid_id_o,      // instruction in IF/ID pipeline is valid
@@ -160,12 +155,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .fetch_rdata_o     ( fetch_rdata                 ),
 
     // goes to instruction memory / instruction cache
-    .instr_req_o       ( instr_req_o                 ),
-    .instr_addr_o      ( instr_addr_o                ),
-    .instr_gnt_i       ( instr_gnt_i                 ),
-    .instr_rvalid_i    ( instr_rvalid_i              ),
-    .instr_err_i       ( instr_err_i                 ),     // Not supported (yet)
-    .instr_rdata_i     ( instr_rdata_i               ),
+    .instr_bus         ( instr_bus                  ),
 
     // Prefetch Buffer Status
     .busy_o            ( prefetch_busy               )

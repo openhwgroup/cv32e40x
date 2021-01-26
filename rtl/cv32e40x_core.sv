@@ -45,11 +45,7 @@ module cv32e40x_core
   input  logic [31:0] dm_exception_addr_i,
 
   // Instruction memory interface
-  output logic        instr_req_o,
-  input  logic        instr_gnt_i,
-  input  logic        instr_rvalid_i,
-  output logic [31:0] instr_addr_o,
-  input  logic [31:0] instr_rdata_i,
+  if_obi_instruction.master  instr_bus,
 
   // Data memory interface
   output logic        data_req_o,
@@ -276,12 +272,7 @@ module cv32e40x_core
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .instr_req_o         ( instr_req_o       ),
-    .instr_addr_o        ( instr_addr_o      ),
-    .instr_gnt_i         ( instr_gnt_i       ),
-    .instr_rvalid_i      ( instr_rvalid_i    ),
-    .instr_rdata_i       ( instr_rdata_i     ),
-    .instr_err_i         ( 1'b0              ),  // Bus error (not used yet)
+    .instr_bus           ( instr_bus         ),
 
     // outputs to ID stage
     .instr_valid_id_o    ( instr_valid_id    ),

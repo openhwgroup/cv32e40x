@@ -38,12 +38,7 @@ module cv32e40x_prefetch_buffer
   output logic [31:0] fetch_rdata_o,
 
   // goes to instruction memory / instruction cache
-  output logic        instr_req_o,
-  input  logic        instr_gnt_i,
-  output logic [31:0] instr_addr_o,
-  input  logic [31:0] instr_rdata_i,
-  input  logic        instr_rvalid_i,
-  input  logic        instr_err_i,      // Not used yet (future addition)
+  if_obi_instruction.master  instr_bus,
 
   // Prefetch Buffer Status
   output logic        busy_o
@@ -141,12 +136,7 @@ module cv32e40x_prefetch_buffer
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40x_obi_interface
-  #(
-    .TRANS_STABLE          ( 0                 )        // trans_* is NOT guaranteed stable during waited transfers;
-                                                        // this is ignored for legacy PULP behavior (not compliant to OBI)
-  )                                                     // Keep this parameter stuck to 0 to make HWLP work
-
+  cv32e40x_instr_obi_interface
   instruction_obi_i
   (
     .clk                   ( clk               ),
@@ -155,25 +145,13 @@ module cv32e40x_prefetch_buffer
     .trans_valid_i         ( trans_valid       ),
     .trans_ready_o         ( trans_ready       ),
     .trans_addr_i          ( {trans_addr[31:2], 2'b00} ),
-    .trans_we_i            ( 1'b0              ),       // Instruction interface (never write)
-    .trans_be_i            ( 4'b1111           ),       // Corresponding obi_be_o not used
-    .trans_wdata_i         ( 32'b0             ),       // Corresponding obi_wdata_o not used
     .trans_atop_i          ( 6'b0              ),       // Atomics not used on instruction bus
 
     .resp_valid_o          ( resp_valid        ),
     .resp_rdata_o          ( resp_rdata        ),
     .resp_err_o            ( resp_err          ),       // Unused for now
 
-    .obi_req_o             ( instr_req_o       ),
-    .obi_gnt_i             ( instr_gnt_i       ),
-    .obi_addr_o            ( instr_addr_o      ),
-    .obi_we_o              (                   ),       // Left unconnected on purpose
-    .obi_be_o              (                   ),       // Left unconnected on purpose
-    .obi_wdata_o           (                   ),       // Left unconnected on purpose
-    .obi_atop_o            (                   ),       // Left unconnected on purpose
-    .obi_rdata_i           ( instr_rdata_i     ),
-    .obi_rvalid_i          ( instr_rvalid_i    ),
-    .obi_err_i             ( instr_err_i       )
+    .obi_bus               ( instr_bus         )
   );
 
   //----------------------------------------------------------------------------
@@ -201,7 +179,7 @@ module cv32e40x_prefetch_buffer
 
   // Check that bus interface transactions are word aligned
   property p_instr_addr_word_aligned;
-     @(posedge clk) (1'b1) |-> (instr_addr_o[1:0] == 2'b00);
+     @(posedge clk) (1'b1) |-> (instr_bus.a_payload.addr[1:0] == 2'b00);
   endproperty
 
   a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned);
@@ -225,7 +203,7 @@ module cv32e40x_prefetch_buffer
 
  
   property p_no_error;
-     @(posedge clk) (1'b1) |-> ((instr_err_i == 1'b0));
+     @(posedge clk) (1'b1) |-> ((instr_bus.r_payload.err == 1'b0));
   endproperty
 
   a_no_error : assert property(p_no_error);

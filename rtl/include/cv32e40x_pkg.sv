@@ -802,5 +802,39 @@ typedef enum logic [2:0]  {ALIGNED32,
   // OBI interface FSM state encoding
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
+  
+  
+  
+  // OBI bus and internal data types
+
+  parameter INSTR_ADDR_WIDTH = 32;
+  parameter INSTR_DATA_WIDTH = 32;
+  parameter DATA_ADDR_WIDTH = 32;
+  parameter DATA_DATA_WIDTH = 32;
+  
+  typedef struct packed {
+    logic [INSTR_ADDR_WIDTH-1:0] addr;
+    logic [5:0]                  atop;
+  } inst_req_t;
+
+  typedef struct packed {
+    logic [INSTR_DATA_WIDTH-1:0] rdata;
+    logic                        err;
+    logic                        exokay;
+  } inst_resp_t;
+
+  typedef struct packed {
+    logic [DATA_ADDR_WIDTH-1:0]     addr;
+    logic [5:0]                     atop;
+    logic                           we;
+    logic [(DATA_DATA_WIDTH/8)-1:0] be;
+    logic [DATA_DATA_WIDTH-1:0]     wdata;
+ } data_req_t;
+
+ typedef struct packed {
+    logic [DATA_DATA_WIDTH-1:0] rdata;
+    logic                       err;
+    logic                       exokay;
+ } data_resp_t;
 
 endpackage
