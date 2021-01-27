@@ -78,7 +78,7 @@ module cv32e40x_wrapper
 );
 
 // obi interfaces for (temporary) connection
-if_obi_instruction m_obi_instr_if();
+if_obi_instr m_obi_instr_if();
 if_obi_data m_obi_data_if();
 
 `ifdef CV32E40P_ASSERT_ON

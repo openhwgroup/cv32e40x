@@ -19,7 +19,7 @@
 
 
   // OBI interface definition for instruction bus
-interface if_obi_instruction; import cv32e40x_pkg::*;
+interface if_obi_instr; import cv32e40x_pkg::*;
 
     // A channel signals
     logic                      req;
@@ -35,7 +35,7 @@ interface if_obi_instruction; import cv32e40x_pkg::*;
        input  gnt, rvalid, resp_payload
        );
   
-endinterface : if_obi_instruction
+endinterface : if_obi_instr
   
 
 // OBI interface definitions for data bus

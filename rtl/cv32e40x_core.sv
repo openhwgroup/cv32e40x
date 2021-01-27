@@ -45,7 +45,7 @@ module cv32e40x_core
   input  logic [31:0] dm_exception_addr_i,
 
   // Instruction memory interface
-  if_obi_instruction.master  m_obi_instr_if,
+  if_obi_instr.master  m_obi_instr_if,
 
   // Data memory interface
   if_obi_data.master m_obi_data_if,

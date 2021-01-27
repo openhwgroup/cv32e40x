@@ -38,7 +38,7 @@ module cv32e40x_prefetch_buffer
   output logic [31:0] fetch_rdata_o,
 
   // goes to instruction memory / instruction cache
-  if_obi_instruction.master  m_obi_instr_if,
+  if_obi_instr.master  m_obi_instr_if,
 
   // Prefetch Buffer Status
   output logic        busy_o

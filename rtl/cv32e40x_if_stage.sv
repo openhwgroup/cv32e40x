@@ -44,7 +44,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        req_i,
 
     // instruction cache interface
-    if_obi_instruction.master  m_obi_instr_if,
+    if_obi_instr.master  m_obi_instr_if,
 
     // Output of IF Pipeline stage
     output logic              instr_valid_id_o,      // instruction in IF/ID pipeline is valid

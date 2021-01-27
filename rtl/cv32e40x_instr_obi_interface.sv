@@ -51,7 +51,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   output logic        resp_err_o,
 
   // OBI interface
-  if_obi_instruction.master  m_obi_instr_if
+  if_obi_instr.master  m_obi_instr_if
 
 );
 
