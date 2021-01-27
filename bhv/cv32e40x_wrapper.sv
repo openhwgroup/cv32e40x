@@ -101,7 +101,7 @@ if_obi_data m_obi_data_if();
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
           .is_decoding_i      ( core_i.id_stage_i.is_decoding_o    ),
-          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn_dec ),
+          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn     ),
           .hart_id_i          ( core_i.hart_id_i                   ),
           .pc_id_i            ( core_i.pc_id                       )
       );
@@ -130,10 +130,10 @@ if_obi_data m_obi_data_if();
       .compressed     ( core_i.id_stage_i.is_compressed_i           ),
       .id_valid       ( core_i.id_stage_i.id_valid_o                ),
       .is_decoding    ( core_i.id_stage_i.is_decoding_o             ),
-      .is_illegal     ( core_i.id_stage_i.illegal_insn_dec          ),
+      .is_illegal     ( core_i.id_stage_i.illegal_insn              ),
       .trigger_match  ( core_i.id_stage_i.trigger_match_i           ),
-      .rs1_value      ( core_i.id_stage_i.operand_a_fw_id           ),
-      .rs2_value      ( core_i.id_stage_i.operand_b_fw_id           ),
+      .rs1_value      ( core_i.id_stage_i.operand_a_fw              ),
+      .rs2_value      ( core_i.id_stage_i.operand_b_fw              ),
       .rs3_value      ( core_i.id_stage_i.alu_operand_c             ),
       .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b             ),
 
@@ -154,7 +154,7 @@ if_obi_data m_obi_data_if();
       .ex_data_wdata  ( core_i.m_obi_data_if.req_payload.wdata      ),
       .data_misaligned ( core_i.data_misaligned                     ),
 
-      .ebrk_insn      ( core_i.id_stage_i.ebrk_insn_dec             ),
+      .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( core_i.id_stage_i.controller_i.ebrk_force_debug_mode ),
 

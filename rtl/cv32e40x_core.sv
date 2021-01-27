@@ -657,15 +657,15 @@ module cv32e40x_core
         expected_ebrk_mepc    <= 32'b0;
       end
       else begin
-        if (!first_illegal_found && is_decoding && id_valid && id_stage_i.illegal_insn_dec && !id_stage_i.controller_i.debug_mode_n) begin
+        if (!first_illegal_found && is_decoding && id_valid && id_stage_i.illegal_insn && !id_stage_i.controller_i.debug_mode_n) begin
           first_illegal_found   <= 1'b1;
           expected_illegal_mepc <= pc_id;
         end
-        if (!first_ecall_found && is_decoding && id_valid && id_stage_i.ecall_insn_dec && !id_stage_i.controller_i.debug_mode_n) begin
+        if (!first_ecall_found && is_decoding && id_valid && id_stage_i.ecall_insn && !id_stage_i.controller_i.debug_mode_n) begin
           first_ecall_found   <= 1'b1;
           expected_ecall_mepc <= pc_id;
         end
-        if (!first_ebrk_found && is_decoding && id_valid && id_stage_i.ebrk_insn_dec && (id_stage_i.controller_i.ctrl_fsm_ns != DBG_FLUSH)) begin
+        if (!first_ebrk_found && is_decoding && id_valid && id_stage_i.ebrk_insn && (id_stage_i.controller_i.ctrl_fsm_ns != DBG_FLUSH)) begin
           first_ebrk_found   <= 1'b1;
           expected_ebrk_mepc <= pc_id;
         end
