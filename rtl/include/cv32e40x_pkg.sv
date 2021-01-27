@@ -814,13 +814,11 @@ typedef enum logic [2:0]  {ALIGNED32,
   
   typedef struct packed {
     logic [INSTR_ADDR_WIDTH-1:0] addr;
-    logic [5:0]                  atop;
   } inst_req_t;
 
   typedef struct packed {
     logic [INSTR_DATA_WIDTH-1:0] rdata;
     logic                        err;
-    logic                        exokay;
   } inst_resp_t;
 
   typedef struct packed {

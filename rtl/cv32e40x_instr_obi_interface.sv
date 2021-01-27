@@ -44,7 +44,6 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   input  logic        trans_valid_i,
   output logic        trans_ready_o,
   input  logic [31:0] trans_addr_i,
-  input  logic  [5:0] trans_atop_i,             // Future proof addition (not part of OBI 1.0 spec; not used in CV32E40P)
 
   // Transaction response interface
   output logic        resp_valid_o,             // Note: Consumer is assumed to be 'ready' whenever resp_valid_o = 1
@@ -52,8 +51,8 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   output logic        resp_err_o,
 
   // OBI interface
-  if_obi_instruction.master  obi_bus
-  
+  if_obi_instruction.master  m_obi_instr_if
+
 );
 
   obi_if_state_e state_q, next_state;
@@ -66,9 +65,9 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   // interface (resp_*). It is assumed that the consumer of the transaction response
   // is always receptive when resp_valid_o = 1 (otherwise a response would get dropped)
 
-  assign resp_valid_o = obi_bus.rvalid;
-  assign resp_rdata_o = obi_bus.r_payload.rdata;
-  assign resp_err_o   = obi_bus.r_payload.err;
+  assign resp_valid_o = m_obi_instr_if.rvalid;
+  assign resp_rdata_o = m_obi_instr_if.resp_payload.rdata;
+  assign resp_err_o   = m_obi_instr_if.resp_payload.err;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -78,7 +77,6 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   
   // OBI A channel registers (to keep A channel stable)
   logic [31:0]        obi_addr_q;
-  logic  [5:0]        obi_atop_q;
 
   // If the incoming transaction itself is not stable; use an FSM to make sure that
   // the OBI address phase signals are kept stable during non-granted requests.
@@ -98,7 +96,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
       // Default (transparent) state. Transaction requests are passed directly onto the OBI A channel.
       TRANSPARENT:
       begin
-        if (obi_bus.req && !obi_bus.gnt) begin
+        if (m_obi_instr_if.req && !m_obi_instr_if.gnt) begin
           // OBI request not immediately granted. Move to REGISTERED state such that OBI address phase
           // signals can be kept stable while the transaction request (trans_*) can possibly change.
           next_state = REGISTERED;
@@ -108,7 +106,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
       // Registered state. OBI address phase signals are kept stable (driven from registers).
       REGISTERED:
       begin
-        if (obi_bus.gnt) begin
+        if (m_obi_instr_if.gnt) begin
           // Received grant. Move back to TRANSPARENT state such that next transaction request can be passed on.
           next_state = TRANSPARENT;
         end
@@ -120,14 +118,12 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   always_comb
   begin
     if (state_q == TRANSPARENT) begin
-      obi_bus.req             = trans_valid_i;              // Do not limit number of outstanding transactions
-      obi_bus.a_payload.addr  = trans_addr_i;
-      obi_bus.a_payload.atop  = trans_atop_i;
+      m_obi_instr_if.req             = trans_valid_i;              // Do not limit number of outstanding transactions
+      m_obi_instr_if.req_payload.addr  = trans_addr_i;
     end else begin
       // state_q == REGISTERED
-      obi_bus.req             = 1'b1;                       // Never retract request
-      obi_bus.a_payload.addr  = obi_addr_q;
-      obi_bus.a_payload.atop  = obi_atop_q;
+      m_obi_instr_if.req             = 1'b1;                       // Never retract request
+      m_obi_instr_if.req_payload.addr  = obi_addr_q;
     end
   end
 
@@ -141,15 +137,13 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
     begin
       state_q       <= TRANSPARENT;
       obi_addr_q    <= 32'b0;
-      obi_atop_q    <= 6'b0;
     end
     else
     begin
       state_q       <= next_state;
       if ((state_q == TRANSPARENT) && (next_state == REGISTERED)) begin
         // Keep OBI A channel signals stable throughout REGISTERED state
-        obi_addr_q  <= obi_bus.a_payload.addr;
-        obi_atop_q  <= obi_bus.a_payload.atop;
+        obi_addr_q  <= m_obi_instr_if.req_payload.addr;
       end
     end
   end
@@ -162,4 +156,4 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   
   
 
-endmodule // cv32e40x_obi_interface
+endmodule // cv32e40x_instr_obi_interface

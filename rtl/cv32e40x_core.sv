@@ -45,10 +45,10 @@ module cv32e40x_core
   input  logic [31:0] dm_exception_addr_i,
 
   // Instruction memory interface
-  if_obi_instruction.master  instr_bus,
+  if_obi_instruction.master  m_obi_instr_if,
 
   // Data memory interface
-  if_obi_data.master data_bus,
+  if_obi_data.master m_obi_data_if,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
@@ -265,11 +265,11 @@ module cv32e40x_core
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .instr_bus           ( instr_bus         ),
+    .m_obi_instr_if      ( m_obi_instr_if     ),
 
     // outputs to ID stage
-    .instr_valid_id_o    ( instr_valid_id    ),
-    .instr_rdata_id_o    ( instr_rdata_id    ),
+    .instr_valid_id_o    ( instr_valid_id     ),
+    .instr_rdata_id_o    ( instr_rdata_id     ),
     .is_fetch_failed_o   ( is_fetch_failed_id ),
 
     // control signals
@@ -497,7 +497,7 @@ module cv32e40x_core
     .rst_n                 ( rst_ni             ),
 
     //output to data memory
-    .data_bus              ( data_bus           ),
+    .m_obi_data_if         ( m_obi_data_if      ),
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
    

@@ -78,8 +78,8 @@ module cv32e40x_wrapper
 );
 
 // obi interfaces for (temporary) connection
-if_obi_instruction instr_bus();
-if_obi_data data_bus();
+if_obi_instruction m_obi_instr_if();
+if_obi_data m_obi_data_if();
 
 `ifdef CV32E40P_ASSERT_ON
 
@@ -147,18 +147,18 @@ if_obi_data data_bus();
       .ex_reg_we      ( core_i.regfile_alu_we_fw                    ),
       .ex_reg_wdata   ( core_i.regfile_alu_wdata_fw                 ),
 
-      .ex_data_addr   ( core_i.data_bus.a_payload.addr              ),
-      .ex_data_req    ( core_i.data_bus.req                         ),
-      .ex_data_gnt    ( core_i.data_bus.gnt                         ),
-      .ex_data_we     ( core_i.data_bus.a_payload.we                ),
-      .ex_data_wdata  ( core_i.data_bus.a_payload.wdata             ),
+      .ex_data_addr   ( core_i.m_obi_data_if.req_payload.addr       ),
+      .ex_data_req    ( core_i.m_obi_data_if.req                    ),
+      .ex_data_gnt    ( core_i.m_obi_data_if.gnt                    ),
+      .ex_data_we     ( core_i.m_obi_data_if.req_payload.we         ),
+      .ex_data_wdata  ( core_i.m_obi_data_if.req_payload.wdata      ),
       .data_misaligned ( core_i.data_misaligned                     ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn_dec             ),
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( core_i.id_stage_i.controller_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex   ),
+      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ),
 
       .wb_valid       ( core_i.wb_valid                             ),
       .wb_reg_addr    ( core_i.regfile_waddr_fw_wb_o                ),
@@ -171,7 +171,7 @@ if_obi_data data_bus();
       .imm_z_type     ( core_i.id_stage_i.imm_z_type                ),
       .imm_s_type     ( core_i.id_stage_i.imm_s_type                ),
       .imm_sb_type    ( core_i.id_stage_i.imm_sb_type               ),
-      .imm_clip_type  ( core_i.id_stage_i.instr[11:7]       )
+      .imm_clip_type  ( core_i.id_stage_i.instr[11:7]               )
     );
 `endif
 
@@ -182,19 +182,19 @@ if_obi_data data_bus();
     core_i (.*);
 
     // Connect systemverilog instances of core to io on wrapper
-    assign instr_req_o = instr_bus.req;
-    assign instr_addr_o = instr_bus.a_payload.addr;
-    assign instr_bus.gnt = instr_gnt_i;
-    assign instr_bus.rvalid = instr_rvalid_i;
-    assign instr_bus.r_payload.rdata = instr_rdata_i;
+    assign instr_req_o = m_obi_instr_if.req;
+    assign instr_addr_o = m_obi_instr_if.req_payload.addr;
+    assign m_obi_instr_if.gnt = instr_gnt_i;
+    assign m_obi_instr_if.rvalid = instr_rvalid_i;
+    assign m_obi_instr_if.resp_payload.rdata = instr_rdata_i;
 
-    assign data_req_o = data_bus.req;
-    assign data_we_o  = data_bus.a_payload.we;
-    assign data_be_o  = data_bus.a_payload.be;
-    assign data_addr_o  = data_bus.a_payload.addr;
-    assign data_wdata_o  = data_bus.a_payload.wdata;
-    assign data_bus.gnt = data_gnt_i;
-    assign data_bus.rvalid = data_rvalid_i;
-    assign data_bus.r_payload.rdata = data_rdata_i;
+    assign data_req_o = m_obi_data_if.req;
+    assign data_we_o  = m_obi_data_if.req_payload.we;
+    assign data_be_o  = m_obi_data_if.req_payload.be;
+    assign data_addr_o  = m_obi_data_if.req_payload.addr;
+    assign data_wdata_o  = m_obi_data_if.req_payload.wdata;
+    assign m_obi_data_if.gnt = data_gnt_i;
+    assign m_obi_data_if.rvalid = data_rvalid_i;
+    assign m_obi_data_if.resp_payload.rdata = data_rdata_i;
 
 endmodule

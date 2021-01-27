@@ -24,15 +24,15 @@ interface if_obi_instruction; import cv32e40x_pkg::*;
     // A channel signals
     logic                      req;
     logic                      gnt;
-    inst_req_t                 a_payload;
+    inst_req_t                 req_payload;
     // R channel signals
     logic                      rvalid;
-    inst_resp_t                r_payload;
+    inst_resp_t                resp_payload;
   
     modport master
        (
-       output req, a_payload,
-       input  gnt, rvalid, r_payload
+       output req, req_payload,
+       input  gnt, rvalid, resp_payload
        );
   
 endinterface : if_obi_instruction
@@ -44,17 +44,17 @@ interface if_obi_data; import cv32e40x_pkg::*;
     // A channel signals
     logic                      req;
     logic                      gnt;
-    data_req_t                 a_payload;
+    data_req_t                 req_payload;
 
 
     // R channel signals
     logic                      rvalid;
-    data_resp_t                r_payload;
+    data_resp_t                resp_payload;
 
     modport master
         (
-        output req, a_payload,
-        input  gnt, rvalid, r_payload
+        output req, req_payload,
+        input  gnt, rvalid, resp_payload
         );
 
 endinterface : if_obi_data

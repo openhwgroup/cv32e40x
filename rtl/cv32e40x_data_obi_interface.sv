@@ -55,7 +55,7 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
   output logic        resp_err_o,
 
   // OBI interface
-  if_obi_data.master obi_bus
+  if_obi_data.master m_obi_data_if
 
 );
 
@@ -69,9 +69,9 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
   // interface (resp_*). It is assumed that the consumer of the transaction response
   // is always receptive when resp_valid_o = 1 (otherwise a response would get dropped)
 
-  assign resp_valid_o = obi_bus.rvalid;
-  assign resp_rdata_o = obi_bus.r_payload.rdata;
-  assign resp_err_o   = obi_bus.r_payload.err;
+  assign resp_valid_o = m_obi_data_if.rvalid;
+  assign resp_rdata_o = m_obi_data_if.resp_payload.rdata;
+  assign resp_err_o   = m_obi_data_if.resp_payload.err;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -81,16 +81,16 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
 
   // If the incoming transaction itself is stable, then it satisfies the OBI protocol
   // and signals can be passed to/from OBI directly.
-  assign obi_bus.req               = trans_valid_i;
-  assign obi_bus.a_payload.addr    = trans_addr_i;
-  assign obi_bus.a_payload.we      = trans_we_i;
-  assign obi_bus.a_payload.be      = trans_be_i;
-  assign obi_bus.a_payload.wdata   = trans_wdata_i;
-  assign obi_bus.a_payload.atop    = trans_atop_i;
+  assign m_obi_data_if.req               = trans_valid_i;
+  assign m_obi_data_if.req_payload.addr    = trans_addr_i;
+  assign m_obi_data_if.req_payload.we      = trans_we_i;
+  assign m_obi_data_if.req_payload.be      = trans_be_i;
+  assign m_obi_data_if.req_payload.wdata   = trans_wdata_i;
+  assign m_obi_data_if.req_payload.atop    = trans_atop_i;
 
-  assign trans_ready_o = obi_bus.gnt;
+  assign trans_ready_o = m_obi_data_if.gnt;
 
 
   
 
-endmodule // cv32e40x_obi_interface
+endmodule // cv32e40x_data_obi_interface

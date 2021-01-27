@@ -38,7 +38,7 @@ module cv32e40x_prefetch_buffer
   output logic [31:0] fetch_rdata_o,
 
   // goes to instruction memory / instruction cache
-  if_obi_instruction.master  instr_bus,
+  if_obi_instruction.master  m_obi_instr_if,
 
   // Prefetch Buffer Status
   output logic        busy_o
@@ -145,13 +145,12 @@ module cv32e40x_prefetch_buffer
     .trans_valid_i         ( trans_valid       ),
     .trans_ready_o         ( trans_ready       ),
     .trans_addr_i          ( {trans_addr[31:2], 2'b00} ),
-    .trans_atop_i          ( 6'b0              ),       // Atomics not used on instruction bus
 
     .resp_valid_o          ( resp_valid        ),
     .resp_rdata_o          ( resp_rdata        ),
     .resp_err_o            ( resp_err          ),       // Unused for now
 
-    .obi_bus               ( instr_bus         )
+    .m_obi_instr_if         ( m_obi_instr_if   )
   );
 
   //----------------------------------------------------------------------------
@@ -179,7 +178,7 @@ module cv32e40x_prefetch_buffer
 
   // Check that bus interface transactions are word aligned
   property p_instr_addr_word_aligned;
-     @(posedge clk) (1'b1) |-> (instr_bus.a_payload.addr[1:0] == 2'b00);
+     @(posedge clk) (1'b1) |-> (m_obi_instr_if.req_payload.addr[1:0] == 2'b00);
   endproperty
 
   a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned);
@@ -203,7 +202,7 @@ module cv32e40x_prefetch_buffer
 
  
   property p_no_error;
-     @(posedge clk) (1'b1) |-> ((instr_bus.r_payload.err == 1'b0));
+     @(posedge clk) (1'b1) |-> ((m_obi_instr_if.resp_payload.err == 1'b0));
   endproperty
 
   a_no_error : assert property(p_no_error);
