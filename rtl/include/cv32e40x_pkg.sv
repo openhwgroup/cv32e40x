@@ -713,12 +713,12 @@ typedef struct packed {
   logic [ 1:0] mult_signed_mode;  
 
   // Register write control
-  regfile_addr_t regfile_waddr;     
   logic regfile_we;        
-
-  regfile_addr_t regfile_alu_waddr; 
   logic regfile_alu_we;    
-  logic prepost_useincr;   
+
+  logic rf_we;
+  regfile_addr_t rf_waddr; 
+  logic prepost_useincr;
 
   // CSR control
   logic csr_access;

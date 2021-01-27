@@ -88,7 +88,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     wb_contention          = 1'b0;
 
     regfile_alu_we_fw_o      = id_ex_pipe_i.regfile_alu_we;
-    regfile_alu_waddr_fw_o   = id_ex_pipe_i.regfile_alu_waddr;
+    regfile_alu_waddr_fw_o   = id_ex_pipe_i.rf_waddr;
     if (id_ex_pipe_i.alu_en)
       regfile_alu_wdata_fw_o = alu_result;
     if (id_ex_pipe_i.mult_en)
@@ -190,7 +190,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       begin
         regfile_we_lsu    <= id_ex_pipe_i.regfile_we;
         if (id_ex_pipe_i.regfile_we) begin
-          regfile_waddr_lsu <= id_ex_pipe_i.regfile_waddr;
+          regfile_waddr_lsu <= id_ex_pipe_i.rf_waddr;
         end
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,

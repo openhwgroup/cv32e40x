@@ -161,22 +161,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Decoder/Controller ID stage internal signals
   logic        deassert_we;
 
-  logic        illegal_insn_dec;
-  logic        ebrk_insn_dec;
-  logic        mret_insn_dec;
-
-  logic        dret_insn_dec;
-
-  logic        ecall_insn_dec;
-  logic        wfi_insn_dec;
-
-  logic        fencei_insn_dec;
-
-  logic [REGFILE_NUM_READ_PORTS-1:0] reg_used_dec;
+  logic        illegal_insn;
+  logic        ebrk_insn;
+  logic        mret_insn;
+  logic        dret_insn;
+  logic        ecall_insn;
+  logic        wfi_insn;
+  logic        fencei_insn;
 
   logic        branch_taken_ex;
-  logic [1:0]  ctrl_transfer_insn_in_id;
-  logic [1:0]  ctrl_transfer_insn_in_dec;
+  logic [1:0]  ctrl_transfer_insn;
+  logic [1:0]  ctrl_transfer_insn_raw;
 
   logic        misaligned_stall;
   logic        jr_stall;
@@ -205,18 +200,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [4:0] irq_id_ctrl;
 
   // Register file read interface
-  regfile_addr_t regfile_raddr_id[REGFILE_NUM_READ_PORTS];
-  regfile_data_t regfile_rdata_id[REGFILE_NUM_READ_PORTS];
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
+  regfile_addr_t rf_raddr[REGFILE_NUM_READ_PORTS];
+  regfile_data_t regfile_rdata[REGFILE_NUM_READ_PORTS];
 
   // Register file write interface
   regfile_addr_t regfile_waddr[REGFILE_NUM_WRITE_PORTS];
   regfile_data_t regfile_wdata[REGFILE_NUM_WRITE_PORTS];
   logic          regfile_we   [REGFILE_NUM_WRITE_PORTS];
   
-  regfile_addr_t  regfile_waddr_id;
-  regfile_addr_t  regfile_alu_waddr_id;
-  logic           regfile_alu_we_id, regfile_alu_we_dec_id;
+  regfile_addr_t  rf_waddr;
+  logic           regfile_alu_we, regfile_alu_we_dec;
 
+  // Register Write Control
+  logic        regfile_lsu_we;
+  logic        rf_we;
+  logic        rf_we_raw;
   
   // ALU Control
   logic        alu_en;
@@ -232,22 +231,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Multiplier Control
   mul_opcode_e mult_operator;    // multiplication operation selection
   logic        mult_en;          // multiplication is used instead of ALU
-  logic        mult_int_en;      // use integer multiplier
   logic        mult_sel_subword; // Select a subword when doing multiplications
   logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
 
-  // Register Write Control
-  logic        regfile_we_id;
-
   // Data Memory Control
-  logic        data_we_id;
-  logic [1:0]  data_type_id;
-  logic [1:0]  data_sign_ext_id;
-  logic [1:0]  data_reg_offset_id;
-  logic        data_req_id;
+  logic        data_we;
+  logic [1:0]  data_type;
+  logic [1:0]  data_sign_ext;
+  logic [1:0]  data_reg_offset;
+  logic        data_req;
+  logic        data_req_raw;
 
   // Atomic memory instruction
-  logic [5:0]  atop_id;
+  logic [5:0]  atop;
 
   // CSR control
   logic        csr_access;
@@ -260,9 +256,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [1:0]  operand_a_fw_mux_sel;
   logic [1:0]  operand_b_fw_mux_sel;
   logic [1:0]  operand_c_fw_mux_sel;
-  logic [31:0] operand_a_fw_id;
-  logic [31:0] operand_b_fw_id;
-  logic [31:0] operand_c_fw_id;
+  logic [31:0] operand_a_fw;
+  logic [31:0] operand_b_fw;
+  logic [31:0] operand_c_fw;
 
   logic [31:0] operand_b;
   logic [31:0] operand_c;
@@ -270,11 +266,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
   logic [31:0] alu_operand_c;
-
-  // Forwarding detection signals
-  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_ex_matches_reg_in_dec;
-  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_wb_matches_reg_in_dec;
-  logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_alu_matches_reg_in_dec;
 
   logic        mret_dec;
   logic        dret_dec;
@@ -300,40 +291,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
 
   //---------------------------------------------------------------------------
-  // source register selection regfile_fp_x=1 <=> CV32E40P_REG_x is a FP-register
+  // Source register selection
   //---------------------------------------------------------------------------
-  assign regfile_raddr_id[0] = instr[REG_S1_MSB:REG_S1_LSB];
-  assign regfile_raddr_id[1] = instr[REG_S2_MSB:REG_S2_LSB];
-
+  assign rf_raddr[0] = instr[REG_S1_MSB:REG_S1_LSB];
+  assign rf_raddr[1] = instr[REG_S2_MSB:REG_S2_LSB];
 
   //---------------------------------------------------------------------------
-  // destination registers regfile_fp_d=1 <=> REG_D is a FP-register
+  // Destination register seclection
   //---------------------------------------------------------------------------
-  assign regfile_waddr_id = instr[REG_D_MSB:REG_D_LSB];
-
-  // Second Register Write Address Selection
-  // Used for prepost load/store and multiplier
-  assign regfile_alu_waddr_id = regfile_waddr_id;
-
-  // Forwarding control signals
-  genvar i;
-  generate
-    for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
-      assign reg_in_ex_matches_reg_in_dec[i]  = (id_ex_pipe_o.regfile_waddr == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
-      assign reg_in_wb_matches_reg_in_dec[i]  = (regfile_waddr_wb_i         == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
-      assign reg_in_alu_matches_reg_in_dec[i] = (regfile_alu_waddr_fw_i     == regfile_raddr_id[i]) && (reg_used_dec[i] == 1'b1) && (regfile_raddr_id[i] != '0);
-    end
-  endgenerate
+  assign rf_waddr = instr[REG_D_MSB:REG_D_LSB];
 
   // kill instruction in the IF/ID stage by setting the instr_valid_id control
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o | halt_id | branch_taken_ex;
 
   assign branch_taken_ex = id_ex_pipe_o.branch_in_ex && branch_decision_i;
-
-
-  assign mult_en = mult_int_en;
-
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -350,8 +322,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       JT_COND: jump_target = pc_id_i + imm_sb_type;
 
       // JALR: Cannot forward RS1, since the path is too long
-      JT_JALR: jump_target = regfile_rdata_id[0] + imm_i_type;
-      default:  jump_target = regfile_rdata_id[0] + imm_i_type;
+      JT_JALR: jump_target = regfile_rdata[0] + imm_i_type;
+      default:  jump_target = regfile_rdata[0] + imm_i_type;
     endcase
   end
 
@@ -370,11 +342,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU_Op_a Mux
   always_comb begin : alu_operand_a_mux
     case (alu_op_a_mux_sel)
-      OP_A_REGA_OR_FWD:  alu_operand_a = operand_a_fw_id;
-      OP_A_REGB_OR_FWD:  alu_operand_a = operand_b_fw_id;
+      OP_A_REGA_OR_FWD:  alu_operand_a = operand_a_fw;
+      OP_A_REGB_OR_FWD:  alu_operand_a = operand_b_fw;
       OP_A_CURRPC:       alu_operand_a = pc_id_i;
       OP_A_IMM:          alu_operand_a = imm_a;
-      default:           alu_operand_a = operand_a_fw_id;
+      default:           alu_operand_a = operand_a_fw;
     endcase; // case (alu_op_a_mux_sel)
   end
 
@@ -388,10 +360,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand a forwarding mux
   always_comb begin : operand_a_fw_mux
     case (operand_a_fw_mux_sel)
-      SEL_FW_EX:    operand_a_fw_id = regfile_alu_wdata_fw_i;
-      SEL_FW_WB:    operand_a_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_a_fw_id = regfile_rdata_id[0];
-      default:      operand_a_fw_id = regfile_rdata_id[0];
+      SEL_FW_EX:    operand_a_fw = regfile_alu_wdata_fw_i;
+      SEL_FW_WB:    operand_a_fw = regfile_wdata_wb_i;
+      SEL_REGFILE:  operand_a_fw = regfile_rdata[0];
+      default:      operand_a_fw = regfile_rdata[0];
     endcase; // case (operand_a_fw_mux_sel)
   end
 
@@ -418,10 +390,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU_Op_b Mux
   always_comb begin : alu_operand_b_mux
     case (alu_op_b_mux_sel)
-      OP_B_REGA_OR_FWD:  operand_b = operand_a_fw_id;
-      OP_B_REGB_OR_FWD:  operand_b = operand_b_fw_id;
+      OP_B_REGA_OR_FWD:  operand_b = operand_a_fw;
+      OP_B_REGB_OR_FWD:  operand_b = operand_b_fw;
       OP_B_IMM:          operand_b = imm_b;
-      default:           operand_b = operand_b_fw_id;
+      default:           operand_b = operand_b_fw;
     endcase // case (alu_op_b_mux_sel)
   end
 
@@ -433,10 +405,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand b forwarding mux
   always_comb begin : operand_b_fw_mux
     case (operand_b_fw_mux_sel)
-      SEL_FW_EX:    operand_b_fw_id = regfile_alu_wdata_fw_i;
-      SEL_FW_WB:    operand_b_fw_id = regfile_wdata_wb_i;
-      SEL_REGFILE:  operand_b_fw_id = regfile_rdata_id[1];
-      default:      operand_b_fw_id = regfile_rdata_id[1];
+      SEL_FW_EX:    operand_b_fw = regfile_alu_wdata_fw_i;
+      SEL_FW_WB:    operand_b_fw = regfile_wdata_wb_i;
+      SEL_REGFILE:  operand_b_fw = regfile_rdata[1];
+      default:      operand_b_fw = regfile_rdata[1];
     endcase; // case (operand_b_fw_mux_sel)
   end
 
@@ -453,9 +425,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU OP C Mux
   always_comb begin : alu_operand_c_mux
     case (alu_op_c_mux_sel)
-      OP_C_REGB_OR_FWD:  operand_c = operand_b_fw_id;
+      OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
       OP_C_JT:           operand_c = jump_target;
-      default:           operand_c = operand_c_fw_id;
+      default:           operand_c = operand_c_fw;
     endcase // case (alu_op_c_mux_sel)
   end
 
@@ -465,9 +437,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand c forwarding mux
   always_comb begin : operand_c_fw_mux
     case (operand_c_fw_mux_sel)
-      SEL_FW_EX:    operand_c_fw_id = regfile_alu_wdata_fw_i;
-      SEL_REGFILE:  operand_c_fw_id = 32'h00000000;
-      default:      operand_c_fw_id = 32'h00000000;
+      SEL_FW_EX:    operand_c_fw = regfile_alu_wdata_fw_i;
+      SEL_REGFILE:  operand_c_fw = 32'h00000000;
+      default:      operand_c_fw = 32'h00000000;
     endcase; // case (operand_c_fw_mux_sel)
   end
  
@@ -497,8 +469,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .rst_n              ( rst_n              ),
 
     // Read ports
-    .raddr_i            ( regfile_raddr_id      ),
-    .rdata_o            ( regfile_rdata_id      ),
+    .raddr_i            ( rf_raddr           ),
+    .rdata_o            ( regfile_rdata      ),
 
     // Write ports
     .waddr_i            ( regfile_waddr      ),
@@ -528,21 +500,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // controller related signals
     .deassert_we_i                   ( deassert_we               ),
 
-    .illegal_insn_o                  ( illegal_insn_dec          ),
-    .ebrk_insn_o                     ( ebrk_insn_dec             ),
-
-    .mret_insn_o                     ( mret_insn_dec             ),
-    .dret_insn_o                     ( dret_insn_dec             ),
-
+    .illegal_insn_o                  ( illegal_insn              ),
+    .ebrk_insn_o                     ( ebrk_insn                 ),
+    .mret_insn_o                     ( mret_insn                 ),
+    .dret_insn_o                     ( dret_insn                 ),
     .mret_dec_o                      ( mret_dec                  ),
     .dret_dec_o                      ( dret_dec                  ),
-
-    .ecall_insn_o                    ( ecall_insn_dec            ),
-    .wfi_o                           ( wfi_insn_dec              ),
-
-    .fencei_insn_o                   ( fencei_insn_dec           ),
-
-    .reg_used_o                      ( reg_used_dec              ),
+    .ecall_insn_o                    ( ecall_insn                ),
+    .wfi_insn_o                      ( wfi_insn                  ),
+    .fencei_insn_o                   ( fencei_insn               ),
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
@@ -558,15 +524,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
 
     // MUL signals
+    .mult_en_o                       ( mult_en                   ),
     .mult_operator_o                 ( mult_operator             ),
-    .mult_int_en_o                   ( mult_int_en               ),
     .mult_sel_subword_o              ( mult_sel_subword          ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
 
     // Register file control signals
-    .regfile_mem_we_o                ( regfile_we_id             ),
-    .regfile_alu_we_o                ( regfile_alu_we_id         ),
-    .regfile_alu_we_dec_o            ( regfile_alu_we_dec_id     ),
+    .rf_re_o                         ( rf_re                     ),
+    .rf_we_o                         ( rf_we                     ),
+    .rf_we_raw_o                     ( rf_we_raw                 ),
 
     // CSR control signals
     .csr_access_o                    ( csr_access                ),
@@ -575,26 +541,32 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .current_priv_lvl_i              ( current_priv_lvl_i        ),
 
     // Data bus interface
-    .data_req_o                      ( data_req_id               ),
-    .data_we_o                       ( data_we_id                ),
+    .data_req_o                      ( data_req                  ),
+    .data_req_raw_o                  ( data_req_raw              ),
+    .data_we_o                       ( data_we                   ),
     .prepost_useincr_o               ( prepost_useincr           ),
-    .data_type_o                     ( data_type_id              ),
-    .data_sign_extension_o           ( data_sign_ext_id          ),
-    .data_reg_offset_o               ( data_reg_offset_id        ),
+    .data_type_o                     ( data_type                 ),
+    .data_sign_extension_o           ( data_sign_ext             ),
+    .data_reg_offset_o               ( data_reg_offset           ),
 
     // Atomic memory access
-    .atop_o                          ( atop_id                   ),
+    .atop_o                          ( atop                      ),
 
     // debug mode
     .debug_mode_i                    ( debug_mode_o              ),
     .debug_wfi_no_sleep_i            ( debug_wfi_no_sleep        ),
 
     // jump/branches
-    .ctrl_transfer_insn_in_dec_o     ( ctrl_transfer_insn_in_dec    ),
-    .ctrl_transfer_insn_in_id_o      ( ctrl_transfer_insn_in_id     ),
+    .ctrl_transfer_insn_o            ( ctrl_transfer_insn        ),
+    .ctrl_transfer_insn_raw_o        ( ctrl_transfer_insn_raw    ),
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
 
   );
+
+  assign regfile_lsu_we     = rf_we && data_req;
+  assign regfile_alu_we     = rf_we && !data_req;
+  assign regfile_alu_we_dec = rf_we_raw && !data_req_raw;
+
 
   ////////////////////////////////////////////////////////////////////
   //    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
@@ -619,19 +591,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // decoder related signals
     .deassert_we_o                  ( deassert_we            ),
 
-    .illegal_insn_i                 ( illegal_insn_dec       ),
-    .ecall_insn_i                   ( ecall_insn_dec         ),
-    .mret_insn_i                    ( mret_insn_dec          ),
-
-    .dret_insn_i                    ( dret_insn_dec          ),
-
+    .illegal_insn_i                 ( illegal_insn           ),
+    .ecall_insn_i                   ( ecall_insn             ),
+    .mret_insn_i                    ( mret_insn              ),
+    .dret_insn_i                    ( dret_insn              ),
     .mret_dec_i                     ( mret_dec               ),
     .dret_dec_i                     ( dret_dec               ),
+    .wfi_insn_i                     ( wfi_insn               ),
+    .ebrk_insn_i                    ( ebrk_insn              ),
+    .fencei_insn_i                  ( fencei_insn            ),
 
-
-    .wfi_i                          ( wfi_insn_dec           ),
-    .ebrk_insn_i                    ( ebrk_insn_dec          ),
-    .fencei_insn_i                  ( fencei_insn_dec        ),
     .csr_status_i                   ( csr_status             ),
 
     // from IF/ID pipeline
@@ -659,8 +628,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // jump/branch control
     .branch_taken_ex_i              ( branch_taken_ex        ),
-    .ctrl_transfer_insn_in_id_i     ( ctrl_transfer_insn_in_id  ),
-    .ctrl_transfer_insn_in_dec_i    ( ctrl_transfer_insn_in_dec ),
+    .ctrl_transfer_insn_i           ( ctrl_transfer_insn     ),
+    .ctrl_transfer_insn_raw_i       ( ctrl_transfer_insn_raw ),
 
     // Interrupt signals
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
@@ -695,23 +664,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_restore_mret_id_o          ( csr_restore_mret_id_o  ),
     .csr_restore_dret_id_o          ( csr_restore_dret_id_o  ),
 
+    .rf_re_i                        ( rf_re                  ),       
+    .rf_raddr_i                     ( rf_raddr               ),
+    .rf_waddr_i                     ( rf_waddr               ),
+    .rf_waddr_ex_i                  ( id_ex_pipe_o.rf_waddr  ),
+    .rf_waddr_wb_i                  ( regfile_waddr_wb_i     ),
+
     // Write targets from ID
-    .regfile_we_id_i                ( regfile_alu_we_dec_id  ),
-    .regfile_alu_waddr_id_i         ( regfile_alu_waddr_id   ),
+    .regfile_alu_we_id_i            ( regfile_alu_we_dec    ),
 
     // Forwarding signals from regfile
-    .regfile_we_ex_i                ( id_ex_pipe_o.regfile_we   ),
-    .regfile_waddr_ex_i             ( id_ex_pipe_o.regfile_waddr),
-    .regfile_we_wb_i                ( regfile_we_wb_i           ),
+    .regfile_lsu_we_ex_i            ( id_ex_pipe_o.regfile_we   ),
+    .regfile_lsu_we_wb_i            ( regfile_we_wb_i           ),
 
     // regfile port 2
     .regfile_alu_we_fw_i            ( regfile_alu_we_fw_i    ),
-
-    // Forwarding detection signals
-    .reg_in_ex_matches_reg_in_dec_i    ( reg_in_ex_matches_reg_in_dec  ),
-    .reg_in_wb_matches_reg_in_dec_i    ( reg_in_wb_matches_reg_in_dec  ),
-    .reg_in_alu_matches_reg_in_dec_i   ( reg_in_alu_matches_reg_in_dec ),
-    
+   
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),
     .operand_b_fw_mux_sel_o         ( operand_b_fw_mux_sel   ),
@@ -794,10 +762,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_sel_subword       <= 1'b0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
-      id_ex_pipe_o.regfile_waddr          <= 6'b0;
+      id_ex_pipe_o.rf_waddr               <= 6'b0;
       id_ex_pipe_o.regfile_we             <= 1'b0;
 
-      id_ex_pipe_o.regfile_alu_waddr      <= 6'b0;
       id_ex_pipe_o.regfile_alu_we         <= 1'b0;
       id_ex_pipe_o.prepost_useincr        <= 1'b0;
 
@@ -828,7 +795,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         // => keep it stalled
         if (id_ex_pipe_o.prepost_useincr == 1'b1)
         begin
-          id_ex_pipe_o.alu_operand_a        <= operand_a_fw_id;
+          id_ex_pipe_o.alu_operand_a        <= operand_a_fw;
         end
 
         id_ex_pipe_o.alu_operand_b          <= 32'h4;
@@ -838,7 +805,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.data_misaligned        <= 1'b1;
       end
     end else if (mult_multicycle_i) begin
-      id_ex_pipe_o.mult_operand_c <= operand_c_fw_id;
+      id_ex_pipe_o.mult_operand_c <= operand_c_fw;
     end
     else begin
       // normal pipeline unstall case
@@ -855,7 +822,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.mult_en                <= mult_en;
-        if (mult_int_en) begin
+        if (mult_en) begin
           id_ex_pipe_o.mult_operator        <= mult_operator;
           id_ex_pipe_o.mult_sel_subword     <= mult_sel_subword;
           id_ex_pipe_o.mult_signed_mode     <= mult_signed_mode;
@@ -864,14 +831,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mult_operand_c       <= alu_operand_c;
         end
         
-        id_ex_pipe_o.regfile_we             <= regfile_we_id;
-        if (regfile_we_id) begin
-          id_ex_pipe_o.regfile_waddr        <= regfile_waddr_id;
-        end
+        id_ex_pipe_o.regfile_we             <= regfile_lsu_we;
+        id_ex_pipe_o.regfile_alu_we         <= regfile_alu_we;
 
-        id_ex_pipe_o.regfile_alu_we         <= regfile_alu_we_id;
-        if (regfile_alu_we_id) begin
-          id_ex_pipe_o.regfile_alu_waddr    <= regfile_alu_waddr_id;
+        if (regfile_lsu_we || regfile_alu_we) begin
+          id_ex_pipe_o.rf_waddr             <= rf_waddr;
         end
 
         id_ex_pipe_o.prepost_useincr        <= prepost_useincr;
@@ -879,23 +843,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.csr_access             <= csr_access;
         id_ex_pipe_o.csr_op                 <= csr_op;
 
-        id_ex_pipe_o.data_req               <= data_req_id;
-        if (data_req_id)
+        id_ex_pipe_o.data_req               <= data_req;
+        if (data_req)
         begin // only needed for LSU when there is an active request
-          id_ex_pipe_o.data_we              <= data_we_id;
-          id_ex_pipe_o.data_type            <= data_type_id;
-          id_ex_pipe_o.data_sign_ext        <= data_sign_ext_id;
-          id_ex_pipe_o.data_reg_offset      <= data_reg_offset_id;
-          id_ex_pipe_o.atop                 <= atop_id;
+          id_ex_pipe_o.data_we              <= data_we;
+          id_ex_pipe_o.data_type            <= data_type;
+          id_ex_pipe_o.data_sign_ext        <= data_sign_ext;
+          id_ex_pipe_o.data_reg_offset      <= data_reg_offset;
+          id_ex_pipe_o.atop                 <= atop;
         end
 
         id_ex_pipe_o.data_misaligned        <= 1'b0;
 
-        if ((ctrl_transfer_insn_in_id == BRANCH_COND) || data_req_id) begin
+        if ((ctrl_transfer_insn == BRANCH_COND) || data_req) begin
           id_ex_pipe_o.pc                   <= pc_id_i;
         end
 
-        id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_in_id == BRANCH_COND;
+        id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn == BRANCH_COND;
       end else if(ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
@@ -932,7 +896,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && is_decoding_o && !(illegal_insn_dec || ebrk_insn_dec || ecall_insn_dec);
+  assign minstret = id_valid_o && is_decoding_o && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin
@@ -956,10 +920,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_valid_q                 <= id_valid_o;
       // ID stage counts
       mhpmevent_minstret_o       <= minstret;
-      mhpmevent_load_o           <= minstret && data_req_id && !data_we_id;
-      mhpmevent_store_o          <= minstret && data_req_id && data_we_id;
-      mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn_in_id == BRANCH_JAL) || (ctrl_transfer_insn_in_id == BRANCH_JALR));
-      mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn_in_id == BRANCH_COND);
+      mhpmevent_load_o           <= minstret && data_req && !data_we;
+      mhpmevent_store_o          <= minstret && data_req && data_we;
+      mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn == BRANCH_JAL) || (ctrl_transfer_insn == BRANCH_JALR));
+      mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn == BRANCH_COND);
       mhpmevent_compressed_o     <= minstret && is_compressed_i;
       // EX stage count
       mhpmevent_branch_taken_o   <= mhpmevent_branch_o && branch_decision_i;
@@ -996,9 +960,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     property p_branch_taken_ex;
        @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
                                                                           (alu_en == 1'b0) &&
-                                                                          (mult_en == 1'b0) && (mult_int_en == 1'b0) &&
-                                                                          (regfile_we_id == 1'b0) &&
-                                                                          (regfile_alu_we_id == 1'b0) && (data_req_id == 1'b0));
+                                                                          (mult_en == 1'b0) &&
+                                                                          (regfile_lsu_we == 1'b0) &&
+                                                                          (regfile_alu_we == 1'b0) && (data_req == 1'b0));
     endproperty
 
     a_branch_taken_ex : assert property(p_branch_taken_ex);
@@ -1031,7 +995,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       // Check that A extension opcodes are decoded as illegal when A extension not enabled
       property p_illegal_0;
-         @(posedge clk) disable iff (!rst_n) (instr[6:0] == OPCODE_AMO) |-> (illegal_insn_dec == 'b1);
+         @(posedge clk) disable iff (!rst_n) (instr[6:0] == OPCODE_AMO) |-> (illegal_insn == 'b1);
       endproperty
 
       a_illegal_0 : assert property(p_illegal_0);
@@ -1043,11 +1007,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
    // Check that illegal instruction has no other side effects
     property p_illegal_2;
-       @(posedge clk) disable iff (!rst_n) (illegal_insn_dec == 1'b1) |-> !(ebrk_insn_dec || mret_insn_dec || dret_insn_dec ||
-                                                                            ecall_insn_dec || wfi_insn_dec || fencei_insn_dec ||
-                                                                            alu_en || mult_int_en ||
-                                                                            regfile_we_id || regfile_alu_we_id ||
-                                                                            csr_op != CSR_OP_READ || data_req_id);
+       @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
+                                                                        ecall_insn || wfi_insn || fencei_insn ||
+                                                                        alu_en || mult_en ||
+                                                                        regfile_lsu_we || regfile_alu_we ||
+                                                                        csr_op != CSR_OP_READ || data_req);
     endproperty
 
     a_illegal_2 : assert property(p_illegal_2);

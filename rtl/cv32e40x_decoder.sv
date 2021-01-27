@@ -45,11 +45,9 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        dret_dec_o,              // return from debug (M) without deassert
 
   output logic        ecall_insn_o,            // environment call (syscall) instruction encountered
-  output logic        wfi_o       ,            // pipeline flush is requested
+  output logic        wfi_insn_o,              // pipeline flush is requested
 
   output logic        fencei_insn_o,           // fence.i instruction
-
-  output logic [REGFILE_NUM_READ_PORTS-1:0] reg_used_o,
 
   // from IF/ID pipeline
   input  logic [31:0] instr_rdata_i,           // instruction read from instr memory/cache
@@ -66,14 +64,14 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // MUL related control signals
   output mul_opcode_e mult_operator_o,         // Multiplication operation selection
-  output logic        mult_int_en_o,           // perform integer multiplication
+  output logic        mult_en_o,               // Perform integer multiplication
   output logic        mult_sel_subword_o,      // Select subwords for 16x16 bit of multiplier
   output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
   
-  // register file related signals
-  output logic        regfile_mem_we_o,        // write enable for regfile
-  output logic        regfile_alu_we_o,        // write enable for 2nd regfile port
-  output logic        regfile_alu_we_dec_o,    // write enable for 2nd regfile port without deassert
+  // Register file related signals
+  output logic        rf_we_o,                 // Write enable for register file
+  output logic        rf_we_raw_o,             // Write enable for register file without deassert
+  output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
 
   // CSR manipulation
   output logic        csr_access_o,            // access to CSR
@@ -83,6 +81,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // LD/ST unit signals
   output logic        data_req_o,              // start transaction to data memory
+  output logic        data_req_raw_o,
   output logic        data_we_o,               // data memory write enable
   output logic        prepost_useincr_o,       // when not active bypass the alu result for address calculation
   output logic [1:0]  data_type_o,             // data type on data memory: byte, half word or word
@@ -97,14 +96,14 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   input  logic        debug_wfi_no_sleep_i,    // do not let WFI cause sleep
 
   // jump/branches
-  output logic [1:0]  ctrl_transfer_insn_in_dec_o,  // control transfer instruction without deassert
-  output logic [1:0]  ctrl_transfer_insn_in_id_o,   // control transfer instructio is decoded
+  output logic [1:0]  ctrl_transfer_insn_o,      // control transfer instructio is decoded
+  output logic [1:0]  ctrl_transfer_insn_raw_o,  // control transfer instruction without deassert
   output logic [1:0]  ctrl_transfer_target_mux_sel_o        // jump target selection
 
 );
 
   // write enable/request control
-  logic       regfile_mem_we;
+  logic       rf_we;
   logic       regfile_alu_we;
   logic       data_req;
   logic       csr_illegal;
@@ -113,7 +112,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   csr_opcode_e csr_op;
 
   logic       alu_en;
-  logic       mult_int_en;
+  logic       mult_en;
  
 
   /////////////////////////////////////////////
@@ -140,12 +139,12 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     imm_b_mux_sel_o             = IMMB_I;
 
     mult_operator_o             = MUL_M32;
-    mult_int_en                 = 1'b0;
+    mult_en                     = 1'b0;
     mult_signed_mode_o          = 2'b00;
     mult_sel_subword_o          = 1'b0;
 
-    regfile_mem_we              = 1'b0;
-    regfile_alu_we              = 1'b0;
+    rf_re_o                     = 2'b00;
+    rf_we                       = 1'b0;
 
     prepost_useincr_o           = 1'b1;
 
@@ -154,7 +153,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     csr_illegal                 = 1'b0;
     csr_op                      = CSR_OP_READ;
     mret_insn_o                 = 1'b0;
-
     dret_insn_o                 = 1'b0;
 
     data_we_o                   = 1'b0;
@@ -168,11 +166,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     illegal_insn_o              = 1'b0;
     ebrk_insn_o                 = 1'b0;
     ecall_insn_o                = 1'b0;
-    wfi_o                       = 1'b0;
-
+    wfi_insn_o                  = 1'b0;
     fencei_insn_o               = 1'b0;
-
-    reg_used_o                  = 2'b00;
     
     mret_dec_o                  = 1'b0;
     dret_dec_o                  = 1'b0;
@@ -196,7 +191,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         alu_op_b_mux_sel_o  = OP_B_IMM;
         imm_b_mux_sel_o     = IMMB_PCINCR;
         alu_operator_o      = ALU_ADD;
-        regfile_alu_we      = 1'b1;
+        rf_we               = 1'b1;
         // Calculate jump target (= PC + UJ imm)
       end
 
@@ -208,13 +203,13 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         alu_op_b_mux_sel_o  = OP_B_IMM;
         imm_b_mux_sel_o     = IMMB_PCINCR;
         alu_operator_o      = ALU_ADD;
-        regfile_alu_we      = 1'b1;
+        rf_we               = 1'b1;
         // Calculate jump target (= RS1 + I imm)
-        reg_used_o[0]       = 1'b1;
+        rf_re_o[0]          = 1'b1;
 
         if (instr_rdata_i[14:12] != 3'b0) begin
           ctrl_transfer_insn = BRANCH_NONE;
-          regfile_alu_we     = 1'b0;
+          rf_we              = 1'b0;
           illegal_insn_o     = 1'b1;
         end
       end
@@ -223,8 +218,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         ctrl_transfer_target_mux_sel_o = JT_COND;
         ctrl_transfer_insn    = BRANCH_COND;
         alu_op_c_mux_sel_o    = OP_C_JT;
-        reg_used_o[0]         = 1'b1;
-        reg_used_o[1]         = 1'b1;
+        rf_re_o[0]            = 1'b1;
+        rf_re_o[1]            = 1'b1;
 
         unique case (instr_rdata_i[14:12])
           3'b000: alu_operator_o = ALU_EQ;
@@ -254,8 +249,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       OPCODE_STORE: begin
         data_req       = 1'b1;
         data_we_o      = 1'b1;
-        reg_used_o[0]  = 1'b1;
-        reg_used_o[1]  = 1'b1;
+        rf_re_o[0]     = 1'b1;
+        rf_re_o[1]     = 1'b1;
         alu_operator_o = ALU_ADD;
         // pass write data through ALU operand c
         alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD;
@@ -283,8 +278,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
       OPCODE_LOAD: begin
         data_req        = 1'b1;
-        regfile_mem_we  = 1'b1;
-        reg_used_o[0]   = 1'b1;
+        rf_we           = 1'b1;
+        rf_re_o[0]      = 1'b1;
         data_type_o     = 2'b00;
         // offset from immediate
         alu_operator_o      = ALU_ADD;
@@ -323,9 +318,9 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
           if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
             data_req          = 1'b1;
             data_type_o       = 2'b00;
-            reg_used_o[0]     = 1'b1;
-            reg_used_o[1]     = 1'b1;
-            regfile_mem_we    = 1'b1;
+            rf_re_o[0]        = 1'b1;
+            rf_re_o[1]        = 1'b1;
+            rf_we             = 1'b1;
             prepost_useincr_o = 1'b0; // only use alu_operand_a as address (not a+b)
             alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
 
@@ -378,7 +373,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         imm_a_mux_sel_o     = IMMA_ZERO;
         imm_b_mux_sel_o     = IMMB_U;
         alu_operator_o      = ALU_ADD;
-        regfile_alu_we      = 1'b1;
+        rf_we               = 1'b1;
       end
 
       OPCODE_AUIPC: begin  // Add Upper Immediate to PC
@@ -386,14 +381,14 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         alu_op_b_mux_sel_o  = OP_B_IMM;
         imm_b_mux_sel_o     = IMMB_U;
         alu_operator_o      = ALU_ADD;
-        regfile_alu_we      = 1'b1;
+        rf_we               = 1'b1;
       end
 
       OPCODE_OPIMM: begin // Register-Immediate ALU Operations
         alu_op_b_mux_sel_o  = OP_B_IMM;
         imm_b_mux_sel_o     = IMMB_I;
-        regfile_alu_we      = 1'b1;
-        reg_used_o[0]       = 1'b1;
+        rf_we               = 1'b1;
+        rf_re_o[0]          = 1'b1;
 
         unique case (instr_rdata_i[14:12])
           3'b000: alu_operator_o = ALU_ADD;  // Add Immediate
@@ -436,10 +431,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
         // PREFIX 00/01
         else begin
-          regfile_alu_we = 1'b1;
-          reg_used_o[0]  = 1'b1;
+          rf_we          = 1'b1;
+          rf_re_o[0]     = 1'b1;
 
-          if (~instr_rdata_i[28]) reg_used_o[1] = 1'b1;
+          if (~instr_rdata_i[28]) rf_re_o[1] = 1'b1;
 
           unique case ({instr_rdata_i[30:25], instr_rdata_i[14:12]})
             // RV32I ALU operations
@@ -457,49 +452,49 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             // supported RV32M instructions
             {6'b00_0001, 3'b000}: begin // mul
               alu_en          = 1'b0;
-              mult_int_en     = 1'b1;
+              mult_en         = 1'b1;
               mult_operator_o = MUL_M32;
             end
             {6'b00_0001, 3'b001}: begin // mulh
               alu_en             = 1'b0;
               mult_signed_mode_o = 2'b11;
-              mult_int_en        = 1'b1;
+              mult_en            = 1'b1;
               mult_operator_o    = MUL_H;
             end
             {6'b00_0001, 3'b010}: begin // mulhsu
               alu_en             = 1'b0;
               mult_signed_mode_o = 2'b01;
-              mult_int_en        = 1'b1;
+              mult_en            = 1'b1;
               mult_operator_o    = MUL_H;
             end
             {6'b00_0001, 3'b011}: begin // mulhu
               alu_en             = 1'b0;
               mult_signed_mode_o = 2'b00;
-              mult_int_en        = 1'b1;
+              mult_en            = 1'b1;
               mult_operator_o    = MUL_H;
             end
             {6'b00_0001, 3'b100}: begin // div
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]      = 1'b1;
+              rf_re_o[1]         = 1'b1;
               alu_operator_o     = ALU_DIV;
             end
             {6'b00_0001, 3'b101}: begin // divu
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]      = 1'b1;
+              rf_re_o[1]         = 1'b1;
               alu_operator_o     = ALU_DIVU;
             end
             {6'b00_0001, 3'b110}: begin // rem
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]      = 1'b1;
+              rf_re_o[1]         = 1'b1;
               alu_operator_o     = ALU_REM;
             end
             {6'b00_0001, 3'b111}: begin // remu
               alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
               alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              reg_used_o[1]      = 1'b1;
+              rf_re_o[1]         = 1'b1;
               alu_operator_o     = ALU_REMU;
             end
 
@@ -571,11 +566,11 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
               12'h105:  // wfi
               begin
-                wfi_o = 1'b1;
+                wfi_insn_o = 1'b1;
                 if (debug_wfi_no_sleep_i) begin
                   // Treat as NOP (do not cause sleep mode entry)
                   // Using decoding similar to ADDI, but without register reads/writes, i.e.
-                  // keep regfile_alu_we = 0, reg_used_o[0] = 0
+                  // keep rf_we = 0, rf_re_o[0] = 0
                   alu_op_b_mux_sel_o = OP_B_IMM;
                   imm_b_mux_sel_o = IMMB_I;
                   alu_operator_o = ALU_ADD;
@@ -593,7 +588,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
         begin
           // instruction to read/modify CSR
           csr_access_o        = 1'b1;
-          regfile_alu_we      = 1'b1;
+          rf_we               = 1'b1;
           alu_op_b_mux_sel_o  = OP_B_IMM;
           imm_a_mux_sel_o     = IMMA_Z;
           imm_b_mux_sel_o     = IMMB_I;    // CSR address is encoded in I imm
@@ -602,7 +597,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
             // rs1 field is used as immediate
             alu_op_a_mux_sel_o = OP_A_IMM;
           end else begin
-            reg_used_o[0]      = 1'b1;
+            rf_re_o[0]         = 1'b1;
             alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
           end
 
@@ -749,16 +744,16 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   end
 
-  // deassert we signals (in case of stalls)
-  assign alu_en_o                    = (deassert_we_i) ? 1'b0          : alu_en;
-  assign mult_int_en_o               = (deassert_we_i) ? 1'b0          : mult_int_en;
-  assign regfile_mem_we_o            = (deassert_we_i) ? 1'b0          : regfile_mem_we;
-  assign regfile_alu_we_o            = (deassert_we_i) ? 1'b0          : regfile_alu_we;
-  assign data_req_o                  = (deassert_we_i) ? 1'b0          : data_req;
-  assign csr_op_o                    = (deassert_we_i) ? CSR_OP_READ   : csr_op;
-  assign ctrl_transfer_insn_in_id_o  = (deassert_we_i) ? BRANCH_NONE   : ctrl_transfer_insn;
+  // Deassert we signals (in case of stalls)
+  assign alu_en_o             = (deassert_we_i) ? 1'b0         : alu_en;
+  assign mult_en_o            = (deassert_we_i) ? 1'b0         : mult_en;
+  assign rf_we_o              = (deassert_we_i) ? 1'b0         : rf_we;
+  assign data_req_o           = (deassert_we_i) ? 1'b0         : data_req;
+  assign csr_op_o             = (deassert_we_i) ? CSR_OP_READ  : csr_op;
+  assign ctrl_transfer_insn_o = (deassert_we_i) ? BRANCH_NONE  : ctrl_transfer_insn;
 
-  assign ctrl_transfer_insn_in_dec_o  = ctrl_transfer_insn;
-  assign regfile_alu_we_dec_o         = regfile_alu_we;
+  assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
+  assign rf_we_raw_o              = rf_we;
+  assign data_req_raw_o           = data_req;
 
 endmodule // cv32e40x_decoder

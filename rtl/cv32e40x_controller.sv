@@ -50,7 +50,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        mret_dec_i,
   input  logic        dret_dec_i,
 
-  input  logic        wfi_i,                      // decoder wants to execute a WFI
+  input  logic        wfi_insn_i,                 // decoder wants to execute a WFI
   input  logic        ebrk_insn_i,                // decoder encountered an ebreak instruction
   input  logic        fencei_insn_i,              // decoder encountered an fence.i instruction
   input  logic        csr_status_i,               // decoder encountered an csr status instruction
@@ -81,8 +81,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // jump/branch signals
   input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
-  input  logic [1:0]  ctrl_transfer_insn_in_id_i,               // jump is being calculated in ALU
-  input  logic [1:0]  ctrl_transfer_insn_in_dec_i,              // jump is being calculated in ALU
+  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
+  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,
@@ -123,13 +123,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
 
   // Regfile target
-  input  logic           regfile_we_id_i,            // currently decoded we enable
-  input  regfile_addr_t  regfile_alu_waddr_id_i,     // currently decoded target address
+  input  logic           regfile_alu_we_id_i,        // currently decoded we enable
 
   // Forwarding signals from regfile
-  input  logic           regfile_we_ex_i,            // FW: write enable from  EX stage
-  input  regfile_addr_t  regfile_waddr_ex_i,         // FW: write address from EX stage
-  input  logic           regfile_we_wb_i,            // FW: write enable from  WB stage
+  input  logic           regfile_lsu_we_ex_i,        // FW: write enable from  EX stage
+  input  logic           regfile_lsu_we_wb_i,        // FW: write enable from  WB stage
   input  logic           regfile_alu_we_fw_i,        // FW: ALU/MUL write enable from  EX stage
 
   // forwarding signals
@@ -137,10 +135,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic [1:0]  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
   output logic [1:0]  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
 
-  // forwarding detection signals
-  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_ex_matches_reg_in_dec_i,
-  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_wb_matches_reg_in_dec_i,
-  input logic [REGFILE_NUM_READ_PORTS-1:0] reg_in_alu_matches_reg_in_dec_i,
+  input regfile_addr_t  rf_waddr_ex_i,
+  input regfile_addr_t  rf_waddr_wb_i,
+
+  input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
+  input regfile_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],
+  input regfile_addr_t  rf_waddr_i,
 
 
   // stall signals
@@ -168,6 +168,15 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   logic jump_done, jump_done_q, jump_in_dec, branch_in_id;
 
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_match;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_match;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_hz;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_hz;
+
+  logic                              rf_wr_ex_match;
+  logic                              rf_wr_wb_match;
+  logic                              rf_wr_ex_hz;
+  logic                              rf_wr_wb_hz;
 
   logic debug_mode_q, debug_mode_n;
   logic ebrk_force_debug_mode;
@@ -226,9 +235,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     irq_ack_o              = 1'b0;
     irq_id_o               = 5'b0;
 
-    jump_in_dec            = ctrl_transfer_insn_in_dec_i == BRANCH_JALR || ctrl_transfer_insn_in_dec_i == BRANCH_JAL;
+    jump_in_dec            = (ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL);
 
-    branch_in_id           = ctrl_transfer_insn_in_id_i == BRANCH_COND;
+    branch_in_id           = ctrl_transfer_insn_i == BRANCH_COND;
 
     ebrk_force_debug_mode  = (debug_ebreakm_i && current_priv_lvl_i == PRIV_LVL_M);
     debug_csr_save_o       = 1'b0;
@@ -613,7 +622,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 ctrl_fsm_ns           = XRET_JUMP;
             end
 
-            wfi_i: begin
+            wfi_insn_i: begin
                 if ( debug_req_pending) begin
                     ctrl_fsm_ns = DBG_TAKEN_IF;
                     debug_force_wakeup_n = 1'b1;
@@ -769,6 +778,32 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // |____/ \__\__,_|_|_|  \____\___/|_| |_|\__|_|  \___/|_| //
   //                                                         //
   /////////////////////////////////////////////////////////////
+
+  genvar i;
+  generate
+    for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
+      // Does register file read address match write address in EX (excluding R0)?
+      assign rf_rd_ex_match[i] = (rf_waddr_ex_i == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+
+      // Does register file read address match write address in WB (excluding R0)?
+      assign rf_rd_wb_match[i] = (rf_waddr_wb_i == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+
+      // Load-read hazard (for any instruction following a load)
+      assign rf_rd_ex_hz[i] = rf_rd_ex_match[i];
+      assign rf_rd_wb_hz[i] = rf_rd_wb_match[i];
+    end
+  endgenerate
+
+  // Does register file write address match write address in EX?
+  assign rf_wr_ex_match = (rf_waddr_ex_i == rf_waddr_i);
+
+  // Does register file write address match write address in WB?
+  assign rf_wr_wb_match = (rf_waddr_wb_i == rf_waddr_i);
+
+  // Load-write hazard (for non-load instruction following a load)
+  assign rf_wr_ex_hz = rf_wr_ex_match && regfile_alu_we_id_i;
+  assign rf_wr_wb_hz = rf_wr_wb_match && regfile_alu_we_id_i;
+
   always_comb
   begin
     load_stall_o   = 1'b0;
@@ -784,11 +819,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-          ( (data_req_ex_i == 1'b1) && (regfile_we_ex_i == 1'b1) ||
-           (wb_ready_i == 1'b0) && (regfile_we_wb_i == 1'b1)
-          ) &&
-          ( ( |reg_in_ex_matches_reg_in_dec_i) ||
-            (is_decoding_o && (regfile_we_id_i && !data_misaligned_i) && (regfile_waddr_ex_i == regfile_alu_waddr_id_i)) )
+        (data_req_ex_i && regfile_lsu_we_ex_i && |rf_rd_ex_hz) ||
+        (!wb_ready_i   && regfile_lsu_we_wb_i && |rf_rd_wb_hz) ||
+        (data_req_ex_i && regfile_lsu_we_ex_i && is_decoding_o && !data_misaligned_i && rf_wr_ex_hz) ||
+        (!wb_ready_i   && regfile_lsu_we_wb_i && is_decoding_o && !data_misaligned_i && rf_wr_wb_hz)
        )
     begin
       deassert_we_o   = 1'b1;
@@ -799,10 +833,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // - always stall if a result is to be forwarded to the PC
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
-    if ((ctrl_transfer_insn_in_dec_i == BRANCH_JALR) &&
-        (((regfile_we_wb_i == 1'b1)     && (reg_in_wb_matches_reg_in_dec_i[0]  == 1'b1)) ||
-         ((regfile_we_ex_i == 1'b1)     && (reg_in_ex_matches_reg_in_dec_i[0]  == 1'b1)) ||
-         ((regfile_alu_we_fw_i == 1'b1) && (reg_in_alu_matches_reg_in_dec_i[0] == 1'b1))) )
+    if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
+        (((regfile_lsu_we_wb_i == 1'b1) && rf_rd_wb_match[0]) ||
+         ((regfile_lsu_we_ex_i == 1'b1) && rf_rd_ex_match[0]) ||
+         ((regfile_alu_we_fw_i == 1'b1) && rf_rd_ex_match[0])) )
     begin
       jr_stall_o      = 1'b1;
       deassert_we_o   = 1'b1;
@@ -827,20 +861,20 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     operand_c_fw_mux_sel_o = SEL_REGFILE;
 
     // Forwarding WB -> ID
-    if (regfile_we_wb_i == 1'b1)
+    if (regfile_lsu_we_wb_i == 1'b1)
     begin
-      if (reg_in_wb_matches_reg_in_dec_i[0] == 1'b1)
+      if (rf_rd_wb_match[0])
         operand_a_fw_mux_sel_o = SEL_FW_WB;
-      if (reg_in_wb_matches_reg_in_dec_i[1] == 1'b1)
+      if ( rf_rd_wb_match[1])
         operand_b_fw_mux_sel_o = SEL_FW_WB;
     end
 
     // Forwarding EX -> ID
     if (regfile_alu_we_fw_i == 1'b1)
     begin
-     if (reg_in_alu_matches_reg_in_dec_i[0] == 1'b1)
+     if (rf_rd_ex_match[0])
        operand_a_fw_mux_sel_o = SEL_FW_EX;
-     if (reg_in_alu_matches_reg_in_dec_i[1] == 1'b1)
+     if (rf_rd_ex_match[1])
        operand_b_fw_mux_sel_o = SEL_FW_EX;
     end
 
@@ -901,7 +935,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign debug_wfi_no_sleep_o = debug_mode_q || debug_req_pending || debug_single_step_i || trigger_match_i;
 
   // Gate off wfi 
-  assign wfi_active = wfi_i & ~debug_wfi_no_sleep_o;
+  assign wfi_active = wfi_insn_i & ~debug_wfi_no_sleep_o;
 
   // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
   always_ff @(posedge clk_ungated_i, negedge rst_n)
