@@ -50,10 +50,13 @@ set in_delay_early [expr $clock_period * 0.10]
 set in_delay_instr_gnt    [expr $clock_period * 0.80]
 set in_delay_instr_rvalid [expr $clock_period * 0.80]
 set in_delay_instr_rdata  [expr $clock_period * 0.80]
+set in_delay_instr_err    [expr $clock_period * 0.80]
 
 set in_delay_data_gnt     [expr $clock_period * 0.80]
 set in_delay_data_rvalid  [expr $clock_period * 0.80]
 set in_delay_data_rdata   [expr $clock_period * 0.80]
+set in_delay_data_err     [expr $clock_period * 0.80]
+set in_delay_data_exokay  [expr $clock_period * 0.80]
 
 # OBI outputs delays
 set out_delay_instr_req  [expr $clock_period * 0.60]
@@ -64,6 +67,7 @@ set out_delay_data_we    [expr $clock_period * 0.60]
 set out_delay_data_be    [expr $clock_period * 0.60]
 set out_delay_data_addr  [expr $clock_period * 0.60]
 set out_delay_data_wdata [expr $clock_period * 0.60]
+set out_delay_data_atop  [expr $clock_period * 0.60]
 
 # I/O delays for non RISC-V Bus Interface ports
 set in_delay_other       [expr $clock_period * 0.10]
@@ -101,9 +105,12 @@ set obi_input_ports [list \
     instr_gnt_i \
     instr_rvalid_i \
     instr_rdata_i* \
+    instr_err_i \
     data_gnt_i \
     data_rvalid_i \
     data_rdata_i* \
+    data_err_i \
+    data_exokay_i \
 ]
 
 # RISC-V OBI Output ports
@@ -115,6 +122,7 @@ set obi_output_ports [list \
     data_be_o* \
     data_addr_o* \
     data_wdata_o* \
+    data_atop_o \
 ]
 
 # RISC-V Sleep Output ports
@@ -145,10 +153,13 @@ set_output_delay $out_delay_irq         [get_ports $irq_output_ports       ] -cl
 set_input_delay  $in_delay_instr_gnt    [ get_ports instr_gnt_i            ] -clock clk_i
 set_input_delay  $in_delay_instr_rvalid [ get_ports instr_rvalid_i         ] -clock clk_i
 set_input_delay  $in_delay_instr_rdata  [ get_ports instr_rdata_i*         ] -clock clk_i
+set_input_delay  $in_delay_instr_err    [ get_ports instr_err_i*           ] -clock clk_i
 
 set_input_delay  $in_delay_data_gnt     [ get_ports data_gnt_i             ] -clock clk_i
 set_input_delay  $in_delay_data_rvalid  [ get_ports data_rvalid_i          ] -clock clk_i
 set_input_delay  $in_delay_data_rdata   [ get_ports data_rdata_i*          ] -clock clk_i
+set_input_delay  $in_delay_data_err     [ get_ports data_err_i             ] -clock clk_i
+set_input_delay  $in_delay_data_exokay  [ get_ports data_exokay_i          ] -clock clk_i
 
 set_output_delay $out_delay_instr_req   [ get_ports instr_req_o            ] -clock clk_i
 set_output_delay $out_delay_instr_addr  [ get_ports instr_addr_o*          ] -clock clk_i
@@ -158,6 +169,7 @@ set_output_delay $out_delay_data_we     [ get_ports data_we_o              ] -cl
 set_output_delay $out_delay_data_be     [ get_ports data_be_o*             ] -clock clk_i
 set_output_delay $out_delay_data_addr   [ get_ports data_addr_o*           ] -clock clk_i
 set_output_delay $out_delay_data_wdata  [ get_ports data_wdata_o*          ] -clock clk_i
+set_output_delay $out_delay_data_atop   [ get_ports data_atop_o*           ] -clock clk_i
 
 # Misc
 set_input_delay  $in_delay_early        [get_ports $early_input_ports      ] -clock clk_i
