@@ -116,11 +116,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        wake_from_sleep_o,
 
     // Forward Signals
-    input  regfile_addr_t  regfile_waddr_wb_i,
+    input  rf_addr_t       regfile_waddr_wb_i,
     input  logic           regfile_we_wb_i,
     input  logic [31:0]    regfile_wdata_wb_i, // From wb_stage: selects data from data memory, ex_stage result and sp rdata
 
-    input  regfile_addr_t  regfile_alu_waddr_fw_i,
+    input  rf_addr_t       regfile_alu_waddr_fw_i,
     input  logic           regfile_alu_we_fw_i,
     input  logic [31:0]    regfile_alu_wdata_fw_i,
 
@@ -195,22 +195,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] jump_target;       // calculated jump target (-> EX -> IF)
 
   // Signals running between controller and int_controller
-  logic       irq_req_ctrl;
-  logic       irq_wu_ctrl;
-  logic [4:0] irq_id_ctrl;
+  logic        irq_req_ctrl;
+  logic        irq_wu_ctrl;
+  logic [4:0]  irq_id_ctrl;
 
   // Register file read interface
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
-  regfile_addr_t rf_raddr[REGFILE_NUM_READ_PORTS];
-  regfile_data_t regfile_rdata[REGFILE_NUM_READ_PORTS];
+  rf_addr_t    rf_raddr[REGFILE_NUM_READ_PORTS];
+  rf_data_t    regfile_rdata[REGFILE_NUM_READ_PORTS];
 
   // Register file write interface
-  regfile_addr_t regfile_waddr[REGFILE_NUM_WRITE_PORTS];
-  regfile_data_t regfile_wdata[REGFILE_NUM_WRITE_PORTS];
-  logic          regfile_we   [REGFILE_NUM_WRITE_PORTS];
+  rf_addr_t    regfile_waddr[REGFILE_NUM_WRITE_PORTS];
+  rf_data_t    regfile_wdata[REGFILE_NUM_WRITE_PORTS];
+  logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
   
-  regfile_addr_t  rf_waddr;
-  logic           regfile_alu_we, regfile_alu_we_dec;
+  rf_addr_t    rf_waddr;
+  logic        regfile_alu_we, regfile_alu_we_dec;
 
   // Register Write Control
   logic        regfile_lsu_we;
@@ -241,9 +241,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [1:0]  data_reg_offset;
   logic        data_req;
   logic        data_req_raw;
-
-  // Atomic memory instruction
-  logic [5:0]  atop;
+  logic [5:0]  data_atop;               // Atomic memory instruction
 
   // CSR control
   logic        csr_access;
@@ -548,9 +546,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_type_o                     ( data_type                 ),
     .data_sign_extension_o           ( data_sign_ext             ),
     .data_reg_offset_o               ( data_reg_offset           ),
-
-    // Atomic memory access
-    .atop_o                          ( atop                      ),
+    .data_atop_o                     ( data_atop                 ),
 
     // debug mode
     .debug_mode_i                    ( debug_mode_o              ),
@@ -674,7 +670,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .regfile_alu_we_id_i            ( regfile_alu_we_dec    ),
 
     // Forwarding signals from regfile
-    .regfile_lsu_we_ex_i            ( id_ex_pipe_o.regfile_we   ),
+    .regfile_lsu_we_ex_i            ( id_ex_pipe_o.rf_we && id_ex_pipe_o.data_req /* id_ex_pipe_o.regfile_we */  ), // todo: clean up, no expression here
     .regfile_lsu_we_wb_i            ( regfile_we_wb_i           ),
 
     // regfile port 2
@@ -695,11 +691,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     .id_ready_i                     ( id_ready_o             ),
     .id_valid_i                     ( id_valid_o             ),
-
     .ex_valid_i                     ( ex_valid_i             ),
-
     .wb_ready_i                     ( wb_ready_i             )
-
   );
 
 
@@ -754,31 +747,29 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.alu_operand_b          <= '0;
       id_ex_pipe_o.alu_operand_c          <= '0;
 
+      id_ex_pipe_o.mult_en                <= 1'b0;
       id_ex_pipe_o.mult_operator          <= MUL_M32;
       id_ex_pipe_o.mult_operand_a         <= '0;
       id_ex_pipe_o.mult_operand_b         <= '0;
       id_ex_pipe_o.mult_operand_c         <= '0;
-      id_ex_pipe_o.mult_en                <= 1'b0;
       id_ex_pipe_o.mult_sel_subword       <= 1'b0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
+      id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= 6'b0;
-      id_ex_pipe_o.regfile_we             <= 1'b0;
 
-      id_ex_pipe_o.regfile_alu_we         <= 1'b0;
       id_ex_pipe_o.prepost_useincr        <= 1'b0;
 
       id_ex_pipe_o.csr_access             <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
+      id_ex_pipe_o.data_req               <= 1'b0;
       id_ex_pipe_o.data_we                <= 1'b0;
       id_ex_pipe_o.data_type              <= 2'b0;
       id_ex_pipe_o.data_sign_ext          <= 2'b0;
       id_ex_pipe_o.data_reg_offset        <= 2'b0;
-      id_ex_pipe_o.data_req               <= 1'b0;
-      id_ex_pipe_o.atop                   <= 5'b0;
-
       id_ex_pipe_o.data_misaligned        <= 1'b0;
+      id_ex_pipe_o.data_atop              <= 5'b0;
 
       id_ex_pipe_o.pc                     <= '0;
 
@@ -799,7 +790,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.alu_operand_b          <= 32'h4;
-        id_ex_pipe_o.regfile_alu_we         <= 1'b0;
+    //     id_ex_pipe_o.regfile_alu_we         <= 1'b0; // todo proof that this was implied
+
         id_ex_pipe_o.prepost_useincr        <= 1'b1;
 
         id_ex_pipe_o.data_misaligned        <= 1'b1;
@@ -831,9 +823,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mult_operand_c       <= alu_operand_c;
         end
         
-        id_ex_pipe_o.regfile_we             <= regfile_lsu_we;
-        id_ex_pipe_o.regfile_alu_we         <= regfile_alu_we;
-
+        id_ex_pipe_o.rf_we                  <= regfile_lsu_we || regfile_alu_we;
         if (regfile_lsu_we || regfile_alu_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr;
         end
@@ -850,10 +840,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.data_type            <= data_type;
           id_ex_pipe_o.data_sign_ext        <= data_sign_ext;
           id_ex_pipe_o.data_reg_offset      <= data_reg_offset;
-          id_ex_pipe_o.atop                 <= atop;
+          id_ex_pipe_o.data_atop            <= data_atop;
         end
 
-        id_ex_pipe_o.data_misaligned        <= 1'b0;
+        id_ex_pipe_o.data_misaligned        <= 1'b0; // todo: can this be gated?
 
         if ((ctrl_transfer_insn == BRANCH_COND) || data_req) begin
           id_ex_pipe_o.pc                   <= pc_id_i;
@@ -864,29 +854,25 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
 
-        id_ex_pipe_o.regfile_we             <= 1'b0;
-
-        id_ex_pipe_o.regfile_alu_we         <= 1'b0;
+        id_ex_pipe_o.rf_we                  <= 1'b0;
 
         id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
         id_ex_pipe_o.data_req               <= 1'b0;
-
         id_ex_pipe_o.data_misaligned        <= 1'b0;
 
         id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
-        id_ex_pipe_o.alu_operator           <= ALU_SLTU;
+        id_ex_pipe_o.alu_en                 <= 1'b1;            // todo: requires explanation
+        id_ex_pipe_o.alu_operator           <= ALU_SLTU;        // todo: requires explanation
 
         id_ex_pipe_o.mult_en                <= 1'b0;
-
-        id_ex_pipe_o.alu_en                 <= 1'b1;
 
       end else if (id_ex_pipe_o.csr_access) begin
        //In the EX stage there was a CSR access, to avoid multiple
        //writes to the RF, disable regfile_alu_we.
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       id_ex_pipe_o.regfile_alu_we         <= 1'b0;
+       id_ex_pipe_o.rf_we         <= 1'b0;
       end
     end
   end

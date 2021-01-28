@@ -31,19 +31,17 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     input  logic         rst_n,
 
     // Read ports
-    input  regfile_addr_t raddr_i [REGFILE_NUM_READ_PORTS],
-    output regfile_data_t rdata_o [REGFILE_NUM_READ_PORTS],
+    input  rf_addr_t     raddr_i [REGFILE_NUM_READ_PORTS],
+    output rf_data_t     rdata_o [REGFILE_NUM_READ_PORTS],
 
     // Write ports
-    input regfile_addr_t waddr_i [REGFILE_NUM_WRITE_PORTS],
-    input regfile_data_t wdata_i [REGFILE_NUM_READ_PORTS],
-    input logic             we_i [REGFILE_NUM_WRITE_PORTS]
-
-    
+    input rf_addr_t      waddr_i [REGFILE_NUM_WRITE_PORTS],
+    input rf_data_t      wdata_i [REGFILE_NUM_READ_PORTS],
+    input logic          we_i [REGFILE_NUM_WRITE_PORTS]
 );
 
   // integer register file
-  regfile_data_t mem [REGFILE_NUM_WORDS];
+  rf_data_t mem [REGFILE_NUM_WORDS];
 
   // write enable signals for all registers
   logic [REGFILE_NUM_WORDS-1:0] we_dec[REGFILE_NUM_WRITE_PORTS];

@@ -611,10 +611,10 @@ parameter REGFILE_DATA_WIDTH = 32;
 parameter REGFILE_NUM_WORDS = 2**(REGFILE_ADDR_WIDTH);
 
 // Register file address type
-typedef logic [REGFILE_ADDR_WIDTH-1:0] regfile_addr_t;
+typedef logic [REGFILE_ADDR_WIDTH-1:0] rf_addr_t;
 
 // Register file data type
-typedef logic [REGFILE_DATA_WIDTH-1:0] regfile_data_t;
+typedef logic [REGFILE_DATA_WIDTH-1:0] rf_data_t;
 
 // forwarding operand mux
 parameter SEL_REGFILE      = 2'b00;
@@ -713,11 +713,8 @@ typedef struct packed {
   logic [ 1:0] mult_signed_mode;  
 
   // Register write control
-  logic regfile_we;        
-  logic regfile_alu_we;    
-
   logic rf_we;
-  regfile_addr_t rf_waddr; 
+  rf_addr_t rf_waddr; 
   logic prepost_useincr;
 
   // CSR control
@@ -725,13 +722,13 @@ typedef struct packed {
   csr_opcode_e csr_op;            
 
   // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
-  logic data_we;           
+  logic       data_req;          
+  logic       data_we;           
   logic [1:0] data_type;         
   logic [1:0] data_sign_ext;     
   logic [1:0] data_reg_offset;   
-  logic data_req;          
-  logic [5:0] atop;              
-  logic data_misaligned;   
+  logic       data_misaligned;   
+  logic [5:0] data_atop;              
 
   // PC of last executed branch
   logic [31:0] pc;

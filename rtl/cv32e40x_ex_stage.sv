@@ -44,12 +44,12 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic [31:0] csr_rdata_i,
 
   // Output of EX stage pipeline
-  output regfile_addr_t regfile_waddr_wb_o,
-  output logic          regfile_we_wb_o,
-  output logic [31:0]   regfile_wdata_wb_o,
+  output rf_addr_t      rf_waddr_wb_o,
+  output logic          rf_we_wb_o,
+  output logic [31:0]   rf_wdata_wb_o,
 
   // Forwarding ports : to ID stage
-  output regfile_addr_t regfile_alu_waddr_fw_o,
+  output rf_addr_t      regfile_alu_waddr_fw_o,
   output logic          regfile_alu_we_fw_o,
   output logic [31:0]   regfile_alu_wdata_fw_o,    // forward to RF and ID/EX pipe, ALU & MUL
 
@@ -70,45 +70,28 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    mult_result;
   logic           alu_cmp_result;
 
-  logic           regfile_we_lsu;
-  regfile_addr_t  regfile_waddr_lsu;
-
-  logic           wb_contention;
-  logic           wb_contention_lsu;
-
   logic           alu_ready;
   logic           mult_ready;
 
   // ALU write port mux
   always_comb
   begin
-    regfile_alu_wdata_fw_o = '0;
-    regfile_alu_waddr_fw_o = '0;
-    regfile_alu_we_fw_o    = '0;
-    wb_contention          = 1'b0;
+    regfile_alu_wdata_fw_o = '0; // todo: assignments below should be unique case (is assignment to 0 needed?)
 
-    regfile_alu_we_fw_o      = id_ex_pipe_i.regfile_alu_we;
-    regfile_alu_waddr_fw_o   = id_ex_pipe_i.rf_waddr;
+    regfile_alu_we_fw_o    = id_ex_pipe_i.rf_we && !id_ex_pipe_i.data_req;
+    regfile_alu_waddr_fw_o = id_ex_pipe_i.rf_waddr;
     if (id_ex_pipe_i.alu_en)
       regfile_alu_wdata_fw_o = alu_result;
     if (id_ex_pipe_i.mult_en)
       regfile_alu_wdata_fw_o = mult_result;
     if (id_ex_pipe_i.csr_access)
       regfile_alu_wdata_fw_o = csr_rdata_i;
-    
   end
 
   // LSU write port mux
   always_comb
   begin
-    regfile_we_wb_o    = 1'b0;
-    regfile_waddr_wb_o = regfile_waddr_lsu;
-    regfile_wdata_wb_o = lsu_rdata_i;
-    wb_contention_lsu  = 1'b0;
-
-    if (regfile_we_lsu) begin
-      regfile_we_wb_o = 1'b1;
-    end
+    rf_wdata_wb_o = lsu_rdata_i; // todo: move to WB stage
   end
 
   // branch handling
@@ -181,21 +164,21 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   begin : EX_WB_Pipeline_Register
     if (~rst_n)
     begin
-      regfile_waddr_lsu   <= '0;
-      regfile_we_lsu      <= 1'b0;
+      rf_waddr_wb_o   <= '0;
+      rf_we_wb_o      <= 1'b0;
     end
     else
     begin
       if (ex_valid_o) // wb_ready_i is implied
       begin
-        regfile_we_lsu    <= id_ex_pipe_i.regfile_we;
-        if (id_ex_pipe_i.regfile_we) begin
-          regfile_waddr_lsu <= id_ex_pipe_i.rf_waddr;
+        rf_we_wb_o <= id_ex_pipe_i.rf_we && id_ex_pipe_i.data_req;
+        if (id_ex_pipe_i.rf_we && id_ex_pipe_i.data_req) begin
+          rf_waddr_wb_o <= id_ex_pipe_i.rf_waddr;
         end
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we just flush the current one out of the pipe
-        regfile_we_lsu    <= 1'b0;
+        rf_we_wb_o <= 1'b0;
       end
     end
   end
@@ -203,9 +186,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
-  assign ex_ready_o = (alu_ready & mult_ready & lsu_ready_ex_i
-                       & wb_ready_i & ~wb_contention) | (id_ex_pipe_i.branch_in_ex);
-  assign ex_valid_o = (id_ex_pipe_i.alu_en | id_ex_pipe_i.mult_en | id_ex_pipe_i.csr_access | id_ex_pipe_i.data_req)
-                       & (alu_ready & mult_ready & lsu_ready_ex_i & wb_ready_i);
+  assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
+                       && wb_ready_i) || (id_ex_pipe_i.branch_in_ex);
+  assign ex_valid_o = (id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_access || id_ex_pipe_i.data_req)
+                       && (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i);
 
 endmodule

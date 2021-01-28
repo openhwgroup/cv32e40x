@@ -135,12 +135,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic [1:0]  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
   output logic [1:0]  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
 
-  input regfile_addr_t  rf_waddr_ex_i,
-  input regfile_addr_t  rf_waddr_wb_i,
+  input rf_addr_t  rf_waddr_ex_i,
+  input rf_addr_t  rf_waddr_wb_i,
 
   input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
-  input regfile_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],
-  input regfile_addr_t  rf_waddr_i,
+  input rf_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],
+  input rf_addr_t  rf_waddr_i,
 
 
   // stall signals

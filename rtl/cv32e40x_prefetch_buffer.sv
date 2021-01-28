@@ -148,7 +148,7 @@ module cv32e40x_prefetch_buffer
 
     .resp_valid_o          ( resp_valid        ),
     .resp_rdata_o          ( resp_rdata        ),
-    .resp_err_o            ( resp_err          ),       // Unused for now
+    .resp_err_o            ( resp_err          ),
 
     .m_obi_instr_if         ( m_obi_instr_if   )
   );
@@ -196,19 +196,6 @@ module cv32e40x_prefetch_buffer
   endproperty
 
   a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo);
-
-  // External instruction bus errors are not supported yet. PMP errors are not supported.
-  //
-
- 
-  property p_no_error;
-     @(posedge clk) (1'b1) |-> ((m_obi_instr_if.resp_payload.err == 1'b0));
-  endproperty
-
-  a_no_error : assert property(p_no_error);
-
-
-
 
 `endif
 

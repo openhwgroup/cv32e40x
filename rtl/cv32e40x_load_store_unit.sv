@@ -37,8 +37,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic [31:0]  data_rdata_ex_o,      // requested data                    -> to ex stage
     output logic         data_misaligned_o,    // misaligned access was detected    -> to controller
 
-    output logic [5:0]   data_atop_o,          // atomic instruction signal         -> core output
-
     // stall signal
     output logic         lsu_ready_ex_o,       // LSU ready for new data in EX stage
     output logic         lsu_ready_wb_o,       // LSU ready for new data in WB stage
@@ -381,7 +379,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign trans_we    = id_ex_pipe_i.data_we;
   assign trans_be    = data_be;
   assign trans_wdata = data_wdata;
-  assign trans_atop  = id_ex_pipe_i.atop;
+  assign trans_atop  = id_ex_pipe_i.data_atop;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be

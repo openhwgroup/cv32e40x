@@ -87,10 +87,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic [1:0]  data_type_o,             // data type on data memory: byte, half word or word
   output logic [1:0]  data_sign_extension_o,   // sign extension on read data from data memory / NaN boxing
   output logic [1:0]  data_reg_offset_o,       // offset in byte inside register for stores
-  
-
-  // Atomic memory access
-  output  logic [5:0] atop_o,
+  output logic [5:0]  data_atop_o,             // Atomic memory access
 
   input  logic        debug_mode_i,            // processor is in debug mode
   input  logic        debug_wfi_no_sleep_i,    // do not let WFI cause sleep
@@ -155,13 +152,12 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     mret_insn_o                 = 1'b0;
     dret_insn_o                 = 1'b0;
 
+    data_req                    = 1'b0;
     data_we_o                   = 1'b0;
     data_type_o                 = 2'b00;
     data_sign_extension_o       = 2'b00;
     data_reg_offset_o           = 2'b00;
-    data_req                    = 1'b0;
-
-    atop_o                      = 6'b000000;
+    data_atop_o                 = 6'b000000;
 
     illegal_insn_o              = 1'b0;
     ebrk_insn_o                 = 1'b0;
@@ -326,8 +322,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
             data_sign_extension_o = 1'b1;
 
-            // Apply AMO instruction at `atop_o`.
-            atop_o = {1'b1, instr_rdata_i[31:27]};
+            // Apply AMO instruction at `data_atop_o`.
+            data_atop_o = {1'b1, instr_rdata_i[31:27]};
 
             unique case (instr_rdata_i[31:27])
               AMO_LR: begin

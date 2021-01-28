@@ -74,12 +74,6 @@ module cv32e40x_core
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
 
-  // Unused signals related to above unused parameters
-  // Left in code (with their original _i, _o postfixes) for future design extensions;
-  // these used to be former inputs/outputs of RI5CY
-
-  logic [5:0]                     data_atop_o;  // atomic operation, only active if parameter `A_EXTENSION != 0`
-
   // IF/ID signals
   logic              instr_valid_id;
   logic [31:0]       instr_rdata_id;    // Instruction sampled inside IF stage
@@ -117,11 +111,11 @@ module cv32e40x_core
   id_ex_pipe_t id_ex_pipe;
 
   // Register Write Control
-  regfile_addr_t  regfile_waddr_fw_wb_o;        // From WB to ID
+  rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
   logic        regfile_we_wb;
   logic [31:0] regfile_wdata;
 
-  regfile_addr_t  regfile_alu_waddr_fw;
+  rf_addr_t       regfile_alu_waddr_fw;
   logic           regfile_alu_we_fw;
   logic [31:0]    regfile_alu_wdata_fw;
 
@@ -459,9 +453,9 @@ module cv32e40x_core
     .csr_rdata_i                ( csr_rdata                    ),
 
     // Output of ex stage pipeline
-    .regfile_waddr_wb_o         ( regfile_waddr_fw_wb_o        ),
-    .regfile_we_wb_o            ( regfile_we_wb                ),
-    .regfile_wdata_wb_o         ( regfile_wdata                ),
+    .rf_waddr_wb_o              ( regfile_waddr_fw_wb_o        ),
+    .rf_we_wb_o                 ( regfile_we_wb                ),
+    .rf_wdata_wb_o              ( regfile_wdata                ),
 
     // To IF: Jump and branch target and decision
     .jump_target_o              ( jump_target_ex               ),
