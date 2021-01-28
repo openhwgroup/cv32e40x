@@ -122,7 +122,7 @@ set obi_output_ports [list \
     data_be_o* \
     data_addr_o* \
     data_wdata_o* \
-    data_atop_o \
+    data_atop_o* \
 ]
 
 # RISC-V Sleep Output ports
