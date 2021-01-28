@@ -50,6 +50,7 @@ module cv32e40x_wrapper
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
   input  logic [31:0] instr_rdata_i,
+  input  logic        instr_err_i,
 
   // Data memory interface
   output logic        data_req_o,
@@ -60,6 +61,9 @@ module cv32e40x_wrapper
   output logic [31:0] data_addr_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
+  input  logic        data_err_i,
+  output logic [5:0]  data_atop_o,
+  input  logic        data_exokay_i,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
@@ -77,9 +81,6 @@ module cv32e40x_wrapper
   output logic        core_sleep_o
 );
 
-// obi interfaces for (temporary) connection
-if_obi_instr m_obi_instr_if();
-if_obi_data m_obi_data_if();
 
 `ifdef CV32E40P_ASSERT_ON
 
@@ -147,11 +148,11 @@ if_obi_data m_obi_data_if();
       .ex_reg_we      ( core_i.regfile_alu_we_fw                    ),
       .ex_reg_wdata   ( core_i.regfile_alu_wdata_fw                 ),
 
-      .ex_data_addr   ( core_i.m_obi_data_if.req_payload.addr       ),
-      .ex_data_req    ( core_i.m_obi_data_if.req                    ),
-      .ex_data_gnt    ( core_i.m_obi_data_if.gnt                    ),
-      .ex_data_we     ( core_i.m_obi_data_if.req_payload.we         ),
-      .ex_data_wdata  ( core_i.m_obi_data_if.req_payload.wdata      ),
+      .ex_data_addr   ( core_i.data_addr_o                          ),
+      .ex_data_req    ( core_i.data_req_o                           ),
+      .ex_data_gnt    ( core_i.data_gnt_i                           ),
+      .ex_data_we     ( core_i.data_we_o                            ),
+      .ex_data_wdata  ( core_i.data_wdata_o                         ),
       .data_misaligned ( core_i.data_misaligned                     ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
@@ -181,20 +182,6 @@ if_obi_data m_obi_data_if();
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_i (.*);
 
-    // Connect systemverilog instances of core to io on wrapper
-    assign instr_req_o = m_obi_instr_if.req;
-    assign instr_addr_o = m_obi_instr_if.req_payload.addr;
-    assign m_obi_instr_if.gnt = instr_gnt_i;
-    assign m_obi_instr_if.rvalid = instr_rvalid_i;
-    assign m_obi_instr_if.resp_payload.rdata = instr_rdata_i;
 
-    assign data_req_o = m_obi_data_if.req;
-    assign data_we_o  = m_obi_data_if.req_payload.we;
-    assign data_be_o  = m_obi_data_if.req_payload.be;
-    assign data_addr_o  = m_obi_data_if.req_payload.addr;
-    assign data_wdata_o  = m_obi_data_if.req_payload.wdata;
-    assign m_obi_data_if.gnt = data_gnt_i;
-    assign m_obi_data_if.rvalid = data_rvalid_i;
-    assign m_obi_data_if.resp_payload.rdata = data_rdata_i;
 
 endmodule

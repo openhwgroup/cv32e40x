@@ -45,11 +45,27 @@ module cv32e40x_core
   input  logic [31:0] dm_exception_addr_i,
 
   // Instruction memory interface
-  if_obi_instr.master  m_obi_instr_if,
+  output logic        instr_req_o,
+  input  logic        instr_gnt_i,
+  input  logic        instr_rvalid_i,
+  output logic [31:0] instr_addr_o,
+  input  logic [31:0] instr_rdata_i,
+  input  logic        instr_err_i,
 
   // Data memory interface
-  if_obi_data.master m_obi_data_if,
+  output logic        data_req_o,
+  input  logic        data_gnt_i,
+  input  logic        data_rvalid_i,
+  output logic        data_we_o,
+  output logic [3:0]  data_be_o,
+  output logic [31:0] data_addr_o,
+  output logic [31:0] data_wdata_o,
+  input  logic [31:0] data_rdata_i,
+  input  logic        data_err_i,
+  output logic [5:0]  data_atop_o,
+  input  logic        data_exokay_i,
 
+  
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
   output logic        irq_ack_o,
@@ -189,11 +205,34 @@ module cv32e40x_core
   // Wake signal
   logic        wake_from_sleep;
 
+  // Internal OBI interfaces
+  if_obi_instr m_obi_instr_if();
+  if_obi_data  m_obi_data_if();
+
 
   // Mux selector for vectored IRQ PC
   assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
 
 
+  // Connect toplevel OBI signals to internal interfaces
+  assign instr_req_o                       = m_obi_instr_if.req;
+  assign instr_addr_o                      = m_obi_instr_if.req_payload.addr;
+  assign m_obi_instr_if.gnt                = instr_gnt_i;
+  assign m_obi_instr_if.rvalid             = instr_rvalid_i;
+  assign m_obi_instr_if.resp_payload.rdata = instr_rdata_i;
+  assign m_obi_instr_if.resp_payload.err   = instr_err_i;
+  
+  assign data_req_o                        = m_obi_data_if.req;
+  assign data_we_o                         = m_obi_data_if.req_payload.we;
+  assign data_be_o                         = m_obi_data_if.req_payload.be;
+  assign data_addr_o                       = m_obi_data_if.req_payload.addr;
+  assign data_wdata_o                      = m_obi_data_if.req_payload.wdata;
+  assign data_atop_o                       = m_obi_data_if.req_payload.atop;
+  assign m_obi_data_if.gnt                 = data_gnt_i;
+  assign m_obi_data_if.rvalid              = data_rvalid_i;
+  assign m_obi_data_if.resp_payload.rdata  = data_rdata_i;
+  assign m_obi_data_if.resp_payload.err    = data_err_i;
+  assign m_obi_data_if.resp_payload.exokay = data_exokay_i;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
