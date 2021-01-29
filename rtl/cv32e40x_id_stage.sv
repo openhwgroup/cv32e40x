@@ -45,11 +45,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        is_decoding_o,
 
     // Interface to IF stage
-    input  logic              instr_valid_i,
-    input  logic       [31:0] instr_rdata_i,      // comes from pipeline of IF stage
     output logic              instr_req_o,
-    input  logic              is_compressed_i,
-    input  logic              illegal_c_insn_i,
 
     // Jumps and branches
     input  logic        branch_decision_i,
@@ -63,8 +59,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        is_fetch_failed_i,
 
-    input  logic [31:0] pc_id_i,
-
     // Stalls
     output logic        halt_if_o,      // controller requests a halt of the IF stage
 
@@ -74,6 +68,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     output logic        id_valid_o,     // ID stage is done
     input  logic        ex_valid_i,     // EX stage is done
+ 
+    // IF/ID pipeline
+    input if_id_pipe_t if_id_pipe_i,
 
     // ID/EX pipeline 
     output id_ex_pipe_t id_ex_pipe_o,
@@ -273,7 +270,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   
 
-  assign instr = instr_rdata_i;
+  assign instr = if_id_pipe_i.instr_rdata;
 
 
   // immediate extraction and sign extension
@@ -315,8 +312,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin : jump_target_mux
     unique case (ctrl_transfer_target_mux_sel)
-      JT_JAL:  jump_target = pc_id_i + imm_uj_type;
-      JT_COND: jump_target = pc_id_i + imm_sb_type;
+      JT_JAL:  jump_target = if_id_pipe_i.pc + imm_uj_type;
+      JT_COND: jump_target = if_id_pipe_i.pc + imm_sb_type;
 
       // JALR: Cannot forward RS1, since the path is too long
       JT_JALR: jump_target = regfile_rdata[0] + imm_i_type;
@@ -341,7 +338,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (alu_op_a_mux_sel)
       OP_A_REGA_OR_FWD:  alu_operand_a = operand_a_fw;
       OP_A_REGB_OR_FWD:  alu_operand_a = operand_b_fw;
-      OP_A_CURRPC:       alu_operand_a = pc_id_i;
+      OP_A_CURRPC:       alu_operand_a = if_id_pipe_i.pc;
       OP_A_IMM:          alu_operand_a = imm_a;
       default:           alu_operand_a = operand_a_fw;
     endcase; // case (alu_op_a_mux_sel)
@@ -379,7 +376,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       IMMB_I:      imm_b = imm_i_type;
       IMMB_S:      imm_b = imm_s_type;
       IMMB_U:      imm_b = imm_u_type;
-      IMMB_PCINCR: imm_b = is_compressed_i ? 32'h2 : 32'h4;
+      IMMB_PCINCR: imm_b = if_id_pipe_i.is_compressed ? 32'h2 : 32'h4;
       default:     imm_b = imm_i_type;
     endcase
   end
@@ -508,7 +505,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
-    .illegal_c_insn_i                ( illegal_c_insn_i          ),
+    .illegal_c_insn_i                ( if_id_pipe_i.illegal_c_insn ),
 
     // ALU signals
     .alu_en_o                        ( alu_en                    ),
@@ -554,7 +551,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ctrl_transfer_insn_o            ( ctrl_transfer_insn        ),
     .ctrl_transfer_insn_raw_o        ( ctrl_transfer_insn_raw    ),
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
-
   );
 
   assign regfile_alu_we_dec = rf_we_raw && !data_req_raw;
@@ -596,19 +592,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_status_i                   ( csr_status             ),
 
     // from IF/ID pipeline
-    .instr_valid_i                  ( instr_valid_i          ),
+    .instr_valid_i                  ( if_id_pipe_i.instr_valid ),
 
     // from prefetcher
-    .instr_req_o                    ( instr_req_o            ),
+    .instr_req_o                    ( instr_req_o                ),
+                                                                 
+    // to prefetcher                                             
+    .pc_set_o                       ( pc_set_o                   ),
+    .pc_mux_o                       ( pc_mux_o                   ),
+    .exc_pc_mux_o                   ( exc_pc_mux_o               ),
+    .exc_cause_o                    ( exc_cause_o                ),
 
-    // to prefetcher
-    .pc_set_o                       ( pc_set_o               ),
-    .pc_mux_o                       ( pc_mux_o               ),
-    .exc_pc_mux_o                   ( exc_pc_mux_o           ),
-    .exc_cause_o                    ( exc_cause_o            ),
-
-    .pc_id_i                        ( pc_id_i                ),
-    .is_compressed_i                ( is_compressed_i        ),
+    .pc_id_i                        ( if_id_pipe_i.pc            ),
+    .is_compressed_i                ( if_id_pipe_i.is_compressed ),
 
     // LSU
     .data_req_ex_i                  ( id_ex_pipe_o.data_req  ),
@@ -835,7 +831,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.data_misaligned        <= 1'b0;
 
         if ((ctrl_transfer_insn == BRANCH_COND) || data_req) begin
-          id_ex_pipe_o.pc                   <= pc_id_i;
+          id_ex_pipe_o.pc                   <= if_id_pipe_i.pc;
         end
 
         id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn == BRANCH_COND;
@@ -899,7 +895,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       mhpmevent_store_o          <= minstret && data_req && data_we;
       mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn == BRANCH_JAL) || (ctrl_transfer_insn == BRANCH_JALR));
       mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn == BRANCH_COND);
-      mhpmevent_compressed_o     <= minstret && is_compressed_i;
+      mhpmevent_compressed_o     <= minstret && if_id_pipe_i.is_compressed;
       // EX stage count
       mhpmevent_branch_taken_o   <= mhpmevent_branch_o && branch_decision_i;
       // IF stage count
@@ -928,7 +924,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // the instruction delivered to the ID stage should always be valid
     a_valid_instr : assert property (
-      @(posedge clk) (instr_valid_i & (~illegal_c_insn_i)) |-> (!$isunknown(instr)) ) else $warning("%t, Instruction is valid, but has at least one X", $time);
+      @(posedge clk) (if_id_pipe_i.instr_valid & (~if_id_pipe_i.illegal_c_insn)) |-> (!$isunknown(instr)) ) else $warning("%t, Instruction is valid, but has at least one X", $time);
 
     // Check that instruction after taken branch is flushed (more should actually be flushed, but that is not checked here)
     // and that EX stage is ready to receive flushed instruction immediately

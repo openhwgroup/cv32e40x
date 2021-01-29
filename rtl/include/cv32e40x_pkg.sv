@@ -794,6 +794,18 @@ typedef enum logic [2:0]  {ALIGNED32,
                            BRANCH_MISALIGNED,
                            WAIT_VALID_BRANCH} aligner_state_e;
 
+// ID/EX pipeline
+typedef struct packed {
+
+  logic        instr_valid;
+  logic [31:0] instr_rdata;
+  logic        is_fetch_failed;
+  logic [31:0] pc;
+  logic        is_compressed;
+  logic        illegal_c_insn;
+} if_id_pipe_t;
+  
+  
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //

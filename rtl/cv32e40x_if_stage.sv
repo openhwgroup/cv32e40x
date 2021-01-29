@@ -47,13 +47,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     if_obi_instr.master  m_obi_instr_if,
 
     // Output of IF Pipeline stage
-    output logic              instr_valid_id_o,      // instruction in IF/ID pipeline is valid
-    output logic       [31:0] instr_rdata_id_o,      // read instruction is sampled and sent to ID stage for decoding
-    output logic              is_compressed_id_o,    // compressed decoder thinks this is a compressed instruction
-    output logic              illegal_c_insn_id_o,   // compressed decoder thinks this is an invalid instruction
+    output if_id_pipe_t       if_id_pipe_o,
+
     output logic       [31:0] pc_if_o,
-    output logic       [31:0] pc_id_o,
-    output logic              is_fetch_failed_o,
 
     // Forwarding ports - control signals
     input  logic        clear_instr_valid_i,   // clear instruction valid bit in IF/ID pipe
@@ -129,7 +125,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
-      PC_FENCEI:    branch_addr_n = pc_id_o + 4; // jump to next instr forces prefetch buffer reload
+      PC_FENCEI:    branch_addr_n = if_id_pipe_o.pc + 4; // jump to next instr forces prefetch buffer reload
       default:;
     endcase
   end
@@ -186,27 +182,27 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   begin : IF_ID_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
-      instr_valid_id_o      <= 1'b0;
-      instr_rdata_id_o      <= '0;
-      is_fetch_failed_o     <= 1'b0;
-      pc_id_o               <= '0;
-      is_compressed_id_o    <= 1'b0;
-      illegal_c_insn_id_o   <= 1'b0;
+      if_id_pipe_o.instr_valid     <= 1'b0;
+      if_id_pipe_o.instr_rdata     <= '0;
+      if_id_pipe_o.is_fetch_failed <= 1'b0;
+      if_id_pipe_o.pc              <= '0;
+      if_id_pipe_o.is_compressed   <= 1'b0;
+      if_id_pipe_o.illegal_c_insn  <= 1'b0;
     end
     else
     begin
 
       if (if_valid && instr_valid)
       begin
-        instr_valid_id_o    <= 1'b1;
-        instr_rdata_id_o    <= instr_decompressed;
-        is_compressed_id_o  <= instr_compressed_int;
-        illegal_c_insn_id_o <= illegal_c_insn;
-        is_fetch_failed_o   <= 1'b0;
-        pc_id_o             <= pc_if_o;
+        if_id_pipe_o.instr_valid     <= 1'b1;
+        if_id_pipe_o.instr_rdata     <= instr_decompressed;
+        if_id_pipe_o.is_compressed   <= instr_compressed_int;
+        if_id_pipe_o.illegal_c_insn  <= illegal_c_insn;
+        if_id_pipe_o.is_fetch_failed <= 1'b0;
+        if_id_pipe_o.pc              <= pc_if_o;
       end else if (clear_instr_valid_i) begin
-        instr_valid_id_o    <= 1'b0;
-        is_fetch_failed_o   <= fetch_failed;
+        if_id_pipe_o.instr_valid     <= 1'b0;
+        if_id_pipe_o.is_fetch_failed <= fetch_failed;
       end
     end
     end

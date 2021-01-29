@@ -89,13 +89,6 @@ module cv32e40x_core
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
 
-  // IF/ID signals
-  logic              instr_valid_id;
-  logic [31:0]       instr_rdata_id;    // Instruction sampled inside IF stage
-  logic              is_compressed_id;
-  logic              illegal_c_insn_id;
-  logic              is_fetch_failed_id;
-
   logic              clear_instr_valid;
   logic              pc_set;
 
@@ -105,7 +98,6 @@ module cv32e40x_core
   logic [4:0]        exc_cause;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
-  logic [31:0]       pc_id;             // Program counter in ID stage
 
   // ID performance counter signals
   logic        is_decoding;
@@ -125,6 +117,14 @@ module cv32e40x_core
 
   // EX/WB pipeline
   ex_wb_pipe_t ex_wb_pipe;
+  
+  // IF/ID pipeline
+  if_id_pipe_t if_id_pipe;
+  
+  // Register Write Control
+  rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
+  logic        regfile_we_wb;
+  logic [31:0] regfile_wdata;
 
   // Register File Write Back
   logic        rf_we_wb;
@@ -302,10 +302,8 @@ module cv32e40x_core
     // instruction cache interface
     .m_obi_instr_if      ( m_obi_instr_if     ),
 
-    // outputs to ID stage
-    .instr_valid_id_o    ( instr_valid_id     ),
-    .instr_rdata_id_o    ( instr_rdata_id     ),
-    .is_fetch_failed_o   ( is_fetch_failed_id ),
+    // IF/ID pipeline
+    .if_id_pipe_o        ( if_id_pipe        ),
 
     // control signals
     .clear_instr_valid_i ( clear_instr_valid ),
@@ -318,12 +316,7 @@ module cv32e40x_core
     .pc_mux_i            ( pc_mux_id         ), // sel for pc multiplexer
     .exc_pc_mux_i        ( exc_pc_mux_id     ),
 
-
-    .pc_id_o             ( pc_id             ),
     .pc_if_o             ( pc_if             ),
-
-    .is_compressed_id_o  ( is_compressed_id  ),
-    .illegal_c_insn_id_o ( illegal_c_insn_id ),
 
     .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
 
@@ -369,8 +362,6 @@ module cv32e40x_core
     .is_decoding_o                ( is_decoding          ),
 
     // Interface to instruction memory
-    .instr_valid_i                ( instr_valid_id       ),
-    .instr_rdata_i                ( instr_rdata_id       ),
     .instr_req_o                  ( instr_req_int        ),
 
     // Jumps and branches
@@ -384,11 +375,6 @@ module cv32e40x_core
     .exc_pc_mux_o                 ( exc_pc_mux_id        ),
     .exc_cause_o                  ( exc_cause            ),
 
-    .pc_id_i                      ( pc_id                ),
-
-    .is_compressed_i              ( is_compressed_id     ),
-    .illegal_c_insn_i             ( illegal_c_insn_id    ),
-
     // Stalls
     .halt_if_o                    ( halt_if              ),
 
@@ -398,6 +384,9 @@ module cv32e40x_core
 
     .id_valid_o                   ( id_valid             ),
     .ex_valid_i                   ( ex_valid             ),
+
+    // IF/ID pipeline
+    .if_id_pipe_i                 ( if_id_pipe           ),
 
     // ID/EX pipeline
     .id_ex_pipe_o                 ( id_ex_pipe           ),
@@ -613,7 +602,7 @@ module cv32e40x_core
     .priv_lvl_o                 ( current_priv_lvl       ),
 
     .pc_if_i                    ( pc_if                  ),
-    .pc_id_i                    ( pc_id                  ),
+    .pc_id_i                    ( if_id_pipe.pc          ),
     .pc_ex_i                    ( id_ex_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
@@ -700,15 +689,15 @@ module cv32e40x_core
       else begin
         if (!first_illegal_found && is_decoding && id_valid && id_stage_i.illegal_insn && !id_stage_i.controller_i.debug_mode_n) begin
           first_illegal_found   <= 1'b1;
-          expected_illegal_mepc <= pc_id;
+          expected_illegal_mepc <= if_id_pipe.pc;
         end
         if (!first_ecall_found && is_decoding && id_valid && id_stage_i.ecall_insn && !id_stage_i.controller_i.debug_mode_n) begin
           first_ecall_found   <= 1'b1;
-          expected_ecall_mepc <= pc_id;
+          expected_ecall_mepc <= if_id_pipe.pc;
         end
         if (!first_ebrk_found && is_decoding && id_valid && id_stage_i.ebrk_insn && (id_stage_i.controller_i.ctrl_fsm_ns != DBG_FLUSH)) begin
           first_ebrk_found   <= 1'b1;
-          expected_ebrk_mepc <= pc_id;
+          expected_ebrk_mepc <= if_id_pipe.pc;
         end
       end
     end
