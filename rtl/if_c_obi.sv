@@ -21,6 +21,9 @@
 // OBI interface definition for instruction and data
 // The two parameters set the types for payload 
 // as these are different for instruction and data
+// 
+// The 'c' in the interface names means 'Compressed'
+// since this interface is a subset of the full OBI spec.
 interface if_c_obi import cv32e40x_pkg::*;
 #(
     parameter type REQ_TYPE  = inst_req_t,
