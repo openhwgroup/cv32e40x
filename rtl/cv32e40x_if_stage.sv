@@ -44,7 +44,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        req_i,
 
     // instruction cache interface
-    if_obi_instr.master  m_obi_instr_if,
+    if_c_obi.master     m_c_obi_instr_if,
 
     // Output of IF Pipeline stage
     output if_id_pipe_t       if_id_pipe_o,
@@ -151,7 +151,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .fetch_rdata_o     ( fetch_rdata                 ),
 
     // goes to instruction memory / instruction cache
-    .m_obi_instr_if     ( m_obi_instr_if             ),
+    .m_c_obi_instr_if  ( m_c_obi_instr_if            ),
 
     // Prefetch Buffer Status
     .busy_o            ( prefetch_busy               )

@@ -18,16 +18,21 @@
  */
 
 
-  // OBI interface definition for instruction bus
-interface if_obi_instr; import cv32e40x_pkg::*;
-
+// OBI interface definition for instruction and data
+// The two parameters set the types for payload 
+// as these are different for instruction and data
+interface if_c_obi import cv32e40x_pkg::*;
+#(
+    parameter type REQ_TYPE  = inst_req_t,
+    parameter type RESP_TYPE = inst_resp_t
+);
     // A channel signals
     logic                      req;
     logic                      gnt;
-    inst_req_t                 req_payload;
+    REQ_TYPE                   req_payload;
     // R channel signals
     logic                      rvalid;
-    inst_resp_t                resp_payload;
+    RESP_TYPE                  resp_payload;
   
     modport master
        (
@@ -35,26 +40,4 @@ interface if_obi_instr; import cv32e40x_pkg::*;
        input  gnt, rvalid, resp_payload
        );
   
-endinterface : if_obi_instr
-  
-
-// OBI interface definitions for data bus
-interface if_obi_data; import cv32e40x_pkg::*;
-
-    // A channel signals
-    logic                      req;
-    logic                      gnt;
-    data_req_t                 req_payload;
-
-
-    // R channel signals
-    logic                      rvalid;
-    data_resp_t                resp_payload;
-
-    modport master
-        (
-        output req, req_payload,
-        input  gnt, rvalid, resp_payload
-        );
-
-endinterface : if_obi_data
+endinterface : if_c_obi

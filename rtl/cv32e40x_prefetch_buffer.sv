@@ -38,7 +38,7 @@ module cv32e40x_prefetch_buffer
   output logic [31:0] fetch_rdata_o,
 
   // goes to instruction memory / instruction cache
-  if_obi_instr.master  m_obi_instr_if,
+  if_c_obi.master     m_c_obi_instr_if,
 
   // Prefetch Buffer Status
   output logic        busy_o
@@ -150,7 +150,7 @@ module cv32e40x_prefetch_buffer
     .resp_rdata_o          ( resp_rdata        ),
     .resp_err_o            ( resp_err          ),
 
-    .m_obi_instr_if         ( m_obi_instr_if   )
+    .m_c_obi_instr_if      ( m_c_obi_instr_if  )
   );
 
   //----------------------------------------------------------------------------
@@ -178,7 +178,7 @@ module cv32e40x_prefetch_buffer
 
   // Check that bus interface transactions are word aligned
   property p_instr_addr_word_aligned;
-     @(posedge clk) (1'b1) |-> (m_obi_instr_if.req_payload.addr[1:0] == 2'b00);
+     @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[1:0] == 2'b00);
   endproperty
 
   a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned);

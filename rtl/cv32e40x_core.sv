@@ -206,8 +206,8 @@ module cv32e40x_core
   logic        wake_from_sleep;
 
   // Internal OBI interfaces
-  if_obi_instr m_obi_instr_if();
-  if_obi_data  m_obi_data_if();
+  if_c_obi #(.REQ_TYPE(inst_req_t), .RESP_TYPE(inst_resp_t))  m_c_obi_instr_if();
+  if_c_obi #(.REQ_TYPE(data_req_t), .RESP_TYPE(data_resp_t))  m_c_obi_data_if();
 
 
   // Mux selector for vectored IRQ PC
@@ -215,24 +215,24 @@ module cv32e40x_core
 
 
   // Connect toplevel OBI signals to internal interfaces
-  assign instr_req_o                       = m_obi_instr_if.req;
-  assign instr_addr_o                      = m_obi_instr_if.req_payload.addr;
-  assign m_obi_instr_if.gnt                = instr_gnt_i;
-  assign m_obi_instr_if.rvalid             = instr_rvalid_i;
-  assign m_obi_instr_if.resp_payload.rdata = instr_rdata_i;
-  assign m_obi_instr_if.resp_payload.err   = instr_err_i;
+  assign instr_req_o                         = m_c_obi_instr_if.req;
+  assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
+  assign m_c_obi_instr_if.gnt                = instr_gnt_i;
+  assign m_c_obi_instr_if.rvalid             = instr_rvalid_i;
+  assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
+  assign m_c_obi_instr_if.resp_payload.err   = instr_err_i;
   
-  assign data_req_o                        = m_obi_data_if.req;
-  assign data_we_o                         = m_obi_data_if.req_payload.we;
-  assign data_be_o                         = m_obi_data_if.req_payload.be;
-  assign data_addr_o                       = m_obi_data_if.req_payload.addr;
-  assign data_wdata_o                      = m_obi_data_if.req_payload.wdata;
-  assign data_atop_o                       = m_obi_data_if.req_payload.atop;
-  assign m_obi_data_if.gnt                 = data_gnt_i;
-  assign m_obi_data_if.rvalid              = data_rvalid_i;
-  assign m_obi_data_if.resp_payload.rdata  = data_rdata_i;
-  assign m_obi_data_if.resp_payload.err    = data_err_i;
-  assign m_obi_data_if.resp_payload.exokay = data_exokay_i;
+  assign data_req_o                          = m_c_obi_data_if.req;
+  assign data_we_o                           = m_c_obi_data_if.req_payload.we;
+  assign data_be_o                           = m_c_obi_data_if.req_payload.be;
+  assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
+  assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
+  assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
+  assign m_c_obi_data_if.gnt                 = data_gnt_i;
+  assign m_c_obi_data_if.rvalid              = data_rvalid_i;
+  assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
+  assign m_c_obi_data_if.resp_payload.err    = data_err_i;
+  assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
@@ -300,7 +300,7 @@ module cv32e40x_core
     .req_i               ( instr_req_int     ),
 
     // instruction cache interface
-    .m_obi_instr_if      ( m_obi_instr_if     ),
+    .m_c_obi_instr_if    ( m_c_obi_instr_if   ),
 
     // IF/ID pipeline
     .if_id_pipe_o        ( if_id_pipe        ),
@@ -513,7 +513,7 @@ module cv32e40x_core
     .rst_n                 ( rst_ni             ),
 
     //output to data memory
-    .m_obi_data_if         ( m_obi_data_if      ),
+    .m_c_obi_data_if       ( m_c_obi_data_if    ),
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
    

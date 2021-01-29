@@ -29,7 +29,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input  logic         rst_n,
 
     // output to data memory
-    if_obi_data.master m_obi_data_if,
+    if_c_obi.master      m_c_obi_data_if,
 
     // ID/EX pipeline
     input id_ex_pipe_t   id_ex_pipe_i,
@@ -480,7 +480,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .resp_rdata_o          ( resp_rdata        ),
     .resp_err_o            ( resp_err          ),       // Unused for now
 
-    .m_obi_data_if         ( m_obi_data_if     )
+    .m_c_obi_data_if       ( m_c_obi_data_if     )
   );
 
 
@@ -507,14 +507,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Check that an rvalid only occurs when there are outstanding transaction(s)
   property p_no_spurious_rvalid;
-     @(posedge clk) (m_obi_data_if.rvalid == 1'b1) |-> (cnt_q > 0);
+     @(posedge clk) (m_c_obi_data_if.rvalid == 1'b1) |-> (cnt_q > 0);
   endproperty
 
   a_no_spurious_rvalid : assert property(p_no_spurious_rvalid);
 
   // Check that the address/we/be/atop does not contain X when request is sent
   property p_address_phase_signals_defined;
-     @(posedge clk) (m_obi_data_if.req == 1'b1) |-> (!($isunknown(m_obi_data_if.req_payload.addr) || $isunknown(m_obi_data_if.req_payload.we) || $isunknown(m_obi_data_if.req_payload.be) || $isunknown(m_obi_data_if.req_payload.atop)));
+     @(posedge clk) (m_c_obi_data_if.req == 1'b1) |-> (!($isunknown(m_c_obi_data_if.req_payload.addr) || $isunknown(m_c_obi_data_if.req_payload.we) || $isunknown(m_c_obi_data_if.req_payload.be) || $isunknown(m_c_obi_data_if.req_payload.atop)));
   endproperty
 
   a_address_phase_signals_defined : assert property(p_address_phase_signals_defined);
