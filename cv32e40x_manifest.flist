@@ -46,6 +46,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_prefetch_buffer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv
 ${DESIGN_RTL_DIR}/cv32e40x_int_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ex_stage.sv
+${DESIGN_RTL_DIR}/cv32e40x_wb_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alu_div.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alu.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ff_one.sv

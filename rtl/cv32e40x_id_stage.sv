@@ -87,7 +87,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        csr_restore_dret_id_o,
     output logic        csr_save_cause_o,
 
-    input  logic        data_misaligned_i,
+    input  logic        lsu_misaligned_i,
     input  logic        data_err_i,
     output logic        data_err_ack_o,
 
@@ -115,14 +115,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Wakeup Signal
     output logic        wake_from_sleep_o,
 
-    // Forward Signals
-    input  rf_addr_t       regfile_waddr_wb_i,
-    input  logic           regfile_we_wb_i,
-    input  logic [31:0]    regfile_wdata_wb_i, // From wb_stage: selects data from data memory, ex_stage result and sp rdata
+    // Register file write back and forwards
+    input  logic           rf_we_wb_i,
+    input  rf_addr_t       rf_waddr_wb_i,
+    input  logic [31:0]    rf_wdata_wb_i,
 
-    input  rf_addr_t       regfile_alu_waddr_fw_i,
-    input  logic           regfile_alu_we_fw_i,
-    input  logic [31:0]    regfile_alu_wdata_fw_i,
+    input  logic           rf_we_ex_i,
+    input  rf_addr_t       rf_waddr_ex_i,
+    input  logic [31:0]    rf_wdata_ex_i,
 
     // from ALU
     input  logic        mult_multicycle_i,    // when we need multiple cycles in the multiplier and use op c as storage
@@ -210,10 +210,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
   
   rf_addr_t    rf_waddr;
-  logic        regfile_alu_we, regfile_alu_we_dec;
+  logic        regfile_alu_we_dec;
 
   // Register Write Control
-  logic        regfile_lsu_we;
   logic        rf_we;
   logic        rf_we_raw;
   
@@ -358,8 +357,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand a forwarding mux
   always_comb begin : operand_a_fw_mux
     case (operand_a_fw_mux_sel)
-      SEL_FW_EX:    operand_a_fw = regfile_alu_wdata_fw_i;
-      SEL_FW_WB:    operand_a_fw = regfile_wdata_wb_i;
+      SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
+      SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_a_fw = regfile_rdata[0];
       default:      operand_a_fw = regfile_rdata[0];
     endcase; // case (operand_a_fw_mux_sel)
@@ -403,8 +402,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand b forwarding mux
   always_comb begin : operand_b_fw_mux
     case (operand_b_fw_mux_sel)
-      SEL_FW_EX:    operand_b_fw = regfile_alu_wdata_fw_i;
-      SEL_FW_WB:    operand_b_fw = regfile_wdata_wb_i;
+      SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
+      SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_b_fw = regfile_rdata[1];
       default:      operand_b_fw = regfile_rdata[1];
     endcase; // case (operand_b_fw_mux_sel)
@@ -435,7 +434,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand c forwarding mux
   always_comb begin : operand_c_fw_mux
     case (operand_c_fw_mux_sel)
-      SEL_FW_EX:    operand_c_fw = regfile_alu_wdata_fw_i;
+      SEL_FW_EX:    operand_c_fw = rf_wdata_ex_i;
       SEL_REGFILE:  operand_c_fw = 32'h00000000;
       default:      operand_c_fw = 32'h00000000;
     endcase; // case (operand_c_fw_mux_sel)
@@ -451,14 +450,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////
 
   // Connect register file write port(s) to appropriate signals
-  assign regfile_waddr[0] = regfile_waddr_wb_i;
-  assign regfile_waddr[1] = regfile_alu_waddr_fw_i;
+  assign regfile_we[0]    = rf_we_wb_i;
+  assign regfile_waddr[0] = rf_waddr_wb_i;
+  assign regfile_wdata[0] = rf_wdata_wb_i;
 
-  assign regfile_wdata[0] = regfile_wdata_wb_i;
-  assign regfile_wdata[1] = regfile_alu_wdata_fw_i;
-
-  assign regfile_we[0] = regfile_we_wb_i;
-  assign regfile_we[1] = regfile_alu_we_fw_i;
+  assign regfile_we[1]    = rf_we_ex_i && !id_ex_pipe_o.data_req;
+  assign regfile_waddr[1] = rf_waddr_ex_i;
+  assign regfile_wdata[1] = rf_wdata_ex_i;
 
   cv32e40x_register_file_wrapper
   register_file_wrapper_i
@@ -559,8 +557,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   );
 
-  assign regfile_lsu_we     = rf_we && data_req;
-  assign regfile_alu_we     = rf_we && !data_req;
   assign regfile_alu_we_dec = rf_we_raw && !data_req_raw;
 
 
@@ -617,7 +613,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // LSU
     .data_req_ex_i                  ( id_ex_pipe_o.data_req  ),
     .data_we_ex_i                   ( id_ex_pipe_o.data_we   ),
-    .data_misaligned_i              ( data_misaligned_i      ),
+    .data_misaligned_i              ( lsu_misaligned_i       ),
 
     // ALU
     .mult_multicycle_i              ( mult_multicycle_i      ),
@@ -660,21 +656,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_restore_mret_id_o          ( csr_restore_mret_id_o  ),
     .csr_restore_dret_id_o          ( csr_restore_dret_id_o  ),
 
+    // Register File read, write back and forwards
     .rf_re_i                        ( rf_re                  ),       
     .rf_raddr_i                     ( rf_raddr               ),
     .rf_waddr_i                     ( rf_waddr               ),
-    .rf_waddr_ex_i                  ( id_ex_pipe_o.rf_waddr  ),
-    .rf_waddr_wb_i                  ( regfile_waddr_wb_i     ),
+    .rf_we_ex_i                     ( rf_we_ex_i             ),
+    .rf_waddr_ex_i                  ( rf_waddr_ex_i          ),
+    .rf_we_wb_i                     ( rf_we_wb_i             ),
+    .rf_waddr_wb_i                  ( rf_waddr_wb_i          ),
 
     // Write targets from ID
     .regfile_alu_we_id_i            ( regfile_alu_we_dec    ),
-
-    // Forwarding signals from regfile
-    .regfile_lsu_we_ex_i            ( id_ex_pipe_o.rf_we && id_ex_pipe_o.data_req /* id_ex_pipe_o.regfile_we */  ), // todo: clean up, no expression here
-    .regfile_lsu_we_wb_i            ( regfile_we_wb_i           ),
-
-    // regfile port 2
-    .regfile_alu_we_fw_i            ( regfile_alu_we_fw_i    ),
    
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),
@@ -756,7 +748,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
-      id_ex_pipe_o.rf_waddr               <= 6'b0;
+      id_ex_pipe_o.rf_waddr               <= '0;
 
       id_ex_pipe_o.prepost_useincr        <= 1'b0;
 
@@ -776,7 +768,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
     end
-    else if (data_misaligned_i) begin
+    else if (lsu_misaligned_i) begin
       // misaligned data access case
       if (ex_ready_i)
       begin // misaligned access case, only unstall alu operands
@@ -790,10 +782,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.alu_operand_b          <= 32'h4;
-    //     id_ex_pipe_o.regfile_alu_we         <= 1'b0; // todo proof that this was implied
-
         id_ex_pipe_o.prepost_useincr        <= 1'b1;
-
         id_ex_pipe_o.data_misaligned        <= 1'b1;
       end
     end else if (mult_multicycle_i) begin
@@ -823,8 +812,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mult_operand_c       <= alu_operand_c;
         end
         
-        id_ex_pipe_o.rf_we                  <= regfile_lsu_we || regfile_alu_we;
-        if (regfile_lsu_we || regfile_alu_we) begin
+        id_ex_pipe_o.rf_we                  <= rf_we;
+        if (rf_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr;
         end
 
@@ -843,14 +832,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.data_atop            <= data_atop;
         end
 
-        id_ex_pipe_o.data_misaligned        <= 1'b0; // todo: can this be gated?
+        id_ex_pipe_o.data_misaligned        <= 1'b0;
 
         if ((ctrl_transfer_insn == BRANCH_COND) || data_req) begin
           id_ex_pipe_o.pc                   <= pc_id_i;
         end
 
         id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn == BRANCH_COND;
-      end else if(ex_ready_i) begin
+      end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
 
@@ -870,7 +859,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       end else if (id_ex_pipe_o.csr_access) begin
        //In the EX stage there was a CSR access, to avoid multiple
-       //writes to the RF, disable regfile_alu_we.
+       //writes to the RF, disable rf_we.
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
        id_ex_pipe_o.rf_we         <= 1'b0;
       end
@@ -947,8 +936,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
                                                                           (alu_en == 1'b0) &&
                                                                           (mult_en == 1'b0) &&
-                                                                          (regfile_lsu_we == 1'b0) &&
-                                                                          (regfile_alu_we == 1'b0) && (data_req == 1'b0));
+                                                                          (rf_we == 1'b0) &&
+                                                                          (data_req == 1'b0));
     endproperty
 
     a_branch_taken_ex : assert property(p_branch_taken_ex);
@@ -996,7 +985,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
                                                                         ecall_insn || wfi_insn || fencei_insn ||
                                                                         alu_en || mult_en ||
-                                                                        regfile_lsu_we || regfile_alu_we ||
+                                                                        rf_we ||
                                                                         csr_op != CSR_OP_READ || data_req);
     endproperty
 

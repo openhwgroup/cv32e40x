@@ -34,8 +34,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     // ID/EX pipeline
     input id_ex_pipe_t   id_ex_pipe_i,
 
-    output logic [31:0]  data_rdata_ex_o,      // requested data                    -> to ex stage
-    output logic         data_misaligned_o,    // misaligned access was detected    -> to controller
+    output logic [31:0]  lsu_rdata_o,          // LSU read data
+    output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
 
     // stall signal
     output logic         lsu_ready_ex_o,       // LSU ready for new data in EX stage
@@ -304,31 +304,31 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   always_ff @(posedge clk, negedge rst_n)
   begin
-    if(rst_n == 1'b0)
+    if (rst_n == 1'b0)
     begin
-      rdata_q       <= '0;
+      rdata_q <= '0;
     end
     else
     begin
-      if (resp_valid && (~data_we_q))
+      if (resp_valid && !data_we_q)
       begin
         // if we have detected a misaligned access, and we are
         // currently doing the first part of this access, then
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if ((id_ex_pipe_i.data_misaligned == 1'b1) || (data_misaligned_o == 1'b1))
-          rdata_q  <= resp_rdata;
+        if (id_ex_pipe_i.data_misaligned || lsu_misaligned_o)
+          rdata_q <= resp_rdata;
         else
-          rdata_q  <= data_rdata_ext;
+          rdata_q <= data_rdata_ext;
       end
     end
   end
 
   // output to register file
-  assign data_rdata_ex_o = (resp_valid == 1'b1) ? data_rdata_ext : rdata_q;
+  assign lsu_rdata_o = (resp_valid == 1'b1) ? data_rdata_ext : rdata_q;
 
-  assign misaligned_st   = id_ex_pipe_i.data_misaligned;
+  assign misaligned_st = id_ex_pipe_i.data_misaligned;
 
   // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
   assign load_err_o      = 1'b0; // Not currently used
@@ -336,24 +336,24 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
 
   // check for misaligned accesses that need a second memory access
-  // If one is detected, this is signaled with data_misaligned_o to
+  // If one is detected, this is signaled with lsu_misaligned_o to
   // the controller which selectively stalls the pipeline
   always_comb
   begin
-    data_misaligned_o = 1'b0;
+    lsu_misaligned_o = 1'b0;
 
-    if((id_ex_pipe_i.data_req == 1'b1) && (id_ex_pipe_i.data_misaligned == 1'b0))
+    if (id_ex_pipe_i.data_req && !id_ex_pipe_i.data_misaligned)
     begin
       case (id_ex_pipe_i.data_type)
         2'b00: // word
         begin
           if(data_addr_int[1:0] != 2'b00)
-            data_misaligned_o = 1'b1;
+            lsu_misaligned_o = 1'b1;
         end
         2'b01: // half word
         begin
           if(data_addr_int[1:0] == 2'b11)
-            data_misaligned_o = 1'b1;
+            lsu_misaligned_o = 1'b1;
         end
       endcase // case (id_ex_pipe_i.data_type)
     end

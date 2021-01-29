@@ -68,7 +68,6 @@ module cv32e40x_core
  
   import cv32e40x_pkg::*;
   
-  
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
@@ -95,8 +94,6 @@ module cv32e40x_core
   // ID performance counter signals
   logic        is_decoding;
 
-  logic        data_misaligned;
-
   logic        mult_multicycle;
 
   // Jump and branch target and decision (EX->IF)
@@ -110,14 +107,17 @@ module cv32e40x_core
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
 
-  // Register Write Control
-  rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
-  logic        regfile_we_wb;
-  logic [31:0] regfile_wdata;
+  // EX/WB pipeline
+  ex_wb_pipe_t ex_wb_pipe;
 
-  rf_addr_t       regfile_alu_waddr_fw;
-  logic           regfile_alu_we_fw;
-  logic [31:0]    regfile_alu_wdata_fw;
+  // Register File Write Back
+  logic        rf_we_wb;
+  rf_addr_t    rf_waddr_wb;
+  logic [31:0] rf_wdata_wb;
+
+  logic        rf_we_ex;
+  rf_addr_t    rf_waddr_ex;
+  logic [31:0] rf_wdata_ex;
 
   // CSR control
   logic [23:0] mtvec_addr;
@@ -130,7 +130,11 @@ module cv32e40x_core
   logic [31:0] csr_wdata;
   PrivLvl_t    current_priv_lvl;
 
+  // Load/store unit
+  logic        lsu_misaligned;
   logic [31:0] lsu_rdata;
+  logic        lsu_ready_ex;
+  logic        lsu_ready_wb;
 
   // stall control
   logic        halt_if;
@@ -141,8 +145,6 @@ module cv32e40x_core
   logic        ex_valid;
   logic        wb_valid;
 
-  logic        lsu_ready_ex;
-  logic        lsu_ready_wb;
 
   // Signals between instruction core interface and pipe (if and id stages)
   logic        instr_req_int;    // Id stage asserts a req to instruction core interface
@@ -368,13 +370,11 @@ module cv32e40x_core
     .csr_save_id_o                ( csr_save_id          ), // control signal to save pc
     .csr_save_ex_o                ( csr_save_ex          ), // control signal to save pc
     .csr_restore_mret_id_o        ( csr_restore_mret_id  ), // control signal to restore pc
-
     .csr_restore_dret_id_o        ( csr_restore_dret_id  ), // control signal to restore pc
-
     .csr_save_cause_o             ( csr_save_cause       ),
 
-   // LSU
-    .data_misaligned_i            ( data_misaligned      ),
+    // Load/store unit
+    .lsu_misaligned_i             ( lsu_misaligned       ),
 
     // Interrupt Signals
     .irq_i                        ( irq_i                ),
@@ -399,14 +399,13 @@ module cv32e40x_core
     // Wakeup Signal
     .wake_from_sleep_o            ( wake_from_sleep      ),
 
-    // Forward Signals
-    .regfile_waddr_wb_i           ( regfile_waddr_fw_wb_o),  // Write address ex-wb pipeline
-    .regfile_we_wb_i              ( regfile_we_wb        ),  // write enable for the register file
-    .regfile_wdata_wb_i           ( regfile_wdata        ),  // write data to commit in the register file
-
-    .regfile_alu_waddr_fw_i       ( regfile_alu_waddr_fw ),
-    .regfile_alu_we_fw_i          ( regfile_alu_we_fw    ),
-    .regfile_alu_wdata_fw_i       ( regfile_alu_wdata_fw ),
+    // Register file write back and forwards
+    .rf_we_ex_i                   ( rf_we_ex             ),
+    .rf_waddr_ex_i                ( rf_waddr_ex          ),
+    .rf_wdata_ex_i                ( rf_wdata_ex          ),
+    .rf_we_wb_i                   ( rf_we_wb             ),
+    .rf_waddr_wb_i                ( rf_waddr_wb          ),
+    .rf_wdata_wb_i                ( rf_wdata_wb          ),
 
     // from ALU
     .mult_multicycle_i            ( mult_multicycle      ),
@@ -438,33 +437,28 @@ module cv32e40x_core
   cv32e40x_ex_stage
   ex_stage_i
   (
-    // Global signals: Clock and active low asynchronous reset
     .clk                        ( clk                          ),
     .rst_n                      ( rst_ni                       ),
 
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe                   ),
 
+    // EX/WB pipeline
+    .ex_wb_pipe_o               ( ex_wb_pipe                   ),
+
     .mult_multicycle_o          ( mult_multicycle              ), // to ID/EX pipe registers
    
-    .lsu_rdata_i                ( lsu_rdata                    ),
-
     // interface with CSRs
     .csr_rdata_i                ( csr_rdata                    ),
-
-    // Output of ex stage pipeline
-    .rf_waddr_wb_o              ( regfile_waddr_fw_wb_o        ),
-    .rf_we_wb_o                 ( regfile_we_wb                ),
-    .rf_wdata_wb_o              ( regfile_wdata                ),
 
     // To IF: Jump and branch target and decision
     .jump_target_o              ( jump_target_ex               ),
     .branch_decision_o          ( branch_decision              ),
 
-    // To ID stage: Forwarding signals
-    .regfile_alu_waddr_fw_o     ( regfile_alu_waddr_fw         ),
-    .regfile_alu_we_fw_o        ( regfile_alu_we_fw            ),
-    .regfile_alu_wdata_fw_o     ( regfile_alu_wdata_fw         ),
+    // Register file forwarding signals (to ID)
+    .rf_we_ex_o                 ( rf_we_ex                     ),
+    .rf_waddr_ex_o              ( rf_waddr_ex                  ),
+    .rf_wdata_ex_o              ( rf_wdata_ex                  ),
 
     // stall control
     .is_decoding_i              ( is_decoding                  ),
@@ -495,14 +489,32 @@ module cv32e40x_core
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
    
-    .data_rdata_ex_o       ( lsu_rdata          ),
-    .data_misaligned_o     ( data_misaligned    ),
+    .lsu_rdata_o           ( lsu_rdata          ),
+    .lsu_misaligned_o      ( lsu_misaligned     ),
 
     // control signals
     .lsu_ready_ex_o        ( lsu_ready_ex       ),
     .lsu_ready_wb_o        ( lsu_ready_wb       ),
 
     .busy_o                ( lsu_busy           )
+  );
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // Write back stage                                                                   //
+  ////////////////////////////////////////////////////////////////////////////////////////
+
+  cv32e40x_wb_stage
+  wb_stage_i
+  (
+    // EX/WB pipeline
+    .ex_wb_pipe_i               ( ex_wb_pipe                   ),
+
+    .lsu_rdata_i                ( lsu_rdata                    ),
+
+    // Write back to register file
+    .rf_we_wb_o                 ( rf_we_wb                     ),
+    .rf_waddr_wb_o              ( rf_waddr_wb                  ),
+    .rf_wdata_wb_o              ( rf_wdata_wb                  )
   );
 
   // Tracer signal
@@ -594,15 +606,11 @@ module cv32e40x_core
 
   assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_access ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
-
- 
-
 `ifdef CV32E40P_ASSERT_ON
 
   //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
-
   
   generate
   begin : gen_no_pulp_cluster_assertions

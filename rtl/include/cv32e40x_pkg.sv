@@ -697,47 +697,54 @@ parameter AMO_MAXU = 5'b11100;
 typedef struct packed {
 
   // ALU Control
-  logic 	 alu_en;
-  alu_opcode_e alu_operator;      
-  logic [31:0] alu_operand_a;     
-  logic [31:0] alu_operand_b;     
-  logic [31:0] alu_operand_c;     
+  logic         alu_en;
+  alu_opcode_e  alu_operator;      
+  logic [31:0]  alu_operand_a;     
+  logic [31:0]  alu_operand_b;     
+  logic [31:0]  alu_operand_c;     
 
   // Multiplier control
-  mul_opcode_e mult_operator;     
-  logic [31:0] mult_operand_a;    
-  logic [31:0] mult_operand_b;    
-  logic [31:0] mult_operand_c;    
-  logic mult_en;           
-  logic mult_sel_subword;  
-  logic [ 1:0] mult_signed_mode;  
+  logic         mult_en;           
+  mul_opcode_e  mult_operator;     
+  logic [31:0]  mult_operand_a;    
+  logic [31:0]  mult_operand_b;    
+  logic [31:0]  mult_operand_c;    
+  logic         mult_sel_subword;  
+  logic [ 1:0]  mult_signed_mode;  
 
   // Register write control
-  logic rf_we;
-  rf_addr_t rf_waddr; 
+  logic         rf_we;
+  rf_addr_t     rf_waddr; 
+
   logic prepost_useincr;
 
   // CSR control
-  logic csr_access;
-  csr_opcode_e csr_op;            
+  logic         csr_access;
+  csr_opcode_e  csr_op;            
 
   // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
-  logic       data_req;          
-  logic       data_we;           
-  logic [1:0] data_type;         
-  logic [1:0] data_sign_ext;     
-  logic [1:0] data_reg_offset;   
-  logic       data_misaligned;   
-  logic [5:0] data_atop;              
+  logic         data_req;          
+  logic         data_we;           
+  logic [1:0]   data_type;         
+  logic [1:0]   data_sign_ext;     
+  logic [1:0]   data_reg_offset;   
+  logic         data_misaligned;   
+  logic [5:0]   data_atop;             
 
   // PC of last executed branch
-  logic [31:0] pc;
+  logic [31:0]  pc;
 
   // Branch target
-  logic branch_in_ex;
-  
+  logic         branch_in_ex;
 } id_ex_pipe_t;
-  
+
+// EX/WB pipeline
+typedef struct packed {
+  logic         rf_we;
+  rf_addr_t     rf_waddr;
+  logic [31:0]  rf_wdata;
+} ex_wb_pipe_t;
+
 ///////////////////////////////////////////////
 //   ___ _____   ____  _                     //
 //  |_ _|  ___| / ___|| |_ __ _  __ _  ___   //

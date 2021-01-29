@@ -43,15 +43,13 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // CSR access
   input  logic [31:0] csr_rdata_i,
 
-  // Output of EX stage pipeline
-  output rf_addr_t      rf_waddr_wb_o,
-  output logic          rf_we_wb_o,
-  output logic [31:0]   rf_wdata_wb_o,
+  // EX/WB pipeline 
+  output ex_wb_pipe_t ex_wb_pipe_o,
 
-  // Forwarding ports : to ID stage
-  output rf_addr_t      regfile_alu_waddr_fw_o,
-  output logic          regfile_alu_we_fw_o,
-  output logic [31:0]   regfile_alu_wdata_fw_o,    // forward to RF and ID/EX pipe, ALU & MUL
+  // Register file forwarding signals (to ID)
+  output logic        rf_we_ex_o,
+  output rf_addr_t    rf_waddr_ex_o,
+  output logic [31:0] rf_wdata_ex_o,
 
   // To IF: Jump and branch target and decision
   output logic [31:0] jump_target_o,
@@ -76,22 +74,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    regfile_alu_wdata_fw_o = '0; // todo: assignments below should be unique case (is assignment to 0 needed?)
+    rf_wdata_ex_o = '0; // todo: assignments below should be unique case (also check with formal if assignment to 0 is needed, and if so comment why)
 
-    regfile_alu_we_fw_o    = id_ex_pipe_i.rf_we && !id_ex_pipe_i.data_req;
-    regfile_alu_waddr_fw_o = id_ex_pipe_i.rf_waddr;
+    rf_we_ex_o    = id_ex_pipe_i.rf_we;
+    rf_waddr_ex_o = id_ex_pipe_i.rf_waddr;
     if (id_ex_pipe_i.alu_en)
-      regfile_alu_wdata_fw_o = alu_result;
+      rf_wdata_ex_o = alu_result;
     if (id_ex_pipe_i.mult_en)
-      regfile_alu_wdata_fw_o = mult_result;
+      rf_wdata_ex_o = mult_result;
     if (id_ex_pipe_i.csr_access)
-      regfile_alu_wdata_fw_o = csr_rdata_i;
-  end
-
-  // LSU write port mux
-  always_comb
-  begin
-    rf_wdata_wb_o = lsu_rdata_i; // todo: move to WB stage
+      rf_wdata_ex_o = csr_rdata_i;
   end
 
   // branch handling
@@ -161,24 +153,25 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // EX/WB Pipeline Register           //
   ///////////////////////////////////////
   always_ff @(posedge clk, negedge rst_n)
-  begin : EX_WB_Pipeline_Register
+  begin : EX_WB_PIPE_REGISTERS
     if (~rst_n)
     begin
-      rf_waddr_wb_o   <= '0;
-      rf_we_wb_o      <= 1'b0;
+      ex_wb_pipe_o.rf_we    <= 1'b0;
+      ex_wb_pipe_o.rf_waddr <= '0;
+      ex_wb_pipe_o.rf_wdata <= 32'b0; // todo: regular assignment needs to be added while removing 2nd rf write port
     end
     else
     begin
       if (ex_valid_o) // wb_ready_i is implied
       begin
-        rf_we_wb_o <= id_ex_pipe_i.rf_we && id_ex_pipe_i.data_req;
+        ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we && id_ex_pipe_i.data_req;
         if (id_ex_pipe_i.rf_we && id_ex_pipe_i.data_req) begin
-          rf_waddr_wb_o <= id_ex_pipe_i.rf_waddr;
+          ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
         end
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we just flush the current one out of the pipe
-        rf_we_wb_o <= 1'b0;
+        ex_wb_pipe_o.rf_we <= 1'b0;
       end
     end
   end
@@ -191,4 +184,4 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_valid_o = (id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_access || id_ex_pipe_i.data_req)
                        && (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i);
 
-endmodule
+endmodule // cv32e40x_ex_stage

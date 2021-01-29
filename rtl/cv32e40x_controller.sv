@@ -126,9 +126,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic           regfile_alu_we_id_i,        // currently decoded we enable
 
   // Forwarding signals from regfile
-  input  logic           regfile_lsu_we_ex_i,        // FW: write enable from  EX stage
-  input  logic           regfile_lsu_we_wb_i,        // FW: write enable from  WB stage
-  input  logic           regfile_alu_we_fw_i,        // FW: ALU/MUL write enable from  EX stage
+  input  logic           rf_we_ex_i,            // Register file write enable from EX stage
+  input  logic           rf_we_wb_i,            // Register file write enable from WB stage
 
   // forwarding signals
   output logic [1:0]  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
@@ -819,10 +818,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-        (data_req_ex_i && regfile_lsu_we_ex_i && |rf_rd_ex_hz) ||
-        (!wb_ready_i   && regfile_lsu_we_wb_i && |rf_rd_wb_hz) ||
-        (data_req_ex_i && regfile_lsu_we_ex_i && is_decoding_o && !data_misaligned_i && rf_wr_ex_hz) ||
-        (!wb_ready_i   && regfile_lsu_we_wb_i && is_decoding_o && !data_misaligned_i && rf_wr_wb_hz)
+        (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) ||
+        (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) ||
+        (data_req_ex_i && rf_we_ex_i && is_decoding_o && !data_misaligned_i && rf_wr_ex_hz) ||
+        (!wb_ready_i   && rf_we_wb_i && is_decoding_o && !data_misaligned_i && rf_wr_wb_hz)
        )
     begin
       deassert_we_o   = 1'b1;
@@ -834,9 +833,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        (((regfile_lsu_we_wb_i == 1'b1) && rf_rd_wb_match[0]) ||
-         ((regfile_lsu_we_ex_i == 1'b1) && rf_rd_ex_match[0]) ||
-         ((regfile_alu_we_fw_i == 1'b1) && rf_rd_ex_match[0])) )
+        ((rf_we_wb_i && rf_rd_wb_match[0]) ||
+         (rf_we_ex_i && rf_rd_ex_match[0])))
     begin
       jr_stall_o      = 1'b1;
       deassert_we_o   = 1'b1;
@@ -847,11 +845,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     end
   end
 
-
   // stall because of misaligned data access
   assign misaligned_stall_o = data_misaligned_i;
 
-  
   // Forwarding control unit
   always_comb
   begin
@@ -861,7 +857,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     operand_c_fw_mux_sel_o = SEL_REGFILE;
 
     // Forwarding WB -> ID
-    if (regfile_lsu_we_wb_i == 1'b1)
+    if (rf_we_wb_i)
     begin
       if (rf_rd_wb_match[0])
         operand_a_fw_mux_sel_o = SEL_FW_WB;
@@ -869,8 +865,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         operand_b_fw_mux_sel_o = SEL_FW_WB;
     end
 
-    // Forwarding EX -> ID
-    if (regfile_alu_we_fw_i == 1'b1)
+    // Forwarding EX -> ID (not actually used when there is a load in EX)
+    if (rf_we_ex_i)
     begin
      if (rf_rd_ex_match[0])
        operand_a_fw_mux_sel_o = SEL_FW_EX;
