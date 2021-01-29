@@ -794,7 +794,7 @@ typedef enum logic [2:0]  {ALIGNED32,
                            BRANCH_MISALIGNED,
                            WAIT_VALID_BRANCH} aligner_state_e;
 
-// ID/EX pipeline
+// IF/ID pipeline
 typedef struct packed {
 
   logic        instr_valid;
