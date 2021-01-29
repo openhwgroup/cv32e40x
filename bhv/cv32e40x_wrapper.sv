@@ -104,7 +104,7 @@ module cv32e40x_wrapper
           .is_decoding_i      ( core_i.id_stage_i.is_decoding_o    ),
           .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn     ),
           .hart_id_i          ( core_i.hart_id_i                   ),
-          .pc_id_i            ( core_i.pc_id                       )
+          .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
 
 `ifdef CV32E40P_APU_TRACE
@@ -120,23 +120,23 @@ module cv32e40x_wrapper
 
 `ifdef CV32E40P_TRACE_EXECUTION
     cv32e40x_tracer tracer_i(
-      .clk_i          ( core_i.clk_i                                ), // always-running clock for tracing
-      .rst_n          ( core_i.rst_ni                               ),
+      .clk_i          ( core_i.clk_i                                   ), // always-running clock for tracing
+      .rst_n          ( core_i.rst_ni                                  ),
 
-      .hart_id_i      ( core_i.hart_id_i                            ),
+      .hart_id_i      ( core_i.hart_id_i                               ),
 
-      .pc             ( core_i.id_stage_i.pc_id_i                   ),
-      .instr          ( core_i.id_stage_i.instr                     ),
+      .pc             ( core_i.id_stage_i.if_id_pipe_i.pc              ),
+      .instr          ( core_i.id_stage_i.instr                        ),
       .controller_state_i ( core_i.id_stage_i.controller_i.ctrl_fsm_cs ),
-      .compressed     ( core_i.id_stage_i.is_compressed_i           ),
-      .id_valid       ( core_i.id_stage_i.id_valid_o                ),
-      .is_decoding    ( core_i.id_stage_i.is_decoding_o             ),
-      .is_illegal     ( core_i.id_stage_i.illegal_insn              ),
-      .trigger_match  ( core_i.id_stage_i.trigger_match_i           ),
-      .rs1_value      ( core_i.id_stage_i.operand_a_fw              ),
-      .rs2_value      ( core_i.id_stage_i.operand_b_fw              ),
-      .rs3_value      ( core_i.id_stage_i.alu_operand_c             ),
-      .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b             ),
+      .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
+      .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
+      .is_decoding    ( core_i.id_stage_i.is_decoding_o                ),
+      .is_illegal     ( core_i.id_stage_i.illegal_insn                 ),
+      .trigger_match  ( core_i.id_stage_i.trigger_match_i              ),
+      .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),
+      .rs2_value      ( core_i.id_stage_i.operand_b_fw                 ),
+      .rs3_value      ( core_i.id_stage_i.alu_operand_c                ),
+      .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b                ),
 
       .rs1_is_fp('0),
       .rs2_is_fp('0),

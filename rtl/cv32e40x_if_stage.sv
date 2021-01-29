@@ -157,22 +157,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .busy_o            ( prefetch_busy               )
 );
 
-  // offset FSM state transition logic
-  always_comb
-  begin
+  // Signal branch on pc_set_i
+  assign branch_req = pc_set_i;
 
-    fetch_ready   = 1'b0;
-    branch_req    = 1'b0;
-    // take care of jumps and branches
-    if (pc_set_i) begin
-      branch_req    = 1'b1;
-    end
-    else if (fetch_valid) begin
-      if (req_i && if_valid) begin
-        fetch_ready   = aligner_ready;
-      end
-    end
-  end
+  // fetch_ready will cause a read from the prefetch fifo.
+  // Gate off if aligner or id_stage is not ready,
+  // or if we are commanded to halt
+  assign fetch_ready = aligner_ready && id_ready_i && !halt_if_i;
 
   assign if_busy_o    = prefetch_busy;
   assign perf_imiss_o = !fetch_valid && !branch_req;
