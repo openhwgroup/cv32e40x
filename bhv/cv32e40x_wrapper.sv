@@ -144,9 +144,9 @@ module cv32e40x_wrapper
       .rd_is_fp('0),
 
       .ex_valid       ( core_i.ex_valid                             ),
-      .ex_reg_addr    ( core_i.rf_waddr_ex                          ),
-      .ex_reg_we      ( core_i.rf_we_ex                             ),
-      .ex_reg_wdata   ( core_i.rf_wdata_ex                          ),
+      .ex_reg_addr    ( core_i.id_stage_i.regfile_waddr[1]          ),
+      .ex_reg_we      ( core_i.id_stage_i.regfile_we[1]             ),
+      .ex_reg_wdata   ( core_i.id_stage_i.regfile_wdata[1]          ),
 
       .ex_data_addr   ( core_i.data_addr_o                          ),
       .ex_data_req    ( core_i.data_req_o                           ),
@@ -162,9 +162,9 @@ module cv32e40x_wrapper
       .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ),
 
       .wb_valid       ( core_i.wb_valid                             ),
-      .wb_reg_addr    ( core_i.regfile_waddr_fw_wb_o                ),
-      .wb_reg_we      ( core_i.regfile_we_wb                        ),
-      .wb_reg_wdata   ( core_i.regfile_wdata                        ),
+      .wb_reg_addr    ( core_i.rf_waddr_wb                          ),
+      .wb_reg_we      ( core_i.rf_we_wb                             ),
+      .wb_reg_wdata   ( core_i.rf_wdata_wb                          ),
 
       .imm_u_type     ( core_i.id_stage_i.imm_u_type                ),
       .imm_uj_type    ( core_i.id_stage_i.imm_uj_type               ),
