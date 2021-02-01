@@ -144,16 +144,16 @@ module cv32e40x_wrapper
       .rd_is_fp('0),
 
       .ex_valid       ( core_i.ex_valid                             ),
-      .ex_reg_addr    ( core_i.regfile_alu_waddr_fw                 ),
-      .ex_reg_we      ( core_i.regfile_alu_we_fw                    ),
-      .ex_reg_wdata   ( core_i.regfile_alu_wdata_fw                 ),
+      .ex_reg_addr    ( core_i.rf_waddr_ex                          ),
+      .ex_reg_we      ( core_i.rf_we_ex                             ),
+      .ex_reg_wdata   ( core_i.rf_wdata_ex                          ),
 
       .ex_data_addr   ( core_i.data_addr_o                          ),
       .ex_data_req    ( core_i.data_req_o                           ),
       .ex_data_gnt    ( core_i.data_gnt_i                           ),
       .ex_data_we     ( core_i.data_we_o                            ),
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
-      .data_misaligned ( core_i.data_misaligned                     ),
+      .data_misaligned ( core_i.lsu_misaligned                      ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
       .debug_mode     ( core_i.debug_mode                           ),
