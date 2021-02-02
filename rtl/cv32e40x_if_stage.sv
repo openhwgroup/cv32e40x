@@ -77,28 +77,36 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
   
-  logic              if_valid, if_ready;
+  //logic              if_valid, if_ready;
 
   // prefetch buffer related signals
   logic              prefetch_busy;
   logic              branch_req;
   logic       [31:0] branch_addr_n;
 
-  logic              fetch_valid;
-  logic              fetch_ready;
-  logic       [31:0] fetch_rdata;
-
   logic       [31:0] exc_pc;
 
   logic              fetch_failed;
 
   logic              aligner_ready;
-  logic              instr_valid;
-
+  
+  logic              prefetch_valid;
+  logic              prefetch_ready;
+  logic [31:0]       prefetch_instr;
+  
   logic              illegal_c_insn;
-  logic [31:0]       instr_aligned;
+    
   logic [31:0]       instr_decompressed;
   logic              instr_compressed_int;
+
+  // Transaction signals to/from obi interface
+  logic        trans_valid;
+  logic        trans_ready;
+  logic [31:0] trans_addr;
+
+  logic        resp_valid;
+  logic        resp_err;
+  logic [31:0] resp_rdata;
 
   // exception PC selection mux
   always_comb
@@ -146,27 +154,56 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .branch_i          ( branch_req                  ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
 
-    .fetch_ready_i     ( fetch_ready                 ),
-    .fetch_valid_o     ( fetch_valid                 ),
-    .fetch_rdata_o     ( fetch_rdata                 ),
+    .prefetch_ready_i  ( prefetch_ready              ),
+    .prefetch_valid_o  ( prefetch_valid              ),
+    .prefetch_instr_o  ( prefetch_instr              ),
 
-    // goes to instruction memory / instruction cache
-    .m_c_obi_instr_if  ( m_c_obi_instr_if            ),
+    .trans_valid_o     ( trans_valid                 ),
+    .trans_ready_i     ( trans_ready                 ),
+    .trans_addr_o      ( trans_addr                  ),
+
+    .resp_valid_i      ( resp_valid                  ),
+    .resp_rdata_i      ( resp_rdata                  ),
+    .resp_err_i        ( resp_err                    ),
+
+    .pc_if_o           ( pc_if_o                     ),
+
+    .perf_imiss_o      ( perf_imiss_o                ),
 
     // Prefetch Buffer Status
     .busy_o            ( prefetch_busy               )
 );
 
+//////////////////////////////////////////////////////////////////////////////
+// OBI interface
+//////////////////////////////////////////////////////////////////////////////
+
+cv32e40x_instr_obi_interface
+instruction_obi_i
+(
+  .clk                   ( clk               ),
+  .rst_n                 ( rst_n             ),
+
+  .trans_valid_i         ( trans_valid       ),
+  .trans_ready_o         ( trans_ready       ),
+  .trans_addr_i          ( {trans_addr[31:2], 2'b00} ),
+
+  .resp_valid_o          ( resp_valid        ),
+  .resp_rdata_o          ( resp_rdata        ),
+  .resp_err_o            ( resp_err          ),
+
+  .m_c_obi_instr_if      ( m_c_obi_instr_if  )
+);
+
   // Signal branch on pc_set_i
   assign branch_req = pc_set_i;
 
-  // fetch_ready will cause a read from the prefetch fifo.
-  // Gate off if aligner or id_stage is not ready,
-  // or if we are commanded to halt
-  assign fetch_ready = aligner_ready && id_ready_i && !halt_if_i;
+  // prefetch_ready will cause a read from the prefetch fifo (if aligner is ready)
+  // Gate off if id_stage is not ready, or if we are commanded to halt
+  assign prefetch_ready = id_ready_i && !halt_if_i;
 
   assign if_busy_o    = prefetch_busy;
-  assign perf_imiss_o = !fetch_valid && !branch_req;
+  
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
@@ -183,7 +220,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     else
     begin
 
-      if (if_valid && instr_valid)
+      if (prefetch_ready && prefetch_valid)
       begin
         if_id_pipe_o.instr_valid     <= 1'b1;
         if_id_pipe_o.instr_rdata     <= instr_decompressed;
@@ -196,30 +233,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.is_fetch_failed <= fetch_failed;
       end
     end
-    end
-
-  assign if_ready = fetch_valid & id_ready_i;
-  assign if_valid = (~halt_if_i) & if_ready;
-
-  cv32e40x_aligner aligner_i
-  (
-    .clk               ( clk                          ),
-    .rst_n             ( rst_n                        ),
-    .fetch_valid_i     ( fetch_valid                  ),
-    .aligner_ready_o   ( aligner_ready                ),
-    .if_valid_i        ( if_valid                     ),
-    .fetch_rdata_i     ( fetch_rdata                  ),
-    .instr_aligned_o   ( instr_aligned                ),
-    .instr_valid_o     ( instr_valid                  ),
-    .branch_addr_i     ( {branch_addr_n[31:1], 1'b0}  ),
-    .branch_i          ( branch_req                   ),
-    .pc_o              ( pc_if_o                      )
-  );
+  end
 
   cv32e40x_compressed_decoder
   compressed_decoder_i
   (
-    .instr_i         ( instr_aligned        ),
+    .instr_i         ( prefetch_instr       ),
     .instr_o         ( instr_decompressed   ),
     .is_compressed_o ( instr_compressed_int ),
     .illegal_instr_o ( illegal_c_insn       )
@@ -231,7 +250,14 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
 `ifdef CV32E40P_ASSERT_ON
 
+// Check that bus interface transactions are word aligned
+  property p_instr_addr_word_aligned;
+    @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[1:0] == 2'b00);
+ endproperty
 
+ a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned);
+
+ 
 
 `endif
 
