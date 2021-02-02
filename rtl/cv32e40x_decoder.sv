@@ -110,635 +110,78 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   logic       alu_en;
   logic       mult_en;
- 
+  
+  decoder_ctrl_t decoder_m_ctrl;
+  decoder_ctrl_t decoder_a_ctrl;
+  decoder_ctrl_t decoder_i_ctrl;
+  decoder_ctrl_t decoder_ctrl_mux;
 
-  /////////////////////////////////////////////
-  //   ____                     _            //
-  //  |  _ \  ___  ___ ___   __| | ___ _ __  //
-  //  | | | |/ _ \/ __/ _ \ / _` |/ _ \ '__| //
-  //  | |_| |  __/ (_| (_) | (_| |  __/ |    //
-  //  |____/ \___|\___\___/ \__,_|\___|_|    //
-  //                                         //
-  /////////////////////////////////////////////
+  // RV32M extension decoder
+  cv32e40x_m_decoder
+    m_decoder_i
+      (.instr_rdata_i(instr_rdata_i),
+       .decoder_ctrl_o(decoder_m_ctrl));
 
+  // RV32A extension decoder
+  cv32e40x_a_decoder #(.A_EXTENSION(A_EXTENSION))
+    a_decoder_i
+      (.instr_rdata_i(instr_rdata_i),
+       .decoder_ctrl_o(decoder_a_ctrl));
+
+  // RV32I Base instruction set decoder
+  cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
+    i_decoder_i
+      (.instr_rdata_i(instr_rdata_i),
+       .debug_mode_i(debug_mode_i),
+       .debug_wfi_no_sleep_i(debug_wfi_no_sleep_i),
+       .decoder_ctrl_o(decoder_i_ctrl));
+  
+  // Mux control outputs from decoders
   always_comb
   begin
-    ctrl_transfer_insn          = BRANCH_NONE;
-    ctrl_transfer_target_mux_sel_o       = JT_JAL;
-
-    alu_en                      = 1'b1;
-    alu_operator_o              = ALU_SLTU;
-    alu_op_a_mux_sel_o          = OP_A_REGA_OR_FWD;
-    alu_op_b_mux_sel_o          = OP_B_REGB_OR_FWD;
-    alu_op_c_mux_sel_o          = OP_C_REGC_OR_FWD;
-    
-    imm_a_mux_sel_o             = IMMA_ZERO;
-    imm_b_mux_sel_o             = IMMB_I;
-
-    mult_operator_o             = MUL_M32;
-    mult_en                     = 1'b0;
-    mult_signed_mode_o          = 2'b00;
-    mult_sel_subword_o          = 1'b0;
-
-    rf_re_o                     = 2'b00;
-    rf_we                       = 1'b0;
-
-    prepost_useincr_o           = 1'b1;
-
-    csr_access_o                = 1'b0;
-    csr_status_o                = 1'b0;
-    csr_illegal                 = 1'b0;
-    csr_op                      = CSR_OP_READ;
-    mret_insn_o                 = 1'b0;
-    dret_insn_o                 = 1'b0;
-
-    data_req                    = 1'b0;
-    data_we_o                   = 1'b0;
-    data_type_o                 = 2'b00;
-    data_sign_extension_o       = 2'b00;
-    data_reg_offset_o           = 2'b00;
-    data_atop_o                 = 6'b000000;
-
-    illegal_insn_o              = 1'b0;
-    ebrk_insn_o                 = 1'b0;
-    ecall_insn_o                = 1'b0;
-    wfi_insn_o                  = 1'b0;
-    fencei_insn_o               = 1'b0;
-    
-    mret_dec_o                  = 1'b0;
-    dret_dec_o                  = 1'b0;
-
-    unique case (instr_rdata_i[6:0])
-
-      //////////////////////////////////////
-      //      _ _   _ __  __ ____  ____   //
-      //     | | | | |  \/  |  _ \/ ___|  //
-      //  _  | | | | | |\/| | |_) \___ \  //
-      // | |_| | |_| | |  | |  __/ ___) | //
-      //  \___/ \___/|_|  |_|_|   |____/  //
-      //                                  //
-      //////////////////////////////////////
-
-      OPCODE_JAL: begin   // Jump and Link
-        ctrl_transfer_target_mux_sel_o = JT_JAL;
-        ctrl_transfer_insn    = BRANCH_JAL;
-        // Calculate and store PC+4
-        alu_op_a_mux_sel_o  = OP_A_CURRPC;
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_b_mux_sel_o     = IMMB_PCINCR;
-        alu_operator_o      = ALU_ADD;
-        rf_we               = 1'b1;
-        // Calculate jump target (= PC + UJ imm)
-      end
-
-      OPCODE_JALR: begin  // Jump and Link Register
-        ctrl_transfer_target_mux_sel_o = JT_JALR;
-        ctrl_transfer_insn    = BRANCH_JALR;
-        // Calculate and store PC+4
-        alu_op_a_mux_sel_o  = OP_A_CURRPC;
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_b_mux_sel_o     = IMMB_PCINCR;
-        alu_operator_o      = ALU_ADD;
-        rf_we               = 1'b1;
-        // Calculate jump target (= RS1 + I imm)
-        rf_re_o[0]          = 1'b1;
-
-        if (instr_rdata_i[14:12] != 3'b0) begin
-          ctrl_transfer_insn = BRANCH_NONE;
-          rf_we              = 1'b0;
-          illegal_insn_o     = 1'b1;
-        end
-      end
-
-      OPCODE_BRANCH: begin // Branch
-        ctrl_transfer_target_mux_sel_o = JT_COND;
-        ctrl_transfer_insn    = BRANCH_COND;
-        alu_op_c_mux_sel_o    = OP_C_JT;
-        rf_re_o[0]            = 1'b1;
-        rf_re_o[1]            = 1'b1;
-
-        unique case (instr_rdata_i[14:12])
-          3'b000: alu_operator_o = ALU_EQ;
-          3'b001: alu_operator_o = ALU_NE;
-          3'b100: alu_operator_o = ALU_LTS;
-          3'b101: alu_operator_o = ALU_GES;
-          3'b110: alu_operator_o = ALU_LTU;
-          3'b111: alu_operator_o = ALU_GEU;
-          3'b010: begin
-              illegal_insn_o = 1'b1;          
-          end
-          3'b011: begin
-            illegal_insn_o = 1'b1;
-          end
-        endcase
-      end
-
-      //////////////////////////////////
-      //  _     ____    ______ _____  //
-      // | |   |  _ \  / / ___|_   _| //
-      // | |   | | | |/ /\___ \ | |   //
-      // | |___| |_| / /  ___) || |   //
-      // |_____|____/_/  |____/ |_|   //
-      //                              //
-      //////////////////////////////////
-
-      OPCODE_STORE: begin
-        data_req       = 1'b1;
-        data_we_o      = 1'b1;
-        rf_re_o[0]     = 1'b1;
-        rf_re_o[1]     = 1'b1;
-        alu_operator_o = ALU_ADD;
-        // pass write data through ALU operand c
-        alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD;
-
-        if (instr_rdata_i[14] == 1'b0) begin
-          // offset from immediate
-          imm_b_mux_sel_o     = IMMB_S;
-          alu_op_b_mux_sel_o  = OP_B_IMM;
-        end else begin
-            illegal_insn_o = 1'b1;
-        end
-
-        // store size
-        unique case (instr_rdata_i[13:12])
-          2'b00: data_type_o = 2'b10; // SB
-          2'b01: data_type_o = 2'b01; // SH
-          2'b10: data_type_o = 2'b00; // SW
-          default: begin
-            data_req       = 1'b0;
-            data_we_o      = 1'b0;
-            illegal_insn_o = 1'b1;
-          end
-        endcase
-      end
-
-      OPCODE_LOAD: begin
-        data_req        = 1'b1;
-        rf_we           = 1'b1;
-        rf_re_o[0]      = 1'b1;
-        data_type_o     = 2'b00;
-        // offset from immediate
-        alu_operator_o      = ALU_ADD;
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_b_mux_sel_o     = IMMB_I;
-
-        // sign/zero extension
-        data_sign_extension_o = {1'b0,~instr_rdata_i[14]};
-
-        // load size
-        unique case (instr_rdata_i[13:12])
-          2'b00:   data_type_o = 2'b10; // LB
-          2'b01:   data_type_o = 2'b01; // LH
-          2'b10:   data_type_o = 2'b00; // LW
-          default: data_type_o = 2'b00; // illegal or reg-reg
-        endcase
-
-        // Reserved
-        if (instr_rdata_i[14:12] == 3'b111) begin
-            illegal_insn_o = 1'b1;
-        end
-
-        // Reserved
-        if (instr_rdata_i[14:12] == 3'b110) begin
-          illegal_insn_o = 1'b1;
-        end
-
-        if (instr_rdata_i[14:12] == 3'b011) begin
-          // LD -> RV64 only
-          illegal_insn_o = 1'b1;
-        end
-      end
-
-      OPCODE_AMO: begin
-        if (A_EXTENSION) begin : decode_amo
-          if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
-            data_req          = 1'b1;
-            data_type_o       = 2'b00;
-            rf_re_o[0]        = 1'b1;
-            rf_re_o[1]        = 1'b1;
-            rf_we             = 1'b1;
-            prepost_useincr_o = 1'b0; // only use alu_operand_a as address (not a+b)
-            alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
-
-            data_sign_extension_o = 1'b1;
-
-            // Apply AMO instruction at `data_atop_o`.
-            data_atop_o = {1'b1, instr_rdata_i[31:27]};
-
-            unique case (instr_rdata_i[31:27])
-              AMO_LR: begin
-                data_we_o = 1'b0;
-              end
-              AMO_SC,
-              AMO_SWAP,
-              AMO_ADD,
-              AMO_XOR,
-              AMO_AND,
-              AMO_OR,
-              AMO_MIN,
-              AMO_MAX,
-              AMO_MINU,
-              AMO_MAXU: begin
-                data_we_o = 1'b1;
-                alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
-              end
-              default : illegal_insn_o = 1'b1;
-            endcase
-          end
-          else begin
-            illegal_insn_o = 1'b1;
-          end
-        end else begin : no_decode_amo
-          illegal_insn_o = 1'b1;
-        end
-      end
-
-
-      //////////////////////////
-      //     _    _    _   _  //
-      //    / \  | |  | | | | //
-      //   / _ \ | |  | | | | //
-      //  / ___ \| |__| |_| | //
-      // /_/   \_\_____\___/  //
-      //                      //
-      //////////////////////////
-
-      OPCODE_LUI: begin  // Load Upper Immediate
-        alu_op_a_mux_sel_o  = OP_A_IMM;
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_a_mux_sel_o     = IMMA_ZERO;
-        imm_b_mux_sel_o     = IMMB_U;
-        alu_operator_o      = ALU_ADD;
-        rf_we               = 1'b1;
-      end
-
-      OPCODE_AUIPC: begin  // Add Upper Immediate to PC
-        alu_op_a_mux_sel_o  = OP_A_CURRPC;
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_b_mux_sel_o     = IMMB_U;
-        alu_operator_o      = ALU_ADD;
-        rf_we               = 1'b1;
-      end
-
-      OPCODE_OPIMM: begin // Register-Immediate ALU Operations
-        alu_op_b_mux_sel_o  = OP_B_IMM;
-        imm_b_mux_sel_o     = IMMB_I;
-        rf_we               = 1'b1;
-        rf_re_o[0]          = 1'b1;
-
-        unique case (instr_rdata_i[14:12])
-          3'b000: alu_operator_o = ALU_ADD;  // Add Immediate
-          3'b010: alu_operator_o = ALU_SLTS; // Set to one if Lower Than Immediate
-          3'b011: alu_operator_o = ALU_SLTU; // Set to one if Lower Than Immediate Unsigned
-          3'b100: alu_operator_o = ALU_XOR;  // Exclusive Or with Immediate
-          3'b110: alu_operator_o = ALU_OR;   // Or with Immediate
-          3'b111: alu_operator_o = ALU_AND;  // And with Immediate
-
-          3'b001: begin
-            alu_operator_o = ALU_SLL;  // Shift Left Logical by Immediate
-            if (instr_rdata_i[31:25] != 7'b0)
-              illegal_insn_o = 1'b1;
-          end
-
-          3'b101: begin
-            if (instr_rdata_i[31:25] == 7'b0)
-              alu_operator_o = ALU_SRL;  // Shift Right Logical by Immediate
-            else if (instr_rdata_i[31:25] == 7'b010_0000)
-              alu_operator_o = ALU_SRA;  // Shift Right Arithmetically by Immediate
-            else
-              illegal_insn_o = 1'b1;
-          end
-
-
-        endcase
-      end
-
-      OPCODE_OP: begin  // Register-Register ALU operation
-
-        // PREFIX 11
-        if (instr_rdata_i[31:30] == 2'b11) begin
-            illegal_insn_o = 1'b1;
-        end
-
-        // PREFIX 10
-        else if (instr_rdata_i[31:30] == 2'b10) begin
-          illegal_insn_o = 1'b1;
-        end  // prefix 10
-
-        // PREFIX 00/01
-        else begin
-          rf_we          = 1'b1;
-          rf_re_o[0]     = 1'b1;
-
-          if (~instr_rdata_i[28]) rf_re_o[1] = 1'b1;
-
-          unique case ({instr_rdata_i[30:25], instr_rdata_i[14:12]})
-            // RV32I ALU operations
-            {6'b00_0000, 3'b000}: alu_operator_o = ALU_ADD;   // Add
-            {6'b10_0000, 3'b000}: alu_operator_o = ALU_SUB;   // Sub
-            {6'b00_0000, 3'b010}: alu_operator_o = ALU_SLTS;  // Set Lower Than
-            {6'b00_0000, 3'b011}: alu_operator_o = ALU_SLTU;  // Set Lower Than Unsigned
-            {6'b00_0000, 3'b100}: alu_operator_o = ALU_XOR;   // Xor
-            {6'b00_0000, 3'b110}: alu_operator_o = ALU_OR;    // Or
-            {6'b00_0000, 3'b111}: alu_operator_o = ALU_AND;   // And
-            {6'b00_0000, 3'b001}: alu_operator_o = ALU_SLL;   // Shift Left Logical
-            {6'b00_0000, 3'b101}: alu_operator_o = ALU_SRL;   // Shift Right Logical
-            {6'b10_0000, 3'b101}: alu_operator_o = ALU_SRA;   // Shift Right Arithmetic
-
-            // supported RV32M instructions
-            {6'b00_0001, 3'b000}: begin // mul
-              alu_en          = 1'b0;
-              mult_en         = 1'b1;
-              mult_operator_o = MUL_M32;
-            end
-            {6'b00_0001, 3'b001}: begin // mulh
-              alu_en             = 1'b0;
-              mult_signed_mode_o = 2'b11;
-              mult_en            = 1'b1;
-              mult_operator_o    = MUL_H;
-            end
-            {6'b00_0001, 3'b010}: begin // mulhsu
-              alu_en             = 1'b0;
-              mult_signed_mode_o = 2'b01;
-              mult_en            = 1'b1;
-              mult_operator_o    = MUL_H;
-            end
-            {6'b00_0001, 3'b011}: begin // mulhu
-              alu_en             = 1'b0;
-              mult_signed_mode_o = 2'b00;
-              mult_en            = 1'b1;
-              mult_operator_o    = MUL_H;
-            end
-            {6'b00_0001, 3'b100}: begin // div
-              alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
-              alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              rf_re_o[1]         = 1'b1;
-              alu_operator_o     = ALU_DIV;
-            end
-            {6'b00_0001, 3'b101}: begin // divu
-              alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
-              alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              rf_re_o[1]         = 1'b1;
-              alu_operator_o     = ALU_DIVU;
-            end
-            {6'b00_0001, 3'b110}: begin // rem
-              alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
-              alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              rf_re_o[1]         = 1'b1;
-              alu_operator_o     = ALU_REM;
-            end
-            {6'b00_0001, 3'b111}: begin // remu
-              alu_op_a_mux_sel_o = OP_A_REGB_OR_FWD;
-              alu_op_b_mux_sel_o = OP_B_REGA_OR_FWD;
-              rf_re_o[1]         = 1'b1;
-              alu_operator_o     = ALU_REMU;
-            end
-
-            default: begin
-              illegal_insn_o = 1'b1;
-            end
-          endcase
-        end
-      end
-
-      ////////////////////////////////////////////////
-      //  ____  ____  _____ ____ ___    _    _      //
-      // / ___||  _ \| ____/ ___|_ _|  / \  | |     //
-      // \___ \| |_) |  _|| |    | |  / _ \ | |     //
-      //  ___) |  __/| |__| |___ | | / ___ \| |___  //
-      // |____/|_|   |_____\____|___/_/   \_\_____| //
-      //                                            //
-      ////////////////////////////////////////////////
-
-      OPCODE_FENCE: begin
-        unique case (instr_rdata_i[14:12])
-          3'b000: begin // FENCE (FENCE.I instead, a bit more conservative)
-            // flush pipeline
-            fencei_insn_o = 1'b1;
-          end
-
-          3'b001: begin // FENCE.I
-            // flush prefetch buffer, flush pipeline
-            fencei_insn_o = 1'b1;
-          end
-
-          default: begin
-            illegal_insn_o =  1'b1;
-          end
-        endcase
-      end
-
-      OPCODE_SYSTEM: begin
-        if (instr_rdata_i[14:12] == 3'b000)
-        begin
-          // non CSR related SYSTEM instructions
-          if ( {instr_rdata_i[19:15], instr_rdata_i[11:7]} == '0)
-          begin
-            unique case (instr_rdata_i[31:20])
-              12'h000:  // ECALL
-              begin
-                // environment (system) call
-                ecall_insn_o  = 1'b1;
-              end
-
-              12'h001:  // ebreak
-              begin
-                // debugger trap
-                ebrk_insn_o = 1'b1;
-              end
-
-              12'h302:  // mret
-              begin
-                mret_insn_o    = 1'b1;
-                mret_dec_o     = 1'b1;
-              end
-
-              12'h7b2:  // dret
-              begin
-                illegal_insn_o = !debug_mode_i;
-                dret_insn_o    =  debug_mode_i;
-                dret_dec_o     =  1'b1;
-              end
-
-              12'h105:  // wfi
-              begin
-                wfi_insn_o = 1'b1;
-                if (debug_wfi_no_sleep_i) begin
-                  // Treat as NOP (do not cause sleep mode entry)
-                  // Using decoding similar to ADDI, but without register reads/writes, i.e.
-                  // keep rf_we = 0, rf_re_o[0] = 0
-                  alu_op_b_mux_sel_o = OP_B_IMM;
-                  imm_b_mux_sel_o = IMMB_I;
-                  alu_operator_o = ALU_ADD;
-                end
-              end
-
-              default:
-              begin
-                illegal_insn_o = 1'b1;
-              end
-            endcase
-          end else illegal_insn_o = 1'b1;
-        end
-        else
-        begin
-          // instruction to read/modify CSR
-          csr_access_o        = 1'b1;
-          rf_we               = 1'b1;
-          alu_op_b_mux_sel_o  = OP_B_IMM;
-          imm_a_mux_sel_o     = IMMA_Z;
-          imm_b_mux_sel_o     = IMMB_I;    // CSR address is encoded in I imm
-
-          if (instr_rdata_i[14] == 1'b1) begin
-            // rs1 field is used as immediate
-            alu_op_a_mux_sel_o = OP_A_IMM;
-          end else begin
-            rf_re_o[0]         = 1'b1;
-            alu_op_a_mux_sel_o = OP_A_REGA_OR_FWD;
-          end
-
-          // instr_rdata_i[19:14] = rs or immediate value
-          //   if set or clear with rs==x0 or imm==0,
-          //   then do not perform a write action
-          unique case (instr_rdata_i[13:12])
-            2'b01:   csr_op   = CSR_OP_WRITE;
-            2'b10:   csr_op   = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_SET;
-            2'b11:   csr_op   = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_CLEAR;
-            default: csr_illegal = 1'b1;
-          endcase
-
-          
-          // Determine if CSR access is illegal
-          case (instr_rdata_i[31:20])
-            //  Writes to read only CSRs results in illegal instruction
-            CSR_MVENDORID,
-              CSR_MARCHID,
-              CSR_MIMPID,
-              CSR_MHARTID :
-                if(csr_op != CSR_OP_READ) csr_illegal = 1'b1;
-
-            // These are valid CSR registers
-            CSR_MSTATUS,
-              CSR_MEPC,
-              CSR_MTVEC,
-              CSR_MCAUSE :
-                // Not illegal, but treat as status CSR for side effect handling
-                csr_status_o = 1'b1;
-
-            // These are valid CSR registers
-            CSR_MISA,
-              CSR_MIE,
-              CSR_MSCRATCH,
-              CSR_MTVAL,
-              CSR_MIP :
-                ; // do nothing, not illegal
-
-            // Hardware Performance Monitor
-            CSR_MCYCLE,
-              CSR_MINSTRET,
-              CSR_MHPMCOUNTER3,
-              CSR_MHPMCOUNTER4,  CSR_MHPMCOUNTER5,  CSR_MHPMCOUNTER6,  CSR_MHPMCOUNTER7,
-              CSR_MHPMCOUNTER8,  CSR_MHPMCOUNTER9,  CSR_MHPMCOUNTER10, CSR_MHPMCOUNTER11,
-              CSR_MHPMCOUNTER12, CSR_MHPMCOUNTER13, CSR_MHPMCOUNTER14, CSR_MHPMCOUNTER15,
-              CSR_MHPMCOUNTER16, CSR_MHPMCOUNTER17, CSR_MHPMCOUNTER18, CSR_MHPMCOUNTER19,
-              CSR_MHPMCOUNTER20, CSR_MHPMCOUNTER21, CSR_MHPMCOUNTER22, CSR_MHPMCOUNTER23,
-              CSR_MHPMCOUNTER24, CSR_MHPMCOUNTER25, CSR_MHPMCOUNTER26, CSR_MHPMCOUNTER27,
-              CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31,
-              CSR_MCYCLEH,
-              CSR_MINSTRETH,
-              CSR_MHPMCOUNTER3H,
-              CSR_MHPMCOUNTER4H,  CSR_MHPMCOUNTER5H,  CSR_MHPMCOUNTER6H,  CSR_MHPMCOUNTER7H,
-              CSR_MHPMCOUNTER8H,  CSR_MHPMCOUNTER9H,  CSR_MHPMCOUNTER10H, CSR_MHPMCOUNTER11H,
-              CSR_MHPMCOUNTER12H, CSR_MHPMCOUNTER13H, CSR_MHPMCOUNTER14H, CSR_MHPMCOUNTER15H,
-              CSR_MHPMCOUNTER16H, CSR_MHPMCOUNTER17H, CSR_MHPMCOUNTER18H, CSR_MHPMCOUNTER19H,
-              CSR_MHPMCOUNTER20H, CSR_MHPMCOUNTER21H, CSR_MHPMCOUNTER22H, CSR_MHPMCOUNTER23H,
-              CSR_MHPMCOUNTER24H, CSR_MHPMCOUNTER25H, CSR_MHPMCOUNTER26H, CSR_MHPMCOUNTER27H,
-              CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H,
-              CSR_MCOUNTINHIBIT,
-              CSR_MHPMEVENT3,
-              CSR_MHPMEVENT4,  CSR_MHPMEVENT5,  CSR_MHPMEVENT6,  CSR_MHPMEVENT7,
-              CSR_MHPMEVENT8,  CSR_MHPMEVENT9,  CSR_MHPMEVENT10, CSR_MHPMEVENT11,
-              CSR_MHPMEVENT12, CSR_MHPMEVENT13, CSR_MHPMEVENT14, CSR_MHPMEVENT15,
-              CSR_MHPMEVENT16, CSR_MHPMEVENT17, CSR_MHPMEVENT18, CSR_MHPMEVENT19,
-              CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
-              CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
-              CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31 :
-                // Not illegal, but treat as status CSR to get accurate counts
-                csr_status_o = 1'b1;
-
-            // Hardware Performance Monitor (unprivileged read-only mirror CSRs)
-            // Removal of these is not SEC equivalent
-            CSR_CYCLE,
-              CSR_INSTRET,
-              CSR_HPMCOUNTER3,
-              CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
-              CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
-              CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
-              CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
-              CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
-              CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
-              CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31,
-              CSR_CYCLEH,
-              CSR_INSTRETH,
-              CSR_HPMCOUNTER3H,
-              CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
-              CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
-              CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
-              CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
-              CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
-              CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
-              CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H :
-                // Read-only and readable from user mode only if the bit of mcounteren is set
-                if((csr_op != CSR_OP_READ)) begin
-                  csr_illegal = 1'b1;
-                end else begin
-                  csr_status_o = 1'b1;
-                end
-
-            // Debug register access
-            CSR_DCSR,
-              CSR_DPC,
-              CSR_DSCRATCH0,
-              CSR_DSCRATCH1 :
-                if(!debug_mode_i) begin
-                  csr_illegal = 1'b1;
-              end else begin
-                csr_status_o = 1'b1;
-              end
-
-            // Debug Trigger register access
-            CSR_TSELECT,
-              CSR_TDATA1,
-              CSR_TDATA2,
-              CSR_TDATA3,
-              CSR_TINFO,
-              CSR_MCONTEXT,
-              CSR_SCONTEXT :
-                if(DEBUG_TRIGGER_EN != 1)
-                  csr_illegal = 1'b1;
-
-            default : csr_illegal = 1'b1;
-
-          endcase // case (instr_rdata_i[31:20])
-
-          illegal_insn_o = csr_illegal;
-
-        end
-
-      end
-
-      default: begin
-        illegal_insn_o = 1'b1;
-      end
+    unique case (1'b1)
+      decoder_m_ctrl.match : decoder_ctrl_mux = decoder_m_ctrl; // M decoder got a match
+      decoder_a_ctrl.match : decoder_ctrl_mux = decoder_a_ctrl; // A decoder got a match
+      default              : decoder_ctrl_mux = decoder_i_ctrl; // No match from extension decoders, fallback to base decoder
     endcase
-
-
-    // make sure invalid compressed instruction causes an exception
-    if (illegal_c_insn_i) begin
-      illegal_insn_o = 1'b1;
-    end
-
   end
+
+  assign ctrl_transfer_insn             = decoder_ctrl_mux.ctrl_transfer_insn;
+  assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel_o;
+  assign alu_en                         = decoder_ctrl_mux.alu_en;                          
+  assign alu_operator_o                 = decoder_ctrl_mux.alu_operator_o;                  
+  assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel_o;              
+  assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel_o;              
+  assign alu_op_c_mux_sel_o             = decoder_ctrl_mux.alu_op_c_mux_sel_o;               
+  assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel_o;                 
+  assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel_o;                 
+  assign mult_operator_o                = decoder_ctrl_mux.mult_operator_o;                 
+  assign mult_en                        = decoder_ctrl_mux.mult_en;                         
+  assign mult_signed_mode_o             = decoder_ctrl_mux.mult_signed_mode_o;              
+  assign mult_sel_subword_o             = decoder_ctrl_mux.mult_sel_subword_o;              
+  assign rf_re_o                        = decoder_ctrl_mux.rf_re_o;                         
+  assign rf_we                          = decoder_ctrl_mux.rf_we;                           
+  assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr_o;               
+  assign csr_access_o                   = decoder_ctrl_mux.csr_access_o;                    
+  assign csr_status_o                   = decoder_ctrl_mux.csr_status_o;                    
+  assign csr_illegal                    = decoder_ctrl_mux.csr_illegal;                     
+  assign csr_op                         = decoder_ctrl_mux.csr_op;                          
+  assign mret_insn_o                    = decoder_ctrl_mux.mret_insn_o;                     
+  assign dret_insn_o                    = decoder_ctrl_mux.dret_insn_o;                     
+  assign data_req                       = decoder_ctrl_mux.data_req;                        
+  assign data_we_o                      = decoder_ctrl_mux.data_we_o;                       
+  assign data_type_o                    = decoder_ctrl_mux.data_type_o;                     
+  assign data_sign_extension_o          = decoder_ctrl_mux.data_sign_extension_o;           
+  assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset_o;               
+  assign data_atop_o                    = decoder_ctrl_mux.data_atop_o;                     
+  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn_o || illegal_c_insn_i; // compressed instruction decode failed         
+  assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn_o;                     
+  assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn_o;                    
+  assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn_o;                      
+  assign fencei_insn_o                  = decoder_ctrl_mux.fencei_insn_o;                   
+  assign mret_dec_o                     = decoder_ctrl_mux.mret_dec_o;                      
+  assign dret_dec_o                     = decoder_ctrl_mux.dret_dec_o;                      
+
 
   // Deassert we signals (in case of stalls)
   assign alu_en_o             = (deassert_we_i) ? 1'b0         : alu_en;

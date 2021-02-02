@@ -38,6 +38,10 @@ ${DESIGN_RTL_DIR}/cv32e40x_register_file.sv
 ${DESIGN_RTL_DIR}/cv32e40x_register_file_wrapper.sv
 ${DESIGN_RTL_DIR}/cv32e40x_load_store_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_id_stage.sv
+${DESIGN_RTL_DIR}/cv32e40x_aligner.sv
+${DESIGN_RTL_DIR}/cv32e40x_i_decoder.sv
+${DESIGN_RTL_DIR}/cv32e40x_m_decoder.sv
+${DESIGN_RTL_DIR}/cv32e40x_a_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_compressed_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alignment_buffer.sv
