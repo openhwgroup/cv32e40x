@@ -77,8 +77,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
   
-  //logic              if_valid, if_ready;
-
   // prefetch buffer related signals
   logic              prefetch_busy;
   logic              branch_req;

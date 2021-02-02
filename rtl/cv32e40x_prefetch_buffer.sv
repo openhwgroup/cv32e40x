@@ -70,6 +70,7 @@ module cv32e40x_prefetch_buffer
   logic [31:0] fetch_rdata;
 
   logic aligner_ready;
+  logic aligner_input_valid;
   logic fetch_ready;
   logic fetch_valid;
 
@@ -152,13 +153,14 @@ module cv32e40x_prefetch_buffer
   //////////////////////////////////////////////////////////////////////////////
   // Instruction aligner, to be merged with the fifo
   //////////////////////////////////////////////////////////////////////////////
+  assign aligner_input_valid = prefetch_ready_i && fetch_valid;
   cv32e40x_aligner aligner_i
   (
     .clk               ( clk                                ),
     .rst_n             ( rst_n                              ),
     .fetch_valid_i     ( fetch_valid                        ),
     .aligner_ready_o   ( aligner_ready                      ),
-    .if_valid_i        ( prefetch_ready_i && fetch_valid    ),
+    .if_valid_i        ( aligner_input_valid                ),
     .fetch_rdata_i     ( fetch_rdata                        ),
     .instr_aligned_o   ( prefetch_instr_o                   ),
     .instr_valid_o     ( prefetch_instr_valid               ),
