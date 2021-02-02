@@ -77,6 +77,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
   
+  logic              if_valid, if_ready;
+
   // prefetch buffer related signals
   logic              prefetch_busy;
   logic              branch_req;
@@ -184,7 +186,7 @@ instruction_obi_i
 
   .trans_valid_i         ( trans_valid       ),
   .trans_ready_o         ( trans_ready       ),
-  .trans_addr_i          ( {trans_addr[31:2], 2'b00} ),
+  .trans_addr_i          ( trans_addr        ),
 
   .resp_valid_o          ( resp_valid        ),
   .resp_rdata_o          ( resp_rdata        ),
@@ -196,9 +198,12 @@ instruction_obi_i
   // Signal branch on pc_set_i
   assign branch_req = pc_set_i;
 
-  // prefetch_ready will cause a read from the prefetch fifo (if aligner is ready)
+  // This will cause a read from the prefetch fifo (if aligner is ready)
   // Gate off if id_stage is not ready, or if we are commanded to halt
-  assign prefetch_ready = id_ready_i && !halt_if_i;
+  assign if_ready = id_ready_i && !halt_if_i;
+  assign prefetch_ready = if_ready;
+
+  assign if_valid = if_ready && prefetch_valid;
 
   assign if_busy_o    = prefetch_busy;
   
@@ -218,7 +223,7 @@ instruction_obi_i
     else
     begin
 
-      if (prefetch_ready && prefetch_valid)
+      if (if_valid)
       begin
         if_id_pipe_o.instr_valid     <= 1'b1;
         if_id_pipe_o.instr_rdata     <= instr_decompressed;
