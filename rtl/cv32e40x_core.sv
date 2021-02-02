@@ -28,7 +28,8 @@
 
 module cv32e40x_core
 #(
-  parameter NUM_MHPMCOUNTERS    =  1
+  parameter NUM_MHPMCOUNTERS    =  1,
+  parameter LIB                 =  0
 )
 (
   // Clock and Reset
@@ -117,7 +118,7 @@ module cv32e40x_core
 
   // EX/WB pipeline
   ex_wb_pipe_t ex_wb_pipe;
-  
+
   // IF/ID pipeline
   if_id_pipe_t if_id_pipe;
   
@@ -247,6 +248,7 @@ module cv32e40x_core
   logic        fetch_enable;
 
   cv32e40x_sleep_unit
+    #(.LIB (LIB))
   sleep_unit_i
   (
     // Clock, reset interface

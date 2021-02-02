@@ -13,6 +13,9 @@
 // !!! It must not be used for FPGA synthesis                    !!!
 
 module cv32e40x_clock_gate
+#(
+  parameter LIB = 0
+  )
 (
     input  logic clk_i,
     input  logic en_i,

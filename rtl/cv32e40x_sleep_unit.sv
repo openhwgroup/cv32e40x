@@ -41,6 +41,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_sleep_unit
+#(
+  parameter LIB = 0
+)
 (
   // Clock, reset interface
   input  logic        clk_ungated_i,            // Free running clock
@@ -106,7 +109,9 @@ module cv32e40x_sleep_unit
   assign fetch_enable_o = fetch_enable_q;
 
   // Main clock gate of CV32E40P
-  cv32e40x_clock_gate core_clock_gate_i
+  cv32e40x_clock_gate
+    #(.LIB (LIB))
+  core_clock_gate_i
   (
     .clk_i        ( clk_ungated_i   ),
     .en_i         ( clock_en        ),
