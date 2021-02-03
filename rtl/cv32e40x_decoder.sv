@@ -110,23 +110,11 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   logic       alu_en;
   logic       mult_en;
-  
+
+  decoder_ctrl_t decoder_i_ctrl;
   decoder_ctrl_t decoder_m_ctrl;
   decoder_ctrl_t decoder_a_ctrl;
-  decoder_ctrl_t decoder_i_ctrl;
   decoder_ctrl_t decoder_ctrl_mux;
-
-  // RV32M extension decoder
-  cv32e40x_m_decoder
-    m_decoder_i
-      (.instr_rdata_i(instr_rdata_i),
-       .decoder_ctrl_o(decoder_m_ctrl));
-
-  // RV32A extension decoder
-  cv32e40x_a_decoder #(.A_EXTENSION(A_EXTENSION))
-    a_decoder_i
-      (.instr_rdata_i(instr_rdata_i),
-       .decoder_ctrl_o(decoder_a_ctrl));
 
   // RV32I Base instruction set decoder
   cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
@@ -136,6 +124,25 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
        .debug_wfi_no_sleep_i(debug_wfi_no_sleep_i),
        .decoder_ctrl_o(decoder_i_ctrl));
   
+  // RV32M extension decoder
+  cv32e40x_m_decoder
+    m_decoder_i
+      (.instr_rdata_i(instr_rdata_i),
+       .decoder_ctrl_o(decoder_m_ctrl));
+
+  generate
+    if (A_EXTENSION) begin: a_decoder
+      // RV32A extension decoder
+      cv32e40x_a_decoder
+        a_decoder_i
+          (.instr_rdata_i(instr_rdata_i),
+           .decoder_ctrl_o(decoder_a_ctrl));
+    end
+    else begin: no_a_decoder
+      assign decoder_a_ctrl = DECODER_CTRL_IDLE;
+    end
+  endgenerate
+      
   // Mux control outputs from decoders
   always_comb
   begin
@@ -147,40 +154,40 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   end
 
   assign ctrl_transfer_insn             = decoder_ctrl_mux.ctrl_transfer_insn;
-  assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel_o;
+  assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel;
   assign alu_en                         = decoder_ctrl_mux.alu_en;                          
-  assign alu_operator_o                 = decoder_ctrl_mux.alu_operator_o;                  
-  assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel_o;              
-  assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel_o;              
-  assign alu_op_c_mux_sel_o             = decoder_ctrl_mux.alu_op_c_mux_sel_o;               
-  assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel_o;                 
-  assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel_o;                 
-  assign mult_operator_o                = decoder_ctrl_mux.mult_operator_o;                 
+  assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
+  assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
+  assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
+  assign alu_op_c_mux_sel_o             = decoder_ctrl_mux.alu_op_c_mux_sel;               
+  assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel;                 
+  assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel;                 
+  assign mult_operator_o                = decoder_ctrl_mux.mult_operator;                 
   assign mult_en                        = decoder_ctrl_mux.mult_en;                         
-  assign mult_signed_mode_o             = decoder_ctrl_mux.mult_signed_mode_o;              
-  assign mult_sel_subword_o             = decoder_ctrl_mux.mult_sel_subword_o;              
-  assign rf_re_o                        = decoder_ctrl_mux.rf_re_o;                         
+  assign mult_signed_mode_o             = decoder_ctrl_mux.mult_signed_mode;              
+  assign mult_sel_subword_o             = decoder_ctrl_mux.mult_sel_subword;              
+  assign rf_re_o                        = decoder_ctrl_mux.rf_re;                         
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
-  assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr_o;               
-  assign csr_access_o                   = decoder_ctrl_mux.csr_access_o;                    
-  assign csr_status_o                   = decoder_ctrl_mux.csr_status_o;                    
+  assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr;               
+  assign csr_access_o                   = decoder_ctrl_mux.csr_access;                    
+  assign csr_status_o                   = decoder_ctrl_mux.csr_status;                    
   assign csr_illegal                    = decoder_ctrl_mux.csr_illegal;                     
   assign csr_op                         = decoder_ctrl_mux.csr_op;                          
-  assign mret_insn_o                    = decoder_ctrl_mux.mret_insn_o;                     
-  assign dret_insn_o                    = decoder_ctrl_mux.dret_insn_o;                     
+  assign mret_insn_o                    = decoder_ctrl_mux.mret_insn;                     
+  assign dret_insn_o                    = decoder_ctrl_mux.dret_insn;                     
   assign data_req                       = decoder_ctrl_mux.data_req;                        
-  assign data_we_o                      = decoder_ctrl_mux.data_we_o;                       
-  assign data_type_o                    = decoder_ctrl_mux.data_type_o;                     
-  assign data_sign_extension_o          = decoder_ctrl_mux.data_sign_extension_o;           
-  assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset_o;               
-  assign data_atop_o                    = decoder_ctrl_mux.data_atop_o;                     
-  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn_o || illegal_c_insn_i; // compressed instruction decode failed         
-  assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn_o;                     
-  assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn_o;                    
-  assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn_o;                      
-  assign fencei_insn_o                  = decoder_ctrl_mux.fencei_insn_o;                   
-  assign mret_dec_o                     = decoder_ctrl_mux.mret_dec_o;                      
-  assign dret_dec_o                     = decoder_ctrl_mux.dret_dec_o;                      
+  assign data_we_o                      = decoder_ctrl_mux.data_we;                       
+  assign data_type_o                    = decoder_ctrl_mux.data_type;                     
+  assign data_sign_extension_o          = decoder_ctrl_mux.data_sign_extension;           
+  assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset;               
+  assign data_atop_o                    = decoder_ctrl_mux.data_atop;                     
+  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn || illegal_c_insn_i; // compressed instruction decode failed         
+  assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn;                     
+  assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn;                    
+  assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn;                      
+  assign fencei_insn_o                  = decoder_ctrl_mux.fencei_insn;                   
+  assign mret_dec_o                     = decoder_ctrl_mux.mret_dec;                      
+  assign dret_dec_o                     = decoder_ctrl_mux.dret_dec;                      
 
 
   // Deassert we signals (in case of stalls)

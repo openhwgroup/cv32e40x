@@ -749,80 +749,80 @@ typedef struct packed {
 
 // Decoder control signals
 typedef struct packed {
-  logic        match;
-  logic [1:0]  ctrl_transfer_insn;
-  logic [1:0]  ctrl_transfer_target_mux_sel_o;
-  logic        alu_en;
-  alu_opcode_e alu_operator_o;
-  logic [2:0]  alu_op_a_mux_sel_o;
-  logic [2:0]  alu_op_b_mux_sel_o;
-  logic [1:0]  alu_op_c_mux_sel_o;
-  logic [0:0]  imm_a_mux_sel_o;
-  logic [3:0]  imm_b_mux_sel_o;
-  mul_opcode_e mult_operator_o;
-  logic        mult_en;
-  logic [1:0]  mult_signed_mode_o;
-  logic        mult_sel_subword_o;
-  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o;
+  logic                              match;
+  logic [1:0]                        ctrl_transfer_insn;
+  logic [1:0]                        ctrl_transfer_target_mux_sel;
+  logic                              alu_en;
+  alu_opcode_e                       alu_operator;
+  logic [2:0]                        alu_op_a_mux_sel;
+  logic [2:0]                        alu_op_b_mux_sel;
+  logic [1:0]                        alu_op_c_mux_sel;
+  logic [0:0]                        imm_a_mux_sel;
+  logic [3:0]                        imm_b_mux_sel;
+  mul_opcode_e                       mult_operator;
+  logic                              mult_en;
+  logic [1:0]                        mult_signed_mode;
+  logic                              mult_sel_subword;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
-  logic                              prepost_useincr_o;
-  logic                              csr_access_o;
-  logic                              csr_status_o;
+  logic                              prepost_useincr;
+  logic                              csr_access;
+  logic                              csr_status;
   logic                              csr_illegal;
-  csr_opcode_e csr_op;
-  logic                              mret_insn_o;
-  logic                              dret_insn_o;
+  csr_opcode_e                       csr_op;
+  logic                              mret_insn;
+  logic                              dret_insn;
   logic                              data_req;
-  logic                              data_we_o;
-  logic [1:0]                        data_type_o;
-  logic [1:0]                        data_sign_extension_o;
-  logic [1:0]                        data_reg_offset_o;
-  logic [5:0]                        data_atop_o;
-  logic                              illegal_insn_o;
-  logic                              ebrk_insn_o;
-  logic                              ecall_insn_o;
-  logic                              wfi_insn_o;
-  logic                              fencei_insn_o;
-  logic                              mret_dec_o;
-  logic                              dret_dec_o;
+  logic                              data_we;
+  logic [1:0]                        data_type;
+  logic [1:0]                        data_sign_extension;
+  logic [1:0]                        data_reg_offset;
+  logic [5:0]                        data_atop;
+  logic                              illegal_insn;
+  logic                              ebrk_insn;
+  logic                              ecall_insn;
+  logic                              wfi_insn;
+  logic                              fencei_insn;
+  logic                              mret_dec;
+  logic                              dret_dec;
 } decoder_ctrl_t;
   
-parameter decoder_ctrl_t DECODER_CTRL_IDLE =  '{match                          : 1'b0,
-                                                ctrl_transfer_insn             : BRANCH_NONE,
-                                                ctrl_transfer_target_mux_sel_o : JT_JAL,
-                                                alu_en                         : 1'b1,
-                                                alu_operator_o                 : ALU_SLTU,
-                                                alu_op_a_mux_sel_o             : OP_A_REGA_OR_FWD,
-                                                alu_op_b_mux_sel_o             : OP_B_REGB_OR_FWD,
-                                                alu_op_c_mux_sel_o             : OP_C_REGC_OR_FWD,
-                                                imm_a_mux_sel_o                : IMMA_ZERO,
-                                                imm_b_mux_sel_o                : IMMB_I,
-                                                mult_operator_o                : MUL_M32,
-                                                mult_en                        : 1'b0,
-                                                mult_signed_mode_o             : 2'b00,
-                                                mult_sel_subword_o             : 1'b0,
-                                                rf_re_o                        : 2'b00,
-                                                rf_we                          : 1'b0,
-                                                prepost_useincr_o              : 1'b1,
-                                                csr_access_o                   : 1'b0,
-                                                csr_status_o                   : 1'b0,
-                                                csr_illegal                    : 1'b0,
-                                                csr_op                         : CSR_OP_READ,
-                                                mret_insn_o                    : 1'b0,
-                                                dret_insn_o                    : 1'b0,
-                                                data_req                       : 1'b0,
-                                                data_we_o                      : 1'b0,
-                                                data_type_o                    : 2'b00,
-                                                data_sign_extension_o          : 2'b00,
-                                                data_reg_offset_o              : 2'b00,
-                                                data_atop_o                    : 6'b000000,
-                                                illegal_insn_o                 : 1'b0,
-                                                ebrk_insn_o                    : 1'b0,
-                                                ecall_insn_o                   : 1'b0,
-                                                wfi_insn_o                     : 1'b0,
-                                                fencei_insn_o                  : 1'b0,
-                                                mret_dec_o                     : 1'b0,
-                                                dret_dec_o                     : 1'b0
+parameter decoder_ctrl_t DECODER_CTRL_IDLE =  '{match                        : 1'b0,
+                                                ctrl_transfer_insn           : BRANCH_NONE,
+                                                ctrl_transfer_target_mux_sel : JT_JAL,
+                                                alu_en                       : 1'b1,
+                                                alu_operator                 : ALU_SLTU,
+                                                alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
+                                                alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
+                                                alu_op_c_mux_sel             : OP_C_REGC_OR_FWD,
+                                                imm_a_mux_sel                : IMMA_ZERO,
+                                                imm_b_mux_sel                : IMMB_I,
+                                                mult_operator                : MUL_M32,
+                                                mult_en                      : 1'b0,
+                                                mult_signed_mode             : 2'b00,
+                                                mult_sel_subword             : 1'b0,
+                                                rf_re                        : 2'b00,
+                                                rf_we                        : 1'b0,
+                                                prepost_useincr              : 1'b1,
+                                                csr_access                   : 1'b0,
+                                                csr_status                   : 1'b0,
+                                                csr_illegal                  : 1'b0,
+                                                csr_op                       : CSR_OP_READ,
+                                                mret_insn                    : 1'b0,
+                                                dret_insn                    : 1'b0,
+                                                data_req                     : 1'b0,
+                                                data_we                      : 1'b0,
+                                                data_type                    : 2'b00,
+                                                data_sign_extension          : 2'b00,
+                                                data_reg_offset              : 2'b00,
+                                                data_atop                    : 6'b000000,
+                                                illegal_insn                 : 1'b0,
+                                                ebrk_insn                    : 1'b0,
+                                                ecall_insn                   : 1'b0,
+                                                wfi_insn                     : 1'b0,
+                                                fencei_insn                  : 1'b0,
+                                                mret_dec                     : 1'b0,
+                                                dret_dec                     : 1'b0
                                                 };
 
 ///////////////////////////////////////////////
