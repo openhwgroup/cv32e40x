@@ -83,7 +83,6 @@ module cv32e40x_prefetch_controller
   logic [31:0]                   aligned_branch_addr;             // Word aligned branch target address
 
   // FIFO auxiliary signal
-  //logic                          fifo_valid;                      // FIFO output valid (if !fifo_empty)
   logic [FIFO_ADDR_DEPTH:0]      fifo_cnt_masked;                 // FIFO_cnt signal, masked when we are branching to allow a new memory request in that cycle
 
   //////////////////////////////////////////////////////////////////////////////
@@ -98,8 +97,7 @@ module cv32e40x_prefetch_controller
   //////////////////////////////////////////////////////////////////////////////
 
   // Fectch valid control. Fetch never valid if jumping or flushing responses.
-  // Fetch valid if there are instructions in FIFO or there is an incoming
-  // instruction from memory.
+  // Fetch valid if there is an incoming instruction from memory.
   assign fetch_valid_o = (resp_valid_i) && !(branch_i || (flush_cnt_q > 0));
 
   //////////////////////////////////////////////////////////////////////////////
@@ -176,7 +174,7 @@ module cv32e40x_prefetch_controller
   //
   // Counter overflow is prevented by limiting the number of outstanding transactions
   // to DEPTH. Counter underflow is prevented by the assumption that resp_valid_i = 1
-   // will only occur in response to accepted transfer request (as per the OBI protocol).
+  // will only occur in response to accepted transfer request (as per the OBI protocol).
   //////////////////////////////////////////////////////////////////////////////
 
   assign count_up   = trans_valid_o && trans_ready_i;     // Increment upon accepted transfer request

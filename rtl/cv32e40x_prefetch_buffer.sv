@@ -47,7 +47,7 @@ module cv32e40x_prefetch_buffer
   input  logic [31:0] resp_rdata_i,
   input  logic        resp_err_i,
 
-    output logic perf_imiss_o,
+  output logic perf_imiss_o,
 
   // Prefetch Buffer Status
   output logic        busy_o
@@ -96,7 +96,7 @@ module cv32e40x_prefetch_buffer
 
   // Feed data to alignment_buffer directly from OBI response data
   assign fetch_rdata = resp_rdata_i;
-  
+
   cv32e40x_alignment_buffer
   #(
       .DEPTH (FIFO_DEPTH),
