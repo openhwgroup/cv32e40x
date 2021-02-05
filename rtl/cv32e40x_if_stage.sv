@@ -157,6 +157,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .prefetch_ready_i  ( prefetch_ready              ),
     .prefetch_valid_o  ( prefetch_valid              ),
     .prefetch_instr_o  ( prefetch_instr              ),
+    .prefetch_addr_o   ( pc_if_o                     ),
 
     .trans_valid_o     ( trans_valid                 ),
     .trans_ready_i     ( trans_ready                 ),
@@ -165,8 +166,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .resp_valid_i      ( resp_valid                  ),
     .resp_rdata_i      ( resp_rdata                  ),
     .resp_err_i        ( resp_err                    ),
-
-    .pc_if_o           ( pc_if_o                     ),
 
     .perf_imiss_o      ( perf_imiss_o                ),
 
@@ -198,13 +197,15 @@ instruction_obi_i
   // Signal branch on pc_set_i
   assign branch_req = pc_set_i;
 
-  // This will cause a read from the prefetch fifo (if aligner is ready)
-  // Gate off if id_stage is not ready, or if we are commanded to halt
-  assign if_ready = id_ready_i && !halt_if_i;
-  assign prefetch_ready = if_ready;
+  // if_stage ready if id_stage is ready
+  assign if_ready = id_ready_i;
 
-  assign if_valid = if_ready && prefetch_valid;
+  // if stage valid if we are ready and not commanded to halt
+  assign if_valid = if_ready && !halt_if_i;
 
+  // Handshake to pop instruction from alignment_buffer
+  // when we issue a new instruction
+  assign prefetch_ready = if_valid;
   assign if_busy_o    = prefetch_busy;
   
 
@@ -222,8 +223,9 @@ instruction_obi_i
     end
     else
     begin
-
-      if (if_valid)
+      // Valid pipeline output if we are valid AND the
+      // alignment buffer has a valid instruction
+      if (if_valid && prefetch_valid)
       begin
         if_id_pipe_o.instr_valid     <= 1'b1;
         if_id_pipe_o.instr_rdata     <= instr_decompressed;

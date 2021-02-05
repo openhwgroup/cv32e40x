@@ -36,6 +36,7 @@ module cv32e40x_prefetch_buffer
   input  logic        prefetch_ready_i,
   output logic        prefetch_valid_o,
   output logic [31:0] prefetch_instr_o,
+  output logic [31:0] prefetch_addr_o,
 
   // Transaction interface to obi interface
   output logic        trans_valid_o,
@@ -46,43 +47,23 @@ module cv32e40x_prefetch_buffer
   input  logic [31:0] resp_rdata_i,
   input  logic        resp_err_i,
 
-  output logic [31:0] pc_if_o,
-
-  output logic perf_imiss_o,
+    output logic perf_imiss_o,
 
   // Prefetch Buffer Status
   output logic        busy_o
 );
   // FIFO_DEPTH controls also the number of outstanding memory requests
   // FIFO_DEPTH must be greater than 1 to respect assertion in prefetch controller
-  // FIFO_DEPTH must be a power of 2 (because of the FIFO implementation)
-  localparam FIFO_DEPTH                     = 2; //must be greater or equal to 2 //Set at least to 3 to avoid stalls compared to the master branch
+  // FIFO_DEPTH set to 3 to not get additional stalls compared to separate aligner + fifo
+  localparam FIFO_DEPTH                     = 3; //must be greater or equal to 2 //Set at least to 3 to avoid stalls compared to the master branch
   localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(FIFO_DEPTH);
 
-  logic        fifo_flush;
-  logic        fifo_flush_but_first;
   logic  [FIFO_ADDR_DEPTH:0] fifo_cnt; // fifo_cnt should count from 0 to FIFO_DEPTH!
-
-  logic [31:0] fifo_rdata;
-  logic        fifo_push;
-  logic        fifo_pop;
 
   logic [31:0] fetch_rdata;
 
-  logic aligner_ready;
-  logic aligner_input_valid;
-  logic fetch_ready;
   logic fetch_valid;
 
-  logic prefetch_instr_valid;
-
-  // Ready to fetch only if if_stage and aligner are both ready
-  assign fetch_ready = prefetch_ready_i && aligner_ready;
-
-  // Valid output if aligner and fetch_valid are valid. 
-  // fetch_valid includes branches and flushing
-  // an may thus invalidate an aligner output.
-  assign prefetch_valid_o = prefetch_instr_valid && fetch_valid;
 
   assign perf_imiss_o = !fetch_valid && !branch_i;
   //////////////////////////////////////////////////////////////////////////////
@@ -109,64 +90,37 @@ module cv32e40x_prefetch_buffer
 
     .resp_valid_i             ( resp_valid_i         ),
 
-    .fetch_ready_i            ( fetch_ready          ),
     .fetch_valid_o            ( fetch_valid          ),
-
-    .fifo_push_o              ( fifo_push            ),
-    .fifo_pop_o               ( fifo_pop             ),
-    .fifo_flush_o             ( fifo_flush           ),
-    .fifo_flush_but_first_o   ( fifo_flush_but_first ),
-    .fifo_cnt_i               ( fifo_cnt             ),
-    .fifo_empty_i             ( fifo_empty           )
+    .fifo_cnt_i               ( fifo_cnt             )
   );
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Fetch FIFO && fall-through path
-  //////////////////////////////////////////////////////////////////////////////
-
-  cv32e40x_fifo
+  // Feed data to alignment_buffer directly from OBI response data
+  assign fetch_rdata = resp_rdata_i;
+  
+  cv32e40x_alignment_buffer
   #(
-      .FALL_THROUGH ( 1'b0                 ),
-      .DATA_WIDTH   ( 32                   ),
-      .DEPTH        ( FIFO_DEPTH           )
+      .DEPTH (FIFO_DEPTH),
+      .FIFO_ADDR_DEPTH (FIFO_ADDR_DEPTH)
   )
-  fifo_i
-  (
-      .clk_i             ( clk                  ),
-      .rst_ni            ( rst_n                ),
-      .flush_i           ( fifo_flush           ),
-      .flush_but_first_i ( fifo_flush_but_first ),
-      .testmode_i        ( 1'b0                 ),
-      .full_o            ( fifo_full            ),
-      .empty_o           ( fifo_empty           ),
-      .cnt_o             ( fifo_cnt             ),
-      .data_i            ( resp_rdata_i         ),
-      .push_i            ( fifo_push            ),
-      .data_o            ( fifo_rdata           ),
-      .pop_i             ( fifo_pop             )
-  );
-
-  // First POP from the FIFO if it is not empty.
-  // Otherwise, try to fall-through it.
-  assign fetch_rdata = fifo_empty ? resp_rdata_i : fifo_rdata;
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Instruction aligner, to be merged with the fifo
-  //////////////////////////////////////////////////////////////////////////////
-  assign aligner_input_valid = prefetch_ready_i && fetch_valid;
-  cv32e40x_aligner aligner_i
+  alignment_buffer_i
   (
     .clk               ( clk                                ),
     .rst_n             ( rst_n                              ),
+
+    // prefetch controller
     .fetch_valid_i     ( fetch_valid                        ),
-    .aligner_ready_o   ( aligner_ready                      ),
-    .if_valid_i        ( aligner_input_valid                ),
     .fetch_rdata_i     ( fetch_rdata                        ),
+    .fifo_cnt_o        ( fifo_cnt                           ),
+
+    // If stage
+    .instr_valid_o     ( prefetch_valid_o                   ),
+    .instr_ready_i     ( prefetch_ready_i                   ),
     .instr_aligned_o   ( prefetch_instr_o                   ),
-    .instr_valid_o     ( prefetch_instr_valid               ),
-    .branch_addr_i     ( {branch_addr_i[31:1], 1'b0}        ),
-    .branch_i          ( branch_i                           ),
-    .pc_o              ( pc_if_o                            )
+    .instr_addr_o      ( prefetch_addr_o                    ),
+
+    .branch_addr_i     ( branch_addr_i                      ),
+    .branch_i          ( branch_i                           )
+    
   );
 
   //----------------------------------------------------------------------------

@@ -59,17 +59,9 @@ module cv32e40x_prefetch_controller
   // Transaction response interface
   input  logic                     resp_valid_i,            // Note: Consumer is assumed to be 'ready' whenever resp_valid_i = 1
 
-  // Fetch interface is ready/valid
-  input  logic                     fetch_ready_i,
+  // Fetch interface
   output logic                     fetch_valid_o,
-
-  // FIFO interface
-  output logic                     fifo_push_o,             // PUSH an instruction into the FIFO
-  output logic                     fifo_pop_o,              // POP an instruction from the FIFO
-  output logic                     fifo_flush_o,            // Flush the FIFO
-  output logic                     fifo_flush_but_first_o,  // Flush the FIFO, but keep the first instruction if present
-  input  logic [FIFO_ADDR_DEPTH:0] fifo_cnt_i,              // Number of valid items/words in the prefetch FIFO
-  input  logic                     fifo_empty_i             // FIFO is empty
+  input  logic [FIFO_ADDR_DEPTH:0] fifo_cnt_i              // Number of valid items/words in the prefetch FIFO
 );
 
   import cv32e40x_pkg::*;
@@ -91,7 +83,7 @@ module cv32e40x_prefetch_controller
   logic [31:0]                   aligned_branch_addr;             // Word aligned branch target address
 
   // FIFO auxiliary signal
-  logic                          fifo_valid;                      // FIFO output valid (if !fifo_empty)
+  //logic                          fifo_valid;                      // FIFO output valid (if !fifo_empty)
   logic [FIFO_ADDR_DEPTH:0]      fifo_cnt_masked;                 // FIFO_cnt signal, masked when we are branching to allow a new memory request in that cycle
 
   //////////////////////////////////////////////////////////////////////////////
@@ -108,7 +100,7 @@ module cv32e40x_prefetch_controller
   // Fectch valid control. Fetch never valid if jumping or flushing responses.
   // Fetch valid if there are instructions in FIFO or there is an incoming
   // instruction from memory.
-  assign fetch_valid_o = (fifo_valid || resp_valid_i) && !(branch_i || (flush_cnt_q > 0));
+  assign fetch_valid_o = (resp_valid_i) && !(branch_i || (flush_cnt_q > 0));
 
   //////////////////////////////////////////////////////////////////////////////
   // Transaction request generation
@@ -177,19 +169,7 @@ module cv32e40x_prefetch_controller
     endcase
   end
 
-  //////////////////////////////////////////////////////////////////////////////
-  // FIFO management
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Pass on response transfer directly to FIFO (which should be ready, otherwise
-  // the corresponding transfer would not have been requested via trans_valid_o).
-  // Upon a branch (branch_i) all incoming responses (resp_valid_i) are flushed
-  // until the flush count is 0 again. (The flush count is initialized with the
-  // number of outstanding transactions at the time of the branch).
-  assign fifo_valid  = !fifo_empty_i;
-  assign fifo_push_o = resp_valid_i && (fifo_valid || !fetch_ready_i) && !(branch_i || (flush_cnt_q > 0));
-  assign fifo_pop_o  = fifo_valid && fetch_ready_i;
-
+  
   //////////////////////////////////////////////////////////////////////////////
   // Counter (cnt_q, next_cnt) to count number of outstanding OBI transactions
   // (maximum = DEPTH)
@@ -220,9 +200,6 @@ module cv32e40x_prefetch_controller
   end
 
   
-  // Flush the FIFO if it is not empty
-  assign fifo_flush_o             = branch_i;
-  assign fifo_flush_but_first_o   = 1'b0;
   
   //////////////////////////////////////////////////////////////////////////////
   // Counter (flush_cnt_q, next_flush_cnt) to count reseponses to be flushed.
