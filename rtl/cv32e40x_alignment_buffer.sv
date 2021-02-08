@@ -239,6 +239,29 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o      = addr_q;
 
+ 
+  //----------------------------------------------------------------------------
+  // Assertions
+  //----------------------------------------------------------------------------
 
+`ifdef CV32E40P_ASSERT_ON
+
+  // Check for FIFO overflows
+  assert property (
+     @(posedge clk) (fetch_valid_i) |-> (valid_q[DEPTH-1] == 1'b0) );
+
+  // Check that FIFO is cleared the cycle after a branch
+  assert property (
+     @(posedge clk) (branch_i) |=> (valid_q == 'b0) );
+
+  // Check that FIFO is signaled empty the cycle during a branch
+  assert property (
+     @(posedge clk) (branch_i) |-> (fifo_cnt_o == 'b0) );
+
+  // Theck that instr_valid_o is zero when a branch is requested
+  assert property (
+    @(posedge clk) (branch_i) |-> (instr_valid_o == 1'b0) );
+   
+`endif
 
 endmodule
