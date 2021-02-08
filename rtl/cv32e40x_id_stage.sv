@@ -186,10 +186,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] imm_uj_type;
   logic [31:0] imm_z_type;
 
-  logic [31:0] imm_a;       // contains the immediate for operand b
-  logic [31:0] imm_b;       // contains the immediate for operand b
-
-  logic [31:0] jump_target;       // calculated jump target (-> EX -> IF)
+  logic [31:0] imm_a;           // contains the immediate for operand b
+  logic [31:0] imm_b;           // contains the immediate for operand b
 
   // Signals running between controller and int_controller
   logic        irq_req_ctrl;
@@ -268,10 +266,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        id_valid_q;
   logic        minstret;
 
-  
-
   assign instr = if_id_pipe_i.instr_rdata;
-
 
   // immediate extraction and sign extension
   assign imm_i_type  = { {20 {instr[31]}}, instr[31:20] };
@@ -312,16 +307,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin : jump_target_mux
     unique case (ctrl_transfer_target_mux_sel)
-      JT_JAL:  jump_target = if_id_pipe_i.pc + imm_uj_type;
-      JT_COND: jump_target = if_id_pipe_i.pc + imm_sb_type;
-
-      // JALR: Cannot forward RS1, since the path is too long
-      JT_JALR: jump_target = regfile_rdata[0] + imm_i_type;
-      default:  jump_target = regfile_rdata[0] + imm_i_type;
+      JT_JAL:  jump_target_o = if_id_pipe_i.pc + imm_uj_type;
+      JT_COND: jump_target_o = if_id_pipe_i.pc + imm_sb_type;
+      JT_JALR: jump_target_o = regfile_rdata[0] + imm_i_type;             // JALR: Cannot forward RS1, since the path is too long
+      default: jump_target_o = regfile_rdata[0] + imm_i_type;
     endcase
   end
-
-  assign jump_target_o = jump_target;
 
 
   ////////////////////////////////////////////////////////
@@ -420,7 +411,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   always_comb begin : alu_operand_c_mux
     case (alu_op_c_mux_sel)
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
-      OP_C_JT:           operand_c = jump_target;
+      OP_C_JT:           operand_c = jump_target_o;
       default:           operand_c = operand_c_fw;
     endcase // case (alu_op_c_mux_sel)
   end
@@ -539,7 +530,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_we_o                       ( data_we                   ),
     .prepost_useincr_o               ( prepost_useincr           ),
     .data_type_o                     ( data_type                 ),
-    .data_sign_extension_o           ( data_sign_ext             ),
+    .data_sign_ext_o                 ( data_sign_ext             ),
     .data_reg_offset_o               ( data_reg_offset           ),
     .data_atop_o                     ( data_atop                 ),
 

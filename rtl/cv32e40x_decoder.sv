@@ -85,7 +85,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        data_we_o,               // data memory write enable
   output logic        prepost_useincr_o,       // when not active bypass the alu result for address calculation
   output logic [1:0]  data_type_o,             // data type on data memory: byte, half word or word
-  output logic [1:0]  data_sign_extension_o,   // sign extension on read data from data memory / NaN boxing
+  output logic        data_sign_ext_o,         // sign extension on read data from data memory
   output logic [1:0]  data_reg_offset_o,       // offset in byte inside register for stores
   output logic [5:0]  data_atop_o,             // Atomic memory access
 
@@ -178,7 +178,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign data_req                       = decoder_ctrl_mux.data_req;                        
   assign data_we_o                      = decoder_ctrl_mux.data_we;                       
   assign data_type_o                    = decoder_ctrl_mux.data_type;                     
-  assign data_sign_extension_o          = decoder_ctrl_mux.data_sign_extension;           
+  assign data_sign_ext_o                = decoder_ctrl_mux.data_sign_ext;
   assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset;               
   assign data_atop_o                    = decoder_ctrl_mux.data_atop;                     
   assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn || illegal_c_insn_i; // compressed instruction decode failed         

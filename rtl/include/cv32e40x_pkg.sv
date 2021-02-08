@@ -118,12 +118,6 @@ typedef enum logic [MUL_OP_WIDTH-1:0]
 
  } mul_opcode_e;
 
-// vector modes
-parameter VEC_MODE32 = 2'b00;
-parameter VEC_MODE16 = 2'b10;
-parameter VEC_MODE8  = 2'b11;
-
-
 // FSM state encoding
 typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
                    DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
@@ -645,26 +639,6 @@ parameter IMMB_I      = 4'b0000;
 parameter IMMB_S      = 4'b0001;
 parameter IMMB_U      = 4'b0010;
 parameter IMMB_PCINCR = 4'b0011;
-parameter IMMB_CLIP   = 4'b1001;
-
-// bit mask selection
-parameter BMASK_A_ZERO = 1'b0;
-parameter BMASK_A_S3   = 1'b1;
-
-parameter BMASK_B_S2   = 2'b00;
-parameter BMASK_B_S3   = 2'b01;
-parameter BMASK_B_ZERO = 2'b10;
-parameter BMASK_B_ONE  = 2'b11;
-
-parameter BMASK_A_REG  = 1'b0;
-parameter BMASK_A_IMM  = 1'b1;
-parameter BMASK_B_REG  = 1'b0;
-parameter BMASK_B_IMM  = 1'b1;
-
-
-// multiplication immediates
-parameter MIMM_ZERO    = 1'b0;
-parameter MIMM_S3      = 1'b1;
 
 // operand c selection
 parameter OP_C_REGC_OR_FWD = 2'b00;
@@ -728,7 +702,7 @@ typedef struct packed {
   logic         data_req;          
   logic         data_we;           
   logic [1:0]   data_type;         
-  logic [1:0]   data_sign_ext;     
+  logic         data_sign_ext;     
   logic [1:0]   data_reg_offset;   
   logic         data_misaligned;   
   logic [5:0]   data_atop;             
@@ -775,7 +749,7 @@ typedef struct packed {
   logic                              data_req;
   logic                              data_we;
   logic [1:0]                        data_type;
-  logic [1:0]                        data_sign_extension;
+  logic                              data_sign_ext;
   logic [1:0]                        data_reg_offset;
   logic [5:0]                        data_atop;
   logic                              illegal_insn;
@@ -813,7 +787,7 @@ parameter decoder_ctrl_t DECODER_CTRL_IDLE =  '{match                        : 1
                                                 data_req                     : 1'b0,
                                                 data_we                      : 1'b0,
                                                 data_type                    : 2'b00,
-                                                data_sign_extension          : 2'b00,
+                                                data_sign_ext                : 1'b0,
                                                 data_reg_offset              : 2'b00,
                                                 data_atop                    : 6'b000000,
                                                 illegal_insn                 : 1'b0,

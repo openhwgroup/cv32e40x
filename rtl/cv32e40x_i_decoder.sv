@@ -59,7 +59,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       //                                  //
       //////////////////////////////////////
 
-      OPCODE_JAL: begin   // Jump and Link
+      OPCODE_JAL: begin // Jump and Link
         decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JAL;
         decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JAL;
         // Calculate and store PC+4
@@ -71,7 +71,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         // Calculate jump target (= PC + UJ imm)
       end
 
-      OPCODE_JALR: begin  // Jump and Link Register
+      OPCODE_JALR: begin // Jump and Link Register
         decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JALR;
         decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JALR;
         // Calculate and store PC+4
@@ -104,11 +104,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           3'b101: decoder_ctrl_o.alu_operator = ALU_GES;
           3'b110: decoder_ctrl_o.alu_operator = ALU_LTU;
           3'b111: decoder_ctrl_o.alu_operator = ALU_GEU;
-          3'b010: begin
+          default: begin
               decoder_ctrl_o.illegal_insn = 1'b1;          
-          end
-          3'b011: begin
-            decoder_ctrl_o.illegal_insn = 1'b1;
           end
         endcase
       end
@@ -141,10 +138,11 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
         // store size
         unique case (instr_rdata_i[13:12])
-          2'b00: decoder_ctrl_o.data_type = 2'b10; // SB
+          2'b00: decoder_ctrl_o.data_type = 2'b00; // SB
           2'b01: decoder_ctrl_o.data_type = 2'b01; // SH
-          2'b10: decoder_ctrl_o.data_type = 2'b00; // SW
+          2'b10: decoder_ctrl_o.data_type = 2'b10; // SW
           default: begin
+            decoder_ctrl_o.data_type    = 2'b00;
             decoder_ctrl_o.data_req     = 1'b0;
             decoder_ctrl_o.data_we      = 1'b0;
             decoder_ctrl_o.illegal_insn = 1'b1;
@@ -156,36 +154,25 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.data_req          = 1'b1;
         decoder_ctrl_o.rf_we             = 1'b1;
         decoder_ctrl_o.rf_re[0]          = 1'b1;
-        decoder_ctrl_o.data_type         = 2'b00;
         // offset from immediate
         decoder_ctrl_o.alu_operator      = ALU_ADD;
         decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
         decoder_ctrl_o.imm_b_mux_sel     = IMMB_I;
 
         // sign/zero extension
-        decoder_ctrl_o.data_sign_extension = {1'b0,~instr_rdata_i[14]};
+        decoder_ctrl_o.data_sign_ext = !instr_rdata_i[14];
 
         // load size
         unique case (instr_rdata_i[13:12])
-          2'b00:   decoder_ctrl_o.data_type = 2'b10; // LB
+          2'b00:   decoder_ctrl_o.data_type = 2'b00; // LB
           2'b01:   decoder_ctrl_o.data_type = 2'b01; // LH
-          2'b10:   decoder_ctrl_o.data_type = 2'b00; // LW
-          default: decoder_ctrl_o.data_type = 2'b00; // illegal or reg-reg
+          2'b10:   decoder_ctrl_o.data_type = 2'b10; // LW
+          default: decoder_ctrl_o.data_type = 2'b00;
         endcase
 
-        // Reserved
-        if (instr_rdata_i[14:12] == 3'b111) begin
+        // Reserved or RV64
+        if ((instr_rdata_i[14:12] == 3'b111) || (instr_rdata_i[14:12] == 3'b110) || (instr_rdata_i[14:12] == 3'b011)) begin
             decoder_ctrl_o.illegal_insn = 1'b1;
-        end
-
-        // Reserved
-        if (instr_rdata_i[14:12] == 3'b110) begin
-          decoder_ctrl_o.illegal_insn = 1'b1;
-        end
-
-        if (instr_rdata_i[14:12] == 3'b011) begin
-          // LD -> RV64 only
-          decoder_ctrl_o.illegal_insn = 1'b1;
         end
       end
 
@@ -250,18 +237,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
       OPCODE_OP: begin  // Register-Register ALU operation
 
-        // PREFIX 11
-        if (instr_rdata_i[31:30] == 2'b11) begin
+        if ((instr_rdata_i[31:30] == 2'b11) || (instr_rdata_i[31:30] == 2'b10)) begin
             decoder_ctrl_o.illegal_insn = 1'b1;
-        end
-
-        // PREFIX 10
-        else if (instr_rdata_i[31:30] == 2'b10) begin
-          decoder_ctrl_o.illegal_insn = 1'b1;
-        end  // prefix 10
-
-        // PREFIX 00/01
-        else begin
+        end else begin
           decoder_ctrl_o.rf_we    = 1'b1;
           decoder_ctrl_o.rf_re[0] = 1'b1;
 
@@ -518,8 +496,6 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       end
     endcase
 
-  end
-
+  end // always_comb
 
 endmodule : cv32e40x_i_decoder
-

@@ -73,7 +73,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // registers for data_rdata alignment and sign extension
   logic [1:0]   data_type_q;
   logic [1:0]   rdata_offset_q;
-  logic [1:0]   data_sign_ext_q;
+  logic         data_sign_ext_q;
   logic         data_we_q;
 
   logic [1:0]   wdata_offset;           // mux control for data to be written to memory
@@ -89,8 +89,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
   begin
-    case (id_ex_pipe_i.data_type) // Data type 00 Word, 01 Half word, 11,10 byte
-      2'b00:
+    case (id_ex_pipe_i.data_type) // Data type 00 byte, 01 halfword, 10 word
+      2'b00: begin // Writing a byte
+        case (data_addr_int[1:0])
+          2'b00: data_be = 4'b0001;
+          2'b01: data_be = 4'b0010;
+          2'b10: data_be = 4'b0100;
+          2'b11: data_be = 4'b1000;
+        endcase; // case (data_addr_int[1:0])
+      end
+      2'b01:
+      begin // Writing a half word
+        if (misaligned_st == 1'b0)
+        begin // non-misaligned case
+          case (data_addr_int[1:0])
+            2'b00: data_be = 4'b0011;
+            2'b01: data_be = 4'b0110;
+            2'b10: data_be = 4'b1100;
+            2'b11: data_be = 4'b1000;
+          endcase; // case (data_addr_int[1:0])
+        end
+        else
+        begin // misaligned case
+          data_be = 4'b0001;
+        end
+      end
+      default:
       begin // Writing a word
         if (misaligned_st == 1'b0)
         begin // non-misaligned case
@@ -110,33 +134,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
             2'b11: data_be = 4'b0111;
           endcase; // case (data_addr_int[1:0])
         end
-      end
-
-      2'b01:
-      begin // Writing a half word
-        if (misaligned_st == 1'b0)
-        begin // non-misaligned case
-          case (data_addr_int[1:0])
-            2'b00: data_be = 4'b0011;
-            2'b01: data_be = 4'b0110;
-            2'b10: data_be = 4'b1100;
-            2'b11: data_be = 4'b1000;
-          endcase; // case (data_addr_int[1:0])
-        end
-        else
-        begin // misaligned case
-          data_be = 4'b0001;
-        end
-      end
-
-      2'b10,
-      2'b11: begin // Writing a byte
-        case (data_addr_int[1:0])
-          2'b00: data_be = 4'b0001;
-          2'b01: data_be = 4'b0010;
-          2'b10: data_be = 4'b0100;
-          2'b11: data_be = 4'b1000;
-        endcase; // case (data_addr_int[1:0])
       end
     endcase; // case (id_ex_pipe_i.data_type)
   end
@@ -163,7 +160,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     begin
       data_type_q       <= '0;
       rdata_offset_q    <= '0;
-      data_sign_ext_q   <= '0;
+      data_sign_ext_q   <= 1'b0;
       data_we_q         <= 1'b0;
     end
     else if (ctrl_update) // request was granted, we wait for rvalid and can continue to WB
@@ -207,40 +204,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[15:0]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_h_ext = {16'hffff, resp_rdata[15:0]};
         else
           rdata_h_ext = {{16{resp_rdata[15]}}, resp_rdata[15:0]};
       end
 
       2'b01:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[23:8]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_h_ext = {16'hffff, resp_rdata[23:8]};
         else
           rdata_h_ext = {{16{resp_rdata[23]}}, resp_rdata[23:8]};
       end
 
       2'b10:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[31:16]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_h_ext = {16'hffff, resp_rdata[31:16]};
         else
           rdata_h_ext = {{16{resp_rdata[31]}}, resp_rdata[31:16]};
       end
 
       2'b11:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[7:0], rdata_q[31:24]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_h_ext = {16'hffff, resp_rdata[7:0], rdata_q[31:24]};
         else
           rdata_h_ext = {{16{resp_rdata[7]}}, resp_rdata[7:0], rdata_q[31:24]};
       end
@@ -253,39 +242,31 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[7:0]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_b_ext = {24'hff_ffff, resp_rdata[7:0]};
         else
           rdata_b_ext = {{24{resp_rdata[7]}}, resp_rdata[7:0]};
       end
 
       2'b01: begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[15:8]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_b_ext = {24'hff_ffff, resp_rdata[15:8]};
         else
           rdata_b_ext = {{24{resp_rdata[15]}}, resp_rdata[15:8]};
       end
 
       2'b10:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[23:16]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_b_ext = {24'hff_ffff, resp_rdata[23:16]};
         else
           rdata_b_ext = {{24{resp_rdata[23]}}, resp_rdata[23:16]};
       end
 
       2'b11:
       begin
-        if (data_sign_ext_q == 2'b00)
+        if (data_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[31:24]};
-        else if (data_sign_ext_q == 2'b10)
-          rdata_b_ext = {24'hff_ffff, resp_rdata[31:24]};
         else
           rdata_b_ext = {{24{resp_rdata[31]}}, resp_rdata[31:24]};
       end
@@ -296,10 +277,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   always_comb
   begin
     case (data_type_q)
-      2'b00:       data_rdata_ext = rdata_w_ext;
-      2'b01:       data_rdata_ext = rdata_h_ext;
-      2'b10,2'b11: data_rdata_ext = rdata_b_ext;
-    endcase //~case(rdata_type_q)
+      2'b00:   data_rdata_ext = rdata_b_ext;
+      2'b01:   data_rdata_ext = rdata_h_ext;
+      default: data_rdata_ext = rdata_w_ext;
+    endcase
   end
 
   always_ff @(posedge clk, negedge rst_n)
@@ -345,14 +326,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     if (id_ex_pipe_i.data_req && !id_ex_pipe_i.data_misaligned)
     begin
       case (id_ex_pipe_i.data_type)
-        2'b00: // word
+        2'b10: // word
         begin
-          if(data_addr_int[1:0] != 2'b00)
+          if (data_addr_int[1:0] != 2'b00)
             lsu_misaligned_o = 1'b1;
         end
         2'b01: // half word
         begin
-          if(data_addr_int[1:0] == 2'b11)
+          if (data_addr_int[1:0] == 2'b11)
             lsu_misaligned_o = 1'b1;
         end
       endcase // case (id_ex_pipe_i.data_type)
