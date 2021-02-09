@@ -56,7 +56,7 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
           decoder_ctrl_o.prepost_useincr  = 1'b0; // only use alu_operand_a as address (not a+b)
           decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
 
-          decoder_ctrl_o.data_sign_ext = 2'b01;
+          decoder_ctrl_o.data_sign_ext = 1'b1;
 
           // Apply AMO instruction at `data_atop`.
           decoder_ctrl_o.data_atop = {1'b1, instr_rdata_i[31:27]};
