@@ -453,12 +453,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-`ifdef CV32E40P_ASSERT_ON
-
-
-
-
-   
+`ifdef ASSERT_ON
+  `include "cv32e40x_alignment_buffer.svh"
 `endif
 
 endmodule

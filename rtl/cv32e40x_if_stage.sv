@@ -253,17 +253,8 @@ instruction_obi_i
   // Assertions
   //----------------------------------------------------------------------------
 
-`ifdef CV32E40P_ASSERT_ON
-
-// Check that bus interface transactions are word aligned
-  property p_instr_addr_word_aligned;
-    @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[1:0] == 2'b00);
- endproperty
-
- a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned);
-
- 
-
+`ifdef ASSERT_ON
+ `include "cv32e40x_if_stage.svh"
 `endif
 
 endmodule

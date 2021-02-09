@@ -469,37 +469,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Assertions
   //////////////////////////////////////////////////////////////////////////////
 
-`ifdef CV32E40P_ASSERT_ON
-
-  
-
-  // Check that outstanding transaction count will not overflow DEPTH
-  property p_no_transaction_count_overflow_0;
-     @(posedge clk) (1'b1) |-> (cnt_q <= DEPTH);
-  endproperty
-
-  a_no_transaction_count_overflow_0 : assert property(p_no_transaction_count_overflow_0);
-
-  property p_no_transaction_count_overflow_1;
-     @(posedge clk) (cnt_q == DEPTH) |-> (!count_up || count_down);
-  endproperty
-
-  a_no_transaction_count_overflow_1 : assert property(p_no_transaction_count_overflow_1);
-
-  // Check that an rvalid only occurs when there are outstanding transaction(s)
-  property p_no_spurious_rvalid;
-     @(posedge clk) (m_c_obi_data_if.rvalid == 1'b1) |-> (cnt_q > 0);
-  endproperty
-
-  a_no_spurious_rvalid : assert property(p_no_spurious_rvalid);
-
-  // Check that the address/we/be/atop does not contain X when request is sent
-  property p_address_phase_signals_defined;
-     @(posedge clk) (m_c_obi_data_if.req == 1'b1) |-> (!($isunknown(m_c_obi_data_if.req_payload.addr) || $isunknown(m_c_obi_data_if.req_payload.we) || $isunknown(m_c_obi_data_if.req_payload.be) || $isunknown(m_c_obi_data_if.req_payload.atop)));
-  endproperty
-
-  a_address_phase_signals_defined : assert property(p_address_phase_signals_defined);
-
+`ifdef ASSERT_ON
+  `include "cv32e40x_load_store_unit.svh"
 `endif
 
 endmodule

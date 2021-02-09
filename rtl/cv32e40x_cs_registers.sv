@@ -960,19 +960,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-`ifdef CV32E40P_ASSERT_ON
-
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-  // Check that mie_bypass_o equals mie_n
-  a_mie_bypass : assert property
-  (
-    @(posedge clk) disable iff (!rst_n)
-    (mie_we)
-    |-> (mie_bypass_o == mie_n));
-
+`ifdef ASSERT_ON
+  `include "cv32e40x_cs_registers.svh"
 `endif
 
 endmodule

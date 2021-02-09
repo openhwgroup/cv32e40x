@@ -215,11 +215,8 @@ module cv32e40x_alu_div import cv32e40x_pkg::*;
   // assertions
   ///////////////////////////////////////////////////////////////////////////////
 
-`ifdef CV32E40P_ASSERT_ON
-  initial
-  begin : p_assertions
-    assert (C_LOG_WIDTH == $clog2(C_WIDTH+1)) else $error("C_LOG_WIDTH must be $clog2(C_WIDTH+1)");
-  end
+`ifdef ASSERT_ON
+ `include "cv32e40x_alu_div.svh"
 `endif
 
 endmodule // serDiv

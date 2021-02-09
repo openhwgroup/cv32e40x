@@ -907,77 +907,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
-  `ifdef CV32E40P_ASSERT_ON
 
-    // make sure that branch decision is valid when jumping
-    a_br_decision : assert property (
-      @(posedge clk) (id_ex_pipe_o.branch_in_ex) |-> (branch_decision_i !== 1'bx) ) else begin $warning("%t, Branch decision is X in module %m", $time); $stop; end
-
-    // the instruction delivered to the ID stage should always be valid
-    a_valid_instr : assert property (
-      @(posedge clk) (if_id_pipe_i.instr_valid & (~if_id_pipe_i.illegal_c_insn)) |-> (!$isunknown(instr)) ) else $warning("%t, Instruction is valid, but has at least one X", $time);
-
-    // Check that instruction after taken branch is flushed (more should actually be flushed, but that is not checked here)
-    // and that EX stage is ready to receive flushed instruction immediately
-    property p_branch_taken_ex;
-       @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
-                                                                          (alu_en == 1'b0) &&
-                                                                          (mult_en == 1'b0) &&
-                                                                          (rf_we == 1'b0) &&
-                                                                          (data_req == 1'b0));
-    endproperty
-
-    a_branch_taken_ex : assert property(p_branch_taken_ex);
-
-    // Check that if IRQ PC update does not coincide with IRQ related CSR write
-    // MIE is excluded from the check because it has a bypass.
-    property p_irq_csr;
-       @(posedge clk) disable iff (!rst_n) (pc_set_o && (pc_mux_o == PC_EXCEPTION) && ((exc_pc_mux_o == EXC_PC_EXCEPTION) || (exc_pc_mux_o == EXC_PC_IRQ)) &&
-                                            id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)) |->
-                                           ((id_ex_pipe_o.alu_operand_b[11:0] != CSR_MSTATUS) &&
-                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MEPC) &&
-                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MCAUSE) &&
-                                            (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MTVEC));
-    endproperty
-
-    a_irq_csr : assert property(p_irq_csr);
-
-    // Check that xret does not coincide with CSR write (to avoid using wrong return address)
-    // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
-    // as its write action happens before the xret CSR usage
-    property p_xret_csr;
-       @(posedge clk) disable iff (!rst_n) (pc_set_o && ((pc_mux_o == PC_MRET) || (pc_mux_o == PC_DRET))) |->
-                                           (!(id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)));
-    endproperty
-
-    a_xret_csr : assert property(p_xret_csr);
-
-    generate
-    if (!A_EXTENSION) begin : gen_no_a_extension_assertions
-
-      // Check that A extension opcodes are decoded as illegal when A extension not enabled
-      property p_illegal_0;
-         @(posedge clk) disable iff (!rst_n) (instr[6:0] == OPCODE_AMO) |-> (illegal_insn == 'b1);
-      endproperty
-
-      a_illegal_0 : assert property(p_illegal_0);
-
-    end
-    endgenerate
-
-    
-
-   // Check that illegal instruction has no other side effects
-    property p_illegal_2;
-       @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
-                                                                        ecall_insn || wfi_insn || fencei_insn ||
-                                                                        alu_en || mult_en ||
-                                                                        rf_we ||
-                                                                        csr_op != CSR_OP_READ || data_req);
-    endproperty
-
-    a_illegal_2 : assert property(p_illegal_2);
-
-  `endif
+`ifdef ASSERT_ON
+  `include "cv32e40x_id_stage.svh"
+`endif
 
 endmodule // cv32e40x_id_stage

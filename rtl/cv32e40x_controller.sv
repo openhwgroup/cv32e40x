@@ -1000,34 +1000,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-`ifdef CV32E40P_ASSERT_ON
-
-  // make sure that taken branches do not happen back-to-back, as this is not
-  // possible without branch prediction in the IF stage
-  assert property (
-    @(posedge clk) (branch_taken_ex_i) |=> (~branch_taken_ex_i) ) else $warning("Two branches back-to-back are taken");
-
-  
-  // Ensure DBG_TAKEN_IF can only be enterred if in single step mode or woken
-  // up from sleep by debug_req_i
-         
-  a_single_step_dbg_taken_if : assert property (@(posedge clk)  disable iff (!rst_n)  (ctrl_fsm_ns==DBG_TAKEN_IF) |-> ((~debug_mode_q && debug_single_step_i) || debug_force_wakeup_n));
-
-  // Ensure DBG_FLUSH state is only one cycle. This implies that cause is either trigger, debug_req_entry, or ebreak
-  a_dbg_flush : assert property (@(posedge clk)  disable iff (!rst_n)  (ctrl_fsm_cs==DBG_FLUSH) |-> (ctrl_fsm_ns!=DBG_FLUSH) );
-
-  // Ensure that debug state outputs are one-hot
-  a_debug_state_onehot : assert property (@(posedge clk) $onehot({debug_havereset_o, debug_running_o, debug_halted_o}));
-
-  // Ensure that debug_halted_o equals debug_mode_q
-  a_debug_halted_equals_debug_mode : assert property (@(posedge clk) disable iff (!rst_n) (1'b1) |-> (debug_mode_q == debug_halted_o));
-
-  // Ensure ID always ready in FIRST_FETCH state
-  a_first_fetch_id_ready : assert property (@(posedge clk) disable iff (!rst_n) (ctrl_fsm_cs == FIRST_FETCH) |-> (id_ready_i == 1'b1));
-
-  // Ensure that the only way to get to DBG_TAKEN_IF from DBG_FLUSH is if debug_single_step_i is asserted
-  a_dbg_flush_to_taken_if : assert property (@(posedge clk) disable iff (!rst_n) (ctrl_fsm_cs == DBG_FLUSH) && (ctrl_fsm_ns == DBG_TAKEN_IF) |-> debug_single_step_i);
-
+`ifdef ASSERT_ON
+ `include "cv32e40x_controller.svh"
 `endif
 
 endmodule // cv32e40x_controller

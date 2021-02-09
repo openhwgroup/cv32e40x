@@ -223,31 +223,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   // Assertions
   //----------------------------------------------------------------------------
 
-`ifdef CV32E40P_ASSERT_ON
-
-   // Ensure only MUL, MULH, MULHSU, MULHU used (will only work if PULP_XPULP == 0)
-   a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
-   |-> (((operator_i == MUL_M32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
-
-  
-  // check multiplication result for mulh
-  a_mulh_result : assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
-    |->
-    (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) );
-
-  // check multiplication result for mulhsu
-  a_mulhsu_result : assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
-    |->
-    (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) );
-
-  // check multiplication result for mulhu
-  a_mulhu_result : assert property (
-    @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
-    |->
-    (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) );
-
+`ifdef ASSERT_ON
+  `include "cv32e40x_mult.svh"
 `endif
 
 endmodule

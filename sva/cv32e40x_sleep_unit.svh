@@ -1,0 +1,112 @@
+// Copyright 2020 Silicon Labs, Inc.
+//
+// This file, and derivatives thereof are licensed under the
+// Solderpad License, Version 2.0 (the "License").
+//
+// Use of this file means you agree to the terms and conditions
+// of the license and are in full compliance with the License.
+//
+// You may obtain a copy of the License at:
+//
+//     https://solderpad.org/licenses/SHL-2.0/
+//
+// Unless required by applicable law or agreed to in writing, software
+// and hardware implementations thereof distributed under the License
+// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+// OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
+//
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+// Authors:        Arjan Bink       - arjan.bink@silabs.com                   //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                                                                            //
+// Description:    RTL assertions for the sleep_unit module                   //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+import uvm_pkg::*;
+
+// Clock gate is disabled during RESET state of the controller
+property p_clock_en_0;
+   @(posedge clk_ungated_i) disable iff (!rst_n) ((id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::RESET) && (id_stage_i.controller_i.ctrl_fsm_ns == cv32e40x_pkg::RESET)) |-> (clock_en == 1'b0);
+endproperty
+
+a_clock_en_0 : assert property(p_clock_en_0) else `uvm_error("controller", "Assertion a_clock_en_0 failed")
+
+// Clock gate is enabled when exit from RESET state is required
+property p_clock_en_1;
+   @(posedge clk_ungated_i) disable iff (!rst_n) ((id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::RESET) && (id_stage_i.controller_i.ctrl_fsm_ns != cv32e40x_pkg::RESET)) |-> (clock_en == 1'b1);
+endproperty
+
+a_clock_en_1 : assert property(p_clock_en_1) else `uvm_error("controller", "Assertion a_clock_en_1 failed")
+
+// Clock gate is not enabled before receiving fetch_enable_i pulse
+property p_clock_en_2;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (fetch_enable_q == 1'b0) |-> (clock_en == 1'b0);
+endproperty
+
+a_clock_en_2 : assert property(p_clock_en_2) else `uvm_error("controller", "Assertion a_clock_en_2 failed")
+
+
+
+// Clock gate is only possibly disabled in RESET or SLEEP
+property p_clock_en_4;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (clock_en == 1'b0) -> ((id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::RESET) || (id_stage_i.controller_i.ctrl_fsm_ns == cv32e40x_pkg::SLEEP));
+endproperty
+
+a_clock_en_4 : assert property(p_clock_en_4) else `uvm_error("controller", "Assertion a_clock_en_4 failed")
+
+// Clock gate is enabled when exit from SLEEP state is required
+property p_clock_en_5;
+   @(posedge clk_ungated_i) disable iff (!rst_n)  ((id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::SLEEP) && (id_stage_i.controller_i.ctrl_fsm_ns != cv32e40x_pkg::SLEEP)) |-> (clock_en == 1'b1);
+endproperty
+
+a_clock_en_5 : assert property(p_clock_en_5) else `uvm_error("controller", "Assertion a_clock_en_5 failed")
+
+// Core sleep is only signaled in SLEEP state
+property p_core_sleep;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_sleep_o == 1'b1) -> ((id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::SLEEP));
+endproperty
+
+a_core_sleep : assert property(p_core_sleep) else `uvm_error("controller", "Assertion a_core_sleep failed")
+
+// Core can only become non-busy due to SLEEP entry
+property p_non_busy;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_busy_d == 1'b0) |-> (id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::WAIT_SLEEP) || (id_stage_i.controller_i.ctrl_fsm_cs == cv32e40x_pkg::SLEEP);
+endproperty
+
+a_non_busy : assert property(p_non_busy) else `uvm_error("controller", "Assertion a_non_busy failed")
+
+// During (PULP_CLUSTER = 0) sleep it should be allowed to externally gate clk_i
+property p_gate_clk_i;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_sleep_o == 1'b1) |-> (core_busy_q == core_busy_d) && (fetch_enable_q == fetch_enable_d);
+endproperty
+
+a_gate_clk_i : assert property(p_gate_clk_i) else `uvm_error("controller", "Assertion a_gate_clk_i failed")
+
+// During sleep the internal clock is gated
+property p_gate_clock_during_sleep;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_sleep_o == 1'b1) |-> (clock_en == 1'b0);
+endproperty
+
+a_gate_clock_during_sleep : assert property(p_gate_clock_during_sleep)
+  else `uvm_error("controller", "Assertion a_gate_clock_during_sleep failed")
+
+// Sleep mode can only be entered in response to a WFI instruction
+property p_only_sleep_for_wfi;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_sleep_o == 1'b1) |-> (id_stage_i.instr == { 12'b000100000101, 13'b0, OPCODE_SYSTEM });
+endproperty
+
+a_only_sleep_for_wfi : assert property(p_only_sleep_for_wfi) else `uvm_error("controller", "Assertion a_only_sleep_for_wfi failed")
+
+// In sleep mode the core will not be busy (e.g. no ongoing/outstanding instruction or data transactions)
+property p_not_busy_during_sleep;
+   @(posedge clk_ungated_i) disable iff (!rst_n) (core_sleep_o == 1'b1) |-> ((core_busy_q == 1'b0) && (core_busy_d == 1'b0));
+endproperty
+
+a_not_busy_during_sleep : assert property(p_not_busy_during_sleep)
+  else `uvm_error("controller", "Assertion a_not_busy_during_sleep failed")
+

@@ -128,39 +128,8 @@ module cv32e40x_prefetch_unit
   // Assertions
   //----------------------------------------------------------------------------
 
-`ifdef CV32E40P_ASSERT_ON
-
-  // FIFO_DEPTH must be greater than 1. Otherwise, the property
-  // p_hwlp_end_already_gnt_when_hwlp_branch in cv32e40x_prefetch_controller
-  // is not verified, since the prefetcher cannot ask for HWLP_END the cycle
-  // in which HWLP_END-4 is being absorbed by ID.
-  property p_fifo_depth_gt_1;
-     @(posedge clk) (FIFO_DEPTH > 1);
-  endproperty
-
-  a_fifo_depth_gt_1 : assert property(p_fifo_depth_gt_1);
-
-  // Check that branch target address is half-word aligned (RV32-C)
-  property p_branch_halfword_aligned;
-     @(posedge clk) (branch_i) |-> (branch_addr_i[0] == 1'b0);
-  endproperty
-
-  a_branch_halfword_aligned : assert property(p_branch_halfword_aligned);
-
-  // Check that a taken branch can only occur if fetching is requested
-  property p_branch_implies_req;
-     @(posedge clk) (branch_i) |-> (prefetch_en_i);
-  endproperty
-
-  a_branch_implies_req : assert property(p_branch_implies_req);
-/*
-  // Check that after a taken branch the initial FIFO output is not accepted
-  property p_branch_invalidates_fifo;
-     @(posedge clk) (branch_i) |-> (!(fetch_valid && prefetch_ready_i));
-  endproperty
-
-  a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo);
-*/
+`ifdef ASSERT_ON
+  `include "cv32e40x_prefetch_buffer.svh"
 `endif
 
 endmodule // cv32e40x_prefetch_unit
