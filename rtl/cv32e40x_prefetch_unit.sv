@@ -124,12 +124,4 @@ module cv32e40x_prefetch_unit
 
   );
 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
-  `include "cv32e40x_prefetch_buffer.svh"
-`endif
-
 endmodule // cv32e40x_prefetch_unit

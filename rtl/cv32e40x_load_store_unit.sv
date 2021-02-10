@@ -464,13 +464,4 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .m_c_obi_data_if       ( m_c_obi_data_if     )
   );
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Assertions
-  //////////////////////////////////////////////////////////////////////////////
-
-`ifdef ASSERT_ON
-  `include "cv32e40x_load_store_unit.svh"
-`endif
-
 endmodule

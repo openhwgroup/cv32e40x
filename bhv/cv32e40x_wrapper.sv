@@ -9,9 +9,20 @@
 // specific language governing permissions and limitations under the License.
 
 // Wrapper for a cv32e40x, containing cv32e40x, and tracer
-// Contributor: Davide Schiavone <davide@openhwgroup.org>
+// Contributors: Davide Schiavone <davide@openhwgroup.org>
+//               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
 `ifdef ASSERT_ON
+  `include "cv32e40x_core_sva.sv"
+  `include "cv32e40x_mult_sva.sv"
+  `include "cv32e40x_alu_div_sva.sv"
+  `include "cv32e40x_if_stage_sva.sv"
+  `include "cv32e40x_sleep_unit_sva.sv"
+  `include "cv32e40x_controller_sva.sv"
+  `include "cv32e40x_cs_registers_sva.sv"
+  `include "cv32e40x_load_store_unit_sva.sv"
+  `include "cv32e40x_prefetch_buffer_sva.sv"
+  `include "cv32e40x_alignment_buffer_sva.sv"
   `include "cv32e40x_prefetch_controller_sva.sv"
 `endif
 
@@ -80,7 +91,6 @@ module cv32e40x_wrapper
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
 );
-
 
     cv32e40x_core_log
      #(

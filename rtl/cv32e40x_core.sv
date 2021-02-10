@@ -636,8 +636,4 @@ module cv32e40x_core
 
   assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_access ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
-`ifdef ASSERT_ON
-  `include "cv32e40x_core.svh"
-`endif
-
 endmodule

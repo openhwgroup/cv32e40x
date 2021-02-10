@@ -960,9 +960,5 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-`ifdef ASSERT_ON
-  `include "cv32e40x_cs_registers.svh"
-`endif
-
 endmodule
 

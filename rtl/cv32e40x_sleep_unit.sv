@@ -119,12 +119,4 @@ module cv32e40x_sleep_unit
     .clk_o        ( clk_gated_o     )
   );
 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
- `include "cv32e40x_sleep_unit.svh"
-`endif
-
 endmodule // cv32e40x_sleep_unit

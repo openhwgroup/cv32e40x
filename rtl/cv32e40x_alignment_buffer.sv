@@ -448,13 +448,4 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o      = addr_q;
 
- 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
-  `include "cv32e40x_alignment_buffer.svh"
-`endif
-
 endmodule

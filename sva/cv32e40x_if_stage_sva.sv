@@ -10,21 +10,30 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-// Authors:        Sven Stucki - svstucki@student.ethz.ch                     //
-//                 Andreas Traber - atraber@iis.ee.ethz.ch                    //
-//                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
-//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
-//                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
+// Authors:        Renzo Andri - andrire@student.ethz.ch                      //
+//                 Igor Loi - igor.loi@unibo.it                               //
+//                 Andreas Traber - atraber@student.ethz.ch                   //
+//                 Sven Stucki - svstucki@student.ethz.ch                     //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
-// Description:    RTL assertions for the cs_registers module                 //
+// Description:    RTL assertions for the if_stage module                     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import uvm_pkg::*;
+module cv32e40x_if_stage_sva
+  import uvm_pkg::*;
+  import cv32e40x_pkg::*;
+  (input  logic        clk,
+   input  logic        rst_n,
+   if_c_obi.master     m_c_obi_instr_if);
 
-// Check that mie_bypass_o equals mie_n
-a_mie_bypass : assert property (@(posedge clk) disable iff (!rst_n)
-                                (mie_we) |-> (mie_bypass_o == mie_n))
-  else `uvm_error("controller", "Assertion a_mie_bypass failed")
+  // Check that bus interface transactions are word aligned
+  property p_instr_addr_word_aligned;
+    @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[1:0] == 2'b00);
+  endproperty
+
+  a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned)
+    else `uvm_error("if_stage", "Assertion a_instr_addr_word_aligned failed")
+
+endmodule // cv32e40x_if_stage
 

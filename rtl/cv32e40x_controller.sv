@@ -996,12 +996,4 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign debug_running_o = debug_fsm_cs[RUNNING_INDEX];
   assign debug_halted_o = debug_fsm_cs[HALTED_INDEX];
 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
- `include "cv32e40x_controller.svh"
-`endif
-
 endmodule // cv32e40x_controller

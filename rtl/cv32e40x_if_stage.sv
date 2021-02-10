@@ -249,12 +249,4 @@ instruction_obi_i
     .illegal_instr_o ( illegal_c_insn       )
   );
 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
- `include "cv32e40x_if_stage.svh"
-`endif
-
 endmodule

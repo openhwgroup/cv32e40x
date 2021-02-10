@@ -219,12 +219,4 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   assign ready_o = mulh_ready;
 
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
-  `include "cv32e40x_mult.svh"
-`endif
-
 endmodule

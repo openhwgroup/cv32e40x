@@ -18,9 +18,15 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import uvm_pkg::*;
+module cv32e40x_alu_div_sva
+  import uvm_pkg::*;
+  #(parameter C_WIDTH     = 0,
+    parameter C_LOG_WIDTH = 0)
+  ();
 
-initial begin : p_assertions
+  initial begin : p_assertions
     assert (C_LOG_WIDTH == $clog2(C_WIDTH+1)) else `uvm_error("alu_div", "C_LOG_WIDTH must be $clog2(C_WIDTH+1)")
-end
+  end
+
+endmodule // cv32e40x_alu_div_sva
 

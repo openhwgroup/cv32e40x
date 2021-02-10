@@ -19,25 +19,38 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import uvm_pkg::*;
+module cv32e40x_alignment_buffer_sva
+  import uvm_pkg::*;
+  #(parameter DEPTH           = 0,
+    parameter FIFO_ADDR_DEPTH = 0)
+  (
+   input logic                     clk,
+   input logic [0:DEPTH-1]         valid_q,
+   input logic                     branch_i,
+   input logic [FIFO_ADDR_DEPTH:0] fifo_cnt_o,
+   input logic                     instr_valid_o,
+   input logic                     fetch_valid_i
+   );
 
-// Check for FIFO overflows
-assert property (@(posedge clk)
-                 (fetch_valid_i) |-> (valid_q[DEPTH-1] == 1'b0) )
-  else `uvm_error("alignment_buffer", "Fifo Overflow")
+  // Check for FIFO overflows
+  assert property (@(posedge clk)
+                   (fetch_valid_i) |-> (valid_q[DEPTH-1] == 1'b0) )
+    else `uvm_error("alignment_buffer", "Fifo Overflow")
 
-// Check that FIFO is cleared the cycle after a branch
-assert property (@(posedge clk)
-                 (branch_i) |=> (valid_q == 'b0) )
-  else `uvm_error("alignment_buffer", "Fifo not cleared after branch")
+  // Check that FIFO is cleared the cycle after a branch
+  assert property (@(posedge clk)
+                   (branch_i) |=> (valid_q == 'b0) )
+    else `uvm_error("alignment_buffer", "Fifo not cleared after branch")
 
-// Check that FIFO is signaled empty the cycle during a branch
-assert property (@(posedge clk)
+  // Check that FIFO is signaled empty the cycle during a branch
+  assert property (@(posedge clk)
                    (branch_i) |-> (fifo_cnt_o == 'b0) )
-  else `uvm_error("alignment_buffer", "Fifo not empty in branch cycle")
+    else `uvm_error("alignment_buffer", "Fifo not empty in branch cycle")
 
-// Check that instr_valid_o is zero when a branch is requested
-assert property (@(posedge clk)
+  // Check that instr_valid_o is zero when a branch is requested
+  assert property (@(posedge clk)
                    (branch_i) |-> (instr_valid_o == 1'b0) )
-  else `uvm_error("alignment_buffer", "instr_valid_o not zero when branch requested")
+    else `uvm_error("alignment_buffer", "instr_valid_o not zero when branch requested")
+
+endmodule // cv32e40x_alignment_buffer_sva
 

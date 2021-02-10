@@ -903,13 +903,4 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_valid_o = (~halt_id) & id_ready_o;
   assign halt_if_o  = halt_if;
 
-
-  //----------------------------------------------------------------------------
-  // Assertions
-  //----------------------------------------------------------------------------
-
-`ifdef ASSERT_ON
-  `include "cv32e40x_id_stage.svh"
-`endif
-
 endmodule // cv32e40x_id_stage
