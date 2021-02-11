@@ -31,9 +31,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           rst_n,
 
   // Interface to prefetch_controller
-  input  logic                         fetch_valid_i,
-  input  logic [31:0]                  fetch_rdata_i,
-  output logic [FIFO_ADDR_DEPTH:0]     fifo_cnt_o,
+  input  logic           fetch_valid_i,
+  input  logic [31:0]    fetch_rdata_i,
+  output logic           trans_req_o,
+  input  logic           trans_ack_i,
+
 
   
   // Interface to if_stage
@@ -51,6 +53,28 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   
   logic [31:0]       pc_q;
+  
+  // FSM
+  alignment_state_e aligner_cs, aligner_ns;
+
+  logic trans_req_fsm;
+
+  // number of instructions in resp_data
+  logic [1:0] n_incoming_ins;
+
+  // Number of instructions pushed to fifo
+  logic [1:0] n_pushed_ins;
+
+  logic aligned_n, aligned_q;
+  logic complete_n, complete_q;
+
+  // For any number > 0, subtract 1 if we also issue to if_stage
+  // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
+  assign n_pushed_ins = (instr_valid_o & instr_ready_i) ? 
+                        (n_incoming_ins >0) ? n_incoming_ins - 1 : 2'b11 :
+                        n_incoming_ins;
+
+  assign trans_req_o = trans_req_fsm || branch_i;
   
   //////////////////
   // FIFO signals //
@@ -120,7 +144,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // on the next clock edge. Ahead of that the FIFO is indicated to be empty 
   // so that a new transaction request in response to a branch are always
   // requested as soon as possible.
-
+/*
   always_comb
   begin
       fifo_cnt_o = 'd0;
@@ -136,7 +160,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           fifo_cnt_o = 'd0;
       end
   end // always_comb
-  
+*/  
 
   //////////////////////////////////////////////////////////////////////////////
   // FIFO management
@@ -150,7 +174,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Loop through indices and store incoming data to first available slot
     if (fetch_valid_i) begin
       for(int j = 0; j < DEPTH; j++) begin
-        if (~valid_q[j]) begin
+        if (!valid_q[j]) begin
           rdata_int[j] = fetch_rdata_i;
           valid_int[j] = 1'b1;
 
@@ -209,6 +233,239 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     end
   end
 
+  // FSM comb block
+  always_comb
+  begin
+    aligner_ns = aligner_cs;
+    trans_req_fsm = 1'b0;
+
+    unique case (aligner_cs)
+        I0_00: begin // 0 in FIFO, 0 incoming
+          // FETCH
+          trans_req_fsm = 1'b1;
+          if(trans_req_fsm && trans_ack_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I0_10: begin // 0 in FIFO, 1 incoming (this cycle)
+          // FETCH
+          trans_req_fsm = 1'b1;
+
+          // Transfer is ack'ed
+          if(trans_req_fsm && trans_ack_i) begin
+            // Next state depends on how many instructions are pushed to the fifo
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  aligner_ns = I0_10;
+              end
+              2'd1: begin
+                  aligner_ns = I1_10;
+              end
+              2'd2: begin
+                  aligner_ns = I2_10;
+              end
+            endcase
+            // On a branch, we're clearing the fifo
+            if(branch_i) begin
+              aligner_ns = I0_10;
+            end
+
+          // transfer not yet accepted
+          end else begin
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  aligner_ns = I0_00;
+              end
+              2'd1: begin
+                  aligner_ns = I1_00;
+              end
+              2'd2: begin
+                  aligner_ns = I2_00;
+                  //trans_req_o = 1'b0; // No need to prefetch anyway ! NB not allowed as it is using rdata as input
+              end
+            endcase
+          end
+        end
+        I0_11: begin // 0 in FIFO, 2 incoming (this and next cycle)
+          /////////////////////
+        end
+        I1_00: begin // 1 in FIFO, 0 incoming
+          // FETCH
+          trans_req_fsm = 1'b1;
+          
+          // Transfer is ack'ed
+          if(trans_req_fsm && trans_ack_i) begin
+            // Next state depends on how many instructions are pushed to the fifo
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  aligner_ns = I1_10;
+              end
+              2'd1: begin
+                  aligner_ns = I2_10;
+              end
+              2'd2: begin
+                  aligner_ns = I3_00; //!! would require I3_10, which is not defined
+              end
+              2'd3: begin
+                  // We pop one
+                  aligner_ns = I0_10;
+              end
+            endcase
+          // transfer not yet accepted
+          end else begin
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  aligner_ns = I1_00;
+              end
+              2'd1: begin
+                  aligner_ns = I2_00;
+              end
+              2'd2: begin
+                  aligner_ns = I3_00;
+              end
+              2'd3: begin
+                  // We pop one
+                  aligner_ns = I0_00;
+              end
+            endcase
+          end
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I1_10: begin // 1 in FIFO, 1 incoming (this cycle)
+          case (n_pushed_ins)              
+            2'd0 : begin
+                aligner_ns = I1_00;
+            end
+            2'd1: begin
+                aligner_ns = I2_00;
+            end
+            2'd2: begin
+                aligner_ns = I3_00;
+            end
+            2'd3: begin
+                // We pop one
+                aligner_ns = I0_00; // Not likely to happen
+            end
+          endcase
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I2_00: begin // 2 in FIFO, 0 incoming
+          if(instr_valid_o && instr_ready_i) begin
+            aligner_ns = I1_00;
+          end
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I2_10: begin // 2 in FIFO, 1 incoming (this cycle)
+          case (n_pushed_ins)              
+            2'd0 : begin
+                aligner_ns = I2_00;
+            end
+            2'd1: begin
+                aligner_ns = I3_00;
+            end
+            2'd2: begin
+                aligner_ns = I4_00;
+            end
+          endcase
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I3_00: begin // 3 in FIFO, 0 incoming
+          if(instr_valid_o && instr_ready_i) begin
+            aligner_ns = I2_00;
+          end
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+        I4_00: begin // 4 in FIFO, 0 incoming
+          if(instr_valid_o && instr_ready_i) begin
+            aligner_ns = I3_00;
+          end
+
+          if(branch_i) begin
+            aligner_ns = I0_10;
+          end
+        end
+    endcase
+  end // always_comb
+
+  // FSM seq block
+  always_ff @(posedge clk, negedge rst_n) begin
+    if(rst_n == 1'b0) begin
+      aligner_cs <= I0_00;
+    end else begin
+      aligner_cs <= aligner_ns;
+    end // rst
+  end // always_ff
+
+  // Count number of incoming instructions in resp_data
+  always_comb begin
+    aligned_n = aligned_q;
+    complete_n = complete_q;
+    n_incoming_ins = 2'd0;
+    if(branch_i) begin
+      aligned_n = !branch_addr_i[1];
+      complete_n = branch_addr_i[1];
+    end else begin
+      if(fetch_valid_i) begin
+        if(aligned_q) begin
+          // uncompressed
+          if(fetch_rdata_i[1:0] == 2'b11) begin
+            n_incoming_ins = 2'd1;
+          end else begin
+            // compressed, check next halfword
+            if(fetch_rdata_i[17:16] == 2'b11) begin
+              // uncompressed, not complete
+              n_incoming_ins = 2'd1;
+              aligned_n = 1'b0;
+              complete_n = 1'b0;
+            end else begin
+              // Another compressed
+              n_incoming_ins = 2'd2;
+              aligned_n = 1'b1;
+              complete_n = 1'b1;
+            end
+          end
+        end else begin
+          // Unaligned
+          if(complete_q) begin
+            // Uncompressed unaligned
+            if(fetch_rdata_i[17:16] == 2'b11) begin
+              n_incoming_ins = 2'd0;
+              aligned_n = 1'b0;
+              complete_n = 1'b0;
+            end else begin
+              // Compressed unaligned
+              n_incoming_ins = 2'd1;
+              aligned_n = 1'b1;
+              complete_n = 1'b1;
+            end
+          end else begin
+            // incomplete
+            if(fetch_rdata_i[17:16] == 2'b11) begin
+              n_incoming_ins = 2'd1;
+              aligned_n = 1'b0;
+              complete_n = 1'b0;
+            end else begin
+              // Compressed unaligned
+              n_incoming_ins = 2'd2;
+              aligned_n = 1'b1;
+              complete_n = 1'b1;
+            end // rdata[17:16]
+          end // complete_q
+        end // aligned_q
+      end // fetch_valid_i
+    end // branch
+  end // comb
+
   //////////////////////////////////////////////////////////////////////////////
   // registers
   //////////////////////////////////////////////////////////////////////////////
@@ -220,9 +477,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       addr_q    <= '0;
       rdata_q   <= '{default: '0};
       valid_q   <= '0;
+      aligned_q <= 1'b0;
+      complete_q <= 1'b0;
     end
     else
     begin
+      aligned_q <= aligned_n;
+      complete_q <= complete_n;
       // on a clear signal from outside we invalidate the content of the FIFO
       // completely and start from an empty state
       if (branch_i) begin
@@ -243,7 +504,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
-
+/*
 `ifdef CV32E40P_ASSERT_ON
 
   // Check for FIFO overflows
@@ -255,13 +516,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
      @(posedge clk) (branch_i) |=> (valid_q == 'b0) );
 
   // Check that FIFO is signaled empty the cycle during a branch
-  assert property (
-     @(posedge clk) (branch_i) |-> (fifo_cnt_o == 'b0) );
+  //assert property (
+  //   @(posedge clk) (branch_i) |-> (fifo_cnt_o == 'b0) );
 
   // Theck that instr_valid_o is zero when a branch is requested
   assert property (
     @(posedge clk) (branch_i) |-> (instr_valid_o == 1'b0) );
    
 `endif
-
+*/
 endmodule

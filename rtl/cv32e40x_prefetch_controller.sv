@@ -61,7 +61,8 @@ module cv32e40x_prefetch_controller
 
   // Fetch interface
   output logic                     fetch_valid_o,
-  input  logic [FIFO_ADDR_DEPTH:0] fifo_cnt_i              // Number of valid items/words in the prefetch FIFO
+  input  logic                     trans_req_i,
+  output logic                     trans_ack_o
 );
 
   import cv32e40x_pkg::*;
@@ -82,8 +83,6 @@ module cv32e40x_prefetch_controller
   // Word-aligned branch target address
   logic [31:0]                   aligned_branch_addr;             // Word aligned branch target address
 
-  // FIFO auxiliary signal
-  logic [FIFO_ADDR_DEPTH:0]      fifo_cnt_masked;                 // FIFO_cnt signal, masked when we are branching to allow a new memory request in that cycle
 
   //////////////////////////////////////////////////////////////////////////////
   // Prefetch buffer status
@@ -105,8 +104,7 @@ module cv32e40x_prefetch_controller
   //
   // Assumes that corresponding response is at least 1 cycle after request
   //
-  // - Only request transaction when fetch stage requires fetch (req_i), and
-  // - make sure that FIFO (cv32e40x_fetch_fifo) never overflows (fifo_cnt_i + cnt_q < DEPTH)
+  // - Only request transaction when fetch stage requires fetch (trans_req_i)
   //////////////////////////////////////////////////////////////////////////////
 
   // Prefetcher will only perform word fetches
@@ -118,15 +116,9 @@ module cv32e40x_prefetch_controller
   // Transaction request generation
   // Avoid combinatorial path from instr_rvalid_i to instr_req_o. Multiple trans_* transactions can be 
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid_o = req_i && (fifo_cnt_masked + cnt_q < DEPTH);
+  assign trans_valid_o = req_i && trans_req_i;
 
-  // Optimization:
-  // fifo_cnt is used to understand if we can perform new memory requests
-  // When branching, we flush both the FIFO and the outstanding requests. Therefore,
-  // there is surely space for a new request.
-  // Masking fifo_cnt in this case allows for making a new request when the FIFO
-  // is not empty and we are jumping, and (fifo_cnt_i + cnt_q == DEPTH)
-  assign fifo_cnt_masked = (branch_i) ? '0 : fifo_cnt_i;
+  assign trans_ack_o = trans_valid_o && trans_ready_i;
 
   // FSM (state_q, next_state) to control OBI A channel signals.
   always_comb

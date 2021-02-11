@@ -867,12 +867,17 @@ parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
 
-// Instruction aligner FSM state encoding
-typedef enum logic [2:0]  {ALIGNED32,
-                           MISALIGNED32,
-                           MISALIGNED16,
-                           BRANCH_MISALIGNED,
-                           WAIT_VALID_BRANCH} aligner_state_e;
+// Alignment buffer FSM state encoding
+typedef enum logic [3:0]  {I0_00, // 0 in buffer, 0 incoming
+                           I0_10, // 0 in buffer, 1 incoming (this cycle)
+                           I0_11, // 0 in buffer, 2 incoming (this cycle and next)
+                           I1_00, // 1 in buffer, 0 incoming
+                           I1_10, // 1 in buffer, 1 incoming (this cycle)
+                           I2_00, // 2 in buffer, 0 incoming
+                           I2_10, // 2 in buffer, 1 incoming (this cycle)
+                           I3_00, // 3 in buffer, 0 incoming
+                           I4_00  // 4 in buffer, 0 incoming
+} alignment_state_e;
 
 // IF/ID pipeline
 typedef struct packed {
@@ -885,6 +890,7 @@ typedef struct packed {
   logic        illegal_c_insn;
 } if_id_pipe_t;
   
+
   
   ///////////////////////////
   //                       //

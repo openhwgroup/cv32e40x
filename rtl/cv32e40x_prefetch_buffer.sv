@@ -58,7 +58,8 @@ module cv32e40x_prefetch_buffer
   localparam FIFO_DEPTH                     = 3; //must be greater or equal to 2 //Set at least to 3 to avoid stalls compared to the master branch
   localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(FIFO_DEPTH);
 
-  logic  [FIFO_ADDR_DEPTH:0] fifo_cnt; // fifo_cnt should count from 0 to FIFO_DEPTH!
+  logic alignment_buffer_trans_req;
+  logic alignment_buffer_trans_ack;
 
   logic [31:0] fetch_rdata;
 
@@ -91,7 +92,8 @@ module cv32e40x_prefetch_buffer
     .resp_valid_i             ( resp_valid_i         ),
 
     .fetch_valid_o            ( fetch_valid          ),
-    .fifo_cnt_i               ( fifo_cnt             )
+    .trans_req_i       ( alignment_buffer_trans_req  ),
+    .trans_ack_o       ( alignment_buffer_trans_ack  )
   );
 
   // Feed data to alignment_buffer directly from OBI response data
@@ -110,7 +112,8 @@ module cv32e40x_prefetch_buffer
     // prefetch controller
     .fetch_valid_i     ( fetch_valid                        ),
     .fetch_rdata_i     ( fetch_rdata                        ),
-    .fifo_cnt_o        ( fifo_cnt                           ),
+    .trans_req_o       ( alignment_buffer_trans_req         ),
+    .trans_ack_i       ( alignment_buffer_trans_ack         ),
 
     // If stage
     .instr_valid_o     ( prefetch_valid_o                   ),
