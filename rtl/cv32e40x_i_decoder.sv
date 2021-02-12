@@ -36,17 +36,34 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
   (
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
+   input logic illegal_c_insn_i,
 
    input logic        debug_mode_i,
    input logic        debug_wfi_no_sleep_i,
   
    output             decoder_ctrl_t decoder_ctrl_o
    );
+
+  decoder_ctrl_t decoder_o_int;
+
+  // This will change the decoder behavior, and is written this way for easier review.
+  // Will be replaced with a cleaner SEC clean implementation...
+  always_comb begin
+    if(decoder_o_int.illegal_insn || illegal_c_insn_i)begin
+      decoder_ctrl_o        = DECODER_CTRL_IDLE;
+      decoder_ctrl_o.alu_en = 1'b0;
+      decoder_ctrl_o.illegal_insn = 1'b1;
+    end
+    else begin
+      decoder_ctrl_o = decoder_o_int;
+    end
+  end
+  
   
   always_comb
   begin
     
-    decoder_ctrl_o = DECODER_CTRL_IDLE;
+    decoder_o_int = DECODER_CTRL_IDLE;
 
     unique case (instr_rdata_i[6:0])
 
@@ -60,52 +77,52 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       //////////////////////////////////////
 
       OPCODE_JAL: begin // Jump and Link
-        decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JAL;
-        decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JAL;
+        decoder_o_int.ctrl_transfer_target_mux_sel = JT_JAL;
+        decoder_o_int.ctrl_transfer_insn           = BRANCH_JAL;
         // Calculate and store PC+4
-        decoder_ctrl_o.alu_op_a_mux_sel = OP_A_CURRPC;
-        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
-        decoder_ctrl_o.imm_b_mux_sel    = IMMB_PCINCR;
-        decoder_ctrl_o.alu_operator     = ALU_ADD;
-        decoder_ctrl_o.rf_we            = 1'b1;
+        decoder_o_int.alu_op_a_mux_sel = OP_A_CURRPC;
+        decoder_o_int.alu_op_b_mux_sel = OP_B_IMM;
+        decoder_o_int.imm_b_mux_sel    = IMMB_PCINCR;
+        decoder_o_int.alu_operator     = ALU_ADD;
+        decoder_o_int.rf_we            = 1'b1;
         // Calculate jump target (= PC + UJ imm)
       end
 
       OPCODE_JALR: begin // Jump and Link Register
-        decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JALR;
-        decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JALR;
+        decoder_o_int.ctrl_transfer_target_mux_sel = JT_JALR;
+        decoder_o_int.ctrl_transfer_insn           = BRANCH_JALR;
         // Calculate and store PC+4
-        decoder_ctrl_o.alu_op_a_mux_sel  = OP_A_CURRPC;
-        decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
-        decoder_ctrl_o.imm_b_mux_sel     = IMMB_PCINCR;
-        decoder_ctrl_o.alu_operator      = ALU_ADD;
-        decoder_ctrl_o.rf_we             = 1'b1;
+        decoder_o_int.alu_op_a_mux_sel  = OP_A_CURRPC;
+        decoder_o_int.alu_op_b_mux_sel  = OP_B_IMM;
+        decoder_o_int.imm_b_mux_sel     = IMMB_PCINCR;
+        decoder_o_int.alu_operator      = ALU_ADD;
+        decoder_o_int.rf_we             = 1'b1;
         // Calculate jump target (= RS1 + I imm)
-        decoder_ctrl_o.rf_re[0]          = 1'b1;
+        decoder_o_int.rf_re[0]          = 1'b1;
 
         if (instr_rdata_i[14:12] != 3'b0) begin
-          decoder_ctrl_o.ctrl_transfer_insn = BRANCH_NONE;
-          decoder_ctrl_o.rf_we              = 1'b0;
-          decoder_ctrl_o.illegal_insn       = 1'b1;
+          decoder_o_int.ctrl_transfer_insn = BRANCH_NONE;
+          decoder_o_int.rf_we              = 1'b0;
+          decoder_o_int.illegal_insn       = 1'b1;
         end
       end
 
       OPCODE_BRANCH: begin // Branch
-        decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_COND;
-        decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_COND;
-        decoder_ctrl_o.alu_op_c_mux_sel             = OP_C_JT;
-        decoder_ctrl_o.rf_re[0]                     = 1'b1;
-        decoder_ctrl_o.rf_re[1]                     = 1'b1;
+        decoder_o_int.ctrl_transfer_target_mux_sel = JT_COND;
+        decoder_o_int.ctrl_transfer_insn           = BRANCH_COND;
+        decoder_o_int.alu_op_c_mux_sel             = OP_C_JT;
+        decoder_o_int.rf_re[0]                     = 1'b1;
+        decoder_o_int.rf_re[1]                     = 1'b1;
 
         unique case (instr_rdata_i[14:12])
-          3'b000: decoder_ctrl_o.alu_operator = ALU_EQ;
-          3'b001: decoder_ctrl_o.alu_operator = ALU_NE;
-          3'b100: decoder_ctrl_o.alu_operator = ALU_LTS;
-          3'b101: decoder_ctrl_o.alu_operator = ALU_GES;
-          3'b110: decoder_ctrl_o.alu_operator = ALU_LTU;
-          3'b111: decoder_ctrl_o.alu_operator = ALU_GEU;
+          3'b000: decoder_o_int.alu_operator = ALU_EQ;
+          3'b001: decoder_o_int.alu_operator = ALU_NE;
+          3'b100: decoder_o_int.alu_operator = ALU_LTS;
+          3'b101: decoder_o_int.alu_operator = ALU_GES;
+          3'b110: decoder_o_int.alu_operator = ALU_LTU;
+          3'b111: decoder_o_int.alu_operator = ALU_GEU;
           default: begin
-              decoder_ctrl_o.illegal_insn = 1'b1;          
+              decoder_o_int.illegal_insn = 1'b1;          
           end
         endcase
       end
@@ -120,59 +137,59 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       //////////////////////////////////
 
       OPCODE_STORE: begin
-        decoder_ctrl_o.data_req     = 1'b1;
-        decoder_ctrl_o.data_we      = 1'b1;
-        decoder_ctrl_o.rf_re[0]     = 1'b1;
-        decoder_ctrl_o.rf_re[1]     = 1'b1;
-        decoder_ctrl_o.alu_operator = ALU_ADD;
+        decoder_o_int.data_req     = 1'b1;
+        decoder_o_int.data_we      = 1'b1;
+        decoder_o_int.rf_re[0]     = 1'b1;
+        decoder_o_int.rf_re[1]     = 1'b1;
+        decoder_o_int.alu_operator = ALU_ADD;
         // pass write data through ALU operand c
-        decoder_ctrl_o.alu_op_c_mux_sel = OP_C_REGB_OR_FWD;
+        decoder_o_int.alu_op_c_mux_sel = OP_C_REGB_OR_FWD;
 
         if (instr_rdata_i[14] == 1'b0) begin
           // offset from immediate
-          decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
-          decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+          decoder_o_int.imm_b_mux_sel    = IMMB_S;
+          decoder_o_int.alu_op_b_mux_sel = OP_B_IMM;
         end else begin
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_o_int.illegal_insn = 1'b1;
         end
 
         // store size
         unique case (instr_rdata_i[13:12])
-          2'b00: decoder_ctrl_o.data_type = 2'b00; // SB
-          2'b01: decoder_ctrl_o.data_type = 2'b01; // SH
-          2'b10: decoder_ctrl_o.data_type = 2'b10; // SW
+          2'b00: decoder_o_int.data_type = 2'b00; // SB
+          2'b01: decoder_o_int.data_type = 2'b01; // SH
+          2'b10: decoder_o_int.data_type = 2'b10; // SW
           default: begin
-            decoder_ctrl_o.data_type    = 2'b00;
-            decoder_ctrl_o.data_req     = 1'b0;
-            decoder_ctrl_o.data_we      = 1'b0;
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_o_int.data_type    = 2'b00;
+            decoder_o_int.data_req     = 1'b0;
+            decoder_o_int.data_we      = 1'b0;
+            decoder_o_int.illegal_insn = 1'b1;
           end
         endcase
       end
 
       OPCODE_LOAD: begin
-        decoder_ctrl_o.data_req          = 1'b1;
-        decoder_ctrl_o.rf_we             = 1'b1;
-        decoder_ctrl_o.rf_re[0]          = 1'b1;
+        decoder_o_int.data_req          = 1'b1;
+        decoder_o_int.rf_we             = 1'b1;
+        decoder_o_int.rf_re[0]          = 1'b1;
         // offset from immediate
-        decoder_ctrl_o.alu_operator      = ALU_ADD;
-        decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
-        decoder_ctrl_o.imm_b_mux_sel     = IMMB_I;
+        decoder_o_int.alu_operator      = ALU_ADD;
+        decoder_o_int.alu_op_b_mux_sel  = OP_B_IMM;
+        decoder_o_int.imm_b_mux_sel     = IMMB_I;
 
         // sign/zero extension
-        decoder_ctrl_o.data_sign_ext = !instr_rdata_i[14];
+        decoder_o_int.data_sign_ext = !instr_rdata_i[14];
 
         // load size
         unique case (instr_rdata_i[13:12])
-          2'b00:   decoder_ctrl_o.data_type = 2'b00; // LB
-          2'b01:   decoder_ctrl_o.data_type = 2'b01; // LH
-          2'b10:   decoder_ctrl_o.data_type = 2'b10; // LW
-          default: decoder_ctrl_o.data_type = 2'b00;
+          2'b00:   decoder_o_int.data_type = 2'b00; // LB
+          2'b01:   decoder_o_int.data_type = 2'b01; // LH
+          2'b10:   decoder_o_int.data_type = 2'b10; // LW
+          default: decoder_o_int.data_type = 2'b00;
         endcase
 
         // Reserved or RV64
         if ((instr_rdata_i[14:12] == 3'b111) || (instr_rdata_i[14:12] == 3'b110) || (instr_rdata_i[14:12] == 3'b011)) begin
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_o_int.illegal_insn = 1'b1;
         end
       end
 
@@ -186,49 +203,49 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       //////////////////////////
 
       OPCODE_LUI: begin  // Load Upper Immediate
-        decoder_ctrl_o.alu_op_a_mux_sel  = OP_A_IMM;
-        decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
-        decoder_ctrl_o.imm_a_mux_sel     = IMMA_ZERO;
-        decoder_ctrl_o.imm_b_mux_sel     = IMMB_U;
-        decoder_ctrl_o.alu_operator      = ALU_ADD;
-        decoder_ctrl_o.rf_we             = 1'b1;
+        decoder_o_int.alu_op_a_mux_sel  = OP_A_IMM;
+        decoder_o_int.alu_op_b_mux_sel  = OP_B_IMM;
+        decoder_o_int.imm_a_mux_sel     = IMMA_ZERO;
+        decoder_o_int.imm_b_mux_sel     = IMMB_U;
+        decoder_o_int.alu_operator      = ALU_ADD;
+        decoder_o_int.rf_we             = 1'b1;
       end
 
       OPCODE_AUIPC: begin  // Add Upper Immediate to PC
-        decoder_ctrl_o.alu_op_a_mux_sel  = OP_A_CURRPC;
-        decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
-        decoder_ctrl_o.imm_b_mux_sel     = IMMB_U;
-        decoder_ctrl_o.alu_operator      = ALU_ADD;
-        decoder_ctrl_o.rf_we             = 1'b1;
+        decoder_o_int.alu_op_a_mux_sel  = OP_A_CURRPC;
+        decoder_o_int.alu_op_b_mux_sel  = OP_B_IMM;
+        decoder_o_int.imm_b_mux_sel     = IMMB_U;
+        decoder_o_int.alu_operator      = ALU_ADD;
+        decoder_o_int.rf_we             = 1'b1;
       end
 
       OPCODE_OPIMM: begin // Register-Immediate ALU Operations
-        decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
-        decoder_ctrl_o.imm_b_mux_sel     = IMMB_I;
-        decoder_ctrl_o.rf_we             = 1'b1;
-        decoder_ctrl_o.rf_re[0]          = 1'b1;
+        decoder_o_int.alu_op_b_mux_sel  = OP_B_IMM;
+        decoder_o_int.imm_b_mux_sel     = IMMB_I;
+        decoder_o_int.rf_we             = 1'b1;
+        decoder_o_int.rf_re[0]          = 1'b1;
 
         unique case (instr_rdata_i[14:12])
-          3'b000: decoder_ctrl_o.alu_operator = ALU_ADD;  // Add Immediate
-          3'b010: decoder_ctrl_o.alu_operator = ALU_SLTS; // Set to one if Lower Than Immediate
-          3'b011: decoder_ctrl_o.alu_operator = ALU_SLTU; // Set to one if Lower Than Immediate Unsigned
-          3'b100: decoder_ctrl_o.alu_operator = ALU_XOR;  // Exclusive Or with Immediate
-          3'b110: decoder_ctrl_o.alu_operator = ALU_OR;   // Or with Immediate
-          3'b111: decoder_ctrl_o.alu_operator = ALU_AND;  // And with Immediate
+          3'b000: decoder_o_int.alu_operator = ALU_ADD;  // Add Immediate
+          3'b010: decoder_o_int.alu_operator = ALU_SLTS; // Set to one if Lower Than Immediate
+          3'b011: decoder_o_int.alu_operator = ALU_SLTU; // Set to one if Lower Than Immediate Unsigned
+          3'b100: decoder_o_int.alu_operator = ALU_XOR;  // Exclusive Or with Immediate
+          3'b110: decoder_o_int.alu_operator = ALU_OR;   // Or with Immediate
+          3'b111: decoder_o_int.alu_operator = ALU_AND;  // And with Immediate
 
           3'b001: begin
-            decoder_ctrl_o.alu_operator = ALU_SLL;  // Shift Left Logical by Immediate
+            decoder_o_int.alu_operator = ALU_SLL;  // Shift Left Logical by Immediate
             if (instr_rdata_i[31:25] != 7'b0)
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_o_int.illegal_insn = 1'b1;
           end
 
           3'b101: begin
             if (instr_rdata_i[31:25] == 7'b0)
-              decoder_ctrl_o.alu_operator = ALU_SRL;  // Shift Right Logical by Immediate
+              decoder_o_int.alu_operator = ALU_SRL;  // Shift Right Logical by Immediate
             else if (instr_rdata_i[31:25] == 7'b010_0000)
-              decoder_ctrl_o.alu_operator = ALU_SRA;  // Shift Right Arithmetically by Immediate
+              decoder_o_int.alu_operator = ALU_SRA;  // Shift Right Arithmetically by Immediate
             else
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_o_int.illegal_insn = 1'b1;
           end
 
 
@@ -238,28 +255,28 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       OPCODE_OP: begin  // Register-Register ALU operation
 
         if ((instr_rdata_i[31:30] == 2'b11) || (instr_rdata_i[31:30] == 2'b10)) begin
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_o_int.illegal_insn = 1'b1;
         end else begin
-          decoder_ctrl_o.rf_we    = 1'b1;
-          decoder_ctrl_o.rf_re[0] = 1'b1;
+          decoder_o_int.rf_we    = 1'b1;
+          decoder_o_int.rf_re[0] = 1'b1;
 
-          if (~instr_rdata_i[28]) decoder_ctrl_o.rf_re[1] = 1'b1;
+          if (~instr_rdata_i[28]) decoder_o_int.rf_re[1] = 1'b1;
 
           unique case ({instr_rdata_i[30:25], instr_rdata_i[14:12]})
             // RV32I ALU operations
-            {6'b00_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_ADD;   // Add
-            {6'b10_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_SUB;   // Sub
-            {6'b00_0000, 3'b010}: decoder_ctrl_o.alu_operator = ALU_SLTS;  // Set Lower Than
-            {6'b00_0000, 3'b011}: decoder_ctrl_o.alu_operator = ALU_SLTU;  // Set Lower Than Unsigned
-            {6'b00_0000, 3'b100}: decoder_ctrl_o.alu_operator = ALU_XOR;   // Xor
-            {6'b00_0000, 3'b110}: decoder_ctrl_o.alu_operator = ALU_OR;    // Or
-            {6'b00_0000, 3'b111}: decoder_ctrl_o.alu_operator = ALU_AND;   // And
-            {6'b00_0000, 3'b001}: decoder_ctrl_o.alu_operator = ALU_SLL;   // Shift Left Logical
-            {6'b00_0000, 3'b101}: decoder_ctrl_o.alu_operator = ALU_SRL;   // Shift Right Logical
-            {6'b10_0000, 3'b101}: decoder_ctrl_o.alu_operator = ALU_SRA;   // Shift Right Arithmetic
+            {6'b00_0000, 3'b000}: decoder_o_int.alu_operator = ALU_ADD;   // Add
+            {6'b10_0000, 3'b000}: decoder_o_int.alu_operator = ALU_SUB;   // Sub
+            {6'b00_0000, 3'b010}: decoder_o_int.alu_operator = ALU_SLTS;  // Set Lower Than
+            {6'b00_0000, 3'b011}: decoder_o_int.alu_operator = ALU_SLTU;  // Set Lower Than Unsigned
+            {6'b00_0000, 3'b100}: decoder_o_int.alu_operator = ALU_XOR;   // Xor
+            {6'b00_0000, 3'b110}: decoder_o_int.alu_operator = ALU_OR;    // Or
+            {6'b00_0000, 3'b111}: decoder_o_int.alu_operator = ALU_AND;   // And
+            {6'b00_0000, 3'b001}: decoder_o_int.alu_operator = ALU_SLL;   // Shift Left Logical
+            {6'b00_0000, 3'b101}: decoder_o_int.alu_operator = ALU_SRL;   // Shift Right Logical
+            {6'b10_0000, 3'b101}: decoder_o_int.alu_operator = ALU_SRA;   // Shift Right Arithmetic
 
             default: begin
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_o_int.illegal_insn = 1'b1;
             end
           endcase
         end
@@ -278,16 +295,16 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         unique case (instr_rdata_i[14:12])
           3'b000: begin // FENCE (FENCE.I instead, a bit more conservative)
             // flush pipeline
-            decoder_ctrl_o.fencei_insn = 1'b1;
+            decoder_o_int.fencei_insn = 1'b1;
           end
 
           3'b001: begin // FENCE.I
             // flush prefetch buffer, flush pipeline
-            decoder_ctrl_o.fencei_insn = 1'b1;
+            decoder_o_int.fencei_insn = 1'b1;
           end
 
           default: begin
-            decoder_ctrl_o.illegal_insn =  1'b1;
+            decoder_o_int.illegal_insn =  1'b1;
           end
         endcase
       end
@@ -302,73 +319,73 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               12'h000:  // ECALL
               begin
                 // environment (system) call
-                decoder_ctrl_o.ecall_insn  = 1'b1;
+                decoder_o_int.ecall_insn  = 1'b1;
               end
 
               12'h001:  // ebreak
               begin
                 // debugger trap
-                decoder_ctrl_o.ebrk_insn = 1'b1;
+                decoder_o_int.ebrk_insn = 1'b1;
               end
 
               12'h302:  // mret
               begin
-                decoder_ctrl_o.mret_insn = 1'b1;
-                decoder_ctrl_o.mret_dec  = 1'b1;
+                decoder_o_int.mret_insn = 1'b1;
+                decoder_o_int.mret_dec  = 1'b1;
               end
 
               12'h7b2:  // dret
               begin
-                decoder_ctrl_o.illegal_insn = !debug_mode_i;
-                decoder_ctrl_o.dret_insn    =  debug_mode_i;
-                decoder_ctrl_o.dret_dec     =  1'b1;
+                decoder_o_int.illegal_insn = !debug_mode_i;
+                decoder_o_int.dret_insn    =  debug_mode_i;
+                decoder_o_int.dret_dec     =  1'b1;
               end
 
               12'h105:  // wfi
               begin
-                decoder_ctrl_o.wfi_insn = 1'b1;
+                decoder_o_int.wfi_insn = 1'b1;
                 if (debug_wfi_no_sleep_i) begin
                   // Treat as NOP (do not cause sleep mode entry)
                   // Using decoding similar to ADDI, but without register reads/writes, i.e.
                   // keep rf_we = 0, rf_re[0] = 0
-                  decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
-                  decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;
-                  decoder_ctrl_o.alu_operator     = ALU_ADD;
+                  decoder_o_int.alu_op_b_mux_sel = OP_B_IMM;
+                  decoder_o_int.imm_b_mux_sel    = IMMB_I;
+                  decoder_o_int.alu_operator     = ALU_ADD;
                 end
               end
 
               default:
               begin
-                decoder_ctrl_o.illegal_insn = 1'b1;
+                decoder_o_int.illegal_insn = 1'b1;
               end
             endcase
-          end else decoder_ctrl_o.illegal_insn = 1'b1;
+          end else decoder_o_int.illegal_insn = 1'b1;
         end // if (instr_rdata_i[14:12] == 3'b000)
         else
         begin
           // instruction to read/modify CSR
-          decoder_ctrl_o.csr_access       = 1'b1;
-          decoder_ctrl_o.rf_we            = 1'b1;
-          decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
-          decoder_ctrl_o.imm_a_mux_sel    = IMMA_Z;
-          decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;    // CSR address is encoded in I imm
+          decoder_o_int.csr_access       = 1'b1;
+          decoder_o_int.rf_we            = 1'b1;
+          decoder_o_int.alu_op_b_mux_sel = OP_B_IMM;
+          decoder_o_int.imm_a_mux_sel    = IMMA_Z;
+          decoder_o_int.imm_b_mux_sel    = IMMB_I;    // CSR address is encoded in I imm
 
           if (instr_rdata_i[14] == 1'b1) begin
             // rs1 field is used as immediate
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_IMM;
+            decoder_o_int.alu_op_a_mux_sel = OP_A_IMM;
           end else begin
-            decoder_ctrl_o.rf_re[0]         = 1'b1;
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
+            decoder_o_int.rf_re[0]         = 1'b1;
+            decoder_o_int.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
           end
 
           // instr_rdata_i[19:14] = rs or immediate value
           //   if set or clear with rs==x0 or imm==0,
           //   then do not perform a write action
           unique case (instr_rdata_i[13:12])
-            2'b01:   decoder_ctrl_o.csr_op = CSR_OP_WRITE;
-            2'b10:   decoder_ctrl_o.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_SET;
-            2'b11:   decoder_ctrl_o.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_CLEAR;
-            default: decoder_ctrl_o.csr_illegal = 1'b1;
+            2'b01:   decoder_o_int.csr_op = CSR_OP_WRITE;
+            2'b10:   decoder_o_int.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_SET;
+            2'b11:   decoder_o_int.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_CLEAR;
+            default: decoder_o_int.csr_illegal = 1'b1;
           endcase
 
           
@@ -379,7 +396,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MARCHID,
               CSR_MIMPID,
               CSR_MHARTID :
-                if(decoder_ctrl_o.csr_op != CSR_OP_READ) decoder_ctrl_o.csr_illegal = 1'b1;
+                if(decoder_o_int.csr_op != CSR_OP_READ) decoder_o_int.csr_illegal = 1'b1;
 
             // These are valid CSR registers
             CSR_MSTATUS,
@@ -387,7 +404,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MTVEC,
               CSR_MCAUSE :
                 // Not illegal, but treat as status CSR for side effect handling
-                decoder_ctrl_o.csr_status = 1'b1;
+                decoder_o_int.csr_status = 1'b1;
 
             // These are valid CSR registers
             CSR_MISA,
@@ -428,7 +445,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
               CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31 :
                 // Not illegal, but treat as status CSR to get accurate counts
-                decoder_ctrl_o.csr_status = 1'b1;
+                decoder_o_int.csr_status = 1'b1;
 
             // Hardware Performance Monitor (unprivileged read-only mirror CSRs)
             // Removal of these is not SEC equivalent
@@ -453,10 +470,10 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
               CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H :
                 // Read-only and readable from user mode only if the bit of mcounteren is set
-                if((decoder_ctrl_o.csr_op != CSR_OP_READ)) begin
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                if((decoder_o_int.csr_op != CSR_OP_READ)) begin
+                  decoder_o_int.csr_illegal = 1'b1;
                 end else begin
-                  decoder_ctrl_o.csr_status = 1'b1;
+                  decoder_o_int.csr_status = 1'b1;
                 end
 
             // Debug register access
@@ -465,9 +482,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_DSCRATCH0,
               CSR_DSCRATCH1 :
                 if(!debug_mode_i) begin
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                  decoder_o_int.csr_illegal = 1'b1;
               end else begin
-                decoder_ctrl_o.csr_status = 1'b1;
+                decoder_o_int.csr_status = 1'b1;
               end
 
             // Debug Trigger register access
@@ -479,20 +496,20 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MCONTEXT,
               CSR_SCONTEXT :
                 if(DEBUG_TRIGGER_EN != 1)
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                  decoder_o_int.csr_illegal = 1'b1;
 
-            default : decoder_ctrl_o.csr_illegal = 1'b1;
+            default : decoder_o_int.csr_illegal = 1'b1;
 
           endcase // case (instr_rdata_i[31:20])
 
-          decoder_ctrl_o.illegal_insn = decoder_ctrl_o.csr_illegal;
+          decoder_o_int.illegal_insn = decoder_o_int.csr_illegal;
 
         end
 
       end
 
       default: begin
-        decoder_ctrl_o.illegal_insn = 1'b1;
+        decoder_o_int.illegal_insn = 1'b1;
       end
     endcase
 

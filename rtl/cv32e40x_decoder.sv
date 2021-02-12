@@ -120,6 +120,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
     i_decoder_i
       (.instr_rdata_i(instr_rdata_i),
+       .illegal_c_insn_i(illegal_c_insn_i),
        .debug_mode_i(debug_mode_i),
        .debug_wfi_no_sleep_i(debug_wfi_no_sleep_i),
        .decoder_ctrl_o(decoder_i_ctrl));
@@ -128,6 +129,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   cv32e40x_m_decoder
     m_decoder_i
       (.instr_rdata_i(instr_rdata_i),
+       .illegal_c_insn_i(illegal_c_insn_i),
        .decoder_ctrl_o(decoder_m_ctrl));
 
   generate
@@ -136,6 +138,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       cv32e40x_a_decoder
         a_decoder_i
           (.instr_rdata_i(instr_rdata_i),
+           .illegal_c_insn_i(illegal_c_insn_i),
            .decoder_ctrl_o(decoder_a_ctrl));
     end
     else begin: no_a_decoder
