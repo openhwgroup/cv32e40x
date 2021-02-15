@@ -83,7 +83,6 @@ module cv32e40x_prefetch_buffer
     .req_i                    ( req_i                ),
     .branch_i                 ( branch_i             ),
     .branch_addr_i            ( branch_addr_i        ),
-    .busy_o                   ( busy_o               ),
 
     .trans_valid_o            ( trans_valid_o        ),
     .trans_ready_i            ( trans_ready_i        ),
@@ -108,6 +107,8 @@ module cv32e40x_prefetch_buffer
   (
     .clk               ( clk                                ),
     .rst_n             ( rst_n                              ),
+
+    .busy_o            ( busy_o                             ),
 
     // prefetch controller
     .fetch_valid_i     ( fetch_valid                        ),
@@ -155,14 +156,14 @@ module cv32e40x_prefetch_buffer
   endproperty
 
   a_branch_implies_req : assert property(p_branch_implies_req);
-
+/*
   // Check that after a taken branch the initial FIFO output is not accepted
   property p_branch_invalidates_fifo;
      @(posedge clk) (branch_i) |-> (!(fetch_valid && prefetch_ready_i));
   endproperty
 
   a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo);
-
+*/
 `endif
 
 endmodule // cv32e40x_prefetch_buffer

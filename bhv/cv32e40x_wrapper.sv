@@ -83,7 +83,7 @@ module cv32e40x_wrapper
 
 
 `ifdef CV32E40P_ASSERT_ON
-
+/*
     // RTL Assertions
     bind cv32e40x_prefetch_controller:
       core_i.if_stage_i.prefetch_buffer_i.prefetch_controller_i
@@ -93,7 +93,7 @@ module cv32e40x_wrapper
           .FIFO_ADDR_DEPTH ( FIFO_ADDR_DEPTH ))
       prefetch_controller_sva (
           .*);
-
+*/
 `endif // CV32E40P_ASSERT_ON
 
     cv32e40x_core_log

@@ -49,7 +49,6 @@ module cv32e40x_prefetch_controller
   input  logic                     req_i,                   // Fetch stage requests instructions
   input  logic                     branch_i,                // Taken branch
   input  logic [31:0]              branch_addr_i,           // Taken branch address (only valid when branch_i = 1)
-  output logic                     busy_o,                  // Prefetcher busy
 
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
@@ -69,14 +68,6 @@ module cv32e40x_prefetch_controller
 
   prefetch_state_e state_q, next_state;
 
-  logic  [FIFO_ADDR_DEPTH:0]     cnt_q;                           // Transaction counter
-  logic  [FIFO_ADDR_DEPTH:0]     next_cnt;                        // Next value for cnt_q
-  logic                          count_up;                        // Increment outstanding transaction count by 1 (can happen at same time as count_down)
-  logic                          count_down;                      // Decrement outstanding transaction count by 1 (can happen at same time as count_up)
-
-  logic  [FIFO_ADDR_DEPTH:0]     flush_cnt_q;                     // Response flush counter (to flush speculative responses after branch)
-  logic  [FIFO_ADDR_DEPTH:0]     next_flush_cnt;                  // Next value for flush_cnt_q
-
   // Transaction address
   logic [31:0]                   trans_addr_q, trans_addr_incr;
 
@@ -85,19 +76,11 @@ module cv32e40x_prefetch_controller
 
 
   //////////////////////////////////////////////////////////////////////////////
-  // Prefetch buffer status
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Busy if there are ongoing (or potentially outstanding) transfers
-  assign busy_o = (cnt_q != 3'b000) || trans_valid_o;
-
-  //////////////////////////////////////////////////////////////////////////////
   // IF/ID interface
   //////////////////////////////////////////////////////////////////////////////
 
-  // Fectch valid control. Fetch never valid if jumping or flushing responses.
-  // Fetch valid if there is an incoming instruction from memory.
-  assign fetch_valid_o = (resp_valid_i) && !(branch_i || (flush_cnt_q > 0));
+  // Fectch valid control. Feed through resp_valid
+  assign fetch_valid_o = resp_valid_i;
 
   //////////////////////////////////////////////////////////////////////////////
   // Transaction request generation
@@ -161,57 +144,6 @@ module cv32e40x_prefetch_controller
 
   
   //////////////////////////////////////////////////////////////////////////////
-  // Counter (cnt_q, next_cnt) to count number of outstanding OBI transactions
-  // (maximum = DEPTH)
-  //
-  // Counter overflow is prevented by limiting the number of outstanding transactions
-  // to DEPTH. Counter underflow is prevented by the assumption that resp_valid_i = 1
-  // will only occur in response to accepted transfer request (as per the OBI protocol).
-  //////////////////////////////////////////////////////////////////////////////
-
-  assign count_up   = trans_valid_o && trans_ready_i;     // Increment upon accepted transfer request
-  assign count_down = resp_valid_i;                       // Decrement upon accepted transfer response
-
-  always_comb begin
-    case ({count_up, count_down})
-      2'b00  : begin
-        next_cnt = cnt_q;
-      end
-      2'b01  : begin
-          next_cnt = cnt_q - 1'b1;
-      end
-      2'b10  : begin
-          next_cnt = cnt_q + 1'b1;
-      end
-      2'b11  : begin
-        next_cnt = cnt_q;
-      end
-    endcase
-  end
-
-  
-  
-  //////////////////////////////////////////////////////////////////////////////
-  // Counter (flush_cnt_q, next_flush_cnt) to count reseponses to be flushed.
-  //////////////////////////////////////////////////////////////////////////////
-
-  always_comb begin
-    next_flush_cnt = flush_cnt_q;
-
-    // Number of outstanding transfers at time of branch equals the number of
-    // responses that will need to be flushed (responses already in the FIFO will
-    // be flushed there)
-    if (branch_i) begin
-      next_flush_cnt = cnt_q;
-      if (resp_valid_i && (cnt_q > 0)) begin
-        next_flush_cnt = cnt_q - 1'b1;
-      end
-    end else if (resp_valid_i && (flush_cnt_q > 0)) begin
-      next_flush_cnt = flush_cnt_q - 1'b1;
-    end
-  end
-
-  //////////////////////////////////////////////////////////////////////////////
   // Registers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -220,15 +152,11 @@ module cv32e40x_prefetch_controller
     if(rst_n == 1'b0)
     begin
       state_q        <= IDLE;
-      cnt_q          <= '0;
-      flush_cnt_q    <= '0;
       trans_addr_q   <= '0;
     end
     else
     begin
       state_q        <= next_state;
-      cnt_q          <= next_cnt;
-      flush_cnt_q    <= next_flush_cnt;
       if (branch_i || (trans_valid_o && trans_ready_i)) begin
         trans_addr_q <= trans_addr_o;
       end

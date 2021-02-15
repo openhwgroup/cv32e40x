@@ -876,7 +876,8 @@ typedef enum logic [3:0]  {I0_00, // 0 in buffer, 0 incoming
                            I2_00, // 2 in buffer, 0 incoming
                            I2_10, // 2 in buffer, 1 incoming (this cycle)
                            I3_00, // 3 in buffer, 0 incoming
-                           I4_00  // 4 in buffer, 0 incoming
+                           I4_00,  // 4 in buffer, 0 incoming
+                           WAIT_BRANCH
 } alignment_state_e;
 
 // IF/ID pipeline

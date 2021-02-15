@@ -30,6 +30,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           clk,
   input  logic           rst_n,
 
+  output logic           busy_o,
+
   // Interface to prefetch_controller
   input  logic           fetch_valid_i,
   input  logic [31:0]    fetch_rdata_i,
@@ -68,14 +70,26 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic aligned_n, aligned_q;
   logic complete_n, complete_q;
 
+  // Store number of resps to flush when get get a branch
+  logic [1:0] n_flush_n, n_flush_q, n_flush_fsm;
+
+  // Fetch valid gated while flushing
+  logic fetch_valid;
+
+  assign fetch_valid = (n_flush_q > 0) ? 1'b0 : fetch_valid_i;
+
   // For any number > 0, subtract 1 if we also issue to if_stage
   // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
   assign n_pushed_ins = (instr_valid_o & instr_ready_i) ? 
                         (n_incoming_ins >0) ? n_incoming_ins - 1 : 2'b11 :
                         n_incoming_ins;
 
+  // Request a transfer if FSM asks for it, or we do a branch
   assign trans_req_o = trans_req_fsm || branch_i;
-  
+
+  // Busy if we expect any responses, or we have an active trans_req_o
+  assign busy_o = (aligner_cs inside {I0_10, I0_11, I1_10, I2_10}) || trans_req_o;
+
   //////////////////
   // FIFO signals //
   //////////////////
@@ -93,14 +107,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign rdata = (valid_q[0]) ? rdata_q[0] : fetch_rdata_i;
   
   // Aligned instructions are valid if we have one in index0, or using from incoming interface
-  assign valid = valid_q[0] || fetch_valid_i;
+  assign valid = valid_q[0] || fetch_valid;
 
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
   assign rdata_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], rdata[31:16]} : {fetch_rdata_i[15:0], rdata[31:16]};
 
   // Unaligned instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
-  assign valid_unaligned = (valid_q[1] || (valid_q[0] && fetch_valid_i));
+  assign valid_unaligned = (valid_q[1] || (valid_q[0] && fetch_valid));
 
   // unaligned_is_compressed and aligned_is_compressed are only defined when valid = 1 (which implies that instr_valid_o will be 1)
   assign unaligned_is_compressed = rdata[17:16] != 2'b11;
@@ -136,31 +150,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     end
   end
   
-  //////////////////////////////////////////////////////////////////////////////
-  // input port
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Indicate FIFO fill count. On a branch (branch_i) the FIFO will be cleared
-  // on the next clock edge. Ahead of that the FIFO is indicated to be empty 
-  // so that a new transaction request in response to a branch are always
-  // requested as soon as possible.
-/*
-  always_comb
-  begin
-      fifo_cnt_o = 'd0;
-      // Loop through valid's and store count
-      for(int i=0;i<DEPTH;i++) begin : fifo_cnt_loop
-        if( valid_q[i]) begin
-            fifo_cnt_o = DEPTH'(i)+1;
-        end
-      end
-
-      // In case of branch, we flush and set cnt to 0
-      if( branch_i) begin
-          fifo_cnt_o = 'd0;
-      end
-  end // always_comb
-*/  
 
   //////////////////////////////////////////////////////////////////////////////
   // FIFO management
@@ -172,7 +161,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     valid_int   = valid_q;
 
     // Loop through indices and store incoming data to first available slot
-    if (fetch_valid_i) begin
+    if (fetch_valid) begin
       for(int j = 0; j < DEPTH; j++) begin
         if (!valid_q[j]) begin
           rdata_int[j] = fetch_rdata_i;
@@ -181,7 +170,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           break;
         end // valid_q[j]
       end // for loop
-    end // fetch_valid_i
+    end // fetch_valid
   end // always_comb
 
   // Calculate address increment
@@ -236,163 +225,362 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // FSM comb block
   always_comb
   begin
+    // Default values
     aligner_ns = aligner_cs;
     trans_req_fsm = 1'b0;
+    n_flush_fsm = 2'b00;
 
     unique case (aligner_cs)
         I0_00: begin // 0 in FIFO, 0 incoming
           // FETCH
           trans_req_fsm = 1'b1;
-          if(trans_req_fsm && trans_ack_i) begin
-            aligner_ns = I0_10;
+
+          // Handle brances
+          if(branch_i) begin
+            // We get an immediate ack
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            // Stay in this state until we get an ack
+            // This state will keep trans_req_o high 
+            // Even though branch_i goes low
+            end else begin
+              aligner_ns = I0_00;
+            end
+            
+            // Could be flushing from before, keep value from n_flush_q
+            n_flush_fsm = n_flush_q;
+            
+          end else begin
+            // No branch and no instructions in FIFO
+            // only proceed if we get an ack
+            if(trans_req_fsm && trans_ack_i) begin
+              aligner_ns = I0_10;
+            end
           end
         end
         I0_10: begin // 0 in FIFO, 1 incoming (this cycle)
           // FETCH
           trans_req_fsm = 1'b1;
 
-          // Transfer is ack'ed
-          if(trans_req_fsm && trans_ack_i) begin
-            // Next state depends on how many instructions are pushed to the fifo
-            case (n_pushed_ins)              
-              2'd0 : begin
-                  aligner_ns = I0_10;
-              end
-              2'd1: begin
-                  aligner_ns = I1_10;
-              end
-              2'd2: begin
-                  aligner_ns = I2_10;
-              end
-            endcase
-            // On a branch, we're clearing the fifo
-            if(branch_i) begin
+          // On a branch, we're clearing the fifo
+          if(branch_i) begin
+            if(trans_ack_i) begin
+              // Immediate ack, expect response
               aligner_ns = I0_10;
+            end else begin
+              // No ack, go to I0_00 which expects not response
+              // I0_00 will keep trans_req_o high
+              aligner_ns = I0_00;
             end
 
-          // transfer not yet accepted
+            // Calculate how much we need to flush of incoming responses
+
+            if(fetch_valid_i == 1'b0) begin
+              if(n_flush_q == 2'b00) begin
+                // Nothing to flush from previous cycle(s)
+                // No incoming data, 1 resp to flush
+                n_flush_fsm = 2'b01;
+              end else begin
+                // We are already flushing, don't override value
+                // but add the 1 expected resp for this state
+                n_flush_fsm = n_flush_q + 2'b01;
+              end
+            end else begin
+              // We have incoming data, nothing to add
+              // Keep n_flush_q as we can be flushing from earlier branches
+              n_flush_fsm = n_flush_q;
+            end
           end else begin
-            case (n_pushed_ins)              
-              2'd0 : begin
-                  aligner_ns = I0_00;
-              end
-              2'd1: begin
-                  aligner_ns = I1_00;
-              end
-              2'd2: begin
-                  aligner_ns = I2_00;
-                  //trans_req_o = 1'b0; // No need to prefetch anyway ! NB not allowed as it is using rdata as input
-              end
-            endcase
+            // No branch, and transfer is ack'ed
+            if(trans_req_fsm && trans_ack_i) begin
+              // Next state depends on how many instructions are pushed to the fifo
+              case (n_pushed_ins)              
+                2'd0 : begin
+                  if(fetch_valid) begin
+                    // Data directly consumed, stay in this state
+                    aligner_ns = I0_10;
+                  end else begin
+                    // No valid resp, expect two outstanding responses
+                    aligner_ns = I0_11;
+                  end
+                end
+                2'd1: begin
+                    // Push one instructions to FIFO
+                    // Expect one outstanding response
+                    aligner_ns = I1_10;
+                end
+                2'd2: begin
+                    // Push two instructions to FIFO
+                    // Expect one outstanding response
+                    aligner_ns = I2_10;
+                end
+                default: begin
+                  // Should not end up here
+                  // as 2'd3 would imply popped insn, and 
+                  // we don't have any in the FIFO for this state
+                end
+              endcase
+              
+            end else begin
+              // trans not acked, no extra outstanding from this cycle
+              case (n_pushed_ins)              
+                2'd0 : begin
+                  if(fetch_valid) begin
+                    // Data directly consumed, no outstanding resps left
+                    aligner_ns = I0_00;
+                  end else begin
+                    // No incoming data, still one outstanding left
+                    aligner_ns = I0_10;
+                  end
+                end
+                2'd1: begin
+                    // We push one ins from resp, no outstanding left
+                    aligner_ns = I1_00;
+                end
+                2'd2: begin
+                    // We push two ins from resp, no outstanding left
+                    aligner_ns = I2_00;
+                end
+                default: begin
+                  // Should not end up here
+                  // as 2'd3 would imply popped insn, and 
+                  // we don't have any in the FIFO for this state
+                end
+              endcase
+            end
           end
         end
         I0_11: begin // 0 in FIFO, 2 incoming (this and next cycle)
           /////////////////////
+          if(branch_i) begin
+            if(trans_ack_i) begin
+              // Acked, expect one resp
+              aligner_ns = I0_10;
+            end else begin
+              // Not acked, expect 0 resps
+              // I0_00 will keep trans_req_o high
+              aligner_ns = I0_00;
+            end
+
+            if(fetch_valid_i) begin
+              // 1 resp to flush plus any from earlier flushes
+              n_flush_fsm = n_flush_q + 2'b01;
+            end else begin
+              // 2 resps to flush + any from earlier flushes
+              n_flush_fsm = n_flush_q + 2'b10;
+            end
+          end else begin
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  if(fetch_valid) begin
+                    // Data directly consumed, one resp left
+                    aligner_ns = I0_10;
+                  end else begin
+                    // No resps, two outstanding left
+                    aligner_ns = I0_11;
+                  end
+              end
+              2'd1: begin
+                  // One outstanding left
+                  aligner_ns = I1_10;
+              end
+              2'd2: begin
+                  // One outstanding left
+                  aligner_ns = I2_10;
+              end
+              default: begin
+                // Should not end up here
+                // as 2'd3 would imply popped insn, and 
+                // we don't have any in the FIFO for this state
+              end
+            endcase
+          end
+          
         end
         I1_00: begin // 1 in FIFO, 0 incoming
           // FETCH
           trans_req_fsm = 1'b1;
           
-          // Transfer is ack'ed
-          if(trans_req_fsm && trans_ack_i) begin
-            // Next state depends on how many instructions are pushed to the fifo
-            case (n_pushed_ins)              
-              2'd0 : begin
-                  aligner_ns = I1_10;
-              end
-              2'd1: begin
-                  aligner_ns = I2_10;
-              end
-              2'd2: begin
-                  aligner_ns = I3_00; //!! would require I3_10, which is not defined
-              end
-              2'd3: begin
-                  // We pop one
-                  aligner_ns = I0_10;
-              end
-            endcase
-          // transfer not yet accepted
+          if(branch_i) begin
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+            // No resps to flush from this state, 
+            // but we could be flushing from before
+            n_flush_fsm = n_flush_q;
+          end else begin
+            // Transfer is ack'ed
+            if(trans_req_fsm && trans_ack_i) begin
+              // Next state
+              case (n_pushed_ins)              
+                2'd0 : begin
+                    // Still one ins in FIFO, expect one resp
+                    aligner_ns = I1_10;
+                end
+                2'd3: begin
+                    // We pop one, expect one resp
+                    aligner_ns = I0_10;
+                end
+                default: begin
+                  // Should not end up here as we expect no responses
+                end
+              endcase
+              
+            end else begin
+              // No ack, but we may have been popped
+              case (n_pushed_ins)              
+                2'd0 : begin
+                    aligner_ns = I1_00; // We keep in the same state
+                end
+                2'd3: begin
+                    // We pop one
+                    aligner_ns = I0_00; 
+                end
+                default: begin
+                  // Should not end up here as we expect no responses
+                end
+              endcase
+            end
+          end
+          
+        end
+        I1_10: begin // 1 in FIFO, 1 incoming (this cycle)
+          if(branch_i) begin
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+
+            // Calculat how many words to flush
+            if(!fetch_valid_i) begin
+              // 1 resp to flush 
+              n_flush_fsm = n_flush_q + 2'b01;
+            end else begin
+              n_flush_fsm = n_flush_q;
+            end
           end else begin
             case (n_pushed_ins)              
               2'd0 : begin
-                  aligner_ns = I1_00;
+                  if(fetch_valid) begin
+                  // Directly consumed, no extra resps
+                    aligner_ns = I1_00;
+                  end else begin
+                    // Nothing pushed, still expect one resp
+                    aligner_ns = I1_10;
+                  end
               end
               2'd1: begin
+                  // One ins pushed, expect no more responses
                   aligner_ns = I2_00;
               end
               2'd2: begin
+                  // Two ins pushed, expect no more responses
                   aligner_ns = I3_00;
               end
               2'd3: begin
                   // We pop one
-                  aligner_ns = I0_00;
+                  // Implies no response, expect one resp
+                  aligner_ns = I0_10;
               end
             endcase
           end
-          if(branch_i) begin
-            aligner_ns = I0_10;
-          end
-        end
-        I1_10: begin // 1 in FIFO, 1 incoming (this cycle)
-          case (n_pushed_ins)              
-            2'd0 : begin
-                aligner_ns = I1_00;
-            end
-            2'd1: begin
-                aligner_ns = I2_00;
-            end
-            2'd2: begin
-                aligner_ns = I3_00;
-            end
-            2'd3: begin
-                // We pop one
-                aligner_ns = I0_00; // Not likely to happen
-            end
-          endcase
-          if(branch_i) begin
-            aligner_ns = I0_10;
-          end
         end
         I2_00: begin // 2 in FIFO, 0 incoming
-          if(instr_valid_o && instr_ready_i) begin
-            aligner_ns = I1_00;
-          end
           if(branch_i) begin
-            aligner_ns = I0_10;
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+            // No need to calculate number of words to flush
+            // There is no outstanding response, and we can't
+            // reach this state until after previous flushes are done
+          end else begin
+            if(instr_valid_o && instr_ready_i) begin
+              // One instruction left, no expected responses
+              aligner_ns = I1_00;
+            end
           end
         end
         I2_10: begin // 2 in FIFO, 1 incoming (this cycle)
-          case (n_pushed_ins)              
-            2'd0 : begin
-                aligner_ns = I2_00;
-            end
-            2'd1: begin
-                aligner_ns = I3_00;
-            end
-            2'd2: begin
-                aligner_ns = I4_00;
-            end
-          endcase
           if(branch_i) begin
-            aligner_ns = I0_10;
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+            // Number of words to flush
+            // There is one outstanding response, and we can't
+            // reach this state until after previous flushes are done
+            if(!fetch_valid_i) begin
+              // 1 resp to flush
+              n_flush_fsm = 2'b01;
+            end else begin
+              n_flush_fsm = 2'b00;
+            end
+          end else begin
+            case (n_pushed_ins)              
+              2'd0 : begin
+                  if(fetch_valid) begin
+                    // No ins pushed, expect no responses
+                    // We could receive one ins and send out one ins 
+                    aligner_ns = I2_00;
+                  end else begin
+                    // Nothing incoming, stay in this state
+                    aligner_ns = I2_10;
+                  end
+              end
+              2'd1: begin
+                  // One ins pushed, expect no resps
+                  aligner_ns = I3_00;
+              end
+              2'd2: begin
+                  // Two ins pushed, expect no resps
+                  aligner_ns = I4_00;
+              end
+              2'd3: begin
+                  // One ins popped
+                  // Implies no resp, so we still expect one response
+                  aligner_ns = I1_10;
+              end
+            endcase
           end
         end
         I3_00: begin // 3 in FIFO, 0 incoming
-          if(instr_valid_o && instr_ready_i) begin
-            aligner_ns = I2_00;
-          end
           if(branch_i) begin
-            aligner_ns = I0_10;
-          end
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+            // No need to calculate flush as we have no 
+            // expected resps.
+          end else begin
+            // If we have a valid output, we've got two insn left in FIFO
+            if(instr_valid_o && instr_ready_i) begin
+              aligner_ns = I2_00;
+            end
+        end
         end
         I4_00: begin // 4 in FIFO, 0 incoming
-          if(instr_valid_o && instr_ready_i) begin
-            aligner_ns = I3_00;
-          end
-
           if(branch_i) begin
-            aligner_ns = I0_10;
+            if(trans_ack_i) begin
+              aligner_ns = I0_10;
+            end else begin
+              aligner_ns = I0_00;
+            end
+            // No need to calculate flush as we have no 
+            // expected resps.
+          end else begin
+            // If we have a valid output, we've got three insn left in FIFO
+            if(instr_valid_o && instr_ready_i) begin
+              aligner_ns = I3_00;
+            end
           end
+          
         end
     endcase
   end // always_comb
@@ -406,66 +594,113 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     end // rst
   end // always_ff
 
+
   // Count number of incoming instructions in resp_data
+  // This also be done by inspecting the fifo content
   always_comb begin
+    // Set default values
     aligned_n = aligned_q;
     complete_n = complete_q;
     n_incoming_ins = 2'd0;
+
+    // On a branch we need to know if it is aligned or not
+    // the complete flag will be special cased for unaligned branches
+    // as aligned=0 and complete=1 can only happen in that case
     if(branch_i) begin
       aligned_n = !branch_addr_i[1];
       complete_n = branch_addr_i[1];
     end else begin
-      if(fetch_valid_i) begin
+      // Valid response
+      if(fetch_valid) begin
+        // We are on an aligned address
         if(aligned_q) begin
-          // uncompressed
+          // uncompressed in rdata
           if(fetch_rdata_i[1:0] == 2'b11) begin
             n_incoming_ins = 2'd1;
+            // Still aligned and complete, no need to update
           end else begin
-            // compressed, check next halfword
+            // compressed in lower part, check next halfword
             if(fetch_rdata_i[17:16] == 2'b11) begin
-              // uncompressed, not complete
+              // Upper half is uncompressed, not complete
+              // 1 complete insn
               n_incoming_ins = 2'd1;
+              // Not aligned nor complete, as upper 16 bits are uncompressed
               aligned_n = 1'b0;
               complete_n = 1'b0;
             end else begin
-              // Another compressed
+              // Another compressed in upper half
+              // two complete insn in word, still aligned and complete
               n_incoming_ins = 2'd2;
               aligned_n = 1'b1;
               complete_n = 1'b1;
             end
           end
+        // We are on ann unaligned address
         end else begin
-          // Unaligned
+          // Unaligned and complete_q==1 can only happen
+          // for unaligned branches, signalling that lower
+          // 16 bits can be discarded
           if(complete_q) begin
             // Uncompressed unaligned
             if(fetch_rdata_i[17:16] == 2'b11) begin
+              // No complete ins in data
               n_incoming_ins = 2'd0;
+              // Still unaligned
               aligned_n = 1'b0;
+              // Not a complete instruction
               complete_n = 1'b0;
             end else begin
               // Compressed unaligned
+              // We have one insn in upper 16 bits
               n_incoming_ins = 2'd1;
+              // We become aligned
               aligned_n = 1'b1;
+              // Complete instruction
               complete_n = 1'b1;
             end
           end else begin
-            // incomplete
+            // Incomplete. Check upper 16 bits for content
+            // Implied that lower 16 bits contain the MSBs
+            // of an uncompressed instruction
             if(fetch_rdata_i[17:16] == 2'b11) begin
+              // Upper 16 is uncompressed
+              // 1 complete insn in word
               n_incoming_ins = 2'd1;
+              // Unaligned and not complete
               aligned_n = 1'b0;
               complete_n = 1'b0;
             end else begin
               // Compressed unaligned
+              // Two complete insn in word
+              // Aligned and complete
               n_incoming_ins = 2'd2;
               aligned_n = 1'b1;
               complete_n = 1'b1;
             end // rdata[17:16]
           end // complete_q
         end // aligned_q
-      end // fetch_valid_i
+      end // fetch_valid
     end // branch
   end // comb
 
+
+  // number of resps to flush
+  always_comb
+  begin
+    // Default value
+    n_flush_n = n_flush_q;
+
+    // On a branch, the FSM will calculate
+    // the number of words to flush
+    if(branch_i) begin
+      n_flush_n = n_flush_fsm;
+    end else begin
+      // Decrement flush counter on valid inputs
+      if(fetch_valid_i && (n_flush_q > 0)) begin
+        n_flush_n = n_flush_q - 2'b01;
+      end
+    end
+  end
   //////////////////////////////////////////////////////////////////////////////
   // registers
   //////////////////////////////////////////////////////////////////////////////
@@ -479,6 +714,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       valid_q   <= '0;
       aligned_q <= 1'b0;
       complete_q <= 1'b0;
+      n_flush_q <= 'd0;
     end
     else
     begin
@@ -494,6 +730,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         rdata_q <= rdata_n;
         valid_q <= valid_n;
       end
+      n_flush_q <= n_flush_n;
+      
     end
   end
 
@@ -504,25 +742,68 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
-/*
+
 `ifdef CV32E40P_ASSERT_ON
+  logic [2:0] outstanding_cnt;
+  logic [2:0] next_outstanding_cnt;
+  logic count_up;
+  logic count_down;
+  assign count_up   = trans_req_o && trans_ack_i;     // Increment upon accepted transfer request
+  assign count_down = fetch_valid_i;                       // Decrement upon accepted transfer response
 
-  // Check for FIFO overflows
+  always_comb begin
+    case ({count_up, count_down})
+      2'b00  : begin
+        next_outstanding_cnt = outstanding_cnt;
+      end
+      2'b01  : begin
+        next_outstanding_cnt = outstanding_cnt - 1'b1;
+      end
+      2'b10  : begin
+        next_outstanding_cnt = outstanding_cnt + 1'b1;
+      end
+      2'b11  : begin
+        next_outstanding_cnt = outstanding_cnt;
+      end
+    endcase
+  end
+
+  always_ff @(posedge clk, negedge rst_n)
+  begin
+    if(rst_n == 1'b0)
+    begin
+     outstanding_cnt <= 'd0;
+    end 
+    else
+    begin
+     outstanding_cnt <= next_outstanding_cnt;
+    end
+  end
+
+  // No resp in states which not expect it
   assert property (
-     @(posedge clk) (fetch_valid_i) |-> (valid_q[DEPTH-1] == 1'b0) );
-
-  // Check that FIFO is cleared the cycle after a branch
+    @(posedge clk) (aligner_cs == I0_00) |-> (fetch_valid == 1'b0) );
   assert property (
-     @(posedge clk) (branch_i) |=> (valid_q == 'b0) );
-
-  // Check that FIFO is signaled empty the cycle during a branch
-  //assert property (
-  //   @(posedge clk) (branch_i) |-> (fifo_cnt_o == 'b0) );
-
-  // Theck that instr_valid_o is zero when a branch is requested
+    @(posedge clk) (aligner_cs == I1_00) |-> (fetch_valid == 1'b0) );
   assert property (
-    @(posedge clk) (branch_i) |-> (instr_valid_o == 1'b0) );
+    @(posedge clk) (aligner_cs == I2_00) |-> (fetch_valid == 1'b0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I3_00) |-> (fetch_valid == 1'b0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I4_00) |-> (fetch_valid == 1'b0) );
+
+  assert property (
+    @(posedge clk) (aligner_cs == I0_00) |-> (outstanding_cnt - n_flush_q == 'd0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I1_00) |-> (outstanding_cnt - n_flush_q == 'd0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I2_00) |-> (outstanding_cnt - n_flush_q == 'd0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I3_00) |-> (outstanding_cnt - n_flush_q == 'd0) );
+  assert property (
+    @(posedge clk) (aligner_cs == I4_00) |-> (outstanding_cnt - n_flush_q == 'd0) );
+
    
 `endif
-*/
+
 endmodule
