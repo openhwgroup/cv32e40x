@@ -38,15 +38,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_prefetch_controller
-#(
-  parameter DEPTH           = 4,                                // Prefetch FIFO Depth
-  parameter FIFO_ADDR_DEPTH = (DEPTH > 1) ? $clog2(DEPTH) : 1   // Do not override this parameter
-)(
+(
   input  logic                     clk,
   input  logic                     rst_n,
 
-  // Fetch stage interface
-  input  logic                     req_i,                   // Fetch stage requests instructions
   input  logic                     branch_i,                // Taken branch
   input  logic [31:0]              branch_addr_i,           // Taken branch address (only valid when branch_i = 1)
 
@@ -82,14 +77,6 @@ module cv32e40x_prefetch_controller
   // Fectch valid control. Feed through resp_valid
   assign fetch_valid_o = resp_valid_i;
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Transaction request generation
-  //
-  // Assumes that corresponding response is at least 1 cycle after request
-  //
-  // - Only request transaction when fetch stage requires fetch (trans_req_i)
-  //////////////////////////////////////////////////////////////////////////////
-
   // Prefetcher will only perform word fetches
   assign aligned_branch_addr = {branch_addr_i[31:2], 2'b00};
 
@@ -99,7 +86,7 @@ module cv32e40x_prefetch_controller
   // Transaction request generation
   // Avoid combinatorial path from instr_rvalid_i to instr_req_o. Multiple trans_* transactions can be 
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid_o = req_i && trans_req_i;
+  assign trans_valid_o = trans_req_i;
 
   assign trans_ack_o = trans_valid_o && trans_ready_i;
 

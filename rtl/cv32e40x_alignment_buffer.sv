@@ -30,6 +30,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           clk,
   input  logic           rst_n,
 
+  input  logic           req_i,
   output logic           busy_o,
 
   // Interface to prefetch_controller
@@ -53,24 +54,23 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   
 );
 
-  
-  logic [31:0]       pc_q;
-  
-  // FSM
+  // FSM state
   alignment_state_e aligner_cs, aligner_ns;
 
+  // transaction request from the FSM
   logic trans_req_fsm;
 
-  // number of instructions in resp_data
+  // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
 
   // Number of instructions pushed to fifo
   logic [1:0] n_pushed_ins;
 
+  // Flags to indicate aligned address and complete instructions
   logic aligned_n, aligned_q;
   logic complete_n, complete_q;
 
-  // Store number of resps to flush when get get a branch
+  // Store number of responses to flush when get get a branch
   logic [1:0] n_flush_n, n_flush_q, n_flush_fsm;
 
   // Fetch valid gated while flushing
@@ -85,7 +85,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                         n_incoming_ins;
 
   // Request a transfer if FSM asks for it, or we do a branch
-  assign trans_req_o = trans_req_fsm || branch_i;
+  assign trans_req_o = req_i && (trans_req_fsm || branch_i);
 
   // Busy if we expect any responses, or we have an active trans_req_o
   assign busy_o = (aligner_cs inside {I0_10, I0_11, I1_10, I2_10}) || trans_req_o;

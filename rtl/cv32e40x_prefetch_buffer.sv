@@ -72,15 +72,11 @@ module cv32e40x_prefetch_buffer
   //////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_prefetch_controller
-  #(
-    .DEPTH          ( FIFO_DEPTH    )   
-  )
   prefetch_controller_i
   (
     .clk                      ( clk                  ),
     .rst_n                    ( rst_n                ),
 
-    .req_i                    ( req_i                ),
     .branch_i                 ( branch_i             ),
     .branch_addr_i            ( branch_addr_i        ),
 
@@ -108,6 +104,7 @@ module cv32e40x_prefetch_buffer
     .clk               ( clk                                ),
     .rst_n             ( rst_n                              ),
 
+    .req_i             ( req_i                              ),
     .busy_o            ( busy_o                             ),
 
     // prefetch controller
