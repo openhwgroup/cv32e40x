@@ -1,28 +1,25 @@
-// Copyright 2020 Silicon Labs, Inc.
-//
-// This file, and derivatives thereof are licensed under the
-// Solderpad License, Version 2.0 (the "License").
-//
-// Use of this file means you agree to the terms and conditions
-// of the license and are in full compliance with the License.
-//
-// You may obtain a copy of the License at:
-//
-//     https://solderpad.org/licenses/SHL-2.0/
-//
-// Unless required by applicable law or agreed to in writing, software
-// and hardware implementations thereof distributed under the License
-// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
-// OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
-//
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright and related rights are licensed under the Solderpad Hardware
+// License, Version 0.51 (the "License"); you may not use this file except in
+// compliance with the License.  You may obtain a copy of the License at
+// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
+// or agreed to in writing, software, hardware and materials distributed under
+// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
 
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer        Oivind Ekelund- oivind.ekelund@silabs.com                  //
+// Engineer        Andreas Traber - atraber@iis.ee.ethz.ch                    //
+//                                                                            //
+// Additional contributions by:                                               //
+//                 Matthias Baer - baermatt@student.ethz.ch                   //
+//                 Igor Loi - igor.loi@unibo.it                               //
+//                 Sven Stucki - svstucki@student.ethz.ch                     //
+//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
+//                 Oivind Ekelund - oivind.ekelund@silabs.com                 //
 //                                                                            //
 // Design Name:    A Decoder                                                  //
-// Project Name:   CV32E40X                                                   //
+// Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
 // Description:    Decoder for the RV32A extension                            //
@@ -37,50 +34,36 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
     
    output             decoder_ctrl_t decoder_ctrl_o
    );
-
-  decoder_ctrl_t decoder_o_int;
-
-  // This will change the decoder behavior, and is written this way for easier review.
-  // Will be replaced with a cleaner SEC clean implementation...
-  always_comb begin
-    if(decoder_o_int.illegal_insn || illegal_c_insn_i)begin
-      decoder_ctrl_o        = DECODER_CTRL_IDLE;
-      decoder_ctrl_o.alu_en = 1'b0;
-      decoder_ctrl_o.illegal_insn = 1'b1;
-    end
-    else begin
-      decoder_ctrl_o = decoder_o_int;
-    end
-  end
   
   always_comb
   begin
     
-    decoder_o_int = DECODER_CTRL_IDLE;
+    decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
 
     unique case (instr_rdata_i[6:0])
 
       OPCODE_AMO: begin
         if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
 
-          decoder_o_int.match            = 1'b1;
-          decoder_o_int.data_req         = 1'b1;
-          decoder_o_int.data_type        = 2'b00;
-          decoder_o_int.rf_re[0]         = 1'b1;
-          decoder_o_int.rf_re[1]         = 1'b1;
-          decoder_o_int.rf_we            = 1'b1;
-          decoder_o_int.prepost_useincr  = 1'b0; // only use alu_operand_a as address (not a+b)
-          decoder_o_int.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
+          decoder_ctrl_o.illegal_insn     = 1'b0;
+          decoder_ctrl_o.data_req         = 1'b1;
+          decoder_ctrl_o.data_type        = 2'b00;
+          decoder_ctrl_o.rf_re[0]         = 1'b1;
+          decoder_ctrl_o.rf_re[1]         = 1'b1;
+          decoder_ctrl_o.rf_we            = 1'b1;
+          decoder_ctrl_o.prepost_useincr  = 1'b0; // only use alu_operand_a as address (not a+b)
+          decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
+          decoder_ctrl_o.alu_operator     = ALU_SLTU;
 
-          decoder_o_int.data_sign_ext = 1'b1;
+          decoder_ctrl_o.data_sign_ext    = 1'b1;
 
           // Apply AMO instruction at `data_atop`.
-          decoder_o_int.data_atop = {1'b1, instr_rdata_i[31:27]};
+          decoder_ctrl_o.data_atop        = {1'b1, instr_rdata_i[31:27]};
 
           unique case (instr_rdata_i[31:27])
             AMO_LR: begin
-              //decoder_o_int.match     = 1'b1;
-              decoder_o_int.data_we = 1'b0;
+              //decoder_ctrl_o.match     = 1'b1;
+              decoder_ctrl_o.data_we = 1'b0;
             end
             AMO_SC,
               AMO_SWAP,
@@ -92,22 +75,31 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
               AMO_MAX,
               AMO_MINU,
               AMO_MAXU: begin
-                decoder_o_int.data_we = 1'b1;
-                decoder_o_int.alu_op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
+                decoder_ctrl_o.data_we = 1'b1;
+                decoder_ctrl_o.alu_op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
               end
-            default : decoder_o_int.illegal_insn = 1'b1;
+            default : begin
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+            end
           endcase
         end
         else begin
-          decoder_o_int.illegal_insn = 1'b1;
+          // No match
+          decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
         end
       end
 
       default: begin
-        // No match, keep decoder control signals IDLE
+        // No match
+        decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
       end
     endcase
 
+    if (illegal_c_insn_i) begin
+      // Illegal compressed instrcution
+      decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+    end
+    
   end
 
 

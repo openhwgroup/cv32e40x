@@ -101,7 +101,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // write enable/request control
   logic       rf_we;
-  logic       regfile_alu_we;
   logic       data_req;
   logic       csr_illegal;
   logic [1:0] ctrl_transfer_insn;
@@ -142,7 +141,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
            .decoder_ctrl_o(decoder_a_ctrl));
     end
     else begin: no_a_decoder
-      assign decoder_a_ctrl = DECODER_CTRL_IDLE;
+      assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
   endgenerate
       
@@ -150,15 +149,16 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   always_comb
   begin
     unique case (1'b1)
-      decoder_m_ctrl.match : decoder_ctrl_mux = decoder_m_ctrl; // M decoder got a match
-      decoder_a_ctrl.match : decoder_ctrl_mux = decoder_a_ctrl; // A decoder got a match
-      default              : decoder_ctrl_mux = decoder_i_ctrl; // No match from extension decoders, fallback to base decoder
+      !decoder_m_ctrl.illegal_insn : decoder_ctrl_mux = decoder_m_ctrl; // M decoder got a match
+      !decoder_a_ctrl.illegal_insn : decoder_ctrl_mux = decoder_a_ctrl; // A decoder got a match
+      !decoder_i_ctrl.illegal_insn : decoder_ctrl_mux = decoder_i_ctrl; // I decoder got a match
+      default                      : decoder_ctrl_mux = DECODER_CTRL_ILLEGAL_INSN; // No match from decoders, illegal instruction
     endcase
   end
 
   assign ctrl_transfer_insn             = decoder_ctrl_mux.ctrl_transfer_insn;
   assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel;
-  assign alu_en                         = decoder_ctrl_mux.alu_en;                          
+  assign alu_en                         = (decoder_ctrl_mux.alu_operator == ALU_DIS) ? 1'b0 : 1'b1;
   assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
   assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
   assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
@@ -184,7 +184,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign data_sign_ext_o                = decoder_ctrl_mux.data_sign_ext;
   assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset;               
   assign data_atop_o                    = decoder_ctrl_mux.data_atop;                     
-  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn || illegal_c_insn_i; // compressed instruction decode failed         
+  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn;        
   assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn;                     
   assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn;                    
   assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn;                      
@@ -193,16 +193,16 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign dret_dec_o                     = decoder_ctrl_mux.dret_dec;                      
 
 
-  // Deassert we signals (in case of stalls)
-  assign alu_en_o             = (deassert_we_i) ? 1'b0         : alu_en;
-  assign mult_en_o            = (deassert_we_i) ? 1'b0         : mult_en;
-  assign rf_we_o              = (deassert_we_i) ? 1'b0         : rf_we;
-  assign data_req_o           = (deassert_we_i) ? 1'b0         : data_req;
-  assign csr_op_o             = (deassert_we_i) ? CSR_OP_READ  : csr_op;
-  assign ctrl_transfer_insn_o = (deassert_we_i) ? BRANCH_NONE  : ctrl_transfer_insn;
+  assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;
+  assign mult_en_o            = deassert_we_i ? 1'b0        : mult_en;
+  assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
+  assign data_req_o           = deassert_we_i ? 1'b0        : data_req;
+  assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op;
+  assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
 
   assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
   assign rf_we_raw_o              = rf_we;
   assign data_req_raw_o           = data_req;
 
+  
 endmodule // cv32e40x_decoder

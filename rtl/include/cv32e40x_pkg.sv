@@ -75,7 +75,9 @@ parameter ALU_OP_WIDTH = 5;
 
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
-
+ // Disable ALU
+ ALU_DIS   = 5'b11111,
+ 
  ALU_ADD   = 5'b11000,
  ALU_SUB   = 5'b11001,
  
@@ -723,10 +725,8 @@ typedef struct packed {
 
 // Decoder control signals
 typedef struct packed {
-  logic                              match;
   logic [1:0]                        ctrl_transfer_insn;
   logic [1:0]                        ctrl_transfer_target_mux_sel;
-  logic                              alu_en;
   alu_opcode_e                       alu_operator;
   logic [2:0]                        alu_op_a_mux_sel;
   logic [2:0]                        alu_op_b_mux_sel;
@@ -760,44 +760,42 @@ typedef struct packed {
   logic                              mret_dec;
   logic                              dret_dec;
 } decoder_ctrl_t;
-  
-parameter decoder_ctrl_t DECODER_CTRL_IDLE =  '{match                        : 1'b0,
-                                                ctrl_transfer_insn           : BRANCH_NONE,
-                                                ctrl_transfer_target_mux_sel : JT_JAL,
-                                                alu_en                       : 1'b1,
-                                                alu_operator                 : ALU_SLTU,
-                                                alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
-                                                alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
-                                                alu_op_c_mux_sel             : OP_C_REGC_OR_FWD,
-                                                imm_a_mux_sel                : IMMA_ZERO,
-                                                imm_b_mux_sel                : IMMB_I,
-                                                mult_operator                : MUL_M32,
-                                                mult_en                      : 1'b0,
-                                                mult_signed_mode             : 2'b00,
-                                                mult_sel_subword             : 1'b0,
-                                                rf_re                        : 2'b00,
-                                                rf_we                        : 1'b0,
-                                                prepost_useincr              : 1'b1,
-                                                csr_access                   : 1'b0,
-                                                csr_status                   : 1'b0,
-                                                csr_illegal                  : 1'b0,
-                                                csr_op                       : CSR_OP_READ,
-                                                mret_insn                    : 1'b0,
-                                                dret_insn                    : 1'b0,
-                                                data_req                     : 1'b0,
-                                                data_we                      : 1'b0,
-                                                data_type                    : 2'b00,
-                                                data_sign_ext                : 1'b0,
-                                                data_reg_offset              : 2'b00,
-                                                data_atop                    : 6'b000000,
-                                                illegal_insn                 : 1'b0,
-                                                ebrk_insn                    : 1'b0,
-                                                ecall_insn                   : 1'b0,
-                                                wfi_insn                     : 1'b0,
-                                                fencei_insn                  : 1'b0,
-                                                mret_dec                     : 1'b0,
-                                                dret_dec                     : 1'b0
-                                                };
+
+  parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{ctrl_transfer_insn           : BRANCH_NONE,
+                                                          ctrl_transfer_target_mux_sel : JT_JAL,
+                                                          alu_operator                 : ALU_DIS,
+                                                          alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
+                                                          alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
+                                                          alu_op_c_mux_sel             : OP_C_REGC_OR_FWD,
+                                                          imm_a_mux_sel                : IMMA_ZERO,
+                                                          imm_b_mux_sel                : IMMB_I,
+                                                          mult_operator                : MUL_M32,
+                                                          mult_en                      : 1'b0,
+                                                          mult_signed_mode             : 2'b00,
+                                                          mult_sel_subword             : 1'b0,
+                                                          rf_re                        : 2'b00,
+                                                          rf_we                        : 1'b0,
+                                                          prepost_useincr              : 1'b1,
+                                                          csr_access                   : 1'b0,
+                                                          csr_status                   : 1'b0,
+                                                          csr_illegal                  : 1'b0,
+                                                          csr_op                       : CSR_OP_READ,
+                                                          mret_insn                    : 1'b0,
+                                                          dret_insn                    : 1'b0,
+                                                          data_req                     : 1'b0,
+                                                          data_we                      : 1'b0,
+                                                          data_type                    : 2'b00,
+                                                          data_sign_ext                : 1'b0,
+                                                          data_reg_offset              : 2'b00,
+                                                          data_atop                    : 6'b000000,
+                                                          illegal_insn                 : 1'b1,
+                                                          ebrk_insn                    : 1'b0,
+                                                          ecall_insn                   : 1'b0,
+                                                          wfi_insn                     : 1'b0,
+                                                          fencei_insn                  : 1'b0,
+                                                          mret_dec                     : 1'b0,
+                                                          dret_dec                     : 1'b0
+                                                          };
 
 ///////////////////////////////////////////////
 //   ___ _____   ____  _                     //

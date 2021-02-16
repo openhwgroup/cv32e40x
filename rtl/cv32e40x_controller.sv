@@ -812,10 +812,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     if (~is_decoding_o)
       deassert_we_o = 1'b1;
 
-    // deassert WE in case of illegal instruction
-    if (illegal_insn_i)
-      deassert_we_o = 1'b1;
-
     // Stall because of load operation
     if (
         (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) ||
