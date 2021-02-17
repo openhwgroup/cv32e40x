@@ -113,13 +113,13 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   decoder_ctrl_t decoder_i_ctrl;
   decoder_ctrl_t decoder_m_ctrl;
   decoder_ctrl_t decoder_a_ctrl;
+  decoder_ctrl_t decoder_ctrl_mux_subdec;
   decoder_ctrl_t decoder_ctrl_mux;
 
   // RV32I Base instruction set decoder
   cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
     i_decoder_i
       (.instr_rdata_i(instr_rdata_i),
-       .illegal_c_insn_i(illegal_c_insn_i),
        .debug_mode_i(debug_mode_i),
        .debug_wfi_no_sleep_i(debug_wfi_no_sleep_i),
        .decoder_ctrl_o(decoder_i_ctrl));
@@ -128,7 +128,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   cv32e40x_m_decoder
     m_decoder_i
       (.instr_rdata_i(instr_rdata_i),
-       .illegal_c_insn_i(illegal_c_insn_i),
        .decoder_ctrl_o(decoder_m_ctrl));
 
   generate
@@ -137,7 +136,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       cv32e40x_a_decoder
         a_decoder_i
           (.instr_rdata_i(instr_rdata_i),
-           .illegal_c_insn_i(illegal_c_insn_i),
            .decoder_ctrl_o(decoder_a_ctrl));
     end
     else begin: no_a_decoder
@@ -149,11 +147,21 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   always_comb
   begin
     unique case (1'b1)
-      !decoder_m_ctrl.illegal_insn : decoder_ctrl_mux = decoder_m_ctrl; // M decoder got a match
-      !decoder_a_ctrl.illegal_insn : decoder_ctrl_mux = decoder_a_ctrl; // A decoder got a match
-      !decoder_i_ctrl.illegal_insn : decoder_ctrl_mux = decoder_i_ctrl; // I decoder got a match
-      default                      : decoder_ctrl_mux = DECODER_CTRL_ILLEGAL_INSN; // No match from decoders, illegal instruction
+      !decoder_m_ctrl.illegal_insn : decoder_ctrl_mux_subdec = decoder_m_ctrl; // M decoder got a match
+      !decoder_a_ctrl.illegal_insn : decoder_ctrl_mux_subdec = decoder_a_ctrl; // A decoder got a match
+      !decoder_i_ctrl.illegal_insn : decoder_ctrl_mux_subdec = decoder_i_ctrl; // I decoder got a match
+      default                      : decoder_ctrl_mux_subdec = DECODER_CTRL_ILLEGAL_INSN; // No match from decoders, illegal instruction
     endcase
+  end
+
+  // Take illegal compressed instruction into account
+  always_comb begin
+    if (illegal_c_insn_i) begin
+      decoder_ctrl_mux = DECODER_CTRL_ILLEGAL_INSN;
+    end
+    else begin
+      decoder_ctrl_mux = decoder_ctrl_mux_subdec;
+    end
   end
 
   assign ctrl_transfer_insn             = decoder_ctrl_mux.ctrl_transfer_insn;
