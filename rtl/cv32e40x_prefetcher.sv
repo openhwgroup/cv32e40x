@@ -37,7 +37,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_prefetch_controller
+module cv32e40x_prefetcher
 (
   input  logic                     clk,
   input  logic                     rst_n,
@@ -150,4 +150,4 @@ module cv32e40x_prefetch_controller
     end
   end
 
-endmodule // cv32e40x_prefetch_controller
+endmodule // cv32e40x_prefetcher

@@ -45,7 +45,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_a_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_compressed_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alignment_buffer.sv
-${DESIGN_RTL_DIR}/cv32e40x_prefetch_buffer.sv
+${DESIGN_RTL_DIR}/cv32e40x_prefetch_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv
 ${DESIGN_RTL_DIR}/cv32e40x_int_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ex_stage.sv
@@ -58,7 +58,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_apu_disp.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_instr_obi_interface.sv
 ${DESIGN_RTL_DIR}/cv32e40x_data_obi_interface.sv
-${DESIGN_RTL_DIR}/cv32e40x_prefetch_controller.sv
+${DESIGN_RTL_DIR}/cv32e40x_prefetcher.sv
 ${DESIGN_RTL_DIR}/cv32e40x_sleep_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_core.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_sim_clock_gate.sv

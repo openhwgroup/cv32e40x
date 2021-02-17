@@ -24,7 +24,7 @@
 // clear_i clears the FIFO for the following cycle. in_addr_i can be sent in
 // this cycle already
 
-module cv32e40x_prefetch_buffer
+module cv32e40x_prefetch_unit
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -71,8 +71,8 @@ module cv32e40x_prefetch_buffer
   // Prefetch Controller
   //////////////////////////////////////////////////////////////////////////////
 
-  cv32e40x_prefetch_controller
-  prefetch_controller_i
+  cv32e40x_prefetcher
+  prefetcher_i
   (
     .clk                      ( clk                  ),
     .rst_n                    ( rst_n                ),
@@ -163,4 +163,4 @@ module cv32e40x_prefetch_buffer
 */
 `endif
 
-endmodule // cv32e40x_prefetch_buffer
+endmodule // cv32e40x_prefetch_unit

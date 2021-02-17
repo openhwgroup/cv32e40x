@@ -144,7 +144,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
   // prefetch buffer, caches a fixed number of instructions
-  cv32e40x_prefetch_buffer prefetch_buffer_i
+  cv32e40x_prefetch_unit prefetch_unit_i
   (
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),
