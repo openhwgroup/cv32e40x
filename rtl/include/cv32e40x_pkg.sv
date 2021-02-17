@@ -75,9 +75,6 @@ parameter ALU_OP_WIDTH = 5;
 
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- // Disable ALU
- ALU_DIS   = 5'b11111,
- 
  ALU_ADD   = 5'b11000,
  ALU_SUB   = 5'b11001,
  
@@ -727,6 +724,7 @@ typedef struct packed {
 typedef struct packed {
   logic [1:0]                        ctrl_transfer_insn;
   logic [1:0]                        ctrl_transfer_target_mux_sel;
+  logic                              alu_en;
   alu_opcode_e                       alu_operator;
   logic [2:0]                        alu_op_a_mux_sel;
   logic [2:0]                        alu_op_b_mux_sel;
@@ -763,7 +761,8 @@ typedef struct packed {
 
   parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{ctrl_transfer_insn           : BRANCH_NONE,
                                                           ctrl_transfer_target_mux_sel : JT_JAL,
-                                                          alu_operator                 : ALU_DIS,
+                                                          alu_en                       : 1'b0,
+                                                          alu_operator                 : ALU_SLTU,
                                                           alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
                                                           alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
                                                           alu_op_c_mux_sel             : OP_C_REGC_OR_FWD,

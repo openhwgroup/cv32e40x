@@ -44,8 +44,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
   begin
 
     // Set default values
-    decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+    decoder_ctrl_o              = DECODER_CTRL_ILLEGAL_INSN;
     decoder_ctrl_o.illegal_insn = 1'b0;
+    decoder_ctrl_o.alu_en       = 1'b1;
 
     unique case (instr_rdata_i[6:0])
 
@@ -228,6 +229,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         if ((instr_rdata_i[31:30] == 2'b11) || (instr_rdata_i[31:30] == 2'b10)) begin
           decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
         end else begin
+
           decoder_ctrl_o.rf_we    = 1'b1;
           decoder_ctrl_o.rf_re[0] = 1'b1;
           

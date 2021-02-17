@@ -166,7 +166,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   assign ctrl_transfer_insn             = decoder_ctrl_mux.ctrl_transfer_insn;
   assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel;
-  assign alu_en                         = (decoder_ctrl_mux.alu_operator == ALU_DIS) ? 1'b0 : 1'b1;
+  assign alu_en                         = decoder_ctrl_mux.alu_en;
   assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
   assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
   assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
