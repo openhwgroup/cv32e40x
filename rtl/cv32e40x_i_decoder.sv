@@ -129,22 +129,14 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         // pass write data through ALU operand c
         decoder_ctrl_o.alu_op_c_mux_sel = OP_C_REGB_OR_FWD;
 
-        if (instr_rdata_i[14] == 1'b0) begin
-          // offset from immediate
-          decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
-          decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+        decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
+        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
 
-          // store size
-          unique case (instr_rdata_i[13:12])
-            2'b00: decoder_ctrl_o.data_type = 2'b00; // SB
-            2'b01: decoder_ctrl_o.data_type = 2'b01; // SH
-            2'b10: decoder_ctrl_o.data_type = 2'b10; // SW
-            default: begin
-              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-            end
-          endcase
-          
-        end else begin
+        // Data type encoded in instr_rdata_i[13:12]:
+        // 2'b00: SB, 2'b01: SH, 2'10: SW
+        decoder_ctrl_o.data_type = instr_rdata_i[13:12];
+        
+        if ((instr_rdata_i[14] == 1'b1) || (instr_rdata_i[13:12] == 2'b11)) begin
           decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
         end
       end
@@ -161,13 +153,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         // sign/zero extension
         decoder_ctrl_o.data_sign_ext = !instr_rdata_i[14];
 
-        // load size
-        unique case (instr_rdata_i[13:12])
-          2'b00:   decoder_ctrl_o.data_type = 2'b00; // LB
-          2'b01:   decoder_ctrl_o.data_type = 2'b01; // LH
-          2'b10:   decoder_ctrl_o.data_type = 2'b10; // LW
-          default: decoder_ctrl_o.data_type = 2'b00;
-        endcase
+        // Data type encoded in instr_rdata_i[13:12]:
+        // 2'b00: LB, 2'b01: LH, 2'10: LW
+        decoder_ctrl_o.data_type = instr_rdata_i[13:12];
 
         // Reserved or RV64
         if ((instr_rdata_i[14:12] == 3'b111) || (instr_rdata_i[14:12] == 3'b110) || (instr_rdata_i[14:12] == 3'b011)) begin
