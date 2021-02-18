@@ -573,35 +573,49 @@ typedef logic [REGFILE_ADDR_WIDTH-1:0] rf_addr_t;
 typedef logic [REGFILE_DATA_WIDTH-1:0] rf_data_t;
 
 // forwarding operand mux
-parameter SEL_REGFILE      = 2'b00;
-parameter SEL_FW_EX        = 2'b01;
-parameter SEL_FW_WB        = 2'b10;
+typedef enum logic[1:0] {
+                         SEL_REGFILE = 2'b00,
+                         SEL_FW_EX   = 2'b01,
+                         SEL_FW_WB   = 2'b10
+                         } op_fw_mux_e;
 
 // operand a selection
-parameter OP_A_REGA_OR_FWD = 3'b000;
-parameter OP_A_CURRPC      = 3'b001;
-parameter OP_A_IMM         = 3'b010;
-parameter OP_A_REGB_OR_FWD = 3'b011;
+typedef enum logic[1:0] {
+                         OP_A_REGA_OR_FWD = 2'b00,
+                         OP_A_CURRPC      = 2'b01,
+                         OP_A_IMM         = 2'b10,
+                         OP_A_REGB_OR_FWD = 2'b11
+                         } alu_op_a_mux_e;
+
 
 // immediate a selection
-parameter IMMA_Z      = 1'b0;
-parameter IMMA_ZERO   = 1'b1;
+typedef enum logic {
+                    IMMA_Z      = 1'b0,
+                    IMMA_ZERO   = 1'b1
+                    } imm_a_mux_e;
+
 
 // operand b selection
-parameter OP_B_REGB_OR_FWD = 3'b000;
-parameter OP_B_IMM         = 3'b010;
-parameter OP_B_REGA_OR_FWD = 3'b011;
+typedef enum logic[1:0] {
+                         OP_B_REGB_OR_FWD = 2'b00,
+                         OP_B_IMM         = 2'b10,
+                         OP_B_REGA_OR_FWD = 2'b11
+                         } alu_op_b_mux_e;
 
 // immediate b selection
-parameter IMMB_I      = 4'b0000;
-parameter IMMB_S      = 4'b0001;
-parameter IMMB_U      = 4'b0010;
-parameter IMMB_PCINCR = 4'b0011;
-
+typedef enum logic[1:0] {
+                         IMMB_I      = 2'b00,
+                         IMMB_S      = 2'b01,
+                         IMMB_U      = 2'b10,
+                         IMMB_PCINCR = 2'b11
+                         } imm_b_mux_e;
+  
 // operand c selection
-parameter OP_C_FWD         = 2'b00;
-parameter OP_C_REGB_OR_FWD = 2'b01;
-parameter OP_C_JT          = 2'b10;
+typedef enum logic[1:0] {
+                         OP_C_FWD         = 2'b00,
+                         OP_C_REGB_OR_FWD = 2'b01,
+                         OP_C_JT          = 2'b10
+                         } alu_op_c_mux_e;
 
 // branch types
 parameter BRANCH_NONE = 2'b00;
@@ -610,9 +624,12 @@ parameter BRANCH_JALR = 2'b10;
 parameter BRANCH_COND = 2'b11; // conditional branches
 
 // jump target mux
-parameter JT_JAL  = 2'b01;
-parameter JT_JALR = 2'b10;
-parameter JT_COND = 2'b11;
+typedef enum logic[1:0] {
+                         JT_JAL  = 2'b01,
+                         JT_JALR = 2'b10,
+                         JT_COND = 2'b11
+                         } jt_mux_e;
+
 
 // Atomic operations
 parameter AMO_LR   = 5'b00010;
@@ -682,14 +699,14 @@ typedef struct packed {
 // Decoder control signals
 typedef struct packed {
   logic [1:0]                        ctrl_transfer_insn;
-  logic [1:0]                        ctrl_transfer_target_mux_sel;
+  jt_mux_e                           ctrl_transfer_target_mux_sel;
   logic                              alu_en;
   alu_opcode_e                       alu_operator;
-  logic [2:0]                        alu_op_a_mux_sel;
-  logic [2:0]                        alu_op_b_mux_sel;
-  logic [1:0]                        alu_op_c_mux_sel;
-  logic [0:0]                        imm_a_mux_sel;
-  logic [3:0]                        imm_b_mux_sel;
+  alu_op_a_mux_e                     alu_op_a_mux_sel;
+  alu_op_b_mux_e                     alu_op_b_mux_sel;
+  alu_op_c_mux_e                     alu_op_c_mux_sel;
+  imm_a_mux_e                        imm_a_mux_sel;
+  imm_b_mux_e                        imm_b_mux_sel;
   mul_opcode_e                       mult_operator;
   logic                              mult_en;
   logic [1:0]                        mult_signed_mode;

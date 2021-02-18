@@ -130,9 +130,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic           rf_we_wb_i,            // Register file write enable from WB stage
 
   // forwarding signals
-  output logic [1:0]  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
-  output logic [1:0]  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
-  output logic [1:0]  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
+  output op_fw_mux_e  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
+  output op_fw_mux_e  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
+  output op_fw_mux_e  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
 
   input rf_addr_t  rf_waddr_ex_i,
   input rf_addr_t  rf_waddr_wb_i,

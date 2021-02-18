@@ -56,11 +56,11 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // ALU signals
   output logic        alu_en_o,                // ALU enable
   output alu_opcode_e alu_operator_o, // ALU operation selection
-  output logic [2:0]  alu_op_a_mux_sel_o,      // operand a selection: reg value, PC, immediate or zero
-  output logic [2:0]  alu_op_b_mux_sel_o,      // operand b selection: reg value or immediate
-  output logic [1:0]  alu_op_c_mux_sel_o,      // operand c selection: reg value or jump target
-  output logic [0:0]  imm_a_mux_sel_o,         // immediate selection for operand a
-  output logic [3:0]  imm_b_mux_sel_o,         // immediate selection for operand b
+  output alu_op_a_mux_e alu_op_a_mux_sel_o,      // operand a selection: reg value, PC, immediate or zero
+  output alu_op_b_mux_e alu_op_b_mux_sel_o,      // operand b selection: reg value or immediate
+  output alu_op_c_mux_e alu_op_c_mux_sel_o,      // operand c selection: reg value or jump target
+  output imm_a_mux_e    imm_a_mux_sel_o,         // immediate selection for operand a
+  output imm_b_mux_e    imm_b_mux_sel_o,         // immediate selection for operand b
 
   // MUL related control signals
   output mul_opcode_e mult_operator_o,         // Multiplication operation selection
@@ -95,7 +95,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // jump/branches
   output logic [1:0]  ctrl_transfer_insn_o,      // control transfer instructio is decoded
   output logic [1:0]  ctrl_transfer_insn_raw_o,  // control transfer instruction without deassert
-  output logic [1:0]  ctrl_transfer_target_mux_sel_o        // jump target selection
+  output jt_mux_e     ctrl_transfer_target_mux_sel_o        // jump target selection
 
 );
 

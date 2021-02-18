@@ -214,13 +214,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU Control
   logic        alu_en;
   alu_opcode_e alu_operator;
-  logic [2:0]  alu_op_a_mux_sel;
-  logic [2:0]  alu_op_b_mux_sel;
-  logic [1:0]  alu_op_c_mux_sel;
+  alu_op_a_mux_e alu_op_a_mux_sel;
+  alu_op_b_mux_e alu_op_b_mux_sel;
+  alu_op_c_mux_e alu_op_c_mux_sel;
 
-  logic [0:0]  imm_a_mux_sel;
-  logic [3:0]  imm_b_mux_sel;
-  logic [1:0]  ctrl_transfer_target_mux_sel;
+  imm_a_mux_e  imm_a_mux_sel;
+  imm_b_mux_e  imm_b_mux_sel;
+  jt_mux_e     ctrl_transfer_target_mux_sel;
 
   // Multiplier Control
   mul_opcode_e mult_operator;    // multiplication operation selection
@@ -245,9 +245,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        prepost_useincr;
 
   // Forwarding
-  logic [1:0]  operand_a_fw_mux_sel;
-  logic [1:0]  operand_b_fw_mux_sel;
-  logic [1:0]  operand_c_fw_mux_sel;
+  op_fw_mux_e  operand_a_fw_mux_sel;
+  op_fw_mux_e  operand_b_fw_mux_sel;
+  op_fw_mux_e  operand_c_fw_mux_sel;
   logic [31:0] operand_a_fw;
   logic [31:0] operand_b_fw;
   logic [31:0] operand_c_fw;
@@ -412,6 +412,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (alu_op_c_mux_sel)
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
       OP_C_JT:           operand_c = jump_target_o;
+      OP_C_FWD:          operand_c = operand_c_fw;
       default:           operand_c = operand_c_fw;
     endcase // case (alu_op_c_mux_sel)
   end
