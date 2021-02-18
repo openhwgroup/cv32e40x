@@ -149,7 +149,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),
 
-    .req_i             ( req_i                       ),
+    .prefetch_en_i     ( req_i                       ),
 
     .branch_i          ( branch_req                  ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
@@ -170,7 +170,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .perf_imiss_o      ( perf_imiss_o                ),
 
     // Prefetch Buffer Status
-    .busy_o            ( prefetch_busy               )
+    .prefetch_busy_o   ( prefetch_busy               )
 );
 
 //////////////////////////////////////////////////////////////////////////////

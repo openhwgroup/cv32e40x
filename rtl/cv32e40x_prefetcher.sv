@@ -42,21 +42,18 @@ module cv32e40x_prefetcher
   input  logic                     clk,
   input  logic                     rst_n,
 
-  input  logic                     branch_i,                // Taken branch
-  input  logic [31:0]              branch_addr_i,           // Taken branch address (only valid when branch_i = 1)
+  // Interface to alignment_buffer
+  input  logic                     fetch_branch_i,                // Taken branch
+  input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when branch_i = 1)
+  input  logic                     fetch_valid_i,
+  output logic                     fetch_ready_o,
 
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
   input  logic                     trans_ready_i,           // Transaction request ready (transaction gets accepted when trans_valid_o and trans_ready_i are both 1)
-  output logic [31:0]              trans_addr_o,            // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
+  output logic [31:0]              trans_addr_o             // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
 
-  // Transaction response interface
-  input  logic                     resp_valid_i,            // Note: Consumer is assumed to be 'ready' whenever resp_valid_i = 1
-
-  // Fetch interface
-  output logic                     fetch_valid_o,
-  input  logic                     trans_req_i,
-  output logic                     trans_ack_o
+  
 );
 
   import cv32e40x_pkg::*;
@@ -74,11 +71,8 @@ module cv32e40x_prefetcher
   // IF/ID interface
   //////////////////////////////////////////////////////////////////////////////
 
-  // Fectch valid control. Feed through resp_valid
-  assign fetch_valid_o = resp_valid_i;
-
   // Prefetcher will only perform word fetches
-  assign aligned_branch_addr = {branch_addr_i[31:2], 2'b00};
+  assign aligned_branch_addr = {fetch_branch_addr_i[31:2], 2'b00};
 
   // Increment address (always word fetch)
   assign trans_addr_incr = {trans_addr_q[31:2], 2'b00} + 32'd4;
@@ -86,9 +80,9 @@ module cv32e40x_prefetcher
   // Transaction request generation
   // Avoid combinatorial path from instr_rvalid_i to instr_req_o. Multiple trans_* transactions can be 
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid_o = trans_req_i;
+  assign trans_valid_o = fetch_valid_i;
 
-  assign trans_ack_o = trans_valid_o && trans_ready_i;
+  assign fetch_ready_o = trans_valid_o && trans_ready_i;
 
   // FSM (state_q, next_state) to control OBI A channel signals.
   always_comb
@@ -101,7 +95,7 @@ module cv32e40x_prefetcher
       IDLE:
       begin
         begin
-          if (branch_i) begin
+          if (fetch_branch_i) begin
             // Jumps must have the highest priority (e.g. an interrupt must
             // have higher priority than a HW-loop branch)
             trans_addr_o = aligned_branch_addr;
@@ -109,7 +103,7 @@ module cv32e40x_prefetcher
             trans_addr_o = trans_addr_incr;
           end
         end
-        if ((branch_i) && !(trans_valid_o && trans_ready_i)) begin
+        if ((fetch_branch_i) && !(trans_valid_o && trans_ready_i)) begin
           // Taken branch, but transaction not yet accepted by bus interface adapter.
           next_state = BRANCH_WAIT;
         end
@@ -120,7 +114,7 @@ module cv32e40x_prefetcher
         // Replay previous branch target address (trans_addr_q) or new branch address (this can
         // occur if for example an interrupt is taken right after a taken jump which did not
         // yet have its target address accepted by the bus interface adapter.
-        trans_addr_o = branch_i ? aligned_branch_addr : trans_addr_q;
+        trans_addr_o = fetch_branch_i ? aligned_branch_addr : trans_addr_q;
         if (trans_valid_o && trans_ready_i) begin
           // Transaction with branch target address has been accepted. Start regular prefetch again.
           next_state = IDLE;
@@ -144,7 +138,7 @@ module cv32e40x_prefetcher
     else
     begin
       state_q        <= next_state;
-      if (branch_i || (trans_valid_o && trans_ready_i)) begin
+      if (fetch_branch_i || (trans_valid_o && trans_ready_i)) begin
         trans_addr_q <= trans_addr_o;
       end
     end

@@ -29,7 +29,7 @@ module cv32e40x_prefetch_unit
   input  logic        clk,
   input  logic        rst_n,
 
-  input  logic        req_i,
+  input  logic        prefetch_en_i,
   input  logic        branch_i,
   input  logic [31:0] branch_addr_i,
 
@@ -50,25 +50,26 @@ module cv32e40x_prefetch_unit
   output logic perf_imiss_o,
 
   // Prefetch Buffer Status
-  output logic        busy_o
+  output logic        prefetch_busy_o
 );
-  // FIFO_DEPTH controls also the number of outstanding memory requests
-  // FIFO_DEPTH must be greater than 1 to respect assertion in prefetch controller
-  // FIFO_DEPTH set to 3 to not get additional stalls compared to separate aligner + fifo
-  localparam FIFO_DEPTH                     = 3; //must be greater or equal to 2 //Set at least to 3 to avoid stalls compared to the master branch
+  
+  // FIFO_DEPTH set to 3 as the alignment_buffer will need 3 to function correctly
+  localparam FIFO_DEPTH                     = 3; //must be greater or equal to 3
   localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(FIFO_DEPTH);
 
-  logic alignment_buffer_trans_req;
-  logic alignment_buffer_trans_ack;
-
-  logic [31:0] fetch_rdata;
+  
 
   logic fetch_valid;
+  logic fetch_ready;
+
+  logic        fetch_branch;
+  logic [31:0] fetch_branch_addr;
 
 
-  assign perf_imiss_o = !fetch_valid && !branch_i;
+  
+
   //////////////////////////////////////////////////////////////////////////////
-  // Prefetch Controller
+  // Prefetcher
   //////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_prefetcher
@@ -77,22 +78,17 @@ module cv32e40x_prefetch_unit
     .clk                      ( clk                  ),
     .rst_n                    ( rst_n                ),
 
-    .branch_i                 ( branch_i             ),
-    .branch_addr_i            ( branch_addr_i        ),
+    .fetch_branch_i           ( fetch_branch         ),
+    .fetch_branch_addr_i      ( fetch_branch_addr    ),
+    .fetch_valid_i            ( fetch_valid          ),
+    .fetch_ready_o            ( fetch_ready          ),
 
     .trans_valid_o            ( trans_valid_o        ),
     .trans_ready_i            ( trans_ready_i        ),
-    .trans_addr_o             ( trans_addr_o         ),
+    .trans_addr_o             ( trans_addr_o         )
 
-    .resp_valid_i             ( resp_valid_i         ),
-
-    .fetch_valid_o            ( fetch_valid          ),
-    .trans_req_i       ( alignment_buffer_trans_req  ),
-    .trans_ack_o       ( alignment_buffer_trans_ack  )
   );
 
-  // Feed data to alignment_buffer directly from OBI response data
-  assign fetch_rdata = resp_rdata_i;
 
   cv32e40x_alignment_buffer
   #(
@@ -101,27 +97,31 @@ module cv32e40x_prefetch_unit
   )
   alignment_buffer_i
   (
-    .clk               ( clk                                ),
-    .rst_n             ( rst_n                              ),
+    .clk                  ( clk                    ),
+    .rst_n                ( rst_n                  ),
 
-    .req_i             ( req_i                              ),
-    .busy_o            ( busy_o                             ),
+    .branch_addr_i        ( branch_addr_i          ),
+    .branch_i             ( branch_i               ),
+    .prefetch_en_i        ( prefetch_en_i          ),
+    .prefetch_busy_o      ( prefetch_busy_o        ),
 
-    // prefetch controller
-    .fetch_valid_i     ( fetch_valid                        ),
-    .fetch_rdata_i     ( fetch_rdata                        ),
-    .trans_req_o       ( alignment_buffer_trans_req         ),
-    .trans_ack_i       ( alignment_buffer_trans_ack         ),
+    // prefetch unit
+    .fetch_valid_o        ( fetch_valid            ),
+    .fetch_ready_i        ( fetch_ready            ),
+    .fetch_branch_o       ( fetch_branch           ),
+    .fetch_branch_addr_o  ( fetch_branch_addr      ),
 
-    // If stage
-    .instr_valid_o     ( prefetch_valid_o                   ),
-    .instr_ready_i     ( prefetch_ready_i                   ),
-    .instr_aligned_o   ( prefetch_instr_o                   ),
-    .instr_addr_o      ( prefetch_addr_o                    ),
+    .resp_valid_i         ( resp_valid_i           ),
+    .resp_rdata_i         ( resp_rdata_i           ),
 
-    .branch_addr_i     ( branch_addr_i                      ),
-    .branch_i          ( branch_i                           )
-    
+    // Instruction interface
+    .instr_valid_o        ( prefetch_valid_o       ),
+    .instr_ready_i        ( prefetch_ready_i       ),
+    .instr_instr_o        ( prefetch_instr_o       ),
+    .instr_addr_o         ( prefetch_addr_o        ),
+
+    .perf_imiss_o         ( perf_imiss_o           )
+
   );
 
   //----------------------------------------------------------------------------
@@ -149,7 +149,7 @@ module cv32e40x_prefetch_unit
 
   // Check that a taken branch can only occur if fetching is requested
   property p_branch_implies_req;
-     @(posedge clk) (branch_i) |-> (req_i);
+     @(posedge clk) (branch_i) |-> (prefetch_en_i);
   endproperty
 
   a_branch_implies_req : assert property(p_branch_implies_req);

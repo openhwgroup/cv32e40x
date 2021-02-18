@@ -30,28 +30,31 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           clk,
   input  logic           rst_n,
 
-  input  logic           req_i,
-  output logic           busy_o,
+  // Branch control
+  input  logic           branch_i,         // Asserted if we are branching/jumping now
+  input  logic [31:0]    branch_addr_i,
+  input  logic           prefetch_en_i,
+  output logic           prefetch_busy_o,
 
-  // Interface to prefetch_controller
-  input  logic           fetch_valid_i,
-  input  logic [31:0]    fetch_rdata_i,
-  output logic           trans_req_o,
-  input  logic           trans_ack_i,
+  // Interface to prefetcher
+  output logic           fetch_valid_o,
+  input  logic           fetch_ready_i,
+  output logic           fetch_branch_o,
+  output logic [31:0]    fetch_branch_addr_o,
 
+  // Resp interface
+  input  logic           resp_valid_i,
+  input  logic [31:0]    resp_rdata_i,
 
   
   // Interface to if_stage
   output logic           instr_valid_o,
   input  logic           instr_ready_i,
-  output logic [31:0]    instr_aligned_o,
+  output logic [31:0]    instr_instr_o,
   output logic [31:0]    instr_addr_o,
 
-  // Branch control
-  input  logic [31:0]    branch_addr_i,
-  input  logic           branch_i         // Asserted if we are branching/jumping now
+  output                 perf_imiss_o
 
-  
 );
 
   // Counter for number of instructions in the FIFO
@@ -81,9 +84,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   
 
   // Fetch valid gated while flushing
-  logic fetch_valid;
+  logic resp_valid;
 
-  assign fetch_valid = (n_flush_q > 0) ? 1'b0 : fetch_valid_i;
+  assign resp_valid = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
 
   // For any number > 0, subtract 1 if we also issue to if_stage
   // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
@@ -92,14 +95,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                         n_incoming_ins;
 
   // Request a transfer when needed, or we do a branch
-  assign trans_req_o = req_i && ((fifo_cnt_q == 'd0 && outstanding_nonflush_cnt < 3'd2) ||
-                                 (fifo_cnt_q == 'd1 && outstanding_nonflush_cnt == 3'd0) ||
-                                  branch_i);
+  assign fetch_valid_o = prefetch_en_i && ((fifo_cnt_q == 'd0 && outstanding_nonflush_cnt < 3'd2) ||
+                                         (fifo_cnt_q == 'd1 && outstanding_nonflush_cnt == 3'd0) ||
+                                         branch_i);
 
   assign outstanding_nonflush_cnt = outstanding_cnt_q - n_flush_q;
 
-  // Busy if we expect any responses, or we have an active trans_req_o
-  assign busy_o = ((outstanding_cnt_q != 3'b000) && n_flush_q == 'd0) || trans_req_o;
+  // Busy if we expect any responses, or we have an active fetch_valid_o
+  assign prefetch_busy_o = ((outstanding_cnt_q != 3'b000) && n_flush_q == 'd0) || fetch_valid_o;
+
+  assign fetch_branch_o = branch_i;
+  assign fetch_branch_addr_o = branch_addr_i;
+
+  assign perf_imiss_o = !resp_valid && !branch_i;
 
   //////////////////
   // FIFO signals //
@@ -115,17 +123,17 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
   // Aligned instructions will either be fully in index 0 or incoming data
-  assign rdata = (valid_q[0]) ? rdata_q[0] : fetch_rdata_i;
+  assign rdata = (valid_q[0]) ? rdata_q[0] : resp_rdata_i;
   
   // Aligned instructions are valid if we have one in index0, or using from incoming interface
-  assign valid = valid_q[0] || fetch_valid;
+  assign valid = valid_q[0] || resp_valid;
 
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
-  assign rdata_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], rdata[31:16]} : {fetch_rdata_i[15:0], rdata[31:16]};
+  assign rdata_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], rdata[31:16]} : {resp_rdata_i[15:0], rdata[31:16]};
 
   // Unaligned instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
-  assign valid_unaligned = (valid_q[1] || (valid_q[0] && fetch_valid));
+  assign valid_unaligned = (valid_q[1] || (valid_q[0] && resp_valid));
 
   // unaligned_is_compressed and aligned_is_compressed are only defined when valid = 1 (which implies that instr_valid_o will be 1)
   assign unaligned_is_compressed = rdata[17:16] != 2'b11;
@@ -135,14 +143,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instructions to the if stage
   always_comb
   begin
-    instr_aligned_o = rdata;
+    instr_instr_o = rdata;
 
     // Invalidate output if we get a branch
     if (branch_i) begin
       instr_valid_o = 1'b0;
     end else if (instr_addr_o[1]) begin
       // unaligned instruction
-      instr_aligned_o = rdata_unaligned;
+      instr_instr_o = rdata_unaligned;
 
       // No instruction valid
       if (!valid) begin
@@ -156,7 +164,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
     end else begin
       // aligned case, contained in index 0
-      instr_aligned_o = rdata;
+      instr_instr_o = rdata;
       instr_valid_o = valid;
     end
   end
@@ -172,16 +180,16 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     valid_int   = valid_q;
 
     // Loop through indices and store incoming data to first available slot
-    if (fetch_valid) begin
+    if (resp_valid) begin
       for(int j = 0; j < DEPTH; j++) begin
         if (!valid_q[j]) begin
-          rdata_int[j] = fetch_rdata_i;
+          rdata_int[j] = resp_rdata_i;
           valid_int[j] = 1'b1;
 
           break;
         end // valid_q[j]
       end // for loop
-    end // fetch_valid
+    end // resp_valid
   end // always_comb
 
   // Calculate address increment
@@ -245,7 +253,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
       // Calculate how much to flush
       if(outstanding_nonflush_cnt > 3'b000) begin
-        if(!fetch_valid_i) begin
+        if(!resp_valid_i) begin
           n_flush_branch = n_flush_q + outstanding_nonflush_cnt;
         end else begin
           n_flush_branch = n_flush_q + outstanding_nonflush_cnt - 2'b01;
@@ -269,14 +277,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // NB! This is "expected" outstanding, excluding the ones
   // that will be flushed. Set to 0 or 1 on a branch, 
   // depending on immediate accept or not
-  assign outstanding_count_up   = trans_req_o && trans_ack_i;    // Increment upon accepted transfer request
-  assign outstanding_count_down = fetch_valid_i;                   // Decrement upon accepted transfer response
+  assign outstanding_count_up   = fetch_valid_o && fetch_ready_i;    // Increment upon accepted transfer request
+  assign outstanding_count_down = resp_valid_i;                   // Decrement upon accepted transfer response
 
   always_comb begin
-    /*if(branch_i) begin
-      // Add one if we get accepted right away
-      outstanding_cnt_n = outstanding_count_up ? 2'd1 : 2'd0;
-    end else begin*/
+    outstanding_cnt_n = outstanding_cnt_q;
       case ({outstanding_count_up, outstanding_count_down})
         2'b00  : begin
           outstanding_cnt_n = outstanding_cnt_q;
@@ -311,16 +316,16 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       complete_n = branch_addr_i[1];
     end else begin
       // Valid response
-      if(fetch_valid) begin
+      if(resp_valid) begin
         // We are on an aligned address
         if(aligned_q) begin
           // uncompressed in rdata
-          if(fetch_rdata_i[1:0] == 2'b11) begin
+          if(resp_rdata_i[1:0] == 2'b11) begin
             n_incoming_ins = 2'd1;
             // Still aligned and complete, no need to update
           end else begin
             // compressed in lower part, check next halfword
-            if(fetch_rdata_i[17:16] == 2'b11) begin
+            if(resp_rdata_i[17:16] == 2'b11) begin
               // Upper half is uncompressed, not complete
               // 1 complete insn
               n_incoming_ins = 2'd1;
@@ -342,7 +347,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           // 16 bits can be discarded
           if(complete_q) begin
             // Uncompressed unaligned
-            if(fetch_rdata_i[17:16] == 2'b11) begin
+            if(resp_rdata_i[17:16] == 2'b11) begin
               // No complete ins in data
               n_incoming_ins = 2'd0;
               // Still unaligned
@@ -362,7 +367,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
             // Incomplete. Check upper 16 bits for content
             // Implied that lower 16 bits contain the MSBs
             // of an uncompressed instruction
-            if(fetch_rdata_i[17:16] == 2'b11) begin
+            if(resp_rdata_i[17:16] == 2'b11) begin
               // Upper 16 is uncompressed
               // 1 complete insn in word
               n_incoming_ins = 2'd1;
@@ -379,7 +384,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
             end // rdata[17:16]
           end // complete_q
         end // aligned_q
-      end // fetch_valid
+      end // resp_valid
     end // branch
   end // comb
 
@@ -396,7 +401,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       n_flush_n = n_flush_branch;
     end else begin
       // Decrement flush counter on valid inputs
-      if(fetch_valid_i && (n_flush_q > 0)) begin
+      if(resp_valid_i && (n_flush_q > 0)) begin
         n_flush_n = n_flush_q - 2'b01;
       end
     end
