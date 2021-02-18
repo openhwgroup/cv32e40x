@@ -55,14 +55,17 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 );
 
   // Counter for number of instructions in the FIFO
-  logic [FIFO_ADDR_DEPTH-1:0] fifo_cnt_n, fifo_cnt_q;
+  // FIFO_ADDR_DEPTH defines number of words
+  // We must count number of instructions, thus   
+  // using the value without subtracting
+  logic [FIFO_ADDR_DEPTH:0] fifo_cnt_n, fifo_cnt_q;
 
   // Counter for number of outstanding transactions
-  logic [1:0] outstanding_cnt_n, outstanding_cnt_q;
+  logic [2:0] outstanding_cnt_n, outstanding_cnt_q;
 
-  // transaction request from the FSM
-  logic trans_req_fsm;
-
+  // Number of non-flushing outstanding transactions
+  logic [2:0] outstanding_nonflush_cnt;
+  
   // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
 
@@ -74,7 +77,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic complete_n, complete_q;
 
   // Store number of responses to flush when get get a branch
-  logic [1:0] n_flush_n, n_flush_q, n_flush_fsm, n_flush_branch;
+  logic [1:0] n_flush_n, n_flush_q, n_flush_branch;
   
 
   // Fetch valid gated while flushing
@@ -88,13 +91,15 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                         (n_incoming_ins >0) ? n_incoming_ins - 1 : 2'b11 :
                         n_incoming_ins;
 
-  // Request a transfer if FSM asks for it, or we do a branch
-  assign trans_req_o = req_i && ((fifo_cnt_q == 'd0 && outstanding_cnt_q < 2) ||
-                                 (fifo_cnt_q == 'd1 && outstanding_cnt_q == 'd0) ||
+  // Request a transfer when needed, or we do a branch
+  assign trans_req_o = req_i && ((fifo_cnt_q == 'd0 && outstanding_nonflush_cnt < 3'd2) ||
+                                 (fifo_cnt_q == 'd1 && outstanding_nonflush_cnt == 3'd0) ||
                                   branch_i);
 
+  assign outstanding_nonflush_cnt = outstanding_cnt_q - n_flush_q;
+
   // Busy if we expect any responses, or we have an active trans_req_o
-  assign busy_o = (outstanding_cnt_q != 2'b00) || trans_req_o;
+  assign busy_o = ((outstanding_cnt_q != 3'b000) && n_flush_q == 'd0) || trans_req_o;
 
   //////////////////
   // FIFO signals //
@@ -239,10 +244,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       fifo_cnt_n = 'd0;
 
       // Calculate how much to flush
-      if(!fetch_valid_i) begin
-        n_flush_branch = n_flush_q + outstanding_cnt_q;
+      if(outstanding_nonflush_cnt > 3'b000) begin
+        if(!fetch_valid_i) begin
+          n_flush_branch = n_flush_q + outstanding_nonflush_cnt;
+        end else begin
+          n_flush_branch = n_flush_q + outstanding_nonflush_cnt - 2'b01;
+        end
       end else begin
-        n_flush_branch = n_flush_q + outstanding_cnt_q - 2'b01;
+        n_flush_branch = n_flush_q;
       end
     end else begin
       // Update number of instructions when we push or pop it
@@ -261,13 +270,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // that will be flushed. Set to 0 or 1 on a branch, 
   // depending on immediate accept or not
   assign outstanding_count_up   = trans_req_o && trans_ack_i;    // Increment upon accepted transfer request
-  assign outstanding_count_down = fetch_valid;                   // Decrement upon accepted transfer response
+  assign outstanding_count_down = fetch_valid_i;                   // Decrement upon accepted transfer response
 
   always_comb begin
-    if(branch_i) begin
+    /*if(branch_i) begin
       // Add one if we get accepted right away
       outstanding_cnt_n = outstanding_count_up ? 2'd1 : 2'd0;
-    end else begin
+    end else begin*/
       case ({outstanding_count_up, outstanding_count_down})
         2'b00  : begin
           outstanding_cnt_n = outstanding_cnt_q;
@@ -282,7 +291,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           outstanding_cnt_n = outstanding_cnt_q;
         end
       endcase
-    end
+    //end
   end
 
 
@@ -381,7 +390,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Default value
     n_flush_n = n_flush_q;
 
-    // On a branch, the FSM will calculate
+    // On a branch, the counter logic will calculate
     // the number of words to flush
     if(branch_i) begin
       n_flush_n = n_flush_branch;
