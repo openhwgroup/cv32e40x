@@ -24,6 +24,7 @@
   `include "cv32e40x_prefetch_unit_sva.sv"
   `include "cv32e40x_alignment_buffer_sva.sv"
   `include "cv32e40x_prefetcher_sva.sv"
+  `include "cv32e40x_decoder_sva.sv"
 `endif
 
 `include "cv32e40x_core_log.sv"
@@ -144,6 +145,11 @@ module cv32e40x_wrapper
                       .id_stage_controller_ctrl_fsm_cs (core_i.id_stage_i.controller_i.ctrl_fsm_cs),
                       .id_stage_controller_ctrl_fsm_ns (core_i.id_stage_i.controller_i.ctrl_fsm_ns),
                       .*);
+
+  bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva 
+    decoder_sva(.clk(core_i.id_stage_i.clk), 
+                .rst_n(core_i.id_stage_i.rst_n),
+                .*);
 
 `endif // ASSERT_ON
 
