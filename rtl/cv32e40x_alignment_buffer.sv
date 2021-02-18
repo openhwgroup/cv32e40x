@@ -254,8 +254,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       // Calculate how much to flush
       if(outstanding_nonflush_cnt > 3'b000) begin
         if(!resp_valid_i) begin
+          // No responses incoming
           n_flush_branch = n_flush_q + outstanding_nonflush_cnt;
         end else begin
+          // Incoming response, subtract one
           n_flush_branch = n_flush_q + outstanding_nonflush_cnt - 2'b01;
         end
       end else begin
@@ -265,6 +267,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       // Update number of instructions when we push or pop it
       if(n_pushed_ins != 2'd0) begin
         if(n_pushed_ins == 2'b11) begin
+          // We pop one
           fifo_cnt_n = fifo_cnt_q - 1'b1;
         end else begin
           fifo_cnt_n = fifo_cnt_q + n_pushed_ins;
@@ -274,9 +277,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   end
 
   // Counting number of outstanding transactions
-  // NB! This is "expected" outstanding, excluding the ones
-  // that will be flushed. Set to 0 or 1 on a branch, 
-  // depending on immediate accept or not
   assign outstanding_count_up   = fetch_valid_o && fetch_ready_i;    // Increment upon accepted transfer request
   assign outstanding_count_down = resp_valid_i;                   // Decrement upon accepted transfer response
 
