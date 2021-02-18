@@ -24,7 +24,7 @@ module cv32e40x_prefetch_unit_sva
   (
    input logic        clk,
    input logic        rst_n,
-   input logic        req_i,
+   input logic        prefetch_en_i,
    input logic        branch_i,
    input logic        fetch_valid,
    input logic [31:0] branch_addr_i,
@@ -46,19 +46,13 @@ module cv32e40x_prefetch_unit_sva
 
   // Check that a taken branch can only occur if fetching is requested
   property p_branch_implies_req;
-      @(posedge clk) (branch_i) |-> (req_i);
+      @(posedge clk) (branch_i) |-> (prefetch_en_i);
     endproperty
 
   a_branch_implies_req : assert property(p_branch_implies_req)
     else `uvm_error("prefetch_buffer", "Assertion a_branch_implies_req failed")
 
-  // Check that after a taken branch the initial FIFO output is not accepted
-  property p_branch_invalidates_fifo;
-      @(posedge clk) (branch_i) |-> (!(fetch_valid && prefetch_ready_i));
-    endproperty
-
-  a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo)
-    else `uvm_error("prefetch_buffer", "Assertion a_branch_invalidates_fifo failed")
+  
 
 endmodule // cv32e40x_prefetch_unit
 

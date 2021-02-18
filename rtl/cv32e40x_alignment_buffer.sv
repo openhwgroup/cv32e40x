@@ -102,10 +102,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign outstanding_nonflush_cnt = outstanding_cnt_q - n_flush_q;
 
   // Busy if we expect any responses, or we have an active fetch_valid_o
-  assign prefetch_busy_o = ((outstanding_cnt_q != 3'b000) && n_flush_q == 'd0) || fetch_valid_o;
+  assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
 
   assign fetch_branch_o = branch_i;
-  assign fetch_branch_addr_o = branch_addr_i;
+  assign fetch_branch_addr_o = {branch_addr_i[31:2], 2'b00};
 
   assign perf_imiss_o = !resp_valid && !branch_i;
 

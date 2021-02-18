@@ -28,18 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_prefetcher_sva
-#(
-  parameter DEPTH = 4,
-  parameter FIFO_ADDR_DEPTH = (DEPTH > 1) ? $clog2(DEPTH) : 1
-)(
+(
   input  logic        clk,
   input  logic        rst_n,
 
   // Fetch stage interface
-  input  logic        req_i,                    // Fetch stage requests instructions
-  input  logic        branch_i,                 // Taken branch
-  input  logic [31:0] branch_addr_i,            // Taken branch address (only valid when branch_i = 1)
-  input  logic        busy_o,                   // Prefetcher busy
+  input  logic        fetch_branch_i,                 // Taken branch
+  input  logic [31:0] fetch_branch_addr_i,            // Taken branch address (only valid when branch_i = 1)
 
   // Transaction request interface
   input  logic        trans_valid_o,            // Transaction request valid (to bus interface adapter)
@@ -47,68 +42,69 @@ module cv32e40x_prefetcher_sva
   input  logic [31:0] trans_addr_o,             // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
 
   // Fetch interface is ready/valid
-  input  logic                     fetch_ready_i,
-  input  logic                     fetch_valid_o,
+  input  logic        fetch_ready_o,
+  input  logic        fetch_valid_i
 
-  // Transaction response interface
-  input  logic        resp_valid_i,             // Note: Consumer is assumed to be 'ready' whenever resp_valid_i = 1
-
-  // FIFO interface
-  input  logic [FIFO_ADDR_DEPTH:0] fifo_cnt_i,               // Number of valid items/words in the prefetch FIFO
-  input  logic        fifo_empty_i,             // FIFO is empty
-
-  // internals used by these assertions
-  input  logic [FIFO_ADDR_DEPTH:0] cnt_q,
-  input  logic        count_up,
-  input  logic        count_down
+  
 );
 
   import uvm_pkg::*; // needed for the UVM messaging service (`uvm_error(), etc.)
 
-  // Check that outstanding transaction count will not overflow DEPTH
-  property p_no_transaction_count_overflow_0;
-     @(posedge clk) disable iff (!rst_n) (1'b1) |-> (cnt_q <= DEPTH);
+ 
+ 
+  // Check that we only assert trans_valid when fetch_valid is high (R-6=)
+  property p_trans_valid;
+     @(posedge clk) disable iff (!rst_n) (trans_valid_o) |-> (fetch_valid_i);
   endproperty
 
-  a_no_transaction_count_overflow_0:
-    assert property(p_no_transaction_count_overflow_0)
+  a_trans_valid:
+    assert property(p_trans_valid)
     else
-      `uvm_error("Prefetch Controller SVA",
-                 $sformatf("Outstanding transaction count (%0d) greater than DEPTH (%0d)",
-                           cnt_q, DEPTH))
+      `uvm_error("Prefetcher SVA",
+                 $sformatf("trans_valid_o active when fetch_valid_i is not"))
 
-  property p_no_transaction_count_overflow_1;
-     @(posedge clk) disable iff (!rst_n) (cnt_q == DEPTH) |-> (!count_up || count_down);
+  // Check that we output branch address correctly (R-7)
+  property p_branch_addr;
+    @(posedge clk) disable iff (!rst_n) (fetch_branch_i) |-> (trans_addr_o == fetch_branch_addr_i);
   endproperty
-
-  a_no_transaction_count_overflow_1:
-    assert property(p_no_transaction_count_overflow_1)
+             
+  a_branch_addr:
+    assert property(p_branch_addr)
     else
-      `uvm_error("Prefetch Controller SVA",
-                 $sformatf("Overflow condition detected: cnt_q==%0d, DEPTH==%0d, count_up==%0d, count_down==%0d",
-                           cnt_q, DEPTH, count_up, count_down))
+      `uvm_error("Prefetcher SVA",
+                $sformatf("branch address not propagated to trans_addr_o correctly"))
 
-
- // Check that a taken branch can only occur if fetching is requested
-  property p_branch_implies_req;
-     @(posedge clk) disable iff (!rst_n) (branch_i) |-> (req_i);
+  // Check that fetch_branch_addr_i is word aligned (R-8)
+  property p_fetch_branch_addr_aligned;
+    @(posedge clk) disable iff (!rst_n) (fetch_branch_addr_i[1:0] == 2'b00);
   endproperty
-
-  a_branch_implies_req:
-    assert property(p_branch_implies_req)
+                            
+  a_fetch_branch_addr_aligned:
+    assert property(p_fetch_branch_addr_aligned)
     else
-      `uvm_error("Prefetch Controller SVA",
-                 $sformatf("Taken branch occurs while fetching is not requested"))
+      `uvm_error("Prefetcher SVA",
+                $sformatf("fetch_branch_addr_i is not word aligned."))
 
-  // Check that after a taken branch the initial FIFO output is not accepted
-  property p_branch_invalidates_fifo;
-     @(posedge clk) disable iff (!rst_n) (branch_i) |-> (!(fetch_valid_o && fetch_ready_i));
+  // Check that trans_addr_o is word aligned (R-8)
+  property p_trans_addr_aligned;
+    @(posedge clk) disable iff (!rst_n) (trans_addr_o[1:0] == 2'b00);
   endproperty
-
-  a_branch_invalidates_fifo:
-    assert property(p_branch_invalidates_fifo)
+                            
+  a_trans_addr_aligned:
+    assert property(p_trans_addr_aligned)
     else
-      `uvm_error("Prefetch Controller SVA",
-                 $sformatf("After taken branch the initial FIFO output is accepted"))
+      `uvm_error("Prefetcher SVA",
+                $sformatf("trans_addr_o is not word aligned."))
 
+
+  // Check that we acknowlede a fetch_valid when trans_ready high (R-9)
+  property p_fetch_ready;
+    @(posedge clk) disable iff (!rst_n) (trans_ready_i && trans_valid_o) |-> (fetch_ready_o == 1'b1);
+  endproperty
+                           
+  a_fetch_ready:
+    assert property(p_fetch_ready)
+    else
+      `uvm_error("Prefetcher SVA",
+                $sformatf("fetch_ready_o not set when trans_ready_i && trans_valid_o."))
 endmodule: cv32e40x_prefetcher_sva

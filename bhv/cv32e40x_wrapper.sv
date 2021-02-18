@@ -21,9 +21,9 @@
   `include "cv32e40x_controller_sva.sv"
   `include "cv32e40x_cs_registers_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
-  `include "cv32e40x_prefetch_buffer_sva.sv"
+  `include "cv32e40x_prefetch_unit_sva.sv"
   `include "cv32e40x_alignment_buffer_sva.sv"
-  `include "cv32e40x_prefetch_controller_sva.sv"
+  `include "cv32e40x_prefetcher_sva.sv"
 `endif
 
 `include "cv32e40x_core_log.sv"
