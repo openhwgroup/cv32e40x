@@ -27,7 +27,7 @@
 //                 Prefetch Controller.                                       //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_prefetch_controller_sva
+module cv32e40x_prefetcher_sva
 #(
   parameter DEPTH = 4,
   parameter FIFO_ADDR_DEPTH = (DEPTH > 1) ? $clog2(DEPTH) : 1
@@ -111,4 +111,4 @@ module cv32e40x_prefetch_controller_sva
       `uvm_error("Prefetch Controller SVA",
                  $sformatf("After taken branch the initial FIFO output is accepted"))
 
-endmodule: cv32e40x_prefetch_controller_sva
+endmodule: cv32e40x_prefetcher_sva

@@ -18,7 +18,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-module cv32e40x_prefetch_buffer_sva
+module cv32e40x_prefetch_unit_sva
   import uvm_pkg::*;
   #(parameter FIFO_DEPTH = 0)
   (
@@ -60,5 +60,5 @@ module cv32e40x_prefetch_buffer_sva
   a_branch_invalidates_fifo : assert property(p_branch_invalidates_fifo)
     else `uvm_error("prefetch_buffer", "Assertion a_branch_invalidates_fifo failed")
 
-endmodule // cv32e40x_prefetch_buffer
+endmodule // cv32e40x_prefetch_unit
 
