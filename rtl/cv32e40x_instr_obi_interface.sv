@@ -111,7 +111,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
           next_state = TRANSPARENT;
         end
       end // case: REGISTERED
-
+      default: ;
     endcase
   end
 

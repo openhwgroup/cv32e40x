@@ -175,6 +175,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         if (ex_ready_i)
           mulh_NS = IDLE_MULT;
       end
+      default: ;
     endcase
   end
 

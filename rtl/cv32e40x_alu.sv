@@ -180,21 +180,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic is_greater;     // handles both signed and unsigned forms
   logic cmp_signed;
 
-  always_comb
-  begin
-    cmp_signed = 1'b0;
-
-    unique case (operator_i)
-      ALU_GES,
-      ALU_LTS,
-      ALU_SLTS: begin
-        cmp_signed = 1'b1;
-      end
-
-      default:;
-    endcase
-  end
-
+  assign cmp_signed = (operator_i == ALU_GES) || (operator_i == ALU_LTS) || (operator_i == ALU_SLTS);
   assign is_equal = (operand_a_i == operand_b_i);
   assign is_greater = $signed({operand_a_i[31] & cmp_signed, operand_a_i}) > $signed({operand_b_i[31] & cmp_signed, operand_b_i});
 
@@ -292,22 +278,22 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
      unique case(operator_i)
        ALU_DIVU: begin
-	 div_valid  = enable_i;
+	       div_valid  = enable_i;
          div_signed = 1'b0;
          div_rem    = 1'b0;
        end
        ALU_DIV : begin
-	 div_valid  = enable_i;
+	       div_valid  = enable_i;
          div_signed = 1'b1;
          div_rem    = 1'b0;
        end
        ALU_REMU: begin
-	 div_valid  = enable_i;
+	       div_valid  = enable_i;
          div_signed = 1'b0;
          div_rem    = 1'b1;
        end
        ALU_REM : begin
-	 div_valid  = enable_i;
+	       div_valid  = enable_i;
          div_signed = 1'b1;
          div_rem    = 1'b1;
        end
