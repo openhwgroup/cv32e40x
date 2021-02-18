@@ -45,21 +45,7 @@ parameter OPCODE_JALR      = 7'h67;
 parameter OPCODE_JAL       = 7'h6f;
 parameter OPCODE_AUIPC     = 7'h17;
 parameter OPCODE_LUI       = 7'h37;
-parameter OPCODE_OP_FP     = 7'h53;
-parameter OPCODE_OP_FMADD  = 7'h43;
-parameter OPCODE_OP_FNMADD = 7'h4f;
-parameter OPCODE_OP_FMSUB  = 7'h47;
-parameter OPCODE_OP_FNMSUB = 7'h4b;
-parameter OPCODE_STORE_FP  = 7'h27;
-parameter OPCODE_LOAD_FP   = 7'h07;
 parameter OPCODE_AMO       = 7'h2F;
-
-parameter REGC_S1   = 2'b10;
-parameter REGC_S4   = 2'b00;
-parameter REGC_RD   = 2'b01;
-parameter REGC_ZERO = 2'b11;
-
-
   
                                                                        
 //////////////////////////////////////////////////////////////////////////////
@@ -175,7 +161,6 @@ typedef enum logic[11:0] {
   CSR_MTVEC          = 12'h305,
 
   // Performance counters
-  CSR_MCOUNTEREN     = 12'h306,
   CSR_MCOUNTINHIBIT  = 12'h320,
   CSR_MHPMEVENT3     = 12'h323,
   CSR_MHPMEVENT4     = 12'h324,
@@ -408,17 +393,6 @@ parameter int unsigned CSR_MEIX_BIT      = 11;
 parameter int unsigned CSR_MFIX_BIT_LOW  = 16;
 parameter int unsigned CSR_MFIX_BIT_HIGH = 31;
 
-// SPR for debugger, not accessible by CPU
-parameter SP_DVR0       = 16'h3000;
-parameter SP_DCR0       = 16'h3008;
-parameter SP_DMR1       = 16'h3010;
-parameter SP_DMR2       = 16'h3011;
-
-parameter SP_DVR_MSB = 8'h00;
-parameter SP_DCR_MSB = 8'h01;
-parameter SP_DMR_MSB = 8'h02;
-parameter SP_DSR_MSB = 8'h04;
-
 // Privileged mode
 typedef enum logic[1:0] {
   PRIV_LVL_M = 2'b11,
@@ -447,7 +421,6 @@ parameter MSTATUS_MIE_BIT      = 3;
 parameter MSTATUS_UPIE_BIT     = 4;
 parameter MSTATUS_SPIE_BIT     = 5;
 parameter MSTATUS_MPIE_BIT     = 7;
-parameter MSTATUS_SPP_BIT      = 8;
 parameter MSTATUS_MPP_BIT_HIGH = 12;
 parameter MSTATUS_MPP_BIT_LOW  = 11;
 parameter MSTATUS_MPRV_BIT     = 17;
@@ -479,18 +452,6 @@ parameter DBG_CAUSE_TRIGGER    = 3'h2;
 parameter DBG_CAUSE_HALTREQ    = 3'h3;
 parameter DBG_CAUSE_STEP       = 3'h4;
 parameter DBG_CAUSE_RSTHALTREQ = 3'h5;
-
-// Debug module
-parameter DBG_SETS_W = 6;
-
-parameter DBG_SETS_IRQ    = 5;
-parameter DBG_SETS_ECALL  = 4;
-parameter DBG_SETS_EILL   = 3;
-parameter DBG_SETS_ELSU   = 2;
-parameter DBG_SETS_EBRK   = 1;
-parameter DBG_SETS_SSTE   = 0;
-
-parameter DBG_CAUSE_HALT   = 6'h1F;
 
 // Constants for the dcsr.xdebugver fields
 typedef enum logic[3:0] {
@@ -621,7 +582,6 @@ parameter OP_A_REGA_OR_FWD = 3'b000;
 parameter OP_A_CURRPC      = 3'b001;
 parameter OP_A_IMM         = 3'b010;
 parameter OP_A_REGB_OR_FWD = 3'b011;
-parameter OP_A_REGC_OR_FWD = 3'b100;
 
 // immediate a selection
 parameter IMMA_Z      = 1'b0;
@@ -629,7 +589,6 @@ parameter IMMA_ZERO   = 1'b1;
 
 // operand b selection
 parameter OP_B_REGB_OR_FWD = 3'b000;
-parameter OP_B_REGC_OR_FWD = 3'b001;
 parameter OP_B_IMM         = 3'b010;
 parameter OP_B_REGA_OR_FWD = 3'b011;
 
@@ -640,7 +599,7 @@ parameter IMMB_U      = 4'b0010;
 parameter IMMB_PCINCR = 4'b0011;
 
 // operand c selection
-parameter OP_C_REGC_OR_FWD = 2'b00;
+parameter OP_C_FWD         = 2'b00;
 parameter OP_C_REGB_OR_FWD = 2'b01;
 parameter OP_C_JT          = 2'b10;
 
@@ -765,7 +724,7 @@ typedef struct packed {
                                                           alu_operator                 : ALU_SLTU,
                                                           alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
                                                           alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
-                                                          alu_op_c_mux_sel             : OP_C_REGC_OR_FWD,
+                                                          alu_op_c_mux_sel             : OP_C_FWD,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
                                                           mult_operator                : MUL_M32,
