@@ -21,18 +21,16 @@
 
 module cv32e40x_alignment_buffer_sva
   import uvm_pkg::*;
-  #(parameter DEPTH           = 0,
-    parameter FIFO_ADDR_DEPTH = 0)
   (
    input logic                     clk,
    input logic                     rst_n,
-   input logic [0:DEPTH-1]         valid_q,
+   input logic [0:2]               valid_q,
    input logic                     branch_i,
    input logic [31:0]              branch_addr_i,
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
-   input logic [FIFO_ADDR_DEPTH:0] instr_cnt_n,
-   input logic [FIFO_ADDR_DEPTH:0] instr_cnt_q,
+   input logic [2:0] instr_cnt_n,
+   input logic [2:0] instr_cnt_q,
    input logic                     instr_valid_o,
    input logic [31:0]              instr_addr_o,
    input logic                     resp_valid_i,
@@ -65,7 +63,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check FIFO overflow
   property p_fifo_overflow;
-    @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[DEPTH-1] == 1'b0);
+    @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[2] == 1'b0);
   endproperty
   
     a_fifo_overflow:
