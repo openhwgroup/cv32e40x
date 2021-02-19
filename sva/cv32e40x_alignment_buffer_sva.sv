@@ -73,7 +73,7 @@ module cv32e40x_alignment_buffer_sva
                   $sformatf("FIFO overflow"))
   
 
-  // Check that FIFO is cleared the cycle after a branch (R-13.2)
+  // Check that FIFO is cleared the cycle after a branch
   property p_fifo_clear;
     @(posedge clk) disable iff (!rst_n) (branch_i) |=> (valid_q == 'b0);
   endproperty
@@ -98,7 +98,7 @@ module cv32e40x_alignment_buffer_sva
   
 
 
-    // Check that instr_valid_o is zero when a branch is requested (R-13.3)
+    // Check that instr_valid_o is zero when a branch is requested
   property p_branch_instr_valid;
     @(posedge clk) disable iff (!rst_n) (branch_i) |-> (instr_valid_o == 1'b0);
   endproperty
@@ -139,7 +139,7 @@ module cv32e40x_alignment_buffer_sva
   
 
 
-  // Check that we change branch_addr to prefetcher correctly (R-13.1)
+  // Check that we change branch_addr to prefetcher correctly
   property p_prefetcher_branch;
     @(posedge clk) disable iff (!rst_n) (branch_i) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00});
   endproperty
@@ -150,7 +150,7 @@ module cv32e40x_alignment_buffer_sva
         `uvm_error("Alignment buffer SVA",
                   $sformatf("fetch_branch_addr_o not correctly set"))
 
-  // Check that we output correct pc for the first instruction after a branch (R-15.1)
+  // Check that we output correct pc for the first instruction after a branch
   property p_pc_after_branch;
     @(posedge clk) disable iff (!rst_n) (branch_i) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr);
   endproperty

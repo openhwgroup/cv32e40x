@@ -89,7 +89,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
     end
   end
  
-  // Check that we only assert trans_valid when fetch_valid is high (R-6=)
+  // Check that we only assert trans_valid when fetch_valid is high
   property p_trans_valid;
      @(posedge clk) disable iff (!rst_n) (trans_valid_o) |-> (fetch_valid_i);
   endproperty
@@ -100,7 +100,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                  $sformatf("trans_valid_o active when fetch_valid_i is not"))
 
-  // Check that we output branch address correctly (R-7)
+  // Check that we output branch address correctly
   property p_branch_addr;
     @(posedge clk) disable iff (!rst_n) (fetch_branch_i) |-> (trans_addr_o == fetch_branch_addr_i);
   endproperty
@@ -111,7 +111,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("branch address not propagated to trans_addr_o correctly"))
 
-  // Check that fetch_branch_addr_i is word aligned (R-8)
+  // Check that fetch_branch_addr_i is word aligned
   property p_fetch_branch_addr_aligned;
     @(posedge clk) disable iff (!rst_n) (fetch_branch_addr_i[1:0] == 2'b00);
   endproperty
@@ -122,7 +122,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("fetch_branch_addr_i is not word aligned."))
 
-  // Check that trans_addr_o is word aligned (R-8)
+  // Check that trans_addr_o is word aligned
   property p_trans_addr_aligned;
     @(posedge clk) disable iff (!rst_n) (trans_addr_o[1:0] == 2'b00);
   endproperty
@@ -134,7 +134,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
                 $sformatf("trans_addr_o is not word aligned."))
 
 
-  // Check that we acknowledge a fetch_valid when trans_ready high (R-9)
+  // Check that we acknowledge a fetch_valid when trans_ready high
   property p_fetch_ready;
     @(posedge clk) disable iff (!rst_n) (trans_ready_i && trans_valid_o) |-> (fetch_ready_o == 1'b1);
   endproperty
@@ -145,7 +145,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("fetch_ready_o not set when trans_ready_i && trans_valid_o."))
 
-  // Check that we output previous address +4 when not doing a branch (R-8)
+  // Check that we output previous address +4 when not doing a branch
   property p_addr_incr;
     @(posedge clk) disable iff (!rst_n) (!fetch_branch_i && branch_fetch_done && state_q == IDLE) |-> (trans_addr_o == (previous_addr + 32'h4));
   endproperty
@@ -156,7 +156,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("Address increment not 4."))
 
-  // Check first fetch after reset it always a branch (R-8)
+  // Check first fetch after reset it always a branch
   property p_first_fetch;
     @(posedge clk) disable iff (!rst_n) (first_fetch && fetch_valid_i) |-> fetch_branch_i;
   endproperty
