@@ -144,32 +144,6 @@
         INSTR_REM:        this.printRInstr("rem");
         INSTR_REMU:       this.printRInstr("remu");
 
-        // FP-OP
-        INSTR_FMADD:      this.printF3Instr("fmadd.s");
-        INSTR_FMSUB:      this.printF3Instr("fmsub.s");
-        INSTR_FNMADD:     this.printF3Instr("fnmadd.s");
-        INSTR_FNMSUB:     this.printF3Instr("fnmsub.s");
-        INSTR_FADD:       this.printF2Instr("fadd.s");
-        INSTR_FSUB:       this.printF2Instr("fsub.s");
-        INSTR_FMUL:       this.printF2Instr("fmul.s");
-        INSTR_FDIV:       this.printF2Instr("fdiv.s");
-        INSTR_FSQRT:      this.printFInstr("fsqrt.s");
-        INSTR_FSGNJS:     this.printF2Instr("fsgnj.s");
-        INSTR_FSGNJNS:    this.printF2Instr("fsgnjn.s");
-        INSTR_FSGNJXS:    this.printF2Instr("fsgnjx.s");
-        INSTR_FMIN:       this.printF2Instr("fmin.s");
-        INSTR_FMAX:       this.printF2Instr("fmax.s");
-        INSTR_FCVTWS:     this.printFIInstr("fcvt.w.s");
-        INSTR_FCVTWUS:    this.printFIInstr("fcvt.wu.s");
-        INSTR_FMVXS:      this.printFIInstr("fmv.x.s");
-        INSTR_FEQS:       this.printF2IInstr("feq.s");
-        INSTR_FLTS:       this.printF2IInstr("flt.s");
-        INSTR_FLES:       this.printF2IInstr("fle.s");
-        INSTR_FCLASS:     this.printFIInstr("fclass.s");
-        INSTR_FCVTSW:     this.printIFInstr("fcvt.s.w");
-        INSTR_FCVTSWU:    this.printIFInstr("fcvt.s.wu");
-        INSTR_FMVSX:      this.printIFInstr("fmv.s.x");
-
         // RV32A
         INSTR_LR:         this.printAtomicInstr("lr.w");
         INSTR_SC:         this.printAtomicInstr("sc.w");
@@ -185,9 +159,7 @@
 
         // opcodes with custom decoding
         {25'b?, OPCODE_LOAD}:       this.printLoadInstr();
-        {25'b?, OPCODE_LOAD_FP}:    this.printLoadInstr();
         {25'b?, OPCODE_STORE}:      this.printStoreInstr();
-        {25'b?, OPCODE_STORE_FP}:   this.printStoreInstr();
         default: this.printMnemonic("INVALID");
       endcase // unique case (instr)
 
