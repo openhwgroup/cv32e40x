@@ -231,7 +231,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Data Memory Control
   logic        data_we;
   logic [1:0]  data_type;
-  logic [1:0]  data_sign_ext;
+  logic        data_sign_ext;
   logic [1:0]  data_reg_offset;
   logic        data_req;
   logic        data_req_raw;
@@ -746,7 +746,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.data_req               <= 1'b0;
       id_ex_pipe_o.data_we                <= 1'b0;
       id_ex_pipe_o.data_type              <= 2'b0;
-      id_ex_pipe_o.data_sign_ext          <= 2'b0;
+      id_ex_pipe_o.data_sign_ext          <= 1'b0;
       id_ex_pipe_o.data_reg_offset        <= 2'b0;
       id_ex_pipe_o.data_misaligned        <= 1'b0;
       id_ex_pipe_o.data_atop              <= 5'b0;
