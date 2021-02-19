@@ -80,7 +80,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic complete_n, complete_q;
 
   // Store number of responses to flush when get get a branch
-  logic [1:0] n_flush_n, n_flush_q, n_flush_branch;
+  logic [2:0] n_flush_n, n_flush_q, n_flush_branch;
   
 
   // Fetch valid gated while flushing
@@ -245,23 +245,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Counting instructions in FIFO
   always_comb begin
     fifo_cnt_n = fifo_cnt_q;
-    n_flush_branch = 2'b00;
+    n_flush_branch = outstanding_cnt_q;
 
     if(branch_i) begin
       // FIFO content is invalidated upon a branch
       fifo_cnt_n = 'd0;
 
-      // Calculate how much to flush
-      if(outstanding_nonflush_cnt > 3'b000) begin
-        if(!resp_valid_i) begin
-          // No responses incoming
-          n_flush_branch = n_flush_q + outstanding_nonflush_cnt;
-        end else begin
-          // Incoming response, subtract one
-          n_flush_branch = n_flush_q + outstanding_nonflush_cnt - 2'b01;
-        end
-      end else begin
-        n_flush_branch = n_flush_q;
+      if(resp_valid_i) begin
+        n_flush_branch = outstanding_cnt_q - 3'd1;
       end
     end else begin
       // Update number of instructions when we push or pop it

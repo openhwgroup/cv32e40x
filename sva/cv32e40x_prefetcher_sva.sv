@@ -27,7 +27,7 @@
 //                 Prefetch Controller.                                       //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_prefetcher_sva
+module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -43,14 +43,50 @@ module cv32e40x_prefetcher_sva
 
   // Fetch interface is ready/valid
   input  logic        fetch_ready_o,
-  input  logic        fetch_valid_i
+  input  logic        fetch_valid_i,
+
+  input  prefetch_state_e  state_q
 
   
 );
 
   import uvm_pkg::*; // needed for the UVM messaging service (`uvm_error(), etc.)
+  
+  logic [31:0] previous_addr;
+  logic branch_fetch_done;
+  logic first_fetch;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if(rst_n == 1'b0) begin
+      previous_addr <= 32'd0;
+      branch_fetch_done <= 1'b0;
+      first_fetch <= 1'b1;
+    end else begin
+            
+      if(fetch_branch_i) begin
+        previous_addr <= fetch_branch_addr_i;
+        if(trans_valid_o && trans_ready_i) begin
+          branch_fetch_done <= 1'b1;
+        end else begin
+          branch_fetch_done <= 1'b0;
+        end
+      end else begin
+        
+        if(trans_valid_o && trans_ready_i) begin
+          previous_addr <= trans_addr_o;
+        end
+      end     
 
- 
+      if(branch_fetch_done == 1'b0) begin
+        if(trans_ready_i == 1'b1) begin
+          branch_fetch_done <= 1'b1;
+        end
+      end
+    end
+    // Clear first_fetch flag on first transaction
+    if(trans_valid_o && trans_ready_i) begin
+      first_fetch <= 1'b0;
+    end
+  end
  
   // Check that we only assert trans_valid when fetch_valid is high (R-6=)
   property p_trans_valid;
@@ -107,4 +143,26 @@ module cv32e40x_prefetcher_sva
     else
       `uvm_error("Prefetcher SVA",
                 $sformatf("fetch_ready_o not set when trans_ready_i && trans_valid_o."))
+
+  // Check that we output previous address +4 when not doing a branch (R-8)
+  property p_addr_incr;
+    @(posedge clk) disable iff (!rst_n) (!fetch_branch_i && branch_fetch_done && state_q == IDLE) |-> (trans_addr_o == (previous_addr + 32'h4));
+  endproperty
+                            
+  a_addr_incr:
+    assert property(p_addr_incr)
+    else
+      `uvm_error("Prefetcher SVA",
+                $sformatf("Address increment not 4."))
+
+  // Check first fetch after reset it always a branch (R-8)
+  property p_first_fetch;
+    @(posedge clk) disable iff (!rst_n) (first_fetch && fetch_valid_i) |-> fetch_branch_i;
+  endproperty
+                            
+  a_first_fetch:
+    assert property(p_first_fetch)
+    else
+      `uvm_error("Prefetcher SVA",
+                $sformatf("First fetch after reset is not a branch"))
 endmodule: cv32e40x_prefetcher_sva

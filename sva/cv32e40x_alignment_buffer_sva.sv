@@ -88,10 +88,10 @@ module cv32e40x_alignment_buffer_sva
     |-> (fetch_valid_o == 1'b0) )
     else `uvm_error("alignment_buffer", "fetch_valid_o active when not supposed to.")
 
-  // Check that we don't get responses where not supposed
+  // Check that we don't get responses where not supposed to
   assert property (@(posedge clk)
     (!expect_response) |-> (resp_valid == 1'b0) )
-    else `uvm_error("alignment_buffer", "resp_valid_i active when not supposed to.")
+    else `uvm_error("alignment_buffer", "resp_valid active when not supposed to.")
 
   // Check that we request from the prefetcher when a branch occurs
   assert property (@(posedge clk)
@@ -105,7 +105,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that we output correct pc for the first instruction after a branch (R-15.1)
     assert property (@(posedge clk)
-    (branch_i) |-> (instr_valid_o) [->1:2] ##0 (instr_addr_o == next_branch_addr))
+    (branch_i) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr))
     else `uvm_error("alignment_buffer", "Wrong pc after branch.")
 
 
