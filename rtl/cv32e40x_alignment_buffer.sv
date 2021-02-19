@@ -92,18 +92,18 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                         (n_incoming_ins >0) ? n_incoming_ins - 1 : 2'b11 :
                         n_incoming_ins;
 
-  // Request a transfer when needed, or we do a branch
+  // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
   assign fetch_valid_o = prefetch_en_i &&
-                         outstanding_cnt_q < 2 &&
+                         (outstanding_cnt_q < 2) &&
                          ((instr_cnt_q == 'd0) ||
                          (instr_cnt_q == 'd1 && outstanding_cnt_q == 2'd0) ||
                          branch_i);
                                          
 
-  
   // Busy if we expect any responses, or we have an active fetch_valid_o
   assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
 
+  // Signal aligned branch to the prefetcher
   assign fetch_branch_o = branch_i;
   assign fetch_branch_addr_o = {branch_addr_i[31:2], 2'b00};
 
@@ -116,15 +116,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
-  logic                     valid, valid_unaligned;
+  logic                     valid, valid_unaligned_uncompressed;
 
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
   // Aligned instructions will either be fully in index 0 or incoming data
   assign instr = (valid_q[0]) ? rdata_q[0] : resp_rdata_i;
   
-  
-
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
   assign instr_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], instr[31:16]} : {resp_rdata_i[15:0], instr[31:16]};
 

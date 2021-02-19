@@ -112,12 +112,11 @@ module cv32e40x_alignment_buffer_sva
                   $sformatf("instr_valid_o active when branch_i=1"))
   
 
-    // Check that no transactions are requested when not supposed to
+  // Check that no transactions are requested when not supposed to
   // Not including branches
   property p_trans_ok;
     @(posedge clk) disable iff (!rst_n)
-    ((instr_cnt_q > 'd1) ||
-    (instr_cnt_q == 'd0 && outstanding_cnt_q == 'd2)) &&
+    ((instr_cnt_q > 'd1) || (instr_cnt_q == 'd0 && outstanding_cnt_q == 'd2)) &&
     !branch_i
     |-> (fetch_valid_o == 1'b0);
   endproperty
