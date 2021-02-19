@@ -20,7 +20,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
-//                                                                            //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 // Design Name:    Prefetcher Controller                                      //
 // Project Name:   CV32E40P                                                   //
 // Language:       SystemVerilog                                              //

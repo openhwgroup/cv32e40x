@@ -10,6 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Andreas Traber - atraber@iis.ee.ethz.ch                    //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Prefetcher Buffer for 32 bit memory interface              //
 // Project Name:   RI5CY                                                      //

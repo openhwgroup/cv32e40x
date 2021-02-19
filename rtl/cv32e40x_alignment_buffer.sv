@@ -71,6 +71,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic [1:0] n_incoming_ins;
 
   // Number of instructions pushed to fifo
+  // special encoding 2'b11 means pop (-1 instruction)
+  // Other values are unsigned
   logic [1:0] n_pushed_ins;
 
   // Flags to indicate aligned address and complete instructions
@@ -81,7 +83,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic [1:0] n_flush_n, n_flush_q, n_flush_branch;
   
 
-  // Fetch valid gated while flushing
+  // resp_valid gated while flushing
   logic resp_valid_gated;
 
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
@@ -116,7 +118,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
-  logic                     valid, valid_unaligned_uncompressed;
+  logic                     valid, valid_unaligned_unI ecompressed;
 
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
@@ -288,7 +290,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
 
   // Count number of incoming instructions in resp_data
-  // This also be done by inspecting the fifo content
+  // This can also be done by inspecting the fifo content
   always_comb begin
     // Set default values
     aligned_n = aligned_q;
