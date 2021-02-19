@@ -118,7 +118,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
-  logic                     valid, valid_unaligned_unI ecompressed;
+  logic                     valid, valid_unaligned_uncompressed;
 
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
