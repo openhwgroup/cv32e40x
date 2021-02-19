@@ -47,17 +47,9 @@ module cv32e40x_prefetch_unit
   input  logic [31:0] resp_rdata_i,
   input  logic        resp_err_i,
 
-  output logic perf_imiss_o,
-
   // Prefetch Buffer Status
   output logic        prefetch_busy_o
 );
-  
-  // FIFO_DEPTH set to 3 as the alignment_buffer will need 3 to function correctly
-  localparam FIFO_DEPTH                     = 3; //must be greater or equal to 3
-  localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(FIFO_DEPTH);
-
-  
 
   logic fetch_valid;
   logic fetch_ready;
@@ -91,10 +83,6 @@ module cv32e40x_prefetch_unit
 
 
   cv32e40x_alignment_buffer
-  #(
-      .DEPTH (FIFO_DEPTH),
-      .FIFO_ADDR_DEPTH (FIFO_ADDR_DEPTH)
-  )
   alignment_buffer_i
   (
     .clk                  ( clk                    ),
@@ -118,9 +106,7 @@ module cv32e40x_prefetch_unit
     .instr_valid_o        ( prefetch_valid_o       ),
     .instr_ready_i        ( prefetch_ready_i       ),
     .instr_instr_o        ( prefetch_instr_o       ),
-    .instr_addr_o         ( prefetch_addr_o        ),
-
-    .perf_imiss_o         ( perf_imiss_o           )
+    .instr_addr_o         ( prefetch_addr_o        )
 
   );
 

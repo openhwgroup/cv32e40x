@@ -81,10 +81,11 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
           branch_fetch_done <= 1'b1;
         end
       end
-    end
-    // Clear first_fetch flag on first transaction
-    if(trans_valid_o && trans_ready_i) begin
-      first_fetch <= 1'b0;
+
+      // Clear first_fetch flag on first transaction
+      if(trans_valid_o && trans_ready_i) begin
+        first_fetch <= 1'b0;
+      end
     end
   end
  
@@ -133,7 +134,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
                 $sformatf("trans_addr_o is not word aligned."))
 
 
-  // Check that we acknowlede a fetch_valid when trans_ready high (R-9)
+  // Check that we acknowledge a fetch_valid when trans_ready high (R-9)
   property p_fetch_ready;
     @(posedge clk) disable iff (!rst_n) (trans_ready_i && trans_valid_o) |-> (fetch_ready_o == 1'b1);
   endproperty

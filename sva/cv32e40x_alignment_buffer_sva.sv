@@ -31,21 +31,25 @@ module cv32e40x_alignment_buffer_sva
    input logic [31:0]              branch_addr_i,
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
-   input logic [FIFO_ADDR_DEPTH:0] fifo_cnt_n,
-   input logic [FIFO_ADDR_DEPTH:0] fifo_cnt_q,
+   input logic [FIFO_ADDR_DEPTH:0] instr_cnt_n,
+   input logic [FIFO_ADDR_DEPTH:0] instr_cnt_q,
    input logic                     instr_valid_o,
    input logic [31:0]              instr_addr_o,
    input logic                     resp_valid_i,
    input logic                     prefetch_en_i,
-   input logic [FIFO_ADDR_DEPTH:0] outstanding_nonflush_cnt,
-   input logic                     resp_valid
+   input logic                     resp_valid_gated,
+   input logic [1:0]               outstanding_cnt_q,
+   input logic [1:0]               n_flush_q
    );
 
+  
   logic expect_response;
-  assign expect_response = (fifo_cnt_q == 'd0) && (outstanding_nonflush_cnt == 'd1) ||
-                           (fifo_cnt_q == 'd0) && (outstanding_nonflush_cnt == 'd2) ||
-                           (fifo_cnt_q == 'd1) && (outstanding_nonflush_cnt == 'd1) ||
-                           (fifo_cnt_q == 'd2) && (outstanding_nonflush_cnt == 'd1);
+  assign expect_response = (instr_cnt_q == 'd0) && (outstanding_cnt_q == 'd1) ||
+                           (instr_cnt_q == 'd0) && (outstanding_cnt_q == 'd2) ||
+                           (instr_cnt_q == 'd1) && (outstanding_cnt_q == 'd1) ||
+                           (instr_cnt_q == 'd2) && (outstanding_cnt_q == 'd1);
+
+  
 
   // Capture branch address to check that the next instructions get the correct address
   logic [31:0] next_branch_addr;
@@ -59,67 +63,127 @@ module cv32e40x_alignment_buffer_sva
     end
   end
 
-  // Check for FIFO overflows
-  assert property (@(posedge clk)
-                   (resp_valid_i) |-> (valid_q[DEPTH-1] == 1'b0) )
-    else `uvm_error("alignment_buffer", "Fifo Overflow")
+  // Check FIFO overflow
+  property p_fifo_overflow;
+    @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[DEPTH-1] == 1'b0);
+  endproperty
+  
+    a_fifo_overflow:
+      assert property(p_fifo_overflow)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("FIFO overflow"))
+  
 
   // Check that FIFO is cleared the cycle after a branch (R-13.2)
-  assert property (@(posedge clk)
-                   (branch_i) |=> (valid_q == 'b0) )
-    else `uvm_error("alignment_buffer", "Fifo not cleared after branch")
+  property p_fifo_clear;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |=> (valid_q == 'b0);
+  endproperty
+  
+    a_fifo_clear:
+      assert property(p_fifo_clear)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("Fifo not cleared after branch"))
+  
 
-  // Check that FIFO is signaled empty the cycle during a branch
-  assert property (@(posedge clk)
-                   (branch_i) |-> (fifo_cnt_n == 'b0) )
-    else `uvm_error("alignment_buffer", "Fifo not empty in branch cycle")
+    // Check that FIFO is signaled empty the cycle during a branch
+  property p_fifo_empty_branch;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (instr_cnt_n == 'b0);
+  endproperty
+  
+    a_fifo_empty_branch:
+      assert property(p_fifo_empty_branch)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("Fifo not empty during branch cycle"))
+  
 
-  // Check that instr_valid_o is zero when a branch is requested (R-13.3)
-  assert property (@(posedge clk)
-                   (branch_i) |-> (instr_valid_o == 1'b0) )
-    else `uvm_error("alignment_buffer", "instr_valid_o not zero when branch requested")
 
-  // Check that no transactions are requested when not supposed to
+    // Check that instr_valid_o is zero when a branch is requested (R-13.3)
+  property p_branch_instr_valid;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (instr_valid_o == 1'b0);
+  endproperty
+  
+    a_branch_instr_valid:
+      assert property(p_branch_instr_valid)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("instr_valid_o active when branch_i=1"))
+  
+
+    // Check that no transactions are requested when not supposed to
   // Not including branches
-  assert property (@(posedge clk)
-    ((fifo_cnt_q > 'd1) ||
-    (fifo_cnt_q == 'd1 && outstanding_nonflush_cnt == 'd2)) &&
+  property p_trans_ok;
+    @(posedge clk) disable iff (!rst_n)
+    ((instr_cnt_q > 'd1) ||
+    (instr_cnt_q == 'd0 && outstanding_cnt_q == 'd2)) &&
     !branch_i
-    |-> (fetch_valid_o == 1'b0) )
-    else `uvm_error("alignment_buffer", "fetch_valid_o active when not supposed to.")
+    |-> (fetch_valid_o == 1'b0);
+  endproperty
+  
+    a_trans_ok:
+      assert property(p_trans_ok)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("trans_valid_o active when not supposed to"))
 
-  // Check that we don't get responses where not supposed to
-  assert property (@(posedge clk)
-    (!expect_response) |-> (resp_valid == 1'b0) )
-    else `uvm_error("alignment_buffer", "resp_valid active when not supposed to.")
+                  
+    // Check that we don't get responses where not supposed to
+  property p_resp_ok;
+    @(posedge clk) disable iff (!rst_n) (!expect_response) |-> (resp_valid_gated == 1'b0);
+  endproperty
+  
+    a_resp_ok:
+      assert property(p_resp_ok)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("resp_valid_gated active when not supposed to"))
+  
 
-  // Check that we request from the prefetcher when a branch occurs
-  assert property (@(posedge clk)
-    (branch_i) |-> (fetch_valid_o == 1'b1) )
-    else `uvm_error("alignment_buffer", "fetch_valid_o not active on a branch.")
 
   // Check that we change branch_addr to prefetcher correctly (R-13.1)
-  assert property (@(posedge clk)
-    (branch_i) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00}) )
-    else `uvm_error("alignment_buffer", "fetch_branch_addr_o not correctly set.")
+  property p_prefetcher_branch;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00});
+  endproperty
+  
+    a_prefetcher_branch:
+      assert property(p_prefetcher_branch)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("fetch_branch_addr_o not correctly set"))
 
   // Check that we output correct pc for the first instruction after a branch (R-15.1)
-    assert property (@(posedge clk)
-    (branch_i) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr))
-    else `uvm_error("alignment_buffer", "Wrong pc after branch.")
-
+  property p_pc_after_branch;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr);
+  endproperty
+  
+    a_pc_after_branch:
+      assert property(p_pc_after_branch)
+      else
+        `uvm_error("Alignment buffer SVA",
+                  $sformatf("Wrong PC after branch"))
 
   // Check that a taken branch can only occur if fetching is requested
-    property p_branch_implies_req;
-      @(posedge clk) disable iff (!rst_n) (branch_i) |-> (prefetch_en_i);
-   endproperty
+  property p_branch_implies_req;
+    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (prefetch_en_i);
+  endproperty
  
    a_branch_implies_req:
      assert property(p_branch_implies_req)
      else
-       `uvm_error("Prefetch Controller SVA",
+       `uvm_error("Alignment buffer SVA",
                   $sformatf("Taken branch occurs while fetching is not requested"))
  
+  // Check that a taken branch can only occur if fetching is requested
+  property p_max_outstanding;
+    @(posedge clk) disable iff (!rst_n) (outstanding_cnt_q <= 2'd2);
+  endproperty
 
+  a_max_outstanding:
+    assert property(p_max_outstanding)
+    else
+      `uvm_error("Alignment buffer SVA",
+                $sformatf("Number of outstanding transactions exceeds 2!"))
 endmodule // cv32e40x_alignment_buffer_sva
 

@@ -167,8 +167,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .resp_rdata_i      ( resp_rdata                  ),
     .resp_err_i        ( resp_err                    ),
 
-    .perf_imiss_o      ( perf_imiss_o                ),
-
     // Prefetch Buffer Status
     .prefetch_busy_o   ( prefetch_busy               )
 );
@@ -193,6 +191,10 @@ instruction_obi_i
 
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
+
+  // We are 'missing' in the if stage if we don't have a valid instruction
+  // when the pipeline is ready and we are not branching
+  assign perf_imiss_o = !branch_req && (if_valid && !prefetch_valid);
 
   // Signal branch on pc_set_i
   assign branch_req = pc_set_i;

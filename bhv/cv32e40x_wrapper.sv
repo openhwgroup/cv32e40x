@@ -92,6 +92,61 @@ module cv32e40x_wrapper
   output logic        core_sleep_o
 );
 
+
+`ifdef ASSERT_ON
+
+  // RTL Assertions
+
+  bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
+  bind cv32e40x_if_stage:        core_i.if_stage_i                  cv32e40x_if_stage_sva     if_stage_sva     (.*);
+  bind cv32e40x_controller:      core_i.id_stage_i.controller_i     cv32e40x_controller_sva   controller_sva   (.*);
+  bind cv32e40x_cs_registers:    core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
+
+  bind cv32e40x_load_store_unit:
+    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (.*);
+
+  bind cv32e40x_prefetch_unit:
+    core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
+
+  bind cv32e40x_alu_div:
+    core_i.ex_stage_i.alu_i.alu_div_i cv32e40x_alu_div_sva #(.C_WIDTH (C_WIDTH), .C_LOG_WIDTH (C_LOG_WIDTH)) alu_div_sva (.*);
+
+  bind cv32e40x_alignment_buffer:
+    core_i.if_stage_i.prefetch_unit_i.alignment_buffer_i
+      cv32e40x_alignment_buffer_sva
+        alignment_buffer_sva (.*);
+
+  bind cv32e40x_prefetcher:
+    core_i.if_stage_i.prefetch_unit_i.prefetcher_i
+      cv32e40x_prefetcher_sva  
+        prefetcher_sva (.*);
+
+  bind cv32e40x_core:
+    core_i cv32e40x_core_sva
+      core_sva (// probed cs_registers signals
+                .cs_registers_mie_q               (core_i.cs_registers_i.mie_q),
+                .cs_registers_mepc_n              (core_i.cs_registers_i.mepc_n),
+                .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
+                .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
+                .cs_registers_csr_cause_i         (core_i.cs_registers_i.csr_cause_i),
+                // probed id_stage signals
+                .id_stage_ebrk_insn               (core_i.id_stage_i.ebrk_insn),
+                .id_stage_ecall_insn              (core_i.id_stage_i.ecall_insn),
+                .id_stage_illegal_insn            (core_i.id_stage_i.illegal_insn),
+                // probed controller signals
+                .id_stage_controller_ctrl_fsm_ns  (core_i.id_stage_i.controller_i.ctrl_fsm_ns),
+                .id_stage_controller_debug_mode_n (core_i.id_stage_i.controller_i.debug_mode_n),
+                .*);
+
+  bind cv32e40x_sleep_unit:
+    core_i.sleep_unit_i cv32e40x_sleep_unit_sva
+      sleep_unit_sva (// probed id_stage_i.controller_i signals
+                      .id_stage_controller_ctrl_fsm_cs (core_i.id_stage_i.controller_i.ctrl_fsm_cs),
+                      .id_stage_controller_ctrl_fsm_ns (core_i.id_stage_i.controller_i.ctrl_fsm_ns),
+                      .*);
+
+`endif // ASSERT_ON
+
     cv32e40x_core_log
      #(
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))

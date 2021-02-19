@@ -20,7 +20,6 @@
 
 module cv32e40x_prefetch_unit_sva
   import uvm_pkg::*;
-  #(parameter FIFO_DEPTH = 0)
   (
    input logic        clk,
    input logic        rst_n,
@@ -30,11 +29,6 @@ module cv32e40x_prefetch_unit_sva
    input logic [31:0] branch_addr_i,
    input logic        prefetch_ready_i);
 
-  // FIFO_DEPTH must be greater than 1. Otherwise, the property
-  // p_hwlp_end_already_gnt_when_hwlp_branch in cv32e40x_prefetch_controller
-  // is not verified, since the prefetcher cannot ask for HWLP_END the cycle
-  // in which HWLP_END-4 is being absorbed by ID.
-  initial assert (FIFO_DEPTH > 1) else `uvm_error("prefetch_buffer", "FIFO depth must be grater than 1")
 
   // Check that branch target address is half-word aligned (RV32-C)
   property p_branch_halfword_aligned;
