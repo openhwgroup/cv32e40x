@@ -16,8 +16,9 @@
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Prefetch Buffer that caches instructions. This cuts overly //
-//                 long critical paths to the instruction cache               //
+// Description:    Prefetch unit that prefetches instructions and store them  //
+//                 in a buffer that extracts compressed and uncompressed      //
+//                 instructions.                                              //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 

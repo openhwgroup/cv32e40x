@@ -15,7 +15,7 @@
 //                 Igor Loi - igor.loi@greenwaves-technologies.com            //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
-// Design Name:    Instrctuon Aligner                                         //
+// Design Name:    Instruction Aligner                                        //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -76,6 +76,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic [1:0] n_pushed_ins;
 
   // Flags to indicate aligned address and complete instructions
+  // in the write side of the buffer. This is used in the tracking
+  // of number of complete instructions (compressed and uncompressed)
+  // in the buffer. Updated on branches and whenever we get a valid response.
   logic aligned_n, aligned_q;
   logic complete_n, complete_q;
 
@@ -164,7 +167,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
     end else begin
       // aligned case, contained in index 0
-      instr_instr_o = instr;
       instr_valid_o = valid;
     end
   end

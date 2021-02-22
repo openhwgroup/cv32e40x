@@ -172,7 +172,7 @@ module cv32e40x_alignment_buffer_sva
        `uvm_error("Alignment buffer SVA",
                   $sformatf("Taken branch occurs while fetching is not requested"))
  
-  // Check that a taken branch can only occur if fetching is requested
+  // Check that we never exceed two outstanding transactions
   property p_max_outstanding;
     @(posedge clk) disable iff (!rst_n) (outstanding_cnt_q <= 2'd2);
   endproperty

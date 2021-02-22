@@ -44,7 +44,7 @@ module cv32e40x_prefetcher
 
   // Interface to alignment_buffer
   input  logic                     fetch_branch_i,                // Taken branch
-  input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when branch_i = 1)
+  input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when fetch_branch_i = 1), word aligned
   input  logic                     fetch_valid_i,
   output logic                     fetch_ready_o,
 
@@ -63,28 +63,18 @@ module cv32e40x_prefetcher
   // Transaction address
   logic [31:0]                   trans_addr_q, trans_addr_incr;
 
-  // Word-aligned branch target address
-  logic [31:0]                   aligned_branch_addr;             // Word aligned branch target address
-
-
-  //////////////////////////////////////////////////////////////////////////////
-  // IF/ID interface
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Prefetcher will only perform word fetches
-  assign aligned_branch_addr = {fetch_branch_addr_i[31:2], 2'b00};
-
   // Increment address (always word fetch)
   assign trans_addr_incr = {trans_addr_q[31:2], 2'b00} + 32'd4;
 
   // Transaction request generation
-  // Avoid combinatorial path from instr_rvalid_i to instr_req_o. Multiple trans_* transactions can be 
-  // issued (and accepted) before a response (resp_*) is received.
+  // alignment_buffer will request a transaction when it needs it.
+  // Alignment buffer controls number of outstanding transactions
+  // and will always be ready to accept responses.
   assign trans_valid_o = fetch_valid_i;
 
   assign fetch_ready_o = trans_valid_o && trans_ready_i;
 
-  // FSM (state_q, next_state) to control OBI A channel signals.
+  // FSM (state_q, next_state) to control trans_addr_o
   always_comb
   begin
     next_state = state_q;
@@ -95,10 +85,9 @@ module cv32e40x_prefetcher
       IDLE:
       begin
         begin
+          // Select branch address on branch, otherwise incremented address
           if (fetch_branch_i) begin
-            // Jumps must have the highest priority (e.g. an interrupt must
-            // have higher priority than a HW-loop branch)
-            trans_addr_o = aligned_branch_addr;
+            trans_addr_o = fetch_branch_addr_i;
           end else begin
             trans_addr_o = trans_addr_incr;
           end
@@ -114,7 +103,7 @@ module cv32e40x_prefetcher
         // Replay previous branch target address (trans_addr_q) or new branch address (this can
         // occur if for example an interrupt is taken right after a taken jump which did not
         // yet have its target address accepted by the bus interface adapter.
-        trans_addr_o = fetch_branch_i ? aligned_branch_addr : trans_addr_q;
+        trans_addr_o = fetch_branch_i ? fetch_branch_addr_i : trans_addr_q;
         if (trans_valid_o && trans_ready_i) begin
           // Transaction with branch target address has been accepted. Start regular prefetch again.
           next_state = IDLE;
