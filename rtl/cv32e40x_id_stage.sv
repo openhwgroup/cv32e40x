@@ -225,7 +225,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Multiplier Control
   mul_opcode_e mult_operator;    // multiplication operation selection
   logic        mult_en;          // multiplication is used instead of ALU
-  logic        mult_sel_subword; // Select a subword when doing multiplications
   logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
 
   // Data Memory Control
@@ -511,7 +510,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // MUL signals
     .mult_en_o                       ( mult_en                   ),
     .mult_operator_o                 ( mult_operator             ),
-    .mult_sel_subword_o              ( mult_sel_subword          ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
 
     // Register file control signals
@@ -732,7 +730,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_operand_a         <= '0;
       id_ex_pipe_o.mult_operand_b         <= '0;
       id_ex_pipe_o.mult_operand_c         <= '0;
-      id_ex_pipe_o.mult_sel_subword       <= 1'b0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
@@ -793,7 +790,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.mult_en                <= mult_en;
         if (mult_en) begin
           id_ex_pipe_o.mult_operator        <= mult_operator;
-          id_ex_pipe_o.mult_sel_subword     <= mult_sel_subword;
           id_ex_pipe_o.mult_signed_mode     <= mult_signed_mode;
           id_ex_pipe_o.mult_operand_a       <= alu_operand_a;
           id_ex_pipe_o.mult_operand_b       <= alu_operand_b;

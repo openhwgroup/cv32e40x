@@ -135,7 +135,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .enable_i        ( id_ex_pipe_i.mult_en          ),
     .operator_i      ( id_ex_pipe_i.mult_operator    ),
 
-    .short_subword_i ( id_ex_pipe_i.mult_sel_subword ),
     .short_signed_i  ( id_ex_pipe_i.mult_signed_mode ),
 
     .op_a_i          ( id_ex_pipe_i.mult_operand_a   ),

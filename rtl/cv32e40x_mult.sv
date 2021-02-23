@@ -32,7 +32,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  mul_opcode_e operator_i,
 
   // integer and short multiplier
-  input  logic        short_subword_i,
   input  logic [ 1:0] short_signed_i,
 
   input  logic [31:0] op_a_i,

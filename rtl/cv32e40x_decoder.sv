@@ -65,7 +65,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // MUL related control signals
   output mul_opcode_e mult_operator_o,         // Multiplication operation selection
   output logic        mult_en_o,               // Perform integer multiplication
-  output logic        mult_sel_subword_o,      // Select subwords for 16x16 bit of multiplier
   output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
   
   // Register file related signals
@@ -176,7 +175,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign mult_operator_o                = decoder_ctrl_mux.mult_operator;                 
   assign mult_en                        = decoder_ctrl_mux.mult_en;                         
   assign mult_signed_mode_o             = decoder_ctrl_mux.mult_signed_mode;              
-  assign mult_sel_subword_o             = decoder_ctrl_mux.mult_sel_subword;              
   assign rf_re_o                        = decoder_ctrl_mux.rf_re;                         
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
   assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr;               

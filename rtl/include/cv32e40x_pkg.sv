@@ -660,7 +660,6 @@ typedef struct packed {
   logic [31:0]  mult_operand_a;    
   logic [31:0]  mult_operand_b;    
   logic [31:0]  mult_operand_c;    
-  logic         mult_sel_subword;  
   logic [ 1:0]  mult_signed_mode;  
 
   // Register write control
@@ -710,7 +709,6 @@ typedef struct packed {
   mul_opcode_e                       mult_operator;
   logic                              mult_en;
   logic [1:0]                        mult_signed_mode;
-  logic                              mult_sel_subword;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
   logic                              prepost_useincr;
@@ -747,7 +745,6 @@ typedef struct packed {
                                                           mult_operator                : MUL_M32,
                                                           mult_en                      : 1'b0,
                                                           mult_signed_mode             : 2'b00,
-                                                          mult_sel_subword             : 1'b0,
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
                                                           prepost_useincr              : 1'b1,
