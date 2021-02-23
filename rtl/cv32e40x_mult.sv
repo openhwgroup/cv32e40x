@@ -65,16 +65,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic        short_mac_msb1;
   logic        short_mac_msb0;
 
-  logic [ 4:0] short_imm;
-  logic [ 1:0] short_subword;
-  logic [ 1:0] short_signed;
-  logic        short_shift_arith;
   logic [ 4:0] mulh_imm;
   logic [ 1:0] mulh_subword;
   logic [ 1:0] mulh_signed;
   logic        mulh_shift_arith;
   logic        mulh_carry_q;
-  logic        mulh_active;
   logic        mulh_save;
   logic        mulh_clearcarry;
   logic        mulh_ready;
@@ -82,28 +77,24 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   mult_state_e mulh_CS, mulh_NS;
 
   // perform subword selection and sign extensions
-  assign short_op_a[15:0] = short_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
-  assign short_op_b[15:0] = short_subword[1] ? op_b_i[31:16] : op_b_i[15:0];
+  assign short_op_a[15:0] = mulh_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
+  assign short_op_b[15:0] = mulh_subword[1] ? op_b_i[31:16] : op_b_i[15:0];
 
-  assign short_op_a[16]   = short_signed[0] & short_op_a[15];
-  assign short_op_b[16]   = short_signed[1] & short_op_b[15];
+  assign short_op_a[16]   = mulh_signed[0] & short_op_a[15];
+  assign short_op_b[16]   = mulh_signed[1] & short_op_b[15];
 
-  assign short_op_c       = mulh_active ? $signed({mulh_carry_q, op_c_i}) : $signed(op_c_i);
+  assign short_op_c       = $signed({mulh_carry_q, op_c_i});
 
   assign short_mul        = $signed(short_op_a) * $signed(short_op_b);
   assign short_mac        = $signed(short_op_c) + $signed(short_mul);
 
    //we use only short_signed_i[0] as it cannot be short_signed_i[1] 1 and short_signed_i[0] 0
-  assign short_result     = $signed({short_shift_arith & short_mac_msb1, short_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> short_imm;
+  assign short_result     = $signed({mulh_shift_arith & short_mac_msb1, mulh_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> mulh_imm;
 
   // choose between normal short multiplication operation and mulh operation
-  assign short_imm         = mulh_active ? mulh_imm         : 'd0;
-  assign short_subword     = mulh_active ? mulh_subword     : {2{short_subword_i}};
-  assign short_signed      = mulh_active ? mulh_signed      : short_signed_i;
-  assign short_shift_arith = mulh_active ? mulh_shift_arith : short_signed_i[0];
 
-  assign short_mac_msb1    = mulh_active ? short_mac[33] : short_mac[31];
-  assign short_mac_msb0    = mulh_active ? short_mac[32] : short_mac[31];
+  assign short_mac_msb1    = short_mac[33];
+  assign short_mac_msb0    = short_mac[32];
 
   always_comb
   begin
@@ -113,14 +104,12 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_signed      = 2'b00;
     mulh_shift_arith = 1'b0;
     mulh_ready       = 1'b0;
-    mulh_active      = 1'b1;
     mulh_save        = 1'b0;
     mulh_clearcarry  = 1'b0;
     multicycle_o     = 1'b0;
 
     case (mulh_CS)
       IDLE_MULT: begin
-        mulh_active = 1'b0;
         mulh_ready  = 1'b1;
         mulh_save   = 1'b0;
         if ((operator_i == MUL_H) && enable_i) begin
@@ -132,7 +121,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       STEP0: begin
         multicycle_o = 1'b1;
         mulh_imm         = 5'd16;
-        mulh_active      = 1'b1;
         //AL*BL never overflows
         mulh_save        = 1'b0;
         mulh_NS          = STEP1;
