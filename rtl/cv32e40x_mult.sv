@@ -108,39 +108,36 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     multicycle_o     = 1'b0;
 
     case (mulh_CS)
-      IDLE_MULT: begin
-        mulh_ready  = 1'b1;
-        mulh_save   = 1'b0;
+      ALBL: begin
         if ((operator_i == MUL_H) && enable_i) begin
           mulh_ready  = 1'b0;
-          mulh_NS     = STEP0;
+          multicycle_o = 1'b1;
+          mulh_imm         = 5'd16;
+          //AL*BL never overflows
+          mulh_save        = 1'b0;
+          mulh_NS          = ALBH;
+          //Here always a 32'b unsigned result (no carry)
+        end else begin
+          mulh_ready  = 1'b1;
+          mulh_save   = 1'b0;
         end
       end
 
-      STEP0: begin
-        multicycle_o = 1'b1;
-        mulh_imm         = 5'd16;
-        //AL*BL never overflows
-        mulh_save        = 1'b0;
-        mulh_NS          = STEP1;
-        //Here always a 32'b unsigned result (no carry)
-      end
-
-      STEP1: begin
+      ALBH: begin
         multicycle_o = 1'b1;
         //AL*BH is signed iff B is signed
         mulh_signed      = {short_signed_i[1], 1'b0};
         mulh_subword     = 2'b10;
         mulh_save        = 1'b1;
         mulh_shift_arith = 1'b1;
-        mulh_NS          = STEP2;
+        mulh_NS          = AHBL;
         //Here signed 32'b + unsigned 32'b result.
         //Result is a signed 33'b
         //Store the carry as it will be used as sign extension, we do
         //not shift
       end
 
-      STEP2: begin
+      AHBL: begin
         multicycle_o = 1'b1;
         //AH*BL is signed iff A is signed
         mulh_signed      = {1'b0, short_signed_i[0]};
@@ -149,18 +146,18 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         mulh_save        = 1'b1;
         mulh_clearcarry  = 1'b1;
         mulh_shift_arith = 1'b1;
-        mulh_NS          = FINISH;
+        mulh_NS          = AHBH;
         //Here signed 32'b + signed 33'b result.
         //Result is a signed 34'b
         //We do not store the carries as the bits 34:33 are shifted back, so we clear it
       end
 
-      FINISH: begin
+      AHBH: begin
         mulh_signed  = short_signed_i;
         mulh_subword = 2'b11;
         mulh_ready   = 1'b1;
         if (ex_ready_i)
-          mulh_NS = IDLE_MULT;
+          mulh_NS = ALBL;
       end
       default: ;
     endcase
@@ -170,7 +167,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   begin
     if (~rst_n)
     begin
-      mulh_CS      <= IDLE_MULT;
+      mulh_CS      <= ALBL;
       mulh_carry_q <= 1'b0;
     end else begin
       mulh_CS      <= mulh_NS;

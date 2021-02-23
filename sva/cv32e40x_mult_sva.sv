@@ -43,7 +43,7 @@ module cv32e40x_mult_sva
   // check multiplication result for mulh
   a_mulh_result :
     assert property (@(posedge clk)
-                     ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
+                     ((mulh_CS == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
                      |->
                      (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) )
       else `uvm_error("mult", "Assertion a_mulh_result failed")
@@ -51,7 +51,7 @@ module cv32e40x_mult_sva
    // check multiplication result for mulhsu
    a_mulhsu_result :
      assert property (@(posedge clk)
-                      ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
+                      ((mulh_CS == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
                       |->
                       (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) )
        else `uvm_error("mult", "Assertion a_mulh_result failed")
@@ -59,7 +59,7 @@ module cv32e40x_mult_sva
    // check multiplication result for mulhu
    a_mulhu_result :
      assert property (@(posedge clk)
-                      ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
+                      ((mulh_CS == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
                       |->
                       (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
        else `uvm_error("mult", "Assertion a_mulh_result failed")
