@@ -91,6 +91,63 @@ module cv32e40x_core
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
 
+  localparam PMA_NUM_REGIONS = 1;
+  localparam pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT};
+  /*
+  localparam PMA_NUM_REGIONS = 7;
+  
+  // Lowest index -> highest priority (in case of region overlap)
+  localparam pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{// Code 
+                                                           pma_region_t'{word_addr_low   : 32'(34'h0000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'h2000_0000 >> 2),
+                                                                         main            : 1'b1,
+                                                                         bufferable      : 1'b0,
+                                                                         cacheable       : 1'b1,
+                                                                         atomic          : 1'b1},
+                                                           // SRAM
+                                                           pma_region_t'{word_addr_low   : 32'(34'h2000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'h4000_0000 >> 2),
+                                                                         main            : 1'b1,
+                                                                         bufferable      : 1'b0,
+                                                                         cacheable       : 1'b1,
+                                                                         atomic          : 1'b1},
+                                                           // Peripheral 
+                                                           pma_region_t'{word_addr_low   : 32'(34'h4000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'h6000_0000 >> 2),
+                                                                         main            : 1'b0,
+                                                                         bufferable      : 1'b1,
+                                                                         cacheable       : 1'b0,
+                                                                         atomic          : 1'b0},
+                                                           // External RAM 
+                                                           pma_region_t'{word_addr_low   : 32'(34'h6000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'hA000_0000 >> 2),
+                                                                         main            : 1'b1,
+                                                                         bufferable      : 1'b0,
+                                                                         cacheable       : 1'b1,
+                                                                         atomic          : 1'b1},
+                                                           // External device 
+                                                           pma_region_t'{word_addr_low   : 32'(34'hA000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'hE000_0000 >> 2),
+                                                                         main            : 1'b0,
+                                                                         bufferable      : 1'b1,
+                                                                         cacheable       : 1'b0,
+                                                                         atomic          : 1'b0},
+                                                           // Private peripheral bus
+                                                           pma_region_t'{word_addr_low   : 32'(34'hE000_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'hE010_0000 >> 2),
+                                                                         main            : 1'b0,
+                                                                         bufferable      : 1'b0,
+                                                                         cacheable       : 1'b0,
+                                                                         atomic          : 1'b0},
+                                                           // System
+                                                           pma_region_t'{word_addr_low   : 32'(34'hE010_0000 >> 2),
+                                                                         word_addr_high  : 32'(34'h1_0000_0000 >> 2),
+                                                                         main            : 1'b0,
+                                                                         bufferable      : 1'b0,
+                                                                         cacheable       : 1'b0,
+                                                                         atomic          : 1'b0}
+                                                           };*/
+
   logic              clear_instr_valid;
   logic              pc_set;
 
@@ -282,6 +339,8 @@ module cv32e40x_core
   //                                              //
   //////////////////////////////////////////////////
   cv32e40x_if_stage
+    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+      .PMA_CFG(PMA_CFG))
   if_stage_i
   (
     .clk                 ( clk               ),

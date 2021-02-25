@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
+  #(parameter int unsigned PMA_NUM_REGIONS = 1,
+    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
 (
     input  logic        clk,
     input  logic        rst_n,
@@ -76,7 +78,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     output logic        if_busy_o,             // is the IF stage busy fetching instructions?
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
-  
+
   logic              if_valid, if_ready;
 
   // prefetch buffer related signals
@@ -89,24 +91,29 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              fetch_failed;
 
   logic              aligner_ready;
-  
+
   logic              prefetch_valid;
   logic              prefetch_ready;
   logic [31:0]       prefetch_instr;
-  
+
   logic              illegal_c_insn;
-    
+
   logic [31:0]       instr_decompressed;
   logic              instr_compressed_int;
 
   // Transaction signals to/from obi interface
-  logic        trans_valid;
-  logic        trans_ready;
-  logic [31:0] trans_addr;
-
-  logic        resp_valid;
-  logic        resp_err;
-  logic [31:0] resp_rdata;
+  logic              prefetch_resp_valid;
+  logic              prefetch_trans_valid;
+  logic              prefetch_trans_ready;
+  logic [31:0]       prefetch_trans_addr;
+  mem_xfer_t         prefetch_xfer_resp;
+  
+  logic              obi_if_resp_valid;
+  logic              obi_if_resp_err;
+  logic [31:0]       obi_if_resp_rdata;
+  logic              obi_if_trans_valid;
+  logic              obi_if_trans_ready;
+  logic [31:0]       obi_if_trans_addr;
 
   // exception PC selection mux
   always_comb
@@ -159,17 +166,45 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .prefetch_instr_o  ( prefetch_instr              ),
     .prefetch_addr_o   ( pc_if_o                     ),
 
-    .trans_valid_o     ( trans_valid                 ),
-    .trans_ready_i     ( trans_ready                 ),
-    .trans_addr_o      ( trans_addr                  ),
+    .trans_valid_o     ( prefetch_trans_valid        ),
+    .trans_ready_i     ( prefetch_trans_ready        ),
+    .trans_addr_o      ( prefetch_trans_addr         ),
 
-    .resp_valid_i      ( resp_valid                  ),
-    .resp_rdata_i      ( resp_rdata                  ),
-    .resp_err_i        ( resp_err                    ),
+    .resp_valid_i      ( prefetch_resp_valid         ),
+    .resp_rdata_i      ( prefetch_xfer_resp.rdata    ),
+    .resp_err_i        ( prefetch_xfer_resp.bus_err  ),
 
     // Prefetch Buffer Status
     .prefetch_busy_o   ( prefetch_busy               )
 );
+
+
+//////////////////////////////////////////////////////////////////////////////
+// MPU (including PMA and PMP)
+//////////////////////////////////////////////////////////////////////////////
+  
+cv32e40x_mpu
+  #(.IF_STAGE(1),
+    .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    .PMA_CFG(PMA_CFG))
+  mpu_i
+    (
+     .speculative_access_i           (1'b0 /*TODO*/),
+     .atomic_access_i                (1'b0 /*TODO*/),
+     
+     .obi_if_trans_addr_o            (obi_if_trans_addr[31:0]),
+     .obi_if_trans_valid_o           (obi_if_trans_valid),
+     .obi_if_trans_ready_i           (obi_if_trans_ready),
+     .obi_if_resp_valid_i            (obi_if_resp_valid),
+     .obi_if_resp_rdata_i            (obi_if_resp_rdata[31:0]),
+     .obi_if_resp_err_i              (obi_if_resp_err),
+     .obi_if_resp_ruser_i            ('b0/*TODO*/),
+     
+     .prefetch_trans_ready_o         (prefetch_trans_ready),
+     .prefetch_resp_valid_o          (prefetch_resp_valid),
+     .prefetch_trans_addr_i          (prefetch_trans_addr[31:0]),
+     .prefetch_trans_valid_i         (prefetch_trans_valid),
+     .prefetch_xfer_resp_o           (prefetch_xfer_resp));
 
 //////////////////////////////////////////////////////////////////////////////
 // OBI interface
@@ -181,13 +216,13 @@ instruction_obi_i
   .clk                   ( clk               ),
   .rst_n                 ( rst_n             ),
 
-  .trans_valid_i         ( trans_valid       ),
-  .trans_ready_o         ( trans_ready       ),
-  .trans_addr_i          ( trans_addr        ),
+  .trans_valid_i         ( obi_if_trans_valid),
+  .trans_ready_o         ( obi_if_trans_ready),
+  .trans_addr_i          ( obi_if_trans_addr ),
 
-  .resp_valid_o          ( resp_valid        ),
-  .resp_rdata_o          ( resp_rdata        ),
-  .resp_err_o            ( resp_err          ),
+  .resp_valid_o          ( obi_if_resp_valid ),
+  .resp_rdata_o          ( obi_if_resp_rdata ),
+  .resp_err_o            ( obi_if_resp_err   ),
 
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
@@ -209,7 +244,7 @@ instruction_obi_i
   // when we issue a new instruction
   assign prefetch_ready = if_valid;
   assign if_busy_o    = prefetch_busy;
-  
+
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
@@ -237,7 +272,7 @@ instruction_obi_i
         if_id_pipe_o.pc              <= pc_if_o;
       end else if (clear_instr_valid_i) begin
         if_id_pipe_o.instr_valid     <= 1'b0;
-        if_id_pipe_o.is_fetch_failed <= fetch_failed;
+        if_id_pipe_o.is_fetch_failed <= fetch_failed; // TODO:OE this is not used. Use for PMP, PMA, bus error?
       end
     end
   end

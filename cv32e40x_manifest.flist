@@ -60,5 +60,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_data_obi_interface.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetcher.sv
 ${DESIGN_RTL_DIR}/cv32e40x_sleep_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_core.sv
+${DESIGN_RTL_DIR}/cv32e40x_mpu.sv
+${DESIGN_RTL_DIR}/cv32e40x_pma.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_sim_clock_gate.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv

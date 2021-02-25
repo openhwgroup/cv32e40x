@@ -632,6 +632,7 @@ typedef enum logic[1:0] {
 
 
 // Atomic operations
+  // TODO:OE make enumerated type ?
 parameter AMO_LR   = 5'b00010;
 parameter AMO_SC   = 5'b00011;
 parameter AMO_SWAP = 5'b00001;
@@ -810,10 +811,9 @@ parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
-
+  
 // IF/ID pipeline
 typedef struct packed {
-
   logic        instr_valid;
   logic [31:0] instr_rdata;
   logic        is_fetch_failed;
@@ -821,7 +821,6 @@ typedef struct packed {
   logic        is_compressed;
   logic        illegal_c_insn;
 } if_id_pipe_t;
-  
 
   
   ///////////////////////////
@@ -869,5 +868,40 @@ typedef struct packed {
     logic                       exokay;
  } data_resp_t;
 
+  
+  typedef struct packed {
+    logic [31:0] word_addr_low;
+    logic [31:0] word_addr_high;
+    logic        main;
+    logic        bufferable;
+    logic        cacheable;
+    logic        atomic; /*use enum with AMONone, AMOSwap, AMOLogical, AMOArithmetic ? TODO*/
+  } pma_region_t;
+
+  // Default attribution (Address is don't care)
+  parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
+                                           word_addr_high  : 0,
+                                           main            : 1'b1,
+                                           bufferable      : 1'b1,
+                                           cacheable       : 1'b1,
+                                           atomic          : 1'b1};
+  
+
+  // TODO:OE have one for IF stage and one for WB stage?
+  typedef enum logic [1:0] {
+                          MPU_OK                 = 2'h0,
+                          MPU_INSTR_ACCESS_FAULT = 2'h1,
+                          MPU_LOAD_ACCESS_FAULT  = 2'h2,
+                          MPU_STORE_ACCESS_FAULT = 2'h3
+                          } mpu_status_e;
+  
+  parameter OBI_RUSER_WIDTH = 7;
+  
+  typedef struct packed {
+    logic [31:0]                rdata;
+    logic [OBI_RUSER_WIDTH-1:0] ruser;
+    mpu_status_e                mpu_status;
+    logic                       bus_err;
+  } mem_xfer_t;
   
 endpackage
