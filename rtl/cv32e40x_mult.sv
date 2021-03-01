@@ -54,98 +54,91 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   //                                                           //
   ///////////////////////////////////////////////////////////////
 
-  logic [16:0] short_op_a;
-  logic [16:0] short_op_b;
-  logic [32:0] short_op_c;
-  logic [33:0] short_mul;
-  logic [33:0] short_mac;
-  logic [33:0] short_result;
-
-  logic        short_mac_msb1;
-  logic        short_mac_msb0;
-
-  logic [ 4:0] mulh_imm;
-  logic [ 1:0] mulh_subword;
-  logic [ 1:0] mulh_signed;
-  logic        mulh_shift_arith;
+  // MULH control signals
+  logic        mulh_shift;
   logic        mulh_carry_q;
   logic        mulh_save;
-  logic        mulh_clearcarry;
 
-  mult_state_e mulh_state, mulh_state_next;
+  // MULH State variables
+  mult_state_e mulh_state;
+  mult_state_e mulh_state_next;
 
-  // perform subword selection and sign extensions
-  assign short_op_a[15:0] = mulh_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
-  assign short_op_b[15:0] = mulh_subword[1] ? op_b_i[31:16] : op_b_i[15:0];
+  // MULH Part select operands
+  logic [16:0] mulh_al;
+  logic [16:0] mulh_bl;
+  logic [16:0] mulh_ah;
+  logic [16:0] mulh_bh;
 
-  assign short_op_a[16]   = mulh_signed[0] & short_op_a[15];
-  assign short_op_b[16]   = mulh_signed[1] & short_op_b[15];
+  // MULH Operators
+  logic [16:0] mulh_a;
+  logic [16:0] mulh_b;
+  logic [32:0] mulh_c;
 
-  assign short_op_c       = $signed({mulh_carry_q, op_c_i});
+  // MULH Intermediate Results
+  logic [33:0] mulh_mul;
+  logic [33:0] mulh_sum;
+  logic [33:0] mulh_sum_shifted;
+  logic [33:0] mulh_result;
 
-  assign short_mul        = $signed(short_op_a) * $signed(short_op_b);
-  assign short_mac        = $signed(short_op_c) + $signed(short_mul);
 
-   //we use only short_signed_i[0] as it cannot be short_signed_i[1] 1 and short_signed_i[0] 0
-  assign short_result     = $signed({mulh_shift_arith & short_mac_msb1, mulh_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> mulh_imm;
+  assign mulh_al[15:0] = op_a_i[15:0];
+  assign mulh_bl[15:0] = op_b_i[15:0];
+  assign mulh_ah[15:0] = op_a_i[31:16];
+  assign mulh_bh[15:0] = op_b_i[31:16];
 
-  // choose between normal short multiplication operation and mulh operation
+  assign mulh_al[16] = 1'b0;
+  assign mulh_bl[16] = 1'b0;
+  assign mulh_ah[16] = short_signed_i[0] && op_a_i[31];
+  assign mulh_bh[16] = short_signed_i[1] && op_b_i[31];
 
-  assign short_mac_msb1    = short_mac[33];
-  assign short_mac_msb0    = short_mac[32];
+  assign mulh_c           = $signed({mulh_carry_q, op_c_i});
+
+  assign mulh_mul         = $signed(mulh_a) * $signed(mulh_b);
+  assign mulh_sum         = $signed(mulh_mul) + $signed(mulh_c);
+  assign mulh_sum_shifted = $signed(mulh_sum) >>> 16;
+
+  assign mulh_result      = (mulh_shift) ? mulh_sum_shifted : mulh_sum;
 
   always_comb
   begin
-    mulh_state_next  = mulh_state;
-    mulh_imm         = 5'd0;
-    mulh_subword     = 2'b00;
-    mulh_signed      = 2'b00;
-    mulh_shift_arith = 1'b0;
+    mulh_shift       = 1'b0;
     mulh_save        = 1'b0;
-    mulh_clearcarry  = 1'b0;
     multicycle_o     = 1'b0;
+
+    mulh_a           = mulh_al;
+    mulh_b           = mulh_bl;
+    mulh_state_next  = mulh_state;
 
     case (mulh_state)
       ALBL: begin
+        mulh_shift        = 1'b1;
         if ((operator_i == MUL_H) && enable_i) begin
           multicycle_o    = 1'b1;
-          mulh_imm        = 5'd16;
           mulh_state_next = ALBH;
         end
       end
 
       ALBH: begin
         multicycle_o     = 1'b1;
-        //AL*BH is signed if B is signed
-        mulh_signed      = {short_signed_i[1], 1'b0};
-        mulh_subword     = 2'b10;
         mulh_save        = 1'b1;
-        mulh_shift_arith = 1'b1;
+
+        mulh_a           = mulh_al;
+        mulh_b           = mulh_bh;
         mulh_state_next  = AHBL;
-        //Here signed 32'b + unsigned 32'b result.
-        //Result is a signed 33'b
-        //Store the carry as it will be used as sign extension, we do
-        //not shift
       end
 
       AHBL: begin
         multicycle_o     = 1'b1;
-        //AH*BL is signed if A is signed
-        mulh_signed      = {1'b0, short_signed_i[0]};
-        mulh_subword     = 2'b01;
-        mulh_imm         = 5'd16;
-        mulh_save        = 1'b1;
-        mulh_clearcarry  = 1'b1;
-        mulh_shift_arith = 1'b1;
+        mulh_shift       = 1'b1;
+
+        mulh_a           = mulh_ah;
+        mulh_b           = mulh_bl;
         mulh_state_next  = AHBH;
-        //Here signed 32'b + signed 33'b result.
-        //Result is a signed 34'b
-        //We do not store the carries as the bits 34:33 are shifted back, so we clear it
       end
 
       AHBH: begin
-        mulh_signed  = short_signed_i;
-        mulh_subword = 2'b11;
+        mulh_a            = mulh_ah;
+        mulh_b            = mulh_bh;
         if (ex_ready_i)
           mulh_state_next = ALBL;
       end
@@ -161,11 +154,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       mulh_carry_q <= 1'b0;
     end else begin
       mulh_state      <= mulh_state_next;
-
-      if (mulh_save)
-        mulh_carry_q <= ~mulh_clearcarry & short_mac[32];
-      else if (ex_ready_i) // clear carry when we are going to the next instruction
-        mulh_carry_q <= 1'b0;
+      mulh_carry_q    <= mulh_save && mulh_result[32];
     end
   end
 
@@ -188,7 +177,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     if (operator_i == MUL_M32) begin
       result_o = int_result[31:0];
     end else begin
-      result_o = short_result[31:0];
+      result_o = mulh_result;
     end
   end
 
