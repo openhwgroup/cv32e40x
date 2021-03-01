@@ -71,9 +71,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic        mulh_carry_q;
   logic        mulh_save;
   logic        mulh_clearcarry;
-  logic        mulh_ready;
 
-  mult_state_e mulh_CS, mulh_NS;
+  mult_state_e mulh_state, mulh_state_next;
 
   // perform subword selection and sign extensions
   assign short_op_a[15:0] = mulh_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
@@ -97,40 +96,32 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   always_comb
   begin
-    mulh_NS          = mulh_CS;
+    mulh_state_next  = mulh_state;
     mulh_imm         = 5'd0;
     mulh_subword     = 2'b00;
     mulh_signed      = 2'b00;
     mulh_shift_arith = 1'b0;
-    mulh_ready       = 1'b0;
     mulh_save        = 1'b0;
     mulh_clearcarry  = 1'b0;
     multicycle_o     = 1'b0;
 
-    case (mulh_CS)
+    case (mulh_state)
       ALBL: begin
         if ((operator_i == MUL_H) && enable_i) begin
-          mulh_ready  = 1'b0;
-          multicycle_o = 1'b1;
-          mulh_imm         = 5'd16;
-          //AL*BL never overflows
-          mulh_save        = 1'b0;
-          mulh_NS          = ALBH;
-          //Here always a 32'b unsigned result (no carry)
-        end else begin
-          mulh_ready  = 1'b1;
-          mulh_save   = 1'b0;
+          multicycle_o    = 1'b1;
+          mulh_imm        = 5'd16;
+          mulh_state_next = ALBH;
         end
       end
 
       ALBH: begin
-        multicycle_o = 1'b1;
-        //AL*BH is signed iff B is signed
+        multicycle_o     = 1'b1;
+        //AL*BH is signed if B is signed
         mulh_signed      = {short_signed_i[1], 1'b0};
         mulh_subword     = 2'b10;
         mulh_save        = 1'b1;
         mulh_shift_arith = 1'b1;
-        mulh_NS          = AHBL;
+        mulh_state_next  = AHBL;
         //Here signed 32'b + unsigned 32'b result.
         //Result is a signed 33'b
         //Store the carry as it will be used as sign extension, we do
@@ -138,15 +129,15 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       AHBL: begin
-        multicycle_o = 1'b1;
-        //AH*BL is signed iff A is signed
+        multicycle_o     = 1'b1;
+        //AH*BL is signed if A is signed
         mulh_signed      = {1'b0, short_signed_i[0]};
         mulh_subword     = 2'b01;
         mulh_imm         = 5'd16;
         mulh_save        = 1'b1;
         mulh_clearcarry  = 1'b1;
         mulh_shift_arith = 1'b1;
-        mulh_NS          = AHBH;
+        mulh_state_next  = AHBH;
         //Here signed 32'b + signed 33'b result.
         //Result is a signed 34'b
         //We do not store the carries as the bits 34:33 are shifted back, so we clear it
@@ -155,9 +146,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       AHBH: begin
         mulh_signed  = short_signed_i;
         mulh_subword = 2'b11;
-        mulh_ready   = 1'b1;
         if (ex_ready_i)
-          mulh_NS = ALBL;
+          mulh_state_next = ALBL;
       end
       default: ;
     endcase
@@ -167,10 +157,10 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   begin
     if (~rst_n)
     begin
-      mulh_CS      <= ALBL;
+      mulh_state      <= ALBL;
       mulh_carry_q <= 1'b0;
     end else begin
-      mulh_CS      <= mulh_NS;
+      mulh_state      <= mulh_state_next;
 
       if (mulh_save)
         mulh_carry_q <= ~mulh_clearcarry & short_mac[32];
@@ -202,6 +192,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     end
   end
 
-  assign ready_o = mulh_ready;
+  assign ready_o = !multicycle_o;
 
 endmodule
