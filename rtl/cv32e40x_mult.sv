@@ -75,7 +75,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic [32:0] mulh_c;
 
   // MULH Intermediate Results
-  logic [33:0] mulh_mul;
   logic [33:0] mulh_sum;
   logic [33:0] mulh_sum_shifted;
   logic [33:0] mulh_result;
@@ -93,10 +92,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   assign mulh_c           = $signed({mulh_carry_q, op_c_i});
 
-  assign mulh_mul         = $signed(mulh_a) * $signed(mulh_b);
-  assign mulh_sum         = $signed(mulh_mul) + $signed(mulh_c);
+  assign mulh_sum         = $signed(int_result) + $signed(mulh_c);
   assign mulh_sum_shifted = $signed(mulh_sum) >>> 16;
-
   assign mulh_result      = (mulh_shift) ? mulh_sum_shifted : mulh_sum;
 
   always_comb
@@ -104,7 +101,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_shift       = 1'b0;
     mulh_save        = 1'b0;
     multicycle_o     = 1'b0;
-
     mulh_a           = mulh_al;
     mulh_b           = mulh_bl;
     mulh_state_next  = mulh_state;
@@ -121,7 +117,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       ALBH: begin
         multicycle_o     = 1'b1;
         mulh_save        = 1'b1;
-
         mulh_a           = mulh_al;
         mulh_b           = mulh_bh;
         mulh_state_next  = AHBL;
@@ -130,7 +125,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       AHBL: begin
         multicycle_o     = 1'b1;
         mulh_shift       = 1'b1;
-
         mulh_a           = mulh_ah;
         mulh_b           = mulh_bl;
         mulh_state_next  = AHBH;
@@ -150,18 +144,25 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   begin
     if (~rst_n)
     begin
-      mulh_state      <= ALBL;
+      mulh_state   <= ALBL;
       mulh_carry_q <= 1'b0;
     end else begin
-      mulh_state      <= mulh_state_next;
-      mulh_carry_q    <= mulh_save && mulh_result[32];
+      mulh_state   <= mulh_state_next;
+      mulh_carry_q <= mulh_save && mulh_result[32];
     end
   end
 
-  // 32x32 = 32-bit multiplier
-  logic [31:0] int_result;
+  ///////////////////////////
+  //   32-bit multiplier   //
+  ///////////////////////////
+  logic [31:0] op_a;
+  logic [31:0] op_b;
+  logic [33:0] int_result;
 
-  assign int_result = $signed(op_a_i) * $signed(op_b_i);
+  assign op_a = (operator_i == MUL_M32) ? op_a_i : {{16{mulh_a[16]}}, mulh_a[15:0]};
+  assign op_b = (operator_i == MUL_M32) ? op_b_i : {{16{mulh_b[16]}}, mulh_b[15:0]};
+
+  assign int_result = $signed(op_a) * $signed(op_b);
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
