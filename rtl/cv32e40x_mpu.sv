@@ -39,14 +39,13 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    input logic                       obi_if_resp_valid_i,
    input logic [31:0]                obi_if_resp_rdata_i,
    input logic                       obi_if_resp_err_i,
-   input logic [OBI_RUSER_WIDTH-1:0] obi_if_resp_ruser_i,
 
    // Interface towards prefetcher
    input logic [31:0]                prefetch_trans_addr_i,
    input logic                       prefetch_trans_valid_i,
    output logic                      prefetch_trans_ready_o,
    output logic                      prefetch_resp_valid_o,
-   output mem_xfer_t                 prefetch_xfer_resp_o
+   output inst_resp_t                prefetch_inst_resp_o
    );
 
   // TODO:OE add obi prot
@@ -68,12 +67,13 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign obi_if_trans_valid_o   = prefetch_trans_valid_i && !mpu_block;
 
   // Signals towards prefetcher
-  assign prefetch_trans_ready_o          = obi_if_trans_ready_i || mpu_block;
-  assign prefetch_resp_valid_o           = obi_if_resp_valid_i;
-  assign prefetch_xfer_resp_o.rdata      = obi_if_resp_rdata_i; // TODO:OE respond with proper data upon mpu_block (or should that be done in aligment buffer, becuse transactions might be split..?)
-  assign prefetch_xfer_resp_o.ruser      = obi_if_resp_ruser_i;
-  assign prefetch_xfer_resp_o.bus_err    = obi_if_resp_err_i;
-  assign prefetch_xfer_resp_o.mpu_status = mpu_status;
+  assign prefetch_trans_ready_o = obi_if_trans_ready_i || mpu_block;
+  assign prefetch_resp_valid_o  = obi_if_resp_valid_i;
+
+  // TODO:OE add just assign obi_instr_resp_t when OBI interface has been updated.
+  assign prefetch_inst_resp_o.bus_resp.rdata  = obi_if_resp_rdata_i;
+  assign prefetch_inst_resp_o.bus_resp.err    = obi_if_resp_err_i;
+  assign prefetch_inst_resp_o.mpu_status      = mpu_status;
   
   // PMA - Physical Memory Attribution
   cv32e40x_pma 
@@ -88,9 +88,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
      .pma_block_o(pma_block),
      .pma_bufferable_o(pma_bufferable_o),
      .pma_cacheable_o(pma_cacheable_o));
-
-  // In case of PMA or PMP error, provide error cause for use in mcause 
-  // Ibex PMP only outputs access_fault. how does it set mcause correctly..? it's handled in the load_store_unit and prefetch_buffer
 
   // TODO:OE clean
   always_comb begin

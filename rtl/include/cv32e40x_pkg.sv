@@ -823,6 +823,40 @@ typedef struct packed {
 } if_id_pipe_t;
 
   
+  ////////////////////////////
+  //                        //
+  //    /\/\    / _ \/\ /\  //
+  //   /    \  / /_)/ / \ \ //
+  //  / /\/\ \/ ___/\ \_/ / //
+  //  \/    \/\/     \___/  //
+  //                        //
+  ////////////////////////////
+
+  // TODO:OE add comments
+  typedef struct packed {
+    logic [31:0] word_addr_low;
+    logic [31:0] word_addr_high;
+    logic        main;
+    logic        bufferable;
+    logic        cacheable;
+    logic        atomic; /*use enum with AMONone, AMOSwap, AMOLogical, AMOArithmetic ? TODO*/
+  } pma_region_t;
+
+  // Default attribution (Address is don't care)
+  parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
+                                           word_addr_high  : 0,
+                                           main            : 1'b1,
+                                           bufferable      : 1'b1,
+                                           cacheable       : 1'b1,
+                                           atomic          : 1'b1};
+
+  typedef enum   logic [1:0] {
+                              MPU_OK                 = 2'h0,
+                              MPU_INSTR_ACCESS_FAULT = 2'h1,
+                              MPU_LOAD_ACCESS_FAULT  = 2'h2,
+                              MPU_STORE_ACCESS_FAULT = 2'h3
+                              } mpu_status_e;
+  
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //
@@ -847,12 +881,12 @@ typedef struct packed {
   
   typedef struct packed {
     logic [INSTR_ADDR_WIDTH-1:0] addr;
-  } inst_req_t;
+  } obi_inst_req_t;
 
   typedef struct packed {
     logic [INSTR_DATA_WIDTH-1:0] rdata;
     logic                        err;
-  } inst_resp_t;
+  } obi_inst_resp_t;
 
   typedef struct packed {
     logic [DATA_ADDR_WIDTH-1:0]     addr;
@@ -860,48 +894,21 @@ typedef struct packed {
     logic                           we;
     logic [(DATA_DATA_WIDTH/8)-1:0] be;
     logic [DATA_DATA_WIDTH-1:0]     wdata;
- } data_req_t;
+ } obi_data_req_t;
 
  typedef struct packed {
     logic [DATA_DATA_WIDTH-1:0] rdata;
     logic                       err;
     logic                       exokay;
- } data_resp_t;
+ } obi_data_resp_t;
+
+ 
+ // Data/instrcution transfer bundeled with MPU status
+ typedef struct packed {
+   obi_data_resp_t             bus_resp;
+   mpu_status_e                mpu_status;
+ } inst_resp_t;
 
   
-  typedef struct packed {
-    logic [31:0] word_addr_low;
-    logic [31:0] word_addr_high;
-    logic        main;
-    logic        bufferable;
-    logic        cacheable;
-    logic        atomic; /*use enum with AMONone, AMOSwap, AMOLogical, AMOArithmetic ? TODO*/
-  } pma_region_t;
 
-  // Default attribution (Address is don't care)
-  parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
-                                           word_addr_high  : 0,
-                                           main            : 1'b1,
-                                           bufferable      : 1'b1,
-                                           cacheable       : 1'b1,
-                                           atomic          : 1'b1};
-  
-
-  // TODO:OE have one for IF stage and one for WB stage?
-  typedef enum logic [1:0] {
-                          MPU_OK                 = 2'h0,
-                          MPU_INSTR_ACCESS_FAULT = 2'h1,
-                          MPU_LOAD_ACCESS_FAULT  = 2'h2,
-                          MPU_STORE_ACCESS_FAULT = 2'h3
-                          } mpu_status_e;
-  
-  parameter OBI_RUSER_WIDTH = 7;
-  
-  typedef struct packed {
-    logic [31:0]                rdata;
-    logic [OBI_RUSER_WIDTH-1:0] ruser;
-    mpu_status_e                mpu_status;
-    logic                       bus_err;
-  } mem_xfer_t;
-  
 endpackage

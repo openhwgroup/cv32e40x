@@ -26,8 +26,8 @@
 // since this interface is a subset of the full OBI spec.
 interface if_c_obi import cv32e40x_pkg::*;
 #(
-    parameter type REQ_TYPE  = inst_req_t,
-    parameter type RESP_TYPE = inst_resp_t
+    parameter type REQ_TYPE  = obi_inst_req_t,
+    parameter type RESP_TYPE = obi_inst_resp_t
 );
     // A channel signals
     logic                      req;

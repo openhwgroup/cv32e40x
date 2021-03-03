@@ -94,6 +94,9 @@ module cv32e40x_core
   localparam PMA_NUM_REGIONS = 1;
   localparam pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT};
   /*
+   
+   // TODO:OE clean
+   
   localparam PMA_NUM_REGIONS = 7;
   
   // Lowest index -> highest priority (in case of region overlap)
@@ -263,8 +266,8 @@ module cv32e40x_core
   logic        wake_from_sleep;
 
   // Internal OBI interfaces
-  if_c_obi #(.REQ_TYPE(inst_req_t), .RESP_TYPE(inst_resp_t))  m_c_obi_instr_if();
-  if_c_obi #(.REQ_TYPE(data_req_t), .RESP_TYPE(data_resp_t))  m_c_obi_data_if();
+  if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
+  if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
 
 
   // Mux selector for vectored IRQ PC
