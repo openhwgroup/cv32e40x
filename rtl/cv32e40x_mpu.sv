@@ -37,8 +37,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    output logic [31:0]               obi_if_trans_addr_o,
    output logic                      obi_if_trans_valid_o,
    input logic                       obi_if_resp_valid_i,
-   input logic [31:0]                obi_if_resp_rdata_i,
-   input logic                       obi_if_resp_err_i,
+   input obi_inst_resp_t             obi_if_resp,
 
    // Interface towards prefetcher
    input logic [31:0]                prefetch_trans_addr_i,
@@ -70,9 +69,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign prefetch_trans_ready_o = obi_if_trans_ready_i || mpu_block;
   assign prefetch_resp_valid_o  = obi_if_resp_valid_i;
 
-  // TODO:OE add just assign obi_instr_resp_t when OBI interface has been updated.
-  assign prefetch_inst_resp_o.bus_resp.rdata  = obi_if_resp_rdata_i;
-  assign prefetch_inst_resp_o.bus_resp.err    = obi_if_resp_err_i;
+  assign prefetch_inst_resp_o.bus_resp        = obi_if_resp;
   assign prefetch_inst_resp_o.mpu_status      = mpu_status;
   
   // PMA - Physical Memory Attribution

@@ -40,7 +40,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Resp interface
   input  logic           resp_valid_i,
-  input  logic [31:0]    resp_rdata_i,
+  input  inst_resp_t     resp_i,
 
   
   // Interface to if_stage
@@ -126,10 +126,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
   // Aligned instructions will either be fully in index 0 or incoming data
-  assign instr = (valid_q[0]) ? rdata_q[0] : resp_rdata_i;
+  assign instr = (valid_q[0]) ? rdata_q[0] : resp_i.bus_resp.rdata;
   
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
-  assign instr_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], instr[31:16]} : {resp_rdata_i[15:0], instr[31:16]};
+  assign instr_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
 
   // Unaligned uncompressed instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
@@ -185,7 +185,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     if (resp_valid_gated) begin
       for(int j = 0; j < DEPTH; j++) begin
         if (!valid_q[j]) begin
-          rdata_int[j] = resp_rdata_i;
+          rdata_int[j] = resp_i.bus_resp.rdata;
           valid_int[j] = 1'b1;
 
           break;
@@ -311,12 +311,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // We are on an aligned address
         if(aligned_q) begin
           // uncompressed in rdata
-          if(resp_rdata_i[1:0] == 2'b11) begin
+          if(resp_i.bus_resp.rdata[1:0] == 2'b11) begin
             n_incoming_ins = 2'd1;
             // Still aligned and complete, no need to update
           end else begin
             // compressed in lower part, check next halfword
-            if(resp_rdata_i[17:16] == 2'b11) begin
+            if(resp_i.bus_resp.rdata[17:16] == 2'b11) begin
               // Upper half is uncompressed, not complete
               // 1 complete insn
               n_incoming_ins = 2'd1;
@@ -338,7 +338,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           // 16 bits can be discarded
           if(complete_q) begin
             // Uncompressed unaligned
-            if(resp_rdata_i[17:16] == 2'b11) begin
+            if(resp_i.bus_resp.rdata[17:16] == 2'b11) begin
               // No complete ins in data
               n_incoming_ins = 2'd0;
               // Still unaligned
@@ -358,7 +358,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
             // Incomplete. Check upper 16 bits for content
             // Implied that lower 16 bits contain the MSBs
             // of an uncompressed instruction
-            if(resp_rdata_i[17:16] == 2'b11) begin
+            if(resp_i.bus_resp.rdata[17:16] == 2'b11) begin
               // Upper 16 is uncompressed
               // 1 complete insn in word
               n_incoming_ins = 2'd1;

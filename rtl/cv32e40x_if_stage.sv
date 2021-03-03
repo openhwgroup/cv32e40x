@@ -109,8 +109,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   inst_resp_t        prefetch_inst_resp;
   
   logic              obi_if_resp_valid;
-  logic              obi_if_resp_err;
-  logic [31:0]       obi_if_resp_rdata;
+  obi_inst_resp_t    obi_if_resp;
   logic              obi_if_trans_valid;
   logic              obi_if_trans_ready;
   logic [31:0]       obi_if_trans_addr;
@@ -171,8 +170,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .trans_addr_o      ( prefetch_trans_addr         ),
 
     .resp_valid_i      ( prefetch_resp_valid         ),
-    .resp_rdata_i      ( prefetch_inst_resp.bus_resp.rdata),
-    .resp_err_i        ( prefetch_inst_resp.bus_resp.err  ),
+    .resp_i            ( prefetch_inst_resp          ),
 
     // Prefetch Buffer Status
     .prefetch_busy_o   ( prefetch_busy               )
@@ -196,8 +194,7 @@ cv32e40x_mpu
      .obi_if_trans_valid_o           (obi_if_trans_valid),
      .obi_if_trans_ready_i           (obi_if_trans_ready),
      .obi_if_resp_valid_i            (obi_if_resp_valid),
-     .obi_if_resp_rdata_i            (obi_if_resp_rdata[31:0]),
-     .obi_if_resp_err_i              (obi_if_resp_err),
+     .obi_if_resp                    (obi_if_resp      ),
      
      .prefetch_trans_ready_o         (prefetch_trans_ready),
      .prefetch_resp_valid_o          (prefetch_resp_valid),
@@ -209,7 +206,6 @@ cv32e40x_mpu
 // OBI interface
 //////////////////////////////////////////////////////////////////////////////
 
-  // TODO:OE use obi_instr_resp_t here
 cv32e40x_instr_obi_interface
 instruction_obi_i
 (
@@ -221,9 +217,7 @@ instruction_obi_i
   .trans_addr_i          ( obi_if_trans_addr ),
 
   .resp_valid_o          ( obi_if_resp_valid ),
-  .resp_rdata_o          ( obi_if_resp_rdata ),
-  .resp_err_o            ( obi_if_resp_err   ),
-
+  .resp_o                ( obi_if_resp       ),
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
 

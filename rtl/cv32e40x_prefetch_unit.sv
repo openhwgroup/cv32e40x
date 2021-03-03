@@ -26,7 +26,7 @@
 // clear_i clears the FIFO for the following cycle. in_addr_i can be sent in
 // this cycle already
 
-module cv32e40x_prefetch_unit
+module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -46,9 +46,7 @@ module cv32e40x_prefetch_unit
   output logic [31:0] trans_addr_o,
 
   input  logic        resp_valid_i,
-  input  logic [31:0] resp_rdata_i,
-  input  logic        resp_err_i,
-
+  input  inst_resp_t  resp_i,
   // Prefetch Buffer Status
   output logic        prefetch_busy_o
 );
@@ -102,7 +100,7 @@ module cv32e40x_prefetch_unit
     .fetch_branch_addr_o  ( fetch_branch_addr      ),
 
     .resp_valid_i         ( resp_valid_i           ),
-    .resp_rdata_i         ( resp_rdata_i           ),
+    .resp_i               ( resp_i                 ),
 
     // Instruction interface
     .instr_valid_o        ( prefetch_valid_o       ),

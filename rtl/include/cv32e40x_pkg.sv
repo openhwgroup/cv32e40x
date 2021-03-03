@@ -905,7 +905,7 @@ typedef struct packed {
  
  // Data/instrcution transfer bundeled with MPU status
  typedef struct packed {
-   obi_data_resp_t             bus_resp;
+   obi_inst_resp_t             bus_resp;
    mpu_status_e                mpu_status;
  } inst_resp_t;
 
