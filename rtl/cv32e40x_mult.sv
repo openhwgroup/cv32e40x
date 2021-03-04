@@ -54,6 +54,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   //                                                           //
   ///////////////////////////////////////////////////////////////
 
+  // Multiplier Operands
+  logic [31:0] op_a;
+  logic [31:0] op_b;
+  logic [33:0] int_result;
+
   // MULH control signals
   logic        mulh_shift;
   logic        mulh_carry_q;
@@ -69,7 +74,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic [16:0] mulh_ah;
   logic [16:0] mulh_bh;
 
-  // MULH Operators
+  // MULH Operands
   logic [16:0] mulh_a;
   logic [16:0] mulh_b;
   logic [32:0] mulh_c;
@@ -85,8 +90,14 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   assign mulh_ah[15:0] = op_a_i[31:16];
   assign mulh_bh[15:0] = op_b_i[31:16];
 
+  // Lower halfwords are always multiplied as unsigned
   assign mulh_al[16] = 1'b0;
   assign mulh_bl[16] = 1'b0;
+
+  // Sign extention for the upper halfword is decided by the instuction used.
+  // MULH   :   signed x signed    : short_signed_i == 'b00
+  // MULHSU :   signed x unsigned  : short_signed_i == 'b01
+  // MULHU  : unsigned x unsigned  : short_signed_i == 'b11
   assign mulh_ah[16] = short_signed_i[0] && op_a_i[31];
   assign mulh_bh[16] = short_signed_i[1] && op_b_i[31];
 
@@ -155,9 +166,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   ///////////////////////////
   //   32-bit multiplier   //
   ///////////////////////////
-  logic [31:0] op_a;
-  logic [31:0] op_b;
-  logic [33:0] int_result;
 
   assign op_a = (operator_i == MUL_M32) ? op_a_i : {{16{mulh_a[16]}}, mulh_a[15:0]};
   assign op_b = (operator_i == MUL_M32) ? op_b_i : {{16{mulh_b[16]}}, mulh_b[15:0]};
