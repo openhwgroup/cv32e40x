@@ -37,7 +37,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
   input  logic        prefetch_ready_i,
   output logic        prefetch_valid_o,
-  output logic [31:0] prefetch_instr_o,
+  output inst_resp_t  prefetch_instr_o,
   output logic [31:0] prefetch_addr_o,
 
   // Transaction interface to obi interface

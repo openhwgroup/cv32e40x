@@ -260,7 +260,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        id_valid_q;
   logic        minstret;
 
-  assign instr = if_id_pipe_i.instr_rdata;
+  assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
   // immediate extraction and sign extension
   assign imm_i_type  = { {20 {instr[31]}}, instr[31:20] };

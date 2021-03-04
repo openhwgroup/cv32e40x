@@ -15,7 +15,7 @@
 //                 Igor Loi - igor.loi@greenwaves-technologies.com            //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
-// Design Name:    Instruction Aligner                                        //
+// Design Name:    cv32e40x_alignment_buffer                                  //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -46,7 +46,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Interface to if_stage
   output logic           instr_valid_o,
   input  logic           instr_ready_i,
-  output logic [31:0]    instr_instr_o,
+  output inst_resp_t     instr_instr_o,
   output logic [31:0]    instr_addr_o
 
 );
@@ -85,6 +85,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Store number of responses to flush when get get a branch
   logic [1:0] n_flush_n, n_flush_q, n_flush_branch;
   
+  // Error propagation signals for bus and mpu
+  logic bus_err_unaligned, bus_err;
+  mpu_status_e mpu_status_unaligned, mpu_status;
 
   // resp_valid gated while flushing
   logic resp_valid_gated;
@@ -116,8 +119,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // FIFO signals //
   //////////////////
   // index 0 is used for output
-  logic [0:DEPTH-1] [31:0]  rdata_n,   rdata_int,   rdata_q;
-  logic [0:DEPTH-1]         valid_n,   valid_int,   valid_q;
+  inst_resp_t [0:DEPTH-1]  rdata_n,   rdata_int,   rdata_q;
+  logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
@@ -126,11 +129,15 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic                     aligned_is_compressed, unaligned_is_compressed;
 
   // Aligned instructions will either be fully in index 0 or incoming data
-  assign instr = (valid_q[0]) ? rdata_q[0] : resp_i.bus_resp.rdata;
+  // This also applies for the bus_error and mpu_status
+  assign instr      = (valid_q[0]) ? rdata_q[0].bus_resp.rdata : resp_i.bus_resp.rdata;
+  assign bus_err    = (valid_q[0]) ? rdata_q[0].bus_resp.err   : resp_i.bus_resp.err;
+  assign mpu_status = (valid_q[0]) ? rdata_q[0].mpu_status     : resp_i.mpu_status;
   
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
-  assign instr_unaligned = (valid_q[1]) ? {rdata_q[1][15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
+  assign instr_unaligned = (valid_q[1]) ? {rdata_q[1].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
 
+  
   // Unaligned uncompressed instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
   // All other cases are valid if we have data in q0 or we get a response
@@ -142,10 +149,62 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign aligned_is_compressed   = instr[1:0] != 2'b11;
 
 
+  // Set mpu_status and bus error for unaligned instructions
+  always_comb begin
+    mpu_status_unaligned = MPU_OK;
+    bus_err_unaligned = 1'b0;
+    // There is valid data in q1 (valid q0 is implied)
+    if(valid_q[1]) begin
+      // Not compressed, need two sources
+      if(!unaligned_is_compressed) begin
+        // If any entry is nok ok, we have an instr_fault
+        if(rdata_q[1].mpu_status != MPU_OK || rdata_q[0].mpu_status != MPU_OK) begin
+          mpu_status_unaligned = MPU_INSTR_ACCESS_FAULT; // TODO: Is this ok, or should we pick one of q0/q1?
+        end
+
+        // Bus error from either entry
+        bus_err_unaligned = rdata_q[1].bus_resp.err || rdata_q[0].bus_resp.err;
+      end else begin
+        // Compressed, use only mpu_status from q0
+        mpu_status_unaligned = rdata_q[0].mpu_status;
+        
+        // bus error from q0
+        bus_err_unaligned    = rdata_q[0].bus_resp.err;
+      end
+    end else begin
+      // There is no data in q1, check q0
+      if(valid_q[0]) begin
+        if(!unaligned_is_compressed) begin
+          // There is unaligned data in q0 and is it not compressed
+          // use q0 and incoming data
+          if(rdata_q[0].mpu_status != MPU_OK || resp_i.mpu_status != MPU_OK) begin
+            mpu_status_unaligned = MPU_INSTR_ACCESS_FAULT; // TODO: Is this ok, or should we pick one of q0 resp_i?
+          end
+
+          // Bus error from q0 and resp_i
+          bus_err_unaligned = rdata_q[0].bus_resp.err || resp_i.bus_resp.err;
+        end else begin
+          // There is unaligned data in q0 and it is compressed
+          mpu_status_unaligned = rdata_q[0].mpu_status;
+
+          // Bus error from q0
+          bus_err_unaligned = rdata_q[0].bus_resp.err;
+        end
+      end else begin
+        // There is no data in the buffer, use input 
+        mpu_status_unaligned = resp_i.mpu_status;
+        bus_err_unaligned    = resp_i.bus_resp.err;
+      end
+    end
+  end
+
+
   // Output instructions to the if stage
   always_comb
   begin
-    instr_instr_o = instr;
+    instr_instr_o.bus_resp.rdata = instr;
+    instr_instr_o.bus_resp.err   = bus_err;
+    instr_instr_o.mpu_status     = mpu_status;
     instr_valid_o = 1'b0;
 
     // Invalidate output if we get a branch
@@ -153,8 +212,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       instr_valid_o = 1'b0;
     end else if (instr_addr_o[1]) begin
       // unaligned instruction
-      instr_instr_o = instr_unaligned;
-
+      instr_instr_o.bus_resp.rdata = instr_unaligned;
+      instr_instr_o.bus_resp.err   = bus_err_unaligned;
+      instr_instr_o.mpu_status     = mpu_status_unaligned;
       // No instruction valid
       if (!valid) begin
         instr_valid_o = 1'b0;
@@ -185,7 +245,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     if (resp_valid_gated) begin
       for(int j = 0; j < DEPTH; j++) begin
         if (!valid_q[j]) begin
-          rdata_int[j] = resp_i.bus_resp.rdata;
+          rdata_int[j] = resp_i;
           valid_int[j] = 1'b1;
 
           break;
