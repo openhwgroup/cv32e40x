@@ -19,6 +19,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Robert Balas - balasr@iis.ee.ethz.ch                       //
 //                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
 // Design Name:    Main controller                                            //
 // Project Name:   RI5CY                                                      //
@@ -76,9 +77,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_we_ex_i,
   input  logic        data_misaligned_i,
 
-  // from ALU
-  input  logic        mult_multicycle_i,          // multiplier is taken multiple cycles and uses op c as storage
-
   // jump/branch signals
   input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
   input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
@@ -132,7 +130,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // forwarding signals
   output op_fw_mux_e  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
   output op_fw_mux_e  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
-  output op_fw_mux_e  operand_c_fw_mux_sel_o,     // regfile rc data selector form ID stage
 
   input rf_addr_t  rf_waddr_ex_i,
   input rf_addr_t  rf_waddr_wb_i,
@@ -850,7 +847,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // default assignements
     operand_a_fw_mux_sel_o = SEL_REGFILE;
     operand_b_fw_mux_sel_o = SEL_REGFILE;
-    operand_c_fw_mux_sel_o = SEL_REGFILE;
 
     // Forwarding WB -> ID
     if (rf_we_wb_i)
@@ -875,8 +871,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     begin
       operand_a_fw_mux_sel_o  = SEL_FW_EX;
       operand_b_fw_mux_sel_o  = SEL_REGFILE;
-    end else if (mult_multicycle_i) begin
-      operand_c_fw_mux_sel_o  = SEL_FW_EX;
     end
   end
 

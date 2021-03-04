@@ -17,6 +17,7 @@
 //                 Andreas Traber - atraber@iis.ee.ethz.ch                    //
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
 // Design Name:    Execute stage                                              //
 // Project Name:   RI5CY                                                      //
@@ -35,8 +36,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
-
-  output logic        mult_multicycle_o,
 
   input  logic [31:0] lsu_rdata_i,
 
@@ -139,11 +138,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
     .op_a_i          ( id_ex_pipe_i.mult_operand_a   ),
     .op_b_i          ( id_ex_pipe_i.mult_operand_b   ),
-    .op_c_i          ( id_ex_pipe_i.mult_operand_c   ),
 
     .result_o        ( mult_result                   ),
-					             
-    .multicycle_o    ( mult_multicycle_o             ),
+
     .ready_o         ( mult_ready                    ),
     .ex_ready_i      ( ex_ready_o                    )
   );

@@ -36,11 +36,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   input  logic [31:0] op_a_i,
   input  logic [31:0] op_b_i,
-  input  logic [31:0] op_c_i,
 
   output logic [31:0] result_o,
 
-  output logic        multicycle_o,
   output logic        ready_o,
   input  logic        ex_ready_i
 );
@@ -61,8 +59,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   // MULH control signals
   logic        mulh_shift;
-  logic        mulh_carry_q;
-  logic        mulh_save;
 
   // MULH State variables
   mult_state_e mulh_state;
@@ -77,9 +73,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   // MULH Operands
   logic [16:0] mulh_a;
   logic [16:0] mulh_b;
-  logic [32:0] mulh_c;
 
   // MULH Intermediate Results
+  logic [32:0] mulh_acc;
   logic [33:0] mulh_sum;
   logic [33:0] mulh_sum_shifted;
   logic [33:0] mulh_result;
@@ -101,40 +97,36 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   assign mulh_ah[16] = short_signed_i[0] && op_a_i[31];
   assign mulh_bh[16] = short_signed_i[1] && op_b_i[31];
 
-  assign mulh_c           = $signed({mulh_carry_q, op_c_i});
-
-  assign mulh_sum         = $signed(int_result) + $signed(mulh_c);
+  assign mulh_sum         = $signed(int_result) + $signed(mulh_acc);
   assign mulh_sum_shifted = $signed(mulh_sum) >>> 16;
   assign mulh_result      = (mulh_shift) ? mulh_sum_shifted : mulh_sum;
 
   always_comb
   begin
     mulh_shift       = 1'b0;
-    mulh_save        = 1'b0;
-    multicycle_o     = 1'b0;
     mulh_a           = mulh_al;
     mulh_b           = mulh_bl;
     mulh_state_next  = mulh_state;
+    ready_o          = 1'b1;
 
     case (mulh_state)
       ALBL: begin
         mulh_shift        = 1'b1;
         if ((operator_i == MUL_H) && enable_i) begin
-          multicycle_o    = 1'b1;
+          ready_o         = 1'b0;
           mulh_state_next = ALBH;
         end
       end
 
       ALBH: begin
-        multicycle_o     = 1'b1;
-        mulh_save        = 1'b1;
+        ready_o          = 1'b0;
         mulh_a           = mulh_al;
         mulh_b           = mulh_bh;
         mulh_state_next  = AHBL;
       end
 
       AHBL: begin
-        multicycle_o     = 1'b1;
+        ready_o          = 1'b0;
         mulh_shift       = 1'b1;
         mulh_a           = mulh_ah;
         mulh_b           = mulh_bl;
@@ -155,11 +147,18 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   begin
     if (~rst_n)
     begin
+      mulh_acc     <=  '0;
       mulh_state   <= ALBL;
-      mulh_carry_q <= 1'b0;
     end else begin
-      mulh_state   <= mulh_state_next;
-      mulh_carry_q <= mulh_save && mulh_result[32];
+      if (!ready_o) begin
+        mulh_acc   <= mulh_result[32:0];
+      end else if (!ex_ready_i) begin
+        mulh_acc   <= mulh_acc;
+      end else begin
+        mulh_acc   <=  '0;
+      end
+
+      mulh_state      <= mulh_state_next;
     end
   end
 
@@ -189,7 +188,5 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       result_o = mulh_result;
     end
   end
-
-  assign ready_o = !multicycle_o;
 
 endmodule

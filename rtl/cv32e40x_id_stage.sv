@@ -17,6 +17,7 @@
 //                 Sven Stucki - svstucki@student.ethz.ch                     //
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
@@ -120,9 +121,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic           rf_we_ex_i,
     input  rf_addr_t       rf_waddr_ex_i,
     input  logic [31:0]    rf_wdata_ex_i,
-
-    // from ALU
-    input  logic        mult_multicycle_i,    // when we need multiple cycles in the multiplier and use op c as storage
 
     // Performance Counters
     output logic        mhpmevent_minstret_o,
@@ -246,13 +244,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Forwarding
   op_fw_mux_e  operand_a_fw_mux_sel;
   op_fw_mux_e  operand_b_fw_mux_sel;
-  op_fw_mux_e  operand_c_fw_mux_sel;
   logic [31:0] operand_a_fw;
   logic [31:0] operand_b_fw;
-  logic [31:0] operand_c_fw;
 
   logic [31:0] operand_b;
-  logic [31:0] operand_c;
 
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
@@ -409,25 +404,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU OP C Mux
   always_comb begin : alu_operand_c_mux
     case (alu_op_c_mux_sel)
-      OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
-      OP_C_JT:           operand_c = jump_target_o;
-      OP_C_FWD:          operand_c = operand_c_fw;
-      default:           operand_c = operand_c_fw;
+      OP_C_REGB_OR_FWD:  alu_operand_c = operand_b_fw;
+      OP_C_JT:           alu_operand_c = jump_target_o;
+      OP_C_FWD:          alu_operand_c = 32'h0;
+      default:           alu_operand_c = 32'h0;
     endcase // case (alu_op_c_mux_sel)
   end
 
-// choose normal or scalar replicated version of operand b
-  assign alu_operand_c = operand_c;
-
-  // Operand c forwarding mux
-  always_comb begin : operand_c_fw_mux
-    case (operand_c_fw_mux_sel)
-      SEL_FW_EX:    operand_c_fw = rf_wdata_ex_i;
-      SEL_REGFILE:  operand_c_fw = 32'h00000000;
-      default:      operand_c_fw = 32'h00000000;
-    endcase; // case (operand_c_fw_mux_sel)
-  end
- 
   /////////////////////////////////////////////////////////
   //  ____  _____ ____ ___ ____ _____ _____ ____  ____   //
   // |  _ \| ____/ ___|_ _/ ___|_   _| ____|  _ \/ ___|  //
@@ -601,9 +584,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_we_ex_i                   ( id_ex_pipe_o.data_we   ),
     .data_misaligned_i              ( lsu_misaligned_i       ),
 
-    // ALU
-    .mult_multicycle_i              ( mult_multicycle_i      ),
-
     // jump/branch control
     .branch_taken_ex_i              ( branch_taken_ex        ),
     .ctrl_transfer_insn_i           ( ctrl_transfer_insn     ),
@@ -657,7 +637,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),
     .operand_b_fw_mux_sel_o         ( operand_b_fw_mux_sel   ),
-    .operand_c_fw_mux_sel_o         ( operand_c_fw_mux_sel   ),
 
     // Stall signals
     .halt_if_o                      ( halt_if                ),
@@ -729,7 +708,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_operator          <= MUL_M32;
       id_ex_pipe_o.mult_operand_a         <= '0;
       id_ex_pipe_o.mult_operand_b         <= '0;
-      id_ex_pipe_o.mult_operand_c         <= '0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
@@ -770,8 +748,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.prepost_useincr        <= 1'b1;
         id_ex_pipe_o.data_misaligned        <= 1'b1;
       end
-    end else if (mult_multicycle_i) begin
-      id_ex_pipe_o.mult_operand_c <= operand_c_fw;
     end
     else begin
       // normal pipeline unstall case
@@ -793,7 +769,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mult_signed_mode     <= mult_signed_mode;
           id_ex_pipe_o.mult_operand_a       <= alu_operand_a;
           id_ex_pipe_o.mult_operand_b       <= alu_operand_b;
-          id_ex_pipe_o.mult_operand_c       <= alu_operand_c;
         end
         
         id_ex_pipe_o.rf_we                  <= rf_we;

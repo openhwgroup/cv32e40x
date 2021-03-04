@@ -17,6 +17,7 @@
 //                 Sven Stucki - svstucki@student.ethz.ch                     //
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
 // Design Name:    Top level module                                           //
 // Project Name:   RI5CY                                                      //
@@ -102,8 +103,6 @@ module cv32e40x_core
 
   // ID performance counter signals
   logic        is_decoding;
-
-  logic        mult_multicycle;
 
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id, jump_target_ex;
@@ -437,9 +436,6 @@ module cv32e40x_core
     .rf_waddr_wb_i                ( rf_waddr_wb          ),
     .rf_wdata_wb_i                ( rf_wdata_wb          ),
 
-    // from ALU
-    .mult_multicycle_i            ( mult_multicycle      ),
-
     // Performance Counters
     .mhpmevent_minstret_o         ( mhpmevent_minstret   ),
     .mhpmevent_load_o             ( mhpmevent_load       ),
@@ -476,8 +472,6 @@ module cv32e40x_core
     // EX/WB pipeline
     .ex_wb_pipe_o               ( ex_wb_pipe                   ),
 
-    .mult_multicycle_o          ( mult_multicycle              ), // to ID/EX pipe registers
-   
     // interface with CSRs
     .csr_rdata_i                ( csr_rdata                    ),
 
