@@ -34,12 +34,6 @@ module cv32e40x_mult_sva
    input              mul_opcode_e operator_i,
    input              mult_state_e mulh_state);
 
-  // Ensure only MUL, MULH, MULHSU, MULHU used (will only work if PULP_XPULP == 0)
-  a_mul_operator :
-    assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
-                     |-> (operator_i == MUL_M32) || (operator_i == MUL_H))
-      else `uvm_error("mult", "Assertion a_mul_operator failed")
-
   // check multiplication result for mulh
   a_mulh_result :
     assert property (@(posedge clk)
@@ -64,9 +58,18 @@ module cv32e40x_mult_sva
                       (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
        else `uvm_error("mult", "Assertion a_mulh_result failed")
 
+   // Check that multiplier inputs are not changed in the middle of a MULH operation
+   a_enable_constant_when_mulh_active:
+     assert property (@(posedge clk) disable iff (!rst_n)
+                      !ready_o |=> $stable(enable_i)) else `uvm_error("mult", "Enable changed when MULH active")
+
    a_operator_constant_when_mulh_active:
      assert property (@(posedge clk) disable iff (!rst_n)
                       !ready_o |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")
+
+   a_sign_constant_when_mulh_active:
+     assert property (@(posedge clk) disable iff (!rst_n)
+                      !ready_o |=> $stable(short_signed_i)) else `uvm_error("mult", "Sign changed when MULH active")
 
    a_operand_a_constant_when_mulh_active:
      assert property (@(posedge clk) disable iff (!rst_n)
