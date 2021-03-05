@@ -143,13 +143,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     endcase
   end
 
-  always_ff @(posedge clk, negedge rst_n)
-  begin
-    if (~rst_n)
-    begin
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
       mulh_acc     <=  '0;
       mulh_state   <= ALBL;
-    end else begin
+    end else if (enable_i && (operator_i == MUL_H)) begin
       if (!ready_o) begin
         mulh_acc   <= mulh_result[32:0];
       end else if (!ex_ready_i) begin
@@ -157,8 +155,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end else begin
         mulh_acc   <=  '0;
       end
-
-      mulh_state      <= mulh_state_next;
+      mulh_state   <= mulh_state_next;
     end
   end
 
@@ -185,7 +182,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     if (operator_i == MUL_M32) begin
       result_o = int_result[31:0];
     end else begin
-      result_o = mulh_result;
+      result_o = mulh_result[31:0];
     end
   end
 
