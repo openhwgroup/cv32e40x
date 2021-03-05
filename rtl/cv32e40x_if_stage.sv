@@ -88,8 +88,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic       [31:0] exc_pc;
 
-  logic              fetch_failed;
-
   logic              aligner_ready;
 
   logic              prefetch_valid;
@@ -148,8 +146,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // tell CS register file to initialize mtvec on boot
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
-
-  assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
   // prefetch buffer, caches a fixed number of instructions
   cv32e40x_prefetch_unit prefetch_unit_i
@@ -249,7 +245,6 @@ instruction_obi_i
     begin
       if_id_pipe_o.instr_valid     <= 1'b0;
       if_id_pipe_o.instr           <='{default: '0};
-      if_id_pipe_o.is_fetch_failed <= 1'b0;
       if_id_pipe_o.pc              <= '0;
       if_id_pipe_o.is_compressed   <= 1'b0;
       if_id_pipe_o.illegal_c_insn  <= 1'b0;
@@ -264,11 +259,9 @@ instruction_obi_i
         if_id_pipe_o.instr           <= predecoded_instr;
         if_id_pipe_o.is_compressed   <= instr_compressed_int;
         if_id_pipe_o.illegal_c_insn  <= illegal_c_insn;
-        if_id_pipe_o.is_fetch_failed <= 1'b0;
         if_id_pipe_o.pc              <= pc_if_o;
       end else if (clear_instr_valid_i) begin
         if_id_pipe_o.instr_valid     <= 1'b0;
-        if_id_pipe_o.is_fetch_failed <= fetch_failed; // TODO:OE this is not used. Use for PMP, PMA, bus error?
       end
     end
   end

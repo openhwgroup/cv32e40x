@@ -808,6 +808,7 @@ parameter EXC_CAUSE_LOAD_FAULT   = 5'h05;
 parameter EXC_CAUSE_STORE_FAULT  = 5'h07;
 parameter EXC_CAUSE_ECALL_UMODE  = 5'h08;
 parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'd24;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
@@ -889,7 +890,6 @@ typedef struct packed {
   logic        instr_valid;
   //logic [31:0] instr_rdata;
   inst_resp_t  instr;
-  logic        is_fetch_failed;
   logic [31:0] pc;
   logic        is_compressed;
   logic        illegal_c_insn;

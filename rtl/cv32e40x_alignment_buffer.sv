@@ -97,7 +97,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // For any number > 0, subtract 1 if we also issue to if_stage
   // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
   assign n_pushed_ins = (instr_valid_o & instr_ready_i) ? 
-                        (n_incoming_ins >0) ? n_incoming_ins - 1 : 2'b11 :
+                        (n_incoming_ins > 2'd0) ? n_incoming_ins - 2'd1 : 2'b11 :
                         n_incoming_ins;
 
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
@@ -210,6 +210,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Invalidate output if we get a branch
     if (branch_i) begin
       instr_valid_o = 1'b0;
+      instr_instr_o.bus_resp.err = 1'b0;
     end else if (instr_addr_o[1]) begin
       // unaligned instruction
       instr_instr_o.bus_resp.rdata = instr_unaligned;

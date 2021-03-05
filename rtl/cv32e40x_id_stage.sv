@@ -58,8 +58,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output pc_mux_e     pc_mux_o,
     output exc_pc_mux_e exc_pc_mux_o,
 
-    input  logic        is_fetch_failed_i,
-
     // Stalls
     output logic        halt_if_o,      // controller requests a halt of the IF stage
 
@@ -566,7 +564,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // from IF/ID pipeline
     .instr_valid_i                  ( if_id_pipe_i.instr_valid ),
-
+    .instr_err_i                    ( if_id_pipe_i.instr.bus_resp.err ),
     // from prefetcher
     .instr_req_o                    ( instr_req_o                ),
                                                                  
