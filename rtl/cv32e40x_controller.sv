@@ -417,7 +417,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                 // We need to check instruction errors AFTER the check for trigger_match_i above.
                 // This is because we shall _not_ execute the instruction at the trigger address
                 // before entering debug (dcsr.timing == 0)
-                if (instr_valid_i && instr_err_i) begin // Instruction fetch caused a bus error
+                if (instr_err_i) begin // Instruction fetch caused a bus error
                   halt_if_o         = 1'b1;
                   halt_id_o         = 1'b0;
                   ctrl_fsm_ns       = id_ready_i ? FLUSH_EX : DECODE;
@@ -565,7 +565,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           ctrl_fsm_ns = FLUSH_WB;
           if(instr_bus_err_q) begin
             csr_save_id_o     = 1'b1;
-            csr_save_cause_o  = 1'b1;
+            csr_save_cause_o  = !debug_mode_q; // TODO: ØK: Check this
             csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_BUS_FAULT};
           end 
           else if(illegal_insn_q) begin
@@ -607,6 +607,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           exc_pc_mux_o    = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
           exc_cause_o     = EXC_CAUSE_INSTR_BUS_FAULT;
           instr_bus_err_n = 1'b0;
+          if (debug_single_step_i && ~debug_mode_q)
+            ctrl_fsm_ns = DBG_TAKEN_IF;
         end 
         else if(illegal_insn_q) begin
             //exceptions
