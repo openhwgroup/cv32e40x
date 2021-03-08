@@ -27,10 +27,12 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_core
+module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS    =  1,
-  parameter LIB                 =  0
+  parameter LIB                 =  0,
+  parameter PMA_NUM_REGIONS     =  1,
+  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
@@ -83,73 +85,11 @@ module cv32e40x_core
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
 );
- 
-  import cv32e40x_pkg::*;
   
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
-
-  localparam PMA_NUM_REGIONS = 1;
-  localparam pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT};
-  /*
-   
-   // TODO:OE clean
-   
-  localparam PMA_NUM_REGIONS = 7;
-  
-  // Lowest index -> highest priority (in case of region overlap)
-  localparam pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{// Code 
-                                                           pma_region_t'{word_addr_low   : 32'(34'h0000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'h2000_0000 >> 2),
-                                                                         main            : 1'b1,
-                                                                         bufferable      : 1'b0,
-                                                                         cacheable       : 1'b1,
-                                                                         atomic          : 1'b1},
-                                                           // SRAM
-                                                           pma_region_t'{word_addr_low   : 32'(34'h2000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'h4000_0000 >> 2),
-                                                                         main            : 1'b1,
-                                                                         bufferable      : 1'b0,
-                                                                         cacheable       : 1'b1,
-                                                                         atomic          : 1'b1},
-                                                           // Peripheral 
-                                                           pma_region_t'{word_addr_low   : 32'(34'h4000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'h6000_0000 >> 2),
-                                                                         main            : 1'b0,
-                                                                         bufferable      : 1'b1,
-                                                                         cacheable       : 1'b0,
-                                                                         atomic          : 1'b0},
-                                                           // External RAM 
-                                                           pma_region_t'{word_addr_low   : 32'(34'h6000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'hA000_0000 >> 2),
-                                                                         main            : 1'b1,
-                                                                         bufferable      : 1'b0,
-                                                                         cacheable       : 1'b1,
-                                                                         atomic          : 1'b1},
-                                                           // External device 
-                                                           pma_region_t'{word_addr_low   : 32'(34'hA000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'hE000_0000 >> 2),
-                                                                         main            : 1'b0,
-                                                                         bufferable      : 1'b1,
-                                                                         cacheable       : 1'b0,
-                                                                         atomic          : 1'b0},
-                                                           // Private peripheral bus
-                                                           pma_region_t'{word_addr_low   : 32'(34'hE000_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'hE010_0000 >> 2),
-                                                                         main            : 1'b0,
-                                                                         bufferable      : 1'b0,
-                                                                         cacheable       : 1'b0,
-                                                                         atomic          : 1'b0},
-                                                           // System
-                                                           pma_region_t'{word_addr_low   : 32'(34'hE010_0000 >> 2),
-                                                                         word_addr_high  : 32'(34'h1_0000_0000 >> 2),
-                                                                         main            : 1'b0,
-                                                                         bufferable      : 1'b0,
-                                                                         cacheable       : 1'b0,
-                                                                         atomic          : 1'b0}
-                                                           };*/
 
   logic              clear_instr_valid;
   logic              pc_set;

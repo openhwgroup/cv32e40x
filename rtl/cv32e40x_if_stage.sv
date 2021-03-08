@@ -181,24 +181,28 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   
 cv32e40x_mpu
   #(.IF_STAGE(1),
+    .RESP_TYPE(inst_resp_t),
     .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
     .PMA_CFG(PMA_CFG))
   mpu_i
     (
-     .speculative_access_i           (1'b0 /*TODO*/),
-     .atomic_access_i                (1'b0 /*TODO*/),
+     .clk                  (clk),
+     .rst_n                (rst_n),
+     .speculative_access_i (1'b0), // PMA on instruction side will only allow access to main. Since speculative accesses are by definition allowed in main, it's OK to tie this low.
+     .atomic_access_i      (1'b0), // No atomic transfers on instruction side
+     .core_trans_we_i      (1'b0), // No writes in instructions side
      
      .obi_if_trans_addr_o            (obi_if_trans_addr[31:0]),
      .obi_if_trans_valid_o           (obi_if_trans_valid),
      .obi_if_trans_ready_i           (obi_if_trans_ready),
      .obi_if_resp_valid_i            (obi_if_resp_valid),
-     .obi_if_resp                    (obi_if_resp      ),
+     .obi_if_resp_i                  (obi_if_resp      ),
      
-     .prefetch_trans_ready_o         (prefetch_trans_ready),
-     .prefetch_resp_valid_o          (prefetch_resp_valid),
-     .prefetch_trans_addr_i          (prefetch_trans_addr[31:0]),
-     .prefetch_trans_valid_i         (prefetch_trans_valid),
-     .prefetch_inst_resp_o           (prefetch_inst_resp));
+     .core_trans_ready_o         (prefetch_trans_ready),
+     .core_resp_valid_o          (prefetch_resp_valid),
+     .core_trans_addr_i          (prefetch_trans_addr[31:0]),
+     .core_trans_valid_i         (prefetch_trans_valid),
+     .core_inst_resp_o           (prefetch_inst_resp));
 
 //////////////////////////////////////////////////////////////////////////////
 // OBI interface
