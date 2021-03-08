@@ -42,6 +42,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // decoder related signals
   output logic        deassert_we_o,              // deassert write enable for next instruction
 
+  input  mpu_status_e instr_mpu_status_i,         // Instruction MPU status
   input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
   input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
   input  logic        mret_insn_i,                // decoder encountered an mret instruction
@@ -178,6 +179,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   logic debug_mode_q, debug_mode_n;
   logic ebrk_force_debug_mode;
   logic illegal_insn_q, illegal_insn_n;
+  logic instr_mpu_err, instr_mpu_err_q, instr_mpu_err_n;
   logic debug_req_entry_q, debug_req_entry_n;
   logic debug_force_wakeup_q, debug_force_wakeup_n;
 
@@ -190,7 +192,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Keep track of bus error on instruction side
   logic instr_bus_err_n, instr_bus_err_q;
 
-
+  // Instruction fetch MPU error
+  assign instr_mpu_err = instr_mpu_status_i != MPU_OK;
+  
   ////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ ___  ____  _____    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
   //  / ___/ _ \|  _ \| ____|  / ___/ _ \| \ | |_   _|  _ \ / _ \| |   | |   | ____|  _ \   //
@@ -246,6 +250,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     illegal_insn_n         = illegal_insn_q;
     instr_bus_err_n        = instr_bus_err_q;
+    instr_mpu_err_n        = instr_mpu_err_q;
+
     // a trap towards the debug unit is generated when one of the
     // following conditions are true:
     // - ebreak instruction encountered
@@ -380,6 +386,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
             is_decoding_o = 1'b1;
             illegal_insn_n = 1'b0;
+            instr_bus_err_n = 1'b0;
+            instr_mpu_err_n = 1'b0;
+
+
             if ( (debug_req_pending || trigger_match_i) & ~debug_mode_q )
               begin
                 //Serving the debug
@@ -411,13 +421,19 @@ module cv32e40x_controller import cv32e40x_pkg::*;
               end
             else
               begin
-                // TODO: CHECK instruction side PMA/PMP before instruction bus errors
-
                 // Check instruction side bus_errors
                 // We need to check instruction errors AFTER the check for trigger_match_i above.
                 // This is because we shall _not_ execute the instruction at the trigger address
                 // before entering debug (dcsr.timing == 0)
-                if (instr_err_i) begin // Instruction fetch caused a bus error
+                if (instr_mpu_err) begin
+                  is_decoding_o  = 1'b0; 
+                  halt_if_o      = 1'b1; 
+                  halt_id_o      = 1'b0;
+                  ctrl_fsm_ns     = id_ready_i ? FLUSH_EX : DECODE;
+                  instr_mpu_err_n = 1'b1;
+                end
+                else if (instr_err_i) begin // Instruction fetch caused a bus error
+                  is_decoding_o     = 1'b0;
                   halt_if_o         = 1'b1;
                   halt_id_o         = 1'b0;
                   ctrl_fsm_ns       = id_ready_i ? FLUSH_EX : DECODE;
@@ -517,7 +533,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                     // make sure the current instruction has been executed
                         unique case(1'b1)
 
-                        illegal_insn_i | ecall_insn_i:
+                        illegal_insn_i | ecall_insn_i | instr_mpu_err | instr_err_i :
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
@@ -563,12 +579,18 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         if (ex_valid_i) begin
           //check done to prevent data harzard in the CSR registers
           ctrl_fsm_ns = FLUSH_WB;
-          if(instr_bus_err_q) begin
+
+          if (instr_mpu_err_q) begin
             csr_save_id_o     = 1'b1;
-            csr_save_cause_o  = !debug_mode_q; // TODO: ØK: Check this
-            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_BUS_FAULT};
+            csr_save_cause_o  = !debug_mode_q;
+            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_FAULT};
           end 
-          else if(illegal_insn_q) begin
+          else if(instr_bus_err_q) begin
+            csr_save_id_o     = 1'b1;
+            csr_save_cause_o  = !debug_mode_q;
+            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_BUS_FAULT};
+          end
+          else if (illegal_insn_q) begin
             csr_save_id_o     = 1'b1;
             csr_save_cause_o  = !debug_mode_q;
             csr_cause_o       = {1'b0, EXC_CAUSE_ILLEGAL_INSN};
@@ -589,7 +611,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           end
 
         end
-      end
+    end
 
       // flush the pipeline, insert NOP into EX and WB stage
       FLUSH_WB:
@@ -600,8 +622,17 @@ module cv32e40x_controller import cv32e40x_pkg::*;
         halt_id_o = 1'b1;
 
         ctrl_fsm_ns = DECODE;
-
-        if(instr_bus_err_q) begin
+        
+        if(instr_mpu_err_q) begin
+          pc_mux_o              = PC_EXCEPTION;
+          pc_set_o              = 1'b1;
+          exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
+          instr_mpu_err_n       = 1'b0;
+            if (debug_single_step_i && ~debug_mode_q)
+              ctrl_fsm_ns = DBG_TAKEN_IF;
+          
+        end 
+        else if(instr_bus_err_q) begin
           pc_mux_o        = PC_EXCEPTION;
           pc_set_o        = 1'b1;
           exc_pc_mux_o    = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
@@ -915,7 +946,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       debug_mode_q       <= 1'b0;
       illegal_insn_q     <= 1'b0;
       instr_bus_err_q    <= 1'b0;
-
+      instr_mpu_err_q    <= 1'b0;
+      
       debug_req_entry_q  <= 1'b0;
       debug_force_wakeup_q <= 1'b0;
     end
@@ -930,6 +962,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       debug_mode_q       <= debug_mode_n;
 
       illegal_insn_q     <= illegal_insn_n;
+      instr_mpu_err_q    <= instr_mpu_err_n;
 
       instr_bus_err_q    <= instr_bus_err_n;
 

@@ -565,6 +565,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // from IF/ID pipeline
     .instr_valid_i                  ( if_id_pipe_i.instr_valid        ),
     .instr_err_i                    ( if_id_pipe_i.instr.bus_resp.err ),
+    .instr_mpu_status_i             ( if_id_pipe_i.instr.mpu_status   ),
     // from prefetcher
     .instr_req_o                    ( instr_req_o                ),
                                                                  
