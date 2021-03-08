@@ -87,10 +87,13 @@ Exceptions
 +----------------+---------------------------------------------------------------+
 |             11 | Environment call from M-Mode (ECALL)                          |
 +----------------+---------------------------------------------------------------+
+|             24 | Instruction interface bus error                               |
++----------------+---------------------------------------------------------------+
 
-The illegal instruction exception and M-Mode ECALL instruction exceptions cannot be disabled and are always active.
+The illegal instruction exception, instruction bus error and M-Mode ECALL instruction exceptions cannot be disabled and are always active.
 The core raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:custom-isa-extensions).
 For example, in case the parameter FPU is set to 0, the |corev| raises an illegal instruction exception for any RVF instruction.
+The instruction bus error exception will be trapped precisely as the exception will be raised when the instruction enters the decode stage.
 
 .. only:: PMP
 

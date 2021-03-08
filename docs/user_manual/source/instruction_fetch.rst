@@ -14,8 +14,8 @@ which fetches instructions via the external bus interface from for example
 an externally connected instruction memory or instruction cache.
 
 The prefetch unit performs word-aligned 32-bit prefetches and stores the
-fetched words in a FIFO with four entries. As a result of this (speculative)
-prefetch, |corev| can fetch up to four words outside of the code region
+fetched words in an alignment buffer with three entries. As a result of this (speculative)
+prefetch, |corev| can fetch up to three words outside of the code region
 and care should therefore be taken that no unwanted read side effects occur
 for such prefetches outside of the actual code region.
 
@@ -27,19 +27,21 @@ are possible and thus it needs fewer signals.
 .. table:: Instruction Fetch interface signals
   :name: Instruction Fetch interface signals
 
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | **Signal**              | **Direction**   | **Description**                                                                                                                |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_req\_o           | output          | Request valid, will stay high until instr\_gnt\_i is high for one cycle                                                        |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_addr\_o[31:0]    | output          | Address, word aligned                                                                                                          |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_rdata\_i[31:0]   | input           | Data read from memory                                                                                                          |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_rvalid\_i        | input           | instr\_rdata\_i holds valid data when instr\_rvalid\_i is high. This signal will be high for exactly one cycle per request.    |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_gnt\_i           | input           | The other side accepted the request. instr\_addr\_o may change in the next cycle.                                              |
-  +-------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | **Signal**              | **Direction**   | **Description**                                                                                                                                   |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_req\_o           | output          | Request valid, will stay high until instr\_gnt\_i is high for one cycle                                                                           |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_addr\_o[31:0]    | output          | Address, word aligned                                                                                                                             |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_rdata\_i[31:0]   | input           | Data read from memory                                                                                                                             |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_rvalid\_i        | input           | instr\_rdata\_i  and instr\_err\_i holds valid data when instr\_rvalid\_i is high. This signal will be high for exactly one cycle per request.    |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_gnt\_i           | input           | The other side accepted the request. instr\_addr\_o may change in the next cycle.                                                                 |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | instr\_err\_i           | input           | The bus request caused a bus error                                                                                                                |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Misaligned Accesses
 -------------------
@@ -56,7 +58,7 @@ The instruction bus interface is compliant to the OBI (Open Bus Interface) proto
 See https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.0.pdf
 for details about the protocol. The |corev| instruction fetch interface does not
 implement the following optional OBI signals: we, be, wdata, auser, wuser, aid,
-rready, err, ruser, rid. These signals can be thought of as being tied off as
+rready, ruser, rid. These signals can be thought of as being tied off as
 specified in the OBI specification. The |corev| instruction fetch interface can
 cause up to two outstanding transactions.
 
@@ -69,9 +71,24 @@ cause up to two outstanding transactions.
 
    Back-to-back Memory Transactions
 
+
+.. figure:: ../images/obi_instruction_basic_err.svg
+   :name: obi-instruction-basic-err
+   :align: center
+   :alt:
+
+   Back-to-back Memory Transactions with bus errors on A2/RD2 and A4/RD4
+
 .. figure:: ../images/obi_instruction_multiple_outstanding.svg
    :name: obi-instruction-multiple-outstanding
    :align: center
    :alt:
 
    Multiple Outstanding Memory Transactions
+
+.. figure:: ../images/obi_instruction_multiple_outstanding_err.svg
+   :name: obi-instruction-multiple-outstanding-err
+   :align: center
+   :alt:
+
+   Multiple Outstanding Memory Transactions with bus error on A1/RD1
