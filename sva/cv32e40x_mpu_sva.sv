@@ -83,16 +83,16 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (mpu_status != MPU_OK) |-> (!obi_if_resp_valid_i) )
       else `uvm_error("mpu", "MPU error while OBI rvalid")
 
-  // Should only block core side while waiting to give MPU error response
+  // Should only block core side upon when waiting for MPU error response
   a_mpu_block_core_iff_wait :
     assert property (@(posedge clk)
-                     (mpu_block_core) |-> ((state_q == MPU_RE_ERR_WAIT) || (state_q == MPU_WR_ERR_WAIT)) )
+                     (mpu_block_core) |-> (state_q != MPU_IDLE) )
       else `uvm_error("mpu", "MPU blocking core side when not needed")
 
-  // Should only block OBI side upon MPU error, and while waiting to give MPU error response
+  // Should only block OBI side upon MPU error
   a_mpu_block_obi_iff_err :
     assert property (@(posedge clk)
-                     (mpu_block_obi) |-> (mpu_err || (state_q == MPU_RE_ERR_WAIT) || (state_q == MPU_WR_ERR_WAIT)) )
+                     (mpu_block_obi) |-> (mpu_err || (state_q != MPU_IDLE)) )
       else `uvm_error("mpu", "MPU blocking OBI side when not needed")
 
 endmodule : cv32e40x_mpu_sva

@@ -30,26 +30,28 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     parameter int unsigned PMA_NUM_REGIONS = 1,
     parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
   (
-   input logic                clk,
-   input logic                rst_n,
+   input logic         clk,
+   input logic         rst_n,
    
-   input logic                speculative_access_i,
-   input logic                atomic_access_i,
+   input logic         speculative_access_i,
+   input logic         atomic_access_i,
 
    // Interface towards bus interface
-   input logic                obi_if_trans_ready_i,
-   output logic [31:0]        obi_if_trans_addr_o,
-   output logic               obi_if_trans_valid_o,
-   input logic                obi_if_resp_valid_i,
-   input obi_inst_resp_t      obi_if_resp_i,
+   input logic         obi_if_trans_ready_i,
+   output logic [31:0] obi_if_trans_addr_o,
+   output logic        obi_if_trans_valid_o,
+   output logic        obi_if_trans_cacheable_o,
+   output logic        obi_if_trans_bufferable_o,
+   input logic         obi_if_resp_valid_i,
+   input               obi_inst_resp_t obi_if_resp_i,
 
    // Interface towards core
-   input logic [31:0]         core_trans_addr_i,
-   input logic                core_trans_we_i,
-   input logic                core_trans_valid_i,
-   output logic               core_trans_ready_o,
-   output logic               core_resp_valid_o,
-   output inst_resp_t         core_inst_resp_o
+   input logic [31:0]  core_trans_addr_i,
+   input logic         core_trans_we_i,
+   input logic         core_trans_valid_i,
+   output logic        core_trans_ready_o,
+   output logic        core_resp_valid_o,
+   output              inst_resp_t core_inst_resp_o
    );
 
   localparam IN_FLIGHT_WIDTH = $clog2(MAX_IN_FLIGHT+1); // +1 to include 0
@@ -57,8 +59,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   logic        pma_err;
   logic        pmp_err;
   logic        mpu_err;
-  logic        pma_bufferable;
-  logic        pma_cacheable;
   logic        mpu_block_core;
   logic        mpu_block_obi;
   logic        mpu_err_trans_valid;
@@ -66,7 +66,12 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   mpu_state_e state_q, next_state;
   logic [IN_FLIGHT_WIDTH-1:0] in_flight_q, in_flight_n;
   
-  
+
+  // FSM that will "consume" transfers failing PMA or PMP checks.
+  // Upon failing checks, this FSM will prevent the transfer from going out on the OBI bus
+  // and wait for all in flight OBI transactions to complete while blocking new transfers.
+  // When all in flight transactions are complete, it will respond with the correct status before
+  // allowing new transfers to go through.
   always_comb begin
 
     next_state     = state_q;
@@ -103,34 +108,17 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
         end
       end
       MPU_RE_ERR_RESP, MPU_WR_ERR_RESP: begin
-
-        // These states mimic the response phase.
-        // Set the MPU status for read/write errors
-        // New transfers are allowed to pass through
+        
+        // Keep blocking new transfers
+        mpu_block_obi  = 1'b1;
+        mpu_block_core = 1'b1;
 
         // Set up MPU error response towards the core
         mpu_err_trans_valid = 1'b1;
         mpu_status = (state_q == MPU_RE_ERR_RESP) ? MPU_RE_FAULT : MPU_WR_FAULT;
-        
-        // Check for MPU error on new transfer
-        if (mpu_err && core_trans_valid_i && obi_if_trans_ready_i) begin
 
-          // Block transfer from going out on the bus.
-          mpu_block_obi  = 1'b1;
-          
-          if(core_trans_we_i) begin
-            // MPU error on write
-            next_state = (in_flight_n == 0) ? MPU_WR_ERR_RESP : MPU_RE_ERR_WAIT;
-          end
-          else begin
-            // MPU error on read
-            next_state = (in_flight_n == 0) ? MPU_RE_ERR_RESP : MPU_WR_ERR_WAIT;
-          end
-        end
-        else begin
-          // No new transfer, go back to idle
-          next_state = MPU_IDLE;
-        end
+        next_state = MPU_IDLE;
+        
       end
       default: ;
     endcase
@@ -166,7 +154,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign obi_if_trans_addr_o  = core_trans_addr_i;
   
   // Signals towards core
-  /*TODO:OE Blocking is not the same as in spec. core_trans_ready_o will only be supressed to block transfers when "consuming" a tranfer due to MPU error, we'll still wait for the downstream obi-if to be ready (but we won't pass the transfer on)*/
   assign core_trans_ready_o          = obi_if_trans_ready_i && !mpu_block_core; 
   assign core_resp_valid_o           = obi_if_resp_valid_i || mpu_err_trans_valid;
   assign core_inst_resp_o.bus_resp   = obi_if_resp_i;
@@ -182,8 +169,9 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
      .speculative_access_i(speculative_access_i),
      .atomic_access_i(atomic_access_i),
      .pma_err_o(pma_err),
-     .pma_bufferable_o(pma_bufferable),
-     .pma_cacheable_o(pma_cacheable));
+     .pma_bufferable_o(obi_if_trans_bufferable_o),
+     .pma_cacheable_o(obi_if_trans_cacheable_o));
+
   
   assign pmp_err = 1'b0; // TODO connect to PMP
   assign mpu_err = pmp_err || pma_err;

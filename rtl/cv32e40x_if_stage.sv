@@ -192,6 +192,8 @@ cv32e40x_mpu
      
      .obi_if_trans_addr_o            (obi_if_trans_addr[31:0]),
      .obi_if_trans_valid_o           (obi_if_trans_valid),
+     .obi_if_trans_cacheable_o       (), // TODO:OE connect to obi.prot[X]
+     .obi_if_trans_bufferable_o      (), // Not used on instruction side
      .obi_if_trans_ready_i           (obi_if_trans_ready),
      .obi_if_resp_valid_i            (obi_if_resp_valid),
      .obi_if_resp_i                  (obi_if_resp      ),
