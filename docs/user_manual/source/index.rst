@@ -13,6 +13,7 @@ Editor: **Davide Schiavone**
    pipeline
    instruction_fetch
    load_store_unit
+   pma
    register_file
    fpu
    sleep
