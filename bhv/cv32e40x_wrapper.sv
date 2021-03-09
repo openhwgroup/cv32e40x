@@ -135,6 +135,10 @@ module cv32e40x_wrapper
                 .id_stage_ebrk_insn               (core_i.id_stage_i.ebrk_insn),
                 .id_stage_ecall_insn              (core_i.id_stage_i.ecall_insn),
                 .id_stage_illegal_insn            (core_i.id_stage_i.illegal_insn),
+                .id_stage_instr_err               (core_i.id_stage_i.controller_i.instr_err_i),
+                .id_stage_mpu_err                 (core_i.id_stage_i.controller_i.instr_mpu_err),
+                .id_stage_instr_valid             (core_i.id_stage_i.controller_i.instr_valid_i),
+                .branch_taken_in_ex               (core_i.id_stage_i.controller_i.branch_taken_ex_i),
                 // probed controller signals
                 .id_stage_controller_ctrl_fsm_ns  (core_i.id_stage_i.controller_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.id_stage_i.controller_i.debug_mode_n),

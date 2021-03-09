@@ -537,18 +537,22 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
-
-                        (~ebrk_force_debug_mode & ebrk_insn_i):
+                        
+                        // In the following checks we gate off with is_decoding_o
+                        // as the decoder may decode a valid instruction even 
+                        // though the alignment buffer signals a bus_error 
+                        // or mpu_error, which invalidates the instruction.
+                        (~ebrk_force_debug_mode & ebrk_insn_i && is_decoding_o):
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
 
-                        mret_insn_i:
+                        mret_insn_i && is_decoding_o:
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
 
-                        branch_in_id:
+                        branch_in_id && is_decoding_o:
                         begin
                             ctrl_fsm_ns    = DBG_WAIT_BRANCH;
                         end
@@ -636,7 +640,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           pc_mux_o        = PC_EXCEPTION;
           pc_set_o        = 1'b1;
           exc_pc_mux_o    = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-          exc_cause_o     = EXC_CAUSE_INSTR_BUS_FAULT;
           instr_bus_err_n = 1'b0;
           if (debug_single_step_i && ~debug_mode_q)
             ctrl_fsm_ns = DBG_TAKEN_IF;

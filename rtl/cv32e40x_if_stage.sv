@@ -248,7 +248,7 @@ instruction_obi_i
     if (rst_n == 1'b0)
     begin
       if_id_pipe_o.instr_valid     <= 1'b0;
-      if_id_pipe_o.instr           <='{default: '0};
+      if_id_pipe_o.instr           <= inst_resp_t'{default: 'b0};
       if_id_pipe_o.pc              <= '0;
       if_id_pipe_o.is_compressed   <= 1'b0;
       if_id_pipe_o.illegal_c_insn  <= 1'b0;

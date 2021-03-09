@@ -159,7 +159,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       if(!unaligned_is_compressed) begin
         // If any entry is nok ok, we have an instr_fault
         if(rdata_q[1].mpu_status != MPU_OK || rdata_q[0].mpu_status != MPU_OK) begin
-          mpu_status_unaligned = MPU_RE_FAULT; // TODO: Is this ok, or should we pick one of q0/q1?
+          mpu_status_unaligned = MPU_RE_FAULT;
         end
 
         // Bus error from either entry
@@ -178,7 +178,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           // There is unaligned data in q0 and is it not compressed
           // use q0 and incoming data
           if(rdata_q[0].mpu_status != MPU_OK || resp_i.mpu_status != MPU_OK) begin
-            mpu_status_unaligned = MPU_RE_FAULT; // TODO: Is this ok, or should we pick one of q0 resp_i?
+            mpu_status_unaligned = MPU_RE_FAULT;
           end
 
           // Bus error from q0 and resp_i
@@ -467,7 +467,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     if(rst_n == 1'b0)
     begin
       addr_q    <= '0;
-      rdata_q   <= '{default: '0};
+      rdata_q   <= inst_resp_t'{default: 'b0};
       valid_q   <= '0;
       aligned_q <= 1'b0;
       complete_q <= 1'b0;
