@@ -22,7 +22,7 @@
 module cv32e40x_mult_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (
+  (// Module boundry signals
    input logic        clk,
    input logic        rst_n,
    input logic [31:0] op_a_i,
@@ -30,53 +30,84 @@ module cv32e40x_mult_sva
    input logic        ready_o,
    input logic        enable_i,
    input logic [31:0] result_o,
+   input logic        ex_ready_i,
    input logic [ 1:0] short_signed_i,
    input              mul_opcode_e operator_i,
+   // Internal signals
+   input logic [32:0] mulh_acc,
    input              mult_state_e mulh_state);
 
-  // check multiplication result for mulh
-  a_mulh_result :
-    assert property (@(posedge clk)
-                     ((mulh_state == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
-                     |->
+  ///////////////////////////////////////
+  ////  Assertions on module boundry ////
+  ///////////////////////////////////////
+  
+  // Check result for MUL
+  a_mul_result : // check multiplication result for MUL
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (enable_i && (operator_i == MUL_M32)) |->
+                     (result_o == ($signed(op_a_i) * $signed(op_b_i)))) else `uvm_error("mult", "MUL result check failed")
+
+
+  // Check result for all MULH flavors 
+  logic               mulh_result_valid;
+  assign mulh_result_valid = enable_i && (operator_i == MUL_H) && ready_o;
+
+  a_mulh_result : // check multiplication result for mulh
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_result_valid && (short_signed_i == 2'b11)) |->
                      (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) )
       else `uvm_error("mult", "Assertion a_mulh_result failed")
 
-   // check multiplication result for mulhsu
-   a_mulhsu_result :
-     assert property (@(posedge clk)
-                      ((mulh_state == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
-                      |->
-                      (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) )
-       else `uvm_error("mult", "Assertion a_mulh_result failed")
+  a_mulhsu_result : // check multiplication result for mulhsu
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_result_valid && (short_signed_i == 2'b01)) |->
+                     (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) )
+      else `uvm_error("mult", "Assertion a_mulh_result failed")
 
-   // check multiplication result for mulhu
-   a_mulhu_result :
-     assert property (@(posedge clk)
-                      ((mulh_state == AHBH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
-                      |->
-                      (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
-       else `uvm_error("mult", "Assertion a_mulh_result failed")
+  a_mulhu_result : // check multiplication result for mulhu
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_result_valid && (short_signed_i == 2'b00)) |->
+                     (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
+      else `uvm_error("mult", "Assertion a_mulh_result failed")
 
-   // Check that multiplier inputs are not changed in the middle of a MULH operation
-   a_enable_constant_when_mulh_active:
-     assert property (@(posedge clk) disable iff (!rst_n)
-                      !ready_o |=> $stable(enable_i)) else `uvm_error("mult", "Enable changed when MULH active")
 
-   a_operator_constant_when_mulh_active:
-     assert property (@(posedge clk) disable iff (!rst_n)
-                      !ready_o |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")
+  // Check that multiplier inputs are not changed in the middle of a MULH operation
+  logic         ready;
+  assign ready = ready_o && ex_ready_i;
+  a_enable_constant_when_mulh_active:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     !ready |=> $stable(enable_i)) else `uvm_error("mult", "Enable changed when MULH active")
 
-   a_sign_constant_when_mulh_active:
-     assert property (@(posedge clk) disable iff (!rst_n)
-                      !ready_o |=> $stable(short_signed_i)) else `uvm_error("mult", "Sign changed when MULH active")
+  a_operator_constant_when_mulh_active:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     !ready |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")
 
-   a_operand_a_constant_when_mulh_active:
-     assert property (@(posedge clk) disable iff (!rst_n)
-                      !ready_o |=> $stable(op_a_i)) else `uvm_error("mult", "Operand A changed when MULH active")
+  a_sign_constant_when_mulh_active:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     !ready |=> $stable(short_signed_i)) else `uvm_error("mult", "Sign changed when MULH active")
 
-   a_operand_b_constant_when_mulh_active:
-     assert property (@(posedge clk) disable iff (!rst_n)
-                      !ready_o |=> $stable(op_b_i)) else `uvm_error("mult", "Operand B changed when MULH active")
+  a_operand_a_constant_when_mulh_active:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     !ready |=> $stable(op_a_i)) else `uvm_error("mult", "Operand A changed when MULH active")
+
+  a_operand_b_constant_when_mulh_active:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     !ready |=> $stable(op_b_i)) else `uvm_error("mult", "Operand B changed when MULH active")
+
+
+  a_check_external_ready: // Check that the result is kept until execute stage ready is asserted and the result can be stored
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (ready_o && !ex_ready_i) |=> $stable(result_o))
+      else `uvm_error("mult", "Completed result changed while external ready was low")
+
+  //////////////////////////////
+  ////  Internal assertions ////
+  //////////////////////////////
+
+  // Check initial value of accumulate register
+  a_check_acc_init_zero:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == ALBL) |-> (mulh_acc == '0))
+      else `uvm_error("mult", "Accumulate register not 0 when starting MULH calculation")
 
 endmodule // cv32e40x_mult
