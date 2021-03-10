@@ -29,9 +29,9 @@
 
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS    =  1,
-  parameter LIB                 =  0,
-  parameter PMA_NUM_REGIONS     =  1,
+  parameter NUM_MHPMCOUNTERS             =  1,
+  parameter LIB                          =  0,
+  parameter int unsigned PMA_NUM_REGIONS =  1,
   parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT}
 )
 (

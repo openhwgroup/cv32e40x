@@ -47,6 +47,9 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
   input  logic        resp_valid_i,
   input  inst_resp_t  resp_i,
+
+  output logic        one_txn_pend_n,
+
   // Prefetch Buffer Status
   output logic        prefetch_busy_o
 );
@@ -101,7 +104,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
     .resp_valid_i         ( resp_valid_i           ),
     .resp_i               ( resp_i                 ),
-
+    .one_txn_pend_n       ( one_txn_pend_n         ),
     // Instruction interface
     .instr_valid_o        ( prefetch_valid_o       ),
     .instr_ready_i        ( prefetch_ready_i       ),

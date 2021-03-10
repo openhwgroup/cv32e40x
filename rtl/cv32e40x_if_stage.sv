@@ -105,12 +105,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_trans_ready;
   logic [31:0]       prefetch_trans_addr;
   inst_resp_t        prefetch_inst_resp;
-  
-  logic              obi_if_resp_valid;
-  obi_inst_resp_t    obi_if_resp;
-  logic              obi_if_trans_valid;
-  logic              obi_if_trans_ready;
-  logic [31:0]       obi_if_trans_addr;
+  logic              prefetch_one_txn_pend_n;  
+
+  logic              bus_resp_valid;
+  obi_inst_resp_t    bus_resp;
+  logic              bus_trans_valid;
+  logic              bus_trans_ready;
+  logic [31:0]       bus_trans_addr;
 
   // exception PC selection mux
   always_comb
@@ -169,40 +170,42 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .resp_i            ( prefetch_inst_resp          ),
 
     // Prefetch Buffer Status
-    .prefetch_busy_o   ( prefetch_busy               )
+    .prefetch_busy_o   ( prefetch_busy               ),
+    .one_txn_pend_n    ( prefetch_one_txn_pend_n     )
 );
 
 
 //////////////////////////////////////////////////////////////////////////////
-// MPU (including PMA and PMP)
+// MPU
 //////////////////////////////////////////////////////////////////////////////
   
 cv32e40x_mpu
-  #(.IF_STAGE(1),
-    .RESP_TYPE(inst_resp_t),
+  #(.RESP_TYPE(inst_resp_t),
     .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
     .PMA_CFG(PMA_CFG))
   mpu_i
     (
      .clk                  (clk),
      .rst_n                (rst_n),
-     .speculative_access_i (1'b0), // PMA on instruction side will only allow access to main. Since speculative accesses are by definition allowed in main, it's OK to tie this low.
+     .speculative_access_i (1'b1), // Instruction fetches are speculative
      .atomic_access_i      (1'b0), // No atomic transfers on instruction side
+     .execute_access_i     (1'b1), // All accesses are intended for execution
      .core_trans_we_i      (1'b0), // No writes in instructions side
      
-     .obi_if_trans_addr_o            (obi_if_trans_addr[31:0]),
-     .obi_if_trans_valid_o           (obi_if_trans_valid),
-     .obi_if_trans_cacheable_o       (), // TODO:OE connect to obi.prot[X]
-     .obi_if_trans_bufferable_o      (), // Not used on instruction side
-     .obi_if_trans_ready_i           (obi_if_trans_ready),
-     .obi_if_resp_valid_i            (obi_if_resp_valid),
-     .obi_if_resp_i                  (obi_if_resp      ),
+     .bus_trans_addr_o            (bus_trans_addr[31:0]),
+     .bus_trans_valid_o           (bus_trans_valid),
+     .bus_trans_cacheable_o       (), // TODO:OE connect to obi.prot[X]
+     .bus_trans_bufferable_o      (), // Not used on instruction side
+     .bus_trans_ready_i           (bus_trans_ready),
+     .bus_resp_valid_i            (bus_resp_valid),
+     .bus_resp_i                  (bus_resp      ),
      
      .core_trans_ready_o         (prefetch_trans_ready),
      .core_resp_valid_o          (prefetch_resp_valid),
      .core_trans_addr_i          (prefetch_trans_addr[31:0]),
      .core_trans_valid_i         (prefetch_trans_valid),
-     .core_inst_resp_o           (prefetch_inst_resp));
+     .core_inst_resp_o           (prefetch_inst_resp),
+     .core_one_txn_pend_n        (prefetch_one_txn_pend_n));
 
 //////////////////////////////////////////////////////////////////////////////
 // OBI interface
@@ -214,12 +217,12 @@ instruction_obi_i
   .clk                   ( clk               ),
   .rst_n                 ( rst_n             ),
 
-  .trans_valid_i         ( obi_if_trans_valid),
-  .trans_ready_o         ( obi_if_trans_ready),
-  .trans_addr_i          ( obi_if_trans_addr ),
+  .trans_valid_i         ( bus_trans_valid   ),
+  .trans_ready_o         ( bus_trans_ready   ),
+  .trans_addr_i          ( bus_trans_addr    ),
 
-  .resp_valid_o          ( obi_if_resp_valid ),
-  .resp_o                ( obi_if_resp       ),
+  .resp_valid_o          ( bus_resp_valid    ),
+  .resp_o                ( bus_resp          ),
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
 

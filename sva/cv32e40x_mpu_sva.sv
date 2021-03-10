@@ -1,7 +1,30 @@
+// Copyright 2021 Silicon Labs, Inc.
+//   
+// This file, and derivatives thereof are licensed under the
+// Solderpad License, Version 2.0 (the "License");
+// Use of this file means you agree to the terms and conditions
+// of the license and are in full compliance with the License.
+// You may obtain a copy of the License at
+//   
+//     https://solderpad.org/licenses/SHL-2.0/
+//   
+// Unless required by applicable law or agreed to in writing, software
+// and hardware implementations thereof
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+// Authors:        Oivind Ekelund - oivind.ekelund@silabs.com                 //
+//                                                                            //
+// Description:    MPU (Memory Protection Unit) assertions                    //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
-  #(parameter bit          IF_STAGE = 1,
-    parameter type         RESP_TYPE = inst_resp_t,
-    parameter int unsigned MAX_IN_FLIGHT = 2,
+  #(parameter type         RESP_TYPE = inst_resp_t,
     parameter int unsigned PMA_NUM_REGIONS = 1,
     parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
   (
@@ -12,11 +35,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic         atomic_access_i,
 
    // Interface towards bus interface
-   input logic                       obi_if_trans_ready_i,
-   input logic [31:0]                obi_if_trans_addr_o,
-   input logic                       obi_if_trans_valid_o,
-   input logic                       obi_if_resp_valid_i,
-   input obi_inst_resp_t             obi_if_resp_i,
+   input logic                       bus_trans_ready_i,
+   input logic [31:0]                bus_trans_addr_o,
+   input logic                       bus_trans_valid_o,
+   input logic                       bus_resp_valid_i,
+   input obi_inst_resp_t             bus_resp_i,
 
    // Interface towards core
    input logic [31:0]                core_trans_addr_i,
@@ -26,8 +49,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic                       core_resp_valid_o,
    input inst_resp_t                 core_inst_resp_o,
 
-   input logic [$clog2(MAX_IN_FLIGHT+1)-1:0] in_flight_q,
    input mpu_status_e                        mpu_status,
+   input logic                               mpu_err_trans_valid,
    input logic                               mpu_block_core,
    input logic                               mpu_block_obi,
    input mpu_state_e                         state_q,
@@ -51,37 +74,17 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     
   end
   
-  // MPU should never see misaligned transfers
-  a_mpu_misaligned :
-    assert property (@(posedge clk)
-                     (core_trans_addr_i[1:0] == 2'b00) )
-      else `uvm_error("mpu", "MPU does not supprot misaligned transfers")
-
-  
-  // Should never receive OBI response when no transfers are in flight
-  a_mpu_cnt_uf :
-    assert property (@(posedge clk)
-                     (obi_if_resp_valid_i) |-> (in_flight_q > 0) )
-      else `uvm_error("mpu", "in_flight_q underflow")
-    
-  // Never initiate OBI transfer while in flight counter is maxed out
-  a_mpu_cnt_of :
-    assert property (@(posedge clk)
-                     (obi_if_trans_valid_o && obi_if_trans_ready_i) |-> (in_flight_q != MAX_IN_FLIGHT) )
-      else `uvm_error("mpu", "in_flight_q overflow")
-
-  
-  // Only give error response when there are no OBI transfers in flight
-  a_mpu_status_no_in_flight :
-    assert property (@(posedge clk)
-                     (mpu_status != MPU_OK) |-> (in_flight_q == 0) )
-      else `uvm_error("mpu", "MPU error while transactions in flight")
-
-  // Should never give MPU error response in the same cycle as OBI response
+  // Should only give MPU error response during mpu_err_trans_valid
   a_mpu_status_no_obi_rvalid :
     assert property (@(posedge clk)
-                     (mpu_status != MPU_OK) |-> (!obi_if_resp_valid_i) )
-      else `uvm_error("mpu", "MPU error while OBI rvalid")
+                     (mpu_status != MPU_OK) |-> (mpu_err_trans_valid) )
+      else `uvm_error("mpu", "MPU error status wile not mpu_err_trans_valid")
+
+  // MPU FSM and bus interface should never assert trans valid at the same time
+  a_mpu_bus_mpu_err_valid :
+    assert property (@(posedge clk)
+                     (! (bus_resp_valid_i && mpu_err_trans_valid) ))
+      else `uvm_error("mpu", "MPU FSM and bus interface response collision")
 
   // Should only block core side upon when waiting for MPU error response
   a_mpu_block_core_iff_wait :

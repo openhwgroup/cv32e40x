@@ -31,6 +31,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic [31:0]    branch_addr_i,
   input  logic           prefetch_en_i,
   output logic           prefetch_busy_o,
+  output logic           one_txn_pend_n,
 
   // Interface to prefetcher
   output logic           fetch_valid_o,
@@ -110,6 +111,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Busy if we expect any responses, or we have an active fetch_valid_o
   assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
+
+  // Indicate that there will be one pending transaction in the next cycle
+  assign one_txn_pend_n = outstanding_cnt_n == FIFO_ADDR_DEPTH'(1);
 
   // Signal aligned branch to the prefetcher
   assign fetch_branch_o = branch_i;

@@ -24,13 +24,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_pma import cv32e40x_pkg::*;
-  #(parameter bit          IF_STAGE = 1,
-    parameter int unsigned PMA_NUM_REGIONS = 1,
-    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
+  #(  
+      parameter int unsigned PMA_NUM_REGIONS = 1,
+      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
   (
    input logic [31:0] trans_addr_i,
-   input logic        speculative_access_i,
-   input logic        atomic_access_i,
+   input logic        speculative_access_i, // Indicate that ongoing access is speculative
+   input logic        atomic_access_i,      // Indicate that ongoing access is atomic
+   input logic        execute_access_i,     // Indicate that ongoing access is intended for execution
    output logic       pma_err_o,
    output logic       pma_bufferable_o,
    output logic       pma_cacheable_o
@@ -73,8 +74,8 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       pma_err_o   = 1'b1;
     end
 
-    // IF stage is only allowed to fetch from main memory (code execution only allowed from main memory)
-    if (IF_STAGE && !pma_cfg.main) begin
+    // Code execution only allowed from main memory
+    if (execute_access_i && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
     end
     
