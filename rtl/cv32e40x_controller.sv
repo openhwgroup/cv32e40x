@@ -540,7 +540,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                     // make sure the current instruction has been executed
                         unique case(1'b1)
 
-                        illegal_insn_i | ecall_insn_i | instr_err :
+                        illegal_insn_i | ecall_insn_i | instr_invalidate:
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end

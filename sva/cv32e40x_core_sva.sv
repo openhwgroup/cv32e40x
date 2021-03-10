@@ -116,17 +116,17 @@ module cv32e40x_core_sva
             expected_instr_mpuerr_mepc <= 32'b0;
           end
           else begin
-            if (!first_illegal_found && is_decoding && id_valid && !id_stage_instr_err &&
+            if (!first_illegal_found && is_decoding && id_valid &&
                 id_stage_illegal_insn && !id_stage_controller_debug_mode_n) begin
               first_illegal_found   <= 1'b1;
               expected_illegal_mepc <= if_id_pipe.pc;
             end
-            if (!first_ecall_found && is_decoding && id_valid && !id_stage_instr_err &&
+            if (!first_ecall_found && is_decoding && id_valid &&
                 id_stage_ecall_insn && !id_stage_controller_debug_mode_n) begin
               first_ecall_found   <= 1'b1;
               expected_ecall_mepc <= if_id_pipe.pc;
             end
-            if (!first_ebrk_found && is_decoding && id_valid && !id_stage_instr_err &&
+            if (!first_ebrk_found && is_decoding && id_valid &&
                 id_stage_ebrk_insn && (id_stage_controller_ctrl_fsm_ns != DBG_FLUSH)) begin
               first_ebrk_found   <= 1'b1;
               expected_ebrk_mepc <= if_id_pipe.pc;
