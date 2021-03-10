@@ -42,7 +42,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // decoder related signals
   output logic        deassert_we_o,              // deassert write enable for next instruction
 
-  input  mpu_status_e instr_mpu_status_i,         // Instruction MPU status
   input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
   input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
   input  logic        mret_insn_i,                // decoder encountered an mret instruction
@@ -59,8 +58,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   
   // from IF/ID pipeline
-  input  logic        instr_valid_i,              // instruction coming from IF/ID pipeline is valid
-  input  logic        instr_err_i,                // Instruction fetch caused bus error
+  input  if_id_pipe_t if_id_pipe_i,
 
   // from prefetcher
   output logic        instr_req_o,                // Start fetching instructions
@@ -70,10 +68,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output pc_mux_e     pc_mux_o,                   // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
   output exc_pc_mux_e exc_pc_mux_o,               // Selects target PC for exception
 
-  input  logic [31:0]       pc_id_i,
-  input  logic              is_compressed_i,
-
-  
+ 
   // LSU
   input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
   input  logic        data_we_ex_i,
@@ -192,8 +187,18 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Keep track of bus error on instruction side
   logic instr_bus_err_n, instr_bus_err_q;
 
+  // Combined instr_err and instr_mpu_err
+  logic instr_invalidate;
+
+  // signals from if_id_pipe struct
+  logic instr_valid;
+  logic instr_err;
+  
   // Instruction fetch MPU error
-  assign instr_mpu_err = instr_mpu_status_i != MPU_OK;
+  assign instr_mpu_err = if_id_pipe_i.instr.mpu_status != MPU_OK;
+  assign instr_valid   = if_id_pipe_i.instr_valid;
+  assign instr_err     = if_id_pipe_i.instr.bus_resp.err;
+  assign instr_invalidate = instr_mpu_err || instr_err;
   
   ////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ ___  ____  _____    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
@@ -381,7 +386,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
           // decode and execute instructions only if the current conditional
           // branch in the EX stage is either not taken, or there is no
           // conditional branch in the EX stage
-          else if (instr_valid_i) //valid block
+          else if (instr_valid) //valid block
           begin: blk_decode_level1 // now analyze the current instruction in the ID stage
 
             is_decoding_o = 1'b1;
@@ -421,10 +426,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
               end
             else
               begin
-                // Check instruction side bus_errors
+                // Check instruction side errors
                 // We need to check instruction errors AFTER the check for trigger_match_i above.
                 // This is because we shall _not_ execute the instruction at the trigger address
-                // before entering debug (dcsr.timing == 0)
+                // before entering debug (tdata1.timing == 0)
+                // MPU errors have higher priority than fetch errors, both have higher priority
+                // than illegal instructions.
                 if (instr_mpu_err) begin
                   is_decoding_o  = 1'b0; 
                   halt_if_o      = 1'b1; 
@@ -432,7 +439,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                   ctrl_fsm_ns     = id_ready_i ? FLUSH_EX : DECODE;
                   instr_mpu_err_n = 1'b1;
                 end
-                else if (instr_err_i) begin // Instruction fetch caused a bus error
+                else if (instr_err) begin // Instruction fetch caused a bus error
                   is_decoding_o     = 1'b0;
                   halt_if_o         = 1'b1;
                   halt_id_o         = 1'b0;
@@ -533,26 +540,29 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                     // make sure the current instruction has been executed
                         unique case(1'b1)
 
-                        illegal_insn_i | ecall_insn_i | instr_mpu_err | instr_err_i :
+                        illegal_insn_i | ecall_insn_i | instr_err :
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
                         
-                        // In the following checks we gate off with is_decoding_o
+                        // In the following checks we gate off with !instr_invalidate
                         // as the decoder may decode a valid instruction even 
                         // though the alignment buffer signals a bus_error 
                         // or mpu_error, which invalidates the instruction.
-                        (~ebrk_force_debug_mode & ebrk_insn_i && is_decoding_o):
+                        // TODO:OK: Maybe handle mpu/instr errs in decoder
+                        // and gate off mret/branch etc in the decoder, 
+                        // alternatively force the instruction to zero in the prefetch_unit
+                        (~ebrk_force_debug_mode & ebrk_insn_i && !instr_invalidate):
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
 
-                        mret_insn_i && is_decoding_o:
+                        mret_insn_i && !instr_invalidate:
                         begin
                             ctrl_fsm_ns = FLUSH_EX;
                         end
 
-                        branch_in_id && is_decoding_o:
+                        branch_in_id && !instr_invalidate:
                         begin
                             ctrl_fsm_ns    = DBG_WAIT_BRANCH;
                         end

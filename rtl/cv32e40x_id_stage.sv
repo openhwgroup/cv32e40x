@@ -563,9 +563,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .csr_status_i                   ( csr_status             ),
 
     // from IF/ID pipeline
-    .instr_valid_i                  ( if_id_pipe_i.instr_valid        ),
-    .instr_err_i                    ( if_id_pipe_i.instr.bus_resp.err ),
-    .instr_mpu_status_i             ( if_id_pipe_i.instr.mpu_status   ),
+    .if_id_pipe_i                   (if_id_pipe_i            ),
     // from prefetcher
     .instr_req_o                    ( instr_req_o                ),
                                                                  
@@ -574,9 +572,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .pc_mux_o                       ( pc_mux_o                   ),
     .exc_pc_mux_o                   ( exc_pc_mux_o               ),
     .exc_cause_o                    ( exc_cause_o                ),
-
-    .pc_id_i                        ( if_id_pipe_i.pc            ),
-    .is_compressed_i                ( if_id_pipe_i.is_compressed ),
 
     // LSU
     .data_req_ex_i                  ( id_ex_pipe_o.data_req  ),

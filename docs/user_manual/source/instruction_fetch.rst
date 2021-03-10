@@ -36,11 +36,11 @@ are possible and thus it needs fewer signals.
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
   | instr\_rdata\_i[31:0]   | input           | Data read from memory                                                                                                                             |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_rvalid\_i        | input           | instr\_rdata\_i  and instr\_err\_i holds valid data when instr\_rvalid\_i is high. This signal will be high for exactly one cycle per request.    |
+  | instr\_rvalid\_i        | input           | instr\_rdata\_i  and instr\_err\_i are valid when instr\_rvalid\_i is high. This signal will be high for exactly one cycle per request.           |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
   | instr\_gnt\_i           | input           | The other side accepted the request. instr\_addr\_o may change in the next cycle.                                                                 |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_err\_i           | input           | The bus request caused a bus error                                                                                                                |
+  | instr\_err\_i           | input           |  An instruction interface error occurred                                                                                                          |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Misaligned Accesses

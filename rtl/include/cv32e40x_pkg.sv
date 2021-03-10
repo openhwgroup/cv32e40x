@@ -800,14 +800,14 @@ typedef enum logic[1:0] {
 } exc_pc_mux_e;
 
 // Exception Cause
-parameter EXC_CAUSE_INSTR_FAULT  = 5'h01;
-parameter EXC_CAUSE_ILLEGAL_INSN = 5'h02;
-parameter EXC_CAUSE_BREAKPOINT   = 5'h03;
-parameter EXC_CAUSE_LOAD_FAULT   = 5'h05;
-parameter EXC_CAUSE_STORE_FAULT  = 5'h07;
-parameter EXC_CAUSE_ECALL_UMODE  = 5'h08;
-parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'd24;
+parameter EXC_CAUSE_INSTR_FAULT     = 5'h01;
+parameter EXC_CAUSE_ILLEGAL_INSN    = 5'h02;
+parameter EXC_CAUSE_BREAKPOINT      = 5'h03;
+parameter EXC_CAUSE_LOAD_FAULT      = 5'h05;
+parameter EXC_CAUSE_STORE_FAULT     = 5'h07;
+parameter EXC_CAUSE_ECALL_UMODE     = 5'h08;
+parameter EXC_CAUSE_ECALL_MMODE     = 5'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'h18;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
@@ -885,16 +885,21 @@ typedef struct packed {
 } obi_data_resp_t;
 
 
-// Data/instrcution transfer bundeled with MPU status
+// Data/instruction transfer bundeled with MPU status
 typedef struct packed {
  obi_inst_resp_t             bus_resp;
  mpu_status_e                mpu_status;
 } inst_resp_t;
 
+// Reset value for the inst_resp_t type
+parameter inst_resp_t INST_RESP_RESET_VAL = '{
+  bus_resp    : '{rdata: 32'h0, err: 1'b0},
+  mpu_status  : MPU_OK
+}; 
+
 // IF/ID pipeline
 typedef struct packed {
   logic        instr_valid;
-  //logic [31:0] instr_rdata;
   inst_resp_t  instr;
   logic [31:0] pc;
   logic        is_compressed;

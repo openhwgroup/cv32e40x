@@ -84,11 +84,11 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
           if(core_trans_we_i) begin
             // MPU error on write
-            next_state = (in_flight_n == 0) ? MPU_WR_ERR_RESP : MPU_RE_ERR_WAIT;
+            next_state = (in_flight_n == 0) ? MPU_WR_ERR_RESP : MPU_WR_ERR_WAIT;
           end
           else begin
             // MPU error on read
-            next_state = (in_flight_n == 0) ? MPU_RE_ERR_RESP : MPU_WR_ERR_WAIT;
+            next_state = (in_flight_n == 0) ? MPU_RE_ERR_RESP : MPU_RE_ERR_WAIT;
           end
         end
       end

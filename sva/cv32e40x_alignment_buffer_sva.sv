@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_alignment_buffer_sva
-  import uvm_pkg::*;
+  import cv32e40x_pkg::*, uvm_pkg::*;
   (
    input logic                     clk,
    input logic                     rst_n,
@@ -37,7 +37,8 @@ module cv32e40x_alignment_buffer_sva
    input logic                     prefetch_en_i,
    input logic                     resp_valid_gated,
    input logic [1:0]               outstanding_cnt_q,
-   input logic [1:0]               n_flush_q
+   input logic [1:0]               n_flush_q,
+   input inst_resp_t               resp_i
    );
 
   
@@ -182,5 +183,18 @@ module cv32e40x_alignment_buffer_sva
     else
       `uvm_error("Alignment buffer SVA",
                 $sformatf("Number of outstanding transactions exceeds 2!"))
+
+  // Check that mpu_status can only be MPU_OK or MPU_RE_FAULT
+  property p_legal_mpu_status;
+    @(posedge clk) disable iff (!rst_n) ((resp_i.mpu_status == MPU_OK) || (resp_i.mpu_status == MPU_RE_FAULT));
+  endproperty
+
+  a_legal_mpu_status:
+    assert property(p_legal_mpu_status)
+    else
+      `uvm_error("Alignment buffer SVA",
+                $sformatf("Illegal resp_i.mpu_status"))
+
+
 endmodule // cv32e40x_alignment_buffer_sva
 

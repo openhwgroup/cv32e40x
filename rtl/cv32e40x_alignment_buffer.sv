@@ -119,7 +119,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // FIFO signals //
   //////////////////
   // index 0 is used for output
-  inst_resp_t [0:DEPTH-1]  rdata_n,   rdata_int,   rdata_q;
+  inst_resp_t [0:DEPTH-1]  resp_n,   resp_int,   resp_q;
   logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
@@ -130,12 +130,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Aligned instructions will either be fully in index 0 or incoming data
   // This also applies for the bus_error and mpu_status
-  assign instr      = (valid_q[0]) ? rdata_q[0].bus_resp.rdata : resp_i.bus_resp.rdata;
-  assign bus_err    = (valid_q[0]) ? rdata_q[0].bus_resp.err   : resp_i.bus_resp.err;
-  assign mpu_status = (valid_q[0]) ? rdata_q[0].mpu_status     : resp_i.mpu_status;
+  assign instr      = (valid_q[0]) ? resp_q[0].bus_resp.rdata : resp_i.bus_resp.rdata;
+  assign bus_err    = (valid_q[0]) ? resp_q[0].bus_resp.err   : resp_i.bus_resp.err;
+  assign mpu_status = (valid_q[0]) ? resp_q[0].mpu_status     : resp_i.mpu_status;
   
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
-  assign instr_unaligned = (valid_q[1]) ? {rdata_q[1].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
+  assign instr_unaligned = (valid_q[1]) ? {resp_q[1].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
 
   
   // Unaligned uncompressed instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
@@ -157,19 +157,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     if(valid_q[1]) begin
       // Not compressed, need two sources
       if(!unaligned_is_compressed) begin
-        // If any entry is nok ok, we have an instr_fault
-        if(rdata_q[1].mpu_status != MPU_OK || rdata_q[0].mpu_status != MPU_OK) begin
+        // If any entry is not ok, we have an instr_fault
+        if((resp_q[1].mpu_status != MPU_OK) || (resp_q[0].mpu_status != MPU_OK)) begin
           mpu_status_unaligned = MPU_RE_FAULT;
         end
 
         // Bus error from either entry
-        bus_err_unaligned = rdata_q[1].bus_resp.err || rdata_q[0].bus_resp.err;
+        bus_err_unaligned = (resp_q[1].bus_resp.err || resp_q[0].bus_resp.err);
       end else begin
         // Compressed, use only mpu_status from q0
-        mpu_status_unaligned = rdata_q[0].mpu_status;
+        mpu_status_unaligned = resp_q[0].mpu_status;
         
         // bus error from q0
-        bus_err_unaligned    = rdata_q[0].bus_resp.err;
+        bus_err_unaligned    = resp_q[0].bus_resp.err;
       end
     end else begin
       // There is no data in q1, check q0
@@ -177,18 +177,18 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         if(!unaligned_is_compressed) begin
           // There is unaligned data in q0 and is it not compressed
           // use q0 and incoming data
-          if(rdata_q[0].mpu_status != MPU_OK || resp_i.mpu_status != MPU_OK) begin
+          if((resp_q[0].mpu_status != MPU_OK) || (resp_i.mpu_status != MPU_OK)) begin
             mpu_status_unaligned = MPU_RE_FAULT;
           end
 
           // Bus error from q0 and resp_i
-          bus_err_unaligned = rdata_q[0].bus_resp.err || resp_i.bus_resp.err;
+          bus_err_unaligned = (resp_q[0].bus_resp.err || resp_i.bus_resp.err);
         end else begin
           // There is unaligned data in q0 and it is compressed
-          mpu_status_unaligned = rdata_q[0].mpu_status;
+          mpu_status_unaligned = resp_q[0].mpu_status;
 
           // Bus error from q0
-          bus_err_unaligned = rdata_q[0].bus_resp.err;
+          bus_err_unaligned = resp_q[0].bus_resp.err;
         end
       end else begin
         // There is no data in the buffer, use input 
@@ -210,7 +210,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Invalidate output if we get a branch
     if (branch_i) begin
       instr_valid_o = 1'b0;
-      instr_instr_o.bus_resp.err = 1'b0;
     end else if (instr_addr_o[1]) begin
       // unaligned instruction
       instr_instr_o.bus_resp.rdata = instr_unaligned;
@@ -239,14 +238,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   always_comb
   begin
-    rdata_int   = rdata_q;
+    resp_int   = resp_q;
     valid_int   = valid_q;
 
     // Loop through indices and store incoming data to first available slot
     if (resp_valid_gated) begin
       for(int j = 0; j < DEPTH; j++) begin
         if (!valid_q[j]) begin
-          rdata_int[j] = resp_i;
+          resp_int[j] = resp_i;
           valid_int[j] = 1'b1;
 
           break;
@@ -262,7 +261,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   always_comb
   begin
     addr_n     = addr_q;
-    rdata_n    = rdata_int;
+    resp_n    = resp_int;
     valid_n    = valid_int;
 
     // Valid instruction output
@@ -280,7 +279,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // Unaligned will always invalidate index 0
         for (int i = 0; i < DEPTH - 1; i++)
         begin
-          rdata_n[i] = rdata_int[i + 1];
+          resp_n[i] = resp_int[i + 1];
         end
         valid_n = {valid_int[1:DEPTH-1], 1'b0};
       end else begin
@@ -296,7 +295,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           // Advance FIFO one step
           for (int i = 0; i < DEPTH - 1; i++)
           begin
-            rdata_n[i] = rdata_int[i + 1];
+            resp_n[i] = resp_int[i + 1];
           end
           valid_n = {valid_int[1:DEPTH-1], 1'b0};
         end
@@ -467,11 +466,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     if(rst_n == 1'b0)
     begin
       addr_q    <= '0;
-      rdata_q   <= inst_resp_t'{default: 'b0};
+      resp_q    <= INST_RESP_RESET_VAL;
       valid_q   <= '0;
       aligned_q <= 1'b0;
       complete_q <= 1'b0;
-      n_flush_q <= 'd0;
+      n_flush_q  <= 'd0;
       instr_cnt_q <= 'd0;
       outstanding_cnt_q <= 'd0;
     end
@@ -485,7 +484,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this. 
       end else begin
         addr_q  <= addr_n;
-        rdata_q <= rdata_n;
+        resp_q <= resp_n;
         valid_q <= valid_n;
       end
 

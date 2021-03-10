@@ -96,7 +96,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic              illegal_c_insn;
 
-  logic [31:0]       instr_decompressed;
+  inst_resp_t        instr_decompressed;
   logic              instr_compressed_int;
 
   // Transaction signals to/from obi interface
@@ -111,8 +111,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              obi_if_trans_valid;
   logic              obi_if_trans_ready;
   logic [31:0]       obi_if_trans_addr;
-
-  inst_resp_t        predecoded_instr;
 
   // exception PC selection mux
   always_comb
@@ -248,7 +246,7 @@ instruction_obi_i
     if (rst_n == 1'b0)
     begin
       if_id_pipe_o.instr_valid     <= 1'b0;
-      if_id_pipe_o.instr           <= inst_resp_t'{default: 'b0};
+      if_id_pipe_o.instr           <= INST_RESP_RESET_VAL;
       if_id_pipe_o.pc              <= '0;
       if_id_pipe_o.is_compressed   <= 1'b0;
       if_id_pipe_o.illegal_c_insn  <= 1'b0;
@@ -260,7 +258,7 @@ instruction_obi_i
       if (if_valid && prefetch_valid)
       begin
         if_id_pipe_o.instr_valid     <= 1'b1;
-        if_id_pipe_o.instr           <= predecoded_instr;
+        if_id_pipe_o.instr           <= instr_decompressed;
         if_id_pipe_o.is_compressed   <= instr_compressed_int;
         if_id_pipe_o.illegal_c_insn  <= illegal_c_insn;
         if_id_pipe_o.pc              <= pc_if_o;
@@ -273,17 +271,12 @@ instruction_obi_i
   cv32e40x_compressed_decoder
   compressed_decoder_i
   (
-    .instr_i         ( prefetch_instr.bus_resp.rdata ),
-    .instr_o         ( instr_decompressed   ),
-    .is_compressed_o ( instr_compressed_int ),
-    .illegal_instr_o ( illegal_c_insn       )
+    .instr_i         ( prefetch_instr          ),
+    .instr_o         ( instr_decompressed      ),
+    .is_compressed_o ( instr_compressed_int    ),
+    .illegal_instr_o ( illegal_c_insn          )
   );
 
-  // Assemble a new inst_resp_t with the output from the compressed decoder
-  always_comb begin
-    predecoded_instr = prefetch_instr;
-    // Overwrite rdata with (potentially) uncompressed ins
-    predecoded_instr.bus_resp.rdata = instr_decompressed;
-  end
+
 
 endmodule
