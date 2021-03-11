@@ -22,7 +22,7 @@
 module cv32e40x_mult_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (// Module boundry signals
+  (// Module boundary signals
    input logic        clk,
    input logic        rst_n,
    input logic [31:0] op_a_i,
@@ -37,9 +37,9 @@ module cv32e40x_mult_sva
    input logic [32:0] mulh_acc,
    input              mult_state_e mulh_state);
 
-  ///////////////////////////////////////
-  ////  Assertions on module boundry ////
-  ///////////////////////////////////////
+  ////////////////////////////////////////
+  ////  Assertions on module boundary ////
+  ////////////////////////////////////////
   
   // Check result for MUL
   a_mul_result : // check multiplication result for MUL
@@ -52,23 +52,23 @@ module cv32e40x_mult_sva
   logic               mulh_result_valid;
   assign mulh_result_valid = enable_i && (operator_i == MUL_H) && ready_o;
 
-  a_mulh_result : // check multiplication result for mulh
+  a_mulh_result : // check multiplication result for MULH
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b11)) |->
                      (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) )
-      else `uvm_error("mult", "Assertion a_mulh_result failed")
+      else `uvm_error("mult", "MULH result check failed")
 
-  a_mulhsu_result : // check multiplication result for mulhsu
+  a_mulhsu_result : // check multiplication result for MULHSU
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b01)) |->
                      (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) )
-      else `uvm_error("mult", "Assertion a_mulh_result failed")
+      else `uvm_error("mult", "MULHSU result check failed")
 
-  a_mulhu_result : // check multiplication result for mulhu
+  a_mulhu_result : // check multiplication result for MULHU
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b00)) |->
                      (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
-      else `uvm_error("mult", "Assertion a_mulh_result failed")
+      else `uvm_error("mult", "MULHU result check failed")
 
 
   // Check that multiplier inputs are not changed in the middle of a MULH operation
