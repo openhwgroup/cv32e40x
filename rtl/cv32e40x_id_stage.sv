@@ -212,7 +212,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   alu_opcode_e alu_operator;
   alu_op_a_mux_e alu_op_a_mux_sel;
   alu_op_b_mux_e alu_op_b_mux_sel;
-  alu_op_c_mux_e alu_op_c_mux_sel;
+
+  op_c_mux_e     op_c_mux_sel;
 
   imm_a_mux_e  imm_a_mux_sel;
   imm_b_mux_e  imm_b_mux_sel;
@@ -249,7 +250,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] alu_operand_a;
   logic [31:0] alu_operand_b;
-  logic [31:0] alu_operand_c;
+
+  logic [31:0] operand_c;
 
   logic        mret_dec;
   logic        dret_dec;
@@ -412,13 +414,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////
 
   // ALU OP C Mux
-  always_comb begin : alu_operand_c_mux
-    case (alu_op_c_mux_sel)
-      OP_C_REGB_OR_FWD:  alu_operand_c = operand_b_fw;
-      OP_C_JT:           alu_operand_c = jump_target_o;
-      OP_C_FWD:          alu_operand_c = 32'h0;
-      default:           alu_operand_c = 32'h0;
-    endcase // case (alu_op_c_mux_sel)
+  always_comb begin : operand_c_mux
+    case (op_c_mux_sel)
+      OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
+      OP_C_JT:           operand_c = jump_target_o;
+      OP_C_FWD:          operand_c = 32'h0;
+      default:           operand_c = 32'h0;
+    endcase // case (op_c_mux_sel)
   end
 
   /////////////////////////////////////////////////////////
@@ -496,9 +498,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .alu_operator_o                  ( alu_operator              ),
     .alu_op_a_mux_sel_o              ( alu_op_a_mux_sel          ),
     .alu_op_b_mux_sel_o              ( alu_op_b_mux_sel          ),
-    .alu_op_c_mux_sel_o              ( alu_op_c_mux_sel          ),
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
     .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
+
+    .op_c_mux_sel_o                  ( op_c_mux_sel              ),
 
     // MUL signals
     .mult_en_o                       ( mult_en                   ),
@@ -708,7 +711,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
       id_ex_pipe_o.alu_operand_a          <= '0;
       id_ex_pipe_o.alu_operand_b          <= '0;
-      id_ex_pipe_o.alu_operand_c          <= '0;
+
+      id_ex_pipe_o.operand_c              <= '0;
 
       id_ex_pipe_o.mult_en                <= 1'b0;
       id_ex_pipe_o.mult_operator          <= MUL_M32;
@@ -767,7 +771,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.alu_operator         <= alu_operator;
           id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
           id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
-          id_ex_pipe_o.alu_operand_c        <= alu_operand_c;
+          id_ex_pipe_o.operand_c            <= operand_c;
         end
 
         id_ex_pipe_o.mult_en                <= mult_en;

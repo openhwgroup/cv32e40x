@@ -615,7 +615,7 @@ typedef enum logic[1:0] {
                          OP_C_FWD         = 2'b00,
                          OP_C_REGB_OR_FWD = 2'b01,
                          OP_C_JT          = 2'b10
-                         } alu_op_c_mux_e;
+                         } op_c_mux_e;
 
 // branch types
 parameter BRANCH_NONE = 2'b00;
@@ -652,16 +652,16 @@ typedef struct packed {
   alu_opcode_e  alu_operator;      
   logic [31:0]  alu_operand_a;     
   logic [31:0]  alu_operand_b;     
-  logic [31:0]  alu_operand_c;     
 
   // Multiplier control
   logic         mult_en;           
   mul_opcode_e  mult_operator;     
   logic [31:0]  mult_operand_a;    
   logic [31:0]  mult_operand_b;    
-  logic [31:0]  mult_operand_c;    
   logic [ 1:0]  mult_signed_mode;  
 
+  logic [31:0]  operand_c;
+  
   // Register write control
   logic         rf_we;
   rf_addr_t     rf_waddr; 
@@ -705,7 +705,7 @@ typedef struct packed {
   alu_opcode_e                       alu_operator;
   alu_op_a_mux_e                     alu_op_a_mux_sel;
   alu_op_b_mux_e                     alu_op_b_mux_sel;
-  alu_op_c_mux_e                     alu_op_c_mux_sel;
+  op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
   mul_opcode_e                       mult_operator;
@@ -741,7 +741,7 @@ typedef struct packed {
                                                           alu_operator                 : ALU_SLTU,
                                                           alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
                                                           alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
-                                                          alu_op_c_mux_sel             : OP_C_FWD,
+                                                          op_c_mux_sel                 : OP_C_FWD,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
                                                           mult_operator                : MUL_M32,

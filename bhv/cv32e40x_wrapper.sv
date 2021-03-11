@@ -203,7 +203,7 @@ module cv32e40x_wrapper
       .trigger_match  ( core_i.id_stage_i.trigger_match_i              ),
       .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),
       .rs2_value      ( core_i.id_stage_i.operand_b_fw                 ),
-      .rs3_value      ( core_i.id_stage_i.alu_operand_c                ),
+      .rs3_value      ( core_i.id_stage_i.operand_c                    ),
       .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b                ),
 
       .rs1_is_fp('0),

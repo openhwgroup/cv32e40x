@@ -145,10 +145,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   always_comb
   begin
     case (wdata_offset)
-      2'b00: data_wdata = id_ex_pipe_i.alu_operand_c[31:0];
-      2'b01: data_wdata = {id_ex_pipe_i.alu_operand_c[23:0], id_ex_pipe_i.alu_operand_c[31:24]};
-      2'b10: data_wdata = {id_ex_pipe_i.alu_operand_c[15:0], id_ex_pipe_i.alu_operand_c[31:16]};
-      2'b11: data_wdata = {id_ex_pipe_i.alu_operand_c[ 7:0], id_ex_pipe_i.alu_operand_c[31: 8]};
+      2'b00: data_wdata = id_ex_pipe_i.operand_c[31:0];
+      2'b01: data_wdata = {id_ex_pipe_i.operand_c[23:0], id_ex_pipe_i.operand_c[31:24]};
+      2'b10: data_wdata = {id_ex_pipe_i.operand_c[15:0], id_ex_pipe_i.operand_c[31:16]};
+      2'b11: data_wdata = {id_ex_pipe_i.operand_c[ 7:0], id_ex_pipe_i.operand_c[31: 8]};
     endcase; // case (wdata_offset)
   end
 

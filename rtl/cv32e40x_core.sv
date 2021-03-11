@@ -105,7 +105,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        is_decoding;
 
   // Jump and branch target and decision (EX->IF)
-  logic [31:0] jump_target_id, jump_target_ex;
+  logic [31:0] jump_target_id;
   logic        branch_decision;
 
   logic        ctrl_busy;
@@ -327,7 +327,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Jump targets
     .jump_target_id_i    ( jump_target_id    ),
-    .jump_target_ex_i    ( jump_target_ex    ),
+    .jump_target_ex_i    ( id_ex_pipe.operand_c ), // Delayed version of jump_target_id, stored in operand_c
 
     // pipeline stalls
     .halt_if_i           ( halt_if           ),
@@ -477,8 +477,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // interface with CSRs
     .csr_rdata_i                ( csr_rdata                    ),
 
-    // To IF: Jump and branch target and decision
-    .jump_target_o              ( jump_target_ex               ),
+    // To IF: Branch decision
     .branch_decision_o          ( branch_decision              ),
 
     // Register file forwarding signals (to ID)

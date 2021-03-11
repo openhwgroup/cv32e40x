@@ -76,7 +76,7 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
               AMO_MINU,
               AMO_MAXU: begin
                 decoder_ctrl_o.data_we = 1'b1;
-                decoder_ctrl_o.alu_op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
+                decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
               end
             default : begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;

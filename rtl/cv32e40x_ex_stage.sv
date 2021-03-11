@@ -50,8 +50,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output rf_addr_t    rf_waddr_ex_o,
   output logic [31:0] rf_wdata_ex_o,
 
-  // To IF: Jump and branch target and decision
-  output logic [31:0] jump_target_o,
+  // To IF: Branch decision
   output logic        branch_decision_o,
 
   // Stall Control
@@ -87,8 +86,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // branch handling
   assign branch_decision_o = alu_cmp_result;
-  assign jump_target_o     = id_ex_pipe_i.alu_operand_c;
-
 
   ////////////////////////////
   //     _    _    _   _    //
@@ -107,7 +104,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
-    .operand_c_i         ( id_ex_pipe_i.alu_operand_c ),
 
     .result_o            ( alu_result                 ),
     .comparison_result_o ( alu_cmp_result             ),

@@ -94,7 +94,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       OPCODE_BRANCH: begin // Branch
         decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_COND;
         decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_COND;
-        decoder_ctrl_o.alu_op_c_mux_sel             = OP_C_JT;
+        decoder_ctrl_o.op_c_mux_sel                 = OP_C_JT;
         decoder_ctrl_o.rf_re[0]                     = 1'b1;
         decoder_ctrl_o.rf_re[1]                     = 1'b1;
         
@@ -127,7 +127,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_re[1]     = 1'b1;
         decoder_ctrl_o.alu_operator = ALU_ADD;
         // pass write data through ALU operand c
-        decoder_ctrl_o.alu_op_c_mux_sel = OP_C_REGB_OR_FWD;
+        decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD;
 
         decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
         decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;

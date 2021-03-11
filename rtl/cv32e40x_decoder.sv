@@ -58,7 +58,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output alu_opcode_e alu_operator_o, // ALU operation selection
   output alu_op_a_mux_e alu_op_a_mux_sel_o,      // operand a selection: reg value, PC, immediate or zero
   output alu_op_b_mux_e alu_op_b_mux_sel_o,      // operand b selection: reg value or immediate
-  output alu_op_c_mux_e alu_op_c_mux_sel_o,      // operand c selection: reg value or jump target
+  output op_c_mux_e     op_c_mux_sel_o,          // operand c selection: reg value or jump target
   output imm_a_mux_e    imm_a_mux_sel_o,         // immediate selection for operand a
   output imm_b_mux_e    imm_b_mux_sel_o,         // immediate selection for operand b
 
@@ -169,7 +169,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
   assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
   assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
-  assign alu_op_c_mux_sel_o             = decoder_ctrl_mux.alu_op_c_mux_sel;               
+  assign op_c_mux_sel_o                 = decoder_ctrl_mux.op_c_mux_sel;
   assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel;                 
   assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel;                 
   assign mult_operator_o                = decoder_ctrl_mux.mult_operator;                 
