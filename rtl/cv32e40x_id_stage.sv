@@ -337,10 +337,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand a forwarding mux
   always_comb begin : operand_a_fw_mux
     case (operand_a_fw_mux_sel)
+      SEL_FW_EX:    operand_a_fw = (rf_re[0] || lsu_misaligned_i) ? rf_wdata_ex_i : 32'b0;
+      SEL_FW_WB:    operand_a_fw = rf_re[0] ? rf_wdata_wb_i : 32'b0;
+      SEL_REGFILE:  operand_a_fw = rf_re[0] ? regfile_rdata[0] : 32'b0;
+      default:      operand_a_fw = rf_re[0] ? regfile_rdata[0] : 32'b0;
+/* TODO:OK: reintroduce following code when RF write port removal is done
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_a_fw = regfile_rdata[0];
       default:      operand_a_fw = regfile_rdata[0];
+*/
     endcase; // case (operand_a_fw_mux_sel)
   end
 
@@ -382,10 +388,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand b forwarding mux
   always_comb begin : operand_b_fw_mux
     case (operand_b_fw_mux_sel)
+      SEL_FW_EX:    operand_b_fw = rf_re[1] ? rf_wdata_ex_i : 32'b0;
+      SEL_FW_WB:    operand_b_fw = rf_re[1] ? rf_wdata_wb_i : 32'b0;
+      SEL_REGFILE:  operand_b_fw = rf_re[1] ? regfile_rdata[1] : 32'b0;
+      default:      operand_b_fw = rf_re[1] ? regfile_rdata[1] : 32'b0;
+/* TODO:OK: reintroduce following code when RF write port removal is done
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_b_fw = regfile_rdata[1];
       default:      operand_b_fw = regfile_rdata[1];
+*/
     endcase; // case (operand_b_fw_mux_sel)
   end
 
