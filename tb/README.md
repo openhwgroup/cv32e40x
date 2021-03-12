@@ -15,5 +15,5 @@ Follow these steps to run a simulation:
 
 3. Run simulation and point the core path to this repository. Example:
 
-   make test TEST=hello_world DUT_PATH="/path/to/this/repo/cv32e40x"
+   make test TEST=hello_world CV_DUT_PATH="/path/to/this/repo/cv32e40x"
 
