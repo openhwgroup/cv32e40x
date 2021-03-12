@@ -38,7 +38,7 @@ It follows these specifications:
   |corev| implements the Machine ISA version 1.11.
 * `RISC-V External Debug Support, version 0.13.2 <https://content.riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf>`_
 
-Many features in the RISC-V specification are optional, and |corev| can be parametrized to enable or disable some of them.
+Many features in the RISC-V specification are optional, and |corev| can be parameterized to enable or disable some of them.
 
 |corev| supports the following base instruction set.
 
@@ -73,9 +73,30 @@ In addition, the following standard instruction set extensions are available.
      - 2.0
      - always enabled
 
-   * - **F**: Single-Precision Floating-Point
-     - 2.2
-     - optionally enabled based on ``FPU`` parameter
+   * - **Zce**: Standard Extension for Enhanced Compressed Instructions
+     - To be defined (standard has not been ratified yet)
+     - always enabled
+
+   * - **A**: Atomic Instructions
+     - 2.1
+     - optionally enabled based on ``A_EXT`` parameter
+
+   * - **B**: Bit Manipulation
+     - 0.93 (not ratified yet; version can change)
+     - optionally enabled based on ``B_EXT`` parameter
+
+   * - **P**: Packed-SIMD Instructions
+     - 0.9.2-draft-20210202 (not ratified yet; version can change)
+     - optionally enabled based on ``P_EXT`` parameter
+
+   * - **X**: eXtension Interface
+     - 1.0 (not finalized yet; version can change)
+     - optionally enabled based on ``X_EXT`` parameter
+
+.. note::
+
+   |corev| does not implement the **F** extension for single-precision floating-point instructions internal to the core. The **F** extension
+   can be supported by interfacing the |corev| to an external FPU via the eXtension interface.
 
 Most content of the RISC-V privileged specification is optional.
 |corev| currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
@@ -84,7 +105,7 @@ Most content of the RISC-V privileged specification is optional.
 * All CSRs listed in :ref:`cs-registers`
 * Hardware Performance Counters as described in :ref:`performance-counters` based on ``NUM_MHPMCOUNTERS`` parameter
 * Trap handling supporting direct mode or vectored mode as described at :ref:`exceptions-interrupts`
-
+* Physical Memory Attribution (PMA)
 
 Synthesis guidelines
 --------------------
@@ -93,9 +114,8 @@ The |corev| core is fully synthesizable.
 It has been designed mainly for ASIC designs, but FPGA synthesis
 is supported as well.
 
-All the files in the ``rtl`` and ``rtl/include`` folders are synthesizable.
-The user should first decide whether to use the flip-flop or latch-based register-file ( see :ref:`register-file`).
-Secondly, the user must provide a clock-gating module that instantiates the clock-gating cells of the target technology. This file must have the same interface and module name of the one provided for simulation-only purposes
+All the files in the ``rtl`` and ``rtl/include`` folders are synthesizable. The user must provide a clock-gating module that instantiates
+the clock-gating cells of the target technology. This file must have the same interface and module name of the one provided for simulation-only purposes
 at ``bhv/cv32e40x_sim_clock_gate.sv`` (see :ref:`clock-gating-cell`).
 
 The ``constraints/cv32e40x_core.sdc`` file provides an example of synthesis constraints.
@@ -104,21 +124,14 @@ ASIC Synthesis
 ^^^^^^^^^^^^^^
 
 ASIC synthesis is supported for |corev|. The whole design is completely
-synchronous and uses positive-edge triggered flip-flops, except for the
-register file, which can be implemented either with latches or with
-flip-flops. See :ref:`register-file` for more details. The
-core occupies an area of about 50 kGE when the latch based register file
-is used. With the FPU, the area increases to about 90 kGE (30 kGE
-FPU, 10 kGE additional register file). A technology specific implementation
+synchronous and uses positive-edge triggered flip-flops. A technology specific implementation
 of a clock gating cell as described in :ref:`clock-gating-cell` needs to
 be provided.
 
 FPGA Synthesis
 ^^^^^^^^^^^^^^^
 
-FPGA synthesis is supported for |corev| when the flip-flop based register
-file is used. Since latches are not well supported on FPGAs, it is
-crucial to select the flip-flop based register file. The user needs to provide
+FPGA synthesis is supported for |corev|. The user needs to provide
 a technology specific implementation of a clock gating cell as described
 in :ref:`clock-gating-cell`.
 
@@ -137,15 +150,15 @@ Contents
  * :ref:`core-integration` provides the instantiation template and gives descriptions of the design parameters as well as the input and output ports.
  * :ref:`pipeline-details` described the overal pipeline structure.
  * The instruction and data interfaces of |corev| are explained in :ref:`instruction-fetch` and :ref:`load-store-unit`, respectively.
+ * :ref:`pma` describes the Physical Memory Attribution (PMA) unit.
  * The register-file is described in :ref:`register-file`.
- * :ref:`fpu` describes the Floating Point Unit (FPU).
+ * :ref:`x_ext` describes the custom eXtension interface.
  * :ref:`sleep_unit` describes the Sleep unit.
  * The control and status registers are explained in :ref:`cs-registers`.
  * :ref:`performance-counters` gives an overview of the performance monitors and event counters available in |corev|.
  * :ref:`exceptions-interrupts` deals with the infrastructure for handling exceptions and interrupts.
  * :ref:`debug-support` gives a brief overview on the debug infrastructure.
- * :ref:`tracer` gives a brief overview of the tracer module.
- * :ref:`custom-isa-extensions` describes the custom instruction set extensions.
+ * :ref:`rvfi` gives a brief overview of the RVFI module.
  * :ref:`glossary` provides definitions of used terminology.
 
 History

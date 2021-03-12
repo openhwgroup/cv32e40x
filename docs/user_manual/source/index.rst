@@ -1,7 +1,7 @@
 OpenHW Group |corev| User Manual
 =================================
 Editor: **Davide Schiavone**
-`davide@openhwgroup.org <mailto:davide@openhwgroup.org?subject=CV32E40P%20User%20Manual>`__
+`davide@openhwgroup.org <mailto:davide@openhwgroup.org?subject=CV32E40X%20User%20Manual>`__
 
 .. toctree::
    :maxdepth: 3
@@ -15,13 +15,13 @@ Editor: **Davide Schiavone**
    load_store_unit
    pma
    register_file
-   fpu
+   x_ext
    sleep
    control_status_registers
    perf_counters
    exceptions_interrupts
    debug
-   tracer
+   rvfi
    instruction_set_extensions
    core_versions
    glossary

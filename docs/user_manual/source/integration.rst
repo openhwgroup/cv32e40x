@@ -13,7 +13,10 @@ Instantiation Template
 
   cv32e40x_core #(
       .LIB                      (         0 ),
-      .FPU                      (         0 ),
+      .A_EXT                    (         0 ),
+      .B_EXT                    (         0 ),
+      .P_EXT                    (         0 ),
+      .X_EXT                    (         0 ),
       .NUM_MHPMCOUNTERS         (         1 ),
       .PMA_NUM_REGIONS          (         1 ),
       .PMA_CFG                  ( PMA_CFG[] )
@@ -26,6 +29,7 @@ Instantiation Template
       // Configuration
       .boot_addr_i              (),
       .mtvec_addr_i             (),
+      .nmi_addr_i               (),
       .dm_halt_addr_i           (),
       .dm_exception_addr_i      (),
       .hart_id_i                (),
@@ -33,20 +37,23 @@ Instantiation Template
       // Instruction memory interface
       .instr_req_o              (),
       .instr_gnt_i              (),
-      .instr_rvalid_i           (),
       .instr_addr_o             (),
+      .instr_prot_o             (),
+      .instr_rvalid_i           (),
       .instr_rdata_i            (),
       .instr_err_i              (),
 
       // Data memory interface
       .data_req_o               (),
       .data_gnt_i               (),
-      .data_rvalid_i            (),
       .data_addr_o              (),
       .data_be_o                (),
+      .data_prot_o              (),
       .data_wdata_o             (),
       .data_we_o                (),
+      .data_rvalid_i            (),
       .data_rdata_i             (),
+      .data_err_i               (),
 
        // Interrupt interface
       .irq_i                    (),
@@ -75,7 +82,13 @@ Parameters
 +==============================+================+============+====================================================================+
 | ``LIB``                      | int            | 0          | Standard cell library (semantics defined by integrator)            |
 +------------------------------+----------------+------------+--------------------------------------------------------------------+
-| ``FPU``                      | bit            | 0          | Enable Floating Point Unit (FPU) support, see :ref:`fpu`           |
+| ``A_EXT``                    | bit            | 0          | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
++------------------------------+----------------+------------+--------------------------------------------------------------------+
+| ``B_EXT``                    | bit            | 0          | Enable Bit Manipulation (B) support  (**not implemented yet**)     |
++------------------------------+----------------+------------+--------------------------------------------------------------------+
+| ``P_EXT``                    | bit            | 0          | Enable Packed-SIMD (P) support (**not implemented yet**)           |
++------------------------------+----------------+------------+--------------------------------------------------------------------+
+| ``X_EXT``                    | bit            | 0          | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
 +------------------------------+----------------+------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1          | Number of MHPMCOUNTER performance counters, see                    |
 |                              |                |            | :ref:`performance-counters`                                        |
@@ -110,6 +123,11 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``mtvec_addr_i``        | 32                      | in  | ``mtvec`` address. Initial value for the   |
 |                         |                         |     | address part of :ref:`csr-mtvec`.          |
+|                         |                         |     | Do not change after enabling core          |
+|                         |                         |     | via ``fetch_enable_i``                     |
++-------------------------+-------------------------+-----+--------------------------------------------+
+| ``nmi_addr_i``          | 32                      | in  | ``NMI`` address. Target address for NMIs.  |
+|                         |                         |     | Must be half-word aligned.                 |
 |                         |                         |     | Do not change after enabling core          |
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+

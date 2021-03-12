@@ -17,34 +17,41 @@ supported.
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
   | ``data_req_o``         | output          | Request valid, will stay high until ``data_gnt_i`` is high for one cycle                                                     |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_addr_o[31:0]``  | output          | Address                                                                                                                      |
+  | ``data_gnt_i``         | input           | The other side accepted the request. ``data_addr_o``, ``data_be_o``, ``data_prot_o``, ``data_wdata_o``, ``data_we_o`` may    |
+  |                        |                 | change in the next cycle.                                                                                                    |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_we_o``          | output          | Write Enable, high for writes, low for reads. Sent together with ``data_req_o``                                              |
+  | ``data_addr_o[31:0]``  | output          | Address, sent together with ``data_req_o``.                                                                                  |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_be_o[3:0]``     | output          | Byte Enable. Is set for the bytes to write/read, sent together with ``data_req_o``                                           |
+  | ``data_be_o[3:0]``     | output          | Byte Enable. Is set for the bytes to write/read, sent together with ``data_req_o``.                                          |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_wdata_o[31:0]`` | output          | Data to be written to memory, sent together with ``data_req_o``                                                              |
+  | ``data_prot_o[3:0]``   | output          | Protocol attributes (cacheable, bufferable, etc.), sent together with ``data_req_o``.                                        |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_rdata_i[31:0]`` | input           | Data read from memory                                                                                                        |
+  | ``data_wdata_o[31:0]`` | output          | Data to be written to memory, sent together with ``data_req_o``.                                                             |
+  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_we_o``          | output          | Write Enable, high for writes, low for reads. Sent together with ``data_req_o``.                                             |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
   | ``data_rvalid_i``      | input           | ``data_rvalid_i`` will be high for exactly one cycle to signal the end of the response phase of for both read and write      |
   |                        |                 | transactions. For a read transaction ``data_rdata_i`` holds valid data when ``data_rvalid_i`` is high.                       |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_gnt_i``         | input           | The other side accepted the request. ``data_addr_o`` may change in the next cycle.                                           |
+  | ``data_rdata_i[31:0]`` | input           | Data read from memory. Only valid when ``data_rvalid_i`` is high.                                                            |
+  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_err_i``         | input           | A data interface error occurred. Only valid when ``data_rvalid_i`` is high.                                                  |
   +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
 
 Misaligned Accesses
 -------------------
 
-The LSU never raises address-misaligned exceptions. For loads and stores where the effective address is not naturally aligned to the referenced 
-datatype (i.e., on a four-byte boundary for word accesses, and a two-byte boundary for halfword accesses) the load/store is performed as two
-bus transactions in case that the data item crosses a word boundary. A single load/store instruction is therefore performed as two bus
-transactions for the following scenarios:
+Misaligned transaction are supported in hardware for Main memory regions, see :ref:`pma`. For loads and stores in Main memory where the effective
+address is not naturally aligned to the referenced datatype (i.e., on a four-byte boundary for word accesses, and a two-byte boundary for halfword
+accesses) the load/store is performed as two bus transactions in case that the data item crosses a word boundary. A single load/store instruction
+is therefore performed as two bus transactions for the following scenarios:
 
 * Load/store of a word for a non-word-aligned address
 * Load/store of a halfword crossing a word address boundary
 
 In both cases the transfer corresponding to the lowest address is performed first. All other scenarios can be handled with a single bus transaction.
+
+Misaligned transactions are not supported in I/O regions and will result in an exception trap when attempted, see :ref:`exceptions-interrupts`. 
 
 Protocol
 --------

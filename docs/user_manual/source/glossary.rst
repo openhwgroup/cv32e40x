@@ -22,6 +22,7 @@ Glossary
 * **M-Mode**: Machine Mode (RISC-V Instruction Set Manual, Volume II: Privileged Architecture)
 * **OBI**: Open Bus Interface
 * **PC**: Program Counter
+* **PMA**: Physical Memory Attribution
 * **PULP platform**: Parallel Ultra Low Power Platform (<https://pulp-platform.org>)
 * **RV32C**: RISC-V Compressed (C extension)
 * **RV32F**: RISC-V Floating Point (F extension)

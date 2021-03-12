@@ -57,7 +57,7 @@ and zero stall on the data-side memory interface.
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
   | Multiplication        | 1 (mul)                              | |corev| uses a single-cycle 32-bit x 32-bit multiplier      |
   |                       |                                      | with a 32-bit result. The multiplications with upper-word   |
-  |                       | 5 (mulh, mulhsu, mulhu)              | result take 5 cycles to compute.                            |
+  |                       | 4 (mulh, mulhsu, mulhu)              | result take 4 cycles to compute.                            |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
   | Division              | 3 - 35                               | The number of cycles depends on the divider operand value   |
   |                       |                                      | (operand b), i.e. in the number of leading bits at 0.       |

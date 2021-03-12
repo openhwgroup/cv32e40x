@@ -30,17 +30,19 @@ are possible and thus it needs fewer signals.
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
   | **Signal**              | **Direction**   | **Description**                                                                                                                                   |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_req\_o           | output          | Request valid, will stay high until instr\_gnt\_i is high for one cycle                                                                           |
+  | ``instr_req_o``         | output          | Request valid, will stay high until ``instr_gnt_i`` is high for one cycle                                                                         |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_addr\_o[31:0]    | output          | Address, word aligned                                                                                                                             |
+  | ``instr_gnt_i``         | input           | The other side accepted the request. ``instr_addr_o`` and ``instr_prot_o`` may change in the next cycle.                                          |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_rdata\_i[31:0]   | input           | Data read from memory                                                                                                                             |
+  | ``instr_addr_o[31:0]``  | output          | Address, word aligned                                                                                                                             |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_rvalid\_i        | input           | instr\_rdata\_i  and instr\_err\_i are valid when instr\_rvalid\_i is high. This signal will be high for exactly one cycle per request.           |
+  | ``instr_prot_o[3:0]``   | output          | Protocol attributes (cacheable, bufferable, etc.)                                                                                                 |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_gnt\_i           | input           | The other side accepted the request. instr\_addr\_o may change in the next cycle.                                                                 |
+  | ``instr_rvalid_i``      | input           | ``instr_rdata_i`` and ``instr_err_i`` are valid when ``instr_rvalid_i`` is high. This signal will be high for exactly one cycle per request.      |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
-  | instr\_err\_i           | input           |  An instruction interface error occurred                                                                                                          |
+  | ``instr_rdata_i[31:0]`` | input           | Data read from memory                                                                                                                             |
+  +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
+  | ``instr_err_i``         | input           | An instruction interface error occurred                                                                                                           |
   +-------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Misaligned Accesses
