@@ -233,7 +233,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [5:0]  data_atop;               // Atomic memory instruction
 
   // CSR control
-  logic        csr_access;
+  logic        csr_en;
   csr_opcode_e csr_op;
   logic        csr_status;
 
@@ -511,7 +511,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .rf_we_raw_o                     ( rf_we_raw                 ),
 
     // CSR control signals
-    .csr_access_o                    ( csr_access                ),
+    .csr_en_o                        ( csr_en                    ),
     .csr_status_o                    ( csr_status                ),
     .csr_op_o                        ( csr_op                    ),
     .current_priv_lvl_i              ( current_priv_lvl_i        ),
@@ -722,6 +722,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.prepost_useincr        <= 1'b0;
 
       id_ex_pipe_o.csr_access             <= 1'b0;
+      id_ex_pipe_o.csr_en                 <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
       id_ex_pipe_o.data_req               <= 1'b0;
@@ -784,7 +785,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.prepost_useincr        <= prepost_useincr;
 
-        id_ex_pipe_o.csr_access             <= csr_access;
+        id_ex_pipe_o.csr_access             <= csr_en;
+        id_ex_pipe_o.csr_en                 <= csr_en;
         id_ex_pipe_o.csr_op                 <= csr_op;
 
         id_ex_pipe_o.data_req               <= data_req;
@@ -826,7 +828,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        //In the EX stage there was a CSR access, to avoid multiple
        //writes to the RF, disable rf_we.
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       id_ex_pipe_o.rf_we         <= 1'b0;
+       //TODO:OK: Change to suppressing csr_access insted to allow RF write with a single write port
+       id_ex_pipe_o.rf_we          <= 1'b0;
       end
     end
   end

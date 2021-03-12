@@ -349,13 +349,13 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         else
         begin
           // instruction to read/modify CSR
-          decoder_ctrl_o.csr_access       = 1'b1;
+          decoder_ctrl_o.csr_en           = 1'b1;
           decoder_ctrl_o.rf_we            = 1'b1;
           decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
           decoder_ctrl_o.imm_a_mux_sel    = IMMA_Z;
           decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;    // CSR address is encoded in I imm
           decoder_ctrl_o.alu_operator     = ALU_SLTU;
-
+          
           if (instr_rdata_i[14] == 1'b1) begin
             // rs1 field is used as immediate
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_IMM;

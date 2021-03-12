@@ -670,6 +670,8 @@ typedef struct packed {
 
   // CSR control
   logic         csr_access;
+  logic         csr_en;
+
   csr_opcode_e  csr_op;            
 
   // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
@@ -712,7 +714,7 @@ typedef struct packed {
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
   logic                              prepost_useincr;
-  logic                              csr_access;
+  logic                              csr_en;
   logic                              csr_status;
   logic                              csr_illegal;
   csr_opcode_e                       csr_op;
@@ -748,7 +750,7 @@ typedef struct packed {
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
                                                           prepost_useincr              : 1'b1,
-                                                          csr_access                   : 1'b0,
+                                                          csr_en                       : 1'b0,
                                                           csr_status                   : 1'b0,
                                                           csr_illegal                  : 1'b0,
                                                           csr_op                       : CSR_OP_READ,

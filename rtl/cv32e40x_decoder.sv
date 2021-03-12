@@ -73,7 +73,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
 
   // CSR manipulation
-  output logic        csr_access_o,            // access to CSR
+  output logic        csr_en_o,                // enable access to CSR
   output logic        csr_status_o,            // access to xstatus CSR
   output csr_opcode_e csr_op_o,                // operation to perform on CSR
   input  PrivLvl_t    current_priv_lvl_i,      // The current privilege level
@@ -178,7 +178,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign rf_re_o                        = decoder_ctrl_mux.rf_re;                         
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
   assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr;               
-  assign csr_access_o                   = decoder_ctrl_mux.csr_access;                    
+  assign csr_en_o                       = decoder_ctrl_mux.csr_en;
   assign csr_status_o                   = decoder_ctrl_mux.csr_status;                    
   assign csr_illegal                    = decoder_ctrl_mux.csr_illegal;                     
   assign csr_op                         = decoder_ctrl_mux.csr_op;                          

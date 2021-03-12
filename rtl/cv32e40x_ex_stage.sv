@@ -73,7 +73,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_wdata_ex_o = '0; // todo: assignments below should be unique case (also check with formal if assignment to 0 is needed, and if so comment why)
+    rf_wdata_ex_o = 'b0; // TODO:OK get rid of this and make alu/mult/csr_en unique
 
     rf_we_ex_o    = id_ex_pipe_i.rf_we;
     rf_waddr_ex_o = id_ex_pipe_i.rf_waddr;
@@ -81,7 +81,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       rf_wdata_ex_o = alu_result;
     if (id_ex_pipe_i.mult_en)
       rf_wdata_ex_o = mult_result;
-    if (id_ex_pipe_i.csr_access)
+    if (id_ex_pipe_i.csr_en)
       rf_wdata_ex_o = csr_rdata_i;
   end
 
@@ -177,7 +177,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
                        && wb_ready_i) || (id_ex_pipe_i.branch_in_ex);
-  assign ex_valid_o = (id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_access || id_ex_pipe_i.data_req)
+  assign ex_valid_o = (id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_en || id_ex_pipe_i.data_req)
                        && (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i);
 
 endmodule // cv32e40x_ex_stage
