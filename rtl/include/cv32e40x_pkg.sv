@@ -652,6 +652,7 @@ typedef struct packed {
   alu_opcode_e  alu_operator;      
   logic [31:0]  alu_operand_a;     
   logic [31:0]  alu_operand_b;     
+  logic [31:0]  operand_c; // Gated with alu_en but not used by ALU
 
   // Multiplier control
   logic         mult_en;           
@@ -659,8 +660,6 @@ typedef struct packed {
   logic [31:0]  mult_operand_a;    
   logic [31:0]  mult_operand_b;    
   logic [ 1:0]  mult_signed_mode;  
-
-  logic [31:0]  operand_c;
   
   // Register write control
   logic         rf_we;

@@ -50,8 +50,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output rf_addr_t    rf_waddr_ex_o,
   output logic [31:0] rf_wdata_ex_o,
 
-  // To IF: Branch decision
+  // To IF: Jump and branch target and decision
   output logic        branch_decision_o,
+  output logic [31:0] jump_target_o,
 
   // Stall Control
   input logic         is_decoding_i, // Used to mask data Dependency inside the APU dispatcher in case of an istruction non valid
@@ -86,6 +87,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // branch handling
   assign branch_decision_o = alu_cmp_result;
+  assign jump_target_o     = id_ex_pipe_i.operand_c;
 
   ////////////////////////////
   //     _    _    _   _    //
