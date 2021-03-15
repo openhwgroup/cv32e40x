@@ -25,7 +25,7 @@ module cv32e40x_if_stage_sva
   import cv32e40x_pkg::*;
   (input  logic        clk,
    input  logic        rst_n,
-   if_c_obi.master     m_c_obi_instr_if);
+   if_c_obi.monitor    m_c_obi_instr_if);
 
   // Check that bus interface transactions are word aligned
   property p_instr_addr_word_aligned;

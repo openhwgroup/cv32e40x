@@ -26,7 +26,7 @@ module cv32e40x_load_store_unit_sva
    input logic [1:0] cnt_q,
    input logic       count_up,
    input logic       count_down,
-   if_c_obi          m_c_obi_data_if);
+   if_c_obi.monitor  m_c_obi_data_if);
 
   // Check that outstanding transaction count will not overflow DEPTH
   property p_no_transaction_count_overflow_0;

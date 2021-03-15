@@ -43,4 +43,10 @@ interface if_c_obi import cv32e40x_pkg::*;
        input  gnt, rvalid, resp_payload
        );
   
+    modport monitor
+       (
+       input  req, req_payload,
+              gnt, rvalid, resp_payload
+       );
+
 endinterface : if_c_obi
