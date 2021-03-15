@@ -231,19 +231,19 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   
   // check multiplication result for mulh
-  assert property (
+  a_mulh_result : assert property (
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
     |->
     (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) );
 
   // check multiplication result for mulhsu
-  assert property (
+  a_mulhsu_result : assert property (
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b01))
     |->
     (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) );
 
   // check multiplication result for mulhu
-  assert property (
+  a_mulhu_result : assert property (
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
     |->
     (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) );
