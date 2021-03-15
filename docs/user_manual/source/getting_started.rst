@@ -21,7 +21,7 @@ a module called ``cv32e40x_clock_gate`` that has the following ports:
 * ``clk_o``: Gated Clock Output
 
 And the following Parameters:
-* ``LIB`` : Standard cell library (0:HV, 1:HV_DNW, 2:EHVT, 3:EHVT_DNW, 4:SVT, 5:SVT_DNW, 6: LVT, 7: LVT_DNW)
+* ``LIB`` : Standard cell library (semantics defined by integrator)
 
 Inside |corev|, the clock gating cell is used in ``cv32e40x_sleep_unit.sv``.
 
