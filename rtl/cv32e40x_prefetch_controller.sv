@@ -39,7 +39,6 @@
 
 module cv32e40x_prefetch_controller
 #(
-  parameter PULP_OBI        = 0,                                // Legacy PULP OBI behavior
   parameter DEPTH           = 4,                                // Prefetch FIFO Depth
   parameter FIFO_ADDR_DEPTH = (DEPTH > 1) ? $clog2(DEPTH) : 1   // Do not override this parameter
 )(
@@ -127,19 +126,9 @@ module cv32e40x_prefetch_controller
   assign trans_addr_incr = {trans_addr_q[31:2], 2'b00} + 32'd4;
 
   // Transaction request generation
-  generate
-    if (PULP_OBI == 0) begin : gen_no_pulp_obi
-      // OBI compatible (avoids combinatorial path from instr_rvalid_i to instr_req_o).
-      // Multiple trans_* transactions can be issued (and accepted) before a response
-      // (resp_*) is received.
-      assign trans_valid_o = req_i && (fifo_cnt_masked + cnt_q < DEPTH);
-    end else begin : gen_pulp_obi
-      // Legacy PULP OBI behavior, i.e. only issue subsequent transaction if preceding transfer
-      // is about to finish (re-introducing timing critical path from instr_rvalid_i to instr_req_o)
-      assign trans_valid_o = (cnt_q == 3'b000) ? req_i && (fifo_cnt_masked + cnt_q < DEPTH) :
-                                                 req_i && (fifo_cnt_masked + cnt_q < DEPTH) && resp_valid_i;
-    end
-  endgenerate
+  // Avoid combinatorial path from instr_rvalid_i to instr_req_o. Multiple trans_* transactions can be 
+  // issued (and accepted) before a response (resp_*) is received.
+  assign trans_valid_o = req_i && (fifo_cnt_masked + cnt_q < DEPTH);
 
   // Optimization:
   // fifo_cnt is used to understand if we can perform new memory requests

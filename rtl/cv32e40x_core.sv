@@ -86,12 +86,6 @@ module cv32e40x_core
   localparam A_EXTENSION         =  0;
   localparam DEBUG_TRIGGER_EN    =  1;
 
-  // PULP bus interface behavior
-  // If enabled will allow non-stable address phase signals during waited instructions requests and
-  // will re-introduce combinatorial paths from instr_rvalid_i to instr_req_o and from from data_rvalid_i
-  // to data_req_o
-  localparam PULP_OBI            = 0;
-
   // Unused signals related to above unused parameters
   // Left in code (with their original _i, _o postfixes) for future design extensions;
   // these used to be former inputs/outputs of RI5CY
@@ -110,13 +104,13 @@ module cv32e40x_core
   logic              clear_instr_valid;
   logic              pc_set;
 
-  logic [3:0]        pc_mux_id;         // Mux selector for next PC
-  logic [2:0]        exc_pc_mux_id; // Mux selector for exception PC
+  pc_mux_e           pc_mux_id;         // Mux selector for next PC
+  exc_pc_mux_e       exc_pc_mux_id; // Mux selector for exception PC
   logic [4:0]        m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
   logic [4:0]        u_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
   logic [4:0]        exc_cause;
 
-  logic [1:0]        trap_addr_mux;
+  trap_mux_e         trap_addr_mux;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
   logic [31:0]       pc_id;             // Program counter in ID stage
@@ -264,7 +258,6 @@ module cv32e40x_core
   logic        mhpmevent_jr_stall;
   logic        mhpmevent_imiss;
   logic        mhpmevent_ld_stall;
-  logic        mhpmevent_pipe_stall;
 
   logic        perf_imiss;
 
@@ -341,7 +334,6 @@ module cv32e40x_core
   //////////////////////////////////////////////////
   cv32e40x_if_stage
   #(
-    .PULP_OBI            ( PULP_OBI          ),
     .PULP_SECURE         ( PULP_SECURE       )
   )
   if_stage_i
@@ -598,7 +590,6 @@ module cv32e40x_core
     .mhpmevent_jr_stall_o         ( mhpmevent_jr_stall   ),
     .mhpmevent_imiss_o            ( mhpmevent_imiss      ),
     .mhpmevent_ld_stall_o         ( mhpmevent_ld_stall   ),
-    .mhpmevent_pipe_stall_o       ( mhpmevent_pipe_stall ),
 
     .perf_imiss_i                 ( perf_imiss           ),
     .mcounteren_i                 ( mcounteren           )
@@ -702,11 +693,7 @@ module cv32e40x_core
   //                                                                                    //
   ////////////////////////////////////////////////////////////////////////////////////////
 
-  cv32e40x_load_store_unit
-  #(
-    .PULP_OBI              ( PULP_OBI           )
-  )
-  load_store_unit_i
+  cv32e40x_load_store_unit load_store_unit_i
   (
     .clk                   ( clk                ),
     .rst_n                 ( rst_ni             ),
@@ -843,8 +830,7 @@ module cv32e40x_core
     .mhpmevent_compressed_i     ( mhpmevent_compressed   ),
     .mhpmevent_jr_stall_i       ( mhpmevent_jr_stall     ),
     .mhpmevent_imiss_i          ( mhpmevent_imiss        ),
-    .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     ),
-    .mhpmevent_pipe_stall_i     ( mhpmevent_pipe_stall   )
+    .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     )
   );
 
   //  CSR access

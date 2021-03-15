@@ -72,7 +72,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic [32:0] short_op_c;
   logic [33:0] short_mul;
   logic [33:0] short_mac;
-  logic [31:0] short_round, short_round_tmp;
   logic [33:0] short_result;
 
   logic        short_mac_msb1;
@@ -94,10 +93,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   mult_state_e mulh_CS, mulh_NS;
 
-  // prepare the rounding value
-  assign short_round_tmp = (32'h00000001) << imm_i;
-  assign short_round = (operator_i == MUL_IR) ? {1'b0, short_round_tmp[31:1]} : '0;
-
   // perform subword selection and sign extensions
   assign short_op_a[15:0] = short_subword[0] ? op_a_i[31:16] : op_a_i[15:0];
   assign short_op_b[15:0] = short_subword[1] ? op_b_i[31:16] : op_b_i[15:0];
@@ -108,7 +103,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   assign short_op_c       = mulh_active ? $signed({mulh_carry_q, op_c_i}) : $signed(op_c_i);
 
   assign short_mul        = $signed(short_op_a) * $signed(short_op_b);
-  assign short_mac        = $signed(short_op_c) + $signed(short_mul) + $signed(short_round);
+  assign short_mac        = $signed(short_op_c) + $signed(short_mul);
 
    //we use only short_signed_i[0] as it cannot be short_signed_i[1] 1 and short_signed_i[0] 0
   assign short_result     = $signed({short_shift_arith & short_mac_msb1, short_shift_arith & short_mac_msb0, short_mac[31:0]}) >>> short_imm;
@@ -121,7 +116,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   assign short_mac_msb1    = mulh_active ? short_mac[33] : short_mac[31];
   assign short_mac_msb0    = mulh_active ? short_mac[32] : short_mac[31];
-
 
   always_comb
   begin
@@ -213,76 +207,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   end
 
   // 32x32 = 32-bit multiplier
-  logic [31:0] int_op_a_msu;
-  logic [31:0] int_op_b_msu;
   logic [31:0] int_result;
 
-  logic        int_is_msu;
-
-  assign int_is_msu = (operator_i == MUL_MSU32);
-
-  assign int_op_a_msu = op_a_i ^ {32{int_is_msu}};
-  assign int_op_b_msu = op_b_i & {32{int_is_msu}};
-
-  assign int_result = $signed(op_c_i) + $signed(int_op_b_msu) + $signed(int_op_a_msu) * $signed(op_b_i);
-
-  ///////////////////////////////////////////////
-  //  ___   ___ _____   __  __ _   _ _  _____  //
-  // |   \ / _ \_   _| |  \/  | | | | ||_   _| //
-  // | |) | (_) || |   | |\/| | |_| | |__| |   //
-  // |___/ \___/ |_|   |_|  |_|\___/|____|_|   //
-  //                                           //
-  ///////////////////////////////////////////////
-
-  logic [31:0] dot_char_result;
-  logic [32:0] dot_short_result;
-  logic [31:0] accumulator;
-  logic [15:0] clpx_shift_result;
-  logic [3:0][ 8:0] dot_char_op_a;
-  logic [3:0][ 8:0] dot_char_op_b;
-  logic [3:0][17:0] dot_char_mul;
-
-  logic [1:0][16:0] dot_short_op_a;
-  logic [1:0][16:0] dot_short_op_b;
-  logic [1:0][33:0] dot_short_mul;
-  logic      [16:0] dot_short_op_a_1_neg; //to compute -rA[31:16]*rB[31:16] -> (!rA[31:16] + 1)*rB[31:16] = !rA[31:16]*rB[31:16] + rB[31:16]
-  logic      [31:0] dot_short_op_b_ext;
-
-  assign dot_char_op_a[0] = {dot_signed_i[1] & dot_op_a_i[ 7], dot_op_a_i[ 7: 0]};
-  assign dot_char_op_a[1] = {dot_signed_i[1] & dot_op_a_i[15], dot_op_a_i[15: 8]};
-  assign dot_char_op_a[2] = {dot_signed_i[1] & dot_op_a_i[23], dot_op_a_i[23:16]};
-  assign dot_char_op_a[3] = {dot_signed_i[1] & dot_op_a_i[31], dot_op_a_i[31:24]};
-
-  assign dot_char_op_b[0] = {dot_signed_i[0] & dot_op_b_i[ 7], dot_op_b_i[ 7: 0]};
-  assign dot_char_op_b[1] = {dot_signed_i[0] & dot_op_b_i[15], dot_op_b_i[15: 8]};
-  assign dot_char_op_b[2] = {dot_signed_i[0] & dot_op_b_i[23], dot_op_b_i[23:16]};
-  assign dot_char_op_b[3] = {dot_signed_i[0] & dot_op_b_i[31], dot_op_b_i[31:24]};
-
-  assign dot_char_mul[0]  = $signed(dot_char_op_a[0]) * $signed(dot_char_op_b[0]);
-  assign dot_char_mul[1]  = $signed(dot_char_op_a[1]) * $signed(dot_char_op_b[1]);
-  assign dot_char_mul[2]  = $signed(dot_char_op_a[2]) * $signed(dot_char_op_b[2]);
-  assign dot_char_mul[3]  = $signed(dot_char_op_a[3]) * $signed(dot_char_op_b[3]);
-
-  assign dot_char_result  = $signed(dot_char_mul[0]) + $signed(dot_char_mul[1]) +
-                            $signed(dot_char_mul[2]) + $signed(dot_char_mul[3]) +
-                            $signed(dot_op_c_i);
-
-
-  assign dot_short_op_a[0]    = {dot_signed_i[1] & dot_op_a_i[15], dot_op_a_i[15: 0]};
-  assign dot_short_op_a[1]    = {dot_signed_i[1] & dot_op_a_i[31], dot_op_a_i[31:16]};
-  assign dot_short_op_a_1_neg = dot_short_op_a[1] ^ {17{(is_clpx_i & ~clpx_img_i)}}; //negates whether clpx_img_i is 0 or 1, only REAL PART needs to be negated
-
-  assign dot_short_op_b[0] = (is_clpx_i & clpx_img_i) ? {dot_signed_i[0] & dot_op_b_i[31], dot_op_b_i[31:16]} : {dot_signed_i[0] & dot_op_b_i[15], dot_op_b_i[15: 0]};
-  assign dot_short_op_b[1] = (is_clpx_i & clpx_img_i) ? {dot_signed_i[0] & dot_op_b_i[15], dot_op_b_i[15: 0]} : {dot_signed_i[0] & dot_op_b_i[31], dot_op_b_i[31:16]};
-
-  assign dot_short_mul[0]  = $signed(dot_short_op_a[0]) * $signed(dot_short_op_b[0]);
-  assign dot_short_mul[1]  = $signed(dot_short_op_a_1_neg) * $signed(dot_short_op_b[1]);
-
-  assign dot_short_op_b_ext = $signed(dot_short_op_b[1]);
-  assign accumulator        = is_clpx_i ? dot_short_op_b_ext & {32{~clpx_img_i}} : $signed(dot_op_c_i);
-
-  assign dot_short_result  = $signed(dot_short_mul[0][31:0]) + $signed(dot_short_mul[1][31:0]) + $signed(accumulator);
-  assign clpx_shift_result = $signed(dot_short_result[31:15])>>>clpx_shift_i;
+  assign int_result = $signed(op_a_i) * $signed(op_b_i);
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -295,40 +222,30 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   always_comb
   begin
-    result_o   = '0;
-
-    unique case (operator_i)
-      MUL_MAC32, MUL_MSU32: result_o = int_result[31:0];
-
-      MUL_I, MUL_IR, MUL_H: result_o = short_result[31:0];
-
-      MUL_DOT8:  result_o = dot_char_result[31:0];
-      MUL_DOT16: begin
-        if(is_clpx_i) begin
-          if(clpx_img_i) begin
-            result_o[31:16] = clpx_shift_result;
-            result_o[15:0]  = dot_op_c_i[15:0];
-          end else begin
-            result_o[15:0]  = clpx_shift_result;
-            result_o[31:16] = dot_op_c_i[31:16];
-          end
-        end else begin
-            result_o = dot_short_result[31:0];
-        end
-      end
-
-      default: ; // default case to suppress unique warning
-    endcase
+    if (operator_i == MUL_MAC32) begin
+      result_o = int_result[31:0];
+    end else begin
+      result_o = short_result[31:0];
+    end
   end
 
-  assign ready_o      = mulh_ready;
+  assign ready_o = mulh_ready;
 
   //----------------------------------------------------------------------------
   // Assertions
   //----------------------------------------------------------------------------
 
+`ifdef CV32E40P_ASSERT_ON
+
+   // Ensure only MUL, MULH, MULHSU, MULHU used (will only work if PULP_XPULP == 0)
+   a_mul_operator : assert property (@(posedge clk) disable iff (!rst_n) (enable_i)
+   |-> (((operator_i == MUL_MAC32) && (op_c_i == 'b0)) || (operator_i == MUL_H)));
+
+   // Ensure no use of dot operations or complex operations (will only work if PULP_XPULP == 0)
+   a_mul_dot_cplx : assert property (@(posedge clk) disable iff (!rst_n) (1'b1)
+   |-> ((dot_signed_i == 'b0) && (dot_op_a_i == 'b0) && (dot_op_b_i == 'b0) && (dot_op_c_i == 'b0) && (is_clpx_i == 'b0) && (clpx_shift_i == 'b0) && (clpx_img_i == 'b0)));
+
   // check multiplication result for mulh
-  `ifdef CV32E40P_ASSERT_ON
   assert property (
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b11))
     |->
@@ -345,5 +262,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     @(posedge clk) ((mulh_CS == FINISH) && (operator_i == MUL_H) && (short_signed_i == 2'b00))
     |->
     (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) );
-  `endif
+
+`endif
+
 endmodule

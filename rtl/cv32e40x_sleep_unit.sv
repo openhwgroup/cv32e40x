@@ -32,24 +32,11 @@
 //                 The clock is gated for the following scenarios:            //
 //                                                                            //
 //                 - While waiting for fetch to become enabled                //
-//                 - While blocked on a WFI (PULP_CLUSTER = 0)                //
-//                 - While clock_en_i = 0 during a p.elw (PULP_CLUSTER = 1)   //
+//                 - While blocked on a WFI                                   //
 //                                                                            //
-//                 Sleep is signaled via core_sleep_o when:                   //
+//                 Sleep is signaled via core_sleep_o:                        //
 //                                                                            //
-//                 - During a p.elw (except in debug (i.e. pending debug      //
-//                   request, debug mode, single stepping, trigger match)     //
 //                 - During a WFI (except in debug)                           //
-//                                                                            //
-// Requirements:   If PULP_CLUSTER = 1 the environment must guarantee:        //
-//                                                                            //
-//                 - If core_sleep_o    == 1'b0, then pulp_clock_en_i == 1'b1 //
-//                 - If pulp_clock_en_i == 1'b0, then irq_i == 'b0            //
-//                 - If pulp_clock_en_i == 1'b0, then debug_req_i == 1'b0     //
-//                 - If pulp_clock_en_i == 1'b0, then instr_rvalid_i == 1'b0  //
-//                 - If pulp_clock_en_i == 1'b0, then instr_gnt_i == 1'b0     //
-//                 - If pulp_clock_en_i == 1'b0, then data_rvalid_i == 1'b0   //
-//                 - If pulp_clock_en_i == 1'b0, then data_gnt_i == 1'b1      //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 

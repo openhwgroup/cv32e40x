@@ -113,9 +113,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                 mhpmevent_compressed_i,
   input  logic                 mhpmevent_jr_stall_i,
   input  logic                 mhpmevent_imiss_i,
-  input  logic                 mhpmevent_ld_stall_i,
-  input  logic                 mhpmevent_pipe_stall_i
-
+  input  logic                 mhpmevent_ld_stall_i
 );
 
   localparam NUM_HPM_EVENTS    =   16;
@@ -907,11 +905,11 @@ Vet ikk
   assign hpm_events[8]  = mhpmevent_branch_i;                            // nr of branches (conditional)
   assign hpm_events[9]  = mhpmevent_branch_taken_i;                      // nr of taken branches (conditional)
   assign hpm_events[10] = mhpmevent_compressed_i;                        // compressed instruction counter
-  assign hpm_events[11] = 1'b0 ; // extra cycles from ELW
-  assign hpm_events[12] = 1'b0 ;
-  assign hpm_events[13] = 1'b0 ;
-  assign hpm_events[14] = 1'b0 ;
-  assign hpm_events[15] = 1'b0 ;
+  assign hpm_events[11] = 1'b0;
+  assign hpm_events[12] = 1'b0;
+  assign hpm_events[13] = 1'b0;
+  assign hpm_events[14] = 1'b0;
+  assign hpm_events[15] = 1'b0;
 
   // ------------------------
   // address decoder for performance counter registers

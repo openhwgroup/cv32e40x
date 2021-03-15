@@ -163,7 +163,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     imm_a_mux_sel_o             = IMMA_ZERO;
     imm_b_mux_sel_o             = IMMB_I;
 
-    mult_operator_o             = MUL_I;
+    mult_operator_o             = MUL_MAC32;
     mult_int_en                 = 1'b0;
     mult_dot_en                 = 1'b0;
     mult_imm_mux_o              = MIMM_ZERO;
@@ -273,18 +273,14 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
           3'b101: alu_operator_o = ALU_GES;
           3'b110: alu_operator_o = ALU_LTU;
           3'b111: alu_operator_o = ALU_GEU;
-
-          3'b010: begin // p.beqimm
-              illegal_insn_o = 1'b1;
-            
+          3'b010: begin
+              illegal_insn_o = 1'b1;          
           end
-          3'b011: begin // p.bneimm
+          3'b011: begin
             illegal_insn_o = 1'b1;
-            
           end
         endcase
       end
-
 
       //////////////////////////////////
       //  _     ____    ______ _____  //
@@ -296,79 +292,68 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       //////////////////////////////////
 
       OPCODE_STORE: begin
-      
-        if ((instr_rdata_i[6:0] == OPCODE_STORE)) begin
-          data_req       = 1'b1;
-          data_we_o      = 1'b1;
-          rega_used_o    = 1'b1;
-          regb_used_o    = 1'b1;
-          alu_operator_o = ALU_ADD;
-          // pass write data through ALU operand c
-          alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD;
+        data_req       = 1'b1;
+        data_we_o      = 1'b1;
+        rega_used_o    = 1'b1;
+        regb_used_o    = 1'b1;
+        alu_operator_o = ALU_ADD;
+        // pass write data through ALU operand c
+        alu_op_c_mux_sel_o = OP_C_REGB_OR_FWD;
 
-          if (instr_rdata_i[14] == 1'b0) begin
-            // offset from immediate
-            imm_b_mux_sel_o     = IMMB_S;
-            alu_op_b_mux_sel_o  = OP_B_IMM;
-          end else begin
-              illegal_insn_o = 1'b1;
-            
-          end
-
-          // store size
-          unique case (instr_rdata_i[13:12])
-            2'b00: data_type_o = 2'b10; // SB
-            2'b01: data_type_o = 2'b01; // SH
-            2'b10: data_type_o = 2'b00; // SW
-            default: begin
-              data_req       = 1'b0;
-              data_we_o      = 1'b0;
-              illegal_insn_o = 1'b1;
-            end
-          endcase
+        if (instr_rdata_i[14] == 1'b0) begin
+          // offset from immediate
+          imm_b_mux_sel_o     = IMMB_S;
+          alu_op_b_mux_sel_o  = OP_B_IMM;
         end else begin
-          illegal_insn_o = 1'b1;
+            illegal_insn_o = 1'b1;
         end
+
+        // store size
+        unique case (instr_rdata_i[13:12])
+          2'b00: data_type_o = 2'b10; // SB
+          2'b01: data_type_o = 2'b01; // SH
+          2'b10: data_type_o = 2'b00; // SW
+          default: begin
+            data_req       = 1'b0;
+            data_we_o      = 1'b0;
+            illegal_insn_o = 1'b1;
+          end
+        endcase
       end
 
       OPCODE_LOAD: begin
-      
-        if ((instr_rdata_i[6:0] == OPCODE_LOAD)) begin
-          data_req        = 1'b1;
-          regfile_mem_we  = 1'b1;
-          rega_used_o     = 1'b1;
-          data_type_o     = 2'b00;
-          // offset from immediate
-          alu_operator_o      = ALU_ADD;
-          alu_op_b_mux_sel_o  = OP_B_IMM;
-          imm_b_mux_sel_o     = IMMB_I;
+        data_req        = 1'b1;
+        regfile_mem_we  = 1'b1;
+        rega_used_o     = 1'b1;
+        data_type_o     = 2'b00;
+        // offset from immediate
+        alu_operator_o      = ALU_ADD;
+        alu_op_b_mux_sel_o  = OP_B_IMM;
+        imm_b_mux_sel_o     = IMMB_I;
 
-          // sign/zero extension
-          data_sign_extension_o = {1'b0,~instr_rdata_i[14]};
+        // sign/zero extension
+        data_sign_extension_o = {1'b0,~instr_rdata_i[14]};
 
-          // load size
-          unique case (instr_rdata_i[13:12])
-            2'b00:   data_type_o = 2'b10; // LB
-            2'b01:   data_type_o = 2'b01; // LH
-            2'b10:   data_type_o = 2'b00; // LW
-            default: data_type_o = 2'b00; // illegal or reg-reg
-          endcase
+        // load size
+        unique case (instr_rdata_i[13:12])
+          2'b00:   data_type_o = 2'b10; // LB
+          2'b01:   data_type_o = 2'b01; // LH
+          2'b10:   data_type_o = 2'b00; // LW
+          default: data_type_o = 2'b00; // illegal or reg-reg
+        endcase
 
-          // reg-reg load (different encoding)
-          if (instr_rdata_i[14:12] == 3'b111) begin
-              illegal_insn_o = 1'b1;
-          end
-
-          // special p.elw (event load)
-          if (instr_rdata_i[14:12] == 3'b110) begin
+        // Reserved
+        if (instr_rdata_i[14:12] == 3'b111) begin
             illegal_insn_o = 1'b1;
-          end
+        end
 
-          if (instr_rdata_i[14:12] == 3'b011) begin
-            // LD -> RV64 only
-            illegal_insn_o = 1'b1;
-          end
-        end else begin
+        // Reserved
+        if (instr_rdata_i[14:12] == 3'b110) begin
+          illegal_insn_o = 1'b1;
+        end
+
+        if (instr_rdata_i[14:12] == 3'b011) begin
+          // LD -> RV64 only
           illegal_insn_o = 1'b1;
         end
       end
@@ -486,15 +471,11 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
         // PREFIX 10
         else if (instr_rdata_i[31:30] == 2'b10) begin
-          //////////////////////////////
-          // REGISTER BIT-MANIPULATION
-          //////////////////////////////
           illegal_insn_o = 1'b1;
         end  // prefix 10
 
         // PREFIX 00/01
         else begin
-          // non bit-manipulation instructions
           regfile_alu_we = 1'b1;
           rega_used_o    = 1'b1;
 

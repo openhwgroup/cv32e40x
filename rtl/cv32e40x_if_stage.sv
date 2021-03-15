@@ -25,9 +25,8 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_if_stage
+module cv32e40x_if_stage import cv32e40x_pkg::*;
 #(
-  parameter PULP_OBI        = 0,                        // Legacy PULP OBI behavior
   parameter PULP_SECURE     = 0
 )
 (
@@ -37,7 +36,7 @@ module cv32e40x_if_stage
     // Used to calculate the exception offsets
     input  logic [23:0] m_trap_base_addr_i,
     input  logic [23:0] u_trap_base_addr_i,
-    input  logic  [1:0] trap_addr_mux_i,
+    input  trap_mux_e   trap_addr_mux_i,
     // Boot address
     input  logic [31:0] boot_addr_i,
     input  logic [31:0] dm_exception_addr_i,
@@ -74,8 +73,8 @@ module cv32e40x_if_stage
 
     input  logic [31:0] depc_i,                // address used to restore PC when the debug is served
 
-    input  logic  [3:0] pc_mux_i,              // sel for pc multiplexer
-    input  logic  [2:0] exc_pc_mux_i,          // selects ISR address
+    input  pc_mux_e     pc_mux_i,              // sel for pc multiplexer
+    input  exc_pc_mux_e exc_pc_mux_i,          // selects ISR address
 
     input  logic  [4:0] m_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
     input  logic  [4:0] u_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
@@ -93,9 +92,7 @@ module cv32e40x_if_stage
     output logic        if_busy_o,             // is the IF stage busy fetching instructions?
     output logic        perf_imiss_o           // Instruction Fetch Miss
 );
-
-  import cv32e40x_pkg::*;
-
+  
   logic              if_valid, if_ready;
 
   // prefetch buffer related signals
@@ -171,11 +168,7 @@ module cv32e40x_if_stage
   assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
   // prefetch buffer, caches a fixed number of instructions
-  cv32e40x_prefetch_buffer
-  #(
-    .PULP_OBI          ( PULP_OBI                    )
-  )
-  prefetch_buffer_i
+  cv32e40x_prefetch_buffer prefetch_buffer_i
   (
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),

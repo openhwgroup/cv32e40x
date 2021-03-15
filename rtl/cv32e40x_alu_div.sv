@@ -23,7 +23,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_alu_div
+module cv32e40x_alu_div import cv32e40x_pkg::*;
 #(
    parameter C_WIDTH     = 32,
    parameter C_LOG_WIDTH = 6
@@ -71,7 +71,7 @@ module cv32e40x_alu_div
 
   logic ARegEn_S, BRegEn_S, ResRegEn_S, ABComp_S, PmSel_S, LoadEn_S;
 
-  enum logic [1:0] {IDLE, DIVIDE, FINISH} State_SN, State_SP;
+  div_state_e State_SN, State_SP;
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ module cv32e40x_alu_div
 
     case (State_SP)
       /////////////////////////////////
-      IDLE: begin
+      DIV_IDLE: begin
         OutVld_SO    = 1'b1;
 
         if(InVld_SI) begin
@@ -142,11 +142,11 @@ module cv32e40x_alu_div
           ARegEn_S   = 1'b1;
           BRegEn_S   = 1'b1;
           LoadEn_S   = 1'b1;
-          State_SN   = DIVIDE;
+          State_SN   = DIV_DIVIDE;
         end
       end
       /////////////////////////////////
-      DIVIDE: begin
+      DIV_DIVIDE: begin
 
         ARegEn_S     = ABComp_S;
         BRegEn_S     = 1'b1;
@@ -155,15 +155,15 @@ module cv32e40x_alu_div
         // calculation finished
         // one more divide cycle (32nd divide cycle)
         if (CntZero_S) begin
-          State_SN   = FINISH;
+          State_SN   = DIV_FINISH;
         end
       end
       /////////////////////////////////
-      FINISH: begin
+      DIV_FINISH: begin
         OutVld_SO = 1'b1;
 
         if(OutRdy_SI) begin
-          State_SN  = IDLE;
+          State_SN  = DIV_IDLE;
         end
       end
       /////////////////////////////////
@@ -189,7 +189,7 @@ module cv32e40x_alu_div
 
   always_ff @(posedge Clk_CI or negedge Rst_RBI) begin : p_regs
     if(~Rst_RBI) begin
-       State_SP   <= IDLE;
+       State_SP   <= DIV_IDLE;
        AReg_DP    <= '0;
        BReg_DP    <= '0;
        ResReg_DP  <= '0;

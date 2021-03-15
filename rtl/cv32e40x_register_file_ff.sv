@@ -61,7 +61,6 @@ module cv32e40x_register_file
 
   // number of integer registers
   localparam    NUM_WORDS     = 2**(ADDR_WIDTH);
-  localparam    NUM_TOT_WORDS = NUM_WORDS;
 
   // integer register file
   logic [NUM_WORDS-1:0][DATA_WIDTH-1:0]     mem;
@@ -71,8 +70,8 @@ module cv32e40x_register_file
   logic [ADDR_WIDTH-1:0]                    waddr_b;
 
   // write enable signals for all registers
-  logic [NUM_TOT_WORDS-1:0]                 we_a_dec;
-  logic [NUM_TOT_WORDS-1:0]                 we_b_dec;
+  logic [NUM_WORDS-1:0]                    we_a_dec;
+  logic [NUM_WORDS-1:0]                    we_b_dec;
 
 
   //-----------------------------------------------------------------------------
@@ -91,7 +90,7 @@ module cv32e40x_register_file
 
   genvar gidx;
   generate
-    for (gidx=0; gidx<NUM_TOT_WORDS; gidx++) begin : gen_we_decoder
+    for (gidx=0; gidx<NUM_WORDS; gidx++) begin : gen_we_decoder
       assign we_a_dec[gidx] = (waddr_a == gidx) ? we_a_i : 1'b0;
       assign we_b_dec[gidx] = (waddr_b == gidx) ? we_b_i : 1'b0;
     end

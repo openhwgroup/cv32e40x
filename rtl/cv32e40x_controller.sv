@@ -67,9 +67,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // to prefetcher
   output logic        pc_set_o,                   // jump to address set by pc_mux
-  output logic [3:0]  pc_mux_o,                   // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
-  output logic [2:0]  exc_pc_mux_o,               // Selects target PC for exception
-  output logic [1:0]  trap_addr_mux_o,            // Selects trap address base
+  output pc_mux_e     pc_mux_o,                   // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
+  output exc_pc_mux_e exc_pc_mux_o,               // Selects target PC for exception
+  output trap_mux_e   trap_addr_mux_o,            // Selects trap address base
 
   input  logic [31:0]       pc_id_i,
   input  logic              is_compressed_i,

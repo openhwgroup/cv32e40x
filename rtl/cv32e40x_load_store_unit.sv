@@ -24,9 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_load_store_unit
-#(
-    parameter PULP_OBI = 0                     // Legacy PULP OBI behavior
-)(
+(
     input  logic         clk,
     input  logic         rst_n,
 
@@ -407,19 +405,10 @@ module cv32e40x_load_store_unit
   assign trans_atop  = data_atop_ex_i;
 
   // Transaction request generation
-  generate
-    if (PULP_OBI == 0) begin : gen_no_pulp_obi
-      // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o).
-      // Multiple trans_* transactions can be issued (and accepted) before a response
-      // (resp_*) is received.
-      assign trans_valid = data_req_ex_i && (cnt_q < DEPTH);
-    end else begin : gen_pulp_obi
-      // Legacy PULP OBI behavior, i.e. only issue subsequent transaction if preceding transfer
-      // is about to finish (re-introducing timing critical path from data_rvalid_i to data_req_o)
-      assign trans_valid = (cnt_q == 2'b00) ? data_req_ex_i && (cnt_q < DEPTH) :
-                                              data_req_ex_i && (cnt_q < DEPTH) && resp_valid; 
-    end
-  endgenerate
+  // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
+  // issued (and accepted) before a response (resp_*) is received.
+  assign trans_valid = data_req_ex_i && (cnt_q < DEPTH);
+
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it WB stage is being used and the awaited response arrives (resp_rvalid).

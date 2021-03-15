@@ -60,9 +60,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // IF and ID stage signals
     output logic        clear_instr_valid_o,
     output logic        pc_set_o,
-    output logic [3:0]  pc_mux_o,
-    output logic [2:0]  exc_pc_mux_o,
-    output logic [1:0]  trap_addr_mux_o,
+    output pc_mux_e     pc_mux_o,
+    output exc_pc_mux_e exc_pc_mux_o,
+    output trap_mux_e   trap_addr_mux_o,
 
 
     input  logic        is_fetch_failed_i,
@@ -201,7 +201,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        mhpmevent_jr_stall_o,
     output logic        mhpmevent_imiss_o,
     output logic        mhpmevent_ld_stall_o,
-    output logic        mhpmevent_pipe_stall_o,
 
     input  logic        perf_imiss_i,
     input  logic [31:0] mcounteren_i
@@ -1229,7 +1228,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       mhpmevent_jr_stall_o       <= 1'b0;
       mhpmevent_imiss_o          <= 1'b0;
       mhpmevent_ld_stall_o       <= 1'b0;
-      mhpmevent_pipe_stall_o     <= 1'b0;
     end
     else
     begin
@@ -1250,8 +1248,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       mhpmevent_jr_stall_o       <= jr_stall && !halt_id && id_valid_q;
       // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
       mhpmevent_ld_stall_o       <= load_stall && !halt_id && id_valid_q;
-      // ELW
-      mhpmevent_pipe_stall_o     <= 0; // X-remove?
     end
   end
 

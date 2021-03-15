@@ -20,7 +20,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_aligner
+module cv32e40x_aligner import cv32e40x_pkg::*;
 (
   input  logic           clk,
   input  logic           rst_n,
@@ -40,7 +40,7 @@ module cv32e40x_aligner
   output logic [31:0]    pc_o
 );
 
-  enum logic [2:0]  {ALIGNED32, MISALIGNED32, MISALIGNED16, BRANCH_MISALIGNED, WAIT_VALID_BRANCH} state, next_state;
+  aligner_state_e state, next_state;
 
   logic [15:0]       r_instr_h;
   logic [31:0]       pc_q, pc_n;

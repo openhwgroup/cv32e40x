@@ -25,9 +25,6 @@
 // this cycle already
 
 module cv32e40x_prefetch_buffer
-#(
-  parameter PULP_OBI   = 0                // Legacy PULP OBI behavior
-)
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -82,9 +79,7 @@ module cv32e40x_prefetch_buffer
 
   cv32e40x_prefetch_controller
   #(
-    .DEPTH          ( FIFO_DEPTH    ),
-    .PULP_OBI       ( PULP_OBI      )
-    
+    .DEPTH          ( FIFO_DEPTH    )   
   )
   prefetch_controller_i
   (

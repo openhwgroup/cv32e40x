@@ -35,7 +35,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_obi_interface
+module cv32e40x_obi_interface import cv32e40x_pkg::*;
 #(
   parameter TRANS_STABLE =  0                   // Are trans_addr_i, trans_we_i, trans_be_i, trans_wdata_i, trans_atop_i signals stable during a non-accepted transaction?
 )
@@ -70,7 +70,7 @@ module cv32e40x_obi_interface
   input  logic        obi_err_i
 );
 
-  enum logic {TRANSPARENT, REGISTERED} state_q, next_state;
+  obi_if_state_e state_q, next_state;
 
   //////////////////////////////////////////////////////////////////////////////
   // OBI R Channel

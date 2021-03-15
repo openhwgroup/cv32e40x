@@ -196,6 +196,10 @@ typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 
 typedef enum logic [2:0] {IDLE_MULT, STEP0, STEP1, STEP2, FINISH} mult_state_e;
 
+// ALU divider FSM state encoding
+typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_FINISH} div_state_e;
+
+
 /////////////////////////////////////////////////////////
 //    ____ ____    ____            _     _             //
 //   / ___/ ___|  |  _ \ ___  __ _(_)___| |_ ___ _ __  //
@@ -655,21 +659,25 @@ parameter AMO_MAXU = 5'b11100;
 ///////////////////////////////////////////////
 
 // PC mux selector defines
-parameter PC_BOOT          = 4'b0000;
-parameter PC_JUMP          = 4'b0010;
-parameter PC_BRANCH        = 4'b0011;
-parameter PC_EXCEPTION     = 4'b0100;
-parameter PC_FENCEI        = 4'b0001;
-parameter PC_MRET          = 4'b0101;
-parameter PC_URET          = 4'b0110;
-parameter PC_DRET          = 4'b0111;
+typedef enum logic[3:0] {
+  PC_BOOT      = 4'b0000,
+  PC_JUMP      = 4'b0010,
+  PC_BRANCH    = 4'b0011,
+  PC_EXCEPTION = 4'b0100,
+  PC_FENCEI    = 4'b0001,
+  PC_MRET      = 4'b0101,
+  PC_URET      = 4'b0110,
+  PC_DRET      = 4'b0111
+} pc_mux_e;
+
 
 // Exception PC mux selector defines
-parameter EXC_PC_EXCEPTION = 3'b000;
-parameter EXC_PC_IRQ       = 3'b001;
-
-parameter EXC_PC_DBD       = 3'b010;
-parameter EXC_PC_DBE       = 3'b011;
+typedef enum logic[2:0] {
+  EXC_PC_EXCEPTION = 3'b000,
+  EXC_PC_IRQ       = 3'b001,
+  EXC_PC_DBD       = 3'b010,
+  EXC_PC_DBE       = 3'b011
+} exc_pc_mux_e;
 
 // Exception Cause
 parameter EXC_CAUSE_INSTR_FAULT  = 5'h01;
@@ -684,8 +692,10 @@ parameter EXC_CAUSE_ECALL_MMODE  = 5'h0B;
 parameter IRQ_MASK = 32'hFFFF0888;
 
 // Trap mux selector
-parameter TRAP_MACHINE      = 2'b00;
-parameter TRAP_USER         = 2'b01;
+typedef enum logic[1:0] {
+ TRAP_MACHINE      = 2'b00,
+ TRAP_USER         = 2'b01
+} trap_mux_e;
 
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
@@ -721,6 +731,25 @@ typedef enum logic [3:0] {
   TTYPE_ITRIGGER = 4'h4,
   TTYPE_ETRIGGER = 4'h5
 } trigger_type_e;
+
+// Instruction aligner FSM state encoding
+typedef enum logic [2:0]  {ALIGNED32,
+                           MISALIGNED32,
+                           MISALIGNED16,
+                           BRANCH_MISALIGNED,
+                           WAIT_VALID_BRANCH} aligner_state_e;
+
+  ///////////////////////////
+  //                       //
+  //    /\/\ (_)___  ___   //
+  //   /    \| / __|/ __|  //
+  //  / /\/\ \ \__ \ (__   //
+  //  \/    \/_|___/\___|  //
+  //                       //
+  ///////////////////////////
+
+  // OBI interface FSM state encoding
+  typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
 
 endpackage
