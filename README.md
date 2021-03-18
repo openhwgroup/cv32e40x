@@ -1,25 +1,23 @@
 [![Build Status](https://travis-ci.com/pulp-platform/riscv.svg?branch=master)](https://travis-ci.com/pulp-platform/riscv)
 
-# OpenHW Group CORE-V CV32E40P RISC-V IP
+# OpenHW Group CORE-V CV32E40X RISC-V IP
 
-CV32E40P is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage pipeline that implements
-the RV32IM\[F\]C instruction set architecture, and the Xpulp custom extensions for achieving
-higher code density, performance, and energy efficiency \[[1](https://doi.org/10.1109/TVLSI.2017.2654506)\], \[[2](https://doi.org/10.1109/PATMOS.2017.8106976)\].
-It started its life as a fork of the OR10N CPU core that is based on the OpenRISC ISA.
-Then, under the name of RI5CY, it became a RISC-V core (2016), and it has been maintained
-by the [PULP platform](https://www.pulp-platform.org/) team until February 2020,
-when it has been contributed to [OpenHW Group](https://www.openhwgroup.org/).
+CV32E40X is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage pipeline that implements
+the RV32IM[A]C[B][P]XZce_Zicount_Zicsr_Zifencei instruction set architecture. The CV32E40X core is aimed
+at compute intensive applications and offers a general purpose extension interface by which custom instructions
+can be added external to the core.
+
+It started its life as a fork of the OpenHW CV32E40P core that in its turn was based on the RI5CY core from
+the [PULP platform](https://www.pulp-platform.org/) team.
 
 ## Documentation
 
-The CV32E40P user manual can be found in this 
-[repository](https://github.com/openhwgroup/core-v-docs/tree/master/cores/cv32e40x
-). 
+The CV32E40X user manual can be found in the _docs_ folder and it is
+captured in reStructuredText, rendered to html using [Sphinx](https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html).
+These documents are viewable using readthedocs and can be viewed [here](https://cv32e40x.readthedocs.io/en/latest/).
 
 ## Verification
-The verification environment for the CV32E40P is _not_ in this Repository.  There is a small, simple testbench here which is
-useful for experimentation only and should not be used to validate any changes to the RTL prior to pushing to the master
-branch of this repo.
+The verification environment for the CV32E40X is _not_ in this Repository.
 
 The verification environment for this core as well as other cores in the OpenHW Group CORE-V family is at the
 [core-v-verif](https://github.com/openhwgroup/core-v-verif) repository on GitHub.
@@ -27,13 +25,13 @@ The verification environment for this core as well as other cores in the OpenHW 
 The Makefiles supported in the **core-v-verif** project automatically clone the appropriate version of the **cv32e40x**  RTL sources.
 
 ## Constraints
-Example synthesis constraints for the CV32E40P are provided.
+Example synthesis constraints for the CV32E40X are provided.
 
 ## Contributing
 
 We highly appreciate community contributions. We are currently using the lowRISC contribution guide.
-To ease our work of reviewing your contributions,
-please:
+
+To ease our work of reviewing your contributions, please:
 
 * Create your own fork to commit your changes and then open a Pull Request.
 * Split large contributions into smaller commits addressing individual changes or bug fixes. Do not
@@ -51,18 +49,6 @@ To get started, please check out the ["Good First Issue"
 
 ## Issues and Troubleshooting
 
-If you find any problems or issues with CV32E40P or the documentation, please check out the [issue
+If you find any problems or issues with CV32E40X or the documentation, please check out the [issue
  tracker](https://github.com/openhwgroup/cv32e40x/issues) and create a new issue if your problem is
 not yet tracked.
-
-## References
-
-1. [Gautschi, Michael, et al. "Near-Threshold RISC-V Core With DSP Extensions for Scalable IoT Endpoint Devices."
- in IEEE Transactions on Very Large Scale Integration (VLSI) Systems, vol. 25, no. 10, pp. 2700-2713, Oct. 2017](https://doi.org/10.1109/TVLSI.2017.2654506)
-
-2. [Schiavone, Pasquale Davide, et al. "Slow and steady wins the race? A comparison of
- ultra-low-power RISC-V cores for Internet-of-Things applications."
- _27th International Symposium on Power and Timing Modeling, Optimization and Simulation
- (PATMOS 2017)_](https://doi.org/10.1109/PATMOS.2017.8106976)
-
-
