@@ -8,8 +8,8 @@ is required reading.  You will find information about the implementation and usa
 in the [Verification Strategy](https://github.com/openhwgroup/core-v-docs/blob/master/verif/Common/OpenHWGroup_CORE-V_Verif_Strategy.pdf).
 
 ## The Mechanics
-1. From GitHub: [fork](https://help.github.com/articles/fork-a-repo/) the [cv32e40p](https://github.com/openhwgroup/cv32e40p) repository
-2. Clone repository: `git clone https://github.com/[your_github_username]/cv32e40p`
+1. From GitHub: [fork](https://help.github.com/articles/fork-a-repo/) the [cv32e40x](https://github.com/openhwgroup/cv32e40x) repository
+2. Clone repository: `git clone https://github.com/[your_github_username]/cv32e40x`
 3. Create your feature branch: `git checkout -b <my_branch>.`<br> Please uniquify your branch name.  See the [Git Cheats](https://github.com/openhwgroup/core-v-verif/blob/master/GitCheats.md)
 for a useful nominclature.
 4. Make your edits...

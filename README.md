@@ -13,7 +13,7 @@ when it has been contributed to [OpenHW Group](https://www.openhwgroup.org/).
 ## Documentation
 
 The CV32E40P user manual can be found in this 
-[repository](https://github.com/openhwgroup/core-v-docs/tree/master/cores/cv32e40p
+[repository](https://github.com/openhwgroup/core-v-docs/tree/master/cores/cv32e40x
 ). 
 
 ## Verification
@@ -24,7 +24,7 @@ branch of this repo.
 The verification environment for this core as well as other cores in the OpenHW Group CORE-V family is at the
 [core-v-verif](https://github.com/openhwgroup/core-v-verif) repository on GitHub.
 
-The Makefiles supported in the **core-v-verif** project automatically clone the appropriate version of the **cv32e40p**  RTL sources.
+The Makefiles supported in the **core-v-verif** project automatically clone the appropriate version of the **cv32e40x**  RTL sources.
 
 ## Constraints
 Example synthesis constraints for the CV32E40P are provided.
@@ -47,12 +47,12 @@ When contributing SystemVerilog source code, please try to be consistent and adh
 coding style guide](https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md).
 
 To get started, please check out the ["Good First Issue"
- list](https://github.com/openhwgroup/cv32e40p/issues?q=is%3Aissue+is%3Aopen+-label%3Astatus%3Aresolved+label%3A%22good+first+issue%22).
+ list](https://github.com/openhwgroup/cv32e40x/issues?q=is%3Aissue+is%3Aopen+-label%3Astatus%3Aresolved+label%3A%22good+first+issue%22).
 
 ## Issues and Troubleshooting
 
 If you find any problems or issues with CV32E40P or the documentation, please check out the [issue
- tracker](https://github.com/openhwgroup/cv32e40p/issues) and create a new issue if your problem is
+ tracker](https://github.com/openhwgroup/cv32e40x/issues) and create a new issue if your problem is
 not yet tracked.
 
 ## References
