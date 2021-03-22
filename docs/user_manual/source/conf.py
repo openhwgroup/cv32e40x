@@ -84,6 +84,9 @@ rst_epilog = """
 .. |corev_lc| replace:: cv32e40x
 """
 
+# Tags for conditional text
+tags.add('ZICOUNT')
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
