@@ -18,6 +18,7 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
@@ -817,6 +818,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.rf_we                  <= 1'b0;
 
         id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
+        id_ex_pipe_o.csr_access             <= 1'b0;
+        id_ex_pipe_o.csr_en                 <= 1'b0;
 
         id_ex_pipe_o.data_req               <= 1'b0;
         id_ex_pipe_o.data_misaligned        <= 1'b0;
@@ -830,10 +833,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       end else if (id_ex_pipe_o.csr_access) begin
        //In the EX stage there was a CSR access, to avoid multiple
-       //writes to the RF, disable rf_we.
+       //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       //TODO:OK: Change to suppressing csr_access insted to allow RF write with a single write port
-       id_ex_pipe_o.rf_we          <= 1'b0;
+       id_ex_pipe_o.csr_access              <= 1'b0;
       end
     end
   end

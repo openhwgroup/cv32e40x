@@ -16,6 +16,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Description:    RTL assertions for the cs_registers module                 //
 //                                                                            //
@@ -27,13 +28,34 @@ module cv32e40x_cs_registers_sva
    input logic        clk,
    input logic        rst_n,
    
+   input logic [31:0] csr_rdata_o,
+   input logic        csr_access_i,
    input logic [31:0] mie_n,
    input logic        mie_we,
    input logic [31:0] mie_bypass_o
    );
+
+   // Store last valid rdata output
+   logic [31:0] csr_rdata_last;
+
+   always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      csr_rdata_last <= 32'h0;
+    end else if (csr_access_i) begin
+      csr_rdata_last <= csr_rdata_o;
+    end
+  end
+
+
   // Check that mie_bypass_o equals mie_n
   a_mie_bypass : assert property (@(posedge clk) disable iff (!rst_n)
                                   (mie_we) |-> (mie_bypass_o == mie_n))
     else `uvm_error("cs_registers", "Assertion a_mie_bypass failed")
+
+  // Check that read data is stable when csr_access is low
+  a_stable_rdata: assert property (@(posedge clk) disable iff (!rst_n)
+                                  (!csr_access_i) |-> (csr_rdata_o == csr_rdata_last))
+
+    else `uvm_error("cs_registers", "csr_rdata_o not stable while csr_access_i is low")
 endmodule // cv32e40x_cs_registers_sva
 

@@ -18,6 +18,7 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Top level module                                           //
 // Project Name:   RI5CY                                                      //
@@ -581,6 +582,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_addr_i                 ( csr_addr               ),
     .csr_wdata_i                ( csr_wdata              ),
     .csr_op_i                   ( csr_op                 ),
+    .csr_access_i               ( id_ex_pipe.csr_access  ),
     .csr_rdata_o                ( csr_rdata              ),
 
     // Interrupt related control signals
@@ -631,6 +633,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign csr_wdata    =  id_ex_pipe.alu_operand_a;
   assign csr_op       =  id_ex_pipe.csr_op;
 
-  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_access ? id_ex_pipe.alu_operand_b[11:0] : '0);
+  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_en ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
 endmodule
