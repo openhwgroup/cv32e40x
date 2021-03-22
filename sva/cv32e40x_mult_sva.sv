@@ -40,7 +40,7 @@ module cv32e40x_mult_sva
   ////////////////////////////////////////
   ////  Assertions on module boundary ////
   ////////////////////////////////////////
-  
+
   // Check result for MUL
   a_mul_result : // check multiplication result for MUL
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -109,5 +109,11 @@ module cv32e40x_mult_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_state == ALBL) |-> (mulh_acc == '0))
       else `uvm_error("mult", "Accumulate register not 0 when starting MULH calculation")
+
+  // Check that accumulate register is 0 for MUL
+  a_check_acc_mul_value_zero:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (operator_i == MUL_M32) |-> (mulh_acc == '0))
+      else `uvm_error("mult", "Accumulate register not 0 for MUL instruction")
 
 endmodule // cv32e40x_mult
