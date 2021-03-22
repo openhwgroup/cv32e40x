@@ -521,19 +521,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     endcase
   end
 
-  // This instance keeps the last valid csr_rdata
-  cv32e40x_csr #(
-    .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
-    .RESETVALUE (32'd0)
-  ) rdata_csr_i (
-    .clk      (clk),
-    .rst_n     (rst_n),
-    .wr_data_i  (csr_rdata_int),
-    .wr_en_i    (csr_access_i),
-    .rd_data_o  (csr_rdata_q),
-    .rd_error_o ()
-  );
+  // Keep last valid rdata
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      csr_rdata_q <= 32'h0;
+    end else if (csr_access_i) begin
+      csr_rdata_q <= csr_rdata_int;
+    end
+  end
 
   cv32e40x_csr #(
     .WIDTH      (32),
