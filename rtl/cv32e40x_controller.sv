@@ -127,6 +127,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // forwarding signals
   output op_fw_mux_e  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
   output op_fw_mux_e  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
+  output op_fw_mux_e  jalr_fw_mux_sel_o,          // data selector for jump target
 
   input rf_addr_t  rf_waddr_ex_i,
   input rf_addr_t  rf_waddr_wb_i,
@@ -149,7 +150,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        ex_valid_i,                 // EX stage is done
 
-  input  logic        wb_ready_i                 // WB stage is ready
+  input  logic        wb_ready_i,                 // WB stage is ready
+
+  input  logic        wb_alu_en_i                 // ALU data is written back in WB
 
 );
 
@@ -896,11 +899,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     end
 
     // Stall because of jr path
-    // - always stall if a result is to be forwarded to the PC
+    // - Stall if a result is to be forwarded to the PC
+    // except if result from WB is an ALU result
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        ((rf_we_wb_i && rf_rd_wb_match[0]) ||
+        ((rf_we_wb_i && rf_rd_wb_match[0] && !wb_alu_en_i) ||
          (rf_we_ex_i && rf_rd_ex_match[0])))
     begin
       jr_stall_o      = 1'b1;
@@ -921,6 +925,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // default assignements
     operand_a_fw_mux_sel_o = SEL_REGFILE;
     operand_b_fw_mux_sel_o = SEL_REGFILE;
+    jalr_fw_mux_sel_o      = SEL_REGFILE;
 
     // Forwarding WB -> ID
     if (rf_we_wb_i)
@@ -938,6 +943,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
        operand_a_fw_mux_sel_o = SEL_FW_EX;
      if (rf_rd_ex_match[1])
        operand_b_fw_mux_sel_o = SEL_FW_EX;
+    end
+
+    // Forwarding WB->ID for the jump register path
+    // Only allowd if WB is writing back an ALU result
+    if (rf_we_wb_i) begin
+      if (rf_rd_wb_match[0] && wb_alu_en_i)
+        jalr_fw_mux_sel_o = SEL_FW_WB;
     end
 
     // for misaligned memory accesses
