@@ -61,7 +61,7 @@ In addition, the following standard instruction set extensions are available.
      - 2.0
      - always enabled
 
-   * - **Zicount**: Performance Counters
+   * - **Zicount**: Performance Counters (as described in the Counters chapter of the RISC-V unprivileged specification)
      - 2.0
      - always enabled
 
@@ -97,6 +97,12 @@ In addition, the following standard instruction set extensions are available.
 
    |corev| does not implement the **F** extension for single-precision floating-point instructions internal to the core. The **F** extension
    can be supported by interfacing the |corev| to an external FPU via the eXtension interface.
+
+.. note::
+
+   **Zicount** is used in this User Manual to refer to the counter, timer, and performance counter related functionality described
+   in the Counters chapter of the RISC-V unprivileged specification. Unfortunately RISC-V International did not name this extension,
+   so for now we introduced our own name to refer to this functionality.
 
 Most content of the RISC-V privileged specification is optional.
 |corev| currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
