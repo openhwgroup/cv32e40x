@@ -22,7 +22,7 @@
 // Engineer:       Steve Richmond - steve.richmond@silabs.com                 //
 //                                                                            //
 // Design Name:    cv32e40x_tracer data structures                            //
-// Project Name:   CV32E40P                                                   //
+// Project Name:   CV32E40X                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
 // Description:    Moves the class definition for instr_trace_t out of the    //
