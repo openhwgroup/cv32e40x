@@ -18,6 +18,7 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
@@ -115,6 +116,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic           rf_we_wb_i,
     input  rf_addr_t       rf_waddr_wb_i,
     input  logic [31:0]    rf_wdata_wb_i,
+    input  logic [31:0]    rf_wdata_wb_alu_i,
 
     input  logic           rf_we_ex_i,
     input  rf_addr_t       rf_waddr_ex_i,
@@ -132,7 +134,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        mhpmevent_imiss_o,
     output logic        mhpmevent_ld_stall_o,
 
-    input  logic        perf_imiss_i
+    input  logic        perf_imiss_i,
+
+    input  logic        wb_alu_en_i
 );
 
   // Source/Destination register instruction index
@@ -243,8 +247,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Forwarding
   op_fw_mux_e  operand_a_fw_mux_sel;
   op_fw_mux_e  operand_b_fw_mux_sel;
+  op_fw_mux_e  jalr_fw_mux_sel;
+
   logic [31:0] operand_a_fw;
   logic [31:0] operand_b_fw;
+
+  logic [31:0] jalr_fw;
 
   logic [31:0] operand_b;
 
@@ -303,7 +311,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     unique case (ctrl_transfer_target_mux_sel)
       JT_JAL:  jump_target_o = if_id_pipe_i.pc + imm_uj_type;
       JT_COND: jump_target_o = if_id_pipe_i.pc + imm_sb_type;
-      JT_JALR: jump_target_o = regfile_rdata[0] + imm_i_type;             // JALR: Cannot forward RS1, since the path is too long
+      JT_JALR: jump_target_o = jalr_fw + imm_i_type;             // JALR: Allowing forwdard iff result comes from ALU
       default: jump_target_o = regfile_rdata[0] + imm_i_type;
     endcase
   end
@@ -351,6 +359,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 */
     endcase; // case (operand_a_fw_mux_sel)
   end
+
+  always_comb begin: jalr_fw_mux
+    case (jalr_fw_mux_sel)
+      SEL_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
+      SEL_REGFILE: jalr_fw = regfile_rdata[0];
+      default:     jalr_fw = regfile_rdata[0];
+    endcase // jalr_fw_mux_sel
+  end // jalr_fw_mux
 
   //////////////////////////////////////////////////////
   //   ___                                 _   ____   //
@@ -436,10 +452,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign regfile_we[0]    = rf_we_wb_i;
   assign regfile_waddr[0] = rf_waddr_wb_i;
   assign regfile_wdata[0] = rf_wdata_wb_i;
-
-  assign regfile_we[1]    = rf_we_ex_i && !id_ex_pipe_o.data_req;
-  assign regfile_waddr[1] = rf_waddr_ex_i;
-  assign regfile_wdata[1] = rf_wdata_ex_i;
 
   cv32e40x_register_file_wrapper
   register_file_wrapper_i
@@ -646,6 +658,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Forwarding signals
     .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel   ),
     .operand_b_fw_mux_sel_o         ( operand_b_fw_mux_sel   ),
+    .jalr_fw_mux_sel_o              ( jalr_fw_mux_sel        ),
 
     // Stall signals
     .halt_if_o                      ( halt_if                ),
@@ -658,7 +671,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .id_ready_i                     ( id_ready_o             ),
     .id_valid_i                     ( id_valid_o             ),
     .ex_valid_i                     ( ex_valid_i             ),
-    .wb_ready_i                     ( wb_ready_i             )
+    .wb_ready_i                     ( wb_ready_i             ),
+    .wb_alu_en_i                    ( wb_alu_en_i            )
   );
 
 
@@ -817,6 +831,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.rf_we                  <= 1'b0;
 
         id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
+        id_ex_pipe_o.csr_access             <= 1'b0;
+        id_ex_pipe_o.csr_en                 <= 1'b0;
 
         id_ex_pipe_o.data_req               <= 1'b0;
         id_ex_pipe_o.data_misaligned        <= 1'b0;
@@ -829,11 +845,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.mult_en                <= 1'b0;
 
       end else if (id_ex_pipe_o.csr_access) begin
-       //In the EX stage there was a CSR access, to avoid multiple
-       //writes to the RF, disable rf_we.
+       //In the EX stage there was a CSR access. To avoid multiple
+       //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       //TODO:OK: Change to suppressing csr_access insted to allow RF write with a single write port
-       id_ex_pipe_o.rf_we          <= 1'b0;
+       id_ex_pipe_o.csr_access              <= 1'b0;
       end
     end
   end

@@ -18,6 +18,7 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Top level module                                           //
 // Project Name:   RI5CY                                                      //
@@ -205,6 +206,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Wake signal
   logic        wake_from_sleep;
+
+  // WB is writing back an ALU result
+  logic        wb_alu_en;
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -438,6 +442,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_we_wb_i                   ( rf_we_wb             ),
     .rf_waddr_wb_i                ( rf_waddr_wb          ),
     .rf_wdata_wb_i                ( rf_wdata_wb          ),
+    .rf_wdata_wb_alu_i            ( ex_wb_pipe.rf_wdata  ),
 
     // Performance Counters
     .mhpmevent_minstret_o         ( mhpmevent_minstret   ),
@@ -451,7 +456,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mhpmevent_imiss_o            ( mhpmevent_imiss      ),
     .mhpmevent_ld_stall_o         ( mhpmevent_ld_stall   ),
 
-    .perf_imiss_i                 ( perf_imiss           )
+    .perf_imiss_i                 ( perf_imiss           ),
+
+    .wb_alu_en_i                  ( wb_alu_en            )
   );
 
 
@@ -541,7 +548,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
-    .rf_wdata_wb_o              ( rf_wdata_wb                  )
+    .rf_wdata_wb_o              ( rf_wdata_wb                  ),
+    .wb_alu_en_o                ( wb_alu_en                    )
   );
 
   // Tracer signal
@@ -581,6 +589,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_addr_i                 ( csr_addr               ),
     .csr_wdata_i                ( csr_wdata              ),
     .csr_op_i                   ( csr_op                 ),
+    .csr_access_i               ( id_ex_pipe.csr_access  ),
     .csr_rdata_o                ( csr_rdata              ),
 
     // Interrupt related control signals
@@ -631,6 +640,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign csr_wdata    =  id_ex_pipe.alu_operand_a;
   assign csr_op       =  id_ex_pipe.csr_op;
 
-  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_access ? id_ex_pipe.alu_operand_b[11:0] : '0);
+  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_en ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
 endmodule

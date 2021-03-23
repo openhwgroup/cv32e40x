@@ -213,7 +213,7 @@ module cv32e40x_wrapper
 
       .ex_valid       ( core_i.ex_valid                             ),
       .ex_reg_addr    ( core_i.id_stage_i.regfile_waddr[1]          ),
-      .ex_reg_we      ( core_i.id_stage_i.regfile_we[1]             ),
+      .ex_reg_we      ( 1'b0                                        ),
       .ex_reg_wdata   ( core_i.id_stage_i.regfile_wdata[1]          ),
 
       .ex_data_addr   ( core_i.data_addr_o                          ),
