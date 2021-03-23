@@ -555,7 +555,7 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
 
 // Register file read/write ports
 parameter REGFILE_NUM_READ_PORTS  = 2;
-parameter REGFILE_NUM_WRITE_PORTS = 2;
+parameter REGFILE_NUM_WRITE_PORTS = 1;
 
 // Address width of register file
 parameter REGFILE_ADDR_WIDTH = 5;
@@ -694,6 +694,7 @@ typedef struct packed {
   logic         rf_we;
   rf_addr_t     rf_waddr;
   logic [31:0]  rf_wdata;
+  logic         rf_wdata_ex_en;
 } ex_wb_pipe_t;
 
 // Decoder control signals
