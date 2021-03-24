@@ -153,21 +153,19 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.rf_we    <= 1'b0;
       ex_wb_pipe_o.rf_waddr <= '0;
       ex_wb_pipe_o.rf_wdata <= 32'b0;
-      ex_wb_pipe_o.rf_wdata_ex_en <= 1'b0;
+      ex_wb_pipe_o.data_req <= 1'b0;
     end
     else
     begin
       if (ex_valid_o) // wb_ready_i is implied
       begin
         ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we;
+
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
-
+          ex_wb_pipe_o.data_req <= id_ex_pipe_i.data_req;
           if (!id_ex_pipe_i.data_req) begin
             ex_wb_pipe_o.rf_wdata <= rf_wdata_ex_o;
-            ex_wb_pipe_o.rf_wdata_ex_en <= 1'b1;
-          end else begin
-            ex_wb_pipe_o.rf_wdata_ex_en <= 1'b0;
           end
         end
       end else if (wb_ready_i) begin

@@ -136,7 +136,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        perf_imiss_i,
 
-    input  logic        wb_alu_en_i
+    input  logic        data_req_wb_i
 );
 
   // Source/Destination register instruction index
@@ -247,7 +247,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Forwarding
   op_fw_mux_e  operand_a_fw_mux_sel;
   op_fw_mux_e  operand_b_fw_mux_sel;
-  op_fw_mux_e  jalr_fw_mux_sel;
+  jalr_fw_mux_e  jalr_fw_mux_sel;
 
   logic [31:0] operand_a_fw;
   logic [31:0] operand_b_fw;
@@ -311,8 +311,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     unique case (ctrl_transfer_target_mux_sel)
       JT_JAL:  jump_target_o = if_id_pipe_i.pc + imm_uj_type;
       JT_COND: jump_target_o = if_id_pipe_i.pc + imm_sb_type;
-      JT_JALR: jump_target_o = jalr_fw + imm_i_type;             // JALR: Allowing forwdard iff result comes from ALU
-      default: jump_target_o = regfile_rdata[0] + imm_i_type;
+      JT_JALR: jump_target_o = jalr_fw + imm_i_type;             // JALR: Allowing forward iff WB result comes from ALU/EX stage (NOT from LSU)
+      default: jump_target_o = jalr_fw + imm_i_type;
     endcase
   end
 
@@ -347,23 +347,18 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand a forwarding mux
   always_comb begin : operand_a_fw_mux
     case (operand_a_fw_mux_sel)
-      SEL_FW_EX:    operand_a_fw = (rf_re[0] || lsu_misaligned_i) ? rf_wdata_ex_i : 32'b0;
-      SEL_FW_WB:    operand_a_fw = rf_re[0] ? rf_wdata_wb_i : 32'b0;
-      SEL_REGFILE:  operand_a_fw = rf_re[0] ? regfile_rdata[0] : 32'b0;
-      default:      operand_a_fw = rf_re[0] ? regfile_rdata[0] : 32'b0;
-/* TODO:OK: reintroduce following code when RF write port removal is done
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_a_fw = regfile_rdata[0];
       default:      operand_a_fw = regfile_rdata[0];
-*/
     endcase; // case (operand_a_fw_mux_sel)
   end
+  
 
   always_comb begin: jalr_fw_mux
     case (jalr_fw_mux_sel)
-      SEL_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
-      SEL_REGFILE: jalr_fw = regfile_rdata[0];
+      SELJ_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
+      SELJ_REGFILE: jalr_fw = regfile_rdata[0];
       default:     jalr_fw = regfile_rdata[0];
     endcase // jalr_fw_mux_sel
   end // jalr_fw_mux
@@ -406,16 +401,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Operand b forwarding mux
   always_comb begin : operand_b_fw_mux
     case (operand_b_fw_mux_sel)
-      SEL_FW_EX:    operand_b_fw = rf_re[1] ? rf_wdata_ex_i : 32'b0;
-      SEL_FW_WB:    operand_b_fw = rf_re[1] ? rf_wdata_wb_i : 32'b0;
-      SEL_REGFILE:  operand_b_fw = rf_re[1] ? regfile_rdata[1] : 32'b0;
-      default:      operand_b_fw = rf_re[1] ? regfile_rdata[1] : 32'b0;
-/* TODO:OK: reintroduce following code when RF write port removal is done
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_b_fw = regfile_rdata[1];
       default:      operand_b_fw = regfile_rdata[1];
-*/
     endcase; // case (operand_b_fw_mux_sel)
   end
 
@@ -672,7 +661,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .id_valid_i                     ( id_valid_o             ),
     .ex_valid_i                     ( ex_valid_i             ),
     .wb_ready_i                     ( wb_ready_i             ),
-    .wb_alu_en_i                    ( wb_alu_en_i            )
+    .data_req_wb_i                  ( data_req_wb_i          )
   );
 
 

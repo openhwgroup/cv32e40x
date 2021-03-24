@@ -208,7 +208,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        wake_from_sleep;
 
   // WB is writing back an ALU result
-  logic        wb_alu_en;
+  logic        data_req_wb;
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -458,7 +458,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .perf_imiss_i                 ( perf_imiss           ),
 
-    .wb_alu_en_i                  ( wb_alu_en            )
+    .data_req_wb_i                ( data_req_wb          )
   );
 
 
@@ -549,7 +549,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_we_wb_o                 ( rf_we_wb                     ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
-    .wb_alu_en_o                ( wb_alu_en                    )
+    .data_req_wb_o              ( data_req_wb                  )
   );
 
   // Tracer signal
