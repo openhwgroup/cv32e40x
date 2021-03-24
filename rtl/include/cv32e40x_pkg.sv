@@ -579,6 +579,11 @@ typedef enum logic[1:0] {
                          SEL_FW_WB   = 2'b10
                          } op_fw_mux_e;
 
+typedef enum logic {
+                         SELJ_REGFILE = 1'b0,
+                         SELJ_FW_WB   = 1'b1
+                         } jalr_fw_mux_e;
+
 // operand a selection
 typedef enum logic[1:0] {
                          OP_A_REGA_OR_FWD = 2'b00,
@@ -614,7 +619,7 @@ typedef enum logic[1:0] {
 typedef enum logic[1:0] {
                          OP_C_FWD         = 2'b00,
                          OP_C_REGB_OR_FWD = 2'b01,
-                         OP_C_JT          = 2'b10
+                         OP_C_BCH         = 2'b10
                          } op_c_mux_e;
 
 // branch types
@@ -694,7 +699,7 @@ typedef struct packed {
   logic         rf_we;
   rf_addr_t     rf_waddr;
   logic [31:0]  rf_wdata;
-  logic         rf_wdata_ex_en;
+  logic         data_req;
 } ex_wb_pipe_t;
 
 // Decoder control signals

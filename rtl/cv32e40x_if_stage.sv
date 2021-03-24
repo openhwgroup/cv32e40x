@@ -68,7 +68,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     // jump and branch target and decision
     input  logic [31:0] jump_target_id_i,      // jump target address
-    input  logic [31:0] jump_target_ex_i,      // jump target address
+    input  logic [31:0] branch_target_ex_i,      // jump target address
 
     // pipeline stall
     input  logic        halt_if_i,
@@ -134,7 +134,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     unique case (pc_mux_i)
       PC_BOOT:      branch_addr_n = {boot_addr_i[31:2], 2'b0};
       PC_JUMP:      branch_addr_n = jump_target_id_i;
-      PC_BRANCH:    branch_addr_n = jump_target_ex_i;
+      PC_BRANCH:    branch_addr_n = branch_target_ex_i;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
