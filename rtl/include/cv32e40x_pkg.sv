@@ -619,7 +619,7 @@ typedef enum logic[1:0] {
 typedef enum logic[1:0] {
                          OP_C_FWD         = 2'b00,
                          OP_C_REGB_OR_FWD = 2'b01,
-                         OP_C_JT          = 2'b10
+                         OP_C_BCH         = 2'b10
                          } op_c_mux_e;
 
 // branch types

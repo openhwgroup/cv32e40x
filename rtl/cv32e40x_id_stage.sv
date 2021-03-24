@@ -51,8 +51,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // Jumps and branches
     input  logic        branch_decision_i,
-    output logic [31:0] jump_target_o,
-
+    output logic [31:0] jmp_target_o,
+    
     // IF and ID stage signals
     output logic        clear_instr_valid_o,
     output logic        pc_set_o,
@@ -268,6 +268,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        id_valid_q;
   logic        minstret;
 
+  // Branch target address
+  logic [31:0] bch_target;
+
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
   // immediate extraction and sign extension
@@ -307,15 +310,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                       |_|                    |___/           //
   //////////////////////////////////////////////////////////////////
 
-  always_comb begin : jump_target_mux
-    unique case (ctrl_transfer_target_mux_sel)
-      JT_JAL:  jump_target_o = if_id_pipe_i.pc + imm_uj_type;
-      JT_COND: jump_target_o = if_id_pipe_i.pc + imm_sb_type;
-      JT_JALR: jump_target_o = jalr_fw + imm_i_type;             // JALR: Allowing forward iff WB result comes from ALU/EX stage (NOT from LSU)
-      default: jump_target_o = jalr_fw + imm_i_type;
-    endcase
-  end
-
+  cv32e40x_pc_target
+  cv32e40x_pc_target_i
+  (
+    .ctrl_transfer_target_mux_sel_i ( ctrl_transfer_target_mux_sel),
+    .pc_id_i                        ( if_id_pipe_i.pc             ),
+    .imm_uj_type_i                  ( imm_uj_type                 ),
+    .imm_sb_type_i                  ( imm_sb_type                 ),
+    .imm_i_type_i                   ( imm_i_type                  ),
+    .jalr_fw_i                      ( jalr_fw                     ),
+    .bch_target_o                   ( bch_target                  ),
+    .jmp_target_o                   ( jmp_target_o                )
+               
+  );
 
   ////////////////////////////////////////////////////////
   //   ___                                 _      _     //
@@ -422,7 +429,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   always_comb begin : operand_c_mux
     case (op_c_mux_sel)
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
-      OP_C_JT:           operand_c = jump_target_o;
+      OP_C_BCH:           operand_c = bch_target;
       OP_C_FWD:          operand_c = 32'h0;
       default:           operand_c = 32'h0;
     endcase // case (op_c_mux_sel)
