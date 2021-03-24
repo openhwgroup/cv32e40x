@@ -478,10 +478,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                       halt_if_o     = 1'b1;
                       halt_id_o     = 1'b0;
 
-                      if (debug_mode_q)
+                      if (debug_mode_q) begin
                         // we got back to the park loop in the debug rom
                         ctrl_fsm_ns = DBG_FLUSH;
-
+                      end
                       else if (ebrk_force_debug_mode) begin
                         // debug module commands us to enter debug mode anyway
                         ctrl_fsm_ns  = DBG_FLUSH;
@@ -570,9 +570,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
                             ctrl_fsm_ns    = DBG_WAIT_BRANCH;
                         end
 
-                        default:
-                            // regular instruction or ebrk force debug
-                            ctrl_fsm_ns = DBG_FLUSH;
+                        default: begin
+                          // regular instruction or ebrk force debug
+                          ctrl_fsm_ns = DBG_FLUSH;
+                        end
                         endcase // unique case (1'b1)
                     end
                 end

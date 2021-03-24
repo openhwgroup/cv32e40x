@@ -388,18 +388,18 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             CSR_MSTATUS,
               CSR_MEPC,
               CSR_MTVEC,
-              CSR_MCAUSE :
+              CSR_MCAUSE : begin
                 // Not illegal, but treat as status CSR for side effect handling
                 decoder_ctrl_o.csr_status = 1'b1;
-
+              end
             // These are valid CSR registers
             CSR_MISA,
               CSR_MIE,
               CSR_MSCRATCH,
               CSR_MTVAL,
-              CSR_MIP :
+              CSR_MIP : begin
                 ; // do nothing, not illegal
-
+              end
             // Hardware Performance Monitor
             CSR_MCYCLE,
               CSR_MINSTRET,
@@ -429,9 +429,10 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MHPMEVENT16, CSR_MHPMEVENT17, CSR_MHPMEVENT18, CSR_MHPMEVENT19,
               CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
               CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
-              CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31 :
+              CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31 : begin
                 // Not illegal, but treat as status CSR to get accurate counts
                 decoder_ctrl_o.csr_status = 1'b1;
+              end
 
             // Hardware Performance Monitor (unprivileged read-only mirror CSRs)
             // Removal of these is not SEC equivalent

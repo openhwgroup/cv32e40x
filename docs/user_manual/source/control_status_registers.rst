@@ -482,7 +482,7 @@ are supported.
 .. only:: USER
 
   Machine Counter Enable (``mcounteren``)
-  ---------------------------------------
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   CSR Address: 0x306
 
