@@ -29,6 +29,7 @@
 `endif
 
 `include "cv32e40x_core_log.sv"
+`include "cv32e40x_dbg_helper.sv"
 
 `ifdef CV32E40X_APU_TRACE
   `include "cv32e40x_apu_tracer.sv"
@@ -164,6 +165,13 @@ module cv32e40x_wrapper
 
 `endif // ASSERT_ON
 
+
+  bind cv32e40x_id_stage:
+    core_i.id_stage_i
+    cv32e40x_dbg_helper
+      dbg_help_i(.is_compressed(if_id_pipe_i.is_compressed),
+                 .*);
+  
     cv32e40x_core_log
      #(
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
