@@ -14,7 +14,7 @@ the [PULP platform](https://www.pulp-platform.org/) team.
 
 The CV32E40X user manual can be found in the _docs_ folder and it is
 captured in reStructuredText, rendered to html using [Sphinx](https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html).
-These documents are viewable using readthedocs and can be viewed [here](https://openhw-group-cv32e40x-user-manual.readthedocs-hosted.com/en/latest/).
+These documents are viewable using readthedocs and can be viewed [here](https://cv32e40x-user-manual.readthedocs.io/en/latest/).
 
 ## Verification
 The verification environment for the CV32E40X is _not_ in this Repository.
@@ -28,16 +28,13 @@ The Makefiles supported in the **core-v-verif** project automatically clone the 
 Example synthesis constraints for the CV32E40X are provided.
 
 ## Contributing
+We highly appreciate community contributions.
+<br><br>To ease our work of reviewing your contributions, please:
 
-We highly appreciate community contributions. We are currently using the lowRISC contribution guide.
-
-To ease our work of reviewing your contributions, please:
-
+* Review [CONTRIBUTING](https://github.com/openhwgroup/cv32e40x/blob/master/CONTRIBUTING.md).
 * Create your own fork to commit your changes and then open a Pull Request.
 * Split large contributions into smaller commits addressing individual changes or bug fixes. Do not
   mix unrelated changes into the same commit!
-* Write meaningful commit messages. For more information, please check out the [the Ibex contribution
-  guide](https://github.com/lowrisc/ibex/blob/master/CONTRIBUTING.md).
 * If asked to modify your changes, do fixup your commits and rebase your branch to maintain a
   clean history.
 
@@ -47,8 +44,29 @@ coding style guide](https://github.com/lowRISC/style-guides/blob/master/VerilogC
 To get started, please check out the ["Good First Issue"
  list](https://github.com/openhwgroup/cv32e40x/issues?q=is%3Aissue+is%3Aopen+-label%3Astatus%3Aresolved+label%3A%22good+first+issue%22).
 
-## Issues and Troubleshooting
+## Commit Messages
+Please take the time to write meaningful commit messages.
+The following are adopted from [lowRISC Ibex](https://github.com/lowrisc/ibex/blob/master/CONTRIBUTING.md):
 
+- Create your branch to commit your changes and then create a Pull Request.
+- Separate subject from body with a blank line.
+- Limit the subject line to 50 characters.
+- Capitalize the subject line.
+- Do not end the subject line with a period.
+- Use the imperative mood in the subject line.
+- Use the present tense ("Add feature" not "Added feature").
+- Wrap the body at 72 characters.
+- Use the body to explain what and why vs. how.
+
+For a detailed why and how please refer to one of the multiple [resources](https://chris.beams.io/posts/git-commit/) regarding git commit messages.
+
+If you use `vi` for your commit message, consider to put the following snippet inside your `~/.vimrc`:
+
+```
+autocmd Filetype gitcommit setlocal spell textwidth=72
+```
+
+## Issues and Troubleshooting
 If you find any problems or issues with CV32E40X or the documentation, please check out the [issue
  tracker](https://github.com/openhwgroup/cv32e40x/issues) and create a new issue if your problem is
 not yet tracked.

@@ -22,7 +22,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-`ifdef CV32E40P_TRACE_EXECUTION
+`ifdef CV32E40X_TRACE_EXECUTION
 
 `include "uvm_macros.svh"
 
@@ -459,4 +459,4 @@ module cv32e40x_tracer
 endmodule : cv32e40x_tracer
 
 
-`endif // CV32E40P_TRACE_EXECUTION
+`endif // CV32E40X_TRACE_EXECUTION

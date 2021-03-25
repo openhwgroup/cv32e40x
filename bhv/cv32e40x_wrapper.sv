@@ -30,11 +30,11 @@
 
 `include "cv32e40x_core_log.sv"
 
-`ifdef CV32E40P_APU_TRACE
+`ifdef CV32E40X_APU_TRACE
   `include "cv32e40x_apu_tracer.sv"
 `endif
 
-`ifdef CV32E40P_TRACE_EXECUTION
+`ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_tracer.sv"
 `endif
 
@@ -186,7 +186,7 @@ module cv32e40x_wrapper
   );
 `endif
 
-`ifdef CV32E40P_TRACE_EXECUTION
+`ifdef CV32E40X_TRACE_EXECUTION
     cv32e40x_tracer tracer_i(
       .clk_i          ( core_i.clk_i                                   ), // always-running clock for tracing
       .rst_n          ( core_i.rst_ni                                  ),
