@@ -210,6 +210,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // WB is writing back an ALU result
   logic        data_req_wb;
 
+  // Blocking update of data address in WB (in case of bus errors)
+  logic        block_addr_wb;
+  // data bus error in WB
+  logic        data_err_wb;
+  logic [31:0] data_addr_wb;
+
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
   if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
@@ -411,6 +417,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Load/store unit
     .lsu_misaligned_i             ( lsu_misaligned       ),
+    .data_err_wb_i                ( data_err_wb          ),
+    .data_addr_wb_i               ( data_addr_wb         ),
+    .block_addr_wb_o              ( block_addr_wb        ),
+
 
     // Interrupt Signals
     .irq_i                        ( irq_i                ),
@@ -522,6 +532,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .m_c_obi_data_if       ( m_c_obi_data_if    ),
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
+
+    .data_addr_wb_o        ( data_addr_wb       ),
+    .data_err_wb_o         ( data_err_wb        ),
+
+    .block_addr_wb_i       ( block_addr_wb      ),
    
     .lsu_rdata_o           ( lsu_rdata          ),
     .lsu_misaligned_o      ( lsu_misaligned     ),

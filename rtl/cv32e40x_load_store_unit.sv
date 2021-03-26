@@ -13,6 +13,7 @@
 //                                                                            //
 // Additional contributions by:                                               //
 //                 Andreas Traber - atraber@iis.ee.ethz.ch                    //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    Load Store Unit                                            //
 // Project Name:   RI5CY                                                      //
@@ -33,6 +34,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     // ID/EX pipeline
     input id_ex_pipe_t   id_ex_pipe_i,
+
+    // EX/WB pipeline
+    output logic [31:0]  data_addr_wb_o,
+    output logic         data_err_wb_o,
+
+    // Block updates of ex_wb_pipe_o.data_addr (from controller)
+    input  logic         block_addr_wb_i,
 
     output logic [31:0]  lsu_rdata_o,          // LSU read data
     output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
@@ -438,6 +446,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   end
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Handle bus errors
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Propagate last trans_addr to WB stage (in case of bus_errors in WB this is needed for mtval)
+  // In case of a detected error, updates to data_err_addr_o will be
+  // blocked by the controller until the NMI is taken.
+  // TODO:OK: A store following a load with bus_error
+    // will not have data dependency on loaded data (NMI should happen before this store)
+
+  // Folowing block is within the EX stage
+  always_ff @(posedge clk, negedge rst_n)
+  begin
+    if(rst_n == 1'b0) begin
+      data_addr_wb_o <= 32'h0;
+    end else begin
+      // Update for valid addresses if not blocked by controller
+      if(!(block_addr_wb_i || data_err_wb_o) && (trans_valid && trans_ready)) begin
+        data_addr_wb_o <= trans_addr;
+      end
+    end
+  end
+
+  // Validate bus_error on rvalid (WB stage)
+  assign data_err_wb_o = resp_valid && resp_err;
+
 
   //////////////////////////////////////////////////////////////////////////////
   // OBI interface
@@ -459,7 +493,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     .resp_valid_o          ( resp_valid        ),
     .resp_rdata_o          ( resp_rdata        ),
-    .resp_err_o            ( resp_err          ),       // Unused for now
+    .resp_err_o            ( resp_err          ),
 
     .m_c_obi_data_if       ( m_c_obi_data_if     )
   );

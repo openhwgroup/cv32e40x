@@ -85,8 +85,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        csr_save_cause_o,
 
     input  logic        lsu_misaligned_i,
-    input  logic        data_err_i,
-    output logic        data_err_ack_o,
+
+    // data side bus errors
+    input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
+    input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
+    output logic        block_addr_wb_o,      // To LSU to prevent data_err_wb_i updates between error and taken NMI
 
     // Interrupt signals
     input  logic [31:0] irq_i,
@@ -429,7 +432,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   always_comb begin : operand_c_mux
     case (op_c_mux_sel)
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
-      OP_C_BCH:           operand_c = bch_target;
+      OP_C_BCH:          operand_c = bch_target;
       OP_C_FWD:          operand_c = 32'h0;
       default:           operand_c = 32'h0;
     endcase // case (op_c_mux_sel)
@@ -588,18 +591,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // from IF/ID pipeline
     .if_id_pipe_i                   (if_id_pipe_i            ),
     // from prefetcher
-    .instr_req_o                    ( instr_req_o                ),
+    .instr_req_o                    ( instr_req_o            ),
                                                                  
     // to prefetcher                                             
-    .pc_set_o                       ( pc_set_o                   ),
-    .pc_mux_o                       ( pc_mux_o                   ),
-    .exc_pc_mux_o                   ( exc_pc_mux_o               ),
-    .exc_cause_o                    ( exc_cause_o                ),
+    .pc_set_o                       ( pc_set_o               ),
+    .pc_mux_o                       ( pc_mux_o               ),
+    .exc_pc_mux_o                   ( exc_pc_mux_o           ),
+    .exc_cause_o                    ( exc_cause_o            ),
 
     // LSU
     .data_req_ex_i                  ( id_ex_pipe_o.data_req  ),
     .data_we_ex_i                   ( id_ex_pipe_o.data_we   ),
     .data_misaligned_i              ( lsu_misaligned_i       ),
+
+    .data_err_wb_i                  ( data_err_wb_i          ),
+    .data_addr_wb_i                 ( data_addr_wb_i         ),
+    .block_addr_wb_o                ( block_addr_wb_o  ),
 
     // jump/branch control
     .branch_taken_ex_i              ( branch_taken_ex        ),
