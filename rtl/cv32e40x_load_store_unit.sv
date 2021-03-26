@@ -451,7 +451,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // Propagate last trans_addr to WB stage (in case of bus_errors in WB this is needed for mtval)
-  // In case of a detected error, updates to data_err_addr_o will be
+  // In case of a detected error, updates to data_addr_wb_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK: A store following a load with bus_error
     // will not have data dependency on loaded data (NMI should happen before this store)

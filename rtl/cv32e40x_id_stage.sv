@@ -89,7 +89,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // data side bus errors
     input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
     input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
-    output logic        block_addr_wb_o,      // To LSU to prevent data_err_wb_i updates between error and taken NMI
+    output logic        block_addr_wb_o,      // To LSU to prevent data_addr_wb_i updates between error and taken NMI
 
     // Interrupt signals
     input  logic [31:0] irq_i,
