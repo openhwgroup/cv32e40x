@@ -34,19 +34,20 @@ package cv32e40x_pkg;
 //        |_|                                 //
 ////////////////////////////////////////////////
 
-parameter OPCODE_SYSTEM    = 7'h73;
-parameter OPCODE_FENCE     = 7'h0f;
-parameter OPCODE_OP        = 7'h33;
-parameter OPCODE_OPIMM     = 7'h13;
-parameter OPCODE_STORE     = 7'h23;
-parameter OPCODE_LOAD      = 7'h03;
-parameter OPCODE_BRANCH    = 7'h63;
-parameter OPCODE_JALR      = 7'h67;
-parameter OPCODE_JAL       = 7'h6f;
-parameter OPCODE_AUIPC     = 7'h17;
-parameter OPCODE_LUI       = 7'h37;
-parameter OPCODE_AMO       = 7'h2F;
-  
+  typedef enum logic [6:0] {
+                            OPCODE_SYSTEM    = 7'h73,
+                            OPCODE_FENCE     = 7'h0f,
+                            OPCODE_OP        = 7'h33,
+                            OPCODE_OPIMM     = 7'h13,
+                            OPCODE_STORE     = 7'h23,
+                            OPCODE_LOAD      = 7'h03,
+                            OPCODE_BRANCH    = 7'h63,
+                            OPCODE_JALR      = 7'h67,
+                            OPCODE_JAL       = 7'h6f,
+                            OPCODE_AUIPC     = 7'h17,
+                            OPCODE_LUI       = 7'h37,
+                            OPCODE_AMO       = 7'h2F
+                            } opcode_e;
                                                                        
 //////////////////////////////////////////////////////////////////////////////
 //      _    _    _   _    ___                       _   _                  //
