@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
 //                                                                            //
+// Additional contributions by:                                               //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+//                                                                            //
 // Design Name:    Write Back stage                                           //
 // Project Name:   CV32E40X                                                   //
 // Language:       SystemVerilog                                              //
@@ -43,11 +46,19 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // to JR forward logic
   output logic          data_req_wb_o
+
 );
 
-  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we;
+// We allow writebacks in case of bus errors.
+// Otherwise we would get a timing path from rvalid to rf_we
+
+// Regfile is also written multiple times in case of misaligned
+// load/stores that require two transactions.
+
+  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we; // TODO:OK: deassert in case of MPU error
   assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
   assign rf_wdata_wb_o = ex_wb_pipe_i.data_req ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
   assign data_req_wb_o = ex_wb_pipe_i.data_req;
 
+  
 endmodule // cv32e40x_wb_stage

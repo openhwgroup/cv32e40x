@@ -74,6 +74,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_we_ex_i,
   input  logic        data_misaligned_i,
 
+  input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
+  input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
+  output logic        block_data_addr_o,          // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+
   // jump/branch signals
   input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
   input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
@@ -202,6 +206,15 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign instr_valid   = if_id_pipe_i.instr_valid;
   assign instr_err     = if_id_pipe_i.instr.bus_resp.err;
   assign instr_invalidate = instr_mpu_err || instr_err;
+
+  // TODO:OK: Handle data side bus errors
+  // Assert block_data_addr_o on bus error to prevent updates before NMI is taken
+  // release after NMI has been taken
+  // data_addr_wb_i is to be stored in mtval when an error occurs
+  // Tie off block_* for now
+  assign block_data_addr_o = 1'b0;
+  // data_err_wb_i
+  // data_addr_wb_i
   
   ////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ ___  ____  _____    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
@@ -875,6 +888,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign rf_wr_wb_match = (rf_waddr_wb_i == rf_waddr_i);
 
   // Load-write hazard (for non-load instruction following a load)
+  // TODO:OK: Shouldn't bee needed as we now have a single write port
   assign rf_wr_ex_hz = rf_wr_ex_match && regfile_alu_we_id_i;
   assign rf_wr_wb_hz = rf_wr_wb_match && regfile_alu_we_id_i;
 
@@ -889,10 +903,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-        (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) ||
-        (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) ||
-        (data_req_ex_i && rf_we_ex_i && is_decoding_o && !data_misaligned_i && rf_wr_ex_hz) ||
-        (!wb_ready_i   && rf_we_wb_i && is_decoding_o && !data_misaligned_i && rf_wr_wb_hz)
+        (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
+        (data_req_ex_i && rf_we_ex_i && is_decoding_o && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (!wb_ready_i   && rf_we_wb_i && is_decoding_o && !data_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
       deassert_we_o   = 1'b1;
