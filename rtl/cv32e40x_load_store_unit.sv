@@ -40,7 +40,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic         data_err_wb_o,
 
     // Block updates of ex_wb_pipe_o.data_addr (from controller)
-    input  logic         block_addr_wb_i,
+    input  logic         block_data_addr_i,
 
     output logic [31:0]  lsu_rdata_o,          // LSU read data
     output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
@@ -464,7 +464,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       data_addr_wb_o <= 32'h0;
     end else begin
       // Update for valid addresses if not blocked by controller
-      if(!block_addr_wb_i && (trans_valid && trans_ready)) begin
+      if(!block_data_addr_i && (trans_valid && trans_ready)) begin
         data_addr_wb_o <= trans_addr;
       end
     end

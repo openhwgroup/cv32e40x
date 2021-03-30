@@ -536,7 +536,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .data_addr_wb_o        ( data_addr_wb       ),
     .data_err_wb_o         ( data_err_wb        ),
 
-    .block_addr_wb_i       ( block_addr_wb      ),
+    .block_data_addr_i     ( block_data_addr    ),
    
     .lsu_rdata_o           ( lsu_rdata          ),
     .lsu_misaligned_o      ( lsu_misaligned     ),
