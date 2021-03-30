@@ -37,8 +37,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
 
-  input  logic [31:0] lsu_rdata_i,
-
   // CSR access
   input  logic [31:0] csr_rdata_i,
 
