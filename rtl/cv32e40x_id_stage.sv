@@ -271,6 +271,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Branch target address
   logic [31:0] bch_target;
 
+  assign data_err_ack_o = 1'b0; // todo:ok:clean up as part of bus/pmp error integration
+
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
   // immediate extraction and sign extension
