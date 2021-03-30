@@ -211,7 +211,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        data_req_wb;
 
   // Blocking update of data address in WB (in case of bus errors)
-  logic        block_addr_wb;
+  logic        block_data_addr;
   // data bus error in WB
   logic        data_err_wb;
   logic [31:0] data_addr_wb;
@@ -419,7 +419,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_misaligned_i             ( lsu_misaligned       ),
     .data_err_wb_i                ( data_err_wb          ),
     .data_addr_wb_i               ( data_addr_wb         ),
-    .block_addr_wb_o              ( block_addr_wb        ),
+    .block_data_addr_o            ( block_data_addr      ),
 
 
     // Interrupt Signals

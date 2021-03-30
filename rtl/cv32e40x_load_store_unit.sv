@@ -453,8 +453,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Propagate last trans_addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to data_addr_wb_o will be
   // blocked by the controller until the NMI is taken.
-  // TODO:OK: A store following a load with bus_error
-    // will not have data dependency on loaded data (NMI should happen before this store)
+  // TODO:OK: If a store following a load with bus error has dependencies on the load result,
+    // it may use use an unspecified address and should be avoided for security reasons.
+    // The NMI should be taken before this store.
 
   // Folowing block is within the EX stage
   always_ff @(posedge clk, negedge rst_n)
@@ -463,7 +464,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       data_addr_wb_o <= 32'h0;
     end else begin
       // Update for valid addresses if not blocked by controller
-      if(!(block_addr_wb_i || data_err_wb_o) && (trans_valid && trans_ready)) begin
+      if(!block_addr_wb_i && (trans_valid && trans_ready)) begin
         data_addr_wb_o <= trans_addr;
       end
     end

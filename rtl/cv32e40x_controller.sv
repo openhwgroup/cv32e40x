@@ -76,7 +76,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
   input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
-  output logic        block_addr_wb_o,            // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+  output logic        block_data_addr_o,          // To LSU to prevent data_addr_wb_i updates between error and taken NMI
 
   // jump/branch signals
   input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
@@ -208,11 +208,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   assign instr_invalidate = instr_mpu_err || instr_err;
 
   // TODO:OK: Handle data side bus errors
-  // Assert block_addr_wb_o on bus error to prevent updates before NMI is taken
+  // Assert block_data_addr_o on bus error to prevent updates before NMI is taken
   // release after NMI has been taken
   // data_addr_wb_i is to be stored in mtval when an error occurs
   // Tie off block_* for now
-  assign block_addr_wb_o = 1'b0;
+  assign block_data_addr_o = 1'b0;
   // data_err_wb_i
   // data_addr_wb_i
   
