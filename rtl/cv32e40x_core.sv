@@ -468,9 +468,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .perf_imiss_i                 ( perf_imiss           ),
 
-    .data_err_i                   ( 1'b0                 ), // todo:ok:clean up as part of bus/pma error integration
-    .data_err_ack_o               ( /* not used yet */   ), // todo:ok:clean up as part of bus/pma error integration
-
     .data_req_wb_i                ( data_req_wb          )
   );
 
