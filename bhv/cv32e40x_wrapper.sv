@@ -220,9 +220,9 @@ module cv32e40x_wrapper
       .rd_is_fp('0),
 
       .ex_valid       ( core_i.ex_valid                             ),
-      .ex_reg_addr    ( core_i.id_stage_i.regfile_waddr[1]          ),
+      .ex_reg_addr    ( 5'b0                                        ),
       .ex_reg_we      ( 1'b0                                        ),
-      .ex_reg_wdata   ( core_i.id_stage_i.regfile_wdata[1]          ),
+      .ex_reg_wdata   ( 32'b0                                       ),
 
       .ex_data_addr   ( core_i.data_addr_o                          ),
       .ex_data_req    ( core_i.data_req_o                           ),
