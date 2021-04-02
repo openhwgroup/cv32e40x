@@ -97,6 +97,8 @@ module cv32e40x_tracer
   assign #0.01 clk_i_d = clk_i;
 
   event ovp_retire;
+  bit use_iss;
+
   integer      f;
   string       fn;
   integer      cycles;
@@ -162,6 +164,12 @@ module cv32e40x_tracer
     $fwrite(f, "Time\tCycle\tPC\tInstr\tDecoded instruction\tRegister and memory contents\n");
   end
 
+  initial begin
+    use_iss = 0;
+    if ($test$plusargs("USE_ISS"))
+      use_iss = 1;
+  end
+  
   always @(trace_ex or trace_wb or trace_wb_delay or trace_retire) begin
     pc_ex_stage = (trace_ex != null) ? trace_ex.pc : 'x;
     pc_wb_stage = (trace_wb != null) ? trace_wb.pc : 'x;
@@ -239,7 +247,8 @@ module cv32e40x_tracer
 
     ->retire;
     `ifdef ISS
-    @(ovp_retire);
+    if (use_iss)
+      @(ovp_retire);
     `endif
     #0.1ns;
   end
