@@ -245,11 +245,9 @@ module cv32e40x_tracer
 
     trace_retire.printInstrTrace();
 
-    ->retire;
-    `ifdef ISS
+    ->retire;    
     if (use_iss)
-      @(ovp_retire);
-    `endif
+      @(ovp_retire);    
     #0.1ns;
   end
 
