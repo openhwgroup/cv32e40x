@@ -192,6 +192,110 @@ module cv32e40x_wrapper
           .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
 
+
+  bind cv32e40x_core:
+    core_i
+    cv32e40x_rvfi
+      rvfi_i
+        (.clk_i                    ( clk_i                                                         ),
+         .rst_ni                   ( rst_ni                                                        ),
+         
+         .hart_id_i                ( hart_id_i                                                     ),
+         .irq_ack_i                ( id_stage_i.controller_i.irq_ack_o                             ),
+         
+         .illegal_insn_id_i        ( id_stage_i.controller_i.illegal_insn_n                        ),
+         .instr_is_compressed_id_i ( id_stage_i.if_id_pipe_i.is_compressed                         ),
+         .mret_insn_id_i           ( id_stage_i.controller_i.mret_insn_i                           ),
+         .ebrk_insn_id_i           ( id_stage_i.controller_i.ebrk_insn_i                           ),
+         .ecall_insn_id_i          ( core_i.id_stage_i.controller_i.ecall_insn_i                   ),
+         
+         .instr_rdata_c_id_i       ( if_stage_i.prefetch_instr.bus_resp.rdata[15:0]                ),
+         .instr_rdata_id_i         ( if_stage_i.if_id_pipe_o.instr.bus_resp.rdata                  ),
+         .instr_id_valid_i         ( id_stage_i.id_valid_o                                         ),
+         .instr_id_is_decoding_i   ( id_stage_i.is_decoding_o                                      ),
+
+         .rdata_a_id_i             ( id_stage_i.operand_a_fw                                       ),
+         .raddr_a_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
+         .rdata_b_id_i             ( id_stage_i.operand_b_fw                                       ),
+        
+         .raddr_b_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
+         .rdata_c_id_i             ( id_stage_i.operand_c                                          ),
+         .raddr_c_id_i             ( '0                                                            ),
+
+         .rd1_we_id_i              ( id_stage_i.regfile_we[0]                                      ),
+         .rd1_addr_id_i            ( id_stage_i.regfile_waddr[0]                                   ),
+         .rd2_we_id_i              ( '0                                                            ),
+         .rd2_addr_id_i            ( '0                                                            ),
+
+         .pc_id_i                  ( id_stage_i.id_ex_pipe_o.pc                                    ),
+         .pc_if_i                  ( if_stage_i.if_id_pipe_o.pc                                    ),
+         .jump_target_id_i         ( if_stage_i.jump_target_id_i                                   ),
+
+         .pc_set_i                 ( if_stage_i.pc_set_i                                           ),
+         .pc_mux_i                 ( if_stage_i.pc_mux_i                                           ),
+
+         .lsu_type_id_i            ( id_stage_i.id_ex_pipe_o.data_type                             ),
+         .lsu_we_id_i              ( id_stage_i.id_ex_pipe_o.data_we                               ),
+         .lsu_req_id_i             ( id_stage_i.id_ex_pipe_o.data_req                              ),
+
+         .instr_ex_ready_i         ( ex_stage_i.ex_ready_o                                         ),
+         .instr_ex_valid_i         ( ex_stage_i.ex_valid_o                                         ),
+
+         .branch_target_ex_i       ( if_stage_i.branch_target_ex_i                                 ),
+
+         .rd1_wdata_ex_i           ( id_stage_i.register_file_wrapper_i.register_file_i.wdata_i[0] ),
+
+         .lsu_addr_ex_i            ( load_store_unit_i.trans_addr                                  ),
+         .lsu_wdata_ex_i           ( load_store_unit_i.trans_wdata                                 ),
+         .lsu_req_ex_i             ( load_store_unit_i.trans_valid                                 ),
+         .lsu_misagligned_ex_i     ( load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
+         .lsu_is_misagligned_ex_i  ( load_store_unit_i.lsu_misaligned_o                            ),
+
+         .lsu_rvalid_wb_i          ( load_store_unit_i.resp_valid                                  ),
+         .rd2_wdata_wb_i           ( '0                                                            ),
+
+         .exception_target_wb_i    ( if_stage_i.exc_pc                                             ),
+
+         .mepc_target_wb_i         ( if_stage_i.mepc_i                                             ),
+
+         .is_debug_mode            ( id_stage_i.controller_i.debug_mode_q                          ),
+         .csr_mstatus_n_i          ( cs_registers_i.mstatus_n                                      ),
+         .csr_mstatus_q_i          ( cs_registers_i.mstatus_q                                      ),
+
+         .rvfi_valid               (),
+         .rvfi_order               (),
+         .rvfi_insn                (),
+         .rvfi_trap                (),
+         .rvfi_halt                (),
+         .rvfi_intr                (),
+         .rvfi_mode                (),
+         .rvfi_ixl                 (),
+
+         .rvfi_rs1_addr            (),
+         .rvfi_rs2_addr            (),
+         .rvfi_rs3_addr            (),
+         .rvfi_rs1_rdata           (),
+         .rvfi_rs2_rdata           (),
+         .rvfi_rs3_rdata           (),
+         .rvfi_rd1_addr            (),
+         .rvfi_rd1_wdata           (),
+         .rvfi_rd2_addr            (),
+         .rvfi_rd2_wdata           (),
+         .rvfi_pc_rdata            (),
+         .rvfi_pc_wdata            (),
+         .rvfi_mem_addr            (),
+         .rvfi_mem_rmask           (),
+         .rvfi_mem_wmask           (),
+         .rvfi_mem_rdata           (),
+         .rvfi_mem_wdata           (),
+
+         .rvfi_csr_mstatus_rmask   (),
+         .rvfi_csr_mstatus_wmask   (),
+         .rvfi_csr_mstatus_rdata   (),
+         .rvfi_csr_mstatus_wdata   ()
+         );
+
+
 `ifdef CV32E40P_APU_TRACE
     cv32e40x_apu_tracer apu_tracer_i(
       .clk_i        ( core_i.rst_ni                ),
@@ -261,6 +365,7 @@ module cv32e40x_wrapper
     );
 `endif
 
+
     // instantiate the core
     cv32e40x_core
         #(
@@ -268,7 +373,5 @@ module cv32e40x_wrapper
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (.*);
-
-
 
 endmodule
