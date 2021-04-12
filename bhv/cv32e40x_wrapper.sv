@@ -40,8 +40,11 @@
 `endif
 
 module cv32e40x_wrapper
+  import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS    =  1
+  parameter NUM_MHPMCOUNTERS             =  1,
+  parameter int unsigned PMA_NUM_REGIONS =  1,
+  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
@@ -101,12 +104,18 @@ module cv32e40x_wrapper
   // RTL Assertions
 
   bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
-  bind cv32e40x_if_stage:        core_i.if_stage_i                  cv32e40x_if_stage_sva     if_stage_sva     (.*);
+  bind cv32e40x_if_stage:        core_i.if_stage_i                  cv32e40x_if_stage_sva     if_stage_sva     (
+    // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
+    .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
+    .*);
   bind cv32e40x_controller:      core_i.id_stage_i.controller_i     cv32e40x_controller_sva   controller_sva   (.*);
   bind cv32e40x_cs_registers:    core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
 
   bind cv32e40x_load_store_unit:
-    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (.*);
+    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (
+      // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
+      .m_c_obi_data_if(core_i.m_c_obi_data_if),
+      .*);
 
   bind cv32e40x_prefetch_unit:
     core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
@@ -255,7 +264,9 @@ module cv32e40x_wrapper
     // instantiate the core
     cv32e40x_core
         #(
-          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
+          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
+          .PMA_CFG               ( PMA_CFG               ))
     core_i (.*);
 
 
