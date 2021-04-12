@@ -105,6 +105,7 @@ module cv32e40x_wrapper
 
   bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
   bind cv32e40x_if_stage:        core_i.if_stage_i                  cv32e40x_if_stage_sva     if_stage_sva     (
+    // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
     .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
     .*);
   bind cv32e40x_controller:      core_i.id_stage_i.controller_i     cv32e40x_controller_sva   controller_sva   (.*);
@@ -112,6 +113,7 @@ module cv32e40x_wrapper
 
   bind cv32e40x_load_store_unit:
     core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (
+      // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
       .m_c_obi_data_if(core_i.m_c_obi_data_if),
       .*);
 
