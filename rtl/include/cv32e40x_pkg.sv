@@ -859,6 +859,7 @@ typedef struct packed {
   inst_resp_t  instr;
   logic [31:0] pc;
   logic        is_compressed;
+  logic [15:0] compressed_instr;
   logic        illegal_c_insn;
 } if_id_pipe_t;
 
@@ -900,14 +901,12 @@ typedef struct packed {
   logic         data_misaligned;
   logic [5:0]   data_atop;
 
-  // PC of last executed branch
-  logic [31:0]  pc;
-
   // Branch target
   logic         branch_in_ex;
 
   // Signals for exception handling etc passed on for evaluation in WB stage
-  inst_resp_t   instr;            // Contains instruction word,bus error status and MPU status
+  logic [31:0]  pc;
+  inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;
@@ -927,7 +926,7 @@ typedef struct packed {
 
   // Signals for exception handling etc
   logic [31:0]  pc;
-  inst_resp_t   instr;            // Contains instruction word, bus error status and MPU status
+  inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;

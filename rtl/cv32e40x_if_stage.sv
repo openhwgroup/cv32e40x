@@ -262,13 +262,14 @@ instruction_obi_i
       // alignment buffer has a valid instruction
       if (if_valid && prefetch_valid)
       begin
-        if_id_pipe_o.instr_valid     <= 1'b1;
-        if_id_pipe_o.instr           <= instr_decompressed;
-        if_id_pipe_o.is_compressed   <= instr_compressed_int;
-        if_id_pipe_o.illegal_c_insn  <= illegal_c_insn;
-        if_id_pipe_o.pc              <= pc_if_o;
+        if_id_pipe_o.instr_valid      <= 1'b1;
+        if_id_pipe_o.instr            <= instr_decompressed;
+        if_id_pipe_o.is_compressed    <= instr_compressed_int;
+        if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
+        if_id_pipe_o.pc               <= pc_if_o;
+        if_id_pipe_o.compressed_instr <= prefetch_instr[15:0];
       end else if (clear_instr_valid_i) begin
-        if_id_pipe_o.instr_valid     <= 1'b0;
+        if_id_pipe_o.instr_valid      <= 1'b0;
       end
     end
   end

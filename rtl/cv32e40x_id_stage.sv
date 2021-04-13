@@ -838,6 +838,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
         id_ex_pipe_o.instr                  <= if_id_pipe_i.instr;
+        // Overwrite instruction word in case of compressed instruction
+        if (if_id_pipe_i.is_compressed) begin
+          id_ex_pipe_o.instr.bus_resp.rdata   <= {16'h0, if_id_pipe_i.compressed_instr};
+        end
         id_ex_pipe_o.illegal_insn           <= illegal_insn;
         id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
         id_ex_pipe_o.wfi_insn               <= wfi_insn;
