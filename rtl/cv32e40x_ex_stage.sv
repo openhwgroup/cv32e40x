@@ -148,10 +148,21 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   begin : EX_WB_PIPE_REGISTERS
     if (~rst_n)
     begin
-      ex_wb_pipe_o.rf_we    <= 1'b0;
-      ex_wb_pipe_o.rf_waddr <= '0;
-      ex_wb_pipe_o.rf_wdata <= 32'b0;
-      ex_wb_pipe_o.data_req <= 1'b0;
+      ex_wb_pipe_o.rf_we          <= 1'b0;
+      ex_wb_pipe_o.rf_waddr       <= '0;
+      ex_wb_pipe_o.rf_wdata       <= 32'b0;
+      ex_wb_pipe_o.data_req       <= 1'b0;
+
+      ex_wb_pipe_o.pc             <= 32'h0;
+      ex_wb_pipe_o.instr          <= INST_RESP_RESET_VAL;
+      ex_wb_pipe_o.illegal_insn   <= 1'b0;
+      ex_wb_pipe_o.ebrk_insn      <= 1'b0;
+      ex_wb_pipe_o.wfi_insn       <= 1'b0;
+      ex_wb_pipe_o.ecall_insn     <= 1'b0;
+      ex_wb_pipe_o.fencei_insn    <= 1'b0;
+      ex_wb_pipe_o.mret_insn      <= 1'b0;
+      ex_wb_pipe_o.dret_insn      <= 1'b0;
+      ex_wb_pipe_o.data_mpu_status <= MPU_OK;
     end
     else
     begin
@@ -166,6 +177,20 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
             ex_wb_pipe_o.rf_wdata <= rf_wdata_ex_o;
           end
         end
+
+        // Propagate signals needed for exception handling in WB
+        // TODO:OK: Clock gating of pc if no existing exceptions
+        //          and LSU it not in use
+        ex_wb_pipe_o.pc                     <= id_ex_pipe_i.pc;
+        ex_wb_pipe_o.instr                  <= id_ex_pipe_i.instr;
+        ex_wb_pipe_o.illegal_insn           <= id_ex_pipe_i.illegal_insn;
+        ex_wb_pipe_o.ebrk_insn              <= id_ex_pipe_i.ebrk_insn;
+        ex_wb_pipe_o.wfi_insn               <= id_ex_pipe_i.wfi_insn;
+        ex_wb_pipe_o.ecall_insn             <= id_ex_pipe_i.ecall_insn;
+        ex_wb_pipe_o.fencei_insn            <= id_ex_pipe_i.fencei_insn;
+        ex_wb_pipe_o.mret_insn              <= id_ex_pipe_i.mret_insn;
+        ex_wb_pipe_o.dret_insn              <= id_ex_pipe_i.dret_insn;
+        ex_wb_pipe_o.data_mpu_status        <= MPU_OK; // TODO:OK: Set to actual MPU status when MPU is implemented on data side.
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we just flush the current one out of the pipe
