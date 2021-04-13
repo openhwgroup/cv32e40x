@@ -758,6 +758,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
+      // Signals for exception handling
+      id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
+      id_ex_pipe_o.illegal_insn           <= 1'b0;
+      id_ex_pipe_o.ebrk_insn              <= 1'b0;
+      id_ex_pipe_o.wfi_insn               <= 1'b0;
+      id_ex_pipe_o.ecall_insn             <= 1'b0;
+      id_ex_pipe_o.fencei_insn            <= 1'b0;
+      id_ex_pipe_o.mret_insn              <= 1'b0;
+      id_ex_pipe_o.dret_insn              <= 1'b0;
     end
     else if (lsu_misaligned_i) begin
       // misaligned data access case
@@ -822,11 +831,24 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.data_misaligned        <= 1'b0;
 
-        if ((ctrl_transfer_insn == BRANCH_COND) || data_req) begin
-          id_ex_pipe_o.pc                   <= if_id_pipe_i.pc;
-        end
-
         id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn == BRANCH_COND;
+
+        // Propagate signals needed for exception handling in WB
+        // TODO:OK: Clock gating of pc if no existing exceptions
+        //          and LSU it not in use
+        id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
+        id_ex_pipe_o.instr                  <= if_id_pipe_i.instr;
+        // Overwrite instruction word in case of compressed instruction
+        if (if_id_pipe_i.is_compressed) begin
+          id_ex_pipe_o.instr.bus_resp.rdata   <= {16'h0, if_id_pipe_i.compressed_instr};
+        end
+        id_ex_pipe_o.illegal_insn           <= illegal_insn;
+        id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
+        id_ex_pipe_o.wfi_insn               <= wfi_insn;
+        id_ex_pipe_o.ecall_insn             <= ecall_insn;
+        id_ex_pipe_o.fencei_insn            <= fencei_insn;
+        id_ex_pipe_o.mret_insn              <= mret_insn;
+        id_ex_pipe_o.dret_insn              <= dret_insn;
       end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe

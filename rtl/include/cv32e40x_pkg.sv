@@ -650,58 +650,6 @@ parameter AMO_MAX  = 5'b10100;
 parameter AMO_MINU = 5'b11000;
 parameter AMO_MAXU = 5'b11100;
 
-// ID/EX pipeline
-typedef struct packed {
-
-  // ALU Control
-  logic         alu_en;
-  alu_opcode_e  alu_operator;      
-  logic [31:0]  alu_operand_a;     
-  logic [31:0]  alu_operand_b;     
-  logic [31:0]  operand_c; // Gated with alu_en but not used by ALU
-
-  // Multiplier control
-  logic         mult_en;           
-  mul_opcode_e  mult_operator;     
-  logic [31:0]  mult_operand_a;    
-  logic [31:0]  mult_operand_b;    
-  logic [ 1:0]  mult_signed_mode;  
-  
-  // Register write control
-  logic         rf_we;
-  rf_addr_t     rf_waddr; 
-
-  logic prepost_useincr;
-
-  // CSR control
-  logic         csr_access;
-  logic         csr_en;
-
-  csr_opcode_e  csr_op;            
-
-  // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
-  logic         data_req;          
-  logic         data_we;           
-  logic [1:0]   data_type;         
-  logic         data_sign_ext;     
-  logic [1:0]   data_reg_offset;   
-  logic         data_misaligned;   
-  logic [5:0]   data_atop;             
-
-  // PC of last executed branch
-  logic [31:0]  pc;
-
-  // Branch target
-  logic         branch_in_ex;
-} id_ex_pipe_t;
-
-// EX/WB pipeline
-typedef struct packed {
-  logic         rf_we;
-  rf_addr_t     rf_waddr;
-  logic [31:0]  rf_wdata;
-  logic         data_req;
-} ex_wb_pipe_t;
 
 // Decoder control signals
 typedef struct packed {
@@ -911,8 +859,84 @@ typedef struct packed {
   inst_resp_t  instr;
   logic [31:0] pc;
   logic        is_compressed;
+  logic [15:0] compressed_instr;
   logic        illegal_c_insn;
 } if_id_pipe_t;
+
+// ID/EX pipeline
+typedef struct packed {
+
+  // ALU Control
+  logic         alu_en;
+  alu_opcode_e  alu_operator;
+  logic [31:0]  alu_operand_a;
+  logic [31:0]  alu_operand_b;
+  logic [31:0]  operand_c; // Gated with alu_en but not used by ALU
+
+  // Multiplier control
+  logic         mult_en;
+  mul_opcode_e  mult_operator;
+  logic [31:0]  mult_operand_a;
+  logic [31:0]  mult_operand_b;
+  logic [ 1:0]  mult_signed_mode;
+
+  // Register write control
+  logic         rf_we;
+  rf_addr_t     rf_waddr;
+
+  logic prepost_useincr;
+
+  // CSR control
+  logic         csr_access;
+  logic         csr_en;
+
+  csr_opcode_e  csr_op;
+
+  // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
+  logic         data_req;
+  logic         data_we;
+  logic [1:0]   data_type;
+  logic         data_sign_ext;
+  logic [1:0]   data_reg_offset;
+  logic         data_misaligned;
+  logic [5:0]   data_atop;
+
+  // Branch target
+  logic         branch_in_ex;
+
+  // Signals for exception handling etc passed on for evaluation in WB stage
+  logic [31:0]  pc;
+  inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
+  logic         illegal_insn;
+  logic         ebrk_insn;
+  logic         wfi_insn;
+  logic         ecall_insn;
+  logic         fencei_insn;
+  logic         mret_insn; // TODO:OK: May be removed if mret is handled by the pipeline and not the controller
+  logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
+
+} id_ex_pipe_t;
+
+// EX/WB pipeline
+typedef struct packed {
+  logic         rf_we;
+  rf_addr_t     rf_waddr;
+  logic [31:0]  rf_wdata;
+  logic         data_req;
+
+  // Signals for exception handling etc
+  logic [31:0]  pc;
+  inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status
+  logic         illegal_insn;
+  logic         ebrk_insn;
+  logic         wfi_insn;
+  logic         ecall_insn;
+  logic         fencei_insn;
+  logic         mret_insn; // TODO:OK: May be removed if mret is handled by the pipeline and not the controller
+  logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
+  mpu_status_e  data_mpu_status; // MPU timing on gnt, ready in EX
+
+} ex_wb_pipe_t;
 
   
   
