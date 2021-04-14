@@ -188,7 +188,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        debug_csr_save;
   logic        debug_single_step;
   logic        debug_ebreakm;
-  logic        trigger_match;
+  logic        debug_trigger_match;
 
   // Performance Counters
   logic        mhpmevent_minstret;
@@ -430,7 +430,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_ack_o                    ( irq_ack_o            ),
     .irq_id_o                     ( irq_id_o             ),
 
-    // Debug Signal
+    // Debug Signalf
     .debug_mode_o                 ( debug_mode           ),
     .debug_cause_o                ( debug_cause          ),
     .debug_csr_save_o             ( debug_csr_save       ),
@@ -440,7 +440,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .debug_halted_o               ( debug_halted_o       ),
     .debug_single_step_i          ( debug_single_step    ),
     .debug_ebreakm_i              ( debug_ebreakm        ),
-    .trigger_match_i              ( trigger_match        ),
+    .debug_trigger_match_i        ( debug_trigger_match  ),
 
     // Wakeup Signal
     .wake_from_sleep_o            ( wake_from_sleep      ),
@@ -617,10 +617,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .debug_mode_i               ( debug_mode             ),
     .debug_cause_i              ( debug_cause            ),
     .debug_csr_save_i           ( debug_csr_save         ),
-    .dpc_o                      ( dpc                   ),
+    .dpc_o                      ( dpc                    ),
     .debug_single_step_o        ( debug_single_step      ),
     .debug_ebreakm_o            ( debug_ebreakm          ),
-    .trigger_match_o            ( trigger_match          ),
+    .debug_trigger_match_o      ( debug_trigger_match    ),
 
     .priv_lvl_o                 ( current_priv_lvl       ),
 

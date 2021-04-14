@@ -70,7 +70,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     dpc_o,
   output logic            debug_single_step_o,
   output logic            debug_ebreakm_o,
-  output logic            trigger_match_o,
+  output logic            debug_trigger_match_o,
 
   output PrivLvl_t        priv_lvl_o,
 
@@ -763,8 +763,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Breakpoint matching
   // We match against the next address, as the breakpoint must be taken before execution
-  assign trigger_match_o = tmatch_control_q[2] &
-                            (pc_id_i[31:0] == tmatch_value_q[31:0]);
+  assign debug_trigger_match_o = tmatch_control_q[2] &
+                                 (pc_id_i[31:0] == tmatch_value_q[31:0]);
 
 
   /////////////////////////////////////////////////////////////////
