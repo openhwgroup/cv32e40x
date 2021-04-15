@@ -264,9 +264,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] operand_c;
 
-  logic        mret_dec;
-  logic        dret_dec;
-
   // Performance counters
   logic        id_valid_q;
   logic        minstret;
@@ -494,8 +491,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ebrk_insn_o                     ( ebrk_insn                 ),
     .mret_insn_o                     ( mret_insn                 ),
     .dret_insn_o                     ( dret_insn                 ),
-    .mret_dec_o                      ( mret_dec                  ),
-    .dret_dec_o                      ( dret_dec                  ),
     .ecall_insn_o                    ( ecall_insn                ),
     .wfi_insn_o                      ( wfi_insn                  ),
     .fencei_insn_o                   ( fencei_insn               ),
@@ -580,8 +575,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ecall_insn_i                   ( ecall_insn             ),
     .mret_insn_i                    ( mret_insn              ),
     .dret_insn_i                    ( dret_insn              ),
-    .mret_dec_i                     ( mret_dec               ),
-    .dret_dec_i                     ( dret_dec               ),
     .wfi_insn_i                     ( wfi_insn               ),
     .ebrk_insn_i                    ( ebrk_insn              ),
     .fencei_insn_i                  ( fencei_insn            ),
@@ -672,7 +665,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .load_stall_o                   ( load_stall             ),
 
     .id_ready_i                     ( id_ready_o             ),
-    .id_valid_i                     ( id_valid_o             ),
     .ex_valid_i                     ( ex_valid_i             ),
     .wb_ready_i                     ( wb_ready_i             ),
     .data_req_wb_i                  ( data_req_wb_i          )

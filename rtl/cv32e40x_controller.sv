@@ -48,9 +48,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        dret_insn_i,                // decoder encountered an dret instruction
 
-  input  logic        mret_dec_i,
-  input  logic        dret_dec_i,
-
   input  logic        wfi_insn_i,                 // decoder wants to execute a WFI
   input  logic        ebrk_insn_i,                // decoder encountered an ebreak instruction
   input  logic        fencei_insn_i,              // decoder encountered an fence.i instruction
@@ -150,8 +147,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        load_stall_o,
 
   input  logic        id_ready_i,                 // ID stage is ready
-  input  logic        id_valid_i,                 // ID stage is valid
-
+  
   input  logic        ex_valid_i,                 // EX stage is done
 
   input  logic        wb_ready_i,                 // WB stage is ready
@@ -162,7 +158,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Main FSM and debug FSM
   cv32e40x_controller_fsm controller_fsm_i (
-        // Clocks and reset
+    // Clocks and reset
     .clk                         ( clk           ),
     .clk_ungated_i               ( clk_ungated_i ),
     .rst_n,
@@ -181,7 +177,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   
     // From ID stage
     .id_ready_i                  ( id_ready_i     ),
-    .id_valid_i                  ( id_valid_i     ),
     .if_id_pipe_i                ( if_id_pipe_i   ),
 
     // From decoder
@@ -196,9 +191,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
-    .mret_dec_i                  ( mret_dec_i               ),
-    .dret_dec_i                  ( dret_dec_i               ),
-  
     // From EX stage
     .branch_taken_ex_i           ( branch_taken_ex_i        ),
     .ex_valid_i                  ( ex_valid_i               ),

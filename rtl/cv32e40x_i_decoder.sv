@@ -310,14 +310,12 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               12'h302:  // mret
               begin
                 decoder_ctrl_o.mret_insn = 1'b1;
-                decoder_ctrl_o.mret_dec  = 1'b1;
               end
 
               12'h7b2:  // dret
                 begin
                   if(debug_mode_i) begin
-                    decoder_ctrl_o.dret_insn    =  debug_mode_i;
-                    decoder_ctrl_o.dret_dec     =  1'b1;
+                    decoder_ctrl_o.dret_insn    =  1'b1;
                   end
                   else begin
                     decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;

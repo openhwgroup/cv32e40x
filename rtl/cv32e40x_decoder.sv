@@ -41,9 +41,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic        mret_insn_o,             // return from exception instruction encountered (M)
   output logic        dret_insn_o,             // return from debug (M)
 
-  output logic        mret_dec_o,              // return from exception instruction encountered (M) without deassert
-  output logic        dret_dec_o,              // return from debug (M) without deassert
-
   output logic        ecall_insn_o,            // environment call (syscall) instruction encountered
   output logic        wfi_insn_o,              // pipeline flush is requested
 
@@ -195,8 +192,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn;                    
   assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn;                      
   assign fencei_insn_o                  = decoder_ctrl_mux.fencei_insn;                   
-  assign mret_dec_o                     = decoder_ctrl_mux.mret_dec;                      
-  assign dret_dec_o                     = decoder_ctrl_mux.dret_dec;                      
 
 
   assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;

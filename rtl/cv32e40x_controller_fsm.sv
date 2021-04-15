@@ -50,7 +50,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
     // From ID stage
     input  logic        id_ready_i,                 // ID stage is ready
-    input  logic        id_valid_i,                 // ID stage is valid TODO:OK: Unused, remove?
     input  if_id_pipe_t if_id_pipe_i,
 
     // From decoder
@@ -65,9 +64,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
     input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
-    input  logic        mret_dec_i,  // TODO:OK: Remove after initial refactor and SEC
-    input  logic        dret_dec_i,  // TODO:OK: Remove after initial refactor and SEC
-  
     // From EX stage
     input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
@@ -690,13 +686,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         is_decoding_o = 1'b0;
         ctrl_fsm_ns   = DECODE;
         unique case(1'b1)
-          mret_dec_i: begin
+          mret_insn_i: begin
               //mret
               pc_mux_o              = debug_mode_q ? PC_EXCEPTION : PC_MRET;
               pc_set_o              = 1'b1;
               exc_pc_mux_o          = EXC_PC_DBE; // only used if in debug_mode
           end
-          dret_dec_i: begin
+          dret_insn_i: begin
               //dret
               // this case is only reachable while in debug_mode
               pc_mux_o              = PC_DRET;
