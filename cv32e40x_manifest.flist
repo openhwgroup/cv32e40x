@@ -53,6 +53,8 @@ ${DESIGN_RTL_DIR}/cv32e40x_alu_div.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alu.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ff_one.sv
 ${DESIGN_RTL_DIR}/cv32e40x_popcnt.sv
+${DESIGN_RTL_DIR}/cv32e40x_controller_fsm.sv
+${DESIGN_RTL_DIR}/cv32e40x_controller_bypass.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_instr_obi_interface.sv
 ${DESIGN_RTL_DIR}/cv32e40x_data_obi_interface.sv
