@@ -20,6 +20,7 @@
 
 module cv32e40x_rvfi
   import cv32e40x_pkg::*;
+  import cv32e40x_rvfi_pkg::*;
   #(parameter RVFI_NRET = 2)
   (
   input  logic        clk_i,
@@ -47,10 +48,8 @@ module cv32e40x_rvfi
   input  logic [31:0] rdata_c_id_i,
   input  logic [4:0]  raddr_c_id_i,
 
-  input  logic        rd1_we_id_i,
-  input  logic [4:0]  rd1_addr_id_i,
-  input  logic        rd2_we_id_i,
-  input  logic [4:0]  rd2_addr_id_i,
+  input  logic        rd_we_id_i,
+  input  logic [4:0]  rd_addr_id_i,
 
   input  logic [31:0] pc_id_i,
   input  logic [31:0] pc_if_i,
@@ -66,7 +65,7 @@ module cv32e40x_rvfi
   input  logic        instr_ex_ready_i,
   input  logic        instr_ex_valid_i,
 
-  input  logic [31:0] rd1_wdata_ex_i,
+  input  logic [31:0] rd_wdata_ex_i,
 
   input  logic [31:0] branch_target_ex_i,
 
@@ -77,7 +76,6 @@ module cv32e40x_rvfi
   input  logic        lsu_is_misagligned_ex_i,
 
   input  logic        lsu_rvalid_wb_i,
-  input  logic [31:0] rd2_wdata_wb_i,
 
   input  logic [31:0] exception_target_wb_i,
   input  logic [31:0] mepc_target_wb_i,
@@ -106,10 +104,8 @@ module cv32e40x_rvfi
   output logic [RVFI_NRET*32-1:0]  rvfi_rs1_rdata,
   output logic [RVFI_NRET*32-1:0]  rvfi_rs2_rdata,
   output logic [RVFI_NRET*32-1:0]  rvfi_rs3_rdata,
-  output logic [RVFI_NRET*5-1:0]   rvfi_rd1_addr,
-  output logic [RVFI_NRET*32-1:0]  rvfi_rd1_wdata,
-  output logic [RVFI_NRET*5-1:0]   rvfi_rd2_addr,
-  output logic [RVFI_NRET*32-1:0]  rvfi_rd2_wdata,
+  output logic [RVFI_NRET*5-1:0]   rvfi_rd_addr,
+  output logic [RVFI_NRET*32-1:0]  rvfi_rd_wdata,
   output logic [RVFI_NRET*32-1:0]  rvfi_pc_rdata,
   output logic [RVFI_NRET*32-1:0]  rvfi_pc_wdata,
   output logic [RVFI_NRET*32-1:0]  rvfi_mem_addr,
@@ -132,11 +128,9 @@ module cv32e40x_rvfi
   logic [31:0] rvfi_rs2_data_d;
   logic [31:0] rvfi_rs3_data_d;
 
-  logic [4:0]  rvfi_rd1_addr_d;
-  logic [4:0]  rvfi_rd2_addr_d;
+  logic [4:0]  rvfi_rd_addr_d;
 
-  logic [31:0] rvfi_rd1_wdata_d;
-  logic [31:0] rvfi_rd2_wdata_d;
+  logic [31:0] rvfi_rd_wdata_d;
 
 
   logic [3:0]  rvfi_mem_mask_int;
@@ -180,68 +174,106 @@ module cv32e40x_rvfi
   rvfi_intr_t  instr_1_q;
   rvfi_intr_t  instr_0_q;
 
+  logic [31:0]  instr_0_0;
+  logic [31:0]  instr_0_1;
+  logic [31:0]  instr_1_0;
+  logic [31:0]  instr_1_1;
+  logic [31:0]  instr_2_0;
+  logic [31:0]  instr_2_1;
+
+  logic [31:0]  pc_wdata_0_0;
+  logic [31:0]  pc_wdata_0_1;
+  logic [31:0]  pc_wdata_1_0;
+  logic [31:0]  pc_wdata_1_1;
+  logic [31:0]  pc_wdata_2_0;
+  logic [31:0]  pc_wdata_2_1;
+
+  logic [ 4:0]  rd_addr_0_0;
+  logic [ 4:0]  rd_addr_0_1;
+  logic [ 4:0]  rd_addr_1_0;
+  logic [ 4:0]  rd_addr_1_1;
+  logic [ 4:0]  rd_addr_2_0;
+  logic [ 4:0]  rd_addr_2_1;
+
+  assign instr_0_0  = rvfi_stage[0][0].rvfi_insn;
+  assign instr_0_1  = rvfi_stage[0][1].rvfi_insn;
+  assign instr_1_0  = rvfi_stage[1][0].rvfi_insn;
+  assign instr_1_1  = rvfi_stage[1][1].rvfi_insn;
+  assign instr_2_0  = rvfi_stage[2][0].rvfi_insn;
+  assign instr_2_1  = rvfi_stage[2][1].rvfi_insn;
+
+  assign pc_wdata_0_0 = rvfi_stage[0][0].rvfi_pc_wdata;
+  assign pc_wdata_0_1 = rvfi_stage[0][1].rvfi_pc_wdata;
+  assign pc_wdata_1_0 = rvfi_stage[1][0].rvfi_pc_wdata;
+  assign pc_wdata_1_1 = rvfi_stage[1][1].rvfi_pc_wdata;
+  assign pc_wdata_2_0 = rvfi_stage[2][0].rvfi_pc_wdata;
+  assign pc_wdata_2_1 = rvfi_stage[2][1].rvfi_pc_wdata;
+
+  assign rd_addr_0_0  = rvfi_stage[0][0].rvfi_rd_addr;
+  assign rd_addr_0_1  = rvfi_stage[0][1].rvfi_rd_addr;
+  assign rd_addr_1_0  = rvfi_stage[1][0].rvfi_rd_addr;
+  assign rd_addr_1_1  = rvfi_stage[1][1].rvfi_rd_addr;
+  assign rd_addr_2_0  = rvfi_stage[2][0].rvfi_rd_addr;
+  assign rd_addr_2_1  = rvfi_stage[2][1].rvfi_rd_addr;
+
   assign is_jump_id      = (pc_mux_i == PC_JUMP);
   assign is_branch_ex    = (pc_mux_i == PC_BRANCH);
   assign is_exception_wb = (pc_mux_i == PC_EXCEPTION);
   assign is_mret_wb      = (pc_mux_i == PC_MRET);
 
   //instructions retiring in the EX stage
-  assign rvfi_valid     [0]         = rvfi_stage[RVFI_STAGES-2][0].rvfi_valid     ;
-  assign rvfi_order     [63:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_order     ;
-  assign rvfi_insn      [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_insn      ;
-  assign rvfi_trap      [0]         = rvfi_stage[RVFI_STAGES-2][0].rvfi_trap      ;
-  assign rvfi_halt      [0]         = rvfi_stage[RVFI_STAGES-2][0].rvfi_halt      ;
-  assign rvfi_intr      [0]         = intr0_d;
-  assign rvfi_mode      [1:0]       = 2'b11;
-  assign rvfi_ixl       [1:0]       = 2'b01;
-  assign rvfi_rs1_addr  [4:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs1_addr  ;
-  assign rvfi_rs2_addr  [4:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs2_addr  ;
-  assign rvfi_rs3_addr  [4:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs3_addr  ;
-  assign rvfi_rs1_rdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs1_rdata ;
-  assign rvfi_rs2_rdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs2_rdata ;
-  assign rvfi_rs3_rdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs3_rdata ;
-  assign rvfi_rd1_addr  [4:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd1_addr  ;
-  assign rvfi_rd2_addr  [4:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd2_addr  ;
-  assign rvfi_rd1_wdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd1_wdata ;
-  assign rvfi_rd2_wdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd2_wdata ;
-  assign rvfi_pc_rdata  [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_pc_rdata  ;
-  assign rvfi_pc_wdata  [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_pc_wdata  ;
-  assign rvfi_mem_addr  [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_addr  ;
-  assign rvfi_mem_rmask [3:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_rmask ;
-  assign rvfi_mem_wmask [3:0]       = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_wmask ;
-  assign rvfi_mem_rdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_rdata ;
-  assign rvfi_mem_wdata [31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_wdata ;
-  assign rvfi_csr_mstatus_rmask[31:0] = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_rmask;
-  assign rvfi_csr_mstatus_wmask[31:0] = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_wmask;
-  assign rvfi_csr_mstatus_rdata[31:0] = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_rdata;
-  assign rvfi_csr_mstatus_wdata[31:0] = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_wdata;
+  assign rvfi_valid     [0]                = rvfi_stage[RVFI_STAGES-2][0].rvfi_valid;
+  assign rvfi_order     [63:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_order;
+  assign rvfi_insn      [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_insn;
+  assign rvfi_trap      [0]                = rvfi_stage[RVFI_STAGES-2][0].rvfi_trap;
+  assign rvfi_halt      [0]                = rvfi_stage[RVFI_STAGES-2][0].rvfi_halt;
+  assign rvfi_intr      [0]                = intr0_d;
+  assign rvfi_mode      [1:0]              = 2'b11;
+  assign rvfi_ixl       [1:0]              = 2'b01;
+  assign rvfi_rs1_addr  [4:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs1_addr;
+  assign rvfi_rs2_addr  [4:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs2_addr;
+  assign rvfi_rs3_addr  [4:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs3_addr;
+  assign rvfi_rs1_rdata [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs1_rdata;
+  assign rvfi_rs2_rdata [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs2_rdata;
+  assign rvfi_rs3_rdata [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_rs3_rdata;
+  assign rvfi_rd_addr   [4:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd_addr;
+  assign rvfi_rd_wdata  [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_rd_wdata;
+  assign rvfi_pc_rdata  [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_pc_rdata;
+  assign rvfi_pc_wdata  [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_pc_wdata;
+  assign rvfi_mem_addr  [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_addr;
+  assign rvfi_mem_rmask [3:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_rmask;
+  assign rvfi_mem_wmask [3:0]              = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_wmask;
+  assign rvfi_mem_rdata [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_rdata;
+  assign rvfi_mem_wdata [31:0]             = rvfi_stage[RVFI_STAGES-2][0].rvfi_mem_wdata;
+  assign rvfi_csr_mstatus_rmask[31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_rmask;
+  assign rvfi_csr_mstatus_wmask[31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_wmask;
+  assign rvfi_csr_mstatus_rdata[31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_rdata;
+  assign rvfi_csr_mstatus_wdata[31:0]      = rvfi_stage[RVFI_STAGES-2][0].rvfi_csr_mstatus_wdata;
 
   //instructions retiring in the WB stage
-  assign rvfi_valid     [1]         = rvfi_stage[RVFI_STAGES-1][1].rvfi_valid     ;
-  assign rvfi_order     [2*64-1:64] = rvfi_stage[RVFI_STAGES-1][1].rvfi_order     ;
-  assign rvfi_insn      [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_insn      ;
-  assign rvfi_trap      [1]         = rvfi_stage[RVFI_STAGES-1][1].rvfi_trap      ;
-  assign rvfi_halt      [1]         = rvfi_stage[RVFI_STAGES-1][1].rvfi_halt      ;
-  assign rvfi_intr      [1]         = intr1_d;;
-  assign rvfi_mode      [3:2]       = 2'b11;
-  assign rvfi_ixl       [3:2]       = 2'b01;
-  assign rvfi_rs1_addr  [9:5]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs1_addr  ;
-  assign rvfi_rs2_addr  [9:5]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs2_addr  ;
-  assign rvfi_rs3_addr  [9:5]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs3_addr  ;
-  assign rvfi_rs1_rdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs1_rdata ;
-  assign rvfi_rs2_rdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs2_rdata ;
-  assign rvfi_rs3_rdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs3_rdata ;
-  assign rvfi_rd1_addr  [9:5]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd1_addr  ;
-  assign rvfi_rd2_addr  [9:5]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd2_addr  ;
-  assign rvfi_rd1_wdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd1_wdata ;
-  assign rvfi_rd2_wdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd2_wdata ;
-  assign rvfi_pc_rdata  [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_pc_rdata  ;
-  assign rvfi_pc_wdata  [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_pc_wdata  ;
-  assign rvfi_mem_addr  [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_addr  ;
-  assign rvfi_mem_rmask [7:4]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_rmask ;
-  assign rvfi_mem_wmask [7:4]       = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_wmask ;
-  assign rvfi_mem_rdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_rdata ;
-  assign rvfi_mem_wdata [2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_wdata ;
+  assign rvfi_valid     [1]                = rvfi_stage[RVFI_STAGES-1][1].rvfi_valid;
+  assign rvfi_order     [2*64-1:64]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_order;
+  assign rvfi_insn      [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_insn;
+  assign rvfi_trap      [1]                = rvfi_stage[RVFI_STAGES-1][1].rvfi_trap;
+  assign rvfi_halt      [1]                = rvfi_stage[RVFI_STAGES-1][1].rvfi_halt;
+  assign rvfi_intr      [1]                = intr1_d;
+  assign rvfi_mode      [3:2]              = 2'b11;
+  assign rvfi_ixl       [3:2]              = 2'b01;
+  assign rvfi_rs1_addr  [9:5]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs1_addr;
+  assign rvfi_rs2_addr  [9:5]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs2_addr;
+  assign rvfi_rs3_addr  [9:5]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs3_addr;
+  assign rvfi_rs1_rdata [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs1_rdata;
+  assign rvfi_rs2_rdata [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs2_rdata;
+  assign rvfi_rs3_rdata [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_rs3_rdata;
+  assign rvfi_rd_addr   [9:5]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd_addr;
+  assign rvfi_rd_wdata  [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_rd_wdata;
+  assign rvfi_pc_rdata  [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_pc_rdata;
+  assign rvfi_pc_wdata  [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_pc_wdata;
+  assign rvfi_mem_addr  [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_addr;
+  assign rvfi_mem_rmask [7:4]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_rmask;
+  assign rvfi_mem_wmask [7:4]              = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_wmask;
+  assign rvfi_mem_rdata [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_rdata;
+  assign rvfi_mem_wdata [2*32-1:32]        = rvfi_stage[RVFI_STAGES-1][1].rvfi_mem_wdata;
   assign rvfi_csr_mstatus_rmask[2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_csr_mstatus_rmask;
   assign rvfi_csr_mstatus_wmask[2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_csr_mstatus_wmask;
   assign rvfi_csr_mstatus_rdata[2*32-1:32] = rvfi_stage[RVFI_STAGES-1][1].rvfi_csr_mstatus_rdata;
@@ -314,15 +346,19 @@ module cv32e40x_rvfi
         //instr1 is the oldest
         if(rvfi_order[2*64-1:64] < rvfi_order[63:0]) begin
 
-          is_next_instr  = rvfi_order[2*64-1:64] - prev_instr.order == 1;
+          is_next_instr  = (rvfi_order[2*64-1:64] - prev_instr.order) == 1;
 
           if(!instr_1_q.valid && !instr_1_q.valid) begin
             intr1_d  = 1'b0;
             intr0_d  = 1'b0;
           end else begin
-            intr1_d = rvfi_valid[1] && (rvfi_pc_rdata[2*32-1:32] != prev_instr.pc_wdata ) && is_next_instr;
+            intr1_d = rvfi_valid[1] &&
+                      (rvfi_pc_rdata[2*32-1:32] != prev_instr.pc_wdata ) &&
+                      is_next_instr;
             //instr0 prev is instr1
-            intr0_d = rvfi_valid[0] && (rvfi_pc_rdata[31:0] != rvfi_pc_wdata[2*32-1:32]) && (rvfi_order[63:0] - rvfi_order[2*64-1:64] == 1);
+            intr0_d = rvfi_valid[0] &&
+                      (rvfi_pc_rdata[31:0] != rvfi_pc_wdata[2*32-1:32]) &&
+                      ((rvfi_order[63:0] - rvfi_order[2*64-1:64]) == 1);
           end
         end else begin
           //instr0 is the oldest
@@ -370,8 +406,7 @@ module cv32e40x_rvfi
             rvfi_stage[i][0].rvfi_rs1_rdata <= rvfi_rs1_data_d;
             rvfi_stage[i][0].rvfi_rs2_rdata <= rvfi_rs2_data_d;
             rvfi_stage[i][0].rvfi_rs3_rdata <= rvfi_rs3_data_d;
-            rvfi_stage[i][0].rvfi_rd1_addr  <= rvfi_rd1_addr_d;
-            rvfi_stage[i][0].rvfi_rd2_addr  <= rvfi_rd2_addr_d;
+            rvfi_stage[i][0].rvfi_rd_addr   <= rvfi_rd_addr_d;
 
             rvfi_stage[i][0].rvfi_pc_rdata  <= pc_id_i;
             rvfi_stage[i][0].rvfi_pc_wdata  <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
@@ -385,22 +420,22 @@ module cv32e40x_rvfi
 
           end
         end else if (i == 1) begin
-        // Signals valid in EX stage
+          // Signals valid in EX stage
 
           //instructions retiring in the EX stage
           if(instr_ex_ready_i && !data_req_q[i-1] && !(rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1])) begin
 
-            rvfi_stage[i][0]                <= rvfi_stage[i-1][0];
+            rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
 
-            rvfi_stage[i][0].rvfi_valid     <= ex_stage_ready_q;
+            rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
 
             // If writing to x0 zero write data as required by RVFI specification
-            rvfi_stage[i][0].rvfi_rd1_wdata <= rvfi_stage[i-1][0].rvfi_rd1_addr == '0 ? '0 : rvfi_rd1_wdata_d;
-            rvfi_stage[i][0].rvfi_pc_wdata  <= pc_set_i && is_branch_ex ? branch_target_ex_i : rvfi_stage[i-1][0].rvfi_pc_wdata;
+            rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
+            rvfi_stage[i][1].rvfi_pc_wdata <= pc_set_i && is_branch_ex ? branch_target_ex_i : rvfi_stage[i-1][0].rvfi_pc_wdata;
 
             //csr operations as READ, WRITE, SET, CLEAR (does not work yet with interrupts)
-            rvfi_stage[i][0].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,4'b0,csr_mstatus_n_i.mpp,3'b0,csr_mstatus_n_i.mpie,2'h0,csr_mstatus_n_i.upie,csr_mstatus_n_i.mie,2'h0,csr_mstatus_n_i.uie};
-            rvfi_stage[i][0].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,4'b0,csr_mstatus_q_i.mpp,3'b0,csr_mstatus_q_i.mpie,2'h0,csr_mstatus_q_i.upie,csr_mstatus_q_i.mie,2'h0,csr_mstatus_q_i.uie};
+            rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,4'b0,csr_mstatus_n_i.mpp,3'b0,csr_mstatus_n_i.mpie,2'h0,csr_mstatus_n_i.upie,csr_mstatus_n_i.mie,2'h0,csr_mstatus_n_i.uie};
+            rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,4'b0,csr_mstatus_q_i.mpp,3'b0,csr_mstatus_q_i.mpie,2'h0,csr_mstatus_q_i.upie,csr_mstatus_q_i.mie,2'h0,csr_mstatus_q_i.uie};
 
             //clean up data_req_q[1] when the previous ld/st retired
             if(data_req_q[i]) begin
@@ -410,7 +445,9 @@ module cv32e40x_rvfi
             mret_q[i]                  <= mret_q[i-1];
             syscall_q[i]               <= syscall_q[i-1];
 
-          end else rvfi_stage[i][0].rvfi_valid <= 1'b0;
+          end else begin
+            rvfi_stage[i][0].rvfi_valid <= 1'b0;
+          end
 
           //instructions retiring in the WB stage
 
@@ -423,7 +460,8 @@ module cv32e40x_rvfi
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
 
               // If writing to x0 zero write data as required by RVFI specification
-              rvfi_stage[i][1].rvfi_rd1_wdata <= rvfi_stage[i-1][0].rvfi_rd1_addr == '0 ? '0 : rvfi_rd1_wdata_d;
+              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
+
 
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
@@ -436,11 +474,11 @@ module cv32e40x_rvfi
           //exceptions
           if(instr_ex_valid_i && (rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1])) begin
 
-              rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
+              rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_valid_q;
 
               // If writing to x0 zero write data as required by RVFI specification
-              rvfi_stage[i][1].rvfi_rd1_wdata <= rvfi_stage[i-1][0].rvfi_rd1_addr == '0 ? '0 : rvfi_rd1_wdata_d;
+              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
 
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
@@ -452,19 +490,26 @@ module cv32e40x_rvfi
               data_req_q[i]                   <= 1'b0;
               mret_q[i]                       <= mret_q[i-1];
               syscall_q[i]                    <= syscall_q[i-1];
-          end
+          end // if (instr_ex_valid_i && (rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1]))
 
         end else if (i == 2) begin
         // Signals valid in WB stage
 
           case(1'b1)
-
+            
+            ex_stage_valid_q: begin
+              rvfi_stage[i][1]               <= rvfi_stage[i-1][1];
+              rvfi_stage[i][1].rvfi_rd_addr  <= rvfi_rd_addr_d; //fixme ok?
+              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_rd_wdata_d;
+            end
+            
             //memory operations
             lsu_rvalid_wb_i && data_req_q[i-1]: begin
               rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
               //misaligneds take 2 cycles at least
               rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i-1][1].rvfi_valid && !data_misagligned_q;
-              rvfi_stage[i][1].rvfi_mem_rdata <= rvfi_rd2_wdata_d;
+              //rvfi_stage[i][1].rvfi_mem_rdata <= rvfi_rd2_wdata_d;
+              rvfi_stage[i][1].rvfi_mem_rdata <= 'x; //fixme
             end
             //traps
             rvfi_stage[i-1][1].rvfi_trap: begin
@@ -530,34 +575,22 @@ module cv32e40x_rvfi
     rvfi_rs2_addr_d = raddr_b_id_i;
     rvfi_rs3_data_d = rdata_c_id_i;
     rvfi_rs3_addr_d = raddr_c_id_i;
+
   end
 
   // Destination registers
   always_comb begin
-    if(rd1_we_id_i) begin
+    if(rd_we_id_i) begin
       // Capture address/data of write to register file
-      rvfi_rd1_addr_d  = rd1_addr_id_i;
+      rvfi_rd_addr_d  = rd_addr_id_i;
     end else begin
       // If no RF write then zero RF write address as required by RVFI specification
-      rvfi_rd1_addr_d  = '0;
+      rvfi_rd_addr_d  = '0;
     end
   end
+
   //result from EX stage
-  assign rvfi_rd1_wdata_d = rd1_wdata_ex_i;
-
-  always_comb begin
-    if(rd2_we_id_i) begin
-      // Capture address/data of write to register file
-      rvfi_rd2_addr_d  = rd2_addr_id_i;
-    end else begin
-      // If no RF write then zero RF write address/data as required by RVFI specification
-      rvfi_rd2_addr_d  = '0;
-    end
-  end
-
-  //result from WB stage/read value from Dmem
-  assign rvfi_rd2_wdata_d = (rd2_wdata_wb_i === 'x) ? '0 : rd2_wdata_wb_i;
-
+  assign rvfi_rd_wdata_d = rd_wdata_ex_i;
 
 endmodule // cv32e40x_rvfi
 

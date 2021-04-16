@@ -204,16 +204,16 @@ module cv32e40x_wrapper
       rvfi_i
         (.clk_i                    ( clk_i                                                         ),
          .rst_ni                   ( rst_ni                                                        ),
-         
+
          .hart_id_i                ( hart_id_i                                                     ),
          .irq_ack_i                ( id_stage_i.controller_i.irq_ack_o                             ),
-         
+
          .illegal_insn_id_i        ( id_stage_i.controller_i.illegal_insn_n                        ),
          .instr_is_compressed_id_i ( id_stage_i.if_id_pipe_i.is_compressed                         ),
          .mret_insn_id_i           ( id_stage_i.controller_i.mret_insn_i                           ),
          .ebrk_insn_id_i           ( id_stage_i.controller_i.ebrk_insn_i                           ),
-         .ecall_insn_id_i          ( core_i.id_stage_i.controller_i.ecall_insn_i                   ),
-         
+         .ecall_insn_id_i          ( id_stage_i.controller_i.ecall_insn_i                          ),
+
          .instr_rdata_c_id_i       ( if_stage_i.prefetch_instr.bus_resp.rdata[15:0]                ),
          .instr_rdata_id_i         ( if_stage_i.if_id_pipe_o.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( id_stage_i.id_valid_o                                         ),
@@ -222,18 +222,16 @@ module cv32e40x_wrapper
          .rdata_a_id_i             ( id_stage_i.operand_a_fw                                       ),
          .raddr_a_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
          .rdata_b_id_i             ( id_stage_i.operand_b_fw                                       ),
-        
+
          .raddr_b_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
          .rdata_c_id_i             ( id_stage_i.operand_c                                          ),
          .raddr_c_id_i             ( '0                                                            ),
 
-         .rd1_we_id_i              ( id_stage_i.regfile_we[0]                                      ),
-         .rd1_addr_id_i            ( id_stage_i.regfile_waddr[0]                                   ),
-         .rd2_we_id_i              ( '0                                                            ),
-         .rd2_addr_id_i            ( '0                                                            ),
+         .rd_we_id_i               ( id_stage_i.regfile_we[0]                                      ),
+         .rd_addr_id_i             ( id_stage_i.regfile_waddr[0]                                   ),
 
-         .pc_id_i                  ( id_stage_i.id_ex_pipe_o.pc                                    ),
-         .pc_if_i                  ( if_stage_i.if_id_pipe_o.pc                                    ),
+         .pc_id_i                  ( id_stage_i.if_id_pipe_i.pc                                    ),
+         .pc_if_i                  ( if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( if_stage_i.jump_target_id_i                                   ),
 
          .pc_set_i                 ( if_stage_i.pc_set_i                                           ),
@@ -248,7 +246,7 @@ module cv32e40x_wrapper
 
          .branch_target_ex_i       ( if_stage_i.branch_target_ex_i                                 ),
 
-         .rd1_wdata_ex_i           ( id_stage_i.register_file_wrapper_i.register_file_i.wdata_i[0] ),
+         .rd_wdata_ex_i            ( id_stage_i.register_file_wrapper_i.register_file_i.wdata_i[0] ),
 
          .lsu_addr_ex_i            ( load_store_unit_i.trans_addr                                  ),
          .lsu_wdata_ex_i           ( load_store_unit_i.trans_wdata                                 ),
@@ -257,7 +255,6 @@ module cv32e40x_wrapper
          .lsu_is_misagligned_ex_i  ( load_store_unit_i.lsu_misaligned_o                            ),
 
          .lsu_rvalid_wb_i          ( load_store_unit_i.resp_valid                                  ),
-         .rd2_wdata_wb_i           ( '0                                                            ),
 
          .exception_target_wb_i    ( if_stage_i.exc_pc                                             ),
 
@@ -282,10 +279,8 @@ module cv32e40x_wrapper
          .rvfi_rs1_rdata           (),
          .rvfi_rs2_rdata           (),
          .rvfi_rs3_rdata           (),
-         .rvfi_rd1_addr            (),
-         .rvfi_rd1_wdata           (),
-         .rvfi_rd2_addr            (),
-         .rvfi_rd2_wdata           (),
+         .rvfi_rd_addr             (),
+         .rvfi_rd_wdata            (),
          .rvfi_pc_rdata            (),
          .rvfi_pc_wdata            (),
          .rvfi_mem_addr            (),
