@@ -42,32 +42,36 @@ module cv32e40x_mult_sva
   ////////////////////////////////////////
 
   // Check result for MUL
+  logic [31:0] mul_result = $signed(op_a_i) * $signed(op_b_i);
   a_mul_result : // check multiplication result for MUL
     assert property (@(posedge clk) disable iff (!rst_n)
                      (enable_i && (operator_i == MUL_M32)) |->
-                     (result_o == ($signed(op_a_i) * $signed(op_b_i)))) else `uvm_error("mult", "MUL result check failed")
+                     (result_o == mul_result)) else `uvm_error("mult", "MUL result check failed")
 
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
   assign mulh_result_valid = enable_i && (operator_i == MUL_H) && ready_o;
 
+  logic [31:0] mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
   a_mulh_result : // check multiplication result for MULH
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b11)) |->
-                     (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32) ) )
+                     (result_o == mulh_result))
       else `uvm_error("mult", "MULH result check failed")
 
+  logic [31:0] mulhsu_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32;
   a_mulhsu_result : // check multiplication result for MULHSU
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b01)) |->
-                     (result_o == (($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32) ) )
+                     (result_o == mulhsu_result))
       else `uvm_error("mult", "MULHSU result check failed")
 
+  logic [31:0] mulhu_result = ({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32;
   a_mulhu_result : // check multiplication result for MULHU
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_result_valid && (short_signed_i == 2'b00)) |->
-                     (result_o == (({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32) ) )
+                     (result_o == mulhu_result))
       else `uvm_error("mult", "MULHU result check failed")
 
 
