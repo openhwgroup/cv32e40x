@@ -24,7 +24,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_controller_sva
+module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   (
@@ -86,5 +86,5 @@ module cv32e40x_controller_sva
                      (ctrl_fsm_cs == DBG_FLUSH) && (ctrl_fsm_ns == DBG_TAKEN_IF) |-> debug_single_step_i)
       else `uvm_error("controller", "Assertion a_dbg_flush_to_taken_if failed")
 
-endmodule // cv32e40x_controller_sva
+endmodule // cv32e40x_controller_fsm_sva
 

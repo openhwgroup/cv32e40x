@@ -685,8 +685,6 @@ typedef struct packed {
   logic                              ecall_insn;
   logic                              wfi_insn;
   logic                              fencei_insn;
-  logic                              mret_dec;
-  logic                              dret_dec;
 } decoder_ctrl_t;
 
   parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{ctrl_transfer_insn           : BRANCH_NONE,
@@ -720,9 +718,7 @@ typedef struct packed {
                                                           ebrk_insn                    : 1'b0,
                                                           ecall_insn                   : 1'b0,
                                                           wfi_insn                     : 1'b0,
-                                                          fencei_insn                  : 1'b0,
-                                                          mret_dec                     : 1'b0,
-                                                          dret_dec                     : 1'b0
+                                                          fencei_insn                  : 1'b0
                                                           };
 
 ///////////////////////////////////////////////
