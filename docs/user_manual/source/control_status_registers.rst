@@ -1040,14 +1040,14 @@ Machine Architecture ID (``marchid``)
 
 CSR Address: 0xF12
 
-Reset Value: 0x0000_0004
+Reset Value: 0x0000_0014
 
 Detailed:
 
 +-------------+-----------+------------------------------------------------------------------------+
 |   Bit #     |   Mode    |   Description                                                          |
 +=============+===========+========================================================================+
-| 31:0        | RO        | Machine Architecture ID of |corev| is 4                                |
+| 31:0        | RO        | Machine Architecture ID of |corev| is 0x14 (decimal 20)                |
 +-------------+-----------+------------------------------------------------------------------------+
 
 Machine Implementation ID (``mimpid``)
