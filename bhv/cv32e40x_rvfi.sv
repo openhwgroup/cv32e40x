@@ -48,8 +48,9 @@ module cv32e40x_rvfi
   input  logic [31:0] rdata_c_id_i,
   input  logic [4:0]  raddr_c_id_i,
 
-  input  logic        rd_we_id_i,
-  input  logic [4:0]  rd_addr_id_i,
+  input  logic        rd_we_wb_i,
+  input  logic [4:0]  rd_addr_wb_i,
+  input  logic [31:0] rd_wdata_wb_i,
 
   input  logic [31:0] pc_id_i,
   input  logic [31:0] pc_if_i,
@@ -64,8 +65,6 @@ module cv32e40x_rvfi
 
   input  logic        instr_ex_ready_i,
   input  logic        instr_ex_valid_i,
-
-  input  logic [31:0] rd_wdata_ex_i,
 
   input  logic [31:0] branch_target_ex_i,
 
@@ -406,7 +405,6 @@ module cv32e40x_rvfi
             rvfi_stage[i][0].rvfi_rs1_rdata <= rvfi_rs1_data_d;
             rvfi_stage[i][0].rvfi_rs2_rdata <= rvfi_rs2_data_d;
             rvfi_stage[i][0].rvfi_rs3_rdata <= rvfi_rs3_data_d;
-            rvfi_stage[i][0].rvfi_rd_addr   <= rvfi_rd_addr_d;
 
             rvfi_stage[i][0].rvfi_pc_rdata  <= pc_id_i;
             rvfi_stage[i][0].rvfi_pc_wdata  <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
@@ -420,17 +418,15 @@ module cv32e40x_rvfi
 
           end
         end else if (i == 1) begin
-          // Signals valid in EX stage
+          // No instructions retiring in the EX stage
 
-          //instructions retiring in the EX stage
+          // instructions retiring in the WB stage
           if(instr_ex_ready_i && !data_req_q[i-1] && !(rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1])) begin
 
             rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
 
             rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
 
-            // If writing to x0 zero write data as required by RVFI specification
-            rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
             rvfi_stage[i][1].rvfi_pc_wdata <= pc_set_i && is_branch_ex ? branch_target_ex_i : rvfi_stage[i-1][0].rvfi_pc_wdata;
 
             //csr operations as READ, WRITE, SET, CLEAR (does not work yet with interrupts)
@@ -446,10 +442,9 @@ module cv32e40x_rvfi
             syscall_q[i]               <= syscall_q[i-1];
 
           end else begin
-            rvfi_stage[i][0].rvfi_valid <= 1'b0;
+            rvfi_stage[i][1].rvfi_valid <= 1'b0;
           end
 
-          //instructions retiring in the WB stage
 
           //memory operations
           if(instr_ex_ready_i && data_req_q[i-1]) begin
@@ -458,10 +453,6 @@ module cv32e40x_rvfi
 
               rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
-
-              // If writing to x0 zero write data as required by RVFI specification
-              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
-
 
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
@@ -478,7 +469,7 @@ module cv32e40x_rvfi
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_valid_q;
 
               // If writing to x0 zero write data as required by RVFI specification
-              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
+              //rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_stage[i-1][0].rvfi_rd_addr == '0 ? '0 : rvfi_rd_wdata_d;
 
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
@@ -496,13 +487,7 @@ module cv32e40x_rvfi
         // Signals valid in WB stage
 
           case(1'b1)
-            
-            ex_stage_valid_q: begin
-              rvfi_stage[i][1]               <= rvfi_stage[i-1][1];
-              rvfi_stage[i][1].rvfi_rd_addr  <= rvfi_rd_addr_d; //fixme ok?
-              rvfi_stage[i][1].rvfi_rd_wdata <= rvfi_rd_wdata_d;
-            end
-            
+
             //memory operations
             lsu_rvalid_wb_i && data_req_q[i-1]: begin
               rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
@@ -534,6 +519,12 @@ module cv32e40x_rvfi
 
               mret_q[i]                       <= !mret_q[i];
             end
+            rvfi_stage[i-1][1].rvfi_valid: begin
+              rvfi_stage[i][1]               <= rvfi_stage[i-1][1];
+              rvfi_stage[i][1].rvfi_rd_addr  <= (rd_we_wb_i) ? rvfi_rd_addr_d  : '0;
+              rvfi_stage[i][1].rvfi_rd_wdata <= (rd_we_wb_i) ? rvfi_rd_wdata_d : '0;
+            end
+
             default:
               rvfi_stage[i][1].rvfi_valid     <= 1'b0;
             endcase
@@ -568,29 +559,17 @@ module cv32e40x_rvfi
   end
 
   // Source registers
-  always_comb begin
-    rvfi_rs1_data_d = rdata_a_id_i;
-    rvfi_rs1_addr_d = raddr_a_id_i;
-    rvfi_rs2_data_d = rdata_b_id_i;
-    rvfi_rs2_addr_d = raddr_b_id_i;
-    rvfi_rs3_data_d = rdata_c_id_i;
-    rvfi_rs3_addr_d = raddr_c_id_i;
+  assign rvfi_rs1_addr_d = raddr_a_id_i;
+  assign rvfi_rs2_addr_d = raddr_b_id_i;
+  assign rvfi_rs3_addr_d = raddr_c_id_i;
 
-  end
+  assign rvfi_rs1_data_d = (raddr_a_id_i == '0)   ? '0 : rdata_a_id_i;
+  assign rvfi_rs2_data_d = (raddr_b_id_i == '0)   ? '0 : rdata_b_id_i;
+  assign rvfi_rs3_data_d = (raddr_c_id_i == '0)   ? '0 : rdata_c_id_i;
 
-  // Destination registers
-  always_comb begin
-    if(rd_we_id_i) begin
-      // Capture address/data of write to register file
-      rvfi_rd_addr_d  = rd_addr_id_i;
-    end else begin
-      // If no RF write then zero RF write address as required by RVFI specification
-      rvfi_rd_addr_d  = '0;
-    end
-  end
-
-  //result from EX stage
-  assign rvfi_rd_wdata_d = rd_wdata_ex_i;
+  // Destination register
+  assign rvfi_rd_addr_d  = (!rd_we_wb_i)          ? '0 : rd_addr_wb_i;
+  assign rvfi_rd_wdata_d = (rvfi_rd_addr_d == '0) ? '0 : rd_wdata_wb_i;
 
 endmodule // cv32e40x_rvfi
 
