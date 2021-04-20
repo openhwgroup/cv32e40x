@@ -222,9 +222,6 @@ module cv32e40x_wrapper
          .rdata_c_id_i             ( id_stage_i.operand_c                                          ),
          .raddr_c_id_i             ( '0                                                            ),
 
-         .rd_we_id_i               ( id_stage_i.regfile_we[0]                                      ),
-         .rd_addr_id_i             ( id_stage_i.regfile_waddr[0]                                   ),
-
          .pc_id_i                  ( id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_if_i                  ( if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( if_stage_i.jump_target_id_i                                   ),
@@ -232,16 +229,14 @@ module cv32e40x_wrapper
          .pc_set_i                 ( if_stage_i.pc_set_i                                           ),
          .pc_mux_i                 ( if_stage_i.pc_mux_i                                           ),
 
-         .lsu_type_id_i            ( id_stage_i.id_ex_pipe_o.data_type                             ),
-         .lsu_we_id_i              ( id_stage_i.id_ex_pipe_o.data_we                               ),
-         .lsu_req_id_i             ( id_stage_i.id_ex_pipe_o.data_req                              ),
+         .lsu_type_id_i            ( id_stage_i.data_type                                          ),
+         .lsu_we_id_i              ( id_stage_i.data_we                                            ),
+         .lsu_req_id_i             ( id_stage_i.data_req                                           ),
 
          .instr_ex_ready_i         ( ex_stage_i.ex_ready_o                                         ),
          .instr_ex_valid_i         ( ex_stage_i.ex_valid_o                                         ),
 
          .branch_target_ex_i       ( if_stage_i.branch_target_ex_i                                 ),
-
-         .rd_wdata_ex_i            ( id_stage_i.register_file_wrapper_i.register_file_i.wdata_i[0] ),
 
          .lsu_addr_ex_i            ( load_store_unit_i.trans_addr                                  ),
          .lsu_wdata_ex_i           ( load_store_unit_i.trans_wdata                                 ),
@@ -249,6 +244,9 @@ module cv32e40x_wrapper
          .lsu_misagligned_ex_i     ( load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
          .lsu_is_misagligned_ex_i  ( load_store_unit_i.lsu_misaligned_o                            ),
 
+         .rd_we_wb_i               ( wb_stage_i.rf_we_wb_o                                         ),
+         .rd_addr_wb_i             ( wb_stage_i.rf_waddr_wb_o                                      ),
+         .rd_wdata_wb_i            ( wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( load_store_unit_i.resp_valid                                  ),
 
          .exception_target_wb_i    ( if_stage_i.exc_pc                                             ),
