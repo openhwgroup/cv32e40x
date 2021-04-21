@@ -6,7 +6,7 @@ eXtension Interface
 .. note::
 
    The eXtension interface has not been implemented yet. Its specification is currently being developed
-   and can be found in https://github.com/pulp-platform/riscv-extension-interface.
+   and can be found in [OPENHW-X]_.
 
 The eXtension interface enables extending |corev| with custom instructions without the need to change the RTL
 of |corev| itself. Custom extensions can be provided in separate modules external to |corev| and are integrated
