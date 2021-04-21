@@ -12,31 +12,37 @@ supported.
 .. table:: LSU interface signals
   :name: LSU interface signals
 
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | **Signal**             | **Direction**   | **Description**                                                                                                              |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_req_o``         | output          | Request valid, will stay high until ``data_gnt_i`` is high for one cycle                                                     |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_gnt_i``         | input           | The other side accepted the request. ``data_addr_o``, ``data_be_o``, ``data_prot_o``, ``data_wdata_o``, ``data_we_o`` may    |
-  |                        |                 | change in the next cycle.                                                                                                    |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_addr_o[31:0]``  | output          | Address, sent together with ``data_req_o``.                                                                                  |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_be_o[3:0]``     | output          | Byte Enable. Is set for the bytes to write/read, sent together with ``data_req_o``.                                          |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_prot_o[3:0]``   | output          | Protocol attributes (cacheable, bufferable, etc.), sent together with ``data_req_o``.                                        |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_wdata_o[31:0]`` | output          | Data to be written to memory, sent together with ``data_req_o``.                                                             |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_we_o``          | output          | Write Enable, high for writes, low for reads. Sent together with ``data_req_o``.                                             |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_rvalid_i``      | input           | ``data_rvalid_i`` will be high for exactly one cycle to signal the end of the response phase of for both read and write      |
-  |                        |                 | transactions. For a read transaction ``data_rdata_i`` holds valid data when ``data_rvalid_i`` is high.                       |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_rdata_i[31:0]`` | input           | Data read from memory. Only valid when ``data_rvalid_i`` is high.                                                            |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``data_err_i``         | input           | A data interface error occurred. Only valid when ``data_rvalid_i`` is high.                                                  |
-  +------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | **Signal**                | **Direction**   | **Description**                                                                                                              |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_req_o``            | output          | Request valid, will stay high until ``data_gnt_i`` is high for one cycle                                                     |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_gnt_i``            | input           | The other side accepted the request. ``data_addr_o``, ``data_atop_o``, ``data_be_o``, ``data_memtype_o[2:0]``,               |
+  |                           |                 | ``data_prot_o``, ``data_wdata_o``, ``data_we_o`` may change in the next cycle.                                               |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_addr_o[31:0]``     | output          | Address, sent together with ``data_req_o``.                                                                                  |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_atop_o[5:0]``      | output          | Atomic attributes, sent together with ``data_req_o``.                                                                        |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_be_o[3:0]``        | output          | Byte Enable. Is set for the bytes to write/read, sent together with ``data_req_o``.                                          |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_memtype_o[1:0]``   | output          | Memory Type attributes (cacheable, bufferable), sent together with ``data_req_o``.                                           |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_prot_o[2:0]``      | output          | Protection attributes, sent together with ``data_req_o``.                                                                    |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_wdata_o[31:0]``    | output          | Data to be written to memory, sent together with ``data_req_o``.                                                             |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_we_o``             | output          | Write Enable, high for writes, low for reads. Sent together with ``data_req_o``.                                             |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_rvalid_i``         | input           | ``data_rvalid_i`` will be high for exactly one cycle to signal the end of the response phase of for both read and write      |
+  |                           |                 | transactions. For a read transaction ``data_rdata_i`` holds valid data when ``data_rvalid_i`` is high.                       |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_rdata_i[31:0]``    | input           | Data read from memory. Only valid when ``data_rvalid_i`` is high.                                                            |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_err_i``            | input           | A data interface error occurred. Only valid when ``data_rvalid_i`` is high.                                                  |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``data_exokay_i``         | input           | Exclusive transaction status. Only valid when ``data_rvalid_i`` is high.                                                     |
+  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
 
 Misaligned Accesses
 -------------------
@@ -56,10 +62,9 @@ Misaligned transactions are not supported in I/O regions and will result in an e
 Protocol
 --------
 
-The data bus interface is compliant to the OBI (Open Bus Interface) protocol.
-See https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.0.pdf
-for details about the protocol. The |corev| data interface does not implement
-the following optional OBI signals: auser, wuser, aid, rready, err, ruser, rid.
+The data bus interface is compliant to the OBI protocol (see [OPENHW-OBI]_ for detailed signal and protocol descriptions).
+The |corev| data interface does not implement
+the following optional OBI signals: auser, wuser, aid, rready, ruser, rid.
 These signals can be thought of as being tied off as specified in the OBI
 specification. The |corev| data interface can cause up to two outstanding
 transactions.
