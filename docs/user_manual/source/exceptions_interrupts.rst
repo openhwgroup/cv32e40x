@@ -64,7 +64,17 @@ For more information, see the :ref:`cs-registers` documentation.
 
 If multiple interrupts are pending, they are handled in the fixed priority order defined by the RISC-V Privileged Specification, version 1.11 (see Machine Interrupt Registers, Section 3.1.9).
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
-ordered as follows: ``store bus fault NMI (65)``, ``load bus fault NMI (64)``, ``irq_i[31]``, ``irq_i[30]``, ..., ``irq_i[16]``, ``irq_i[11]``, ``irq_i[3]``, ``irq_i[7]``.
+ordered as follows: 
+
+* ``store bus fault NMI (129)``
+* ``load bus fault NMI (128)``
+* ``irq_i[31]``
+* ``irq_i[30]``
+* ...
+* ``irq_i[16]``
+* ``irq_i[11]``
+* ``irq_i[3]``
+* ``irq_i[7]``
 
 All interrupt lines are level-sensitive. There are two supported mechanisms by which interrupts can be cleared at the external source.
 
@@ -86,9 +96,9 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
  |              1 |          31-16 | Machine Fast Interrupts                         | ``irq_i[31]``-``irq_i[16]``                                     |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |             64 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
+ |              1 |            128 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |             65 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
+ |              1 |            129 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
 
 .. note::
@@ -123,26 +133,27 @@ Exceptions
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
  |              0 |             11 | Environment call from M-Mode (ECALL)  |                                                                           |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |             24 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
+ |              0 |             48 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
 
 If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
-``instruction address breakpoint (3)``,
-``instruction access fault (1)``,
-``instruction bus fault (24)``,
-``illegal instruction (2)``,
-``environment call from M-Mode (11)``,
-``environment break (3)``,
-``load/store/AMO address breakpoint (3)``,
-``store/AMO access fault (7)``,
-``load access fault (5)``.
+
+* ``instruction address breakpoint (3)``
+* ``instruction access fault (1)``
+* ``instruction bus fault (48)``
+* ``illegal instruction (2)``
+* ``environment call from M-Mode (11)``
+* ``environment break (3)``
+* ``load/store/AMO address breakpoint (3)``
+* ``store/AMO access fault (7)``
+* ``load access fault (5)``
 
 Exceptions in general cannot be disabled and are always active. 
 All exceptions are precise.
 Whether the PMA will actually cause exceptions depends on its configuration.
 |corev|  raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being
 illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding
-is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:custom-isa-extensions).
+is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:`custom-isa-extensions`).
 An instruction bus error leads to a precise instruction interface bus fault if an attempt is made to execute the instruction that has an associated bus error.
 Similarly an instruction fetch with a failing PMA check only leads to an instruction access exception if an actual execution attempt is made for it.
 

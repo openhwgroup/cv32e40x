@@ -133,7 +133,7 @@ Most content of the RISC-V privileged specification is optional.
 * All CSRs listed in :ref:`cs-registers`
 * Hardware Performance Counters as described in :ref:`performance-counters` based on ``NUM_MHPMCOUNTERS`` parameter
 * Trap handling supporting direct mode or vectored mode as described at :ref:`exceptions-interrupts`
-* Physical Memory Attribution (PMA)
+* Physical Memory Attribution (PMA) as described in :ref:`pma`
 
 Synthesis guidelines
 --------------------
