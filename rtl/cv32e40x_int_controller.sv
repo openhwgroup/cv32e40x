@@ -98,28 +98,27 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
     else if (irq_local_qual[17]) irq_id_ctrl_o = 5'd17;                         // Custom irq_i[17]
     else if (irq_local_qual[16]) irq_id_ctrl_o = 5'd16;                         // Custom irq_i[16]
 
-    else if (irq_local_qual[15]) irq_id_ctrl_o = 5'd15;                         // Reserved  (default masked out with IRQ_MASK)
-    else if (irq_local_qual[14]) irq_id_ctrl_o = 5'd14;                         // Reserved  (default masked out with IRQ_MASK)
-    else if (irq_local_qual[13]) irq_id_ctrl_o = 5'd13;                         // Reserved  (default masked out with IRQ_MASK)
-    else if (irq_local_qual[12]) irq_id_ctrl_o = 5'd12;                         // Reserved  (default masked out with IRQ_MASK)
+    // Reserved: irq_local_qual[15], irq_id_ctrl_o = 5'd15
+    // Reserved: irq_local_qual[14], irq_id_ctrl_o = 5'd14
+    // Reserved: irq_local_qual[13], irq_id_ctrl_o = 5'd13
+    // Reserved: irq_local_qual[12], irq_id_ctrl_o = 5'd12
 
     else if (irq_local_qual[CSR_MEIX_BIT]) irq_id_ctrl_o = CSR_MEIX_BIT;        // MEI, irq_i[11]
     else if (irq_local_qual[CSR_MSIX_BIT]) irq_id_ctrl_o = CSR_MSIX_BIT;        // MSI, irq_i[3]
-    else if (irq_local_qual[CSR_MTIX_BIT]) irq_id_ctrl_o = CSR_MTIX_BIT;        // MTI, irq_i[7]
+    else                                   irq_id_ctrl_o = CSR_MTIX_BIT;        // MTI, irq_i[7]
 
-    else if (irq_local_qual[10]) irq_id_ctrl_o = 5'd10;                         // Reserved (for now assuming EI, SI, TI priority) (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 2]) irq_id_ctrl_o = 5'd2;                          // Reserved (for now assuming EI, SI, TI priority) (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 6]) irq_id_ctrl_o = 5'd6;                          // Reserved (for now assuming EI, SI, TI priority) (default masked out with IRQ_MASK)
+    // Reserved: irq_local_qual[10], irq_id_ctrl_o = 5'd10
+    // Reserved: irq_local_qual[ 2], irq_id_ctrl_o = 5'd2
+    // Reserved: irq_local_qual[ 6], irq_id_ctrl_o = 5'd6
 
-    else if (irq_local_qual[ 9]) irq_id_ctrl_o = 5'd9;                          // Reserved: SEI (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 1]) irq_id_ctrl_o = 5'd1;                          // Reserved: SSI (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 5]) irq_id_ctrl_o = 5'd5;                          // Reserved: STI (default masked out with IRQ_MASK)
+    // Reserved: irq_local_qual[ 9], irq_id_ctrl_o = 5'd9, SEI
+    // Reserved: irq_local_qual[ 1], irq_id_ctrl_o = 5'd1, SSI
+    // Reserved: irq_local_qual[ 5], irq_id_ctrl_o = 5'd5, STI
 
-    else if (irq_local_qual[ 8]) irq_id_ctrl_o = 5'd8;                          // Reserved: UEI (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 0]) irq_id_ctrl_o = 5'd0;                          // Reserved: USI (default masked out with IRQ_MASK)
-    else if (irq_local_qual[ 4]) irq_id_ctrl_o = 5'd4;                          // Reserved: UTI (default masked out with IRQ_MASK)
+    // Reserved: irq_local_qual[ 8], irq_id_ctrl_o = 5'd8, UEI
+    // Reserved: irq_local_qual[ 0], irq_id_ctrl_o = 5'd0, USI
+    // Reserved: irq_local_qual[ 4], irq_id_ctrl_o = 5'd4, UTI
 
-    else irq_id_ctrl_o = CSR_MTIX_BIT;                                          // Value not relevant
   end
 
 
