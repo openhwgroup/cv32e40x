@@ -24,30 +24,6 @@
   string       fn;
   string insn_str;
 
-
-  function rvfi_intr_t find_last_instr(input rvfi_intr_t instr_1, input rvfi_intr_t instr_0 );
-   begin
-
-    rvfi_intr_t last_instr;
-
-    if(instr_1.valid && !instr_0.valid) begin
-      last_instr = instr_1;
-    end else if(instr_0.valid && !instr_1.valid) begin
-      last_instr = instr_0;
-    end else if(instr_1.valid && instr_0.valid) begin
-      if(instr_0.order > instr_1.order) begin
-        last_instr = instr_0;
-      end else begin
-        last_instr = instr_1;
-      end
-    end else begin
-      last_instr = '0;
-    end
-
-    return last_instr;
-   end
-  endfunction
-
   initial begin
 
     wait(rst_ni == 1'b1);
@@ -60,9 +36,7 @@
 
       @(posedge clk_i)
 
-      if(rvfi_valid[0] || rvfi_valid[1]) begin
-
-        if( rvfi_valid[1] ) begin
+        if ( (RVFI_NRET > 1) && rvfi_valid[1] ) begin
           /*
           insn_str = $sformatf(
                           "%6d  %8h        %h  %h         %h  %h   %h  %h  PC=%h  %h  %h  %h  %h  %h",
@@ -94,9 +68,10 @@
                               );
 
           $fwrite(f, "%s\n", insn_str);
-        end
+        end // if ( (RVFI_NRET > 1) && rvfi_valid[1] )
 
         if( rvfi_valid[0] ) begin
+          /*
           insn_str = $sformatf(
                           "%6d  %8h        %h  %h         %h  %h   %h  %h  PC=%h  %h  %h  %h  %h  %h",
                           rvfi_order[15:0],
@@ -113,12 +88,20 @@
                           rvfi_mem_wdata[31:0],
                           rvfi_trap[0],
                           rvfi_intr[0] );
-
+           */
+        insn_str =  $sformatf("%h  %h        %h   %h        %h   %h       %h  %h    %h",
+                              rvfi_pc_rdata[31:0],
+                              rvfi_insn[31:0],
+                              rvfi_rs1_addr[4:0],
+                              rvfi_rs1_rdata[31:0],
+                              rvfi_rs2_addr[4:0],
+                              rvfi_rs2_rdata[31:0],
+                              rvfi_rd_addr[4:0],
+                              rvfi_rd_wdata[31:0],
+                              rvfi_mem_addr[31:0]
+                              );
           $fwrite(f, "%s\n", insn_str);
-        end
-      end
-    end
+        end // if ( rvfi_valid[0] )
+    end // while (1)
+  end // initial begin
 
-  end
-
-  

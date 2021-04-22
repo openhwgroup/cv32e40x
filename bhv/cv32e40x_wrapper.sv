@@ -209,7 +209,7 @@ module cv32e40x_wrapper
          .irq_ack_i                ( id_stage_i.controller_i.irq_ack_o                             ),
 
          .illegal_insn_id_i        ( id_stage_i.controller_i.illegal_insn_n                        ),
-         .instr_is_compressed_id_i ( id_stage_i.if_id_pipe_i.is_compressed                         ),
+         .instr_is_compressed_id_i ( if_stage_i.instr_compressed_int                               ),
          .mret_insn_id_i           ( id_stage_i.controller_i.mret_insn_i                           ),
          .ebrk_insn_id_i           ( id_stage_i.controller_i.ebrk_insn_i                           ),
          .ecall_insn_id_i          ( id_stage_i.controller_i.ecall_insn_i                          ),
@@ -224,8 +224,6 @@ module cv32e40x_wrapper
          .rdata_b_id_i             ( id_stage_i.operand_b_fw                                       ),
 
          .raddr_b_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
-         .rdata_c_id_i             ( id_stage_i.operand_c                                          ),
-         .raddr_c_id_i             ( '0                                                            ),
 
          .pc_id_i                  ( id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_if_i                  ( if_stage_i.pc_if_o                                            ),
@@ -273,10 +271,8 @@ module cv32e40x_wrapper
 
          .rvfi_rs1_addr            (),
          .rvfi_rs2_addr            (),
-         .rvfi_rs3_addr            (),
          .rvfi_rs1_rdata           (),
          .rvfi_rs2_rdata           (),
-         .rvfi_rs3_rdata           (),
          .rvfi_rd_addr             (),
          .rvfi_rd_wdata            (),
          .rvfi_pc_rdata            (),
