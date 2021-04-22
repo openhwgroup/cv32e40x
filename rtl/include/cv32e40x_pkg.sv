@@ -849,6 +849,12 @@ parameter inst_resp_t INST_RESP_RESET_VAL = '{
   mpu_status  : MPU_OK
 }; 
 
+// Data transfer bundeled with MPU status
+typedef struct packed {
+  obi_data_resp_t             bus_resp;
+  mpu_status_e                mpu_status;
+} data_resp_t;
+  
 // IF/ID pipeline
 typedef struct packed {
   logic        instr_valid;

@@ -111,7 +111,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   obi_inst_resp_t    bus_resp;
   logic              bus_trans_valid;
   logic              bus_trans_ready;
-  logic [31:0]       bus_trans_addr;
+  obi_inst_req_t     bus_trans;
+  obi_inst_req_t     core_trans;
+
 
   // exception PC selection mux
   always_comb
@@ -175,37 +177,38 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 );
 
 
-//////////////////////////////////////////////////////////////////////////////
-// MPU
-//////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  // MPU
+  //////////////////////////////////////////////////////////////////////////////
+
+  assign core_trans.addr = prefetch_trans_addr;
   
-cv32e40x_mpu
-  #(.RESP_TYPE(inst_resp_t),
-    .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-    .PMA_CFG(PMA_CFG))
+  cv32e40x_mpu
+    #(.CORE_REQ_TYPE(obi_inst_req_t),
+      .CORE_RESP_TYPE(inst_resp_t),
+      .BUS_RESP_TYPE(obi_inst_resp_t),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+      .PMA_CFG(PMA_CFG))
   mpu_i
     (
-     .clk                  (clk),
-     .rst_n                (rst_n),
-     .speculative_access_i (1'b1), // Instruction fetches are speculative
-     .atomic_access_i      (1'b0), // No atomic transfers on instruction side
-     .execute_access_i     (1'b1), // All accesses are intended for execution
-     .core_trans_we_i      (1'b0), // No writes in instructions side
+     .clk                  ( clk   ),
+     .rst_n                ( rst_n ),
+     .speculative_access_i ( 1'b1  ), // Instruction fetches are speculative
+     .atomic_access_i      ( 1'b0  ), // No atomic transfers on instruction side
+     .execute_access_i     ( 1'b1  ), // All accesses are intended for execution
+
+     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
+     .core_trans_valid_i   ( prefetch_trans_valid    ),
+     .core_trans_ready_o   ( prefetch_trans_ready    ),
+     .core_trans_i         ( core_trans              ),
+     .core_resp_valid_o    ( prefetch_resp_valid     ),
+     .core_resp_o          ( prefetch_inst_resp      ),
      
-     .bus_trans_addr_o            (bus_trans_addr[31:0]),
-     .bus_trans_valid_o           (bus_trans_valid),
-     .bus_trans_cacheable_o       (), // TODO:OE connect to obi.prot[X]
-     .bus_trans_bufferable_o      (), // Not used on instruction side
-     .bus_trans_ready_i           (bus_trans_ready),
-     .bus_resp_valid_i            (bus_resp_valid),
-     .bus_resp_i                  (bus_resp      ),
-     
-     .core_trans_ready_o         (prefetch_trans_ready),
-     .core_resp_valid_o          (prefetch_resp_valid),
-     .core_trans_addr_i          (prefetch_trans_addr[31:0]),
-     .core_trans_valid_i         (prefetch_trans_valid),
-     .core_inst_resp_o           (prefetch_inst_resp),
-     .core_one_txn_pend_n        (prefetch_one_txn_pend_n));
+     .bus_trans_valid_o    ( bus_trans_valid ),
+     .bus_trans_ready_i    ( bus_trans_ready ),
+     .bus_trans_o          ( bus_trans       ),
+     .bus_resp_valid_i     ( bus_resp_valid  ),
+     .bus_resp_i           ( bus_resp        ));
 
 //////////////////////////////////////////////////////////////////////////////
 // OBI interface
@@ -219,7 +222,7 @@ instruction_obi_i
 
   .trans_valid_i         ( bus_trans_valid   ),
   .trans_ready_o         ( bus_trans_ready   ),
-  .trans_addr_i          ( bus_trans_addr    ),
+  .trans_i               ( bus_trans         ),
 
   .resp_valid_o          ( bus_resp_valid    ),
   .resp_o                ( bus_resp          ),

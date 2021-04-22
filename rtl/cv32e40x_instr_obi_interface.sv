@@ -43,7 +43,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   // Transaction request interface
   input  logic           trans_valid_i,
   output logic           trans_ready_o,
-  input  logic [31:0]    trans_addr_i,
+  input  obi_inst_req_t  trans_i,
 
   // Transaction response interface
   output logic           resp_valid_o,             // Note: Consumer is assumed to be 'ready' whenever resp_valid_o = 1
@@ -118,7 +118,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   begin
     if (state_q == TRANSPARENT) begin
       m_c_obi_instr_if.req               = trans_valid_i;              // Do not limit number of outstanding transactions
-      m_c_obi_instr_if.req_payload.addr  = trans_addr_i;
+      m_c_obi_instr_if.req_payload.addr  = trans_i.addr;
     end else begin
       // state_q == REGISTERED
       m_c_obi_instr_if.req               = 1'b1;                       // Never retract request
