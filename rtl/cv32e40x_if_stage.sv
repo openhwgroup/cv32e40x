@@ -184,7 +184,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign core_trans.addr = prefetch_trans_addr;
   
   cv32e40x_mpu
-    #(.CORE_REQ_TYPE(obi_inst_req_t),
+    #(.IF_STAGE(1),
+      .CORE_REQ_TYPE(obi_inst_req_t),
       .CORE_RESP_TYPE(inst_resp_t),
       .BUS_RESP_TYPE(obi_inst_resp_t),
       .PMA_NUM_REGIONS(PMA_NUM_REGIONS),

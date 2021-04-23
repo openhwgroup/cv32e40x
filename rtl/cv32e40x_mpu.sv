@@ -24,7 +24,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_mpu import cv32e40x_pkg::*;
-  #(  parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
+  #(  parameter bit          IF_STAGE                     = 1,
+      parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
       parameter type         CORE_RESP_TYPE               = inst_resp_t,
       parameter type         BUS_RESP_TYPE                = obi_inst_resp_t,
       parameter int unsigned PMA_NUM_REGIONS              = 1,
@@ -169,16 +170,14 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign mpu_err = pmp_err || pma_err;
 
   // Writes are only supported on the data interface
-  // Tie to 1'b0 if this MPU handles instruction fetches
+  // Tie to 1'b0 if this MPU is instantiatied in the IF stage
   generate
-    case(type(core_trans_i))
-      type(obi_inst_req_t): begin
-        assign core_trans_we = 1'b0; 
-      end
-      type(obi_data_req_t): begin 
-        assign core_trans_we = core_trans_i.we;
-      end
-    endcase
+    if (IF_STAGE) begin: mpu_if
+      assign core_trans_we = 1'b0;
+    end
+    else begin: mpu_lsu
+      assign core_trans_we = core_trans_i.we;
+    end
   endgenerate
   
 endmodule

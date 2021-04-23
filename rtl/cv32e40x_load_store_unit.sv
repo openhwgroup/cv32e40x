@@ -490,7 +490,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   
   cv32e40x_mpu
-    #(.CORE_RESP_TYPE(data_resp_t),
+    #(.IF_STAGE(0),
+      .CORE_RESP_TYPE(data_resp_t),
       .BUS_RESP_TYPE(obi_data_resp_t),
       .CORE_REQ_TYPE(obi_data_req_t),
       .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
