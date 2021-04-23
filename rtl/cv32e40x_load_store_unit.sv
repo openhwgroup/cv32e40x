@@ -25,6 +25,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_load_store_unit import cv32e40x_pkg::*;
+  #(parameter int unsigned PMA_NUM_REGIONS = 1,
+    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
 (
     input  logic         clk,
     input  logic         rst_n,
@@ -54,25 +56,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
 
-  // Transaction request (to cv32e40x_obi_interface)
-  logic         trans_valid;
-  logic         trans_ready;
-  logic [31:0]  trans_addr;
-  logic         trans_we;
-  logic [3:0]   trans_be;
-  logic [31:0]  trans_wdata;
-  logic [5:0]   trans_atop;
+  // Transaction request (to cv32e40x_mpu)
+  logic          trans_valid;
+  logic          trans_ready;
+  obi_data_req_t trans;
 
-  // Transaction response interface (from cv32e40x_obi_interface)
+  // Transaction response interface (from cv32e40x_mpu)
   logic         resp_valid;
   logic [31:0]  resp_rdata;
   logic         resp_err;               // Unused for now
+  data_resp_t   resp;
+  
+  // Transaction request (from cv32e40x_mpu to cv32e40x_data_obi_interface)
+  logic          bus_trans_valid;
+  logic          bus_trans_ready;
+  obi_data_req_t bus_trans;
 
+  // Transaction response (from cv32e40x_data_obi_interface to cv32e40x_mpu)
+  logic           bus_resp_valid;
+  obi_data_resp_t bus_resp;
+  
   // Counter to count maximum number of outstanding transactions
   logic [1:0]   cnt_q;                  // Transaction counter
   logic [1:0]   next_cnt;               // Next value for cnt_q
   logic         count_up;               // Increment outstanding transaction count by 1 (can happen at same time as count_down)
   logic         count_down;             // Decrement outstanding transaction count by 1 (can happen at same time as count_up)
+  logic         cnt_is_one_next;
 
   logic         ctrl_update;            // Update load/store control info in WB stage
 
@@ -364,11 +373,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // For last phase of misaligned transfer the address needs to be word aligned (as LSB of data_be will be set)
-  assign trans_addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
-  assign trans_we    = id_ex_pipe_i.data_we;
-  assign trans_be    = data_be;
-  assign trans_wdata = data_wdata;
-  assign trans_atop  = id_ex_pipe_i.data_atop;
+  assign trans.addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
+  assign trans.we    = id_ex_pipe_i.data_we;
+  assign trans.be    = data_be;
+  assign trans.wdata = data_wdata;
+  assign trans.atop  = id_ex_pipe_i.data_atop;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
@@ -429,6 +438,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     endcase
   end
 
+  // Indicate that counter will be one in the next cycle
+  assign cnt_is_one_next = next_cnt == 2'h1;
 
   //////////////////////////////////////////////////////////////////////////////
   // Registers
@@ -450,13 +461,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Handle bus errors
   //////////////////////////////////////////////////////////////////////////////
 
-  // Propagate last trans_addr to WB stage (in case of bus_errors in WB this is needed for mtval)
+  // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to data_addr_wb_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK: If a store following a load with bus error has dependencies on the load result,
     // it may use use an unspecified address and should be avoided for security reasons.
     // The NMI should be taken before this store.
-
+  
   // Folowing block is within the EX stage
   always_ff @(posedge clk, negedge rst_n)
   begin
@@ -465,7 +476,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end else begin
       // Update for valid addresses if not blocked by controller
       if(!block_data_addr_i && (trans_valid && trans_ready)) begin
-        data_addr_wb_o <= trans_addr;
+        data_addr_wb_o <= trans.addr;
       end
     end
   end
@@ -475,28 +486,60 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
 
   //////////////////////////////////////////////////////////////////////////////
+  // MPU
+  //////////////////////////////////////////////////////////////////////////////
+  
+  cv32e40x_mpu
+    #(.IF_STAGE(0),
+      .CORE_RESP_TYPE(data_resp_t),
+      .BUS_RESP_TYPE(obi_data_resp_t),
+      .CORE_REQ_TYPE(obi_data_req_t),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+      .PMA_CFG(PMA_CFG))
+  mpu_i
+    (
+     .clk                  ( clk             ),
+     .rst_n                ( rst_n           ),
+     .speculative_access_i ( 1'b0            ), // Load/stores are not speculative
+     .atomic_access_i      ( 1'b0            ), // TODO:OE update to support atomic PMA checks
+     .execute_access_i     ( 1'b0            ), // No accesses are intended for execution
+
+     .core_one_txn_pend_n  ( cnt_is_one_next ),
+     .core_trans_valid_i   ( trans_valid     ),
+     .core_trans_ready_o   ( trans_ready     ),
+     .core_trans_i         ( trans           ),
+     .core_resp_valid_o    ( resp_valid      ),
+     .core_resp_o          ( resp            ),
+
+     .bus_trans_valid_o    ( bus_trans_valid ),
+     .bus_trans_ready_i    ( bus_trans_ready ),
+     .bus_trans_o          ( bus_trans       ),
+     .bus_resp_valid_i     ( bus_resp_valid  ),
+     .bus_resp_i           ( bus_resp        ));
+
+  // Extract rdata and err from response struct
+  assign resp_rdata = resp.bus_resp.rdata;
+  assign resp_err   = resp.bus_resp.err;
+  
+  //////////////////////////////////////////////////////////////////////////////
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
+  
   cv32e40x_data_obi_interface
   data_obi_i
   (
     .clk                   ( clk               ),
     .rst_n                 ( rst_n             ),
 
-    .trans_valid_i         ( trans_valid       ),
-    .trans_ready_o         ( trans_ready       ),
-    .trans_addr_i          ( trans_addr        ),
-    .trans_we_i            ( trans_we          ),
-    .trans_be_i            ( trans_be          ),
-    .trans_wdata_i         ( trans_wdata       ),
-    .trans_atop_i          ( trans_atop        ),
+    .trans_valid_i         ( bus_trans_valid   ),
+    .trans_ready_o         ( bus_trans_ready   ),
+    .trans_i               ( bus_trans         ),
 
-    .resp_valid_o          ( resp_valid        ),
-    .resp_rdata_o          ( resp_rdata        ),
-    .resp_err_o            ( resp_err          ),
+    .resp_valid_o          ( bus_resp_valid    ),
+    .resp_o                ( bus_resp          ),
 
-    .m_c_obi_data_if       ( m_c_obi_data_if     )
+    .m_c_obi_data_if       ( m_c_obi_data_if   )
   );
 
 endmodule

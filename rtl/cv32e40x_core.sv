@@ -550,7 +550,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //                                                                                    //
   ////////////////////////////////////////////////////////////////////////////////////////
 
-  cv32e40x_load_store_unit load_store_unit_i
+  cv32e40x_load_store_unit
+    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+      .PMA_CFG(PMA_CFG))
+  load_store_unit_i
   (
     .clk                   ( clk                ),
     .rst_n                 ( rst_ni             ),

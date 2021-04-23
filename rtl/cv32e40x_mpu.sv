@@ -24,51 +24,55 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_mpu import cv32e40x_pkg::*;
-  #(  parameter type         RESP_TYPE = inst_resp_t, // TODO: use this to separate between instuction and data side
-      parameter int unsigned PMA_NUM_REGIONS = 1,
+  #(  parameter bit          IF_STAGE                     = 1,
+      parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
+      parameter type         CORE_RESP_TYPE               = inst_resp_t,
+      parameter type         BUS_RESP_TYPE                = obi_inst_resp_t,
+      parameter int unsigned PMA_NUM_REGIONS              = 1,
       parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
   (
-   input logic         clk,
-   input logic         rst_n,
+   input logic  clk,
+   input logic  rst_n,
    
-   input logic         speculative_access_i, // Indicate that ongoing access is speculative           
-   input logic         atomic_access_i,      // Indicate that ongoing access is atomic                
-   input logic         execute_access_i,     // Indicate that ongoing access is intended for execution
+   input logic  speculative_access_i, // Indicate that ongoing access is speculative
+   input logic  atomic_access_i,      // Indicate that ongoing access is atomic
+   input logic  execute_access_i,     // Indicate that ongoing access is intended for execution
 
    // Interface towards bus interface
-   input logic         bus_trans_ready_i,
-   output logic [31:0] bus_trans_addr_o,
-   output logic        bus_trans_valid_o,
-   output logic        bus_trans_cacheable_o,
-   output logic        bus_trans_bufferable_o,
-   input logic         bus_resp_valid_i,
-   input               obi_inst_resp_t bus_resp_i,
+   input logic  bus_trans_ready_i,
+   output logic bus_trans_valid_o,
+   output       CORE_REQ_TYPE bus_trans_o,
+  
+   input logic  bus_resp_valid_i,
+   input        BUS_RESP_TYPE bus_resp_i,
 
    // Interface towards core
-   input logic [31:0]  core_trans_addr_i,
-   input logic         core_trans_we_i,
-   input logic         core_trans_valid_i,
-   output logic        core_trans_ready_o,
-   output logic        core_resp_valid_o,
-   output              inst_resp_t core_inst_resp_o,
+   input logic  core_trans_valid_i,
+   output logic core_trans_ready_o,
+   input        CORE_REQ_TYPE core_trans_i,
+   
+   output logic core_resp_valid_o,
+   output       CORE_RESP_TYPE core_resp_o,
 
    // Indication from the core that there will be one pending transaction in the next cycle
-   input logic         core_one_txn_pend_n
+   input logic  core_one_txn_pend_n
    );
   
   logic        pma_err;
   logic        pmp_err;
   logic        mpu_err;
   logic        mpu_block_core;
-  logic        mpu_block_obi;
+  logic        mpu_block_bus;
   logic        mpu_err_trans_valid;
   mpu_status_e mpu_status;
-  mpu_state_e state_q, state_n;
+  mpu_state_e  state_q, state_n;
+  logic        bus_trans_cacheable;
+  logic        bus_trans_bufferable;
+  logic        core_trans_we;
   
-
   // FSM that will "consume" transfers failing PMA or PMP checks.
-  // Upon failing checks, this FSM will prevent the transfer from going out on the OBI bus
-  // and wait for all in flight OBI transactions to complete while blocking new transfers.
+  // Upon failing checks, this FSM will prevent the transfer from going out on the bus
+  // and wait for all in flight bus transactions to complete while blocking new transfers.
   // When all in flight transactions are complete, it will respond with the correct status before
   // allowing new transfers to go through.
   // The input signal core_one_txn_pend_n indicates that there, from the core's point of view,
@@ -79,7 +83,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     state_n        = state_q;
     mpu_status     = MPU_OK;
     mpu_block_core = 1'b0;
-    mpu_block_obi  = 1'b0;
+    mpu_block_bus  = 1'b0;
     mpu_err_trans_valid = 1'b0;
     
     case(state_q)
@@ -87,9 +91,9 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
         if (mpu_err && core_trans_valid_i && bus_trans_ready_i) begin
 
           // Block transfer from going out on the bus.
-          mpu_block_obi  = 1'b1;
+          mpu_block_bus  = 1'b1;
 
-          if(core_trans_we_i) begin
+          if(core_trans_we) begin
             // MPU error on write
             state_n = core_one_txn_pend_n ? MPU_WR_ERR_RESP : MPU_WR_ERR_WAIT;
           end
@@ -102,7 +106,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       MPU_RE_ERR_WAIT, MPU_WR_ERR_WAIT: begin
 
         // Block new transfers while waiting for in flight transfers to complete
-        mpu_block_obi  = 1'b1;
+        mpu_block_bus  = 1'b1;
         mpu_block_core = 1'b1;
         
         if (core_one_txn_pend_n) begin
@@ -112,7 +116,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       MPU_RE_ERR_RESP, MPU_WR_ERR_RESP: begin
         
         // Keep blocking new transfers
-        mpu_block_obi  = 1'b1;
+        mpu_block_bus  = 1'b1;
         mpu_block_core = 1'b1;
 
         // Set up MPU error response towards the core
@@ -135,31 +139,45 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     end
   end
 
-  // Signals towards OBI interface (TODO:OE add remainig signals for data side, e.g. we)
-  assign bus_trans_valid_o = core_trans_valid_i && !mpu_block_obi;
-  assign bus_trans_addr_o  = core_trans_addr_i;
+  // Forward transaction request towards bus interface
+  assign bus_trans_valid_o = core_trans_valid_i && !mpu_block_bus;
+  assign bus_trans_o       = core_trans_i;
+  // TODO:OE Update bus_trans_o.memtype based on bufferable and cachable
   
-  // Signals towards core
-  assign core_trans_ready_o          = bus_trans_ready_i && !mpu_block_core; 
-  assign core_resp_valid_o           = bus_resp_valid_i || mpu_err_trans_valid;
-  assign core_inst_resp_o.bus_resp   = bus_resp_i;
-  assign core_inst_resp_o.mpu_status = mpu_status;
+  // Forward transaction response towards core
+  assign core_resp_valid_o      = bus_resp_valid_i || mpu_err_trans_valid;
+  assign core_resp_o.bus_resp   = bus_resp_i;
+  assign core_resp_o.mpu_status = mpu_status;
+
+  // Signal ready towards core
+  assign core_trans_ready_o     = bus_trans_ready_i && !mpu_block_core; 
   
   // PMA - Physical Memory Attribution
   cv32e40x_pma
     #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   pma_i
-    (.trans_addr_i(core_trans_addr_i),
+    (.trans_addr_i(core_trans_i.addr),
      .speculative_access_i(speculative_access_i),
      .atomic_access_i(atomic_access_i),
      .execute_access_i(execute_access_i),
      .pma_err_o(pma_err),
-     .pma_bufferable_o(bus_trans_bufferable_o),
-     .pma_cacheable_o(bus_trans_cacheable_o));
+     .pma_bufferable_o(bus_trans_bufferable),
+     .pma_cacheable_o(bus_trans_cacheable));
 
   
   assign pmp_err = 1'b0; // TODO connect to PMP
   assign mpu_err = pmp_err || pma_err;
+
+  // Writes are only supported on the data interface
+  // Tie to 1'b0 if this MPU is instantiatied in the IF stage
+  generate
+    if (IF_STAGE) begin: mpu_if
+      assign core_trans_we = 1'b0;
+    end
+    else begin: mpu_lsu
+      assign core_trans_we = core_trans_i.we;
+    end
+  endgenerate
   
 endmodule
