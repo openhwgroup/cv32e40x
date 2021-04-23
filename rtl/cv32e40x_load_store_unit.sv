@@ -59,13 +59,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request (to cv32e40x_mpu)
   logic          trans_valid;
   logic          trans_ready;
-  obi_data_req_t core_trans;
+  obi_data_req_t trans;
 
   // Transaction response interface (from cv32e40x_mpu)
   logic         resp_valid;
   logic [31:0]  resp_rdata;
   logic         resp_err;               // Unused for now
-  data_resp_t   core_resp;
+  data_resp_t   resp;
   
   // Transaction request (from cv32e40x_mpu to cv32e40x_data_obi_interface)
   logic          bus_trans_valid;
@@ -373,11 +373,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // For last phase of misaligned transfer the address needs to be word aligned (as LSB of data_be will be set)
-  assign core_trans.addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
-  assign core_trans.we    = id_ex_pipe_i.data_we;
-  assign core_trans.be    = data_be;
-  assign core_trans.wdata = data_wdata;
-  assign core_trans.atop  = id_ex_pipe_i.data_atop;
+  assign trans.addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
+  assign trans.we    = id_ex_pipe_i.data_we;
+  assign trans.be    = data_be;
+  assign trans.wdata = data_wdata;
+  assign trans.atop  = id_ex_pipe_i.data_atop;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
@@ -461,7 +461,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Handle bus errors
   //////////////////////////////////////////////////////////////////////////////
 
-  // Propagate last core_trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
+  // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to data_addr_wb_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK: If a store following a load with bus error has dependencies on the load result,
@@ -476,7 +476,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end else begin
       // Update for valid addresses if not blocked by controller
       if(!block_data_addr_i && (trans_valid && trans_ready)) begin
-        data_addr_wb_o <= core_trans.addr;
+        data_addr_wb_o <= trans.addr;
       end
     end
   end
@@ -507,9 +507,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
      .core_one_txn_pend_n  ( cnt_is_one_next ),
      .core_trans_valid_i   ( trans_valid     ),
      .core_trans_ready_o   ( trans_ready     ),
-     .core_trans_i         ( core_trans      ),
+     .core_trans_i         ( trans           ),
      .core_resp_valid_o    ( resp_valid      ),
-     .core_resp_o          ( core_resp       ),
+     .core_resp_o          ( resp            ),
 
      .bus_trans_valid_o    ( bus_trans_valid ),
      .bus_trans_ready_i    ( bus_trans_ready ),
@@ -518,8 +518,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
      .bus_resp_i           ( bus_resp        ));
 
   // Extract rdata and err from response struct
-  assign resp_rdata = core_resp.bus_resp.rdata;
-  assign resp_err   = core_resp.bus_resp.err;
+  assign resp_rdata = resp.bus_resp.rdata;
+  assign resp_err   = resp.bus_resp.err;
   
   //////////////////////////////////////////////////////////////////////////////
   // OBI interface
