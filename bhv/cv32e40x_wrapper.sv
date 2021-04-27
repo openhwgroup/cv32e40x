@@ -206,18 +206,18 @@ module cv32e40x_wrapper
          .rst_ni                   ( rst_ni                                                        ),
 
          .hart_id_i                ( hart_id_i                                                     ),
-         .irq_ack_i                ( id_stage_i.controller_i.irq_ack_o                             ),
+         .irq_ack_i                ( irq_ack_o                                                     ),
 
-         .illegal_insn_id_i        ( id_stage_i.controller_i.illegal_insn_n                        ),
-         .instr_is_compressed_id_i ( if_stage_i.instr_compressed_int                               ),
-         .mret_insn_id_i           ( id_stage_i.controller_i.mret_insn_i                           ),
-         .ebrk_insn_id_i           ( id_stage_i.controller_i.ebrk_insn_i                           ),
-         .ecall_insn_id_i          ( id_stage_i.controller_i.ecall_insn_i                          ),
+         .illegal_insn_id_i        ( id_stage_i.illegal_insn_o                                     ),
+         .mret_insn_id_i           ( id_stage_i.mret_insn_o                                        ),
+         .ebrk_insn_id_i           ( id_stage_i.ebrk_insn_o                                        ),
+         .ecall_insn_id_i          ( id_stage_i.ecall_insn_o                                       ),
 
-         .instr_rdata_c_id_i       ( if_stage_i.prefetch_instr.bus_resp.rdata[15:0]                ),
-         .instr_rdata_id_i         ( if_stage_i.if_id_pipe_o.instr.bus_resp.rdata                  ),
+         .instr_is_compressed_id_i ( id_stage_i.if_id_pipe_i.is_compressed                         ),
+         .instr_rdata_c_id_i       ( id_stage_i.if_id_pipe_i.compressed_instr                      ),
+         .instr_rdata_id_i         ( id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( id_stage_i.id_valid_o                                         ),
-         .instr_id_is_decoding_i   ( id_stage_i.is_decoding_o                                      ),
+         .instr_id_is_decoding_i   ( controller_i.is_decoding_o                                    ),
 
          .rdata_a_id_i             ( id_stage_i.operand_a_fw                                       ),
          .raddr_a_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
@@ -241,8 +241,8 @@ module cv32e40x_wrapper
 
          .branch_target_ex_i       ( if_stage_i.branch_target_ex_i                                 ),
 
-         .lsu_addr_ex_i            ( load_store_unit_i.trans_addr                                  ),
-         .lsu_wdata_ex_i           ( load_store_unit_i.trans_wdata                                 ),
+         .lsu_addr_ex_i            ( load_store_unit_i.trans.addr                                  ),
+         .lsu_wdata_ex_i           ( load_store_unit_i.trans.wdata                                 ),
          .lsu_req_ex_i             ( load_store_unit_i.trans_valid                                 ),
          .lsu_misagligned_ex_i     ( load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
          .lsu_is_misagligned_ex_i  ( load_store_unit_i.lsu_misaligned_o                            ),
@@ -256,7 +256,7 @@ module cv32e40x_wrapper
 
          .mepc_target_wb_i         ( if_stage_i.mepc_i                                             ),
 
-         .is_debug_mode            ( id_stage_i.controller_i.debug_mode_q                          ),
+         .is_debug_mode            ( controller_i.debug_mode_o                                     ),
          .csr_mstatus_n_i          ( cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( cs_registers_i.mstatus_q                                      ),
 
