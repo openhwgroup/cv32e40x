@@ -25,8 +25,8 @@
 
 module cv32e40x_pma import cv32e40x_pkg::*;
   #(  
-      parameter int unsigned PMA_NUM_REGIONS = 1,
-      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
+      parameter int unsigned PMA_NUM_REGIONS = 0,
+      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
   (
    input logic [31:0] trans_addr_i,
    input logic        speculative_access_i, // Indicate that ongoing access is speculative

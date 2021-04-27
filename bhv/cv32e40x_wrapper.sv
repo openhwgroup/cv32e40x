@@ -43,8 +43,8 @@ module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
-  parameter int unsigned PMA_NUM_REGIONS =  1,
-  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT}
+  parameter int unsigned PMA_NUM_REGIONS =  0,
+  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
