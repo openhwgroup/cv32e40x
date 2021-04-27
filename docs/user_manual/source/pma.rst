@@ -18,6 +18,7 @@ The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entr
   } pma_region_t;
 
 In case of address overlap between PMA regions, the region with the lowest index in ``PMA_CFG[]`` will have priority.
+The PMA can be deconfigured by setting ``PMA_NUM_REGIONS=0``. When doing this, ``PMA_CFG[]`` should be left unconnected.
 
 Address range
 ~~~~~~~~~~~~~
