@@ -170,7 +170,16 @@ module cv32e40x_wrapper
   bind cv32e40x_mpu: 
     core_i.if_stage_i.mpu_i 
     cv32e40x_mpu_sva
-      mpu_sva(.*);
+      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+        .PMA_CFG(PMA_CFG))
+  mpu_if_sva(.*);
+
+  bind cv32e40x_mpu:
+    core_i.load_store_unit_i.mpu_i
+    cv32e40x_mpu_sva
+      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+        .PMA_CFG(PMA_CFG))
+  mpu_lsu_sva(.*);
 
 `endif // ASSERT_ON
 
