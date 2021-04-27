@@ -148,8 +148,7 @@ module cv32e40x_rvfi
 
   logic                    data_misagligned_q;
   logic [RVFI_NRET-1:0]    intr_d;
-  logic         is_next_instr;
-  logic         instr_id_done;
+  logic                    instr_id_done;
 
   logic         ex_stage_ready_q;
   logic         ex_stage_valid_q;
@@ -165,6 +164,7 @@ module cv32e40x_rvfi
 
   rvfi_instr_t rvfi_stage [RVFI_STAGES][NRET_MAX];
   rvfi_intr_t  prev_instr;
+  rvfi_intr_t  current_instr;
   rvfi_intr_t  instr_q[RVFI_NRET];
 
   assign is_jump_id      = (pc_mux_i == PC_JUMP);
@@ -244,66 +244,38 @@ module cv32e40x_rvfi
       end // always_ff @
     end // for (genvar i = 0; i < RVFI_NRET; i++)
 
-
-    if (RVFI_NRET == 2) begin
-
     always_comb begin
-      intr_d              = 2'h0;
-      is_next_instr       = 1'b0;
-
       // Find previous instruction
-      if(instr_q[1].valid && instr_q[0].valid) begin
-        prev_instr = (instr_q[0].order > instr_q[1].order) ? instr_q[0] : instr_q[1];
-      end else if (instr_q[1].valid) begin
-        prev_instr = instr_q[1];
-      end else if (instr_q[0].valid) begin
-        prev_instr = instr_q[0];
-      end else begin
-        prev_instr = '0;
+      prev_instr = '0;
+
+      // Look for latest instruction in retired instructions
+      // The the rvfi channel with the lowest index will have the highest order number
+      for (int i = RVFI_NRET-1;  i >= 0; i--) begin
+        if (instr_q[i].valid) begin
+          prev_instr = instr_q[i];
+        end
       end
 
-      //find the newest
-      if(rvfi_valid[1] ^ rvfi_valid[0]) begin
-
-        if(rvfi_valid[1])
-            is_next_instr  = rvfi_order[2*64-1:64] - prev_instr.order == 1;
-        else
-            is_next_instr  = rvfi_order[63:0]      - prev_instr.order == 1;
-
-        if(instr_q[1].valid || instr_q[0].valid) begin
-          intr_d[1]  = rvfi_valid[1] && (rvfi_pc_rdata[2*32-1:32] != prev_instr.pc_wdata) && is_next_instr;
-          intr_d[0]  = rvfi_valid[0] && (rvfi_pc_rdata[31:0]      != prev_instr.pc_wdata) && is_next_instr;
+      // Check if there is a second latest valid instruction in current rvfi channels
+      current_instr = prev_instr;
+      for (int i = RVFI_NRET-1;  i >= 0; i--) begin
+        if (rvfi_valid[i]) begin
+          prev_instr          = current_instr;
+          current_instr.valid = 1'b1;
+          current_instr.order = rvfi_order[i*64+:64];
+          current_instr.valid = rvfi_pc_rdata[i*32+:32];
         end
+      end
+    end
 
-      end else if(rvfi_valid[1] && rvfi_valid[0]) begin //both true
+    // Check if instruction is the first instruction in trap handler
+    for (genvar i = 0; i < RVFI_NRET; i++) begin
+      assign intr_d[i] = prev_instr.valid                                 && // Previous instruction valid
+                         rvfi_valid[i]                                    && // Current instruction valid
+                         ((rvfi_order[i*64+:64] - prev_instr.order) == 1) && // Is latest instruction
+                         (rvfi_pc_rdata[i*32+:32]  != prev_instr.pc_wdata);  // Is first part of trap handler
+    end
 
-        //instr1 is the oldest
-        if(rvfi_order[2*64-1:64] < rvfi_order[63:0]) begin
-
-          is_next_instr  = (rvfi_order[2*64-1:64] - prev_instr.order) == 1;
-
-          if(instr_q[1].valid || instr_q[0].valid) begin
-            intr_d[1] = rvfi_valid[1] &&
-                        (rvfi_pc_rdata[2*32-1:32] != prev_instr.pc_wdata ) &&
-                        is_next_instr;
-            //instr0 prev is instr1
-            intr_d[0] = rvfi_valid[0] &&
-                        (rvfi_pc_rdata[31:0] != rvfi_pc_wdata[2*32-1:32]) &&
-                        ((rvfi_order[63:0] - rvfi_order[2*64-1:64]) == 1);
-          end
-        end else begin
-          //instr0 is the oldest
-          $display("[ERROR] Instr1 is newer than Instr0 at time %t",$time);
-          $stop;
-        end // else: !if(rvfi_order[2*64-1:64] < rvfi_order[63:0])
-
-      end // if (rvfi_valid[1] && rvfi_valid[0])
-    end // always_comb
-    end // if (RVFI_NRET == 2)
-    else begin
-      assign is_next_instr  = rvfi_order[63:0] - instr_q[0].order == 1;
-      assign intr_d[0]      = rvfi_valid[0] && (rvfi_pc_rdata[31:0] != intr_q[0].pc_wdata);
-    end // else: !if(RVFI_NRET == 2)
   endgenerate
 
   // Pipeline stage model //
@@ -332,7 +304,7 @@ module cv32e40x_rvfi
 
           if(instr_id_done) begin
 
-            rvfi_stage[i][0].rvfi_halt      <= '0;
+            rvfi_stage[i][0].rvfi_halt      <= 1'b0;
             rvfi_stage[i][0].rvfi_trap      <= illegal_insn_id_i;
             rvfi_stage[i][0].rvfi_intr      <= 1'b0;
             rvfi_stage[i][0].rvfi_order     <= rvfi_stage[i][0].rvfi_order + 64'b1;
