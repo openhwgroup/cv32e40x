@@ -73,8 +73,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        debug_mode_i,
 
     // Register file write back and forwards
-    input  logic           rf_we_wb_i,
-    input  rf_addr_t       rf_waddr_wb_i,
     input  logic [31:0]    rf_wdata_wb_i,
     input  logic [31:0]    rf_wdata_wb_alu_i,
 
@@ -131,7 +129,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic          halt_id_i,
     input  logic          misaligned_stall_i,
     input  logic          jr_stall_i,
-    input  logic          load_stall_i
+    input  logic          load_stall_i,
+
+    // Register file
+    input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS]
+
   
 );
 
@@ -164,15 +166,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] imm_a;           // contains the immediate for operand b
   logic [31:0] imm_b;           // contains the immediate for operand b
 
-  // Register file read interface
-  
-  rf_data_t    regfile_rdata[REGFILE_NUM_READ_PORTS];
-
-  // Register file write interface
-  rf_addr_t    regfile_waddr[REGFILE_NUM_WRITE_PORTS];
-  rf_data_t    regfile_wdata[REGFILE_NUM_WRITE_PORTS];
-  logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
-  
   // Register Write Control
   logic        rf_we;
   logic        rf_we_raw;
@@ -314,8 +307,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (operand_a_fw_mux_sel_i)
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
-      SEL_REGFILE:  operand_a_fw = regfile_rdata[0];
-      default:      operand_a_fw = regfile_rdata[0];
+      SEL_REGFILE:  operand_a_fw = regfile_rdata_i[0];
+      default:      operand_a_fw = regfile_rdata_i[0];
     endcase; // case (operand_a_fw_mux_sel_i)
   end
   
@@ -323,8 +316,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   always_comb begin: jalr_fw_mux
     case (jalr_fw_mux_sel_i)
       SELJ_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
-      SELJ_REGFILE: jalr_fw = regfile_rdata[0];
-      default:      jalr_fw = regfile_rdata[0];
+      SELJ_REGFILE: jalr_fw = regfile_rdata_i[0];
+      default:      jalr_fw = regfile_rdata_i[0];
     endcase // jalr_fw_mux_sel_i
   end // jalr_fw_mux
 
@@ -368,8 +361,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (operand_b_fw_mux_sel_i)
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
-      SEL_REGFILE:  operand_b_fw = regfile_rdata[1];
-      default:      operand_b_fw = regfile_rdata[1];
+      SEL_REGFILE:  operand_b_fw = regfile_rdata_i[1];
+      default:      operand_b_fw = regfile_rdata_i[1];
     endcase; // case (operand_b_fw_mux_sel_i)
   end
 
@@ -392,37 +385,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       default:           operand_c = 32'h0;
     endcase // case (op_c_mux_sel)
   end
-
-  /////////////////////////////////////////////////////////
-  //  ____  _____ ____ ___ ____ _____ _____ ____  ____   //
-  // |  _ \| ____/ ___|_ _/ ___|_   _| ____|  _ \/ ___|  //
-  // | |_) |  _|| |  _ | |\___ \ | | |  _| | |_) \___ \  //
-  // |  _ <| |__| |_| || | ___) || | | |___|  _ < ___) | //
-  // |_| \_\_____\____|___|____/ |_| |_____|_| \_\____/  //
-  //                                                     //
-  /////////////////////////////////////////////////////////
-
-  // Connect register file write port(s) to appropriate signals
-  assign regfile_we[0]    = rf_we_wb_i;
-  assign regfile_waddr[0] = rf_waddr_wb_i;
-  assign regfile_wdata[0] = rf_wdata_wb_i;
-
-  cv32e40x_register_file_wrapper
-  register_file_wrapper_i
-  (
-    .clk                ( clk                ),
-    .rst_n              ( rst_n              ),
-
-    // Read ports
-    .raddr_i            ( rf_raddr_o         ),
-    .rdata_o            ( regfile_rdata      ),
-
-    // Write ports
-    .waddr_i            ( regfile_waddr      ),
-    .wdata_i            ( regfile_wdata      ),
-    .we_i               ( regfile_we         )
-               
-  );
 
 
   ///////////////////////////////////////////////
