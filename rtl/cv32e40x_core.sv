@@ -127,7 +127,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Register Write Control
   rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
   logic        regfile_we_wb;
-  logic [31:0] regfile_wdata;
 
   // Register File Write Back
   logic        rf_we_wb;
@@ -143,6 +142,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   rf_addr_t    rf_raddr[REGFILE_NUM_READ_PORTS];
   rf_addr_t    rf_waddr;
+
+  // Register file read data
+  rf_data_t    regfile_rdata[REGFILE_NUM_READ_PORTS];
+
+  // Register file write interface
+  rf_addr_t    regfile_waddr[REGFILE_NUM_WRITE_PORTS];
+  rf_data_t    regfile_wdata[REGFILE_NUM_WRITE_PORTS];
+  logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
 
   logic regfile_alu_we_dec_o;
 
@@ -446,8 +453,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_we_ex_i                   ( rf_we_ex             ),
     .rf_waddr_ex_i                ( rf_waddr_ex          ),
     .rf_wdata_ex_i                ( rf_wdata_ex          ),
-    .rf_we_wb_i                   ( rf_we_wb             ),
-    .rf_waddr_wb_i                ( rf_waddr_wb          ),
     .rf_wdata_wb_i                ( rf_wdata_wb          ),
     .rf_wdata_wb_alu_i            ( ex_wb_pipe.rf_wdata  ),
 
@@ -495,7 +500,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .halt_id_i                    ( halt_id              ),
     .misaligned_stall_i           ( misaligned_stall     ),
     .jr_stall_i                   ( jr_stall             ),
-    .load_stall_i                 ( load_stall           )
+    .load_stall_i                 ( load_stall           ),
+
+    .regfile_rdata_i              ( regfile_rdata        )
   );
 
 
@@ -809,7 +816,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .data_req_wb_i                  ( data_req_wb            )
   );
 
-  ////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 //  _____      _       _____             _             _ _            //
 // |_   _|    | |     /  __ \           | |           | | |           //
 //   | | _ __ | |_    | /  \/ ___  _ __ | |_ _ __ ___ | | | ___ _ __  //
@@ -838,6 +845,36 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mip_o                ( mip                ),
     .m_ie_i               ( m_irq_enable       ),
     .current_priv_lvl_i   ( current_priv_lvl   )
+  );
+
+    /////////////////////////////////////////////////////////
+  //  ____  _____ ____ ___ ____ _____ _____ ____  ____   //
+  // |  _ \| ____/ ___|_ _/ ___|_   _| ____|  _ \/ ___|  //
+  // | |_) |  _|| |  _ | |\___ \ | | |  _| | |_) \___ \  //
+  // |  _ <| |__| |_| || | ___) || | | |___|  _ < ___) | //
+  // |_| \_\_____\____|___|____/ |_| |_____|_| \_\____/  //
+  //                                                     //
+  /////////////////////////////////////////////////////////
+
+  // Connect register file write port(s) to regfile inputs
+  assign regfile_we[0]    = rf_we_wb;
+  assign regfile_waddr[0] = rf_waddr_wb;
+  assign regfile_wdata[0] = rf_wdata_wb;
+
+  cv32e40x_register_file_wrapper
+  register_file_wrapper_i
+  (
+    .clk                ( clk                ),
+    .rst_n              ( rst_ni             ),
+
+    // Read ports
+    .raddr_i            ( rf_raddr           ),
+    .rdata_o            ( regfile_rdata      ),
+
+    // Write ports
+    .waddr_i            ( regfile_waddr      ),
+    .wdata_i            ( regfile_wdata      ),
+    .we_i               ( regfile_we         )
   );
 
 endmodule
