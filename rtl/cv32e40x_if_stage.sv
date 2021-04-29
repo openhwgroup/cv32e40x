@@ -27,7 +27,7 @@
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
   #(parameter int unsigned PMA_NUM_REGIONS = 0,
-    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
+    parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
 (
     input  logic        clk,
     input  logic        rst_n,

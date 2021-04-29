@@ -25,7 +25,7 @@
 
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   #(  parameter int unsigned PMA_NUM_REGIONS              = 0,
-      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
+      parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
   (
    input logic        clk,
    input logic        rst_n,
@@ -56,8 +56,10 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   // Checks for illegal PMA region configuration
   initial begin : p_mpu_assertions
 
-    assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
-
+    if (PMA_NUM_REGIONS != 0) begin
+      assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
+    end
+      
     for(int i=0; i<PMA_NUM_REGIONS; i++) begin
       if (PMA_CFG[i].main) begin
         assert (PMA_CFG[i].atomic) else `uvm_error("mpu", "PMA regions configured as main must also support atomic operations")
