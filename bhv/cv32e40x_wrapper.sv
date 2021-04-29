@@ -12,7 +12,7 @@
 // Contributors: Davide Schiavone <davide@openhwgroup.org>
 //               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
-`ifdef ASSERT_ON
+`ifndef COREV_ASSERT_OFF
   `include "cv32e40x_core_sva.sv"
   `include "cv32e40x_mult_sva.sv"
   `include "cv32e40x_alu_div_sva.sv"
@@ -99,7 +99,7 @@ module cv32e40x_wrapper
 );
 
 
-`ifdef ASSERT_ON
+`ifndef COREV_ASSERT_OFF
 
   // RTL Assertions
 
@@ -181,7 +181,7 @@ module cv32e40x_wrapper
         .PMA_CFG(PMA_CFG))
   mpu_lsu_sva(.*);
 
-`endif // ASSERT_ON
+`endif //  `ifndef COREV_ASSERT_OFF
 
 
   bind cv32e40x_id_stage:
