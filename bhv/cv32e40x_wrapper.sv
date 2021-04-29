@@ -229,10 +229,10 @@ module cv32e40x_wrapper
          .instr_id_is_decoding_i   ( controller_i.is_decoding_o                                    ),
 
          .rdata_a_id_i             ( id_stage_i.operand_a_fw                                       ),
-         .raddr_a_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
+         .raddr_a_id_i             ( register_file_wrapper_i.register_file_i.raddr_i[0] ),
          .rdata_b_id_i             ( id_stage_i.operand_b_fw                                       ),
 
-         .raddr_b_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
+         .raddr_b_id_i             ( register_file_wrapper_i.register_file_i.raddr_i[1] ),
 
          .pc_id_i                  ( id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_if_i                  ( if_stage_i.pc_if_o                                            ),
