@@ -39,12 +39,16 @@
   `include "cv32e40x_tracer.sv"
 `endif
 
+`ifdef RISCV_FORMAL
+  `include "rvfi_macros.vh"
+`endif
+
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
-  parameter int unsigned PMA_NUM_REGIONS =  1,
-  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT}
+  parameter int unsigned PMA_NUM_REGIONS =  0,
+  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
@@ -96,6 +100,10 @@ module cv32e40x_wrapper
   // CPU Control Signals
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
+
+`ifdef RISCV_FORMAL
+  ,`RVFI_OUTPUTS
+`endif
 );
 
 
@@ -170,7 +178,16 @@ module cv32e40x_wrapper
   bind cv32e40x_mpu: 
     core_i.if_stage_i.mpu_i 
     cv32e40x_mpu_sva
-      mpu_sva(.*);
+      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+        .PMA_CFG(PMA_CFG))
+  mpu_if_sva(.*);
+
+  bind cv32e40x_mpu:
+    core_i.load_store_unit_i.mpu_i
+    cv32e40x_mpu_sva
+      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+        .PMA_CFG(PMA_CFG))
+  mpu_lsu_sva(.*);
 
 `endif // ASSERT_ON
 
@@ -198,95 +215,70 @@ module cv32e40x_wrapper
       );
 
 
-  bind cv32e40x_core:
-    core_i
     cv32e40x_rvfi
+      #(.RVFI_NRET(1))
       rvfi_i
         (.clk_i                    ( clk_i                                                         ),
          .rst_ni                   ( rst_ni                                                        ),
 
-         .hart_id_i                ( hart_id_i                                                     ),
-         .irq_ack_i                ( irq_ack_o                                                     ),
+         .hart_id_i                ( core_i.hart_id_i                                                     ),
+         .irq_ack_i                ( core_i.irq_ack_o                                                     ),
 
-         .illegal_insn_id_i        ( id_stage_i.illegal_insn_o                                     ),
-         .mret_insn_id_i           ( id_stage_i.mret_insn_o                                        ),
-         .ebrk_insn_id_i           ( id_stage_i.ebrk_insn_o                                        ),
-         .ecall_insn_id_i          ( id_stage_i.ecall_insn_o                                       ),
+         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn_o                                     ),
+         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn_o                                        ),
+         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn_o                                        ),
+         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn_o                                       ),
 
-         .instr_is_compressed_id_i ( id_stage_i.if_id_pipe_i.is_compressed                         ),
-         .instr_rdata_c_id_i       ( id_stage_i.if_id_pipe_i.compressed_instr                      ),
-         .instr_rdata_id_i         ( id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
-         .instr_id_valid_i         ( id_stage_i.id_valid_o                                         ),
-         .instr_id_is_decoding_i   ( controller_i.is_decoding_o                                    ),
+         .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
+         .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
+         .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
+         .instr_id_valid_i         ( core_i.id_stage_i.id_valid_o                                         ),
+         .instr_id_is_decoding_i   ( core_i.controller_i.is_decoding_o                                    ),
 
-         .rdata_a_id_i             ( id_stage_i.operand_a_fw                                       ),
-         .raddr_a_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
-         .rdata_b_id_i             ( id_stage_i.operand_b_fw                                       ),
+         .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
+         .raddr_a_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
+         .rdata_b_id_i             ( core_i.id_stage_i.operand_b_fw                                       ),
 
-         .raddr_b_id_i             ( id_stage_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
+         .raddr_b_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
 
-         .pc_id_i                  ( id_stage_i.if_id_pipe_i.pc                                    ),
-         .pc_if_i                  ( if_stage_i.pc_if_o                                            ),
-         .jump_target_id_i         ( if_stage_i.jump_target_id_i                                   ),
+         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
+         .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
+         .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
 
-         .pc_set_i                 ( if_stage_i.pc_set_i                                           ),
-         .pc_mux_i                 ( if_stage_i.pc_mux_i                                           ),
+         .pc_set_i                 ( core_i.if_stage_i.pc_set_i                                           ),
+         .pc_mux_i                 ( core_i.if_stage_i.pc_mux_i                                           ),
 
-         .lsu_type_id_i            ( id_stage_i.data_type                                          ),
-         .lsu_we_id_i              ( id_stage_i.data_we                                            ),
-         .lsu_req_id_i             ( id_stage_i.data_req                                           ),
+         .lsu_type_id_i            ( core_i.id_stage_i.data_type                                          ),
+         .lsu_we_id_i              ( core_i.id_stage_i.data_we                                            ),
+         .lsu_req_id_i             ( core_i.id_stage_i.data_req                                           ),
 
-         .instr_ex_ready_i         ( ex_stage_i.ex_ready_o                                         ),
-         .instr_ex_valid_i         ( ex_stage_i.ex_valid_o                                         ),
+         .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
+         .instr_ex_valid_i         ( core_i.ex_stage_i.ex_valid_o                                         ),
 
-         .branch_target_ex_i       ( if_stage_i.branch_target_ex_i                                 ),
+         .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
-         .lsu_addr_ex_i            ( load_store_unit_i.trans.addr                                  ),
-         .lsu_wdata_ex_i           ( load_store_unit_i.trans.wdata                                 ),
-         .lsu_req_ex_i             ( load_store_unit_i.trans_valid                                 ),
-         .lsu_misagligned_ex_i     ( load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
-         .lsu_is_misagligned_ex_i  ( load_store_unit_i.lsu_misaligned_o                            ),
+         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
+         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
+         .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
+         .lsu_misagligned_ex_i     ( core_i.load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
+         .lsu_is_misagligned_ex_i  ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
 
-         .rd_we_wb_i               ( wb_stage_i.rf_we_wb_o                                         ),
-         .rd_addr_wb_i             ( wb_stage_i.rf_waddr_wb_o                                      ),
-         .rd_wdata_wb_i            ( wb_stage_i.rf_wdata_wb_o                                      ),
-         .lsu_rvalid_wb_i          ( load_store_unit_i.resp_valid                                  ),
+         .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
+         .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
+         .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
+         .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
 
-         .exception_target_wb_i    ( if_stage_i.exc_pc                                             ),
+         .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 
-         .mepc_target_wb_i         ( if_stage_i.mepc_i                                             ),
+         .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
 
-         .is_debug_mode            ( controller_i.debug_mode_o                                     ),
-         .csr_mstatus_n_i          ( cs_registers_i.mstatus_n                                      ),
-         .csr_mstatus_q_i          ( cs_registers_i.mstatus_q                                      ),
+         .is_debug_mode            ( core_i.controller_i.debug_mode_o                                     ),
+         .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
+         .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      )
 
-         .rvfi_valid               (),
-         .rvfi_order               (),
-         .rvfi_insn                (),
-         .rvfi_trap                (),
-         .rvfi_halt                (),
-         .rvfi_intr                (),
-         .rvfi_mode                (),
-         .rvfi_ixl                 (),
-
-         .rvfi_rs1_addr            (),
-         .rvfi_rs2_addr            (),
-         .rvfi_rs1_rdata           (),
-         .rvfi_rs2_rdata           (),
-         .rvfi_rd_addr             (),
-         .rvfi_rd_wdata            (),
-         .rvfi_pc_rdata            (),
-         .rvfi_pc_wdata            (),
-         .rvfi_mem_addr            (),
-         .rvfi_mem_rmask           (),
-         .rvfi_mem_wmask           (),
-         .rvfi_mem_rdata           (),
-         .rvfi_mem_wdata           (),
-
-         .rvfi_csr_mstatus_rmask   (),
-         .rvfi_csr_mstatus_wmask   (),
-         .rvfi_csr_mstatus_rdata   (),
-         .rvfi_csr_mstatus_wdata   ()
+`ifdef RISCV_FORMAL
+         ,`RVFI_CONN
+`endif
          );
 
 

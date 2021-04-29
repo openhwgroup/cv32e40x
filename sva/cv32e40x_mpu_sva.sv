@@ -24,37 +24,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
-  #(parameter type         RESP_TYPE = inst_resp_t,
-    parameter int unsigned PMA_NUM_REGIONS = 1,
-    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{PMA_R_DEFAULT})
+  #(  parameter int unsigned PMA_NUM_REGIONS              = 0,
+      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
   (
-   input logic         clk,
-   input logic         rst_n,
+   input logic        clk,
+   input logic        rst_n,
    
-   input logic         speculative_access_i,
-   input logic         atomic_access_i,
+   input logic        speculative_access_i,
+   input logic        atomic_access_i,
 
    // Interface towards bus interface
-   input logic                       bus_trans_ready_i,
-   input logic [31:0]                bus_trans_addr_o,
-   input logic                       bus_trans_valid_o,
-   input logic                       bus_resp_valid_i,
-   input obi_inst_resp_t             bus_resp_i,
+   input logic        bus_trans_ready_i,
+   input logic        bus_trans_valid_o,
+  
+   input logic        bus_resp_valid_i,
 
    // Interface towards core
-   input logic [31:0]                core_trans_addr_i,
-   input logic                       core_trans_we_i,
-   input logic                       core_trans_valid_i,
-   input logic                       core_trans_ready_o,
-   input logic                       core_resp_valid_o,
-   input inst_resp_t                 core_inst_resp_o,
+   input logic        core_trans_valid_i,
+   input logic        core_trans_ready_o,
+   
+   input logic        core_resp_valid_o,
 
-   input mpu_status_e                        mpu_status,
-   input logic                               mpu_err_trans_valid,
-   input logic                               mpu_block_core,
-   input logic                               mpu_block_obi,
-   input mpu_state_e                         state_q,
-   input logic                               mpu_err
+   input              mpu_status_e mpu_status,
+   input logic        mpu_err_trans_valid,
+   input logic        mpu_block_core,
+   input logic        mpu_block_bus,
+   input              mpu_state_e state_q,
+   input logic        mpu_err
    );
   
   // Checks for illegal PMA region configuration
@@ -93,9 +89,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       else `uvm_error("mpu", "MPU blocking core side when not needed")
 
   // Should only block OBI side upon MPU error
-  a_mpu_block_obi_iff_err :
+  a_mpu_block_bus_iff_err :
     assert property (@(posedge clk)
-                     (mpu_block_obi) |-> (mpu_err || (state_q != MPU_IDLE)) )
+                     (mpu_block_bus) |-> (mpu_err || (state_q != MPU_IDLE)) )
       else `uvm_error("mpu", "MPU blocking OBI side when not needed")
 
 endmodule : cv32e40x_mpu_sva
