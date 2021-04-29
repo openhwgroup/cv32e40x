@@ -39,6 +39,10 @@
   `include "cv32e40x_tracer.sv"
 `endif
 
+`ifdef RISCV_FORMAL
+  `include "rvfi_macros.vh"
+`endif
+
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
@@ -96,6 +100,10 @@ module cv32e40x_wrapper
   // CPU Control Signals
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
+
+`ifdef RISCV_FORMAL
+  ,`RVFI_OUTPUTS
+`endif
 );
 
 
@@ -266,35 +274,11 @@ module cv32e40x_wrapper
 
          .is_debug_mode            ( core_i.controller_i.debug_mode_o                                     ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
-         .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
+         .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      )
 
-         .rvfi_valid               (),
-         .rvfi_order               (),
-         .rvfi_insn                (),
-         .rvfi_trap                (),
-         .rvfi_halt                (),
-         .rvfi_intr                (),
-         .rvfi_mode                (),
-         .rvfi_ixl                 (),
-
-         .rvfi_rs1_addr            (),
-         .rvfi_rs2_addr            (),
-         .rvfi_rs1_rdata           (),
-         .rvfi_rs2_rdata           (),
-         .rvfi_rd_addr             (),
-         .rvfi_rd_wdata            (),
-         .rvfi_pc_rdata            (),
-         .rvfi_pc_wdata            (),
-         .rvfi_mem_addr            (),
-         .rvfi_mem_rmask           (),
-         .rvfi_mem_wmask           (),
-         .rvfi_mem_rdata           (),
-         .rvfi_mem_wdata           (),
-
-         .rvfi_csr_mstatus_rmask   (),
-         .rvfi_csr_mstatus_wmask   (),
-         .rvfi_csr_mstatus_rdata   (),
-         .rvfi_csr_mstatus_wdata   ()
+`ifdef RISCV_FORMAL
+         ,`RVFI_CONN
+`endif
          );
 
 
