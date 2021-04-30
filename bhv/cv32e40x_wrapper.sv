@@ -260,13 +260,15 @@ module cv32e40x_wrapper
          .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
          .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
-         .lsu_misagligned_ex_i     ( core_i.load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
-         .lsu_is_misagligned_ex_i  ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
+         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
+         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
+
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
+         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
 
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 

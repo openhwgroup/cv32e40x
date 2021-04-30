@@ -55,7 +55,7 @@ module cv32e40x_rvfi
   input  logic [31:0] jump_target_id_i,
 
   input  logic        pc_set_i,
-  input  logic [2:0]  pc_mux_i, 
+  input  logic [2:0]  pc_mux_i,
 
   input  logic [1:0]  lsu_type_id_i,
   input  logic        lsu_we_id_i,
@@ -69,10 +69,11 @@ module cv32e40x_rvfi
   input  logic [31:0] lsu_addr_ex_i,
   input  logic [31:0] lsu_wdata_ex_i,
   input  logic        lsu_req_ex_i,
-  input  logic        lsu_misagligned_ex_i,
-  input  logic        lsu_is_misagligned_ex_i,
+  input  logic        lsu_misaligned_ex_i,
+  input  logic        lsu_is_misaligned_ex_i,
 
   input  logic        lsu_rvalid_wb_i,
+  input  logic [31:0] lsu_rdata_wb_i,
 
   input  logic [31:0] exception_target_wb_i,
   input  logic [31:0] mepc_target_wb_i,
@@ -146,7 +147,7 @@ module cv32e40x_rvfi
   logic  [RVFI_STAGES-1:0] mret_q;
   logic  [RVFI_STAGES-1:0] syscall_q;
 
-  logic                    data_misagligned_q;
+  logic                    data_misaligned_q;
   logic [RVFI_NRET-1:0]    intr_d;
   logic                    instr_id_done;
 
@@ -212,7 +213,7 @@ module cv32e40x_rvfi
       if (!rst_ni) begin
         ex_stage_ready_q   <= '0;
         ex_stage_valid_q   <= '0;
-        data_misagligned_q <= '0;
+        data_misaligned_q <= '0;
       end else begin
 
         // Keep instr in EX valid if next instruction is not valid
@@ -220,10 +221,10 @@ module cv32e40x_rvfi
         ex_stage_valid_q       <= instr_id_done || !instr_ex_valid_i && ex_stage_valid_q;
 
         // Handle misaligned state
-        if (instr_ex_ready_i && data_req_q[0] && !lsu_misagligned_ex_i) begin
-          data_misagligned_q <= lsu_is_misagligned_ex_i;
-        end else if (lsu_rvalid_wb_i && data_misagligned_q) begin
-          data_misagligned_q <= 1'b0;
+        if (instr_ex_ready_i && data_req_q[0] && !lsu_misaligned_ex_i) begin
+          data_misaligned_q <= lsu_is_misaligned_ex_i;
+        end else if (lsu_rvalid_wb_i && data_misaligned_q) begin
+          data_misaligned_q <= 1'b0;
         end
 
       end // else: !if(!rst_ni)
@@ -343,7 +344,7 @@ module cv32e40x_rvfi
 
             //clean up data_req_q[1] when the previous ld/st retired
             if(data_req_q[i]) begin
-              if(lsu_rvalid_wb_i && rvfi_stage[i][1].rvfi_valid && !data_misagligned_q)
+              if(lsu_rvalid_wb_i && rvfi_stage[i][1].rvfi_valid && !data_misaligned_q)
                 data_req_q[i] <= 1'b0;
             end
             mret_q[i]                  <= mret_q[i-1];
@@ -357,16 +358,22 @@ module cv32e40x_rvfi
           //memory operations
           if(instr_ex_ready_i && data_req_q[i-1]) begin
             //true during first data req if GNT
-            if(!lsu_misagligned_ex_i) begin
 
-              rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
+            rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
+
+            data_req_q[i]                   <= data_req_q[i-1];
+            mret_q[i]                       <= mret_q[i-1];
+            syscall_q[i]                    <= syscall_q[i-1];
+
+            if(lsu_misaligned_ex_i) begin
+              // Keep values when misaligned
+              rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i][1].rvfi_valid;
+              rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_stage[i][1].rvfi_mem_addr;
+              rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_stage[i][1].rvfi_mem_wdata;
+            end else begin
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
-
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
-              data_req_q[i]                   <= data_req_q[i-1];
-              mret_q[i]                       <= mret_q[i-1];
-              syscall_q[i]                    <= syscall_q[i-1];
             end
           end
 
@@ -397,9 +404,8 @@ module cv32e40x_rvfi
             lsu_rvalid_wb_i && data_req_q[i-1]: begin
               rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
               //misaligneds take 2 cycles at least
-              rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i-1][1].rvfi_valid && !data_misagligned_q;
-              //rvfi_stage[i][1].rvfi_mem_rdata <= rvfi_rd2_wdata_d;
-              rvfi_stage[i][1].rvfi_mem_rdata <= 'x; //fixme
+              rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i-1][1].rvfi_valid && !data_misaligned_q;
+              rvfi_stage[i][1].rvfi_mem_rdata <= lsu_rdata_wb_i;
             end
             //traps
             rvfi_stage[i-1][1].rvfi_trap: begin
