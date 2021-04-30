@@ -21,7 +21,7 @@
 module cv32e40x_rvfi
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
-  #(parameter RVFI_NRET = 2)
+  #(parameter RVFI_NRET = 1)
   (
   input  logic        clk_i,
   input  logic        rst_ni,
@@ -305,7 +305,7 @@ module cv32e40x_rvfi
 
           if(instr_id_done) begin
 
-            rvfi_stage[i][0].rvfi_halt      <= 1'b0;
+            rvfi_stage[i][0].rvfi_halt      <= 1'b0; // Fixme: Check assumption about no intruction causing halt in cv32e40x
             rvfi_stage[i][0].rvfi_trap      <= illegal_insn_id_i;
             rvfi_stage[i][0].rvfi_intr      <= 1'b0;
             rvfi_stage[i][0].rvfi_order     <= rvfi_stage[i][0].rvfi_order + 64'b1;
@@ -339,8 +339,18 @@ module cv32e40x_rvfi
             rvfi_stage[i][1].rvfi_pc_wdata <= pc_set_i && is_branch_ex ? branch_target_ex_i : rvfi_stage[i-1][0].rvfi_pc_wdata;
 
             //csr operations as READ, WRITE, SET, CLEAR (does not work yet with interrupts)
-            rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,4'b0,csr_mstatus_n_i.mpp,3'b0,csr_mstatus_n_i.mpie,2'h0,csr_mstatus_n_i.upie,csr_mstatus_n_i.mie,2'h0,csr_mstatus_n_i.uie};
-            rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,4'b0,csr_mstatus_q_i.mpp,3'b0,csr_mstatus_q_i.mpie,2'h0,csr_mstatus_q_i.upie,csr_mstatus_q_i.mie,2'h0,csr_mstatus_q_i.uie};
+            rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,
+                                                        4'b0, csr_mstatus_n_i.mpp,
+                                                        3'b0, csr_mstatus_n_i.mpie,
+                                                        2'h0, csr_mstatus_n_i.upie,
+                                                              csr_mstatus_n_i.mie,
+                                                        2'h0, csr_mstatus_n_i.uie};
+            rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,
+                                                        4'b0, csr_mstatus_q_i.mpp,
+                                                        3'b0, csr_mstatus_q_i.mpie,
+                                                        2'h0, csr_mstatus_q_i.upie,
+                                                              csr_mstatus_q_i.mie,
+                                                        2'h0, csr_mstatus_q_i.uie};
 
             //clean up data_req_q[1] when the previous ld/st retired
             if(data_req_q[i]) begin
@@ -361,9 +371,9 @@ module cv32e40x_rvfi
 
             rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
 
-            data_req_q[i]                   <= data_req_q[i-1];
             mret_q[i]                       <= mret_q[i-1];
             syscall_q[i]                    <= syscall_q[i-1];
+            data_req_q[i]                   <= data_req_q[i-1];
 
             if(lsu_misaligned_ex_i) begin
               // Keep values when misaligned
@@ -387,8 +397,18 @@ module cv32e40x_rvfi
               rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
 
               //exceptions as illegal, and syscalls
-              rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,4'b0,csr_mstatus_n_i.mpp,3'b0,csr_mstatus_n_i.mpie,2'h0,csr_mstatus_n_i.upie,csr_mstatus_n_i.mie,2'h0,csr_mstatus_n_i.uie};
-              rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,4'b0,csr_mstatus_q_i.mpp,3'b0,csr_mstatus_q_i.mpie,2'h0,csr_mstatus_q_i.upie,csr_mstatus_q_i.mie,2'h0,csr_mstatus_q_i.uie};
+              rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,
+                                                          4'b0, csr_mstatus_n_i.mpp,
+                                                          3'b0, csr_mstatus_n_i.mpie,
+                                                          2'h0, csr_mstatus_n_i.upie,
+                                                                csr_mstatus_n_i.mie,
+                                                          2'h0, csr_mstatus_n_i.uie};
+              rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,
+                                                          4'b0, csr_mstatus_q_i.mpp,
+                                                          3'b0, csr_mstatus_q_i.mpie,
+                                                          2'h0, csr_mstatus_q_i.upie,
+                                                                csr_mstatus_q_i.mie,
+                                                          2'h0, csr_mstatus_q_i.uie};
 
               data_req_q[i]                   <= 1'b0;
               mret_q[i]                       <= mret_q[i-1];
@@ -398,6 +418,7 @@ module cv32e40x_rvfi
         end else if (i == 2) begin
         // Signals valid in WB stage
 
+          
           case(1'b1)
 
             //memory operations
@@ -424,21 +445,32 @@ module cv32e40x_rvfi
               rvfi_stage[i][1].rvfi_pc_wdata  <= is_mret_wb ? mepc_target_wb_i : exception_target_wb_i;
               if(!mret_q[i]) begin
                 //first cyle of MRET (FLUSH_WB)
-                rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,4'b0,csr_mstatus_n_i.mpp,3'b0,csr_mstatus_n_i.mpie,2'h0,csr_mstatus_n_i.upie,csr_mstatus_n_i.mie,2'h0,csr_mstatus_n_i.uie};
-                rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,4'b0,csr_mstatus_q_i.mpp,3'b0,csr_mstatus_q_i.mpie,2'h0,csr_mstatus_q_i.upie,csr_mstatus_q_i.mie,2'h0,csr_mstatus_q_i.uie};
+                rvfi_stage[i][1].rvfi_csr_mstatus_wdata <= {14'b0,csr_mstatus_n_i.mprv,
+                                                            4'b0, csr_mstatus_n_i.mpp,
+                                                            3'b0, csr_mstatus_n_i.mpie,
+                                                            2'h0, csr_mstatus_n_i.upie,
+                                                                  csr_mstatus_n_i.mie,
+                                                            2'h0, csr_mstatus_n_i.uie};
+                rvfi_stage[i][1].rvfi_csr_mstatus_rdata <= {14'b0,csr_mstatus_q_i.mprv,
+                                                            4'b0, csr_mstatus_q_i.mpp,
+                                                            3'b0, csr_mstatus_q_i.mpie,
+                                                            2'h0, csr_mstatus_q_i.upie,
+                                                                  csr_mstatus_q_i.mie,
+                                                            2'h0, csr_mstatus_q_i.uie};
               end
 
               mret_q[i]                       <= !mret_q[i];
             end
             rvfi_stage[i-1][1].rvfi_valid: begin
               rvfi_stage[i][1]               <= rvfi_stage[i-1][1];
-              rvfi_stage[i][1].rvfi_rd_addr  <= (rd_we_wb_i) ? rvfi_rd_addr_d  : '0;
-              rvfi_stage[i][1].rvfi_rd_wdata <= (rd_we_wb_i) ? rvfi_rd_wdata_d : '0;
             end
 
             default:
               rvfi_stage[i][1].rvfi_valid     <= 1'b0;
             endcase
+
+          rvfi_stage[i][1].rvfi_rd_addr  <= (rd_we_wb_i) ? rvfi_rd_addr_d  : '0;
+          rvfi_stage[i][1].rvfi_rd_wdata <= (rd_we_wb_i) ? rvfi_rd_wdata_d : '0;
         end
       end
     end
