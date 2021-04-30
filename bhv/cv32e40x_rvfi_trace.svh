@@ -28,8 +28,7 @@
     wait(rst_ni == 1'b1);
     $sformat(fn, "trace_rvfi_%h.log", hart_id_i);
     f = $fopen(fn, "w");
-    //$fwrite(f, " order      insn  rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    pc_rdat  mem_addr  mem_rdata  mem_wdata  TRAP  INTR\n");
-    $fwrite(f, "PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr\n");
+    $fwrite(f, "PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata\n");
 
     while(1) begin
 
@@ -37,34 +36,21 @@
 
         for (int i = 0; i < RVFI_NRET; i++) begin
           if ( rvfi_valid[i] ) begin
-          /*
-          insn_str = $sformatf(
-                          "%6d  %8h        %h  %h         %h  %h   %h  %h  PC=%h  %h  %h  %h  %h  %h",
-                          rvfi_order    [(i*64)+:64],
-                          rvfi_insn     [(i*32):32],
-                          rvfi_rs1_addr [(i* 5): 5],
-                          rvfi_rs1_rdata[(i*32):32],
-                          rvfi_rs2_addr [(i* 5): 5],
-                          rvfi_rs2_rdata[(i*32):32],
-                          rvfi_rd_addr  [(i* 5): 5],
-                          rvfi_rd_wdata [(i*32)+:32],
-                          rvfi_pc_rdata [(i*32)+:32],
-                          rvfi_mem_addr [(i*32)+:32],
-                          rvfi_mem_rdata[(i*32)+:32],
-                          rvfi_mem_wdata[(i*32)+:32],
-                          rvfi_trap[1],
-                          rvfi_intr[1] );
-*/
-            insn_str =  $sformatf("%h  %h        %h   %h        %h   %h       %h  %h    %h",
-                                  rvfi_pc_rdata [(i*32)+:32],
-                                  rvfi_insn     [(i*32)+:32],
-                                  rvfi_rs1_addr [(i* 5)+: 5],
-                                  rvfi_rs1_rdata[(i*32)+:32],
-                                  rvfi_rs2_addr [(i* 5)+: 5],
-                                  rvfi_rs2_rdata[(i*32)+:32],
-                                  rvfi_rd_addr  [(i* 5)+: 5],
-                                  rvfi_rd_wdata [(i*32)+:32],
-                                  rvfi_mem_addr [(i*32)+:32]
+
+            insn_str =  $sformatf("%h  %h        %h   %h        %h   %h       %h  %h    %h         %h         %h  %h  %h",
+                                  rvfi_pc_rdata  [(i*32)+:32],
+                                  rvfi_insn      [(i*32)+:32],
+                                  rvfi_rs1_addr  [(i* 5)+: 5],
+                                  rvfi_rs1_rdata [(i*32)+:32],
+                                  rvfi_rs2_addr  [(i* 5)+: 5],
+                                  rvfi_rs2_rdata [(i*32)+:32],
+                                  rvfi_rd_addr   [(i* 5)+: 5],
+                                  rvfi_rd_wdata  [(i*32)+:32],
+                                  rvfi_mem_addr  [(i*32)+:32],
+                                  rvfi_mem_rmask [(i* 4)+: 4],
+                                  rvfi_mem_wmask [(i* 4)+: 4],
+                                  rvfi_mem_rdata [(i*32)+:32],
+                                  rvfi_mem_wdata [(i*32)+:32]
                                   );
 
             $fwrite(f, "%s\n", insn_str);

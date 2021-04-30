@@ -181,8 +181,8 @@ module cv32e40x_rvfi
       assign rvfi_trap             [i]          = rvfi_stage[RVFI_STAGES-RVFI_NRET+i][NRET_MAX-RVFI_NRET+i].rvfi_trap;
       assign rvfi_halt             [i]          = rvfi_stage[RVFI_STAGES-RVFI_NRET+i][NRET_MAX-RVFI_NRET+i].rvfi_halt;
       assign rvfi_intr             [i]          = intr_d[i];
-      assign rvfi_mode             [(i* 2)+: 2] = 2'b11;
-      assign rvfi_ixl              [(i* 2)+: 2] = 2'b01;
+      assign rvfi_mode             [(i* 2)+: 2] = 2'b11; // Privilege level: Machine-mode (3)
+      assign rvfi_ixl              [(i* 2)+: 2] = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
       assign rvfi_rs1_addr         [(i* 5)+: 5] = rvfi_stage[RVFI_STAGES-RVFI_NRET+i][NRET_MAX-RVFI_NRET+i].rvfi_rs1_addr;
       assign rvfi_rs2_addr         [(i* 5)+: 5] = rvfi_stage[RVFI_STAGES-RVFI_NRET+i][NRET_MAX-RVFI_NRET+i].rvfi_rs2_addr;
       assign rvfi_rs1_rdata        [(i*32)+:32] = rvfi_stage[RVFI_STAGES-RVFI_NRET+i][NRET_MAX-RVFI_NRET+i].rvfi_rs1_rdata;
@@ -329,7 +329,6 @@ module cv32e40x_rvfi
         end else if (i == 1) begin
           // No instructions retiring in the EX stage
 
-          // instructions retiring in the WB stage
           if(instr_ex_ready_i && !data_req_q[i-1] && !(rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1])) begin
 
             rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
