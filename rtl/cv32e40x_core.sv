@@ -97,8 +97,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   pc_mux_e           pc_mux_id;         // Mux selector for next PC
   exc_pc_mux_e       exc_pc_mux_id; // Mux selector for exception PC
-  logic [4:0]        m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
-  logic [4:0]        exc_cause;
+  logic [4:0]        m_exc_vec_pc_mux; // Mux selector for vectored IRQ PC
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
@@ -157,11 +156,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [23:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
-  csr_opcode_e csr_op;
-  csr_num_e    csr_addr;
-  csr_num_e    csr_addr_int;
   logic [31:0] csr_rdata;
-  logic [31:0] csr_wdata;
   PrivLvl_t    current_priv_lvl;
 
   // Load/store unit
@@ -266,11 +261,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
   if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
-
-
-  // Mux selector for vectored IRQ PC
-  assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
-
 
   // Connect toplevel OBI signals to internal interfaces
   assign instr_req_o                         = m_c_obi_instr_if.req;
@@ -379,7 +369,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .pc_if_o             ( pc_if             ),
 
-    .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
+    .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux  ),
 
     .csr_mtvec_init_o    ( csr_mtvec_init    ),
 
@@ -596,17 +586,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i               ( ex_wb_pipe                   ),
 
     .lsu_rdata_i                ( lsu_rdata                    ),
+    .lsu_ready_wb_i             ( lsu_ready_wb                 ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
+  
+    .wb_valid_o                 ( wb_valid                     ),
+
     .data_req_wb_o              ( data_req_wb                  )
   );
-
-  // Tracer signal
-  assign wb_valid = lsu_ready_wb;
-
 
   //////////////////////////////////////
   //        ____ ____  ____           //
@@ -637,10 +627,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init         ),
+
+    // ID/EX pipeline 
+    .id_ex_pipe_i               ( id_ex_pipe             ),
+
     // Interface to CSRs (SRAM like)
-    .csr_addr_i                 ( csr_addr               ),
-    .csr_wdata_i                ( csr_wdata              ),
-    .csr_op_i                   ( csr_op                 ),
     .csr_access_i               ( id_ex_pipe.csr_access  ),
     .csr_rdata_o                ( csr_rdata              ),
 
@@ -687,13 +678,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     )
   );
 
-  //  CSR access
-  assign csr_addr     =  csr_addr_int;
-  assign csr_wdata    =  id_ex_pipe.alu_operand_a;
-  assign csr_op       =  id_ex_pipe.csr_op;
-
-  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_en ? id_ex_pipe.alu_operand_b[11:0] : '0);
-
   ////////////////////////////////////////////////////////////////////
   //    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
   //   / ___/ _ \| \ | |_   _|  _ \ / _ \| |   | |   | ____|  _ \   //
@@ -736,8 +720,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .pc_set_o                       ( pc_set                 ),
     .pc_mux_o                       ( pc_mux_id              ),
     .exc_pc_mux_o                   ( exc_pc_mux_id          ),
-    .exc_cause_o                    ( exc_cause              ),
-
+    .m_exc_vec_pc_mux_o             ( m_exc_vec_pc_mux       ),
+    
     // LSU
     .data_req_ex_i                  ( id_ex_pipe.data_req    ),
     .data_we_ex_i                   ( id_ex_pipe.data_we     ),
@@ -759,6 +743,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .current_priv_lvl_i             ( current_priv_lvl       ),
     .irq_ack_o                      ( irq_ack_o              ),
     .irq_id_o                       ( irq_id_o               ),
+    
+    // From CSR registers
+    .mtvec_mode_i                   ( mtvec_mode             ),
 
     // Debug Signal
     .debug_mode_o                   ( debug_mode             ),

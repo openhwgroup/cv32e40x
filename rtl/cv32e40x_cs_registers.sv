@@ -49,10 +49,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
 
+  // ID/EX pipeline 
+  input id_ex_pipe_t      id_ex_pipe_i,
+
   // Interface to registers (SRAM like)
-  input  csr_num_e        csr_addr_i,
-  input  logic [31:0]     csr_wdata_i,
-  input  csr_opcode_e     csr_op_i,
   input                   csr_access_i,
   output logic [31:0]     csr_rdata_o,
 
@@ -183,7 +183,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                         mhpmcounter_write_upper;          // write 32 upper bits mhpmcounter_q
   logic [31:0]                         mhpmcounter_write_increment;      // write increment of mhpmcounter_q
 
-  
+
+  csr_opcode_e csr_op;
+  csr_num_e    csr_addr;
+  logic [31:0] csr_wdata;
+
+  //  CSR access
+  assign csr_addr     =  csr_num_e'(id_ex_pipe_i.csr_en ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
+  assign csr_wdata    =  id_ex_pipe_i.alu_operand_a;
+  assign csr_op       =  id_ex_pipe_i.csr_op;
+    
   // mip CSR
   assign mip = mip_i;
 
@@ -193,14 +202,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // MIE CSR operation logic
   always_comb
   begin
-    csr_mie_wdata = csr_wdata_i;
+    csr_mie_wdata = csr_wdata;
 
-    case (csr_op_i)
-      CSR_OP_WRITE: csr_mie_wdata = csr_wdata_i;
-      CSR_OP_SET:   csr_mie_wdata = csr_wdata_i | mie_q;
-      CSR_OP_CLEAR: csr_mie_wdata = (~csr_wdata_i) & mie_q;
+    case (csr_op)
+      CSR_OP_WRITE: csr_mie_wdata = csr_wdata;
+      CSR_OP_SET:   csr_mie_wdata = csr_wdata | mie_q;
+      CSR_OP_CLEAR: csr_mie_wdata = (~csr_wdata) & mie_q;
       CSR_OP_READ: begin
-        csr_mie_wdata = csr_wdata_i;
+        csr_mie_wdata = csr_wdata;
       end
     endcase
   end
@@ -228,7 +237,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   begin
     csr_rdata_int = csr_rdata_q;
     if(csr_access_i) begin
-      case (csr_addr_i)
+      case (csr_addr)
         // mstatus: always M-mode, contains IE bit
         CSR_MSTATUS: csr_rdata_int = mstatus_q;
         // misa: machine isa register
@@ -306,7 +315,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
         CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
         CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
-          csr_rdata_int = mhpmcounter_q[csr_addr_i[4:0]][31:0];
+          csr_rdata_int = mhpmcounter_q[csr_addr[4:0]][31:0];
 
         CSR_MCYCLEH,
         CSR_MINSTRETH,
@@ -328,7 +337,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
         CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
         CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
-          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_addr_i[4:0]][63:32] : '0;
+          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_addr[4:0]][63:32] : '0;
 
         CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
 
@@ -340,7 +349,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
         CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
         CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
-          csr_rdata_int = mhpmevent_q[csr_addr_i[4:0]];
+          csr_rdata_int = mhpmevent_q[csr_addr[4:0]];
 
         
         default:
@@ -399,7 +408,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mie_we                   = 1'b0;
   
     if (csr_we_int) begin
-      case (csr_addr_i)
+      case (csr_addr)
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
@@ -506,16 +515,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // CSR operation logic
   always_comb
   begin
-    csr_wdata_int = csr_wdata_i;
+    csr_wdata_int = csr_wdata;
     csr_we_int    = 1'b1;
 
-    case (csr_op_i)
-      CSR_OP_WRITE: csr_wdata_int = csr_wdata_i;
-      CSR_OP_SET:   csr_wdata_int = csr_wdata_i | csr_rdata_o;
-      CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata_i) & csr_rdata_o;
+    case (csr_op)
+      CSR_OP_WRITE: csr_wdata_int = csr_wdata;
+      CSR_OP_SET:   csr_wdata_int = csr_wdata | csr_rdata_o;
+      CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & csr_rdata_o;
 
       CSR_OP_READ: begin
-        csr_wdata_int = csr_wdata_i;
+        csr_wdata_int = csr_wdata;
         csr_we_int    = 1'b0;
       end
     endcase
@@ -701,8 +710,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic tmatch_value_rd_error;
 
   // Write select
-  assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA1);
-  assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_addr_i == CSR_TDATA2);
+  assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr == CSR_TDATA1);
+  assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_addr == CSR_TDATA2);
 
   // All supported trigger types
   assign tinfo_types = 1 << TTYPE_MCONTROL;
@@ -800,36 +809,36 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mcountinhibit_we;
   logic mhpmevent_we;
 
-  assign mcountinhibit_we = csr_we_int & (  csr_addr_i == CSR_MCOUNTINHIBIT);
-  assign mhpmevent_we     = csr_we_int & ( (csr_addr_i == CSR_MHPMEVENT3  )||
-                                           (csr_addr_i == CSR_MHPMEVENT4  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT5  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT6  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT7  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT8  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT9  ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT10 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT11 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT12 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT13 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT14 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT15 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT16 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT17 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT18 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT19 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT20 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT21 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT22 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT23 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT24 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT25 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT26 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT27 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT28 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT29 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT30 ) ||
-                                           (csr_addr_i == CSR_MHPMEVENT31 ) );
+  assign mcountinhibit_we = csr_we_int & (  csr_addr == CSR_MCOUNTINHIBIT);
+  assign mhpmevent_we     = csr_we_int & ( (csr_addr == CSR_MHPMEVENT3  )||
+                                           (csr_addr == CSR_MHPMEVENT4  ) ||
+                                           (csr_addr == CSR_MHPMEVENT5  ) ||
+                                           (csr_addr == CSR_MHPMEVENT6  ) ||
+                                           (csr_addr == CSR_MHPMEVENT7  ) ||
+                                           (csr_addr == CSR_MHPMEVENT8  ) ||
+                                           (csr_addr == CSR_MHPMEVENT9  ) ||
+                                           (csr_addr == CSR_MHPMEVENT10 ) ||
+                                           (csr_addr == CSR_MHPMEVENT11 ) ||
+                                           (csr_addr == CSR_MHPMEVENT12 ) ||
+                                           (csr_addr == CSR_MHPMEVENT13 ) ||
+                                           (csr_addr == CSR_MHPMEVENT14 ) ||
+                                           (csr_addr == CSR_MHPMEVENT15 ) ||
+                                           (csr_addr == CSR_MHPMEVENT16 ) ||
+                                           (csr_addr == CSR_MHPMEVENT17 ) ||
+                                           (csr_addr == CSR_MHPMEVENT18 ) ||
+                                           (csr_addr == CSR_MHPMEVENT19 ) ||
+                                           (csr_addr == CSR_MHPMEVENT20 ) ||
+                                           (csr_addr == CSR_MHPMEVENT21 ) ||
+                                           (csr_addr == CSR_MHPMEVENT22 ) ||
+                                           (csr_addr == CSR_MHPMEVENT23 ) ||
+                                           (csr_addr == CSR_MHPMEVENT24 ) ||
+                                           (csr_addr == CSR_MHPMEVENT25 ) ||
+                                           (csr_addr == CSR_MHPMEVENT26 ) ||
+                                           (csr_addr == CSR_MHPMEVENT27 ) ||
+                                           (csr_addr == CSR_MHPMEVENT28 ) ||
+                                           (csr_addr == CSR_MHPMEVENT29 ) ||
+                                           (csr_addr == CSR_MHPMEVENT30 ) ||
+                                           (csr_addr == CSR_MHPMEVENT31 ) );
 
   // ------------------------
   // Increment value for performance counters
@@ -854,7 +863,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       // Event Control
       if(mhpmevent_we)
-        mhpmevent_n[csr_addr_i[4:0]] = csr_wdata_int;
+        mhpmevent_n[csr_addr[4:0]] = csr_wdata_int;
     end
 
   genvar wcnt_gidx;
@@ -862,11 +871,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     for (wcnt_gidx=0; wcnt_gidx<32; wcnt_gidx++) begin : gen_mhpmcounter_write
 
       // Write lower counter bits
-      assign mhpmcounter_write_lower[wcnt_gidx] = csr_we_int && (csr_addr_i == (CSR_MCYCLE + wcnt_gidx));
+      assign mhpmcounter_write_lower[wcnt_gidx] = csr_we_int && (csr_addr == (CSR_MCYCLE + wcnt_gidx));
 
       // Write upper counter bits
       assign mhpmcounter_write_upper[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                  csr_we_int && (csr_addr_i == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
+                                                  csr_we_int && (csr_addr == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
 
       // Increment counter
       
