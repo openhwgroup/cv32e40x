@@ -4,6 +4,7 @@ Physical Memory Attribution (PMA)
 =================================
 The |corev| includes a Physical Memory Attribution (PMA) unit that allows compile time attribution of the physical memory map.
 The PMA is configured through the top level parameters ``PMA_NUM_REGIONS`` and ``PMA_CFG[]``.
+The number of PMA regions is configured through the ``PMA_NUM_REGIONS`` parameter. Valid values are 0-16.
 The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entries of the type ``pma_region_t``, defined in ``cv32e40x_pkg.sv``:
 
 .. code-block:: verilog
@@ -23,6 +24,7 @@ The PMA can be deconfigured by setting ``PMA_NUM_REGIONS=0``. When doing this, `
 Address range
 ~~~~~~~~~~~~~
 The address boundaries of a PMA region are set in ``word_addr_low/word_addr_high``. These contain bits 33:2 of 34-bit, word aligned addresses. To get an address match, the transfer address ``addr`` must be in the range ``word_addr_low <= addr < word_addr_high``.
+Memory regions not covered by any PMA regions are treated as main memory with bufferable, cacheable and atomic attributes set.
 
 Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
