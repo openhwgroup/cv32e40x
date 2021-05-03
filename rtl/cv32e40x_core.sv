@@ -632,7 +632,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ex_pipe_i               ( id_ex_pipe             ),
 
     // Interface to CSRs (SRAM like)
-    .csr_access_i               ( id_ex_pipe.csr_access  ),
     .csr_rdata_o                ( csr_rdata              ),
 
     // Interrupt related control signals
@@ -654,7 +653,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .pc_if_i                    ( pc_if                  ),
     .pc_id_i                    ( if_id_pipe.pc          ),
-    .pc_ex_i                    ( id_ex_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
     .csr_save_id_i              ( csr_save_id            ),
