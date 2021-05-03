@@ -150,6 +150,7 @@ module cv32e40x_wrapper
                 .id_stage_instr_valid             (core_i.controller_i.controller_fsm_i.instr_valid),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
                 // probed controller signals
+                .exc_cause                        (core_i.controller_i.exc_cause),
                 .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .*);
