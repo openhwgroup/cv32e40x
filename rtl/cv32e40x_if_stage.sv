@@ -26,7 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
-  #(parameter int unsigned PMA_NUM_REGIONS = 0,
+  #(parameter bit          A_EXTENSION     = 0,
+    parameter int unsigned PMA_NUM_REGIONS = 0,
     parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
 (
     input  logic        clk,
@@ -185,6 +186,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   
   cv32e40x_mpu
     #(.IF_STAGE(1),
+      .A_EXTENSION(A_EXTENSION),
       .CORE_REQ_TYPE(obi_inst_req_t),
       .CORE_RESP_TYPE(inst_resp_t),
       .BUS_RESP_TYPE(obi_inst_resp_t),

@@ -340,7 +340,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //                                              //
   //////////////////////////////////////////////////
   cv32e40x_if_stage
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   if_stage_i
   (
@@ -558,7 +559,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_load_store_unit
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   load_store_unit_i
   (

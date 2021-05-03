@@ -25,6 +25,7 @@
 
 module cv32e40x_pma import cv32e40x_pkg::*;
   #(  
+      parameter bit          A_EXTENSION = 0,
       parameter int unsigned PMA_NUM_REGIONS = 0,
       parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
   (
@@ -41,6 +42,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   
   pma_region_t pma_cfg;
   logic [31:0] word_addr;
+  logic pma_cfg_atomic;
 
   // PMA addresses are word addresses
   assign word_addr =  {2'b00, trans_addr_i[31:2]};
@@ -58,6 +60,16 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       end
     end
   end
+
+  // Tie of atomic attribute if A_EXTENSION=0
+  generate
+    if (A_EXTENSION) begin: pma_atomic
+      assign pma_cfg_atomic = pma_cfg.atomic;
+    end
+    else begin: pma_no_atomic
+      assign pma_cfg_atomic = 1'b0;
+    end
+  endgenerate
   
   // Check transaction based on PMA region config
   always_comb begin
@@ -65,7 +77,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
     pma_err_o = 1'b0;
 
     // Check for atomic access
-    if (atomic_access_i && !pma_cfg.atomic) begin
+    if (atomic_access_i && !pma_cfg_atomic) begin
       pma_err_o = 1'b1;
     end
 
