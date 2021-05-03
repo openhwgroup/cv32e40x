@@ -53,7 +53,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic [31:0] branch_target_o,
 
   // Stall Control
-  input logic         is_decoding_i, // Used to mask data Dependency inside the APU dispatcher in case of an istruction non valid
   input logic         lsu_ready_ex_i, // EX part of LSU is done
 
   output logic        ex_ready_o, // EX stage ready for new data

@@ -109,6 +109,11 @@ typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
                    DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
                    DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
 
+// WB centric controller FSM state
+typedef enum logic [1:0] { CTRL_RESET, CTRL_BOOT_SET, CTRL_FUNCTIONAL, CTRL_SLEEP} wb_ctrl_state_e;
+
+
+
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
 // will come directly from flip-flops. *_INDEX and debug_state_e encoding must match
@@ -909,6 +914,7 @@ typedef struct packed {
   // Signals for exception handling etc passed on for evaluation in WB stage
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
+  logic         instr_valid;      // instruction in EX is valid
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;

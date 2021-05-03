@@ -153,11 +153,15 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,                 // WB stage is ready
 
   input  logic        data_req_wb_i               // ALU data is written back in WB
-
 );
 
   // Main FSM and debug FSM
-  cv32e40x_controller_fsm controller_fsm_i (
+`ifndef CV32E40X_WB_CONTROLLER
+  cv32e40x_controller_fsm
+`else
+  cv32e40x_wb_controller_fsm
+`endif
+  controller_fsm_i (
     // Clocks and reset
     .clk                         ( clk           ),
     .clk_ungated_i               ( clk_ungated_i ),

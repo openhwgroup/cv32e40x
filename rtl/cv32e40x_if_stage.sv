@@ -241,7 +241,7 @@ instruction_obi_i
   assign if_ready = id_ready_i;
 
   // if stage valid if we are ready and not commanded to halt
-  assign if_valid = if_ready && !halt_if_i;
+  assign if_valid = if_ready && !halt_if_i; // TODO: && !kill_if_i
 
   // Handshake to pop instruction from alignment_buffer
   // when we issue a new instruction
@@ -272,7 +272,9 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr[15:0];
+        //$display("IF_PC 0 %08x", pc_if_o);
       end else if (clear_instr_valid_i) begin
+        // TODO: Check order of these if/elseifs, or if they are exclusive
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
     end

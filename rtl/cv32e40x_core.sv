@@ -261,7 +261,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
-  
+
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -539,7 +539,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_o              ( rf_wdata_ex                  ),
 
     // stall control
-    .is_decoding_i              ( is_decoding                  ),
     .lsu_ready_ex_i             ( lsu_ready_ex                 ),
 
     .ex_ready_o                 ( ex_ready                     ),
@@ -702,7 +701,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //   \____\___/|_| \_| |_| |_| \_\\___/|_____|_____|_____|_| \_\  //
   //                                                                //
   ////////////////////////////////////////////////////////////////////
-
   cv32e40x_controller
   controller_i
   (
@@ -814,7 +812,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( lsu_ready_wb           ),
     .data_req_wb_i                  ( data_req_wb            )
-  );
+ );
 
 ////////////////////////////////////////////////////////////////////////
 //  _____      _       _____             _             _ _            //

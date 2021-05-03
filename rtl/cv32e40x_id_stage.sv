@@ -248,7 +248,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //TODO:OK: The following (two) assignments could perhaps be moved to the controller.
   // kill instruction in the IF/ID stage by setting the instr_valid_id control
   // signal to 0 for instructions that are done
-  assign clear_instr_valid_o = id_ready_o | halt_id_i | branch_taken_ex_o;
+  assign clear_instr_valid_o = id_ready_o | halt_id_i | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
 
   assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && branch_decision_i;
 
@@ -525,7 +525,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
     end
-    else if (lsu_misaligned_i) begin
+    else if (lsu_misaligned_i) begin // TODO: is id_valid_o implied?
       // misaligned data access case
       if (ex_ready_i)
       begin // misaligned access case, only unstall alu operands
@@ -548,6 +548,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       if (id_valid_o)
       begin // unstall the whole pipeline
+        id_ex_pipe_o.instr_valid            <= if_id_pipe_i.instr_valid;
         id_ex_pipe_o.alu_en                 <= alu_en;
         if (alu_en)
         begin
@@ -611,7 +612,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
         // so we set all write enables to 0, but unstall the pipe
-
+        // TODO: Do this in EX by gating with id_ex_pipe.instr_valid
+        id_ex_pipe_o.instr_valid            <= 1'b0;
         id_ex_pipe_o.rf_we                  <= 1'b0;
 
         id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
@@ -683,7 +685,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   end
 
   // stall control
-  assign id_ready_o = ((~misaligned_stall_i) & (~jr_stall_i) & (~load_stall_i) & ex_ready_i);
-  assign id_valid_o = (~halt_id_i) & id_ready_o;
+  assign id_ready_o = !misaligned_stall_i && !jr_stall_i && !load_stall_i && ex_ready_i;
+  assign id_valid_o = if_id_pipe_i.instr_valid && !halt_id_i && id_ready_o; //TODO:OK: Remove instr_valid, and qualify in EX with id_ex_pipe.instr_valid instead
+
+  // TODO: Should instr_valid factor into id_valid, or have instr_valid bits per stage?
 
 endmodule // cv32e40x_id_stage
