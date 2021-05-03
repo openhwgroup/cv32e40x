@@ -27,7 +27,7 @@
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
   #(parameter int unsigned PMA_NUM_REGIONS = 0,
-    parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
+    parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
 (
     input  logic        clk,
     input  logic        rst_n,
@@ -271,7 +271,7 @@ instruction_obi_i
         if_id_pipe_o.is_compressed    <= instr_compressed_int;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
-        if_id_pipe_o.compressed_instr <= prefetch_instr[15:0];
+        if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
       end else if (clear_instr_valid_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
