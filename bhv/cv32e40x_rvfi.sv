@@ -390,7 +390,7 @@ module cv32e40x_rvfi
           //exceptions
           if(instr_ex_valid_i && (rvfi_stage[i-1][0].rvfi_trap || mret_q[i-1] || syscall_q[i-1])) begin
 
-              rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
+              rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
               rvfi_stage[i][1].rvfi_valid     <= ex_stage_valid_q;
 
               rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
