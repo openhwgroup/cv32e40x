@@ -371,20 +371,16 @@ module cv32e40x_rvfi
 
             rvfi_stage[i][1]                <= rvfi_stage[i-1][0];
 
+            // Decide valid in WB stage
+            rvfi_stage[i][1].rvfi_valid     <= 1'b0;
+
             mret_q[i]                       <= mret_q[i-1];
             syscall_q[i]                    <= syscall_q[i-1];
             data_req_q[i]                   <= data_req_q[i-1];
 
-            if(lsu_misaligned_ex_i) begin
-              // Keep values when misaligned
-              rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i][1].rvfi_valid;
-              rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_stage[i][1].rvfi_mem_addr;
-              rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_stage[i][1].rvfi_mem_wdata;
-            end else begin
-              rvfi_stage[i][1].rvfi_valid     <= ex_stage_ready_q;
-              rvfi_stage[i][1].rvfi_mem_addr  <= rvfi_mem_addr_d;
-              rvfi_stage[i][1].rvfi_mem_wdata <= rvfi_mem_wdata_d;
-            end
+            // Keep values when misaligned
+            rvfi_stage[i][1].rvfi_mem_addr  <= (lsu_misaligned_ex_i) ? rvfi_stage[i][1].rvfi_mem_addr  : rvfi_mem_addr_d;
+            rvfi_stage[i][1].rvfi_mem_wdata <= (lsu_misaligned_ex_i) ? rvfi_stage[i][1].rvfi_mem_wdata : rvfi_mem_wdata_d;
           end
 
           //exceptions
@@ -418,14 +414,13 @@ module cv32e40x_rvfi
         end else if (i == 2) begin
         // Signals valid in WB stage
 
-          
           case(1'b1)
 
             //memory operations
             lsu_rvalid_wb_i && data_req_q[i-1]: begin
               rvfi_stage[i][1]                <= rvfi_stage[i-1][1];
               //misaligneds take 2 cycles at least
-              rvfi_stage[i][1].rvfi_valid     <= rvfi_stage[i-1][1].rvfi_valid && !data_misaligned_q;
+              rvfi_stage[i][1].rvfi_valid     <= !data_misaligned_q;
               rvfi_stage[i][1].rvfi_mem_rdata <= lsu_rdata_wb_i;
             end
             //traps
