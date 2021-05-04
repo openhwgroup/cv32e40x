@@ -234,7 +234,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
     csr_rdata_int = csr_rdata_q;
-    if(id_ex_pipe.csr_access) begin
+    if(id_ex_pipe_i.csr_access) begin
       case (csr_addr)
         // mstatus: always M-mode, contains IE bit
         CSR_MSTATUS: csr_rdata_int = mstatus_q;
@@ -353,7 +353,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         default:
           csr_rdata_int = '0;
       endcase
-    end // id_ex_pipe.csr_access
+    end // id_ex_pipe_i.csr_access
   end
 
 
@@ -457,7 +457,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_save_id_i:
             exception_pc = pc_id_i;
           csr_save_ex_i:
-            exception_pc = id_ex_pipe.pc;
+            exception_pc = id_ex_pipe_i.pc;
           default:;
         endcase
 
@@ -532,7 +532,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       csr_rdata_q <= 32'h0;
-    end else if (id_ex_pipe.csr_access) begin
+    end else if (id_ex_pipe_i.csr_access) begin
       csr_rdata_q <= csr_rdata_int;
     end
   end
