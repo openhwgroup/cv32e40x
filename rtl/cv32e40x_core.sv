@@ -444,8 +444,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // CSR ID/EX
     .current_priv_lvl_i           ( current_priv_lvl     ),
 
-    .lsu_misaligned_i             ( lsu_misaligned       ),
-
     // Debug Signalf
     .debug_mode_i                 ( debug_mode           ),
 

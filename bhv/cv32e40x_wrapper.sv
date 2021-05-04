@@ -152,6 +152,7 @@ module cv32e40x_wrapper
                 // probed controller signals
                 .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .id_valid                         (core_i.id_stage_i.id_valid_o && !core_i.id_stage_i.multi_cycle_id_stall),
                 .*);
 
   bind cv32e40x_sleep_unit:
@@ -228,7 +229,7 @@ module cv32e40x_wrapper
       .instr          ( core_i.id_stage_i.instr                        ),
       .controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
-      .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
+      .id_valid       ( core_i.id_stage_i.id_valid_o && !core_i.id_stage_i.multi_cycle_id_stall  ),
       .is_decoding    ( core_i.is_decoding                             ),
       .is_illegal     ( core_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match                     ),
