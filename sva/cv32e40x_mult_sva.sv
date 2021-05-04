@@ -35,7 +35,12 @@ module cv32e40x_mult_sva
    input              mul_opcode_e operator_i,
    // Internal signals
    input logic [32:0] mulh_acc,
-   input              mult_state_e mulh_state);
+   input              mult_state_e mulh_state,
+   input logic [16:0] mulh_al,
+   input logic [16:0] mulh_bl,
+   input logic [16:0] mulh_ah,
+   input logic [16:0] mulh_bh,
+   input logic [33:0] int_result);
 
   ////////////////////////////////////////
   ////  Assertions on module boundary ////
@@ -123,5 +128,71 @@ module cv32e40x_mult_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (operator_i == MUL_M32) |-> (mulh_acc == '0))
       else `uvm_error("mult", "Accumulate register not 0 for MUL instruction")
+
+
+  // Check result for intermediary stages of the 4-step shift-and-add algorithm
+
+  //Here are checks for the `int_result` of the 4 steps.
+  //There are also checks for `mulh_acc` for the 3 last steps.
+  //At the final step, `int_result + mulh_acc` represents the final `result_o`.
+
+  logic [33:0] shift_result_ll;
+  logic [33:0] shift_result_lh;
+  logic [33:0] shift_result_hl;
+  logic [33:0] shift_result_hh;
+  logic [33:0] shift_result_ll_shift;
+  logic [32:0] shift_result_ll_lh;
+  logic [33:0] shift_result_ll_lh_hl;
+  logic [32:0] shift_result_ll_lh_hl_shift;
+
+  assign shift_result_ll = $signed({{16{mulh_al[16]}}, mulh_al[15:0]}) * $signed({{16{mulh_bl[16]}}, mulh_bl[15:0]});
+  a_shift_result_ll : // Given MUL_H, first calculation is "al * bl"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ((mulh_state == ALBL) && enable_i && (operator_i == MUL_H)) |->
+                     (int_result == shift_result_ll))
+      else `uvm_error("mult", "MUL_H step 1/4 got wrong int_result")
+
+  assign shift_result_lh = $signed({{16{mulh_al[16]}}, mulh_al[15:0]}) * $signed({{16{mulh_bh[16]}}, mulh_bh[15:0]});
+  a_shift_result_lh : // Second calculation is "al * bh"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == ALBH) |->
+                     (int_result == shift_result_lh))
+      else `uvm_error("mult", "MUL_H step 2/4 got wrong int_result")
+
+  assign shift_result_hl = $signed({{16{mulh_ah[16]}}, mulh_ah[15:0]}) * $signed({{16{mulh_bl[16]}}, mulh_bl[15:0]});
+  a_shift_result_hl : // Third calculation is "ah * bl"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == AHBL) |->
+                     (int_result == shift_result_hl))
+      else `uvm_error("mult", "MUL_H step 3/4 got wrong int_result")
+
+  assign shift_result_hh = $signed({{16{mulh_ah[16]}}, mulh_ah[15:0]}) * $signed({{16{mulh_bh[16]}}, mulh_bh[15:0]});
+  a_shift_result_hh : // Fourth and final multiplication is "ah * bh"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == AHBH) |->
+                     (int_result == shift_result_hh))
+      else `uvm_error("mult", "MUL_H step 4/4 got wrong int_result")
+
+  assign shift_result_ll_shift = (shift_result_ll) >> 16;
+  a_shift_result_ll_shift : // In step 2, accumulate the shifted result of "al * bl"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == ALBH) |->
+                     (mulh_acc == shift_result_ll_shift))
+      else `uvm_error("mult", "MUL_H accumulated 'al x bl' wrong")
+
+  assign shift_result_ll_lh = $signed(shift_result_ll_shift) + $signed(shift_result_lh);
+  a_shift_result_ll_lh : // In step 3, accumulate also result of "al * bh"
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == AHBL) |->
+                     (mulh_acc == shift_result_ll_lh))
+      else `uvm_error("mult", "MUL_H accumulated 'al x bh' wrong")
+
+  assign shift_result_ll_lh_hl = $signed(shift_result_ll_lh) + $signed(shift_result_hl);
+  assign shift_result_ll_lh_hl_shift = $signed(shift_result_ll_lh_hl) >>> 16;
+  a_shift_result_ll_lh_hl_shift : // In step 4, accumulate also "ah * bl" and store the shifted result
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (mulh_state == AHBH) |->
+                     (mulh_acc == shift_result_ll_lh_hl_shift))
+      else `uvm_error("mult", "MUL_H accumulated 'ah x bl' wrong")
 
 endmodule // cv32e40x_mult
