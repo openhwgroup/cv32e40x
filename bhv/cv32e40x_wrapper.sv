@@ -216,7 +216,6 @@ module cv32e40x_wrapper
 
 
     cv32e40x_rvfi
-      #(.RVFI_NRET(1))
       rvfi_i
         (.clk_i                    ( clk_i                                                         ),
          .rst_ni                   ( rst_ni                                                        ),

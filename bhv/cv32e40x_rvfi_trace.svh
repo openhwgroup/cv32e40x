@@ -34,28 +34,24 @@
 
       @(posedge clk_i)
 
-        for (int i = 0; i < RVFI_NRET; i++) begin
-          if ( rvfi_valid[i] ) begin
-
-            insn_str =  $sformatf("%h  %h        %h   %h        %h   %h       %h  %h    %h         %h         %h  %h  %h",
-                                  rvfi_pc_rdata  [(i*32)+:32],
-                                  rvfi_insn      [(i*32)+:32],
-                                  rvfi_rs1_addr  [(i* 5)+: 5],
-                                  rvfi_rs1_rdata [(i*32)+:32],
-                                  rvfi_rs2_addr  [(i* 5)+: 5],
-                                  rvfi_rs2_rdata [(i*32)+:32],
-                                  rvfi_rd_addr   [(i* 5)+: 5],
-                                  rvfi_rd_wdata  [(i*32)+:32],
-                                  rvfi_mem_addr  [(i*32)+:32],
-                                  rvfi_mem_rmask [(i* 4)+: 4],
-                                  rvfi_mem_wmask [(i* 4)+: 4],
-                                  rvfi_mem_rdata [(i*32)+:32],
-                                  rvfi_mem_wdata [(i*32)+:32]
-                                  );
-
-            $fwrite(f, "%s\n", insn_str);
-          end // if ( rvfi_valid[i] )
-        end // for (int i = 0; i < RVFI_NRET; i++)
+        if ( rvfi_valid ) begin
+          insn_str =  $sformatf("%h  %h        %h   %h        %h   %h       %h  %h    %h         %h         %h  %h  %h",
+                                rvfi_pc_rdata ,
+                                rvfi_insn     ,
+                                rvfi_rs1_addr ,
+                                rvfi_rs1_rdata,
+                                rvfi_rs2_addr ,
+                                rvfi_rs2_rdata,
+                                rvfi_rd_addr  ,
+                                rvfi_rd_wdata ,
+                                rvfi_mem_addr ,
+                                rvfi_mem_rmask,
+                                rvfi_mem_wmask,
+                                rvfi_mem_rdata,
+                                rvfi_mem_wdata
+                                );
+          $fwrite(f, "%s\n", insn_str);
+        end // if ( rvfi_valid )
 
     end // while (1)
   end // initial begin
