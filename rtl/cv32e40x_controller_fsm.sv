@@ -335,10 +335,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           begin //taken branch
             // there is a branch in the EX stage that is taken
 
-            is_decoding_o = 1'b0;
+            is_decoding_o = 1'b0; // Kills instruction in ID (converted to NOP)
 
             pc_mux_o      = PC_BRANCH;
-            pc_set_o      = 1'b1;
+            pc_set_o      = 1'b1; // Kills IF
 
             // if we want to debug, flush the pipeline
             // the current_pc_if will take the value of the next instruction to

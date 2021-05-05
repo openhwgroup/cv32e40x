@@ -232,7 +232,7 @@ instruction_obi_i
 
   // We are 'missing' in the if stage if we don't have a valid instruction
   // when the pipeline is ready and we are not branching
-  assign perf_imiss_o = !branch_req && (if_valid && !prefetch_valid);
+  assign perf_imiss_o = !branch_req && if_ready && !halt_if_i && !prefetch_valid;
 
   // Signal branch on pc_set_i
   assign branch_req = pc_set_i;
@@ -240,12 +240,14 @@ instruction_obi_i
   // if_stage ready if id_stage is ready
   assign if_ready = id_ready_i;
 
-  // if stage valid if we are ready and not commanded to halt
-  assign if_valid = if_ready && !halt_if_i;
-
   // Handshake to pop instruction from alignment_buffer
   // when we issue a new instruction
-  assign prefetch_ready = if_valid;
+  // Independent of prefetch_valid, can be 1 for valid==0
+  assign prefetch_ready = if_ready && !halt_if_i;
+
+  // if stage valid when prefetcher is valid and we are ready
+  assign if_valid = prefetch_ready && prefetch_valid;
+
   assign if_busy_o    = prefetch_busy;
 
 
@@ -264,7 +266,7 @@ instruction_obi_i
     begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
-      if (if_valid && prefetch_valid)
+      if (if_valid)
       begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr            <= instr_decompressed;
@@ -272,7 +274,7 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr[15:0];
-      end else if (clear_instr_valid_i) begin
+      end else if (clear_instr_valid_i) begin // TODO:OK: Should have "else if(id_ready_i)". Fix when new controller is being implemented
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
     end
