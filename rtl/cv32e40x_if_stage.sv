@@ -278,8 +278,8 @@ instruction_obi_i
         if_id_pipe_o.is_compressed    <= instr_compressed_int;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
-        if_id_pipe_o.compressed_instr <= prefetch_instr[15:0];
-      end else if (clear_instr_valid_i) begin // TODO:OK: Should have "else if(id_ready_i)". Fix when new controller is being implemented
+        if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
+      end else if (clear_instr_valid_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
     end

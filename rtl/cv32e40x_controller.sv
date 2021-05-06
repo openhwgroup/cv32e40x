@@ -89,8 +89,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
 
-  output logic [4:0]  exc_cause_o,
-
+  input logic  [1:0]     mtvec_mode_i,
+  output logic [4:0]     m_exc_vec_pc_mux_o, // Mux selector for vectored IRQ PC
   // Debug Signal
   output logic         debug_mode_o,
   output logic [2:0]   debug_cause_o,
@@ -158,6 +158,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
 );
 
+  logic [4:0]         exc_cause;
+
+  // Mux selector for vectored IRQ PC
+  assign m_exc_vec_pc_mux_o = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
+  
   // Main FSM and debug FSM
   cv32e40x_controller_fsm controller_fsm_i (
     // Clocks and reset
@@ -215,7 +220,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .irq_ack_o                   ( irq_ack_o                ),
     .irq_id_o                    ( irq_id_o                 ),
   
-    .exc_cause_o                 ( exc_cause_o              ),
+    .exc_cause_o                 ( exc_cause                ),
   
     // Debug Signal
     .debug_mode_o                ( debug_mode_o             ),
