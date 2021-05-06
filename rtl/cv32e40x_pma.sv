@@ -47,19 +47,32 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   // PMA addresses are word addresses
   assign word_addr =  {2'b00, trans_addr_i[31:2]};
 
-  // Identify PMA region
-  always_comb begin
 
-    // If no match, use default PMA config
-    pma_cfg = PMA_R_DEFAULT;
+  generate
+    if(PMA_NUM_REGIONS == 0) begin: no_pma
 
-    for(int i = PMA_NUM_REGIONS-1; i >= 0; i--)  begin
-      if((word_addr[31:PMA_ADDR_LSB] >= PMA_CFG[i].word_addr_low[31:PMA_ADDR_LSB]) && 
-         (word_addr[31:PMA_ADDR_LSB] <  PMA_CFG[i].word_addr_high[31:PMA_ADDR_LSB])) begin
-        pma_cfg = PMA_CFG[i];
+      // PMA is deconfigured
+      assign pma_cfg = NO_PMA_R_DEFAULT;
+
+    end
+    else begin: pma
+
+      // Identify PMA region
+      always_comb begin
+
+        // If no match, use default PMA config
+        pma_cfg = PMA_R_DEFAULT;
+
+        for(int i = PMA_NUM_REGIONS-1; i >= 0; i--)  begin
+          if((word_addr[31:PMA_ADDR_LSB] >= PMA_CFG[i].word_addr_low[31:PMA_ADDR_LSB]) && 
+             (word_addr[31:PMA_ADDR_LSB] <  PMA_CFG[i].word_addr_high[31:PMA_ADDR_LSB])) begin
+            pma_cfg = PMA_CFG[i];
+          end
+        end
       end
     end
-  end
+
+  endgenerate
 
   // Tie of atomic attribute if A_EXTENSION=0
   generate
