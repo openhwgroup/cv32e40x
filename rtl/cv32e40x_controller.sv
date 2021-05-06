@@ -142,6 +142,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        halt_if_o,
   output logic        halt_id_o,
 
+  output logic        kill_if_o,
+
   output logic        misaligned_stall_o,
   output logic        jr_stall_o,
   output logic        load_stall_o,
@@ -248,7 +250,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     
     // Halt signals
     .halt_if_o                   ( halt_if_o                ),
-    .halt_id_o                   ( halt_id_o                )
+    .halt_id_o                   ( halt_id_o                ),
+    .kill_if_o                   ( kill_if_o                )
   );
   
 

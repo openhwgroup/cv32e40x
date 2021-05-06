@@ -256,6 +256,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
+
+  // kill signals
+  logic        kill_if;
   
 
   // Internal OBI interfaces
@@ -350,6 +353,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // instruction request control
     .req_i               ( instr_req_int     ),
 
+    .kill_if_i           ( kill_if           ),
+
     // instruction cache interface
     .m_c_obi_instr_if    ( m_c_obi_instr_if   ),
 
@@ -433,8 +438,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR ID/EX
     .current_priv_lvl_i           ( current_priv_lvl     ),
-
-    .lsu_misaligned_i             ( lsu_misaligned       ),
 
     // Debug Signalf
     .debug_mode_i                 ( debug_mode           ),
@@ -790,6 +793,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Stall signals
     .halt_if_o                      ( halt_if                ),
     .halt_id_o                      ( halt_id                ),
+
+    .kill_if_o                      ( kill_if                ),
 
     .misaligned_stall_o             ( misaligned_stall       ),
     .jr_stall_o                     ( jr_stall               ),

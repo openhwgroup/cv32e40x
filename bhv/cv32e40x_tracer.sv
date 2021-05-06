@@ -43,6 +43,7 @@ module cv32e40x_tracer
 
   input  logic        compressed,
   input  logic        id_valid,
+  input  logic        multi_cycle_id_stall,
   input  logic        is_decoding,
   input  logic        is_illegal,
   input  logic        trigger_match,
@@ -395,7 +396,7 @@ module cv32e40x_tracer
     // ----------------------------------------------
 
     // New instruction created if is a legal decoded instruction
-    if (id_valid && is_decoding && !is_illegal) 
+    if ((id_valid && !multi_cycle_id_stall) && is_decoding && !is_illegal)
       trace_new = 1;
     // Create a new EBREAK instruuction (will bypass pipeline execution)
     else if (is_decoding && !trigger_match && ebrk_insn && (ebrk_force_debug_mode || debug_mode))
