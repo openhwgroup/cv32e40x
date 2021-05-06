@@ -436,9 +436,9 @@ module cv32e40x_rvfi
   // Byte enable based on data type
   always_comb begin
     unique case (lsu_type_id_i)
-      2'b00:   rvfi_mem_mask_int = 4'b1111;
+      2'b00:   rvfi_mem_mask_int = 4'b0001;
       2'b01:   rvfi_mem_mask_int = 4'b0011;
-      2'b10:   rvfi_mem_mask_int = 4'b0001;
+      2'b10:   rvfi_mem_mask_int = 4'b1111;
       default: rvfi_mem_mask_int = 4'b0000;
     endcase
   end
