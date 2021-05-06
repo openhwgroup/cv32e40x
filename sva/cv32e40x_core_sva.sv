@@ -31,6 +31,7 @@ module cv32e40x_core_sva
 
   input logic        pc_set,
   input logic        id_valid,
+  input logic        multi_cycle_id_stall,
   input logic [4:0]  exc_cause,
   input logic        debug_mode,
   input logic [31:0] mie_bypass,
@@ -58,6 +59,10 @@ module cv32e40x_core_sva
   input logic [5:0]  cs_registers_csr_cause_i,
   input              Mcause_t cs_registers_mcause_q,
   input              Status_t cs_registers_mstatus_q);
+
+  // Helper signals
+  logic id_valid_gated;
+  assign id_valid_gated = id_valid && !multi_cycle_id_stall;
 
   generate
     begin : gen_no_pulp_cluster_assertions
@@ -116,30 +121,30 @@ module cv32e40x_core_sva
             expected_instr_mpuerr_mepc <= 32'b0;
           end
           else begin
-            if (!first_illegal_found && is_decoding && id_valid &&
+            if (!first_illegal_found && is_decoding && id_valid_gated &&
                 id_stage_illegal_insn && !id_stage_controller_debug_mode_n) begin
               first_illegal_found   <= 1'b1;
               expected_illegal_mepc <= if_id_pipe.pc;
             end
-            if (!first_ecall_found && is_decoding && id_valid &&
+            if (!first_ecall_found && is_decoding && id_valid_gated &&
                 id_stage_ecall_insn && !id_stage_controller_debug_mode_n) begin
               first_ecall_found   <= 1'b1;
               expected_ecall_mepc <= if_id_pipe.pc;
             end
-            if (!first_ebrk_found && is_decoding && id_valid &&
+            if (!first_ebrk_found && is_decoding && id_valid_gated &&
                 id_stage_ebrk_insn && (id_stage_controller_ctrl_fsm_ns != DBG_FLUSH)) begin
               first_ebrk_found   <= 1'b1;
               expected_ebrk_mepc <= if_id_pipe.pc;
             end
             // This does not check is_decoding, as that signal is suppressed when encountering a bus_error
             // Suppress instr_err if there is also an mpu error, as that takes priority over bus errors
-            if (!first_instr_err_found && !branch_taken_in_ex && !id_stage_mpu_err && id_valid &&
+            if (!first_instr_err_found && !branch_taken_in_ex && !id_stage_mpu_err && id_valid_gated &&
                 id_stage_instr_err && id_stage_instr_valid && !id_stage_controller_debug_mode_n) begin
               first_instr_err_found   <= 1'b1;
               expected_instr_err_mepc <= if_id_pipe.pc;
             end
             // This does not check is_decoding, as that signal is suppressed when encountering a mpu error
-            if (!first_instr_mpuerr_found && !branch_taken_in_ex && id_valid &&
+            if (!first_instr_mpuerr_found && !branch_taken_in_ex && id_valid_gated &&
                 id_stage_mpu_err && id_stage_instr_valid && !id_stage_controller_debug_mode_n) begin
               first_instr_mpuerr_found   <= 1'b1;
               expected_instr_mpuerr_mepc <= if_id_pipe.pc;

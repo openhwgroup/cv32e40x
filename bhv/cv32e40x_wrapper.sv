@@ -12,7 +12,7 @@
 // Contributors: Davide Schiavone <davide@openhwgroup.org>
 //               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
-`ifdef ASSERT_ON
+`ifndef COREV_ASSERT_OFF
   `include "cv32e40x_core_sva.sv"
   `include "cv32e40x_mult_sva.sv"
   `include "cv32e40x_alu_div_sva.sv"
@@ -44,7 +44,7 @@ module cv32e40x_wrapper
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
   parameter int unsigned PMA_NUM_REGIONS =  0,
-  parameter pma_region_t PMA_CFG [PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
@@ -99,7 +99,7 @@ module cv32e40x_wrapper
 );
 
 
-`ifdef ASSERT_ON
+`ifndef COREV_ASSERT_OFF
 
   // RTL Assertions
 
@@ -133,6 +133,7 @@ module cv32e40x_wrapper
       cv32e40x_prefetcher_sva  
         prefetcher_sva (.*);
 
+
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
       core_sva (// probed cs_registers signals
@@ -150,8 +151,12 @@ module cv32e40x_wrapper
                 .id_stage_instr_valid             (1'b0),//(core_i.controller_i.controller_fsm_i.instr_valid),
                 .branch_taken_in_ex               (1'b0),//(core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
                 // probed controller signals
-                .id_stage_controller_ctrl_fsm_ns  (1'b0),//(core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                .id_stage_controller_debug_mode_n (1'b0),//(core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .exc_cause                        (core_i.controller_i.exc_cause),
+                .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .id_valid                         (core_i.id_stage_i.id_valid_o),
+                .multi_cycle_id_stall             (core_i.id_stage_i.multi_cycle_id_stall),
+
                 .*);
 
   bind cv32e40x_sleep_unit:
@@ -181,7 +186,7 @@ module cv32e40x_wrapper
         .PMA_CFG(PMA_CFG))
   mpu_lsu_sva(.*);
 
-`endif // ASSERT_ON
+`endif //  `ifndef COREV_ASSERT_OFF
 
 
   bind cv32e40x_id_stage:
@@ -229,7 +234,9 @@ module cv32e40x_wrapper
       //.controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
       .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
-      .is_decoding    ( 1'b1),//core_i.is_decoding                             ),
+      .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    )
+      .is_decoding    ( core_i.is_decoding                             ),
+
       .is_illegal     ( core_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match                     ),
       .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),

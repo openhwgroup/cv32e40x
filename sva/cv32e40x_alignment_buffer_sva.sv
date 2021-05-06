@@ -38,7 +38,8 @@ module cv32e40x_alignment_buffer_sva
    input logic                     resp_valid_gated,
    input logic [1:0]               outstanding_cnt_q,
    input logic [1:0]               n_flush_q,
-   input inst_resp_t               resp_i
+   input inst_resp_t               resp_i,
+   input logic                     kill_if_i
    );
 
   
@@ -194,6 +195,18 @@ module cv32e40x_alignment_buffer_sva
     else
       `uvm_error("Alignment buffer SVA",
                 $sformatf("Illegal resp_i.mpu_status"))
+
+  // Check that branch_i and kill_if_i are equal
+  property p_branch_kill;
+    @(posedge clk) disable iff (!rst_n) branch_i |-> kill_if_i;
+  endproperty
+
+  a_branch_kill:
+    assert property(p_branch_kill)
+    else
+      `uvm_error("Alignment buffer SVA",
+                $sformatf("branch_i and kill_if_i are not the same."))
+
 
 
 endmodule // cv32e40x_alignment_buffer_sva

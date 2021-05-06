@@ -89,8 +89,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
 
-  output logic [4:0]  exc_cause_o,
-
+  input logic  [1:0]     mtvec_mode_i,
+  output logic [4:0]     m_exc_vec_pc_mux_o, // Mux selector for vectored IRQ PC
   // Debug Signal
   output logic         debug_mode_o,
   output logic [2:0]   debug_cause_o,
@@ -142,6 +142,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        halt_if_o,
   output logic        halt_id_o,
 
+  output logic        kill_if_o,
+
   output logic        misaligned_stall_o,
   output logic        jr_stall_o,
   output logic        load_stall_o,
@@ -155,6 +157,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_req_wb_i               // ALU data is written back in WB
 );
 
+  logic [4:0]         exc_cause;
+
+  // Mux selector for vectored IRQ PC
+  assign m_exc_vec_pc_mux_o = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
+  
   // Main FSM and debug FSM
 `ifndef CV32E40X_WB_CONTROLLER
   cv32e40x_controller_fsm
@@ -217,7 +224,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .irq_ack_o                   ( irq_ack_o                ),
     .irq_id_o                    ( irq_id_o                 ),
   
-    .exc_cause_o                 ( exc_cause_o              ),
+    .exc_cause_o                 ( exc_cause                ),
   
     // Debug Signal
     .debug_mode_o                ( debug_mode_o             ),
@@ -247,7 +254,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     
     // Halt signals
     .halt_if_o                   ( halt_if_o                ),
-    .halt_id_o                   ( halt_id_o                )
+    .halt_id_o                   ( halt_id_o                ),
+    .kill_if_o                   ( kill_if_o                )
   );
   
 
