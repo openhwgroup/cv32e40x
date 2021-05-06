@@ -24,7 +24,6 @@ The PMA can be deconfigured by setting ``PMA_NUM_REGIONS=0``. When doing this, `
 Address range
 ~~~~~~~~~~~~~
 The address boundaries of a PMA region are set in ``word_addr_low/word_addr_high``. These contain bits 33:2 of 34-bit, word aligned addresses. To get an address match, the transfer address ``addr`` must be in the range ``word_addr_low <= addr < word_addr_high``.
-Memory regions not covered by any PMA regions are treated as main memory with bufferable, cacheable and atomic attributes set.
 
 Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
@@ -46,6 +45,12 @@ Regions supporting atomic operations can be defined by setting ``atomic=1``.
 An attempt to perform a Load-Reserved to a region in which Atomic operations are not allowed will cause a precise load access fault (exception code 5).
 An attempt to perform a Store-Conditional or Atomic Memory Operation (AMO) to a region in which Atomic operations are not allowed will cause a precise store/AMO access fault (exception code 7).
 Note that the ``atomic`` attribute is only used when the RV32A extension is included.
+
+Default attribution
+~~~~~~~~~~~~~~~~~~~
+If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
+
+If the PMA is configured (``PMA_NUM_REGIONS > 0``), memory regions not covered by any PMA regions are treated as I/O memory (``main=0``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
 
 Every instruction fetch, load and store will be subject to PMA checks and failed checks will result in an exception. PMA checks cannot be disabled.
 See :ref:`exceptions-interrupts` for details.
