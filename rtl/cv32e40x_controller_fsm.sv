@@ -116,7 +116,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     
     // Halt signals
     output logic        halt_if_o, // Halt IF stage
-    output logic        halt_id_o  // Halt ID stage
+    output logic        halt_id_o,  // Halt ID stage
+    output logic        kill_if_o  // Kill IF stage
   );
 
    // FSM state encoding
@@ -199,6 +200,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     pc_mux_o               = PC_BOOT;
     pc_set_o               = 1'b0;
+    kill_if_o              = 1'b0;
     jump_done              = jump_done_q;
 
     ctrl_fsm_ns            = ctrl_fsm_cs;
@@ -255,6 +257,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         instr_req_o   = 1'b1;
         pc_mux_o      = PC_BOOT;
         pc_set_o      = 1'b1;
+        kill_if_o     = 1'b1; // Not strictly required, but fails SEC if OBI is not constrained properly
         if (debug_req_pending) begin
             ctrl_fsm_ns = DBG_TAKEN_IF;
             debug_force_wakeup_n = 1'b1;
@@ -315,6 +318,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           halt_id_o         = 1'b1;
 
           pc_set_o          = 1'b1;
+          kill_if_o         = 1'b1;
           pc_mux_o          = PC_EXCEPTION;
           exc_pc_mux_o      = EXC_PC_IRQ;
           exc_cause_o       = irq_id_ctrl_i;
@@ -338,7 +342,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             is_decoding_o = 1'b0; // Kills instruction in ID (converted to NOP)
 
             pc_mux_o      = PC_BRANCH;
-            pc_set_o      = 1'b1; // Kills IF
+            pc_set_o      = 1'b1;
+            kill_if_o     = 1'b1;
 
             // if we want to debug, flush the pipeline
             // the current_pc_if will take the value of the next instruction to
@@ -379,6 +384,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                 halt_id_o         = 1'b1;
 
                 pc_set_o          = 1'b1;
+                kill_if_o         = 1'b1;
                 pc_mux_o          = PC_EXCEPTION;
                 exc_pc_mux_o      = EXC_PC_IRQ;
                 exc_cause_o       = irq_id_ctrl_i;
@@ -434,6 +440,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                       // if there is a jr stall, wait for it to be gone
                       if ((~jr_stall_i) && (~jump_done_q)) begin
                         pc_set_o    = 1'b1;
+                        kill_if_o   = 1'b1;
                         jump_done   = 1'b1;
                       end
                     end
@@ -608,6 +615,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         if(instr_mpu_err_q) begin
           pc_mux_o              = PC_EXCEPTION;
           pc_set_o              = 1'b1;
+          kill_if_o             = 1'b1;
           exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
           instr_mpu_err_n       = 1'b0;
             if (debug_single_step_i && ~debug_mode_q)
@@ -617,6 +625,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         else if(instr_bus_err_q) begin
           pc_mux_o        = PC_EXCEPTION;
           pc_set_o        = 1'b1;
+          kill_if_o       = 1'b1;
           exc_pc_mux_o    = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
           instr_bus_err_n = 1'b0;
           if (debug_single_step_i && ~debug_mode_q)
@@ -626,6 +635,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             //exceptions
             pc_mux_o              = PC_EXCEPTION;
             pc_set_o              = 1'b1;
+            kill_if_o             = 1'b1;
             exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
             illegal_insn_n        = 1'b0;
             if (debug_single_step_i && ~debug_mode_q)
@@ -636,6 +646,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                 //ebreak
                 pc_mux_o              = PC_EXCEPTION;
                 pc_set_o              = 1'b1;
+                kill_if_o             = 1'b1;
                 exc_pc_mux_o          = EXC_PC_EXCEPTION;
 
                 if (debug_single_step_i && ~debug_mode_q)
@@ -645,6 +656,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                 //ecall
                 pc_mux_o              = PC_EXCEPTION;
                 pc_set_o              = 1'b1;
+                kill_if_o             = 1'b1;
                 exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
 
                 if (debug_single_step_i && ~debug_mode_q)
@@ -673,6 +685,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                 // forces the instruction cache to refetch
                 pc_mux_o              = PC_FENCEI;
                 pc_set_o              = 1'b1;
+                kill_if_o             = 1'b1;
             end
             default:;
           endcase
@@ -690,6 +703,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               //mret
               pc_mux_o              = debug_mode_q ? PC_EXCEPTION : PC_MRET;
               pc_set_o              = 1'b1;
+              kill_if_o             = 1'b1;
               exc_pc_mux_o          = EXC_PC_DBE; // only used if in debug_mode
           end
           dret_insn_i: begin
@@ -698,6 +712,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               pc_mux_o              = PC_DRET;
               pc_set_o              = 1'b1;
               debug_mode_n          = 1'b0;
+              kill_if_o             = 1'b1;
           end
           default:;
         endcase
@@ -716,8 +731,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
         if (branch_taken_ex_i) begin
           // there is a branch in the EX stage that is taken
-          pc_mux_o = PC_BRANCH;
-          pc_set_o = 1'b1;
+          pc_mux_o      = PC_BRANCH;
+          pc_set_o      = 1'b1;
+          kill_if_o     = 1'b1;
         end
 
         ctrl_fsm_ns = DBG_FLUSH;
@@ -736,6 +752,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       begin
         is_decoding_o     = 1'b0;
         pc_set_o          = 1'b1;
+        kill_if_o         = 1'b1;
         pc_mux_o          = PC_EXCEPTION;
         exc_pc_mux_o      = EXC_PC_DBD;
         // If not in debug mode then save cause and dpc csrs
@@ -763,6 +780,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       begin
         is_decoding_o     = 1'b0;
         pc_set_o          = 1'b1;
+        kill_if_o         = 1'b1;
         pc_mux_o          = PC_EXCEPTION;
         exc_pc_mux_o      = EXC_PC_DBD;
         csr_save_cause_o  = 1'b1;

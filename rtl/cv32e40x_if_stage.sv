@@ -45,6 +45,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // instruction request control
     input  logic        req_i,
 
+    // kill instruction
+    input  logic        kill_if_i,
+
     // instruction cache interface
     if_c_obi.master     m_c_obi_instr_if,
 
@@ -153,6 +156,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   (
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),
+
+    .kill_if_i         ( kill_if_i                   ),
 
     .prefetch_en_i     ( req_i                       ),
 
