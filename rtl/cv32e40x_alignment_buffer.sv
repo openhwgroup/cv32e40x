@@ -316,7 +316,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     instr_cnt_n = instr_cnt_q;
     n_flush_branch = outstanding_cnt_q;
 
-    if(kill_if_i || branch_i) begin
+    if(kill_if_i) begin
       // FIFO content is invalidated when IF is killed
       instr_cnt_n = 'd0;
 
