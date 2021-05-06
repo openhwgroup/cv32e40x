@@ -94,7 +94,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              aligner_ready;
 
   logic              prefetch_valid;
-  logic              prefetch_ready;
   inst_resp_t        prefetch_instr;
 
   logic              illegal_c_insn;
@@ -164,7 +163,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .branch_i          ( branch_req                  ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
 
-    .prefetch_ready_i  ( prefetch_ready              ),
+    .prefetch_ready_i  ( if_ready                    ),
     .prefetch_valid_o  ( prefetch_valid              ),
     .prefetch_instr_o  ( prefetch_instr              ),
     .prefetch_addr_o   ( pc_if_o                     ),
@@ -243,15 +242,10 @@ instruction_obi_i
   assign branch_req = pc_set_i;
 
   // if_stage ready if id_stage is ready
-  assign if_ready = id_ready_i;
-
-  // Handshake to pop instruction from alignment_buffer
-  // when we issue a new instruction
-  // Independent of prefetch_valid, can be 1 for valid==0
-  assign prefetch_ready = if_ready && !halt_if_i;
+  assign if_ready = id_ready_i && !halt_if_i;
 
   // if stage valid when prefetcher is valid and we are ready
-  assign if_valid = prefetch_ready && prefetch_valid;
+  assign if_valid = if_ready && prefetch_valid;
 
   assign if_busy_o    = prefetch_busy;
 

@@ -214,7 +214,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     instr_instr_o.mpu_status     = mpu_status;
     instr_valid_o = 1'b0;
 
-    // Invalidate output if we get a branch
+    // Invalidate output if we get killed
     if (kill_if_i) begin
       instr_valid_o = 1'b0;
     end else if (instr_addr_o[1]) begin

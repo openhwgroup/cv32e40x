@@ -218,8 +218,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Branch target address
   logic [31:0] bch_target;
 
-  // Stall for multicycle instructions
+  // Stall for multicycle ID instructions
   logic multi_cycle_id_stall;
+
+  logic is_last; // Indicates that an instruction is in its last ID phase
+
+  assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
@@ -639,7 +643,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && is_decoding_i && !(illegal_insn_o || ebrk_insn_o || ecall_insn_o || misaligned_stall_i);
+  assign minstret = id_valid_o && is_decoding_i && is_last && !(illegal_insn_o || ebrk_insn_o || ecall_insn_o);
 
   always_ff @(posedge clk , negedge rst_n)
   begin
@@ -660,7 +664,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     else
     begin
       // Helper signal, id_valid may be 1'b1 to update EX for misaligned LSU, gate off to not count events in those cases
-      id_valid_q                 <= id_valid_o && !misaligned_stall_i;
+      id_valid_q                 <= id_valid_o && is_last;
       // ID stage counts
       mhpmevent_minstret_o       <= minstret;
       mhpmevent_load_o           <= minstret && data_req && !data_we;
