@@ -259,7 +259,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // kill signals
   logic        kill_if;
-  
+  logic        kill_id;
+  logic        kill_ex;
+
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -413,6 +415,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .scan_cg_en_i                 ( scan_cg_en_i         ),
 
     .deassert_we_i                ( deassert_we          ),
+
+    .kill_id_i                    ( kill_id              ),
     // Processor Enable
     .is_decoding_i                ( is_decoding          ),
 
@@ -793,6 +797,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .halt_id_o                      ( halt_id                ),
 
     .kill_if_o                      ( kill_if                ),
+    .kill_id_o                      ( kill_id                ),
+    .kill_ex_o                      ( kill_ex                ),
 
     .misaligned_stall_o             ( misaligned_stall       ),
     .jr_stall_o                     ( jr_stall               ),

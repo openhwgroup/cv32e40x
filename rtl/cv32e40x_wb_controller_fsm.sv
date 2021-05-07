@@ -116,11 +116,16 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     
     // Halt signals
     output logic        halt_if_o, // Halt IF stage
-    output logic        halt_id_o  // Halt ID stage
+    output logic        halt_id_o,  // Halt ID stage
+
+    // Kill signals
+    output logic        kill_if_o,
+    output logic        kill_id_o,
+    output logic        kill_ex_o
   );
 
    // FSM state encoding
-  wb_ctrl_state_e ctrl_fsm_cs, ctrl_fsm_ns;
+  ctrl_state_e ctrl_fsm_cs, ctrl_fsm_ns;
 
   // Debug state
   debug_state_e debug_fsm_cs, debug_fsm_ns;
@@ -140,12 +145,14 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic illegal_insn_q;
   logic debug_req_pending;
   logic branch_in_id;
+  assign is_decoding_o = 1'b1; // TODO:OK: Remove
 
   //////////////
   // FSM comb //
   //////////////
   always_comb begin
     // Default values
+    ctrl_busy_o = 1'b1;
     ctrl_fsm_ns = ctrl_fsm_cs;
     instr_req_o = 1'b1;
 
@@ -154,26 +161,30 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
 
     jump_in_dec            = (ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL);
 
+    kill_if_o = 1'b0;
+    kill_id_o = 1'b0;
+    kill_ex_o = 1'b0;
+
     // Signals that may change
     halt_if_o = 1'b0;
     halt_id_o = 1'b0;
     
 
     unique case (ctrl_fsm_cs)
-      CTRL_RESET: begin
+      RESET: begin
         instr_req_o = 1'b0;
         if ( fetch_enable_i ) begin
-          ctrl_fsm_ns = CTRL_BOOT_SET;
+          ctrl_fsm_ns = BOOT_SET;
         end
       end
-      CTRL_BOOT_SET: begin
+      BOOT_SET: begin
         instr_req_o = 1'b1;
         pc_mux_o    = PC_BOOT;
         pc_set_o    = 1'b1;
-
-        ctrl_fsm_ns = CTRL_FUNCTIONAL;
+        kill_if_o   = 1'b1; // TODO: May remove this
+        ctrl_fsm_ns = FUNCTIONAL;
       end
-      CTRL_FUNCTIONAL: begin
+      FUNCTIONAL: begin
         // NMI
         // Debug entry
         // IRQ
@@ -182,20 +193,21 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         
         // Single step debug entry
         // Branch taken in EX (bne, beq, blt(u), bge(u))
-        if( branch_taken_ex_i) begin // && id_ex_pipe.instr_valid
+        if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
           pc_mux_o   = PC_BRANCH;
           pc_set_o   = 1'b1;
-          halt_id_o = 1'b1;
-          // TODO: kill_id, kill_if
+          kill_if_o = 1'b1;
+          kill_id_o = 1'b1;  
         end else if (jump_in_dec && if_id_pipe_i.instr_valid) begin
           // kill_if
-          halt_if_o = 1'b1;
+          kill_if_o = 1'b1;
           // Jumps in ID (JAL, JALR, mret, uret, dret)
           pc_mux_o = PC_JUMP;
           pc_set_o = !jr_stall_i;
         end
       end
-      CTRL_SLEEP: begin
+      SLEEP: begin
+        ctrl_busy_o = 1'b0;
       end
     endcase
   end
@@ -205,7 +217,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   ////////////////////
   always_ff @(posedge clk , negedge rst_n) begin
     if ( rst_n == 1'b0 ) begin
-      ctrl_fsm_cs <= CTRL_RESET;
+      ctrl_fsm_cs <= RESET;
     end else begin
       ctrl_fsm_cs <= ctrl_fsm_ns;
     end

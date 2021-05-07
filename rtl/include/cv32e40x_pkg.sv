@@ -105,12 +105,12 @@ typedef enum logic [MUL_OP_WIDTH-1:0]
  } mul_opcode_e;
 
 // FSM state encoding
-typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
-                   DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
-                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
+//typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
+//                   DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
+//                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
 
 // WB centric controller FSM state
-typedef enum logic [1:0] { CTRL_RESET, CTRL_BOOT_SET, CTRL_FUNCTIONAL, CTRL_SLEEP} wb_ctrl_state_e;
+typedef enum logic [1:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP} ctrl_state_e;
 
 
 
@@ -935,6 +935,7 @@ typedef struct packed {
   // Signals for exception handling etc
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status
+  logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;

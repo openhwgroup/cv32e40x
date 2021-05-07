@@ -244,6 +244,7 @@ instruction_obi_i
   // if_stage ready if id_stage is ready
   assign if_ready = id_ready_i && !halt_if_i;
 
+
   // if stage valid when prefetcher is valid and we are ready
   assign if_valid = if_ready && prefetch_valid;
 
@@ -273,6 +274,7 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
+        //$display("IF_PC 0 %08x", pc_if_o);
       end else if (clear_instr_valid_i) begin
         // TODO: Check order of these if/elseifs, or if they are exclusive
         if_id_pipe_o.instr_valid      <= 1'b0;

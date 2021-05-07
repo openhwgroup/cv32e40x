@@ -382,7 +382,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = id_ex_pipe_i.data_req && (cnt_q < DEPTH);
+  assign trans_valid = (id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid) && (cnt_q < DEPTH);
 
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
@@ -400,7 +400,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o = (id_ex_pipe_i.data_req == 1'b0) ? 1'b1 :
+  assign lsu_ready_ex_o = ((id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid ) == 1'b0)        ? 1'b1 :
                                          (cnt_q == 2'b00) ? (              trans_valid && trans_ready) : 
                                          (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) : 
                                                             resp_valid;

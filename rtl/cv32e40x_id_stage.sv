@@ -42,6 +42,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        scan_cg_en_i,
     input  logic        deassert_we_i,
+    input  logic        kill_id_i,
     input  logic        is_decoding_i,
 
     // Jumps and branches
@@ -254,7 +255,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o | halt_id_i | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
 
-  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && branch_decision_i;
+  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i;
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -485,6 +486,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
+      id_ex_pipe_o.instr_valid            <= 1'b0;
       id_ex_pipe_o.alu_en                 <= '0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
       id_ex_pipe_o.alu_operand_a          <= '0;
@@ -534,7 +536,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       if (id_valid_o)
       begin // unstall the whole pipeline
-
+        id_ex_pipe_o.instr_valid   = 1'b1;
         if (misaligned_stall_i) begin
           // misaligned data access case
           // if we are using post increments, then we have to use the
@@ -549,7 +551,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.prepost_useincr        <= 1'b1;
           id_ex_pipe_o.data_misaligned        <= 1'b1;
         end else begin // !misaligned_stall_i
-          id_ex_pipe_o.instr_valid            <= 1'b1;
           id_ex_pipe_o.alu_en                 <= alu_en;
           if (alu_en)
           begin
@@ -616,6 +617,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         // so we set all write enables to 0, but unstall the pipe
         // TODO: Do this in EX by gating with id_ex_pipe.instr_valid
         id_ex_pipe_o.instr_valid            <= 1'b0;
+        /*
         id_ex_pipe_o.rf_we                  <= 1'b0;
 
         id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
@@ -631,7 +633,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.alu_operator           <= ALU_SLTU;        // todo: requires explanation
 
         id_ex_pipe_o.mult_en                <= 1'b0;
-
+        */
       end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
        //In the EX stage there was a CSR access. To avoid multiple
        //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
@@ -686,11 +688,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end
   end
 
-  // stall control  
+  // stall control
   assign multi_cycle_id_stall = misaligned_stall_i;
 
   assign id_ready_o = (!multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i);
-  assign id_valid_o = (!halt_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
+  assign id_valid_o = (if_id_pipe_i.instr_valid && !kill_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 
 endmodule // cv32e40x_id_stage

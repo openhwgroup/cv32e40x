@@ -234,8 +234,8 @@ module cv32e40x_wrapper
       //.controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
       .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
-      .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    )
-      .is_decoding    ( core_i.is_decoding                             ),
+      .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
+      .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
 
       .is_illegal     ( core_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match                     ),
@@ -249,7 +249,7 @@ module cv32e40x_wrapper
       .rs3_is_fp('0),
       .rd_is_fp('0),
 
-      .ex_valid       ( core_i.ex_valid                             ),
+      .ex_valid       ( 1'b0/*core_i.ex_valid*/                             ),
       .ex_reg_addr    ( 5'b0                                        ),
       .ex_reg_we      ( 1'b0                                        ),
       .ex_reg_wdata   ( 32'b0                                       ),
@@ -265,11 +265,11 @@ module cv32e40x_wrapper
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( 1'b0),//( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ),
+      .wb_bypass      ( 1'b0/*core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex*/ ),
 
-      .wb_valid       ( core_i.wb_valid                             ),
+      .wb_valid       ( 1'b0/*core_i.wb_valid*/                             ),
       .wb_reg_addr    ( core_i.rf_waddr_wb                          ),
-      .wb_reg_we      ( core_i.rf_we_wb                             ),
+      .wb_reg_we      ( 1'b0/*core_i.rf_we_wb*/                             ),
       .wb_reg_wdata   ( core_i.rf_wdata_wb                          ),
 
       .imm_u_type     ( core_i.id_stage_i.imm_u_type                ),

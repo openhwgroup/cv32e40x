@@ -67,18 +67,29 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           alu_ready;
   logic           mult_ready;
 
+  // Local signals after evaluating with instr_valid
+  logic alu_en_gated;
+  logic mult_en_gated;
+  logic csr_en_gated;
+  logic rf_we_gated;
+  
+  assign alu_en_gated = id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid;
+  assign mult_en_gated = id_ex_pipe_i.mult_en && id_ex_pipe_i.instr_valid;
+  assign csr_en_gated = id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid;
+  assign rf_we_gated = id_ex_pipe_i.rf_we && id_ex_pipe_i.instr_valid;
+
   // ALU write port mux
   always_comb
   begin
     rf_wdata_ex_o = 'b0; // TODO:OK get rid of this and make alu/mult/csr_en unique
 
-    rf_we_ex_o    = id_ex_pipe_i.rf_we;
+    rf_we_ex_o    = rf_we_gated;
     rf_waddr_ex_o = id_ex_pipe_i.rf_waddr;
-    if (id_ex_pipe_i.alu_en)
+    if (alu_en_gated)
       rf_wdata_ex_o = alu_result;
-    if (id_ex_pipe_i.mult_en)
+    if (mult_en_gated)
       rf_wdata_ex_o = mult_result;
-    if (id_ex_pipe_i.csr_en)
+    if (csr_en_gated)
       rf_wdata_ex_o = csr_rdata_i;
   end
 
@@ -99,7 +110,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   (
     .clk                 ( clk                        ),
     .rst_n               ( rst_n                      ),
-    .enable_i            ( id_ex_pipe_i.alu_en        ),
+    .enable_i            ( alu_en_gated               ),
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
@@ -126,7 +137,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .clk             ( clk                           ),
     .rst_n           ( rst_n                         ),
 
-    .enable_i        ( id_ex_pipe_i.mult_en          ),
+    .enable_i        ( mult_en_gated                 ),
     .operator_i      ( id_ex_pipe_i.mult_operator    ),
 
     .short_signed_i  ( id_ex_pipe_i.mult_signed_mode ),
@@ -147,6 +158,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   begin : EX_WB_PIPE_REGISTERS
     if (~rst_n)
     begin
+      ex_wb_pipe_o.instr_valid    <= 1'b0;
       ex_wb_pipe_o.rf_we          <= 1'b0;
       ex_wb_pipe_o.rf_waddr       <= '0;
       ex_wb_pipe_o.rf_wdata       <= 32'b0;
@@ -167,6 +179,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o) // wb_ready_i is implied
       begin
+        ex_wb_pipe_o.instr_valid <= 1'b1;
         ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we;
 
         if (id_ex_pipe_i.rf_we) begin
@@ -193,7 +206,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we just flush the current one out of the pipe
-        ex_wb_pipe_o.rf_we <= 1'b0;
+        ex_wb_pipe_o.instr_valid <= 1'b0;
+        //ex_wb_pipe_o.rf_we <= 1'b0;
       end
     end
   end
@@ -202,8 +216,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
-                       && wb_ready_i) || (id_ex_pipe_i.branch_in_ex); //TODO: Check if removing branch_in_ex only causes counters to cex
-  assign ex_valid_o = (id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_en || id_ex_pipe_i.data_req)
-                       && (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i);
+                       && wb_ready_i) || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid); //TODO: Check if removing branch_in_ex only causes counters to cex
+  assign ex_valid_o = /*(id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_en || id_ex_pipe_i.data_req)*/
+                       /*&& (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i)*/ ex_ready_o && id_ex_pipe.instr_valid;
 
 endmodule // cv32e40x_ex_stage
