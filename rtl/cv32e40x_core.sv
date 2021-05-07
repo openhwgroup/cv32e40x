@@ -48,12 +48,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
+  input  logic [31:0] nmi_addr_i,               // TODO use
 
   // Instruction memory interface
   output logic        instr_req_o,
   input  logic        instr_gnt_i,
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
+  output logic [1:0]  instr_memtype_o,
+  output logic [2:0]  instr_prot_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -64,17 +67,22 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_addr_o,
+  output logic [1:0]  data_memtype_o,
+  output logic [2:0]  data_prot_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
   output logic [5:0]  data_atop_o,
   input  logic        data_exokay_i,
 
-  
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i,       // TODO use
 
   // Debug Interface
   input  logic        debug_req_i,
@@ -268,6 +276,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Connect toplevel OBI signals to internal interfaces
   assign instr_req_o                         = m_c_obi_instr_if.req;
   assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
+  assign instr_memtype_o                     = m_c_obi_instr_if.req_payload.memtype;
+  assign instr_prot_o                        = m_c_obi_instr_if.req_payload.prot;
   assign m_c_obi_instr_if.gnt                = instr_gnt_i;
   assign m_c_obi_instr_if.rvalid             = instr_rvalid_i;
   assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
@@ -277,6 +287,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign data_we_o                           = m_c_obi_data_if.req_payload.we;
   assign data_be_o                           = m_c_obi_data_if.req_payload.be;
   assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
+  assign data_memtype_o                      = m_c_obi_data_if.req_payload.memtype;
+  assign data_prot_o                         = m_c_obi_data_if.req_payload.prot;
   assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
   assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
   assign m_c_obi_data_if.gnt                 = data_gnt_i;
@@ -284,6 +296,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
   assign m_c_obi_data_if.resp_payload.err    = data_err_i;
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
+
+  assign fencei_flush_req_o = 1'b0; // TODO connect to controller when handshake is implemented
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //

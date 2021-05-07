@@ -823,6 +823,8 @@ parameter DATA_DATA_WIDTH = 32;
 
 typedef struct packed {
   logic [INSTR_ADDR_WIDTH-1:0] addr;
+  logic [1:0]                  memtype;
+  logic [2:0]                  prot;
 } obi_inst_req_t;
 
 typedef struct packed {
@@ -836,6 +838,8 @@ typedef struct packed {
   logic                           we;
   logic [(DATA_DATA_WIDTH/8)-1:0] be;
   logic [DATA_DATA_WIDTH-1:0]     wdata;
+  logic [1:0]                     memtype;
+  logic [2:0]                     prot;
 } obi_data_req_t;
 
 typedef struct packed {

@@ -142,8 +142,12 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
   // Forward transaction request towards bus interface
   assign bus_trans_valid_o = core_trans_valid_i && !mpu_block_bus;
-  assign bus_trans_o       = core_trans_i;
-  // TODO:OE Update bus_trans_o.memtype based on bufferable and cachable
+
+  always_comb begin
+    bus_trans_o            = core_trans_i;
+    bus_trans_o.memtype[0] = bus_trans_bufferable;
+    bus_trans_o.memtype[1] = bus_trans_cacheable;
+  end
   
   // Forward transaction response towards core
   assign core_resp_valid_o      = bus_resp_valid_i || mpu_err_trans_valid;
