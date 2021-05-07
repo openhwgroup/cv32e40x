@@ -183,7 +183,7 @@ module cv32e40x_rvfi
   assign rvfi_rd_addr           = rvfi_stage[RVFI_STAGES-1].rvfi_rd_addr;
   assign rvfi_rd_wdata          = rvfi_stage[RVFI_STAGES-1].rvfi_rd_wdata;
   assign rvfi_pc_rdata          = rvfi_stage[RVFI_STAGES-1].rvfi_pc_rdata;
-  assign rvfi_pc_wdata          = rvfi_stage[RVFI_STAGES-1].rvfi_pc_wdata;
+  assign rvfi_pc_wdata          = rvfi_stage[RVFI_STAGES-1].rvfi_pc_wdata & ~32'b1; // Half-word alignment
   assign rvfi_mem_addr          = rvfi_stage[RVFI_STAGES-1].rvfi_mem_addr;
   assign rvfi_mem_rmask         = rvfi_stage[RVFI_STAGES-1].rvfi_mem_rmask;
   assign rvfi_mem_wmask         = rvfi_stage[RVFI_STAGES-1].rvfi_mem_wmask;
