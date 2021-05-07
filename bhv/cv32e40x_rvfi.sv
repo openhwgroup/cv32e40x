@@ -129,6 +129,8 @@ module cv32e40x_rvfi
   logic [31:0] rvfi_mem_wdata_d;
   logic [31:0] rvfi_mem_addr_d;
 
+  logic [63:0] lsu_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
+
   // When writeback stage is present RVFI information is emitted when instruction is finished in
   // third stage but some information must be captured whilst the instruction is in the second
   // stage. Without writeback stage RVFI information is all emitted when instruction retires in
@@ -446,9 +448,9 @@ module cv32e40x_rvfi
   // Memory adddress
   assign rvfi_mem_addr_d = lsu_addr_ex_i;
 
-  // Memory write data
-  assign rvfi_mem_wdata_d = lsu_wdata_ex_i;
-
+  // Align Memory write data
+  assign rvfi_mem_wdata_d  = lsu_wdata_ror[31:0];
+  assign lsu_wdata_ror = {lsu_wdata_ex_i, lsu_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   always_comb begin
     if (instr_is_compressed_id_i) begin
