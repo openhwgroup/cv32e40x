@@ -789,13 +789,21 @@ typedef struct packed {
   logic        atomic;
 } pma_region_t;
 
-// Default attribution (Address is don't care)
+// Default attribution when PMA is not configured (PMA_NUM_REGIONS=0) (Address is don't care)
+parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0, 
+                                            word_addr_high  : 0,
+                                            main            : 1'b1,
+                                            bufferable      : 1'b0,
+                                            cacheable       : 1'b0,
+                                            atomic          : 1'b0};
+  
+// Default attribution when PMA is configured (Address is don't care)
 parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
                                          word_addr_high  : 0,
-                                         main            : 1'b1,
-                                         bufferable      : 1'b1,
-                                         cacheable       : 1'b1,
-                                         atomic          : 1'b1};
+                                         main            : 1'b0,
+                                         bufferable      : 1'b0,
+                                         cacheable       : 1'b0,
+                                         atomic          : 1'b0};
 
 // MPU status. Used for PMA and PMP
 typedef enum logic [1:0] {
