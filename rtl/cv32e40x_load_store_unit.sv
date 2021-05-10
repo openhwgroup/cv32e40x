@@ -31,6 +31,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input  logic         clk,
     input  logic         rst_n,
 
+    input  logic         kill_ex_i,
     // output to data memory
     if_c_obi.master      m_c_obi_data_if,
 
@@ -382,7 +383,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = (id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid) && (cnt_q < DEPTH);
+  assign trans_valid = (id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid) && !kill_ex_i && (cnt_q < DEPTH);
 
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),

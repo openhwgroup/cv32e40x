@@ -517,6 +517,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk                        ( clk                          ),
     .rst_n                      ( rst_ni                       ),
 
+    .kill_ex_i                  ( kill_ex                      ),
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe                   ),
 
@@ -561,6 +562,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk                   ( clk                ),
     .rst_n                 ( rst_ni             ),
 
+    .kill_ex_i             ( kill_ex            ),
     //output to data memory
     .m_c_obi_data_if       ( m_c_obi_data_if    ),
     // ID/EX pipeline
@@ -704,18 +706,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // decoder related signals
     .deassert_we_o                  ( deassert_we            ),
 
-    .illegal_insn_i                 ( illegal_insn           ),
-    .ecall_insn_i                   ( ecall_insn             ),
-    .mret_insn_i                    ( mret_insn              ),
-    .dret_insn_i                    ( dret_insn              ),
-    .wfi_insn_i                     ( wfi_insn               ),
-    .ebrk_insn_i                    ( ebrk_insn              ),
-    .fencei_insn_i                  ( fencei_insn            ),
-
     .csr_status_i                   ( csr_status             ),
 
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
+
+    // From EX/WB pipeline
+    .ex_wb_pipe_i                   ( ex_wb_pipe             ),
     // from prefetcher
     .instr_req_o                    ( instr_req_int          ),
                                                                  

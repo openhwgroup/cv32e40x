@@ -34,6 +34,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
+  input  logic        kill_ex_i,
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
 
@@ -73,10 +74,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic csr_en_gated;
   logic rf_we_gated;
   
-  assign alu_en_gated = id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid;
-  assign mult_en_gated = id_ex_pipe_i.mult_en && id_ex_pipe_i.instr_valid;
-  assign csr_en_gated = id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid;
-  assign rf_we_gated = id_ex_pipe_i.rf_we && id_ex_pipe_i.instr_valid;
+  assign alu_en_gated = id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign mult_en_gated = id_ex_pipe_i.mult_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign csr_en_gated = id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign rf_we_gated = id_ex_pipe_i.rf_we && id_ex_pipe_i.instr_valid && !kill_ex_i;
 
   // ALU write port mux
   always_comb
@@ -177,7 +178,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
     else
     begin
-      if (ex_valid_o) // wb_ready_i is implied
+      if (ex_valid_o) // wb_ready_i and id_ex_pipe_i.instr_valid is implied
       begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
         ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we;
@@ -217,7 +218,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
                        && wb_ready_i) || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid); //TODO: Check if removing branch_in_ex only causes counters to cex
-  assign ex_valid_o = /*(id_ex_pipe_i.alu_en || id_ex_pipe_i.mult_en || id_ex_pipe_i.csr_en || id_ex_pipe_i.data_req)*/
-                       /*&& (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i)*/ ex_ready_o && id_ex_pipe.instr_valid;
+  assign ex_valid_o = ex_ready_o && id_ex_pipe.instr_valid && !kill_ex_i;
 
 endmodule // cv32e40x_ex_stage

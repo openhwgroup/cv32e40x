@@ -52,14 +52,10 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     input  logic        id_ready_i,                 // ID stage is ready
     input  if_id_pipe_t if_id_pipe_i,
 
+    // From WB stage
+    input  ex_wb_pipe_t ex_wb_pipe_i,
+
     // From decoder
-    input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
-    input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
-    input  logic        mret_insn_i,                // decoder encountered an mret instruction
-    input  logic        dret_insn_i,                // decoder encountered an dret instruction
-    input  logic        wfi_insn_i,                 // decoder wants to execute a WFI
-    input  logic        ebrk_insn_i,                // decoder encountered an ebreak instruction
-    input  logic        fencei_insn_i,              // decoder encountered an fence.i instruction
     input  logic        csr_status_i,               // decoder encountered an csr status instruction
     input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
     input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
@@ -190,10 +186,17 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         // IRQ
         // Exceptions
         // Special insn
-        
+        if( ex_wb_pipe_i.wfi_insn ) begin
+          // TODO:OK: Implemented for sleeping to end simulations properly.
+          //          Need to evaluate sleeping based on debug pending etc..
+          kill_if_o = 1'b1;
+          kill_id_o = 1'b1;
+          kill_ex_o = 1'b1;
+          instr_req_o = 1'b0;
+          ctrl_fsm_ns = SLEEP;
         // Single step debug entry
         // Branch taken in EX (bne, beq, blt(u), bge(u))
-        if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
+        end else if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
           pc_mux_o   = PC_BRANCH;
           pc_set_o   = 1'b1;
           kill_if_o = 1'b1;
@@ -208,6 +211,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
       end
       SLEEP: begin
         ctrl_busy_o = 1'b0;
+        instr_req_o = 1'b0;
       end
     endcase
   end

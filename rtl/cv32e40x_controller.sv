@@ -42,21 +42,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // decoder related signals
   output logic        deassert_we_o,              // deassert write enable for next instruction
 
-  input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
-  input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
-  input  logic        mret_insn_i,                // decoder encountered an mret instruction
-
-  input  logic        dret_insn_i,                // decoder encountered an dret instruction
-
-  input  logic        wfi_insn_i,                 // decoder wants to execute a WFI
-  input  logic        ebrk_insn_i,                // decoder encountered an ebreak instruction
-  input  logic        fencei_insn_i,              // decoder encountered an fence.i instruction
   input  logic        csr_status_i,               // decoder encountered an csr status instruction
 
   
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
-
+  input  ex_wb_pipe_t ex_wb_pipe_i,
   // from prefetcher
   output logic        instr_req_o,                // Start fetching instructions
 
@@ -187,15 +178,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From ID stage
     .id_ready_i                  ( id_ready_i     ),
     .if_id_pipe_i                ( if_id_pipe_i   ),
-
+    .ex_wb_pipe_i                ( ex_wb_pipe_i   ),
     // From decoder
-    .illegal_insn_i              ( illegal_insn_i ),
-    .ecall_insn_i                ( ecall_insn_i   ),
-    .mret_insn_i                 ( mret_insn_i    ),
-    .dret_insn_i                 ( dret_insn_i    ),
-    .wfi_insn_i                  ( wfi_insn_i     ),
-    .ebrk_insn_i                 ( ebrk_insn_i    ),
-    .fencei_insn_i               ( fencei_insn_i  ),
     .csr_status_i                ( csr_status_i   ),
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
