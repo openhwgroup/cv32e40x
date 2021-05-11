@@ -75,7 +75,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
 
   
   // OBI A channel registers (to keep A channel stable)
-  logic [31:0]        obi_addr_q;
+  obi_inst_req_t        obi_a_req_q;
 
   // If the incoming transaction itself is not stable; use an FSM to make sure that
   // the OBI address phase signals are kept stable during non-granted requests.
@@ -117,12 +117,12 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   always_comb
   begin
     if (state_q == TRANSPARENT) begin
-      m_c_obi_instr_if.req               = trans_valid_i;              // Do not limit number of outstanding transactions
-      m_c_obi_instr_if.req_payload.addr  = trans_i.addr;
+      m_c_obi_instr_if.req         = trans_valid_i;              // Do not limit number of outstanding transactions
+      m_c_obi_instr_if.req_payload = trans_i;
     end else begin
       // state_q == REGISTERED
-      m_c_obi_instr_if.req               = 1'b1;                       // Never retract request
-      m_c_obi_instr_if.req_payload.addr  = obi_addr_q;
+      m_c_obi_instr_if.req         = 1'b1;                       // Never retract request
+      m_c_obi_instr_if.req_payload = obi_a_req_q;
     end
   end
 
@@ -135,14 +135,14 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
     if(rst_n == 1'b0)
     begin
       state_q       <= TRANSPARENT;
-      obi_addr_q    <= 32'b0;
+      obi_a_req_q   <= OBI_INST_REQ_RESET_VAL;
     end
     else
     begin
       state_q       <= next_state;
       if ((state_q == TRANSPARENT) && (next_state == REGISTERED)) begin
         // Keep OBI A channel signals stable throughout REGISTERED state
-        obi_addr_q  <= m_c_obi_instr_if.req_payload.addr;
+        obi_a_req_q <= m_c_obi_instr_if.req_payload;
       end
     end
   end

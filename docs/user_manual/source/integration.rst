@@ -64,6 +64,10 @@ Instantiation Template
       .irq_ack_o                (),
       .irq_id_o                 (),
 
+      // Fencei flush handshake
+      .fencei_flush_req_o       (),
+      .fencei_flush_ack_i       (),
+
       // Debug interface
       .debug_req_i              (),
       .debug_havereset_o        (),

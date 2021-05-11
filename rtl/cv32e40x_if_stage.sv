@@ -187,6 +187,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   assign core_trans.addr = prefetch_trans_addr;
+  assign core_trans.prot[0]   = 1'b0;  // Transfers from IF stage are instruction transfers
+  assign core_trans.prot[2:1] = PRIV_LVL_M; // Machine mode
   
   cv32e40x_mpu
     #(.IF_STAGE(1),
