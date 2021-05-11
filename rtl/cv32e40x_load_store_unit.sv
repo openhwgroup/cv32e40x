@@ -491,7 +491,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   assign trans.prot[0]   = 1'b1;  // Transfers from LSU are data transfers
-  assign trans.prot[2:1] = 2'b11; // 2'b11 = Machine mode
+  assign trans.prot[2:1] = PRIV_LVL_M; // Machine mode
   
   cv32e40x_mpu
     #(.IF_STAGE(0),

@@ -135,7 +135,7 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
     if(rst_n == 1'b0)
     begin
       state_q       <= TRANSPARENT;
-      obi_a_req_q   <= 'b0;
+      obi_a_req_q   <= OBI_INST_REQ_RESET_VAL;
     end
     else
     begin

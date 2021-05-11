@@ -861,6 +861,13 @@ parameter inst_resp_t INST_RESP_RESET_VAL = '{
   mpu_status  : MPU_OK
 }; 
 
+// Reset value for the obi_inst_req_t type
+parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
+  addr    : 'h0,
+  memtype : 'h0,
+  prot    : {PRIV_LVL_M, 1'b0}
+};
+  
 // Data transfer bundeled with MPU status
 typedef struct packed {
   obi_data_resp_t             bus_resp;

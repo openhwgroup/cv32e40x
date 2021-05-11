@@ -46,6 +46,11 @@ set out_delay_irq         [expr $clock_period * 0.25]
 # Input delays for early signals
 set in_delay_early [expr $clock_period * 0.10] 
 
+# Input delay for fencei handshake
+set in_delay_fencei       [expr $clock_period * 0.80]
+# Output delay for fencei handshake
+set out_delay_fencei      [expr $clock_period * 0.60]
+
 # OBI inputs delays
 set in_delay_instr_gnt    [expr $clock_period * 0.80]
 set in_delay_instr_rvalid [expr $clock_period * 0.80]
@@ -102,6 +107,7 @@ set early_input_ports [list \
     dm_halt_addr_i* \
     hart_id_i* \
     dm_exception_addr_i* \
+    nmi_addr_i* \
 ]
 
 # RISC-V OBI Input ports
@@ -138,6 +144,16 @@ set sleep_output_ports [list \
     core_sleep_o \
 ]
 
+# Fencei handshake output ports
+set fencei_output_ports [list \
+    fencei_flush_req_o \
+]
+
+# Fencei handshake input ports
+set fencei_input_ports [list \
+    fencei_flush_ack_i \
+]
+
 ############## Defining default clock definitions ##############
 
 create_clock \
@@ -150,8 +166,8 @@ create_clock \
 
 set all_clock_ports $clock_ports
 
-set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports]]]
-set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $irq_output_ports]]]
+set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports $fencei_input_ports]]]
+set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $irq_output_ports $fencei_output_ports]]]
 
 # IRQs
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
@@ -182,6 +198,10 @@ set_output_delay $out_delay_data_wdata    [ get_ports data_wdata_o*        ] -cl
 set_output_delay $out_delay_data_atop     [ get_ports data_atop_o*         ] -clock clk_i
 set_output_delay $out_delay_data_memtype  [ get_ports data_memtype_o*      ] -clock clk_i
 set_output_delay $out_delay_data_prot     [ get_ports data_prot_o*         ] -clock clk_i
+
+# Fencei handshake
+set_input_delay  $in_delay_fencei       [get_ports $fencei_input_ports     ] -clock clk_i
+set_output_delay $out_delay_fencei      [get_ports $fencei_output_ports    ] -clock clk_i
 
 # Misc
 set_input_delay  $in_delay_early        [get_ports $early_input_ports      ] -clock clk_i
