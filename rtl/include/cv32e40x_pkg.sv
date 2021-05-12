@@ -822,6 +822,18 @@ parameter DATA_ADDR_WIDTH = 32;
 parameter DATA_DATA_WIDTH = 32;
 
 typedef struct packed {
+  logic        req;
+} obi_req_t;
+
+typedef struct packed {
+  logic        gnt;
+} obi_gnt_t;
+
+typedef struct packed {
+  logic        rvalid;
+} obi_rvalid_t;
+
+typedef struct packed {
   logic [INSTR_ADDR_WIDTH-1:0] addr;
   logic [1:0]                  memtype;
   logic [2:0]                  prot;

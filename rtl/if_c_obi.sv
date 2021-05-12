@@ -30,23 +30,23 @@ interface if_c_obi import cv32e40x_pkg::*;
     parameter type RESP_TYPE = obi_inst_resp_t
 );
     // A channel signals
-    logic                      req;
-    logic                      gnt;
+    obi_req_t                  s_req;
+    obi_gnt_t                  s_gnt;
     REQ_TYPE                   req_payload;
     // R channel signals
-    logic                      rvalid;
+    obi_rvalid_t               s_rvalid;
     RESP_TYPE                  resp_payload;
   
     modport master
        (
-       output req, req_payload,
-       input  gnt, rvalid, resp_payload
+       output s_req, req_payload,
+       input  s_gnt, s_rvalid, resp_payload
        );
   
     modport monitor
        (
-       input  req, req_payload,
-              gnt, rvalid, resp_payload
+       input  s_req, req_payload,
+              s_gnt, s_rvalid, resp_payload
        );
 
 endinterface : if_c_obi

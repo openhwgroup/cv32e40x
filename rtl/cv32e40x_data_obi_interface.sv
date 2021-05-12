@@ -64,7 +64,7 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
   // interface (resp_*). It is assumed that the consumer of the transaction response
   // is always receptive when resp_valid_o = 1 (otherwise a response would get dropped)
 
-  assign resp_valid_o = m_c_obi_data_if.rvalid;
+  assign resp_valid_o = m_c_obi_data_if.s_rvalid.rvalid;
   assign resp_o       = m_c_obi_data_if.resp_payload;
 
   
@@ -75,10 +75,10 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
 
   // If the incoming transaction itself is stable, then it satisfies the OBI protocol
   // and signals can be passed to/from OBI directly.
-  assign m_c_obi_data_if.req         = trans_valid_i;
+  assign m_c_obi_data_if.s_req.req   = trans_valid_i;
   assign m_c_obi_data_if.req_payload = trans_i;
 
-  assign trans_ready_o = m_c_obi_data_if.gnt;
+  assign trans_ready_o = m_c_obi_data_if.s_gnt.gnt;
 
 
   
