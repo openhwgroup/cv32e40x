@@ -47,7 +47,7 @@ module cv32e40x_load_store_unit_sva
     
   // Check that an rvalid only occurs when there are outstanding transaction(s)
   property p_no_spurious_rvalid;
-        @(posedge clk) (m_c_obi_data_if.rvalid == 1'b1) |-> (cnt_q > 0);
+        @(posedge clk) (m_c_obi_data_if.s_rvalid.rvalid == 1'b1) |-> (cnt_q > 0);
   endproperty
 
   a_no_spurious_rvalid :
@@ -55,7 +55,7 @@ module cv32e40x_load_store_unit_sva
 
   // Check that the address/we/be/atop does not contain X when request is sent
   property p_address_phase_signals_defined;
-      @(posedge clk) (m_c_obi_data_if.req == 1'b1) |-> 
+      @(posedge clk) (m_c_obi_data_if.s_req.req == 1'b1) |->
                      (!($isunknown(m_c_obi_data_if.req_payload.addr) ||
                         $isunknown(m_c_obi_data_if.req_payload.we)   ||
                         $isunknown(m_c_obi_data_if.req_payload.be)   ||
