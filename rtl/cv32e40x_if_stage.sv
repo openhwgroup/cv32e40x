@@ -54,6 +54,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // Output of IF Pipeline stage
     output if_id_pipe_t       if_id_pipe_o,
 
+    // PC from writeback (used for fencei)
+    input  logic [31:0] wb_pc_i,
+
     output logic       [31:0] pc_if_o,
 
     // Forwarding ports - control signals
@@ -142,7 +145,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
-      PC_FENCEI:    branch_addr_n = if_id_pipe_o.pc + 4; // jump to next instr forces prefetch buffer reload
+      PC_FENCEI:    branch_addr_n = wb_pc_i + 4; // jump to next instr forces prefetch buffer reload
       default:;
     endcase
   end

@@ -47,6 +47,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
+  input  logic        mret_id_i,
+
   input  ex_wb_pipe_t ex_wb_pipe_i,
   // from prefetcher
   output logic        instr_req_o,                // Start fetching instructions
@@ -101,6 +103,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        csr_save_if_o,
   output logic        csr_save_id_o,
   output logic        csr_save_ex_o,
+  output logic        csr_save_wb_o,
+
   output logic [5:0]  csr_cause_o,
   output logic        csr_restore_mret_id_o,
 
@@ -178,6 +182,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From ID stage
     .id_ready_i                  ( id_ready_i     ),
     .if_id_pipe_i                ( if_id_pipe_i   ),
+    .mret_id_i                   ( mret_id_i      ),
     .ex_wb_pipe_i                ( ex_wb_pipe_i   ),
     // From decoder
     .csr_status_i                ( csr_status_i   ),
@@ -228,6 +233,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .csr_save_if_o               ( csr_save_if_o            ),
     .csr_save_id_o               ( csr_save_id_o            ),
     .csr_save_ex_o               ( csr_save_ex_o            ),
+    .csr_save_wb_o               ( csr_save_wb_o            ),
     .csr_cause_o                 ( csr_cause_o              ),
     .csr_restore_mret_id_o       ( csr_restore_mret_id_o    ),
     .csr_restore_dret_id_o       ( csr_restore_dret_id_o    ),

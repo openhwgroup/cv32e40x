@@ -51,6 +51,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     // From ID stage
     input  logic        id_ready_i,                 // ID stage is ready
     input  if_id_pipe_t if_id_pipe_i,
+    input  logic        mret_id_i,                  // mret in ID stage
 
     // From WB stage
     input  ex_wb_pipe_t ex_wb_pipe_i,
@@ -104,6 +105,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     output logic        csr_save_if_o,         // Save PC from IF stage
     output logic        csr_save_id_o,         // Save PC from ID stage
     output logic        csr_save_ex_o,         // Save PC from EX stage (currently unused)
+    output logic        csr_save_wb_o,         // Save PC from WB stage
     output logic [5:0]  csr_cause_o,           // CSR cause (saves to mcause CSR)
     output logic        csr_restore_mret_id_o, // Restore CSR due to mret
     output logic        csr_restore_dret_id_o, // Restore CSR due to dret
@@ -135,6 +137,11 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // Debug mode
   logic debug_mode_n;
   logic debug_mode_q;
+  assign debug_mode_q = 1'b0; // TODO:OK: Implement when debug mode is implemented
+
+  // Exception in WB
+  logic exception_in_wb;
+  logic [5:0] exception_cause_wb;
 
   ////////////////////////////////////////////////////////////////////
   // Signals to not break core-v-verif compile (will be changed)
@@ -142,6 +149,17 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic debug_req_pending;
   logic branch_in_id;
   assign is_decoding_o = 1'b1; // TODO:OK: Remove
+  ////////////////////////////////////////////////////////////////////
+
+  // Exception in WB if the following evaluates to 1
+  assign exception_in_wb = (ex_wb_pipe_i.illegal_insn   ||
+                            ex_wb_pipe_i.ebrk_insn      ||
+                            ex_wb_pipe_i.ecall_insn)    && ex_wb_pipe_i.instr_valid;
+  // Set exception cause
+  assign exception_cause_wb = ex_wb_pipe_i.illegal_insn ? EXC_CAUSE_ILLEGAL_INSN :
+                              ex_wb_pipe_i.ecall_insn  ? EXC_CAUSE_ECALL_MMODE   :
+                              EXC_CAUSE_BREAKPOINT;
+                              
 
   //////////////
   // FSM comb //
@@ -161,6 +179,19 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     kill_id_o = 1'b0;
     kill_ex_o = 1'b0;
 
+    csr_restore_mret_id_o = 1'b0;
+    csr_restore_dret_id_o = 1'b0;
+    csr_save_if_o         = 1'b0; // TODO:OK May remove if/id/ex
+    csr_save_id_o         = 1'b0;
+    csr_save_ex_o         = 1'b0;
+    csr_save_wb_o         = 1'b0;
+    csr_save_cause_o      = 1'b0;
+    csr_cause_o           = '0;
+
+    exc_pc_mux_o           = EXC_PC_IRQ;
+    exc_cause_o            = '0;
+
+    debug_mode_o          = 1'b0; // TODO:OK Set properly when debug mode is implemented
     // Signals that may change
     halt_if_o = 1'b0;
     halt_id_o = 1'b0;
@@ -185,8 +216,23 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         // Debug entry
         // IRQ
         // Exceptions
+        if (exception_in_wb) begin
+          // TODO:OK: Must check if we are allowed to take exceptions
+
+          // Kill all stages
+          kill_if_o = 1'b1;
+          kill_id_o = 1'b1;
+          kill_ex_o = 1'b1;
+          // Set pc to exception handler
+          pc_set_o       = 1'b1;
+          pc_mux_o       = PC_EXCEPTION;
+          exc_pc_mux_o   = EXC_PC_EXCEPTION;  // TODO:OK: Take in account debug mode
+          // Save CSR from WB
+          csr_save_wb_o     = 1'b1;
+          csr_save_cause_o  = !debug_mode_q;
+          csr_cause_o       = {1'b0, exception_cause_wb};
         // Special insn
-        if( ex_wb_pipe_i.wfi_insn ) begin
+        end else if( ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid ) begin
           // TODO:OK: Implemented for sleeping to end simulations properly.
           //          Need to evaluate sleeping based on debug pending etc..
           kill_if_o = 1'b1;
@@ -194,6 +240,13 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
           kill_ex_o = 1'b1;
           instr_req_o = 1'b0;
           ctrl_fsm_ns = SLEEP;
+        end else if ( ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid ) begin
+          // Kill all instructions and set pc wo wb.pc + 4
+          kill_if_o = 1'b1;
+          kill_id_o = 1'b1;
+          kill_ex_o = 1'b1;
+          pc_set_o  = 1'b1;
+          pc_mux_o  = PC_FENCEI;
         // Single step debug entry
         // Branch taken in EX (bne, beq, blt(u), bge(u))
         end else if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
@@ -201,12 +254,18 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
           pc_set_o   = 1'b1;
           kill_if_o = 1'b1;
           kill_id_o = 1'b1;  
-        end else if (jump_in_dec && if_id_pipe_i.instr_valid) begin
+        end else if ((jump_in_dec || mret_id_i) && if_id_pipe_i.instr_valid) begin
           // kill_if
           kill_if_o = 1'b1;
           // Jumps in ID (JAL, JALR, mret, uret, dret)
-          pc_mux_o = PC_JUMP;
-          pc_set_o = !jr_stall_i;
+          if ( mret_id_i) begin
+            csr_restore_mret_id_o = 1'b1; // TODO:OK: Cannot do this, CSR must be updated in WB
+            pc_mux_o              = PC_MRET; // TODO:OK Implement mux for exception if in debug mode
+            pc_set_o              = !jr_stall_i;
+          end else begin
+            pc_mux_o = PC_JUMP;
+            pc_set_o = !jr_stall_i;
+          end
         end
       end
       SLEEP: begin

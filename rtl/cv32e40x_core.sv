@@ -193,6 +193,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        csr_save_if;
   logic        csr_save_id;
   logic        csr_save_ex;
+  logic        csr_save_wb;
   logic [5:0]  csr_cause;
   logic        csr_restore_mret_id;
   logic        csr_restore_dret_id;
@@ -363,6 +364,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // IF/ID pipeline
     .if_id_pipe_o        ( if_id_pipe        ),
 
+    .wb_pc_i             ( ex_wb_pipe.pc     ),
     // control signals
     .clear_instr_valid_i ( clear_instr_valid ),
     .pc_set_i            ( pc_set            ),
@@ -661,10 +663,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .pc_if_i                    ( pc_if                  ),
     .pc_id_i                    ( if_id_pipe.pc          ),
+    .pc_wb_i                    ( ex_wb_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
     .csr_save_id_i              ( csr_save_id            ),
     .csr_save_ex_i              ( csr_save_ex            ),
+    .csr_save_wb_i              ( csr_save_wb            ),
     .csr_restore_mret_i         ( csr_restore_mret_id    ),
     .csr_restore_dret_i         ( csr_restore_dret_id    ),
 
@@ -710,6 +714,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
+    .mret_id_i                      ( mret_insn              ),
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
@@ -769,6 +774,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_save_if_o                  ( csr_save_if            ),
     .csr_save_id_o                  ( csr_save_id            ),
     .csr_save_ex_o                  ( csr_save_ex            ),
+    .csr_save_wb_o                  ( csr_save_wb            ),
     .csr_restore_mret_id_o          ( csr_restore_mret_id    ),
     .csr_restore_dret_id_o          ( csr_restore_dret_id    ),
 

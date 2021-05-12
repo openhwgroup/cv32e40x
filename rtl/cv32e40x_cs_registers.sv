@@ -75,10 +75,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   input  logic [31:0]     pc_if_i,
   input  logic [31:0]     pc_id_i,
+  input  logic [31:0]     pc_wb_i,
 
   input  logic            csr_save_if_i,
   input  logic            csr_save_id_i,
   input  logic            csr_save_ex_i,
+  input  logic            csr_save_wb_i,
 
   input  logic            csr_restore_mret_i,
   
@@ -458,6 +460,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             exception_pc = pc_id_i;
           csr_save_ex_i:
             exception_pc = id_ex_pipe_i.pc;
+          csr_save_wb_i:
+            exception_pc = pc_wb_i;
           default:;
         endcase
 
