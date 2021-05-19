@@ -42,12 +42,13 @@ module cv32e40x_controller_fsm_sva
    input       ctrl_state_e ctrl_fsm_ns
    );
 
+  // TODO: This assertion has been removed for a simplification for RVFI and has not been verified
   // make sure that taken branches do not happen back-to-back, as this is not
   // possible without branch prediction in the IF stage
-  a_no_back_to_back_branching :
-    assert property (@(posedge clk)
-                     (branch_taken_ex_i) |=> (~branch_taken_ex_i) )
-      else `uvm_error("controller", "Two branches back-to-back are taken")
+  //a_no_back_to_back_branching :
+  //  assert property (@(posedge clk)
+  //                   (branch_taken_ex_i) |=> (~branch_taken_ex_i) )
+  //    else `uvm_error("controller", "Two branches back-to-back are taken")
 
   // Ensure DBG_TAKEN_IF can only be enterred if in single step mode or woken
   // up from sleep by debug_req_i
