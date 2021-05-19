@@ -4,6 +4,7 @@ Physical Memory Attribution (PMA)
 =================================
 The |corev| includes a Physical Memory Attribution (PMA) unit that allows compile time attribution of the physical memory map.
 The PMA is configured through the top level parameters ``PMA_NUM_REGIONS`` and ``PMA_CFG[]``.
+The number of PMA regions is configured through the ``PMA_NUM_REGIONS`` parameter. Valid values are 0-16.
 The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entries of the type ``pma_region_t``, defined in ``cv32e40x_pkg.sv``:
 
 .. code-block:: verilog
@@ -44,6 +45,12 @@ Regions supporting atomic operations can be defined by setting ``atomic=1``.
 An attempt to perform a Load-Reserved to a region in which Atomic operations are not allowed will cause a precise load access fault (exception code 5).
 An attempt to perform a Store-Conditional or Atomic Memory Operation (AMO) to a region in which Atomic operations are not allowed will cause a precise store/AMO access fault (exception code 7).
 Note that the ``atomic`` attribute is only used when the RV32A extension is included.
+
+Default attribution
+~~~~~~~~~~~~~~~~~~~
+If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
+
+If the PMA is configured (``PMA_NUM_REGIONS > 0``), memory regions not covered by any PMA regions are treated as I/O memory (``main=0``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
 
 Every instruction fetch, load and store will be subject to PMA checks and failed checks will result in an exception. PMA checks cannot be disabled.
 See :ref:`exceptions-interrupts` for details.

@@ -25,7 +25,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_load_store_unit import cv32e40x_pkg::*;
-  #(parameter int unsigned PMA_NUM_REGIONS = 0,
+  #(parameter bit          A_EXTENSION = 0,
+    parameter int unsigned PMA_NUM_REGIONS = 0,
     parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
 (
     input  logic         clk,
@@ -488,9 +489,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // MPU
   //////////////////////////////////////////////////////////////////////////////
+
+  assign trans.prot[0]   = 1'b1;  // Transfers from LSU are data transfers
+  assign trans.prot[2:1] = PRIV_LVL_M; // Machine mode
   
   cv32e40x_mpu
     #(.IF_STAGE(0),
+      .A_EXTENSION(A_EXTENSION),
       .CORE_RESP_TYPE(data_resp_t),
       .BUS_RESP_TYPE(obi_data_resp_t),
       .CORE_REQ_TYPE(obi_data_req_t),

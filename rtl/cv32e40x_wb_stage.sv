@@ -39,10 +39,13 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input  ex_wb_pipe_t   ex_wb_pipe_i,
 
   input  logic [31:0]   lsu_rdata_i,
+  input  logic          lsu_ready_wb_i,
 
   output logic          rf_we_wb_o,
   output rf_addr_t      rf_waddr_wb_o,
   output logic [31:0]   rf_wdata_wb_o,
+
+  output logic          wb_valid_o,
 
   // to JR forward logic
   output logic          data_req_wb_o
@@ -60,5 +63,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign rf_wdata_wb_o = ex_wb_pipe_i.data_req ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
   assign data_req_wb_o = ex_wb_pipe_i.data_req;
 
+  assign wb_valid_o    = lsu_ready_wb_i;
   
 endmodule // cv32e40x_wb_stage

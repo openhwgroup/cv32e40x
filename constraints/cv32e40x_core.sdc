@@ -46,6 +46,11 @@ set out_delay_irq         [expr $clock_period * 0.25]
 # Input delays for early signals
 set in_delay_early [expr $clock_period * 0.10] 
 
+# Input delay for fencei handshake
+set in_delay_fencei       [expr $clock_period * 0.80]
+# Output delay for fencei handshake
+set out_delay_fencei      [expr $clock_period * 0.60]
+
 # OBI inputs delays
 set in_delay_instr_gnt    [expr $clock_period * 0.80]
 set in_delay_instr_rvalid [expr $clock_period * 0.80]
@@ -59,15 +64,19 @@ set in_delay_data_err     [expr $clock_period * 0.80]
 set in_delay_data_exokay  [expr $clock_period * 0.80]
 
 # OBI outputs delays
-set out_delay_instr_req  [expr $clock_period * 0.60]
-set out_delay_instr_addr [expr $clock_period * 0.60]
+set out_delay_instr_req     [expr $clock_period * 0.60]
+set out_delay_instr_addr    [expr $clock_period * 0.60]
+set out_delay_instr_memtype [expr $clock_period * 0.60]
+set out_delay_instr_prot    [expr $clock_period * 0.60]
 
-set out_delay_data_req   [expr $clock_period * 0.60]
-set out_delay_data_we    [expr $clock_period * 0.60]
-set out_delay_data_be    [expr $clock_period * 0.60]
-set out_delay_data_addr  [expr $clock_period * 0.60]
-set out_delay_data_wdata [expr $clock_period * 0.60]
-set out_delay_data_atop  [expr $clock_period * 0.60]
+set out_delay_data_req     [expr $clock_period * 0.60]
+set out_delay_data_we      [expr $clock_period * 0.60]
+set out_delay_data_be      [expr $clock_period * 0.60]
+set out_delay_data_addr    [expr $clock_period * 0.60]
+set out_delay_data_wdata   [expr $clock_period * 0.60]
+set out_delay_data_atop    [expr $clock_period * 0.60]
+set out_delay_data_memtype [expr $clock_period * 0.60]
+set out_delay_data_prot    [expr $clock_period * 0.60]
 
 # I/O delays for non RISC-V Bus Interface ports
 set in_delay_other       [expr $clock_period * 0.10]
@@ -98,6 +107,7 @@ set early_input_ports [list \
     dm_halt_addr_i* \
     hart_id_i* \
     dm_exception_addr_i* \
+    nmi_addr_i* \
 ]
 
 # RISC-V OBI Input ports
@@ -117,17 +127,31 @@ set obi_input_ports [list \
 set obi_output_ports [list \
     instr_req_o \
     instr_addr_o* \
+    instr_memtype_o* \
+    instr_prot_o* \
     data_req_o \
     data_we_o \
     data_be_o* \
     data_addr_o* \
     data_wdata_o* \
     data_atop_o* \
+    data_memtype_o* \
+    data_prot_o* \
 ]
 
 # RISC-V Sleep Output ports
 set sleep_output_ports [list \
     core_sleep_o \
+]
+
+# Fencei handshake output ports
+set fencei_output_ports [list \
+    fencei_flush_req_o \
+]
+
+# Fencei handshake input ports
+set fencei_input_ports [list \
+    fencei_flush_ack_i \
 ]
 
 ############## Defining default clock definitions ##############
@@ -142,8 +166,8 @@ create_clock \
 
 set all_clock_ports $clock_ports
 
-set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports]]]
-set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $irq_output_ports]]]
+set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports $fencei_input_ports]]]
+set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $irq_output_ports $fencei_output_ports]]]
 
 # IRQs
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
@@ -161,15 +185,23 @@ set_input_delay  $in_delay_data_rdata   [ get_ports data_rdata_i*          ] -cl
 set_input_delay  $in_delay_data_err     [ get_ports data_err_i             ] -clock clk_i
 set_input_delay  $in_delay_data_exokay  [ get_ports data_exokay_i          ] -clock clk_i
 
-set_output_delay $out_delay_instr_req   [ get_ports instr_req_o            ] -clock clk_i
-set_output_delay $out_delay_instr_addr  [ get_ports instr_addr_o*          ] -clock clk_i
+set_output_delay $out_delay_instr_req      [ get_ports instr_req_o         ] -clock clk_i
+set_output_delay $out_delay_instr_addr     [ get_ports instr_addr_o*       ] -clock clk_i
+set_output_delay $out_delay_instr_memtype  [ get_ports instr_memtype_o*    ] -clock clk_i
+set_output_delay $out_delay_instr_prot     [ get_ports instr_prot_o*       ] -clock clk_i
 
-set_output_delay $out_delay_data_req    [ get_ports data_req_o             ] -clock clk_i
-set_output_delay $out_delay_data_we     [ get_ports data_we_o              ] -clock clk_i
-set_output_delay $out_delay_data_be     [ get_ports data_be_o*             ] -clock clk_i
-set_output_delay $out_delay_data_addr   [ get_ports data_addr_o*           ] -clock clk_i
-set_output_delay $out_delay_data_wdata  [ get_ports data_wdata_o*          ] -clock clk_i
-set_output_delay $out_delay_data_atop   [ get_ports data_atop_o*           ] -clock clk_i
+set_output_delay $out_delay_data_req      [ get_ports data_req_o           ] -clock clk_i
+set_output_delay $out_delay_data_we       [ get_ports data_we_o            ] -clock clk_i
+set_output_delay $out_delay_data_be       [ get_ports data_be_o*           ] -clock clk_i
+set_output_delay $out_delay_data_addr     [ get_ports data_addr_o*         ] -clock clk_i
+set_output_delay $out_delay_data_wdata    [ get_ports data_wdata_o*        ] -clock clk_i
+set_output_delay $out_delay_data_atop     [ get_ports data_atop_o*         ] -clock clk_i
+set_output_delay $out_delay_data_memtype  [ get_ports data_memtype_o*      ] -clock clk_i
+set_output_delay $out_delay_data_prot     [ get_ports data_prot_o*         ] -clock clk_i
+
+# Fencei handshake
+set_input_delay  $in_delay_fencei       [get_ports $fencei_input_ports     ] -clock clk_i
+set_output_delay $out_delay_fencei      [get_ports $fencei_output_ports    ] -clock clk_i
 
 # Misc
 set_input_delay  $in_delay_early        [get_ports $early_input_ports      ] -clock clk_i

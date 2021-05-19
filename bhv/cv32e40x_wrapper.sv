@@ -55,7 +55,6 @@ module cv32e40x_wrapper
   input  logic        clk_i,
   input  logic        rst_ni,
 
-  input  logic        pulp_clock_en_i,                  // PULP clock enable (only used if PULP_CLUSTER = 1)
   input  logic        scan_cg_en_i,                     // Enable all clock gates for testing
 
   // Core ID, Cluster ID, debug mode halt address and boot address are considered more or less static
@@ -64,12 +63,15 @@ module cv32e40x_wrapper
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
+  input logic [31:0]  nmi_addr_i,
 
   // Instruction memory interface
   output logic        instr_req_o,
   input  logic        instr_gnt_i,
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
+  output logic [1:0]  instr_memtype_o,
+  output logic [2:0]  instr_prot_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -80,6 +82,8 @@ module cv32e40x_wrapper
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_addr_o,
+  output logic [1:0]  data_memtype_o,
+  output logic [2:0]  data_prot_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
@@ -91,6 +95,9 @@ module cv32e40x_wrapper
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
 
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i,
   // Debug Interface
   input  logic        debug_req_i,
   output logic        debug_havereset_o,
@@ -141,6 +148,7 @@ module cv32e40x_wrapper
       cv32e40x_prefetcher_sva  
         prefetcher_sva (.*);
 
+
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
       core_sva (// probed cs_registers signals
@@ -158,8 +166,11 @@ module cv32e40x_wrapper
                 .id_stage_instr_valid             (core_i.controller_i.controller_fsm_i.instr_valid),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
                 // probed controller signals
+                .exc_cause                        (core_i.controller_i.exc_cause),
                 .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .id_valid                         (core_i.id_stage_i.id_valid_o),
+                .multi_cycle_id_stall             (core_i.id_stage_i.multi_cycle_id_stall),
                 .*);
 
   bind cv32e40x_sleep_unit:
@@ -306,6 +317,7 @@ module cv32e40x_wrapper
       .controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
       .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
+      .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
       .is_decoding    ( core_i.is_decoding                             ),
       .is_illegal     ( core_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match                     ),
@@ -335,7 +347,7 @@ module cv32e40x_wrapper
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ),
+      .wb_bypass      ( 1'b0 ), //( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ), // TODO: This done to support a simplification for RVFI and has not been verified
 
       .wb_valid       ( core_i.wb_valid                             ),
       .wb_reg_addr    ( core_i.rf_waddr_wb                          ),

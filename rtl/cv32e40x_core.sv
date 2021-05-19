@@ -48,12 +48,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
+  input  logic [31:0] nmi_addr_i,               // TODO use
 
   // Instruction memory interface
   output logic        instr_req_o,
   input  logic        instr_gnt_i,
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
+  output logic [1:0]  instr_memtype_o,
+  output logic [2:0]  instr_prot_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -64,17 +67,22 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_addr_o,
+  output logic [1:0]  data_memtype_o,
+  output logic [2:0]  data_prot_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
   output logic [5:0]  data_atop_o,
   input  logic        data_exokay_i,
 
-  
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i,       // TODO use
 
   // Debug Interface
   input  logic        debug_req_i,
@@ -97,8 +105,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   pc_mux_e           pc_mux_id;         // Mux selector for next PC
   exc_pc_mux_e       exc_pc_mux_id; // Mux selector for exception PC
-  logic [4:0]        m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
-  logic [4:0]        exc_cause;
+  logic [4:0]        m_exc_vec_pc_mux; // Mux selector for vectored IRQ PC
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
@@ -157,11 +164,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [23:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
-  csr_opcode_e csr_op;
-  csr_num_e    csr_addr;
-  csr_num_e    csr_addr_int;
   logic [31:0] csr_rdata;
-  logic [31:0] csr_wdata;
   PrivLvl_t    current_priv_lvl;
 
   // Load/store unit
@@ -261,36 +264,40 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
+
+  // kill signals
+  logic        kill_if;
   
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
   if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
 
-
-  // Mux selector for vectored IRQ PC
-  assign m_exc_vec_pc_mux_id = (mtvec_mode == 2'b0) ? 5'h0 : exc_cause;
-
-
   // Connect toplevel OBI signals to internal interfaces
-  assign instr_req_o                         = m_c_obi_instr_if.req;
+  assign instr_req_o                         = m_c_obi_instr_if.s_req.req;
   assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
-  assign m_c_obi_instr_if.gnt                = instr_gnt_i;
-  assign m_c_obi_instr_if.rvalid             = instr_rvalid_i;
+  assign instr_memtype_o                     = m_c_obi_instr_if.req_payload.memtype;
+  assign instr_prot_o                        = m_c_obi_instr_if.req_payload.prot;
+  assign m_c_obi_instr_if.s_gnt.gnt          = instr_gnt_i;
+  assign m_c_obi_instr_if.s_rvalid.rvalid    = instr_rvalid_i;
   assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
   assign m_c_obi_instr_if.resp_payload.err   = instr_err_i;
   
-  assign data_req_o                          = m_c_obi_data_if.req;
+  assign data_req_o                          = m_c_obi_data_if.s_req.req;
   assign data_we_o                           = m_c_obi_data_if.req_payload.we;
   assign data_be_o                           = m_c_obi_data_if.req_payload.be;
   assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
+  assign data_memtype_o                      = m_c_obi_data_if.req_payload.memtype;
+  assign data_prot_o                         = m_c_obi_data_if.req_payload.prot;
   assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
   assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
-  assign m_c_obi_data_if.gnt                 = data_gnt_i;
-  assign m_c_obi_data_if.rvalid              = data_rvalid_i;
+  assign m_c_obi_data_if.s_gnt.gnt           = data_gnt_i;
+  assign m_c_obi_data_if.s_rvalid.rvalid     = data_rvalid_i;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
   assign m_c_obi_data_if.resp_payload.err    = data_err_i;
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
+
+  assign fencei_flush_req_o = 1'b0; // TODO connect to controller when handshake is implemented
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
@@ -340,7 +347,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //                                              //
   //////////////////////////////////////////////////
   cv32e40x_if_stage
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   if_stage_i
   (
@@ -359,6 +367,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // instruction request control
     .req_i               ( instr_req_int     ),
+
+    .kill_if_i           ( kill_if           ),
 
     // instruction cache interface
     .m_c_obi_instr_if    ( m_c_obi_instr_if   ),
@@ -379,7 +389,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .pc_if_o             ( pc_if             ),
 
-    .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
+    .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux  ),
 
     .csr_mtvec_init_o    ( csr_mtvec_init    ),
 
@@ -443,8 +453,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR ID/EX
     .current_priv_lvl_i           ( current_priv_lvl     ),
-
-    .lsu_misaligned_i             ( lsu_misaligned       ),
 
     // Debug Signalf
     .debug_mode_i                 ( debug_mode           ),
@@ -558,7 +566,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_load_store_unit
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   load_store_unit_i
   (
@@ -596,17 +605,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i               ( ex_wb_pipe                   ),
 
     .lsu_rdata_i                ( lsu_rdata                    ),
+    .lsu_ready_wb_i             ( lsu_ready_wb                 ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
+  
+    .wb_valid_o                 ( wb_valid                     ),
+
     .data_req_wb_o              ( data_req_wb                  )
   );
-
-  // Tracer signal
-  assign wb_valid = lsu_ready_wb;
-
 
   //////////////////////////////////////
   //        ____ ____  ____           //
@@ -637,11 +646,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init         ),
+
+    // ID/EX pipeline 
+    .id_ex_pipe_i               ( id_ex_pipe             ),
+
     // Interface to CSRs (SRAM like)
-    .csr_addr_i                 ( csr_addr               ),
-    .csr_wdata_i                ( csr_wdata              ),
-    .csr_op_i                   ( csr_op                 ),
-    .csr_access_i               ( id_ex_pipe.csr_access  ),
     .csr_rdata_o                ( csr_rdata              ),
 
     // Interrupt related control signals
@@ -663,7 +672,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .pc_if_i                    ( pc_if                  ),
     .pc_id_i                    ( if_id_pipe.pc          ),
-    .pc_ex_i                    ( id_ex_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
     .csr_save_id_i              ( csr_save_id            ),
@@ -686,13 +694,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mhpmevent_imiss_i          ( mhpmevent_imiss        ),
     .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     )
   );
-
-  //  CSR access
-  assign csr_addr     =  csr_addr_int;
-  assign csr_wdata    =  id_ex_pipe.alu_operand_a;
-  assign csr_op       =  id_ex_pipe.csr_op;
-
-  assign csr_addr_int = csr_num_e'(id_ex_pipe.csr_en ? id_ex_pipe.alu_operand_b[11:0] : '0);
 
   ////////////////////////////////////////////////////////////////////
   //    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
@@ -736,8 +737,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .pc_set_o                       ( pc_set                 ),
     .pc_mux_o                       ( pc_mux_id              ),
     .exc_pc_mux_o                   ( exc_pc_mux_id          ),
-    .exc_cause_o                    ( exc_cause              ),
-
+    .m_exc_vec_pc_mux_o             ( m_exc_vec_pc_mux       ),
+    
     // LSU
     .data_req_ex_i                  ( id_ex_pipe.data_req    ),
     .data_we_ex_i                   ( id_ex_pipe.data_we     ),
@@ -759,6 +760,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .current_priv_lvl_i             ( current_priv_lvl       ),
     .irq_ack_o                      ( irq_ack_o              ),
     .irq_id_o                       ( irq_id_o               ),
+    
+    // From CSR registers
+    .mtvec_mode_i                   ( mtvec_mode             ),
 
     // Debug Signal
     .debug_mode_o                   ( debug_mode             ),
@@ -805,6 +809,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Stall signals
     .halt_if_o                      ( halt_if                ),
     .halt_id_o                      ( halt_id                ),
+
+    .kill_if_o                      ( kill_if                ),
 
     .misaligned_stall_o             ( misaligned_stall       ),
     .jr_stall_o                     ( jr_stall               ),
