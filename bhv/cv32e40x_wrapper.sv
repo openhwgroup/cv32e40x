@@ -270,7 +270,7 @@ module cv32e40x_wrapper
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ),
+      .wb_bypass      ( 1'b0 ), //( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ), // TODO: This done to support a simplification for RVFI and has not been verified
 
       .wb_valid       ( core_i.wb_valid                             ),
       .wb_reg_addr    ( core_i.rf_waddr_wb                          ),
