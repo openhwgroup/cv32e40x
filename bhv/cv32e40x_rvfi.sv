@@ -154,6 +154,7 @@ module cv32e40x_rvfi
   logic         is_branch_ex;
   logic         is_exception_wb;
   logic         is_mret_wb;
+  logic         is_dret_wb;
 
 `ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_rvfi_trace.svh"
@@ -166,6 +167,7 @@ module cv32e40x_rvfi
   assign is_branch_ex    = (pc_mux_i == PC_BRANCH);
   assign is_exception_wb = (pc_mux_i == PC_EXCEPTION);
   assign is_mret_wb      = (pc_mux_i == PC_MRET);
+  assign is_dret_wb      = (pc_mux_i == PC_DRET);
 
     // Assign rvfi channels
   assign rvfi_valid             = rvfi_stage[RVFI_STAGES-1].rvfi_valid;
@@ -227,7 +229,7 @@ module cv32e40x_rvfi
     end else begin
       // Store last valid instructions
       if(rvfi_valid) begin
-        instr_q.valid    <= rvfi_valid;
+        instr_q.valid    <= rvfi_valid && !is_dret_wb;
         instr_q.order    <= rvfi_order;
         instr_q.pc_wdata <= rvfi_pc_wdata;
       end else begin
