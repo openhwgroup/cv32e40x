@@ -48,7 +48,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        mret_id_i,
+  //input  logic        dret_id_i,
+  input  logic        csr_en_id_i,
+  input  csr_opcode_e csr_op_id_i,
 
+  input  id_ex_pipe_t id_ex_pipe_i,
   input  ex_wb_pipe_t ex_wb_pipe_i,
   // from prefetcher
   output logic        instr_req_o,                // Start fetching instructions
@@ -144,6 +148,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        misaligned_stall_o,
   output logic        jr_stall_o,
   output logic        load_stall_o,
+  output logic        csr_stall_o,
 
   input  logic        id_ready_i,                 // ID stage is ready
   
@@ -255,6 +260,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       // From controller_fsm
       .is_decoding_i              ( is_decoding_o            ),
     
+      .if_id_pipe_i               ( if_id_pipe_i             ),
+      .id_ex_pipe_i               ( id_ex_pipe_i             ),
+      .ex_wb_pipe_i               ( ex_wb_pipe_i             ),
       // From decoder
       .ctrl_transfer_insn_raw_i   ( ctrl_transfer_insn_raw_i ),
       .rf_re_i                    ( rf_re_i                  ),
@@ -263,6 +271,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   
       // From id_stage
       .regfile_alu_we_id_i        ( regfile_alu_we_id_i      ),
+      .mret_id_i                  ( mret_id_i                ),
+      .dret_id_i                  ( 1'b0 /*dret_id_i*/                ),
+      .csr_en_id_i                ( csr_en_id_i              ),
+      .csr_op_id_i                ( csr_op_id_i              ),
     
       // From EX
       .rf_we_ex_i                 ( rf_we_ex_i               ),
@@ -287,6 +299,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       .misaligned_stall_o         ( misaligned_stall_o       ),
       .jr_stall_o                 ( jr_stall_o               ),
       .load_stall_o               ( load_stall_o             ),
+      .csr_stall_o                ( csr_stall_o              ),
   
       // To decoder
       .deassert_we_o              ( deassert_we_o            )

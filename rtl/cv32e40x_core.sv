@@ -171,6 +171,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        misaligned_stall;
   logic        jr_stall;
   logic        load_stall;
+  logic        csr_stall;
 
   logic        id_ready;
   logic        ex_ready;
@@ -247,6 +248,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [1:0] ctrl_transfer_insn;
   logic [1:0] ctrl_transfer_insn_raw;
   logic       debug_wfi_no_sleep;
+
+  logic       csr_en_id;
+  csr_opcode_e csr_op_id;
 
   // Forward mux selectors controller -> id
   op_fw_mux_e  operand_a_fw_mux_sel;
@@ -480,6 +484,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .fencei_insn_o                ( fencei_insn          ),
     .csr_status_o                 ( csr_status           ),
 
+    .csr_en_o                     ( csr_en_id            ),
+    .csr_op_o                     ( csr_op_id            ),
+
     .branch_taken_ex_o            ( branch_taken_ex      ),
 
     .ctrl_transfer_insn_o         ( ctrl_transfer_insn   ),
@@ -500,6 +507,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .misaligned_stall_i           ( misaligned_stall     ),
     .jr_stall_i                   ( jr_stall             ),
     .load_stall_i                 ( load_stall           ),
+    .csr_stall_i                  ( csr_stall            ),
 
     .regfile_rdata_i              ( regfile_rdata        )
   );
@@ -596,6 +604,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i               ( ex_wb_pipe                   ),
 
     .lsu_rdata_i                ( lsu_rdata                    ),
+    .csr_rdata_i                ( csr_rdata                    ),
     .lsu_ready_wb_i             ( lsu_ready_wb                 ),
 
     // Write back to register file
@@ -638,8 +647,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init         ),
 
-    // ID/EX pipeline 
+    // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe             ),
+
+    // EX/WB pipeline
+    .ex_wb_pipe_i               ( ex_wb_pipe             ),
 
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
@@ -715,7 +727,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
     .mret_id_i                      ( mret_insn              ),
+    //.dret_id_i                      ( dret_insn              ),
+    .csr_en_id_i                    ( csr_en_id              ),
+    .csr_op_id_i                    ( csr_op_id              ),
 
+    // From ID/EX pipeline
+    .id_ex_pipe_i                   ( id_ex_pipe             ),
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
     // from prefetcher
@@ -728,7 +745,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .m_exc_vec_pc_mux_o             ( m_exc_vec_pc_mux       ),
     
     // LSU
-    .data_req_ex_i                  ( id_ex_pipe.data_req    ),
+    .data_req_ex_i                  ( id_ex_pipe.data_req    ),// TODO:OK Use id_ex_pipe only
     .data_we_ex_i                   ( id_ex_pipe.data_we     ),
     .data_misaligned_i              ( lsu_misaligned         ),
 
@@ -745,20 +762,20 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
-    .current_priv_lvl_i             ( current_priv_lvl       ),
+    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK: Needs bypass?
     .irq_ack_o                      ( irq_ack_o              ),
     .irq_id_o                       ( irq_id_o               ),
     
     // From CSR registers
-    .mtvec_mode_i                   ( mtvec_mode             ),
+    .mtvec_mode_i                   ( mtvec_mode             ), // TODO:OK: Bypass?
 
     // Debug Signal
     .debug_mode_o                   ( debug_mode             ),
     .debug_cause_o                  ( debug_cause            ),
     .debug_csr_save_o               ( debug_csr_save         ),
     .debug_req_i                    ( debug_req_i            ), 
-    .debug_single_step_i            ( debug_single_step      ),
-    .debug_ebreakm_i                ( debug_ebreakm          ),
+    .debug_single_step_i            ( debug_single_step      ), // TODO:OK: Bypass?
+    .debug_ebreakm_i                ( debug_ebreakm          ), // TODO:OK: Bypass?
     .debug_trigger_match_i          ( debug_trigger_match    ),
     .debug_wfi_no_sleep_o           ( debug_wfi_no_sleep     ),
     .debug_havereset_o              ( debug_havereset_o      ),
@@ -806,6 +823,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .misaligned_stall_o             ( misaligned_stall       ),
     .jr_stall_o                     ( jr_stall               ),
     .load_stall_o                   ( load_stall             ),
+    .csr_stall_o                    ( csr_stall              ),
 
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),

@@ -52,6 +52,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // ID/EX pipeline 
   input id_ex_pipe_t      id_ex_pipe_i,
 
+  // EX/WB pipeline
+  input ex_wb_pipe_t      ex_wb_pipe_i,
+
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
@@ -186,12 +189,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   csr_opcode_e csr_op;
   csr_num_e    csr_addr;
+  csr_num_e    csr_raddr;
   logic [31:0] csr_wdata;
 
-  //  CSR access
-  assign csr_addr     =  csr_num_e'(id_ex_pipe_i.csr_en ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
-  assign csr_wdata    =  id_ex_pipe_i.alu_operand_a;
-  assign csr_op       =  id_ex_pipe_i.csr_op;
+  //  CSR access. Read in EX, write in WB
+  assign csr_addr     =  csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0);
+  assign csr_raddr     =  csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
+  assign csr_wdata    =  ex_wb_pipe_i.csr_wdata;
+  assign csr_op       =  ex_wb_pipe_i.csr_op;
     
   // mip CSR
   assign mip = mip_i;
@@ -236,8 +241,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
     csr_rdata_int = csr_rdata_q;
-    if(id_ex_pipe_i.csr_access) begin
-      case (csr_addr)
+    if(id_ex_pipe_i.csr_access && id_ex_pipe_i.instr_valid) begin
+      case (csr_raddr)
         // mstatus: always M-mode, contains IE bit
         CSR_MSTATUS: csr_rdata_int = mstatus_q;
         // misa: machine isa register
@@ -315,7 +320,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
         CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
         CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
-          csr_rdata_int = mhpmcounter_q[csr_addr[4:0]][31:0];
+          csr_rdata_int = mhpmcounter_q[csr_raddr[4:0]][31:0];
 
         CSR_MCYCLEH,
         CSR_MINSTRETH,
@@ -337,7 +342,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
         CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
         CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
-          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_addr[4:0]][63:32] : '0;
+          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_raddr[4:0]][63:32] : '0;
 
         CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
 
@@ -349,7 +354,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
         CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
         CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
-          csr_rdata_int = mhpmevent_q[csr_addr[4:0]];
+          csr_rdata_int = mhpmevent_q[csr_raddr[4:0]];
 
         
         default:

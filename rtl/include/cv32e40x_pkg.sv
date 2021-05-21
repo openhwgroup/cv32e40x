@@ -932,6 +932,13 @@ typedef struct packed {
   logic [31:0]  rf_wdata;
   logic         data_req;
 
+  // CSR signals
+  logic         csr_en;
+  logic         csr_access;
+  csr_opcode_e  csr_op;
+  logic [11:0]  csr_addr;
+  logic [31:0]  csr_wdata;
+
   // Signals for exception handling etc
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status

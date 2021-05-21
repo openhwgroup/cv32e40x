@@ -103,6 +103,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        ebrk_insn_o,
     output logic        fencei_insn_o,
     output logic        csr_status_o,
+    output logic        csr_en_o,
+    output csr_opcode_e csr_op_o,
 
     output logic        branch_taken_ex_o,
 
@@ -128,6 +130,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic          misaligned_stall_i,
     input  logic          jr_stall_i,
     input  logic          load_stall_i,
+    input  logic          csr_stall_i,
 
     // Register file
     input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS]
@@ -688,10 +691,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end
   end
 
+  assign csr_en_o = csr_en;
+  assign csr_op_o = csr_op;
   // stall control
   assign multi_cycle_id_stall = misaligned_stall_i;
 
-  assign id_ready_o = (!multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i);
+  assign id_ready_o = (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i);
   assign id_valid_o = (if_id_pipe_i.instr_valid && !kill_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 

@@ -139,10 +139,10 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic debug_mode_q;
   assign debug_mode_q = 1'b0; // TODO:OK: Implement when debug mode is implemented
 
-  // Exception in WB
+  // Events in WB
   logic exception_in_wb;
   logic [5:0] exception_cause_wb;
-
+  
   ////////////////////////////////////////////////////////////////////
   // Signals to not break core-v-verif compile (will be changed)
   logic illegal_insn_q;
@@ -247,6 +247,8 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
           kill_ex_o = 1'b1;
           pc_set_o  = 1'b1;
           pc_mux_o  = PC_FENCEI;
+        end else if ( ex_wb_pipe_i.mret_insn && ex_wb_pipe_i.instr_valid ) begin
+          csr_restore_mret_id_o = 1'b1; // TODO:OK: Rename to csr_restore_mret_wb_o
         // Single step debug entry
         // Branch taken in EX (bne, beq, blt(u), bge(u))
         end else if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
@@ -259,9 +261,8 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
           kill_if_o = 1'b1;
           // Jumps in ID (JAL, JALR, mret, uret, dret)
           if ( mret_id_i) begin
-            csr_restore_mret_id_o = 1'b1; // TODO:OK: Cannot do this, CSR must be updated in WB
             pc_mux_o              = PC_MRET; // TODO:OK Implement mux for exception if in debug mode
-            pc_set_o              = !jr_stall_i;
+            pc_set_o              = 1'b1;
           end else begin
             pc_mux_o = PC_JUMP;
             pc_set_o = !jr_stall_i;

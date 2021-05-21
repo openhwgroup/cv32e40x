@@ -41,8 +41,16 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     input rf_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],   // Read addresses from decoder
     input rf_addr_t  rf_waddr_i,                           // Write address from decoder
 
+    input if_id_pipe_t  if_id_pipe_i,
+    input id_ex_pipe_t  id_ex_pipe_i,
+    input ex_wb_pipe_t  ex_wb_pipe_i,
+
     // From id_stage
     input  logic        regfile_alu_we_id_i,        // RF we in ID is due to an ALU ins, not LSU
+    input  logic        mret_id_i,                  // mret in ID
+    input  logic        dret_id_i,                  // dret in ID
+    input  logic        csr_en_id_i,                // CSR in ID
+    input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
   
     // From EX
     input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
@@ -67,6 +75,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     output logic        misaligned_stall_o,         // Stall due to misaligned load/store
     output logic        jr_stall_o,                 // Stall due to JR hazard (JR used result from EX or LSU result in WB)
     output logic        load_stall_o,               // Stall due to load operation
+    output logic        csr_stall_o,
 
     // To decoder
     output logic        deassert_we_o               // deassert write enable for next instruction
@@ -83,6 +92,19 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   logic                              rf_wr_wb_match;
   logic                              rf_wr_ex_hz;
   logic                              rf_wr_wb_hz;
+
+  logic csr_read_in_id;
+  logic csr_write_in_ex_wb;
+
+  // Detect when a CSR read is in ID
+  assign csr_read_in_id = (csr_en_id_i && (csr_op_id_i != CSR_OP_WRITE)) ||
+                          (mret_id_i || dret_id_i) && if_id_pipe_i.instr_valid;
+
+  // Detect when a CSR write in in EX or WB TODO:OK:Add checks for CSR addr 
+  assign csr_write_in_ex_wb = ((id_ex_pipe_i.csr_en && (id_ex_pipe_i.csr_op != CSR_OP_READ)) ||
+                              (ex_wb_pipe_i.csr_en && (ex_wb_pipe_i.csr_op != CSR_OP_READ)) ||
+                              (ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn)) &&
+                              ex_wb_pipe_i.instr_valid;
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
@@ -123,8 +145,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   begin
     load_stall_o   = 1'b0;
     deassert_we_o  = 1'b0;
+    csr_stall_o    = 1'b0;
 
-    // deassert WE when the core is not decoding instructions
+    // deassert WE when the core is not decoding instructions TODO:OK: Remove
     if (~is_decoding_i)
       deassert_we_o = 1'b1;
 
@@ -155,6 +178,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     else
     begin
       jr_stall_o     = 1'b0;
+    end
+
+    // Stall because of CSR read (direct or implied) in ID while CSR (implied or direct) is written in EX/WB
+    if (csr_read_in_id && csr_write_in_ex_wb ) begin
+      csr_stall_o = 1'b1;
     end
   end
 
