@@ -269,7 +269,8 @@ module cv32e40x_rvfi
 
           rvfi_stage[i].rvfi_valid    <= instr_id_done;
 
-          if(instr_id_done) begin
+          if(instr_id_done && !lsu_is_misaligned_ex_i) begin
+            // Both cycles of misaligned memory access set done flag in ID, counted as single instruction in rvfi.
 
             rvfi_stage[i].rvfi_halt      <= 1'b0; // Fixme: Check assumption about no intruction causing halt in cv32e40x
             rvfi_stage[i].rvfi_trap      <= illegal_insn_id_i;
