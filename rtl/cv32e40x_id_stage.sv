@@ -501,7 +501,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
 
-      id_ex_pipe_o.prepost_useincr        <= 1'b0;
+      id_ex_pipe_o.prepost_useincr        <= 1'b1;
 
       id_ex_pipe_o.csr_access             <= 1'b0;
       id_ex_pipe_o.csr_en                 <= 1'b0;
@@ -586,18 +586,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.data_atop            <= data_atop;
           end
 
-          id_ex_pipe_o.data_misaligned        <= 1'b0;
+          id_ex_pipe_o.data_misaligned <= 1'b0;
 
-          id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
+          id_ex_pipe_o.branch_in_ex    <= ctrl_transfer_insn_o == BRANCH_COND;
 
           // Propagate signals needed for exception handling in WB
           // TODO:OK: Clock gating of pc if no existing exceptions
           //          and LSU it not in use
-          id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
-          id_ex_pipe_o.instr                  <= if_id_pipe_i.instr;
-          // Overwrite instruction word in case of compressed instruction
+          id_ex_pipe_o.pc              <= if_id_pipe_i.pc;
+
           if (if_id_pipe_i.is_compressed) begin
-            id_ex_pipe_o.instr.bus_resp.rdata   <= {16'h0, if_id_pipe_i.compressed_instr};
+            // Overwrite instruction word in case of compressed instruction
+            id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
+            id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
+            id_ex_pipe_o.instr.mpu_status     <= if_id_pipe_i.instr.mpu_status;
+          end
+          else begin
+            id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
           end
 
           // Exceptions and special instructions

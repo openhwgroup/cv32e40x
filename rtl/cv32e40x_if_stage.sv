@@ -92,8 +92,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic       [31:0] exc_pc;
 
-  logic              aligner_ready;
-
   logic              prefetch_valid;
   inst_resp_t        prefetch_instr;
 
@@ -189,6 +187,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign core_trans.addr = prefetch_trans_addr;
   assign core_trans.prot[0]   = 1'b0;  // Transfers from IF stage are instruction transfers
   assign core_trans.prot[2:1] = PRIV_LVL_M; // Machine mode
+  assign core_trans.memtype   = 2'b00; // memtype is assigned in the MPU, tie off.
   
   cv32e40x_mpu
     #(.IF_STAGE(1),
@@ -259,11 +258,12 @@ instruction_obi_i
   begin : IF_ID_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
-      if_id_pipe_o.instr_valid     <= 1'b0;
-      if_id_pipe_o.instr           <= INST_RESP_RESET_VAL;
-      if_id_pipe_o.pc              <= '0;
-      if_id_pipe_o.is_compressed   <= 1'b0;
-      if_id_pipe_o.illegal_c_insn  <= 1'b0;
+      if_id_pipe_o.instr_valid      <= 1'b0;
+      if_id_pipe_o.instr            <= INST_RESP_RESET_VAL;
+      if_id_pipe_o.pc               <= '0;
+      if_id_pipe_o.is_compressed    <= 1'b0;
+      if_id_pipe_o.illegal_c_insn   <= 1'b0;
+      if_id_pipe_o.compressed_instr <= '0;
     end
     else
     begin
