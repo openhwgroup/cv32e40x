@@ -670,7 +670,6 @@ typedef struct packed {
   logic                              prepost_useincr;
   logic                              csr_en;
   logic                              csr_status;
-  logic                              csr_illegal;
   csr_opcode_e                       csr_op;
   logic                              mret_insn;
   logic                              dret_insn;
@@ -704,7 +703,6 @@ typedef struct packed {
                                                           prepost_useincr              : 1'b1,
                                                           csr_en                       : 1'b0,
                                                           csr_status                   : 1'b0,
-                                                          csr_illegal                  : 1'b0,
                                                           csr_op                       : CSR_OP_READ,
                                                           mret_insn                    : 1'b0,
                                                           dret_insn                    : 1'b0,
