@@ -118,19 +118,15 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic        shift_use_round;
   logic        shift_arithmetic;
 
-  logic [31:0] shift_amt_left;     // amount of shift, if to the left
-  logic [31:0] shift_amt;          // amount of shift, to the right
-  logic [31:0] shift_amt_int;      // amount of shift, used for the actual shifters
+  logic  [4:0] shift_amt;          // amount of shift, to the right
+  logic  [4:0] shift_amt_int;      // amount of shift, used for the actual shifters
   logic [31:0] shift_op_a;         // input of the shifter
   logic [31:0] shift_result;
   logic [31:0] shift_right_result;
   logic [31:0] shift_left_result;
 
   // shifter is also used for preparing operand for division
-  assign shift_amt = div_valid ? div_shift : operand_b_i;
-
-  // by reversing the bits of the input, we also have to reverse the order of shift amounts
-  assign shift_amt_left[31:0] = shift_amt[31:0];
+  assign shift_amt = div_valid ? div_shift[4:0] : operand_b_i[4:0];
 
   assign shift_left = (operator_i == ALU_SLL) ||
                       (operator_i == ALU_DIV) || (operator_i == ALU_DIVU) ||
@@ -144,15 +140,14 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // choose the bit reversed or the normal input for shift operand a
   assign shift_op_a    = shift_left ? operand_a_rev :
                           (shift_use_round ? adder_result : operand_a_i);
-  assign shift_amt_int = shift_use_round ? 32'b0 :
-                          (shift_left ? shift_amt_left : shift_amt);
+  assign shift_amt_int = shift_use_round ? 5'b0 : shift_amt;
 
   // right shifts, we let the synthesizer optimize this
   logic [63:0] shift_op_a_32;
 
   assign shift_op_a_32 = $signed({ {32{shift_arithmetic & shift_op_a[31]}}, shift_op_a});
 
-  assign shift_right_result = shift_op_a_32 >> shift_amt_int[4:0];
+  assign shift_right_result = shift_op_a_32 >> shift_amt_int;
 
   // bit reverse the shift_right_result for left shifts
   genvar       j;
