@@ -98,7 +98,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
-  localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
+  localparam USE_PMP             =  0;
 
   logic              clear_instr_valid;
   logic              pc_set;

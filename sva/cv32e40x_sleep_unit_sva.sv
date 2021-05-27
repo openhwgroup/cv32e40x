@@ -100,7 +100,7 @@ module cv32e40x_sleep_unit_sva
 
   a_non_busy : assert property(p_non_busy) else `uvm_error("sleep_unit", "Assertion a_non_busy failed")
 
-  // During (PULP_CLUSTER = 0) sleep it should be allowed to externally gate clk_i
+  // During sleep it should be allowed to externally gate clk_i
   property p_gate_clk_i;
     @(posedge clk_ungated_i) disable iff (!rst_n)
       (core_sleep_o == 1'b1) |-> (core_busy_q == core_busy_d) && (fetch_enable_q == fetch_enable_d);
