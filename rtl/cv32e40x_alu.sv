@@ -155,6 +155,131 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   assign shift_result = shift_left ? shift_left_result : shift_right_result;
 
 
+/*
+
+ // New shifter based on https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v 
+
+ *  Copyright (C) 2019  Claire Wolf <claire@symbioticeda.com>
+ *
+ *  Permission to use, copy, modify, and/or distribute this software for any
+ *  purpose with or without fee is hereby granted, provided that the above
+ *  copyright notice and this permission notice appear in all copies.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ *  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ *  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+
+
+
+        // 30 29 27 26 14 13  3   Function
+        // --------------------   --------
+        //  0  0  0  0  0  0  W   SLL
+        //  0  0  0  0  1  0  W   SRL
+        //  1  0  0  0  1  0  W   SRA
+        //  0  1  0  0  0  0  W   SLO
+        //  0  1  0  0  1  0  W   SRO
+        //  1  1  0  0  0  0  W   ROL
+        //  1  1  0  0  1  0  W   ROR
+        // --------------------   --------
+        //  -  -  -  1  0  0  W   FSL
+        //  -  -  -  1  1  0  W   FSR
+        // --------------------   --------
+        //  0  1  1  0  0  0  W   SBSET
+        //  1  0  1  0  0  0  W   SBCLR
+        //  1  1  1  0  0  0  W   SBINV
+        //  1  0  1  0  1  0  W   SBEXT
+        // --------------------   --------
+        //  1  0  1  0  1  1  W   BFP
+
+        reg [63:0] tmp;
+
+        wire sbmode = SBOP && (din_insn30 || din_insn29) && din_insn27 && !din_insn26;
+        wire bfpmode = BFP && din_insn13;
+
+        reg [63:0] Y;
+        wire [63:0] A, B, X;
+        assign A = din_rs1;
+        assign B = din_rs3;
+        assign dout_rd = Y[31:0];
+
+        reg [63:0] aa, bb;
+        reg [5:0] shamt;
+
+        wire [15:0] bfp_config = din_rs2[31:16];
+
+        wire [5:0] bfp_len = {!bfp_config[11:8], bfp_config[11:8]};
+        wire [5:0] bfp_off = bfp_config[4:0];
+        wire [31:0] bfp_mask = 32'h FFFFFFFF << bfp_len;
+
+        always @* begin
+                shamt = din_rs2[5:0];
+                aa = A;
+                bb = B;
+
+                if (!din_insn26) begin
+                    // Shift amount up to 31 for non-funnel shifts
+                    shamt[5] = 0;
+                end
+
+                if (din_insn14) begin
+                   // Treat right shifts as left shifts with corrected shift amount
+                   shamt = -shamt;
+                end
+
+                if (!din_insn26) begin
+                        casez ({din_insn30, din_insn29})
+                                2'b 0z: bb = {64{din_insn29}};
+                                2'b 10: bb = {64{A[31]}};
+                                2'b 11: bb = A;
+                        endcase
+                        if (sbmode && !din_insn14) begin
+                                aa = 1;
+                                bb = 0;
+                        end
+                end
+
+                if (bfpmode) begin
+                        aa = {32'h 0000_0000, ~bfp_mask};
+                        bb = 0;
+                        shamt = bfp_off;
+                end
+        end
+
+        always @* begin
+                Y = X;
+                if (sbmode) begin
+                        casez ({din_insn30, din_insn29, din_insn14})
+                                3'b zz1: Y = 1 &  X;
+                                3'b 0zz: Y = A |  X;
+                                3'b z0z: Y = A & ~X;
+                                3'b 11z: Y = A ^  X;
+                        endcase
+                end
+                if (bfpmode)
+                        Y = (A & ~X) | {32'b0, din_rs2[31:0] & ~bfp_mask} << bfp_off;
+        end
+
+        always @* begin
+                tmp = {bb[31:0], aa[31:0]};
+                tmp = shamt[5] ? {tmp[31:0], tmp[63:32]} : tmp;
+                tmp = shamt[4] ? {tmp[47:0], tmp[63:48]} : tmp;
+                tmp = shamt[3] ? {tmp[55:0], tmp[63:56]} : tmp;
+                tmp = shamt[2] ? {tmp[59:0], tmp[63:60]} : tmp;
+                tmp = shamt[1] ? {tmp[61:0], tmp[63:62]} : tmp;
+                tmp = shamt[0] ? {tmp[62:0], tmp[63:63]} : tmp;
+        end
+
+        assign X = {32'bx, tmp[31:0]};
+
+
+*/
+
+
   //////////////////////////////////////////////////////////////////
   //   ____ ___  __  __ ____   _    ____  ___ ____   ___  _   _   //
   //  / ___/ _ \|  \/  |  _ \ / \  |  _ \|_ _/ ___| / _ \| \ | |  //
