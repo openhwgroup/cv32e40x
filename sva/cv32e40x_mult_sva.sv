@@ -33,6 +33,7 @@ module cv32e40x_mult_sva
    input logic        ex_ready_i,
    input logic [ 1:0] short_signed_i,
    input              mul_opcode_e operator_i,
+   input logic        kill_i,
    // Internal signals
    input logic [32:0] mulh_acc,
    input              mult_state_e mulh_state,
@@ -88,7 +89,7 @@ module cv32e40x_mult_sva
   logic         ready;
   assign ready = ready_o && ex_ready_i;
   a_enable_constant_when_mulh_active:
-    assert property (@(posedge clk) disable iff (!rst_n)
+    assert property (@(posedge clk) disable iff (!rst_n || kill_i)
                      !ready |=> $stable(enable_i)) else `uvm_error("mult", "Enable changed when MULH active")
 
   a_operator_constant_when_mulh_active:

@@ -139,6 +139,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .clk             ( clk                           ),
     .rst_n           ( rst_n                         ),
 
+    .kill_i          ( kill_ex_i                     ),
     .enable_i        ( mult_en_gated                 ),
     .operator_i      ( id_ex_pipe_i.mult_operator    ),
 

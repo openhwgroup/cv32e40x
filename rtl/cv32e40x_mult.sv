@@ -29,6 +29,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
+  input  logic        kill_i,
   input  logic        enable_i,
   input  mul_opcode_e operator_i,
 
@@ -111,45 +112,49 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_state_next  = mulh_state;
     ready_o          = 1'b1;
 
-    case (mulh_state)
-      ALBL: begin
-        if ((operator_i == MUL_H) && enable_i) begin
-          mulh_shift      = 1'b1;
-          ready_o         = 1'b0;
-          mulh_state_next = ALBH;
+    if (!kill_i ) begin
+      case (mulh_state)
+        ALBL: begin
+          if ((operator_i == MUL_H) && enable_i) begin
+            mulh_shift      = 1'b1;
+            ready_o         = 1'b0;
+            mulh_state_next = ALBH;
+          end
         end
-      end
 
-      ALBH: begin
-        ready_o          = 1'b0;
-        mulh_a           = mulh_al;
-        mulh_b           = mulh_bh;
-        mulh_state_next  = AHBL;
-      end
+        ALBH: begin
+          ready_o          = 1'b0;
+          mulh_a           = mulh_al;
+          mulh_b           = mulh_bh;
+          mulh_state_next  = AHBL;
+        end
 
-      AHBL: begin
-        ready_o          = 1'b0;
-        mulh_shift       = 1'b1;
-        mulh_a           = mulh_ah;
-        mulh_b           = mulh_bl;
-        mulh_state_next  = AHBH;
-      end
+        AHBL: begin
+          ready_o          = 1'b0;
+          mulh_shift       = 1'b1;
+          mulh_a           = mulh_ah;
+          mulh_b           = mulh_bl;
+          mulh_state_next  = AHBH;
+        end
 
-      AHBH: begin
-        mulh_a            = mulh_ah;
-        mulh_b            = mulh_bh;
-        if (ex_ready_i)
-          mulh_state_next = ALBL;
-      end
-      default: ;
-    endcase
+        AHBH: begin
+          mulh_a            = mulh_ah;
+          mulh_b            = mulh_bh;
+          if (ex_ready_i)
+            mulh_state_next = ALBL;
+        end
+        default: ;
+      endcase
+    end else begin
+      mulh_state_next = ALBL;
+    end
   end // always_comb
 
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
       mulh_acc     <=  '0;
       mulh_state   <= ALBL;
-    end else if (enable_i && (operator_i == MUL_H)) begin
+    end else if ((enable_i || kill_i) && (operator_i == MUL_H)) begin
       if (!ready_o) begin
         mulh_acc   <= mulh_acc_next;
       end else if (!ex_ready_i) begin

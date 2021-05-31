@@ -94,8 +94,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic       [31:0] exc_pc;
 
-  logic              aligner_ready;
-
   logic              prefetch_valid;
   inst_resp_t        prefetch_instr;
 

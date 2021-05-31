@@ -539,7 +539,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       if (id_valid_o)
       begin // unstall the whole pipeline
-        id_ex_pipe_o.instr_valid   = 1'b1;
+        id_ex_pipe_o.instr_valid  <= 1'b1;
         if (misaligned_stall_i) begin
           // misaligned data access case
           // if we are using post increments, then we have to use the

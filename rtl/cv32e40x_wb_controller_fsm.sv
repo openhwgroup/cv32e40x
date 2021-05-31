@@ -316,6 +316,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         // Special insn
         end else if( wfi_in_wb ) begin
           // TODO:OK: Need to evaluate sleeping based on debug pending etc..
+          // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
           halt_if_o = 1'b1;
           halt_id_o = 1'b1;
           instr_req_o = 1'b0;
