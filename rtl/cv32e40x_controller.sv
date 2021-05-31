@@ -64,8 +64,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
  
   // LSU
-  input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
-  input  logic        data_we_ex_i,
   input  logic        data_misaligned_i,
 
   input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
@@ -140,10 +138,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // stall signals
   output logic        halt_if_o,
   output logic        halt_id_o,
+  output logic        halt_ex_o,
+  output logic        halt_wb_o,
 
   output logic        kill_if_o,
   output logic        kill_id_o,
   output logic        kill_ex_o,
+  output logic        kill_wb_o,
 
   output logic        misaligned_stall_o,
   output logic        jr_stall_o,
@@ -156,7 +157,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        wb_ready_i,                 // WB stage is ready
 
-  input  logic        data_req_wb_i               // ALU data is written back in WB
+  input  logic        data_req_wb_i,               // ALU data is written back in WB
+  input  logic        data_req_i                  // OBI bus data request (EX)
 );
 
   logic [4:0]         exc_cause;
@@ -197,7 +199,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From EX stage
     .branch_taken_ex_i           ( branch_taken_ex_i        ),
     .ex_valid_i                  ( ex_valid_i               ),
-  
+    .data_req_i                  ( data_req_i               ),
+
     // From WB stage
     .data_err_wb_i               ( data_err_wb_i            ),
     .data_addr_wb_i              ( data_addr_wb_i           ),
@@ -248,9 +251,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // Halt signals
     .halt_if_o                   ( halt_if_o                ),
     .halt_id_o                   ( halt_id_o                ),
+    .halt_ex_o                   ( halt_ex_o                ),
+    .halt_wb_o                   ( halt_wb_o                ),
     .kill_if_o                   ( kill_if_o                ),
     .kill_id_o                   ( kill_id_o                ),
-    .kill_ex_o                   ( kill_ex_o                )
+    .kill_ex_o                   ( kill_ex_o                ),
+    .kill_wb_o                   ( kill_wb_o                )
   );
   
 
@@ -279,7 +285,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       // From EX
       .rf_we_ex_i                 ( rf_we_ex_i               ),
       .rf_waddr_ex_i              ( rf_waddr_ex_i            ),
-      .data_req_ex_i              ( data_req_ex_i            ),
       
       // From WB
       .rf_we_wb_i                 ( rf_we_wb_i               ),

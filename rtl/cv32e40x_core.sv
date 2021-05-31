@@ -168,6 +168,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // stall control
   logic        halt_if;
   logic        halt_id;
+  logic        halt_ex;
+  logic        halt_wb;
   logic        misaligned_stall;
   logic        jr_stall;
   logic        load_stall;
@@ -266,6 +268,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        kill_if;
   logic        kill_id;
   logic        kill_ex;
+  logic        kill_wb;
 
 
   // Internal OBI interfaces
@@ -528,6 +531,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rst_n                      ( rst_ni                       ),
 
     .kill_ex_i                  ( kill_ex                      ),
+    .halt_ex_i                  ( halt_ex                      ),
+
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe                   ),
 
@@ -572,6 +577,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk                   ( clk                ),
     .rst_n                 ( rst_ni             ),
 
+    .halt_ex_i             ( halt_ex            ),
+    .halt_wb_i             ( halt_wb            ),
+
     .kill_ex_i             ( kill_ex            ),
     //output to data memory
     .m_c_obi_data_if       ( m_c_obi_data_if    ),
@@ -602,6 +610,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   (
     // EX/WB pipeline
     .ex_wb_pipe_i               ( ex_wb_pipe                   ),
+    .kill_wb_i                  ( kill_wb                      ),
 
     .lsu_rdata_i                ( lsu_rdata                    ),
     .csr_rdata_i                ( csr_rdata                    ),
@@ -653,6 +662,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // EX/WB pipeline
     .ex_wb_pipe_i               ( ex_wb_pipe             ),
 
+    .kill_wb_i                  ( kill_wb                ),
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
 
@@ -745,8 +755,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .m_exc_vec_pc_mux_o             ( m_exc_vec_pc_mux       ),
     
     // LSU
-    .data_req_ex_i                  ( id_ex_pipe.data_req    ),// TODO:OK Use id_ex_pipe only
-    .data_we_ex_i                   ( id_ex_pipe.data_we     ),
     .data_misaligned_i              ( lsu_misaligned         ),
 
     .data_err_wb_i                  ( data_err_wb            ),
@@ -815,10 +823,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Stall signals
     .halt_if_o                      ( halt_if                ),
     .halt_id_o                      ( halt_id                ),
+    .halt_ex_o                      ( halt_ex                ),
+    .halt_wb_o                      ( halt_wb                ),
 
     .kill_if_o                      ( kill_if                ),
     .kill_id_o                      ( kill_id                ),
     .kill_ex_o                      ( kill_ex                ),
+    .kill_wb_o                      ( kill_wb                ),
 
     .misaligned_stall_o             ( misaligned_stall       ),
     .jr_stall_o                     ( jr_stall               ),
@@ -828,7 +839,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( lsu_ready_wb           ),
-    .data_req_wb_i                  ( data_req_wb            )
+    .data_req_wb_i                  ( data_req_wb            ),
+
+    .data_req_i                     ( data_req_o             )
  );
 
 ////////////////////////////////////////////////////////////////////////

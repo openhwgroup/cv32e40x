@@ -64,6 +64,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     // From EX stage
     input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
+    input  logic        data_req_i,           // Data interface trans_valid
   
     // From WB stage
     input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
@@ -115,11 +116,14 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     // Halt signals
     output logic        halt_if_o, // Halt IF stage
     output logic        halt_id_o,  // Halt ID stage
+    output logic        halt_ex_o, // Halt EX stage
+    output logic        halt_wb_o, // Halt WB stage
 
     // Kill signals
     output logic        kill_if_o,
     output logic        kill_id_o,
-    output logic        kill_ex_o
+    output logic        kill_ex_o,
+    output logic        kill_wb_o
   );
 
    // FSM state encoding
@@ -129,7 +133,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   debug_state_e debug_fsm_cs, debug_fsm_ns;
 
   // jump instruction in decode
-  logic jump_in_dec;
+  logic jump_in_id;
 
   // Sticky version of debug_req_i
   logic debug_req_q;
@@ -138,10 +142,21 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic debug_mode_n;
   logic debug_mode_q;
   assign debug_mode_q = 1'b0; // TODO:OK: Implement when debug mode is implemented
-
+  
   // Events in WB
   logic exception_in_wb;
   logic [5:0] exception_cause_wb;
+  logic wfi_in_wb;
+  logic fencei_in_wb;
+  logic mret_in_wb;
+  logic pending_nmi;
+  logic pending_debug;
+  logic pending_interrupt;
+
+  logic interrupt_allowed;
+
+  // Data request has been clocked
+  logic data_req_q;
   
   ////////////////////////////////////////////////////////////////////
   // Signals to not break core-v-verif compile (will be changed)
@@ -149,17 +164,41 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic debug_req_pending;
   logic branch_in_id;
   assign is_decoding_o = 1'b1; // TODO:OK: Remove
+  assign debug_req_pending = 1'b0; // TODO:OK: Implement when debug mode is implemented
   ////////////////////////////////////////////////////////////////////
 
+  // ID stage
+  assign jump_in_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
+                        mret_id_i) && if_id_pipe_i.instr_valid;
   // Exception in WB if the following evaluates to 1
   assign exception_in_wb = (ex_wb_pipe_i.illegal_insn   ||
                             ex_wb_pipe_i.ebrk_insn      ||
                             ex_wb_pipe_i.ecall_insn)    && ex_wb_pipe_i.instr_valid;
   // Set exception cause
   assign exception_cause_wb = ex_wb_pipe_i.illegal_insn ? EXC_CAUSE_ILLEGAL_INSN :
-                              ex_wb_pipe_i.ecall_insn  ? EXC_CAUSE_ECALL_MMODE   :
+                              ex_wb_pipe_i.ecall_insn   ? EXC_CAUSE_ECALL_MMODE   :
                               EXC_CAUSE_BREAKPOINT;
-                              
+
+  // wfi in wb
+  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
+
+  // fencei in wb
+  assign fencei_in_wb = ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid;
+
+  // mret in wb
+  assign mret_in_wb = ex_wb_pipe_i.mret_insn && ex_wb_pipe_i.instr_valid;
+
+  // Async events pending
+  assign pending_nmi = 1'b0;
+  assign pending_debug = 1'b0;
+
+  // TODO:OK: Masking interrupts in case of debug
+  // TODO:OK: May allow interuption of Zce to idempotent memories
+  assign pending_interrupt = irq_req_ctrl_i;
+
+  // Allow interrupts to be taken only if there is no data request in WB, 
+  // and no data_req has been clocked out of EX
+  assign interrupt_allowed = !(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q;
 
   //////////////
   // FSM comb //
@@ -173,11 +212,20 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     pc_mux_o = PC_BOOT;
     pc_set_o = 1'b0;
 
-    jump_in_dec            = (ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL);
+    irq_ack_o = 1'b0;
+    irq_id_o  = '0;
 
+    // By default, no stages are halted
+    halt_if_o = 1'b0;
+    halt_id_o = 1'b0;
+    halt_ex_o = 1'b0;
+    halt_wb_o = 1'b0;
+
+    // By default no stages are killed
     kill_if_o = 1'b0;
     kill_id_o = 1'b0;
     kill_ex_o = 1'b0;
+    kill_wb_o = 1'b0;
 
     csr_restore_mret_id_o = 1'b0;
     csr_restore_dret_id_o = 1'b0;
@@ -192,9 +240,8 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     exc_cause_o            = '0;
 
     debug_mode_o          = 1'b0; // TODO:OK Set properly when debug mode is implemented
-    // Signals that may change
-    halt_if_o = 1'b0;
-    halt_id_o = 1'b0;
+    debug_mode_n          = 1'b0;
+    
     
 
     unique case (ctrl_fsm_cs)
@@ -213,56 +260,89 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
       end
       FUNCTIONAL: begin
         // NMI
+        if (pending_nmi ) begin
         // Debug entry
+        end else if( pending_debug ) begin
         // IRQ
+        end else if( pending_interrupt) begin
+          if( interrupt_allowed ) begin
+            kill_if_o = 1'b1;
+            kill_id_o = 1'b1;
+            kill_ex_o = 1'b1;
+            kill_wb_o = 1'b1;
+
+            pc_set_o = 1'b1;
+            pc_mux_o = PC_EXCEPTION;
+            exc_pc_mux_o = EXC_PC_IRQ;
+            exc_cause_o = irq_id_ctrl_i;
+
+            irq_ack_o = 1'b1;
+            irq_id_o = irq_id_ctrl_i;
+
+            csr_save_cause_o  = 1'b1;
+            csr_cause_o       = {1'b1,irq_id_ctrl_i};
+
+            // Save pc from oldest valid instruction
+            if(ex_wb_pipe_i.instr_valid) begin
+              csr_save_wb_o = 1'b1;
+            end else if( id_ex_pipe_i.instr_valid) begin
+              csr_save_ex_o = 1'b1;
+            end else if( if_id_pipe_i.instr_valid) begin
+              csr_save_id_o = 1'b1;
+            end else begin
+              csr_save_if_o = 1'b1;
+            end
+          end else begin // !interrupt_allowed
+            halt_id_o = 1'b1;
+          end
         // Exceptions
-        if (exception_in_wb) begin
+        end else if (exception_in_wb) begin
           // TODO:OK: Must check if we are allowed to take exceptions
 
           // Kill all stages
           kill_if_o = 1'b1;
           kill_id_o = 1'b1;
           kill_ex_o = 1'b1;
+
           // Set pc to exception handler
           pc_set_o       = 1'b1;
           pc_mux_o       = PC_EXCEPTION;
           exc_pc_mux_o   = EXC_PC_EXCEPTION;  // TODO:OK: Take in account debug mode
+
           // Save CSR from WB
           csr_save_wb_o     = 1'b1;
           csr_save_cause_o  = !debug_mode_q;
           csr_cause_o       = {1'b0, exception_cause_wb};
         // Special insn
-        end else if( ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid ) begin
-          // TODO:OK: Implemented for sleeping to end simulations properly.
-          //          Need to evaluate sleeping based on debug pending etc..
-          kill_if_o = 1'b1;
-          kill_id_o = 1'b1;
-          kill_ex_o = 1'b1;
+        end else if( wfi_in_wb ) begin
+          // TODO:OK: Need to evaluate sleeping based on debug pending etc..
+          halt_if_o = 1'b1;
+          halt_id_o = 1'b1;
           instr_req_o = 1'b0;
           ctrl_fsm_ns = SLEEP;
-        end else if ( ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid ) begin
-          // Kill all instructions and set pc wo wb.pc + 4
+        end else if ( fencei_in_wb ) begin
+          // Kill all instructions and set pc to wb.pc + 4
           kill_if_o = 1'b1;
           kill_id_o = 1'b1;
           kill_ex_o = 1'b1;
           pc_set_o  = 1'b1;
           pc_mux_o  = PC_FENCEI;
-        end else if ( ex_wb_pipe_i.mret_insn && ex_wb_pipe_i.instr_valid ) begin
+        end else if ( mret_in_wb ) begin
           csr_restore_mret_id_o = 1'b1; // TODO:OK: Rename to csr_restore_mret_wb_o
         // Single step debug entry
         // Branch taken in EX (bne, beq, blt(u), bge(u))
-        end else if( branch_taken_ex_i ) begin // && id_ex_pipe.instr_valid
+        end else if( branch_taken_ex_i ) begin
           pc_mux_o   = PC_BRANCH;
           pc_set_o   = 1'b1;
           kill_if_o = 1'b1;
           kill_id_o = 1'b1;  
-        end else if ((jump_in_dec || mret_id_i) && if_id_pipe_i.instr_valid) begin
+        end else if ( jump_in_id ) begin
           // kill_if
           kill_if_o = 1'b1;
           // Jumps in ID (JAL, JALR, mret, uret, dret)
           if ( mret_id_i) begin
-            pc_mux_o              = PC_MRET; // TODO:OK Implement mux for exception if in debug mode
-            pc_set_o              = 1'b1;
+            pc_mux_o      = PC_MRET; // TODO:OK Implement mux for exception if in debug mode
+            pc_set_o      = 1'b1;
           end else begin
             pc_mux_o = PC_JUMP;
             pc_set_o = !jr_stall_i;
@@ -272,10 +352,24 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
       SLEEP: begin
         ctrl_busy_o = 1'b0;
         instr_req_o = 1'b0;
+        halt_if_o   = 1'b1;
+        halt_id_o   = 1'b1;
+        halt_ex_o   = 1'b1;
+        halt_wb_o   = 1'b1;
+        if(wake_from_sleep_o) begin
+          ctrl_fsm_ns = FUNCTIONAL;
+          ctrl_busy_o = 1'b1;
+        end
+      end
+      default: begin
+        instr_req_o = 1'b0;
+        ctrl_fsm_ns = RESET;
       end
     endcase
   end
 
+  // Wakeup from sleep
+  assign wake_from_sleep_o = irq_wu_ctrl_i || debug_req_pending || debug_mode_q;
   ////////////////////
   // Flops          //
   ////////////////////
@@ -284,6 +378,19 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
       ctrl_fsm_cs <= RESET;
     end else begin
       ctrl_fsm_cs <= ctrl_fsm_ns;
+    end
+  end
+
+  // Detect when data_req has been clocked, and lsu insn is still in EX
+  always_ff @(posedge clk , negedge rst_n) begin
+    if ( rst_n == 1'b0 ) begin
+      data_req_q <= 1'b0;
+    end else begin
+      if(data_req_i && !ex_valid_i) begin
+        data_req_q <= 1'b1;
+      end else if(ex_valid_i) begin
+        data_req_q <= 1'b0;
+      end
     end
   end
 
@@ -300,6 +407,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
+  
   /////////////////////
   // Debug state FSM //
   /////////////////////

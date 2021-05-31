@@ -34,6 +34,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
+  input  logic        halt_ex_i,
   input  logic        kill_ex_i,
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
@@ -175,6 +176,12 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.mret_insn      <= 1'b0;
       ex_wb_pipe_o.dret_insn      <= 1'b0;
       ex_wb_pipe_o.data_mpu_status <= MPU_OK;
+
+      ex_wb_pipe_o.csr_en         <= 1'b0;
+      ex_wb_pipe_o.csr_access     <= 1'b0;
+      ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
+      ex_wb_pipe_o.csr_addr       <= '0;
+      ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
     end
     else
     begin
@@ -182,10 +189,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
         ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we;
-
+        ex_wb_pipe_o.data_req <= id_ex_pipe_i.data_req;
+          
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
-          ex_wb_pipe_o.data_req <= id_ex_pipe_i.data_req;
           if (!id_ex_pipe_i.data_req) begin
             ex_wb_pipe_o.rf_wdata <= rf_wdata_ex_o;
           end
@@ -226,7 +233,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
-                       && wb_ready_i) || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid); //TODO: Check if removing branch_in_ex only causes counters to cex
+                       && wb_ready_i && !halt_ex_i) || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid); //TODO: Check if removing branch_in_ex only causes counters to cex
   assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && id_ex_pipe.instr_valid && !kill_ex_i;
 
 endmodule // cv32e40x_ex_stage

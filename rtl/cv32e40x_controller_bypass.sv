@@ -55,7 +55,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // From EX
     input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
     input rf_addr_t     rf_waddr_ex_i,              // write address currently in EX
-    input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
     
     // From WB
     input  logic        rf_we_wb_i,                 // Register file write enable from WB stage
@@ -101,10 +100,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
                           (mret_id_i || dret_id_i) && if_id_pipe_i.instr_valid;
 
   // Detect when a CSR write in in EX or WB TODO:OK:Add checks for CSR addr 
-  assign csr_write_in_ex_wb = ((id_ex_pipe_i.csr_en && (id_ex_pipe_i.csr_op != CSR_OP_READ)) ||
-                              (ex_wb_pipe_i.csr_en && (ex_wb_pipe_i.csr_op != CSR_OP_READ)) ||
+  assign csr_write_in_ex_wb = (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en && (id_ex_pipe_i.csr_op != CSR_OP_READ)) ||
+                              ((ex_wb_pipe_i.csr_en && (ex_wb_pipe_i.csr_op != CSR_OP_READ)) ||
                               (ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn)) &&
-                              ex_wb_pipe_i.instr_valid;
+                              ex_wb_pipe_i.instr_valid);
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
@@ -153,9 +152,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-        (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (id_ex_pipe_i.data_req && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
         (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (data_req_ex_i && rf_we_ex_i && is_decoding_i && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (id_ex_pipe_i.data_req && rf_we_ex_i && is_decoding_i && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
         (!wb_ready_i   && rf_we_wb_i && is_decoding_i && !data_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin

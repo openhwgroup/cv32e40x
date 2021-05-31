@@ -256,7 +256,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //TODO:OK: The following (two) assignments could perhaps be moved to the controller.
   // kill instruction in the IF/ID stage by setting the instr_valid_id control
   // signal to 0 for instructions that are done
-  assign clear_instr_valid_o = id_ready_o | halt_id_i | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
+  assign clear_instr_valid_o = id_ready_o /*| halt_id_i*/ | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
 
   assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i;
 
@@ -696,7 +696,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // stall control
   assign multi_cycle_id_stall = misaligned_stall_i;
 
-  assign id_ready_o = (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i);
+  //TODO:OK Consider moving the wfi part of id_ready to controller/bypass logic
+  assign id_ready_o = (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i  && !(id_ex_pipe_o.wfi_insn && id_ex_pipe_o.instr_valid));
   assign id_valid_o = (if_id_pipe_i.instr_valid && !kill_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 

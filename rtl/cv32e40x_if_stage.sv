@@ -264,6 +264,7 @@ instruction_obi_i
       if_id_pipe_o.pc              <= '0;
       if_id_pipe_o.is_compressed   <= 1'b0;
       if_id_pipe_o.illegal_c_insn  <= 1'b0;
+      if_id_pipe_o.compressed_instr <= 16'h0000;
     end
     else
     begin

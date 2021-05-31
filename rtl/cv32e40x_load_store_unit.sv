@@ -52,6 +52,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic         lsu_ready_ex_o,       // LSU ready for new data in EX stage
     output logic         lsu_ready_wb_o,       // LSU ready for new data in WB stage
 
+    // halt signals to EX/WB portion of LSU
+    input  logic         halt_ex_i,
+    input  logic         halt_wb_i,
+
     output logic         busy_o
 );
 
@@ -103,6 +107,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         load_err_o, store_err_o;
 
   logic [31:0]  rdata_q;
+
+  // Internally gated data_req
+  logic         data_req_valid;
+
+  assign data_req_valid = id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid && !kill_ex_i;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
@@ -341,7 +350,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_misaligned_o = 1'b0;
 
-    if (id_ex_pipe_i.data_req && !id_ex_pipe_i.data_misaligned)
+    if (data_req_valid && !id_ex_pipe_i.data_misaligned)
     begin
       case (id_ex_pipe_i.data_type)
         2'b10: // word
@@ -383,12 +392,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = (id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid) && !kill_ex_i && (cnt_q < DEPTH);
+  assign trans_valid = data_req_valid && (cnt_q < DEPTH);
 
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it WB stage is being used and the awaited response arrives (resp_rvalid).
-  assign lsu_ready_wb_o = (cnt_q == 2'b00) ? 1'b1 : resp_valid;
+  assign lsu_ready_wb_o = (cnt_q == 2'b00) ? !halt_wb_i : resp_valid && !halt_wb_i; //TODO:OK is this ok or not?
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -401,13 +410,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o = ((id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid ) == 1'b0)        ? 1'b1 :
-                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready) : 
-                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) : 
-                                                            resp_valid;
+  assign lsu_ready_ex_o =                !data_req_valid  ?                                              !halt_ex_i :
+                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready && !halt_ex_i) : 
+                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && !halt_ex_i) : 
+                                                            resp_valid && !halt_ex_i; // TODO:OK is this ok or not?
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = lsu_ready_ex_o && id_ex_pipe_i.data_req;
+  assign ctrl_update = lsu_ready_ex_o && data_req_valid;
 
 
   //////////////////////////////////////////////////////////////////////////////

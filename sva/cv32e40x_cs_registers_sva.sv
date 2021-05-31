@@ -47,12 +47,12 @@ module cv32e40x_cs_registers_sva
     end
   end
 
-
+/* TODO:OK mie_bypass can probably be removed with the new controller
   // Check that mie_bypass_o equals mie_n
   a_mie_bypass : assert property (@(posedge clk) disable iff (!rst_n)
                                   (mie_we) |-> (mie_bypass_o == mie_n))
     else `uvm_error("cs_registers", "Assertion a_mie_bypass failed")
-
+*/
   // Check that read data is stable when csr_access is low
   a_stable_rdata: assert property (@(posedge clk) disable iff (!rst_n)
                                   (!id_ex_pipe_i.csr_access) |-> (csr_rdata_o == csr_rdata_last))

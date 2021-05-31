@@ -19,6 +19,7 @@
 //                 Robert Balas - balasr@iis.ee.ethz.ch                       //
 //                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Description:    RTL assertions for the controller module                   //
 //                                                                            //
@@ -30,16 +31,15 @@ module cv32e40x_controller_fsm_sva
   (
    input logic clk,
    input logic rst_n,
-   input logic id_ready_i,
    input logic debug_mode_q,
    input logic debug_halted_o,
    input logic debug_running_o,
    input logic debug_havereset_o,
    input logic branch_taken_ex_i,
-   input logic debug_single_step_i,
-   input logic debug_force_wakeup_n,
    input       ctrl_state_e ctrl_fsm_cs,
-   input       ctrl_state_e ctrl_fsm_ns
+   input       ctrl_state_e ctrl_fsm_ns,
+   input logic irq_ack_o,
+   input logic [1:0] lsu_outstanding_cnt
    );
 
   // make sure that taken branches do not happen back-to-back, as this is not
@@ -49,19 +49,7 @@ module cv32e40x_controller_fsm_sva
                      (branch_taken_ex_i) |=> (~branch_taken_ex_i) )
       else `uvm_error("controller", "Two branches back-to-back are taken")
 
-  // Ensure DBG_TAKEN_IF can only be enterred if in single step mode or woken
-  // up from sleep by debug_req_i
-  a_single_step_dbg_taken_if :
-    assert property (@(posedge clk)  disable iff (!rst_n)
-                     (ctrl_fsm_ns==DBG_TAKEN_IF) |-> ((~debug_mode_q && debug_single_step_i) || debug_force_wakeup_n))
-      else `uvm_error("controller", "Assertion a_single_step_dbg_taken_if failed")
-
-        // Ensure DBG_FLUSH state is only one cycle. This implies that cause is either trigger, debug_req_entry, or ebreak
-  a_dbg_flush :
-    assert property (@(posedge clk)  disable iff (!rst_n)
-                     (ctrl_fsm_cs==DBG_FLUSH) |-> (ctrl_fsm_ns!=DBG_FLUSH) )
-      else `uvm_error("controller", "Assertion a_dbg_flush failed")
-
+  
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :
     assert property (@(posedge clk)
@@ -74,17 +62,11 @@ module cv32e40x_controller_fsm_sva
                      (1'b1) |-> (debug_mode_q == debug_halted_o))
       else `uvm_error("controller", "Assertion a_debug_halted_equals_debug_mode failed")
 
-  // Ensure ID always ready in FIRST_FETCH state
-  a_first_fetch_id_ready :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     (ctrl_fsm_cs == FIRST_FETCH) |-> (id_ready_i == 1'b1))
-      else `uvm_error("controller", "Assertion a_first_fetch_id_ready failed")
-
-  // Ensure that the only way to get to DBG_TAKEN_IF from DBG_FLUSH is if debug_single_step_i is asserted
-  a_dbg_flush_to_taken_if :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     (ctrl_fsm_cs == DBG_FLUSH) && (ctrl_fsm_ns == DBG_TAKEN_IF) |-> debug_single_step_i)
-      else `uvm_error("controller", "Assertion a_dbg_flush_to_taken_if failed")
+  // Ensure no interrupt is taken if LSU has outstanding transactions
+  a_no_irq_on_outstanding_obi :
+    assert property (@(posedge clk)
+                      (irq_ack_o) |-> (lsu_outstanding_cnt == 2'b00) )
+      else `uvm_error("controller", "Interrupt taken while oustanding transactions are pending")
 
 endmodule // cv32e40x_controller_fsm_sva
 

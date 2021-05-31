@@ -55,6 +55,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // EX/WB pipeline
   input ex_wb_pipe_t      ex_wb_pipe_i,
 
+  input logic             kill_wb_i,
+
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
@@ -193,10 +195,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] csr_wdata;
 
   //  CSR access. Read in EX, write in WB
+  assign csr_raddr    =  csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
+
   assign csr_addr     =  csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0);
-  assign csr_raddr     =  csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
   assign csr_wdata    =  ex_wb_pipe_i.csr_wdata;
-  assign csr_op       =  ex_wb_pipe_i.csr_op;
+  assign csr_op       =  (!kill_wb_i && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
     
   // mip CSR
   assign mip = mip_i;
@@ -219,7 +222,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     endcase
   end
 
-  assign mie_bypass_o = mie_we ? csr_mie_wdata & IRQ_MASK : mie_q;
+  assign mie_bypass_o = mie_q;//mie_we ? csr_mie_wdata & IRQ_MASK : mie_q;
 
   ////////////////////////////////////////////
   //   ____ ____  ____    ____              //
