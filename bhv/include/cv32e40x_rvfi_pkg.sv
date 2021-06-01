@@ -21,6 +21,44 @@
 package cv32e40x_rvfi_pkg;
 
   typedef struct packed {
+    logic [31:0]        mstatus;
+    logic [31:0]        misa;
+    logic [31:0]        mie;
+    logic [31:0]        mtvec;
+    logic [31:0]        mcountinhibit;
+    logic [31:0] [31:0] mhpmevent;
+    logic [31:0]        mscratch;
+    logic [31:0]        mepc;
+    logic [31:0]        mcause;
+    logic [31:0]        mtval;
+    logic [31:0]        mip;
+    logic [31:0]        tselect;
+    logic [31:0] [ 3:0] tdata;
+    logic [31:0]        tinfo;
+    logic [31:0]        mcontext;
+    logic [31:0]        scontext;
+    logic [31:0]        dcsr;
+    logic [31:0]        dpc;
+    logic [31:0] [ 1:0] dscratch;
+    logic [31:0]        mcycle;
+    logic [31:0]        minstret;
+    logic [31:0] [31:0] mhpmcounter;
+    logic [31:0]        mcycleh;
+    logic [31:0]        minstreth;
+    logic [31:0] [31:0] mhpmcounterh;
+    logic [31:0]        cycle;
+    logic [31:0]        instret;
+    logic [31:0] [31:0] hpmcounter;
+    logic [31:0]        cycleh;
+    logic [31:0]        instreth;
+    logic [31:0] [31:0] hpmcounterh;
+    logic [31:0]        mvendorid;
+    logic [31:0]        marchid;
+    logic [31:0]        mimpid;
+    logic [31:0]        mhartid;
+  } rvfi_csr_map_t;
+
+  typedef struct packed {
     logic        rvfi_valid;
     logic [63:0] rvfi_order;
     logic [31:0] rvfi_insn;
@@ -42,10 +80,10 @@ package cv32e40x_rvfi_pkg;
     logic [ 3:0] rvfi_mem_wmask;
     logic [31:0] rvfi_mem_rdata;
     logic [31:0] rvfi_mem_wdata;
-    logic [31:0] rvfi_csr_mstatus_rmask;
-    logic [31:0] rvfi_csr_mstatus_wmask;
-    logic [31:0] rvfi_csr_mstatus_rdata;
-    logic [31:0] rvfi_csr_mstatus_wdata;
+    rvfi_csr_map_t rvfi_csr_rdata;
+    rvfi_csr_map_t rvfi_csr_rmask;
+    rvfi_csr_map_t rvfi_csr_wdata;
+    rvfi_csr_map_t rvfi_csr_wmask;
   } rvfi_instr_t;
 
   typedef struct packed {
