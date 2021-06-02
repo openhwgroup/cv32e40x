@@ -1,31 +1,31 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
-// Copyright and related rights are licensed under the Solderpad Hardware
-// License, Version 0.51 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License at
-// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
-// or agreed to in writing, software, hardware and materials distributed under
-// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
+// Copyright 202[x] Silicon Labs, Inc.
+//
+// This file, and derivatives thereof are licensed under the
+// Solderpad License, Version 2.0 (the "License");
+// Use of this file means you agree to the terms and conditions
+// of the license and are in full compliance with the License.
+// You may obtain a copy of the License at
+//
+// https://solderpad.org/licenses/SHL-2.0/
+//
+// Unless required by applicable law or agreed to in writing, software
+// and hardware implementations thereof
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:       Matthias Baer - baermatt@student.ethz.ch                   //
+// Engineer:       Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Additional contributions by:                                               //
-//                 Igor Loi - igor.loi@unibo.it                               //
-//                 Andreas Traber - atraber@student.ethz.ch                   //
-//                 Sven Stucki - svstucki@student.ethz.ch                     //
-//                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
-//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
-//                 Robert Balas - balasr@iis.ee.ethz.ch                       //
-//                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
-//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
-// Design Name:    Main controller                                            //
-// Project Name:   RI5CY                                                      //
+// Design Name:    cv32e40x_wb_controller_fsm                                 //
+// Project Name:   CV32E40X                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Main CPU controller of the processor                       //
+// Description:    FSM of the pipeline controller                             //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -382,7 +382,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
 
   // Wakeup from sleep
   assign wake_from_sleep_o = irq_wu_ctrl_i || debug_req_pending || debug_mode_q;
-  
+
   ////////////////////
   // Flops          //
   ////////////////////
