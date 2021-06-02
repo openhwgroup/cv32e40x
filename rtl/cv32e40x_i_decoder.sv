@@ -369,7 +369,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             2'b01:   decoder_ctrl_o.csr_op = CSR_OP_WRITE;
             2'b10:   decoder_ctrl_o.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_SET;
             2'b11:   decoder_ctrl_o.csr_op = instr_rdata_i[19:15] == 5'b0 ? CSR_OP_READ : CSR_OP_CLEAR;
-            default: decoder_ctrl_o.csr_illegal = 1'b1;
+            default: decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
           endcase
 
           
@@ -380,7 +380,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MARCHID,
               CSR_MIMPID,
               CSR_MHARTID :
-                if(decoder_ctrl_o.csr_op != CSR_OP_READ) decoder_ctrl_o.csr_illegal = 1'b1;
+                if(decoder_ctrl_o.csr_op != CSR_OP_READ) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
 
             // These are valid CSR registers
             CSR_MSTATUS,
@@ -456,7 +458,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H :
                 // Read-only and readable from user mode only if the bit of mcounteren is set
                 if((decoder_ctrl_o.csr_op != CSR_OP_READ)) begin
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end else begin
                   decoder_ctrl_o.csr_status = 1'b1;
                 end
@@ -467,7 +469,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_DSCRATCH0,
               CSR_DSCRATCH1 :
                 if(!debug_mode_i) begin
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end else begin
                 decoder_ctrl_o.csr_status = 1'b1;
               end
@@ -480,16 +482,13 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_TINFO,
               CSR_MCONTEXT,
               CSR_SCONTEXT :
-                if(DEBUG_TRIGGER_EN != 1)
-                  decoder_ctrl_o.csr_illegal = 1'b1;
+                if(DEBUG_TRIGGER_EN != 1) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
 
-            default : decoder_ctrl_o.csr_illegal = 1'b1;
+                  default : decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
 
           endcase // case (instr_rdata_i[31:20])
-
-          if(decoder_ctrl_o.csr_illegal) begin
-            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-          end
 
         end
 

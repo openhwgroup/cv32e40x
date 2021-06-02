@@ -234,7 +234,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
-                       && wb_ready_i && !halt_ex_i) || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid); //TODO: Check if removing branch_in_ex only causes counters to cex
+                       && wb_ready_i && !halt_ex_i);// || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid);// TODO: This done to support a simplification for RVFI and has not been verified
   assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && id_ex_pipe_i.instr_valid && !kill_ex_i;
 
 endmodule // cv32e40x_ex_stage

@@ -98,7 +98,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // write enable/request control
   logic       rf_we;
   logic       data_req;
-  logic       csr_illegal;
   logic [1:0] ctrl_transfer_insn;
 
   csr_opcode_e csr_op;
@@ -176,8 +175,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
   assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr;               
   assign csr_en_o                       = decoder_ctrl_mux.csr_en;
-  assign csr_status_o                   = decoder_ctrl_mux.csr_status;                    
-  assign csr_illegal                    = decoder_ctrl_mux.csr_illegal;                     
+  assign csr_status_o                   = decoder_ctrl_mux.csr_status;
   assign csr_op                         = decoder_ctrl_mux.csr_op;                          
   assign mret_insn_o                    = decoder_ctrl_mux.mret_insn;                     
   assign dret_insn_o                    = decoder_ctrl_mux.dret_insn;                     

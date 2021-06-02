@@ -675,7 +675,6 @@ typedef struct packed {
   logic                              prepost_useincr;
   logic                              csr_en;
   logic                              csr_status;
-  logic                              csr_illegal;
   csr_opcode_e                       csr_op;
   logic                              mret_insn;
   logic                              dret_insn;
@@ -709,7 +708,6 @@ typedef struct packed {
                                                           prepost_useincr              : 1'b1,
                                                           csr_en                       : 1'b0,
                                                           csr_status                   : 1'b0,
-                                                          csr_illegal                  : 1'b0,
                                                           csr_op                       : CSR_OP_READ,
                                                           mret_insn                    : 1'b0,
                                                           dret_insn                    : 1'b0,
@@ -794,13 +792,21 @@ typedef struct packed {
   logic        atomic;
 } pma_region_t;
 
-// Default attribution (Address is don't care)
+// Default attribution when PMA is not configured (PMA_NUM_REGIONS=0) (Address is don't care)
+parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0, 
+                                            word_addr_high  : 0,
+                                            main            : 1'b1,
+                                            bufferable      : 1'b0,
+                                            cacheable       : 1'b0,
+                                            atomic          : 1'b0};
+  
+// Default attribution when PMA is configured (Address is don't care)
 parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
                                          word_addr_high  : 0,
-                                         main            : 1'b1,
-                                         bufferable      : 1'b1,
-                                         cacheable       : 1'b1,
-                                         atomic          : 1'b1};
+                                         main            : 1'b0,
+                                         bufferable      : 1'b0,
+                                         cacheable       : 1'b0,
+                                         atomic          : 1'b0};
 
 // MPU status. Used for PMA and PMP
 typedef enum logic [1:0] {
@@ -819,7 +825,21 @@ parameter DATA_ADDR_WIDTH = 32;
 parameter DATA_DATA_WIDTH = 32;
 
 typedef struct packed {
+  logic        req;
+} obi_req_t;
+
+typedef struct packed {
+  logic        gnt;
+} obi_gnt_t;
+
+typedef struct packed {
+  logic        rvalid;
+} obi_rvalid_t;
+
+typedef struct packed {
   logic [INSTR_ADDR_WIDTH-1:0] addr;
+  logic [1:0]                  memtype;
+  logic [2:0]                  prot;
 } obi_inst_req_t;
 
 typedef struct packed {
@@ -833,6 +853,8 @@ typedef struct packed {
   logic                           we;
   logic [(DATA_DATA_WIDTH/8)-1:0] be;
   logic [DATA_DATA_WIDTH-1:0]     wdata;
+  logic [1:0]                     memtype;
+  logic [2:0]                     prot;
 } obi_data_req_t;
 
 typedef struct packed {
@@ -854,6 +876,13 @@ parameter inst_resp_t INST_RESP_RESET_VAL = '{
   mpu_status  : MPU_OK
 }; 
 
+// Reset value for the obi_inst_req_t type
+parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
+  addr    : 'h0,
+  memtype : 'h0,
+  prot    : {PRIV_LVL_M, 1'b0}
+};
+  
 // Data transfer bundeled with MPU status
 typedef struct packed {
   obi_data_resp_t             bus_resp;

@@ -51,7 +51,6 @@ module cv32e40x_wrapper
   input  logic        clk_i,
   input  logic        rst_ni,
 
-  input  logic        pulp_clock_en_i,                  // PULP clock enable (only used if PULP_CLUSTER = 1)
   input  logic        scan_cg_en_i,                     // Enable all clock gates for testing
 
   // Core ID, Cluster ID, debug mode halt address and boot address are considered more or less static
@@ -60,12 +59,15 @@ module cv32e40x_wrapper
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
+  input logic [31:0]  nmi_addr_i,
 
   // Instruction memory interface
   output logic        instr_req_o,
   input  logic        instr_gnt_i,
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
+  output logic [1:0]  instr_memtype_o,
+  output logic [2:0]  instr_prot_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -76,6 +78,8 @@ module cv32e40x_wrapper
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_addr_o,
+  output logic [1:0]  data_memtype_o,
+  output logic [2:0]  data_prot_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
@@ -87,6 +91,9 @@ module cv32e40x_wrapper
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
 
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i,
   // Debug Interface
   input  logic        debug_req_i,
   output logic        debug_havereset_o,

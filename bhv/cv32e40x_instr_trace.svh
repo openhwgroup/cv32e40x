@@ -79,8 +79,6 @@
 
       // use casex instead of case inside due to ModelSim bug
       casex (instr)
-        // Aliases
-        32'h00_00_00_13:   this.printMnemonic("nop");
         // Regular opcodes
         INSTR_LUI:        this.printUInstr("lui");
         INSTR_AUIPC:      this.printUInstr("auipc");
@@ -117,7 +115,7 @@
 
         // FENCE
         INSTR_FENCE:      this.printMnemonic("fence");
-        INSTR_FENCEI:     this.printMnemonic("fencei");
+        INSTR_FENCEI:     this.printMnemonic("fence.i");
         // SYSTEM (CSR manipulation)
         INSTR_CSRRW:      this.printCSRInstr("csrrw");
         INSTR_CSRRS:      this.printCSRInstr("csrrs");
@@ -359,7 +357,7 @@
         mnemonic = {compressed ? "c." : "", mnemonic};
         regs_read.push_back('{rs1, rs1_value, 0});
         regs_write.push_back('{rd, 'x, 0});
-        str = $sformatf("%-16s x%0d, x%0d, 0x%0x", mnemonic, rd, rs1, imm_i_type);
+        str = $sformatf("%-16s x%0d, x%0d, 0x%0x", mnemonic, rd, rs1, 5'(imm_i_type));
       end
     endfunction // printIuInstr
 

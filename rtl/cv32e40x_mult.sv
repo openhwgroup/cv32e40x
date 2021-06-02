@@ -16,11 +16,11 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
-// Design Name:    Subword multiplier and MAC                                 //
+// Design Name:    Multiplier                                                 //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Advanced MAC unit for PULP.                                //
+// Description:    Multiplier unit.                                           //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 

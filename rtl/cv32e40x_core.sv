@@ -48,12 +48,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
+  input  logic [31:0] nmi_addr_i,               // TODO use
 
   // Instruction memory interface
   output logic        instr_req_o,
   input  logic        instr_gnt_i,
   input  logic        instr_rvalid_i,
   output logic [31:0] instr_addr_o,
+  output logic [1:0]  instr_memtype_o,
+  output logic [2:0]  instr_prot_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -64,17 +67,22 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic        data_we_o,
   output logic [3:0]  data_be_o,
   output logic [31:0] data_addr_o,
+  output logic [1:0]  data_memtype_o,
+  output logic [2:0]  data_prot_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
   output logic [5:0]  data_atop_o,
   input  logic        data_exokay_i,
 
-  
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
   output logic        irq_ack_o,
   output logic [4:0]  irq_id_o,
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i,       // TODO use
 
   // Debug Interface
   input  logic        debug_req_i,
@@ -90,7 +98,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
-  localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
+  localparam USE_PMP             =  0;
 
   logic              clear_instr_valid;
   logic              pc_set;
@@ -123,10 +131,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // IF/ID pipeline
   if_id_pipe_t if_id_pipe;
   
-  // Register Write Control
-  rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
-  logic        regfile_we_wb;
-
   // Register File Write Back
   logic        rf_we_wb;
   rf_addr_t    rf_waddr_wb;
@@ -150,7 +154,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_data_t    regfile_wdata[REGFILE_NUM_WRITE_PORTS];
   logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
 
-  logic regfile_alu_we_dec_o;
+  logic regfile_alu_we_dec;
 
   // CSR control
   logic [23:0] mtvec_addr;
@@ -271,24 +275,30 @@ module cv32e40x_core import cv32e40x_pkg::*;
   if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
 
   // Connect toplevel OBI signals to internal interfaces
-  assign instr_req_o                         = m_c_obi_instr_if.req;
+  assign instr_req_o                         = m_c_obi_instr_if.s_req.req;
   assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
-  assign m_c_obi_instr_if.gnt                = instr_gnt_i;
-  assign m_c_obi_instr_if.rvalid             = instr_rvalid_i;
+  assign instr_memtype_o                     = m_c_obi_instr_if.req_payload.memtype;
+  assign instr_prot_o                        = m_c_obi_instr_if.req_payload.prot;
+  assign m_c_obi_instr_if.s_gnt.gnt          = instr_gnt_i;
+  assign m_c_obi_instr_if.s_rvalid.rvalid    = instr_rvalid_i;
   assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
   assign m_c_obi_instr_if.resp_payload.err   = instr_err_i;
   
-  assign data_req_o                          = m_c_obi_data_if.req;
+  assign data_req_o                          = m_c_obi_data_if.s_req.req;
   assign data_we_o                           = m_c_obi_data_if.req_payload.we;
   assign data_be_o                           = m_c_obi_data_if.req_payload.be;
   assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
+  assign data_memtype_o                      = m_c_obi_data_if.req_payload.memtype;
+  assign data_prot_o                         = m_c_obi_data_if.req_payload.prot;
   assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
   assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
-  assign m_c_obi_data_if.gnt                 = data_gnt_i;
-  assign m_c_obi_data_if.rvalid              = data_rvalid_i;
+  assign m_c_obi_data_if.s_gnt.gnt           = data_gnt_i;
+  assign m_c_obi_data_if.s_rvalid.rvalid     = data_rvalid_i;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
   assign m_c_obi_data_if.resp_payload.err    = data_err_i;
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
+
+  assign fencei_flush_req_o = 1'b0; // TODO connect to controller when handshake is implemented
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
@@ -338,7 +348,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //                                              //
   //////////////////////////////////////////////////
   cv32e40x_if_stage
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   if_stage_i
   (
@@ -560,7 +571,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_load_store_unit
-    #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+    #(.A_EXTENSION(A_EXTENSION),
+      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   load_store_unit_i
   (
