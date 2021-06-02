@@ -65,6 +65,7 @@ package cv32e40x_rvfi_pkg;
     logic        rvfi_trap;
     logic        rvfi_halt;
     logic        rvfi_intr;
+    logic        rvfi_dbg;
     logic [ 4:0] rvfi_rs1_addr;
     logic [ 4:0] rvfi_rs2_addr;
     logic [ 4:0] rvfi_rs3_addr;

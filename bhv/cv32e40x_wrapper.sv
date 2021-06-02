@@ -257,6 +257,7 @@ module cv32e40x_wrapper
 
          .pc_set_i                 ( core_i.if_stage_i.pc_set_i                                           ),
          .pc_mux_i                 ( core_i.if_stage_i.pc_mux_i                                           ),
+         .exc_pc_mux_i             ( core_i.if_stage_i.exc_pc_mux_i                                       ),
 
          .lsu_type_id_i            ( core_i.id_stage_i.data_type                                          ),
          .lsu_we_id_i              ( core_i.id_stage_i.data_we                                            ),

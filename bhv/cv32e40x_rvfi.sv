@@ -54,7 +54,8 @@ module cv32e40x_rvfi
   input logic [31:0]                         jump_target_id_i,
 
   input logic                                pc_set_i,
-  input logic [2:0]                          pc_mux_i,
+  input                                      pc_mux_e pc_mux_i,
+  input                                      exc_pc_mux_e exc_pc_mux_i,
 
   input logic [1:0]                          lsu_type_id_i,
   input logic                                lsu_we_id_i,
@@ -148,6 +149,7 @@ module cv32e40x_rvfi
   output logic [ 0:0]                        rvfi_intr,
   output logic [ 1:0]                        rvfi_mode,
   output logic [ 1:0]                        rvfi_ixl,
+  output logic [ 0:0]                        rvfi_dbg,
 
   output logic [ 4:0]                        rvfi_rs1_addr,
   output logic [ 4:0]                        rvfi_rs2_addr,
@@ -351,6 +353,8 @@ module cv32e40x_rvfi
   logic         ex_stage_ready_q;
   logic         ex_stage_valid_q;
 
+  logic         is_debug_entry_if;
+  logic         is_debug_entry_id;
   logic         is_jump_id;
   logic         is_branch_ex;
   logic         is_exception_wb;
@@ -364,11 +368,12 @@ module cv32e40x_rvfi
   rvfi_instr_t rvfi_stage [RVFI_STAGES];
   rvfi_intr_t  instr_q;
 
-  assign is_jump_id      = (pc_mux_i == PC_JUMP);
-  assign is_branch_ex    = (pc_mux_i == PC_BRANCH);
-  assign is_exception_wb = (pc_mux_i == PC_EXCEPTION);
-  assign is_mret_wb      = (pc_mux_i == PC_MRET);
-  assign is_dret_wb      = (pc_mux_i == PC_DRET);
+  assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
+  assign is_jump_id        = (pc_mux_i == PC_JUMP);
+  assign is_branch_ex      = (pc_mux_i == PC_BRANCH);
+  assign is_exception_wb   = (pc_mux_i == PC_EXCEPTION);
+  assign is_mret_wb        = (pc_mux_i == PC_MRET);
+  assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
     // Assign rvfi channels
   assign rvfi_valid             = rvfi_stage[RVFI_STAGES-1].rvfi_valid;
@@ -377,6 +382,7 @@ module cv32e40x_rvfi
   assign rvfi_trap              = rvfi_stage[RVFI_STAGES-1].rvfi_trap;
   assign rvfi_halt              = rvfi_stage[RVFI_STAGES-1].rvfi_halt;
   assign rvfi_intr              = intr_d;
+  assign rvfi_dbg               = rvfi_stage[RVFI_STAGES-1].rvfi_dbg;
   assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3)
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
   assign rvfi_rs1_addr          = rvfi_stage[RVFI_STAGES-1].rvfi_rs1_addr;
@@ -409,6 +415,8 @@ module cv32e40x_rvfi
       // Keep instr in EX valid if next instruction is not valid
       ex_stage_ready_q       <= instr_id_done || !instr_ex_ready_i && ex_stage_ready_q;
       ex_stage_valid_q       <= instr_id_done || !instr_ex_valid_i && ex_stage_valid_q;
+
+      is_debug_entry_id      <= (instr_id_done) ? is_debug_entry_if : is_debug_entry_if || is_debug_entry_id;
 
       // Handle misaligned state
       if (instr_ex_ready_i && data_req_q[0] && !lsu_misaligned_ex_i) begin
@@ -471,6 +479,7 @@ module cv32e40x_rvfi
             rvfi_stage[i].rvfi_intr      <= 1'b0;
             rvfi_stage[i].rvfi_order     <= rvfi_stage[i].rvfi_order + 64'b1;
             rvfi_stage[i].rvfi_insn      <= rvfi_insn_id;
+            rvfi_stage[i].rvfi_dbg       <= is_debug_entry_id;
 
             rvfi_stage[i].rvfi_rs1_addr  <= rvfi_rs1_addr_d;
             rvfi_stage[i].rvfi_rs2_addr  <= rvfi_rs2_addr_d;
