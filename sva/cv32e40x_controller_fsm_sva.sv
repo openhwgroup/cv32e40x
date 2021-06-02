@@ -39,7 +39,16 @@ module cv32e40x_controller_fsm_sva
    input       ctrl_state_e ctrl_fsm_cs,
    input       ctrl_state_e ctrl_fsm_ns,
    input logic irq_ack_o,
-   input logic [1:0] lsu_outstanding_cnt
+   input logic [1:0] lsu_outstanding_cnt,
+   input logic kill_if_o,
+   input logic kill_id_o,
+   input logic kill_ex_o,
+   input logic kill_wb_o,
+   input if_id_pipe_t if_id_pipe_i,
+   input id_ex_pipe_t id_ex_pipe_i,
+   input ex_wb_pipe_t ex_wb_pipe_i,
+   input logic rf_we_wb_i,
+   input csr_opcode_e csr_op_i
    );
 
   // make sure that taken branches do not happen back-to-back, as this is not
@@ -68,5 +77,34 @@ module cv32e40x_controller_fsm_sva
                       (irq_ack_o) |-> (lsu_outstanding_cnt == 2'b00) )
       else `uvm_error("controller", "Interrupt taken while oustanding transactions are pending")
 
+  // Ensure <stage>.instr_valid is zero following a kill_<prev_stage>
+ /* TODO:OK Failing when bubble is inserted in ID (id_ready_o==0) when WFI is in EX. 
+            Will investigate how to solve
+  a_kill_if :
+  assert property (@(posedge clk)
+                    (kill_if_o) |=> (if_id_pipe_i.instr_valid == 1'b0) )
+    else `uvm_error("controller", "if_id_pipe.instr_valid not zero after kill_if")
+*/
+/* TODO:OK Failing when a DIV instruction is being executed
+           Causes ex_ready to be 0. Will be fixed then divider is interruptable
+  a_kill_id :
+  assert property (@(posedge clk)
+                    (kill_id_o) |=> (id_ex_pipe_i.instr_valid == 1'b0) )
+    else `uvm_error("controller", "id_ex_pipe.instr_valid not zero after kill_id")
+*/
+  a_kill_ex :
+  assert property (@(posedge clk)
+                    (kill_ex_o) |=> (ex_wb_pipe_i.instr_valid == 1'b0) )
+    else `uvm_error("controller", "ex_wb_pipe.instr_valid not zero after kill_ie")
+
+  a_kill_wb_rf :
+  assert property (@(posedge clk)
+                    (kill_wb_o) |-> (rf_we_wb_i == 1'b0) )
+    else `uvm_error("controller", "regfile written when kill_wb is asserted")
+
+  a_kill_wb_csr :
+  assert property (@(posedge clk)
+                    (kill_wb_o) |-> (csr_op_i == CSR_OP_READ) )
+    else `uvm_error("controller", "csr written while kill_wb is asserted")
 endmodule // cv32e40x_controller_fsm_sva
 

@@ -207,7 +207,8 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions
   // will be interruptable as they did not cause bus access in EX.
-  assign interrupt_allowed = (!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q) ||
+  assign interrupt_allowed = (!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
+                              !id_ex_pipe_i.data_misaligned) ||
                              exception_in_wb; // TODO:OK: Could just use instr bus_err/mpu_err
 
   //////////////
@@ -269,9 +270,9 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_ns = FUNCTIONAL;
       end
       FUNCTIONAL: begin
-        // NMI
+        // NMI // TODO:OK: Implement
         if (pending_nmi ) begin
-        // Debug entry
+        // Debug entry // TODO:OK Implement
         end else if( pending_debug ) begin
         // IRQ
         end else if( pending_interrupt) begin
@@ -340,7 +341,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
           pc_mux_o  = PC_FENCEI;
         end else if ( mret_in_wb ) begin
           csr_restore_mret_id_o = 1'b1; // TODO:OK: Rename to csr_restore_mret_wb_o
-        // Single step debug entry
+        // Single step debug entry // TODO:OK Implement
         // Branch taken in EX (bne, beq, blt(u), bge(u))
         end else if( branch_taken_ex_i ) begin
           pc_mux_o   = PC_BRANCH;
@@ -381,6 +382,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
 
   // Wakeup from sleep
   assign wake_from_sleep_o = irq_wu_ctrl_i || debug_req_pending || debug_mode_q;
+  
   ////////////////////
   // Flops          //
   ////////////////////

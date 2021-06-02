@@ -108,7 +108,15 @@ module cv32e40x_wrapper
     // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
     .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
     .*);
-  //bind cv32e40x_controller_fsm:      core_i.controller_i.controller_fsm_i     cv32e40x_controller_fsm_sva   controller_fsm_sva   (.*);
+  
+  bind cv32e40x_wb_controller_fsm:
+    core_i.controller_i.controller_fsm_i
+      cv32e40x_controller_fsm_sva
+        controller_fsm_sva   (
+                              .lsu_outstanding_cnt (core_i.load_store_unit_i.cnt_q),
+                              .rf_we_wb_i          (core_i.wb_stage_i.rf_we_wb_o  ),
+                              .csr_op_i            (core_i.cs_registers_i.csr_op  ),
+                              .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
 
   bind cv32e40x_load_store_unit:
@@ -142,29 +150,21 @@ module cv32e40x_wrapper
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
                 .cs_registers_csr_cause_i         (core_i.cs_registers_i.csr_cause_i),
-                // probed id_stage signals
-                .id_stage_ebrk_insn               (core_i.ebrk_insn),
-                .id_stage_ecall_insn              (core_i.ecall_insn),
-                .id_stage_illegal_insn            (core_i.illegal_insn),
-                .id_stage_instr_err               (1'b0),//(core_i.controller_i.controller_fsm_i.instr_err), FIXME:OK: Fix when new controller is in
-                .id_stage_mpu_err                 (1'b0),//(core_i.controller_i.controller_fsm_i.instr_mpu_err),
-                .id_stage_instr_valid             (1'b0),//(core_i.controller_i.controller_fsm_i.instr_valid),
-                .branch_taken_in_ex               (1'b0),//(core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
+                .kill_wb_i                        ( core_i.kill_wb),
+                .ex_wb_pipe_i                     ( core_i.ex_wb_pipe ),
+                .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
+                .exc_cause                        ( core_i.controller_i.controller_fsm_i.exc_cause_o),
                 // probed controller signals
-                .exc_cause                        (core_i.controller_i.exc_cause),
-                .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
-                .id_valid                         (core_i.id_stage_i.id_valid_o),
-                .multi_cycle_id_stall             (core_i.id_stage_i.multi_cycle_id_stall),
-
                 .*);
 
-  bind cv32e40x_sleep_unit:
-    core_i.sleep_unit_i cv32e40x_sleep_unit_sva
-      sleep_unit_sva (// probed id_stage_i.controller_i signals
-                      .id_stage_controller_ctrl_fsm_cs (1'b0),//(core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
-                      .id_stage_controller_ctrl_fsm_ns (1'b0),//(core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                      .*);
+bind cv32e40x_sleep_unit:
+  core_i.sleep_unit_i cv32e40x_sleep_unit_sva
+    sleep_unit_sva (// probed id_stage_i.controller_i signals
+                    .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
+                    .ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                    .*);
 
   bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva 
     decoder_sva(.clk(core_i.id_stage_i.clk), 
@@ -197,7 +197,7 @@ module cv32e40x_wrapper
                  .rf_raddr (core_i.rf_raddr               ),
                  .rf_we    (core_i.id_stage_i.rf_we       ),
                  .rf_waddr (core_i.rf_waddr               ),
-                 .illegal_insn (core_i.illegal_insn       ),
+                 .illegal_insn (core_i.id_stage_i.illegal_insn       ),
                  .*);
   
     cv32e40x_core_log
@@ -206,7 +206,7 @@ module cv32e40x_wrapper
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
           .is_decoding_i      ( core_i.is_decoding                 ),
-          .illegal_insn_dec_i ( core_i.illegal_insn                ),
+          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn                ),
           .hart_id_i          ( core_i.hart_id_i                   ),
           .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
@@ -237,7 +237,7 @@ module cv32e40x_wrapper
       .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
       .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
 
-      .is_illegal     ( core_i.illegal_insn                            ),
+      .is_illegal     ( core_i.id_stage_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match                     ),
       .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),
       .rs2_value      ( core_i.id_stage_i.operand_b_fw                 ),
@@ -261,7 +261,7 @@ module cv32e40x_wrapper
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
       .data_misaligned ( core_i.lsu_misaligned                      ),
 
-      .ebrk_insn      ( core_i.ebrk_insn                            ),
+      .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                            ),
       .debug_mode     ( core_i.debug_mode                           ),
       .ebrk_force_debug_mode ( 1'b0),//( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
 
