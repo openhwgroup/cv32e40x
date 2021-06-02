@@ -31,7 +31,7 @@ module cv32e40x_core_sva
 
   input logic        pc_set,
   input logic        id_valid,
-  input logic        multi_cycle_id_stall,
+  //input logic        multi_cycle_id_stall,
   input logic [4:0]  exc_cause,
   input logic        debug_mode,
   input logic [31:0] mie_bypass,
@@ -42,17 +42,21 @@ module cv32e40x_core_sva
   input              if_id_pipe_t if_id_pipe,
   input              exc_pc_mux_e exc_pc_mux_id,
    // probed id_stage signals
+  /*
   input logic        id_stage_ebrk_insn,
   input logic        id_stage_ecall_insn,
   input logic        id_stage_illegal_insn,
   input logic        id_stage_instr_err,
   input logic        id_stage_mpu_err,
   input logic        id_stage_instr_valid,
+  */
+  input logic        kill_wb_i,
+  input ex_wb_pipe_t ex_wb_pipe_i,
   input logic        branch_taken_in_ex,
-
+  
    // probed controller signals
   input logic        id_stage_controller_debug_mode_n,
-  input              ctrl_state_e id_stage_controller_ctrl_fsm_ns,
+  input              ctrl_state_e ctrl_fsm_ns,
    // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
@@ -60,9 +64,7 @@ module cv32e40x_core_sva
   input              Mcause_t cs_registers_mcause_q,
   input              Status_t cs_registers_mstatus_q);
 
-  // Helper signals
-  logic id_valid_gated;
-  assign id_valid_gated = id_valid && !multi_cycle_id_stall;
+
 
   generate
     begin : gen_no_pulp_cluster_assertions
@@ -121,34 +123,39 @@ module cv32e40x_core_sva
             expected_instr_mpuerr_mepc <= 32'b0;
           end
           else begin
-            if (!first_illegal_found && is_decoding && id_valid_gated &&
-                id_stage_illegal_insn && !id_stage_controller_debug_mode_n) begin
+            if (!first_illegal_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+              !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK)) &&
+                ex_wb_pipe_i.illegal_insn && !id_stage_controller_debug_mode_n) begin
               first_illegal_found   <= 1'b1;
-              expected_illegal_mepc <= if_id_pipe.pc;
+              expected_illegal_mepc <= ex_wb_pipe.pc;
             end
-            if (!first_ecall_found && is_decoding && id_valid_gated &&
-                id_stage_ecall_insn && !id_stage_controller_debug_mode_n) begin
+            if (!first_ecall_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+              !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn) &&
+                ex_wb_pipe_i.ecall_insn && !id_stage_controller_debug_mode_n) begin
               first_ecall_found   <= 1'b1;
-              expected_ecall_mepc <= if_id_pipe.pc;
+              expected_ecall_mepc <= ex_wb_pipe.pc;
             end
-            if (!first_ebrk_found && is_decoding && id_valid_gated &&
-                id_stage_ebrk_insn && (id_stage_controller_ctrl_fsm_ns != DBG_FLUSH)) begin
+            if (!first_ebrk_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+              !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn || ex_wb_pipe_i.ecall_insn) &&
+                ex_wb_pipe_i.ebrk_insn) begin
               first_ebrk_found   <= 1'b1;
-              expected_ebrk_mepc <= if_id_pipe.pc;
+              expected_ebrk_mepc <= ex_wb_pipe_i.pc;
             end
-            // This does not check is_decoding, as that signal is suppressed when encountering a bus_error
-            // Suppress instr_err if there is also an mpu error, as that takes priority over bus errors
-            if (!first_instr_err_found && !branch_taken_in_ex && !id_stage_mpu_err && id_valid_gated &&
-                id_stage_instr_err && id_stage_instr_valid && !id_stage_controller_debug_mode_n) begin
+            
+            if (!first_instr_err_found && (ex_wb_pipe_i.instr.mpu_status == MPU_OK) &&
+                ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr.bus_resp.err && !id_stage_controller_debug_mode_n &&
+                !kill_wb_i ) begin
+                
               first_instr_err_found   <= 1'b1;
-              expected_instr_err_mepc <= if_id_pipe.pc;
+              expected_instr_err_mepc <= ex_wb_pipe.pc;
             end
-            // This does not check is_decoding, as that signal is suppressed when encountering a mpu error
-            if (!first_instr_mpuerr_found && !branch_taken_in_ex && id_valid_gated &&
-                id_stage_mpu_err && id_stage_instr_valid && !id_stage_controller_debug_mode_n) begin
+            
+            if (!first_instr_mpuerr_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+                (ex_wb_pipe_i.instr.mpu_status != MPU_OK) && !id_stage_controller_debug_mode_n) begin
               first_instr_mpuerr_found   <= 1'b1;
-              expected_instr_mpuerr_mepc <= if_id_pipe.pc;
+              expected_instr_mpuerr_mepc <= ex_wb_pipe.pc;
             end
+            
           end
         end
 
@@ -226,6 +233,7 @@ module cv32e40x_core_sva
 
       a_ebrk_mepc : assert property(p_ebrk_mepc) else `uvm_error("core", "Assertion p_ebrk_mepc failed")
 
+      
       // Check that mepc is updated with PC of instr_err instruction
       property p_instr_err_mepc;
         @(posedge clk) disable iff (!rst_ni)
@@ -241,10 +249,11 @@ module cv32e40x_core_sva
       endproperty
 
       a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
-
+      
     end
   endgenerate
 
+  /* TODO:OK: Reintroduce once debug support is implemented in the new controller
   // Single Step only decodes one instruction in non debug mode and next instruction decode is in debug mode
   logic inst_taken;
   assign inst_taken = id_valid && is_decoding;
@@ -255,6 +264,6 @@ module cv32e40x_core_sva
                      ##1 inst_taken [->1]
                      |-> (debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step failed")
-
+  */
 endmodule // cv32e40x_core_sva
 

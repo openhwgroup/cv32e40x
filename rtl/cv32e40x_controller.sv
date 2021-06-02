@@ -197,6 +197,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
     // From EX stage
+    .id_ex_pipe_i                ( id_ex_pipe_i             ),
     .branch_taken_ex_i           ( branch_taken_ex_i        ),
     .ex_valid_i                  ( ex_valid_i               ),
     .data_req_i                  ( data_req_i               ),

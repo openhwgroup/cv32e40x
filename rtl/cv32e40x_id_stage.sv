@@ -94,14 +94,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        data_req_wb_i,
 
-    // Decoder to controller
-    output logic        illegal_insn_o,
-    output logic        ecall_insn_o,
     output logic        mret_insn_o,
-    output logic        dret_insn_o,
-    output logic        wfi_insn_o,
-    output logic        ebrk_insn_o,
-    output logic        fencei_insn_o,
+    // Decoder to controller
     output logic        csr_status_o,
     output logic        csr_en_o,
     output csr_opcode_e csr_op_o,
@@ -227,6 +221,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic is_last; // Indicates that an instruction is in its last ID phase
 
+  // Special insn to travel down pipeline structs
+  logic        illegal_insn;
+  logic        ecall_insn;
+  logic        mret_insn;
+  logic        dret_insn;
+  logic        wfi_insn;
+  logic        ebrk_insn;
+  logic        fencei_insn;
+
+  assign mret_insn_o = mret_insn;
   assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
@@ -258,7 +262,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o /*| halt_id_i*/ | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
 
-  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i;
+  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i &&
+                            !(id_ex_pipe_o.instr.bus_resp.err || (id_ex_pipe_o.instr.mpu_status != MPU_OK));
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -415,13 +420,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // controller related signals
     .deassert_we_i                   ( deassert_we_i             ),
 
-    .illegal_insn_o                  ( illegal_insn_o            ),
-    .ebrk_insn_o                     ( ebrk_insn_o               ),
-    .mret_insn_o                     ( mret_insn_o               ),
-    .dret_insn_o                     ( dret_insn_o               ),
-    .ecall_insn_o                    ( ecall_insn_o              ),
-    .wfi_insn_o                      ( wfi_insn_o                ),
-    .fencei_insn_o                   ( fencei_insn_o             ),
+    .illegal_insn_o                  ( illegal_insn              ),
+    .ebrk_insn_o                     ( ebrk_insn                 ),
+    .mret_insn_o                     ( mret_insn                 ),
+    .dret_insn_o                     ( dret_insn                 ),
+    .ecall_insn_o                    ( ecall_insn                ),
+    .wfi_insn_o                      ( wfi_insn                  ),
+    .fencei_insn_o                   ( fencei_insn               ),
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
@@ -607,36 +612,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           end
 
           // Exceptions and special instructions
-          id_ex_pipe_o.illegal_insn           <= illegal_insn_o;
-          id_ex_pipe_o.ebrk_insn              <= ebrk_insn_o;
-          id_ex_pipe_o.wfi_insn               <= wfi_insn_o;
-          id_ex_pipe_o.ecall_insn             <= ecall_insn_o;
-          id_ex_pipe_o.fencei_insn            <= fencei_insn_o;
-          id_ex_pipe_o.mret_insn              <= mret_insn_o;
-          id_ex_pipe_o.dret_insn              <= dret_insn_o;
+          id_ex_pipe_o.illegal_insn           <= illegal_insn;
+          id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
+          id_ex_pipe_o.wfi_insn               <= wfi_insn;
+          id_ex_pipe_o.ecall_insn             <= ecall_insn;
+          id_ex_pipe_o.fencei_insn            <= fencei_insn;
+          id_ex_pipe_o.mret_insn              <= mret_insn;
+          id_ex_pipe_o.dret_insn              <= dret_insn;
         end
       end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
-        // so we set all write enables to 0, but unstall the pipe
-        // TODO: Do this in EX by gating with id_ex_pipe.instr_valid
+        // so we set all instr_valid to 0 (stage will use this to locally gate *enables)
         id_ex_pipe_o.instr_valid            <= 1'b0;
-        /*
-        id_ex_pipe_o.rf_we                  <= 1'b0;
-
-        id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
-        id_ex_pipe_o.csr_access             <= 1'b0;
-        id_ex_pipe_o.csr_en                 <= 1'b0;
-
-        id_ex_pipe_o.data_req               <= 1'b0;
-        id_ex_pipe_o.data_misaligned        <= 1'b0;
-
-        id_ex_pipe_o.branch_in_ex           <= 1'b0;
-
-        id_ex_pipe_o.alu_en                 <= 1'b1;            // todo: requires explanation
-        id_ex_pipe_o.alu_operator           <= ALU_SLTU;        // todo: requires explanation
-
-        id_ex_pipe_o.mult_en                <= 1'b0;
-        */
+        
       end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
        //In the EX stage there was a CSR access. To avoid multiple
        //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
@@ -647,11 +635,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   end
 
   // Performance Counter Events
-
+  //TODO:OK: Fix counters to reflect new controller behaviour
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && is_decoding_i && is_last && !(illegal_insn_o || ebrk_insn_o || ecall_insn_o);
+  assign minstret = id_valid_o && is_decoding_i && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin

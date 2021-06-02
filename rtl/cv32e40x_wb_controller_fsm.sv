@@ -62,6 +62,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
     // From EX stage
+    input  id_ex_pipe_t id_ex_pipe_i,        
     input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
     input  logic        data_req_i,           // Data interface trans_valid
@@ -170,13 +171,19 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // ID stage
   assign jump_in_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
                         mret_id_i) && if_id_pipe_i.instr_valid;
+
+  // TODO:OK: Add missing exception types
   // Exception in WB if the following evaluates to 1
-  assign exception_in_wb = (ex_wb_pipe_i.illegal_insn   ||
-                            ex_wb_pipe_i.ebrk_insn      ||
-                            ex_wb_pipe_i.ecall_insn)    && ex_wb_pipe_i.instr_valid;
+  assign exception_in_wb = (ex_wb_pipe_i.illegal_insn       ||
+                            ex_wb_pipe_i.ebrk_insn          ||
+                            ex_wb_pipe_i.ecall_insn         ||
+                            ex_wb_pipe_i.instr.bus_resp.err ||
+                            (ex_wb_pipe_i.instr.mpu_status != MPU_OK)) && ex_wb_pipe_i.instr_valid;
   // Set exception cause
-  assign exception_cause_wb = ex_wb_pipe_i.illegal_insn ? EXC_CAUSE_ILLEGAL_INSN :
-                              ex_wb_pipe_i.ecall_insn   ? EXC_CAUSE_ECALL_MMODE   :
+  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err         ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn               ? EXC_CAUSE_ILLEGAL_INSN    :
+                              ex_wb_pipe_i.ecall_insn                 ? EXC_CAUSE_ECALL_MMODE     :
                               EXC_CAUSE_BREAKPOINT;
 
   // wfi in wb
@@ -197,8 +204,11 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   assign pending_interrupt = irq_req_ctrl_i;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
-  // and no data_req has been clocked out of EX
-  assign interrupt_allowed = !(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q;
+  // and no data_req has been clocked from EX to environment.
+  // LSU instructions which were suppressed due to previous exceptions
+  // will be interruptable as they did not cause bus access in EX.
+  assign interrupt_allowed = (!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q) ||
+                             exception_in_wb; // TODO:OK: Could just use instr bus_err/mpu_err
 
   //////////////
   // FSM comb //
@@ -241,7 +251,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
 
     debug_mode_o          = 1'b0; // TODO:OK Set properly when debug mode is implemented
     debug_mode_n          = 1'b0;
-    
+    debug_csr_save_o      = 1'b0;
     
 
     unique case (ctrl_fsm_cs)
