@@ -534,10 +534,10 @@ module cv32e40x_rvfi
             rvfi_stage[i]                <= rvfi_stage[i-1];
 
             // Store CSRs
-            rvfi_stage[i].rvfi_csr_rdata <= rvfi_stage[i].rvfi_csr_rdata;
-            rvfi_stage[i].rvfi_csr_rmask <= rvfi_stage[i].rvfi_csr_rmask;
-            rvfi_stage[i].rvfi_csr_wdata <= rvfi_stage[i].rvfi_csr_wdata;
-            rvfi_stage[i].rvfi_csr_wmask <= rvfi_stage[i].rvfi_csr_wmask;
+            rvfi_stage[i].rvfi_csr_rdata <= rvfi_csr_rdata_d;
+            rvfi_stage[i].rvfi_csr_rmask <= rvfi_csr_rmask_d;
+            rvfi_stage[i].rvfi_csr_wdata <= rvfi_csr_wdata_d;
+            rvfi_stage[i].rvfi_csr_wmask <= rvfi_csr_wmask_d;
 
             // Decide valid in WB stage
             rvfi_stage[i].rvfi_valid     <= 1'b0;
@@ -557,22 +557,15 @@ module cv32e40x_rvfi
             rvfi_stage[i]                <= rvfi_stage[i-1];
 
             // Store CSRs
-            rvfi_stage[i].rvfi_csr_rdata <= rvfi_stage[i].rvfi_csr_rdata;
-            rvfi_stage[i].rvfi_csr_rmask <= rvfi_stage[i].rvfi_csr_rmask;
-            rvfi_stage[i].rvfi_csr_wdata <= rvfi_stage[i].rvfi_csr_wdata;
-            rvfi_stage[i].rvfi_csr_wmask <= rvfi_stage[i].rvfi_csr_wmask;
+            rvfi_stage[i].rvfi_csr_rdata <= rvfi_csr_rdata_d;
+            rvfi_stage[i].rvfi_csr_rmask <= rvfi_csr_rmask_d;
+            rvfi_stage[i].rvfi_csr_wdata <= rvfi_csr_wdata_d;
+            rvfi_stage[i].rvfi_csr_wmask <= rvfi_csr_wmask_d;
 
             rvfi_stage[i].rvfi_valid     <= ex_stage_valid_q;
 
             rvfi_stage[i].rvfi_mem_addr  <= rvfi_mem_addr_d;
             rvfi_stage[i].rvfi_mem_wdata <= rvfi_mem_wdata_d;
-
-            //exceptions as illegal, and syscalls
-            rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_n_i;
-            rvfi_stage[i].rvfi_csr_rdata.mstatus <= csr_mstatus_q_i;
-
-            rvfi_stage[i].rvfi_csr_wdata.mepc    <= csr_mepc_n_i;
-            rvfi_stage[i].rvfi_csr_wdata.mcause  <= csr_mcause_n_i;
 
             data_req_q[i]                   <= 1'b0;
             mret_q[i]                       <= mret_q[i-1];
@@ -609,8 +602,10 @@ module cv32e40x_rvfi
               rvfi_stage[i].rvfi_pc_wdata  <= is_mret_wb ? mepc_target_wb_i : exception_target_wb_i;
               if(!mret_q[i]) begin
                 //first cyle of MRET (FLUSH_WB)
-                rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_n_i;
-                rvfi_stage[i].rvfi_csr_rdata.mstatus <= csr_mstatus_q_i;
+                rvfi_stage[i].rvfi_csr_rdata.mstatus <= rvfi_csr_rdata_d.mstatus;
+                rvfi_stage[i].rvfi_csr_rmask.mstatus <= rvfi_csr_rmask_d.mstatus;
+                rvfi_stage[i].rvfi_csr_wdata.mstatus <= rvfi_csr_wdata_d.mstatus;
+                rvfi_stage[i].rvfi_csr_wmask.mstatus <= rvfi_csr_wmask_d.mstatus;
               end
 
               mret_q[i]                       <= !mret_q[i];
