@@ -58,39 +58,33 @@ package cv32e40x_pkg;
 //                             |_|                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-parameter ALU_OP_WIDTH = 5;
+parameter ALU_OP_WIDTH = 4;
 
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- ALU_ADD   = 5'b11000,
- ALU_SUB   = 5'b11001,
+ ALU_ADD   = 4'b1000,
+ ALU_SUB   = 4'b1001,
  
- ALU_XOR   = 5'b01111,
- ALU_OR    = 5'b01110,
- ALU_AND   = 5'b10101,
+ ALU_XOR   = 4'b1111,
+ ALU_OR    = 4'b1110,
+ ALU_AND   = 4'b0110,
 
 // Shifts
- ALU_SRA   = 5'b00100,
- ALU_SRL   = 5'b00101,
- ALU_SLL   = 5'b00111,
+ ALU_SRA   = 4'b0100,
+ ALU_SRL   = 4'b0101,
+ ALU_SLL   = 4'b0111,
 
 // Comparisons
- ALU_LTS   = 5'b00000,
- ALU_LTU   = 5'b00001,
- ALU_GES   = 5'b01010,
- ALU_GEU   = 5'b01011,
- ALU_EQ    = 5'b01100,
- ALU_NE    = 5'b01101,
+ ALU_LTS   = 4'b0000,
+ ALU_LTU   = 4'b0001,
+ ALU_GES   = 4'b1010,
+ ALU_GEU   = 4'b1011,
+ ALU_EQ    = 4'b1100,
+ ALU_NE    = 4'b1101,
 
 // Set Lower Than operations
- ALU_SLTS  = 5'b00010,
- ALU_SLTU  = 5'b00011,
-
-// div/rem
- ALU_DIVU  = 5'b10000,
- ALU_DIV   = 5'b10001,
- ALU_REMU  = 5'b10010,
- ALU_REM   = 5'b10011
+ ALU_SLTS  = 4'b0010,
+ ALU_SLTU  = 4'b0011
  
 } alu_opcode_e;
   
@@ -98,11 +92,21 @@ parameter MUL_OP_WIDTH = 1;
 
 typedef enum logic [MUL_OP_WIDTH-1:0]
 {
-
- MUL_M32   = 1'b0,
- MUL_H     = 1'b1
-
+ MUL_M32 = 1'b0,
+ MUL_H   = 1'b1
  } mul_opcode_e;
+
+parameter DIV_OP_WIDTH = 2;
+
+typedef enum logic [DIV_OP_WIDTH-1:0]
+{
+
+ DIV_DIVU= 2'b00,
+ DIV_DIV = 2'b01,
+ DIV_REMU= 2'b10,
+ DIV_REM = 2'b11
+
+ } div_opcode_e;
 
 // FSM state encoding
 typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
@@ -124,7 +128,7 @@ typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 typedef enum logic [1:0] {ALBL, ALBH, AHBL, AHBH} mult_state_e;
 
 // ALU divider FSM state encoding
-typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_FINISH} div_state_e;
+typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_DUMMY, DIV_FINISH} div_state_e;
 
 
 /////////////////////////////////////////////////////////
@@ -665,6 +669,8 @@ typedef struct packed {
   mul_opcode_e                       mult_operator;
   logic                              mult_en;
   logic [1:0]                        mult_signed_mode;
+  logic                              div_en;
+  div_opcode_e                       div_operator;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
   logic                              prepost_useincr;
@@ -698,6 +704,8 @@ typedef struct packed {
                                                           mult_operator                : MUL_M32,
                                                           mult_en                      : 1'b0,
                                                           mult_signed_mode             : 2'b00,
+                                                          div_en                       : 1'b0,
+                                                          div_operator                 : DIV_DIVU,
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
                                                           prepost_useincr              : 1'b1,
@@ -911,6 +919,10 @@ typedef struct packed {
   logic [31:0]  mult_operand_b;
   logic [ 1:0]  mult_signed_mode;
 
+  // Divider control
+  logic         div_en;
+  div_opcode_e  div_operator;
+  
   // Register write control
   logic         rf_we;
   rf_addr_t     rf_waddr;
