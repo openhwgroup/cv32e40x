@@ -793,7 +793,7 @@ parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0,
                                             main            : 1'b1,
                                             bufferable      : 1'b0,
                                             cacheable       : 1'b0,
-                                            atomic          : 1'b0};
+                                            atomic          : 1'b1};
   
 // Default attribution when PMA is configured (Address is don't care)
 parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
