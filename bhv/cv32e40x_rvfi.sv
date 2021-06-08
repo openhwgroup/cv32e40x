@@ -118,6 +118,7 @@ module cv32e40x_rvfi
   input                                      Dcsr_t csr_dcsr_n_i,
   input                                      Dcsr_t csr_dcsr_q_i,
   input logic                                csr_dcsr_we_i,
+  input logic                                csr_debug_csr_save_i,
   input logic [31:0]                         csr_dpc_n_i,
   input logic [31:0]                         csr_dpc_q_i,
   input logic                                csr_dpc_we_i,
@@ -358,6 +359,7 @@ module cv32e40x_rvfi
   logic         is_jump_id;
   logic         is_branch_ex;
   logic         is_exception_wb;
+  logic         is_exception_wb_q;
   logic         is_mret_wb;
   logic         is_dret_wb;
 
@@ -407,9 +409,10 @@ module cv32e40x_rvfi
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      ex_stage_ready_q  <= '0;
-      ex_stage_valid_q  <= '0;
-      data_misaligned_q <= '0;
+      ex_stage_ready_q  <= 1'b0;
+      ex_stage_valid_q  <= 1'b0;
+      data_misaligned_q <= 1'b0;
+      is_debug_entry_id <= 1'b0;
     end else begin
 
       // Keep instr in EX valid if next instruction is not valid
@@ -462,6 +465,10 @@ module cv32e40x_rvfi
         data_req_q[i]               <= '0;
         mret_q[i]                   <= '0;
         syscall_q[i]                <= '0;
+
+        if (i == 2) begin
+          is_exception_wb_q        <= 1'b0;
+        end
 
       end else begin
 
@@ -562,6 +569,7 @@ module cv32e40x_rvfi
             rvfi_stage[i].rvfi_csr_wdata <= rvfi_csr_wdata_d;
             rvfi_stage[i].rvfi_csr_wmask <= rvfi_csr_wmask_d;
 
+
             rvfi_stage[i].rvfi_valid     <= ex_stage_valid_q;
 
             rvfi_stage[i].rvfi_mem_addr  <= rvfi_mem_addr_d;
@@ -571,6 +579,8 @@ module cv32e40x_rvfi
             mret_q[i]                       <= mret_q[i-1];
             syscall_q[i]                    <= syscall_q[i-1];
           end // if (instr_ex_valid_i && (rvfi_stage[i-1].rvfi_trap || mret_q[i-1] || syscall_q[i-1]))
+
+
 
         end else if (i == 2) begin
         // Signals valid in WB stage
@@ -593,6 +603,7 @@ module cv32e40x_rvfi
             syscall_q[i-1]: begin
               rvfi_stage[i]                <= rvfi_stage[i-1];
               rvfi_stage[i].rvfi_pc_wdata  <= exception_target_wb_i;
+              rvfi_stage[i].rvfi_csr_rdata.mstatus <= rvfi_csr_rdata_d.mstatus; // Update mstatus rdata
             end
             //mret
             (mret_q[i-1] && rvfi_stage[i-1].rvfi_valid ) || mret_q[i]: begin
@@ -617,6 +628,22 @@ module cv32e40x_rvfi
             default:
               rvfi_stage[i].rvfi_valid     <= 1'b0;
           endcase // case (1'b1)
+
+          // CSR special cases
+          if (is_exception_wb) begin
+            rvfi_stage[i].rvfi_csr_wmask.mstatus <= '0;
+            is_exception_wb_q <= 1'b1;
+          end else if (is_exception_wb_q) begin
+            is_exception_wb_q <= !rvfi_stage[i].rvfi_valid;
+            rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
+            rvfi_stage[i].rvfi_csr_wmask.mstatus <= '1;
+          end
+
+          if (csr_debug_csr_save_i && rvfi_stage[i].rvfi_valid) begin
+            rvfi_stage[i].rvfi_csr_wmask.dcsr <= csr_dcsr_we_i ? '1 : '0;
+            rvfi_stage[i].rvfi_csr_wdata.dcsr <= csr_dcsr_n_i;
+          end
+
 
           rvfi_stage[i].rvfi_csr_wdata.mip                <= csr_mip_i;
 

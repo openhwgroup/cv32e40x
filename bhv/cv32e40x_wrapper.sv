@@ -324,6 +324,7 @@ module cv32e40x_wrapper
          .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
+         .csr_debug_csr_save_i     ( core_i.cs_registers_i.debug_csr_save_i                               ),
          .csr_dpc_q_i              ( core_i.cs_registers_i.dpc_q                                          ),
          .csr_dpc_n_i              ( core_i.cs_registers_i.dpc_n                                          ),
          .csr_dpc_we_i             ( core_i.cs_registers_i.dpc_we                                         ),
