@@ -647,21 +647,34 @@ module cv32e40x_rvfi
 
           rvfi_stage[i].rvfi_csr_wdata.mip                <= csr_mip_i;
 
-          rvfi_stage[i].rvfi_csr_wdata.mcycle             <= csr_mhpmcounter_q_l[CSR_MCYCLE    & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.mcycleh            <= csr_mhpmcounter_q_h[CSR_MCYCLEH   & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.cycle              <= csr_mhpmcounter_q_l[CSR_MCYCLE    & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.cycleh             <= csr_mhpmcounter_q_h[CSR_MCYCLEH   & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.minstret           <= csr_mhpmcounter_q_l[CSR_MINSTRET  & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.minstreth          <= csr_mhpmcounter_q_h[CSR_MINSTRETH & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.instret            <= csr_mhpmcounter_q_l[CSR_INSTRET   & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.instreth           <= csr_mhpmcounter_q_h[CSR_INSTRETH  & 'hF];
-          rvfi_stage[i].rvfi_csr_wdata.mhpmcounter[31:3]  <= csr_mhpmcounter_q_l[31:3];
-          rvfi_stage[i].rvfi_csr_wdata.mhpmcounterh[31:3] <= csr_mhpmcounter_q_h[31:3];
-          rvfi_stage[i].rvfi_csr_wdata.hpmcounter[31:3]   <= csr_mhpmcounter_q_l[31:3];
-          rvfi_stage[i].rvfi_csr_wdata.hpmcounterh[31:3]  <= csr_mhpmcounter_q_h[31:3];
+          rvfi_stage[i].rvfi_csr_wdata.mcycle             <= rvfi_csr_wdata_d.mcycle;
+          rvfi_stage[i].rvfi_csr_rdata.mcycle             <= rvfi_csr_rdata_d.mcycle;
+          rvfi_stage[i].rvfi_csr_wdata.mcycleh            <= rvfi_csr_wdata_d.mcycleh;
+          rvfi_stage[i].rvfi_csr_rdata.mcycleh            <= rvfi_csr_rdata_d.mcycleh;
+          rvfi_stage[i].rvfi_csr_wdata.cycle              <= rvfi_csr_wdata_d.cycle;
+          rvfi_stage[i].rvfi_csr_rdata.cycle              <= rvfi_csr_rdata_d.cycle;
+          rvfi_stage[i].rvfi_csr_wdata.cycleh             <= rvfi_csr_wdata_d.cycleh;
+          rvfi_stage[i].rvfi_csr_rdata.cycleh             <= rvfi_csr_rdata_d.cycleh;
+          rvfi_stage[i].rvfi_csr_wdata.minstret           <= rvfi_csr_wdata_d.minstret;
+          rvfi_stage[i].rvfi_csr_rdata.minstret           <= rvfi_csr_rdata_d.minstret;
+          rvfi_stage[i].rvfi_csr_wdata.minstreth          <= rvfi_csr_wdata_d.minstreth;
+          rvfi_stage[i].rvfi_csr_rdata.minstreth          <= rvfi_csr_rdata_d.minstreth;
+          rvfi_stage[i].rvfi_csr_wdata.instret            <= rvfi_csr_wdata_d.instret;
+          rvfi_stage[i].rvfi_csr_rdata.instret            <= rvfi_csr_rdata_d.instret;
+          rvfi_stage[i].rvfi_csr_wdata.instreth           <= rvfi_csr_wdata_d.instreth;
+          rvfi_stage[i].rvfi_csr_rdata.instreth           <= rvfi_csr_rdata_d.instreth;
+          rvfi_stage[i].rvfi_csr_wdata.mhpmcounter[31:3]  <= rvfi_csr_wdata_d.mhpmcounter[31:3];
+          rvfi_stage[i].rvfi_csr_rdata.mhpmcounter[31:3]  <= rvfi_csr_rdata_d.mhpmcounter[31:3];
+          rvfi_stage[i].rvfi_csr_wdata.mhpmcounterh[31:3] <= rvfi_csr_wdata_d.mhpmcounterh[31:3];
+          rvfi_stage[i].rvfi_csr_rdata.mhpmcounterh[31:3] <= rvfi_csr_rdata_d.mhpmcounterh[31:3];
+          rvfi_stage[i].rvfi_csr_wdata.hpmcounter[31:3]   <= rvfi_csr_wdata_d.hpmcounter[31:3];
+          rvfi_stage[i].rvfi_csr_rdata.hpmcounter[31:3]   <= rvfi_csr_rdata_d.hpmcounter[31:3];
+          rvfi_stage[i].rvfi_csr_wdata.hpmcounterh[31:3]  <= rvfi_csr_wdata_d.hpmcounterh[31:3];
+          rvfi_stage[i].rvfi_csr_rdata.hpmcounterh[31:3]  <= rvfi_csr_rdata_d.hpmcounterh[31:3];
 
           rvfi_stage[i].rvfi_rd_addr  <= (rd_we_wb_i) ? rvfi_rd_addr_d  : '0;
           rvfi_stage[i].rvfi_rd_wdata <= (rd_we_wb_i) ? rvfi_rd_wdata_d : '0;
+
         end
       end
     end
@@ -838,31 +851,31 @@ module cv32e40x_rvfi
     end
   endgenerate
 
-  assign rvfi_csr_wdata_d.mcycle             = 'X; // Assigned in WB
-  assign rvfi_csr_wmask_d.mcycle             = '1;
-  assign rvfi_csr_rdata_d.mcycle             = csr_mhpmcounter_q_l[CSR_MCYCLE & 'hF];
+  assign rvfi_csr_wdata_d.mcycle             = csr_mhpmcounter_q_l[CSR_MCYCLE & 'h1F];
+  assign rvfi_csr_wmask_d.mcycle             = '0;
+  assign rvfi_csr_rdata_d.mcycle             = csr_mhpmcounter_q_l[CSR_MCYCLE & 'h1F];
   assign rvfi_csr_rmask_d.mcycle             = '1;
 
-  assign rvfi_csr_wdata_d.minstret           = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_q_l[CSR_MINSTRET & 'h1F];
   assign rvfi_csr_wmask_d.minstret           = '1;
-  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l[CSR_MINSTRET & 'hF];
+  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l[CSR_MINSTRET & 'h1F];
   assign rvfi_csr_rmask_d.minstret           = '1;
 
   assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = 'Z; // Does not exist
   assign rvfi_csr_wmask_d.mhpmcounter[ 2:0]  = '0;
   assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;
   assign rvfi_csr_rmask_d.mhpmcounter[ 2:0]  = '0;
-  assign rvfi_csr_wdata_d.mhpmcounter[31:3]  = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.mhpmcounter[31:3]  = csr_mhpmcounter_q_l[31:3];
   assign rvfi_csr_wmask_d.mhpmcounter[31:3]  = '1;
   assign rvfi_csr_rdata_d.mhpmcounter[31:3]  = csr_mhpmcounter_q_l[31:3];
   assign rvfi_csr_rmask_d.mhpmcounter[31:3]  = '1;
 
-  assign rvfi_csr_wdata_d.mcycleh            = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.mcycleh            = csr_mhpmcounter_q_h[CSR_MCYCLEH & 'hF];
   assign rvfi_csr_wmask_d.mcycleh            = '1;
   assign rvfi_csr_rdata_d.mcycleh            = csr_mhpmcounter_q_h[CSR_MCYCLEH & 'hF];
   assign rvfi_csr_rmask_d.mcycleh            = '1;
 
-  assign rvfi_csr_wdata_d.minstreth          = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.minstreth          = csr_mhpmcounter_q_h[CSR_MINSTRETH & 'hF];
   assign rvfi_csr_wmask_d.minstreth          = '1;
   assign rvfi_csr_rdata_d.minstreth          = csr_mhpmcounter_q_h[CSR_MINSTRETH & 'hF];
   assign rvfi_csr_rmask_d.minstreth          = '1;
@@ -871,17 +884,17 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mhpmcounterh[ 2:0] = '0;
   assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = 'Z;
   assign rvfi_csr_rmask_d.mhpmcounterh[ 2:0] = '0;
-  assign rvfi_csr_wdata_d.mhpmcounterh[31:3] = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.mhpmcounterh[31:3] = csr_mhpmcounter_q_h[31:3];
   assign rvfi_csr_wmask_d.mhpmcounterh[31:3] = '1;
   assign rvfi_csr_rdata_d.mhpmcounterh[31:3] = csr_mhpmcounter_q_h[31:3];
   assign rvfi_csr_rmask_d.mhpmcounterh[31:3] = '1;
 
-  assign rvfi_csr_wdata_d.cycle              = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.cycle              = csr_mhpmcounter_q_l[CSR_CYCLE & 'hF];
   assign rvfi_csr_wmask_d.cycle              = '1;
   assign rvfi_csr_rdata_d.cycle              = csr_mhpmcounter_q_l[CSR_CYCLE & 'hF];
   assign rvfi_csr_rmask_d.cycle              = '1;
 
-  assign rvfi_csr_wdata_d.instret            = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.instret            = csr_mhpmcounter_q_l[CSR_INSTRET & 'hF];
   assign rvfi_csr_wmask_d.instret            = '1;
   assign rvfi_csr_rdata_d.instret            = csr_mhpmcounter_q_l[CSR_INSTRET & 'hF];
   assign rvfi_csr_rmask_d.instret            = '1;
@@ -890,17 +903,17 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.hpmcounter[ 2:0]   = '0;
   assign rvfi_csr_rdata_d.hpmcounter[ 2:0]   = 'Z;
   assign rvfi_csr_rmask_d.hpmcounter[ 2:0]   = '0;
-  assign rvfi_csr_wdata_d.hpmcounter[31:3]   = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.hpmcounter[31:3]   = csr_mhpmcounter_q_l[31:3];
   assign rvfi_csr_wmask_d.hpmcounter[31:3]   = '1;
   assign rvfi_csr_rdata_d.hpmcounter[31:3]   = csr_mhpmcounter_q_l[31:3];
   assign rvfi_csr_rmask_d.hpmcounter[31:3]   = '1;
 
-  assign rvfi_csr_wdata_d.cycleh             = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.cycleh             = csr_mhpmcounter_q_h[CSR_CYCLEH & 'hF];
   assign rvfi_csr_wmask_d.cycleh             = '1;
   assign rvfi_csr_rdata_d.cycleh             = csr_mhpmcounter_q_h[CSR_CYCLEH & 'hF];
   assign rvfi_csr_rmask_d.cycleh             = '1;
 
-  assign rvfi_csr_wdata_d.instreth           = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.instreth           = csr_mhpmcounter_q_h[CSR_INSTRETH & 'hF];
   assign rvfi_csr_wmask_d.instreth           = '1;
   assign rvfi_csr_rdata_d.instreth           = csr_mhpmcounter_q_h[CSR_INSTRETH & 'hF];
   assign rvfi_csr_rmask_d.instreth           = '1;
@@ -909,7 +922,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.hpmcounterh[ 2:0]  = '0;
   assign rvfi_csr_rdata_d.hpmcounterh[ 2:0]  = 'Z;
   assign rvfi_csr_rmask_d.hpmcounterh[ 2:0]  = '0;
-  assign rvfi_csr_wdata_d.hpmcounterh[31:3]  = 'X; // Assigned in WB
+  assign rvfi_csr_wdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_q_h[31:3];
   assign rvfi_csr_wmask_d.hpmcounterh[31:3]  = '1;
   assign rvfi_csr_rdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_q_h[31:3];
   assign rvfi_csr_rmask_d.hpmcounterh[31:3]  = '1;
