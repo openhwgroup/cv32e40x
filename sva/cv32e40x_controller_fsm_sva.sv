@@ -96,7 +96,7 @@ module cv32e40x_controller_fsm_sva
   a_kill_ex :
   assert property (@(posedge clk)
                     (kill_ex_o) |=> (ex_wb_pipe_i.instr_valid == 1'b0) )
-    else `uvm_error("controller", "ex_wb_pipe.instr_valid not zero after kill_ie")
+    else `uvm_error("controller", "ex_wb_pipe.instr_valid not zero after kill_ex")
 
   a_kill_wb_rf :
   assert property (@(posedge clk)

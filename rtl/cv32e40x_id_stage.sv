@@ -95,6 +95,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        data_req_wb_i,
 
     output logic        mret_insn_o,
+    output logic        dret_insn_o,
     // Decoder to controller
     output logic        csr_status_o,
     output logic        csr_en_o,
@@ -231,6 +232,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        fencei_insn;
 
   assign mret_insn_o = mret_insn;
+  assign dret_insn_o = dret_insn;
+  
   assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;

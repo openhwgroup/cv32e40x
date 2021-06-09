@@ -110,7 +110,7 @@ typedef enum logic [MUL_OP_WIDTH-1:0]
 //                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
 
 // WB centric controller FSM state
-typedef enum logic [1:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
 
 
 

@@ -121,6 +121,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        ctrl_busy;
   logic        if_busy;
   logic        lsu_busy;
+  logic [1:0]  lsu_cnt;
 
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
@@ -244,7 +245,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Controller <-> decoder 
   logic       deassert_we;
   logic       mret_insn_id;
-  //logic       dret_insn; //TODO:OK: reintroduce when debug support is enabled in controller
+  logic       dret_insn_id;
   logic       csr_status;
   logic [1:0] ctrl_transfer_insn;
   logic [1:0] ctrl_transfer_insn_raw;
@@ -485,7 +486,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .data_req_wb_i                ( data_req_wb          ),
 
     .mret_insn_o                  ( mret_insn_id         ),
-    //.dret_insn_o                  ( dret_insn            ), // TODO:OK reintroduce then debug support is enabled in controller
+    .dret_insn_o                  ( dret_insn_id         ),
     .csr_status_o                 ( csr_status           ),
 
     .csr_en_o                     ( csr_en_id            ),
@@ -600,6 +601,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_ready_ex_o        ( lsu_ready_ex       ),
     .lsu_ready_wb_o        ( lsu_ready_wb       ),
 
+    .cnt_o                 ( lsu_cnt            ),
     .busy_o                ( lsu_busy           )
   );
 
@@ -739,7 +741,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
     .mret_id_i                      ( mret_insn_id           ),
-    //.dret_id_i                      ( dret_insn              ),
+    .dret_id_i                      ( dret_insn_id           ),
     .csr_en_id_i                    ( csr_en_id              ),
     .csr_op_id_i                    ( csr_op_id              ),
 
@@ -843,7 +845,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .wb_ready_i                     ( lsu_ready_wb           ),
     .data_req_wb_i                  ( data_req_wb            ),
 
-    .data_req_i                     ( data_req_o             )
+    .data_req_i                     ( data_req_o             ),
+    .lsu_cnt_i                      ( lsu_cnt                ),
+    .data_rvalid_i                  ( data_rvalid_i          )
  );
 
 ////////////////////////////////////////////////////////////////////////

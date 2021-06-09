@@ -48,7 +48,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        mret_id_i,
-  //input  logic        dret_id_i,
+  input  logic        dret_id_i,
   input  logic        csr_en_id_i,
   input  csr_opcode_e csr_op_id_i,
 
@@ -158,7 +158,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,                 // WB stage is ready
 
   input  logic        data_req_wb_i,               // ALU data is written back in WB
-  input  logic        data_req_i                  // OBI bus data request (EX)
+  input  logic        data_req_i,                  // OBI bus data request (EX)
+  input  logic [1:0]  lsu_cnt_i,
+  input  logic        data_rvalid_i
 );
 
   logic [4:0]         exc_cause;
@@ -190,6 +192,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .id_ready_i                  ( id_ready_i     ),
     .if_id_pipe_i                ( if_id_pipe_i   ),
     .mret_id_i                   ( mret_id_i      ),
+    .dret_id_i                   ( dret_id_i      ),
     .ex_wb_pipe_i                ( ex_wb_pipe_i   ),
     // From decoder
     .csr_status_i                ( csr_status_i   ),
@@ -210,6 +213,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // To WB stage
     .block_data_addr_o           ( block_data_addr_o        ),
+
+    .lsu_cnt_i                   ( lsu_cnt_i                ),
+    .data_rvalid_i               ( data_rvalid_i            ),
 
     // Interrupt Controller Signals
     .irq_req_ctrl_i              ( irq_req_ctrl_i           ),

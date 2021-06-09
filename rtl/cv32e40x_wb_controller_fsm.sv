@@ -52,6 +52,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     input  logic        id_ready_i,                 // ID stage is ready
     input  if_id_pipe_t if_id_pipe_i,
     input  logic        mret_id_i,                  // mret in ID stage
+    input  logic        dret_id_i,                  // dret in ID stage
 
     // From WB stage
     input  ex_wb_pipe_t ex_wb_pipe_i,
@@ -65,7 +66,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     input  id_ex_pipe_t id_ex_pipe_i,        
     input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
-    input  logic        data_req_i,           // Data interface trans_valid
+    input  logic        data_req_i,                 // Data interface trans_valid
   
     // From WB stage
     input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
@@ -75,6 +76,10 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
 
     // To WB stage
     output logic        block_data_addr_o,          // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+
+    // LSU input
+    input  logic [1:0]  lsu_cnt_i,              // LSU outstanding
+    input  logic        data_rvalid_i,
 
     // Interrupt Controller Signals
     input  logic        irq_req_ctrl_i,         // irq requst
@@ -142,7 +147,10 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // Debug mode
   logic debug_mode_n;
   logic debug_mode_q;
-  assign debug_mode_q = 1'b0; // TODO:OK: Implement when debug mode is implemented
+
+  logic single_step_n;
+  logic single_step_q;
+  
   
   // Events in WB
   logic exception_in_wb;
@@ -150,11 +158,16 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   logic wfi_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
+  logic dret_in_wb;
+  logic ebreak_in_wb;
   logic pending_nmi;
   logic pending_debug;
+  logic pending_single_step;
+  logic allow_single_step;
   logic pending_interrupt;
 
   logic interrupt_allowed;
+  logic debug_allowed;
 
   // Data request has been clocked
   logic data_req_q;
@@ -162,15 +175,15 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////
   // Signals to not break core-v-verif compile (will be changed)
   logic illegal_insn_q;
-  logic debug_req_pending;
+  
   logic branch_in_id;
   assign is_decoding_o = 1'b1; // TODO:OK: Remove
-  assign debug_req_pending = 1'b0; // TODO:OK: Implement when debug mode is implemented
+  
   ////////////////////////////////////////////////////////////////////
 
   // ID stage
   assign jump_in_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
-                        mret_id_i) && if_id_pipe_i.instr_valid;
+                        mret_id_i || dret_id_i) && if_id_pipe_i.instr_valid;
 
   // TODO:OK: Add missing exception types
   // Exception in WB if the following evaluates to 1
@@ -195,9 +208,35 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // mret in wb
   assign mret_in_wb = ex_wb_pipe_i.mret_insn && ex_wb_pipe_i.instr_valid;
 
+  // dret in wb
+  assign dret_in_wb = ex_wb_pipe_i.dret_insn && ex_wb_pipe_i.instr_valid;
+
+  // ebreak in wb
+  assign ebreak_in_wb = ex_wb_pipe_i.ebrk_insn && ex_wb_pipe_i.instr_valid;
+
   // Async events pending
   assign pending_nmi = 1'b0;
-  assign pending_debug = 1'b0;
+
+  // Debug
+
+  assign single_step_n = (ctrl_fsm_cs == DEBUG_TAKEN) ? 1'b0 : pending_single_step;
+  assign allow_single_step = debug_allowed;// && !((|lsu_cnt_i) || ((lsu_cnt_i == 2'b1) && data_rvalid_i));
+
+  assign pending_single_step = !debug_mode_q && debug_single_step_i && (ex_wb_pipe_i.instr_valid || single_step_q); // TODO:OK Must wait for rvalid in case of LSU 
+
+  assign debug_allowed = (!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
+                              !(id_ex_pipe_i.data_misaligned && id_ex_pipe_i.instr_valid)); // TODO:OK: Could just use instr bus_err/mpu_err
+
+  assign pending_debug = (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
+                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q)   || // Ebreak with dcsr.ebreakm==1
+                         //pending_single_step                                  || // single stepping, dcsr.step==1
+                          (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.data_misaligned;
+
+                           
+
+  assign debug_cause_o = (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK :
+                         ((debug_req_i || debug_req_q) && !debug_mode_q) ? DBG_CAUSE_HALTREQ :
+                         DBG_CAUSE_STEP;
 
   // TODO:OK: Masking interrupts in case of debug
   // TODO:OK: May allow interuption of Zce to idempotent memories
@@ -207,9 +246,9 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions
   // will be interruptable as they did not cause bus access in EX.
-  assign interrupt_allowed = (!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
+  assign interrupt_allowed = ((!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
                               !id_ex_pipe_i.data_misaligned) ||
-                             exception_in_wb; // TODO:OK: Could just use instr bus_err/mpu_err
+                               exception_in_wb) && !debug_mode_q; // TODO:OK: Could just use instr bus_err/mpu_err
 
   //////////////
   // FSM comb //
@@ -250,8 +289,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
     exc_pc_mux_o           = EXC_PC_IRQ;
     exc_cause_o            = '0;
 
-    debug_mode_o          = 1'b0; // TODO:OK Set properly when debug mode is implemented
-    debug_mode_n          = 1'b0;
+    debug_mode_n          = debug_mode_q;
     debug_csr_save_o      = 1'b0;
     
 
@@ -274,6 +312,19 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
         if (pending_nmi ) begin
         // Debug entry // TODO:OK Implement
         end else if( pending_debug ) begin
+          if( debug_allowed ) begin
+            // Kill the whole pipeline
+            halt_if_o = 1'b1;
+            halt_id_o = 1'b1;
+            halt_ex_o = 1'b1;
+            halt_wb_o = 1'b1;
+
+            // Proceed to debug TODO:OK We could remove this state, but duplicate code for debug_taken when taking single steps
+            ctrl_fsm_ns = DEBUG_TAKEN;
+          end else begin
+            // Halt ID to allow debug @bubble later
+            halt_id_o = 1'b1;
+          end
         // IRQ
         end else if( pending_interrupt) begin
           if( interrupt_allowed ) begin
@@ -294,7 +345,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
             csr_cause_o       = {1'b1,irq_id_ctrl_i};
 
             // Save pc from oldest valid instruction
-            if(ex_wb_pipe_i.instr_valid) begin
+            if(ex_wb_pipe_i.instr_valid ) begin
               csr_save_wb_o = 1'b1;
             end else if( id_ex_pipe_i.instr_valid) begin
               csr_save_ex_o = 1'b1;
@@ -304,74 +355,148 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
               csr_save_if_o = 1'b1;
             end
           end else begin // !interrupt_allowed
+            // Halt ID to allow interrupt @bubble later
             halt_id_o = 1'b1;
           end
-        // Exceptions
-        end else if (exception_in_wb) begin
-          // TODO:OK: Must check if we are allowed to take exceptions
+        end else begin
+          if (exception_in_wb) begin
+            // TODO:OK: Must check if we are allowed to take exceptions
 
-          // Kill all stages
-          kill_if_o = 1'b1;
-          kill_id_o = 1'b1;
-          kill_ex_o = 1'b1;
+            // Kill all stages
+            kill_if_o = 1'b1;//!debug_single_step_i;//1'b1;
+            kill_id_o = !debug_single_step_i;//1'b1;
+            kill_ex_o = !debug_single_step_i;//1'b1;
 
-          // Set pc to exception handler
-          pc_set_o       = 1'b1;
-          pc_mux_o       = PC_EXCEPTION;
-          exc_pc_mux_o   = EXC_PC_EXCEPTION;  // TODO:OK: Take in account debug mode
+            // Set pc to exception handler
+            pc_set_o       = 1'b1;
+            pc_mux_o       = PC_EXCEPTION;
+            exc_pc_mux_o   = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
 
-          // Save CSR from WB
-          csr_save_wb_o     = 1'b1;
-          csr_save_cause_o  = !debug_mode_q;
-          csr_cause_o       = {1'b0, exception_cause_wb};
-        // Special insn
-        end else if( wfi_in_wb ) begin
-          // TODO:OK: Need to evaluate sleeping based on debug pending etc..
-          // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
-          halt_if_o = 1'b1;
-          halt_id_o = 1'b1;
-          instr_req_o = 1'b0;
-          ctrl_fsm_ns = SLEEP;
-        end else if ( fencei_in_wb ) begin
-          // Kill all instructions and set pc to wb.pc + 4
-          kill_if_o = 1'b1;
-          kill_id_o = 1'b1;
-          kill_ex_o = 1'b1;
-          pc_set_o  = 1'b1;
-          pc_mux_o  = PC_FENCEI;
-        end else if ( mret_in_wb ) begin
-          csr_restore_mret_id_o = 1'b1; // TODO:OK: Rename to csr_restore_mret_wb_o
-        // Single step debug entry // TODO:OK Implement
-        // Branch taken in EX (bne, beq, blt(u), bge(u))
-        end else if( branch_taken_ex_i ) begin
-          pc_mux_o   = PC_BRANCH;
-          pc_set_o   = 1'b1;
-          kill_if_o = 1'b1;
-          kill_id_o = 1'b1;  
-        end else if ( jump_in_id ) begin
-          // kill_if
-          kill_if_o = 1'b1;
-          // Jumps in ID (JAL, JALR, mret, uret, dret)
-          if ( mret_id_i) begin
-            pc_mux_o      = PC_MRET; // TODO:OK Implement mux for exception if in debug mode
-            pc_set_o      = 1'b1;
-          end else begin
-            pc_mux_o = PC_JUMP;
-            pc_set_o = !jr_stall_i;
+            // Save CSR from WB
+            csr_save_wb_o     = 1'b1;
+            csr_save_cause_o  = !debug_mode_q; // Do not update CSRs if in debug mode
+            csr_cause_o       = {1'b0, exception_cause_wb};
+          // Special insn
+          end else if( wfi_in_wb ) begin
+            // TODO:OK: Need to evaluate sleeping based on debug pending etc..
+            // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
+            if( !debug_mode_q ) begin
+              halt_if_o = 1'b1;
+              halt_id_o = 1'b1;
+              instr_req_o = 1'b0;
+              ctrl_fsm_ns = SLEEP;
+            end
+          end else if ( fencei_in_wb ) begin
+            // Kill all instructions and set pc to wb.pc + 4
+            kill_if_o = 1'b1;
+            kill_id_o = 1'b1;
+            kill_ex_o = 1'b1;
+            pc_set_o  = 1'b1;
+            pc_mux_o  = PC_FENCEI;
+
+            //TODO:OK: Drive fence.i interface
+          end else if( branch_taken_ex_i ) begin
+            pc_mux_o   = PC_BRANCH;
+            pc_set_o   = 1'b1;
+            kill_if_o = 1'b1;
+            kill_id_o = 1'b1;  
+          end else if ( jump_in_id ) begin
+            // kill_if
+            kill_if_o = 1'b1;
+            // Jumps in ID (JAL, JALR, mret, uret, dret)
+            if ( mret_id_i ) begin
+              pc_mux_o      = debug_mode_q ? PC_EXCEPTION : PC_MRET;
+              pc_set_o      = 1'b1;
+              exc_pc_mux_o  = EXC_PC_DBE; // Only used in debug mode
+            end else if ( dret_id_i ) begin
+              pc_mux_o      = PC_DRET;
+              pc_set_o      = 1'b1;
+            end else begin
+              pc_mux_o = PC_JUMP;
+              pc_set_o = !jr_stall_i;
+            end
           end
-        end
+
+          //TODO:OK: Trigger on mret: Should be killed with no side effects
+          //         Should this section be part of the if/else block above?
+          if ( mret_in_wb ) begin
+            csr_restore_mret_id_o = !debug_mode_q; // TODO:OK: Rename to csr_restore_mret_wb_o
+          end else if ( dret_in_wb ) begin
+            csr_restore_dret_id_o = 1'b1; //TODO:OK: Rename to csr_restore_dret_wb_o
+            debug_mode_n  = 1'b0;
+          end
+
+          // Single step debug entry
+          // Need to be after exception/interrupt handling
+          // to ensure mepc and if_pc set correctly for use in dpc
+          if( pending_single_step ) begin // ex_wb_pipe.instr_valid is implicit
+            
+            if( allow_single_step ) begin
+              halt_if_o = 1'b1;
+              halt_id_o = 1'b1;
+              halt_ex_o = 1'b1;
+              halt_wb_o = 1'b1;
+
+              ctrl_fsm_ns = DEBUG_TAKEN;
+            end else begin
+              // Prevent new ins while LSU finishes
+              halt_if_o = 1'b1;
+              halt_id_o = 1'b1;
+              
+            end
+          end
+        end // !debug or interrupts
       end
       SLEEP: begin
         ctrl_busy_o = 1'b0;
         instr_req_o = 1'b0;
-        halt_if_o   = 1'b1;
-        halt_id_o   = 1'b1;
-        halt_ex_o   = 1'b1;
+        //halt_if_o   = 1'b1;
+        //halt_id_o   = 1'b1;
+        //halt_ex_o   = 1'b1;
         halt_wb_o   = 1'b1;
         if(wake_from_sleep_o) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_busy_o = 1'b1;
         end
+      end
+      DEBUG_TAKEN: begin
+        // Kill all stages
+        kill_if_o = 1'b1;
+        kill_id_o = 1'b1;
+        kill_ex_o = 1'b1;
+        kill_wb_o = !debug_single_step_i;// Do not kill WB for single step
+
+        // Set pc
+        pc_set_o  = 1'b1;
+        pc_mux_o  = PC_EXCEPTION;
+        exc_pc_mux_o = EXC_PC_DBD;
+
+        // Save CSRs
+        csr_save_cause_o = 1'b1;
+        debug_csr_save_o = !(ebreak_in_wb && debug_mode_q);
+
+        if( (debug_single_step_i && exception_in_wb) ) begin
+          // Single step and exception
+          // Should use pc from IF, as a branch to exception handler
+          // was performed last cycle
+          csr_save_if_o = 1'b1;
+        end else begin
+          // Save pc from oldest valid instruction
+          // Do not save if ebreak in debug mode
+          if(ex_wb_pipe_i.instr_valid && !debug_single_step_i) begin
+            csr_save_wb_o = !(ebreak_in_wb && debug_mode_q);
+          end else if( id_ex_pipe_i.instr_valid && !id_ex_pipe_i.data_misaligned) begin
+            csr_save_ex_o = !(ebreak_in_wb && debug_mode_q);
+          end else if( if_id_pipe_i.instr_valid) begin
+            csr_save_id_o = !(ebreak_in_wb && debug_mode_q);
+          end else begin
+            csr_save_if_o = !(ebreak_in_wb && debug_mode_q);
+          end
+        end
+
+        // Enter debug mode next cycle
+        debug_mode_n = 1'b1;
+        ctrl_fsm_ns = FUNCTIONAL;
       end
       default: begin
         instr_req_o = 1'b0;
@@ -381,7 +506,7 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign wake_from_sleep_o = irq_wu_ctrl_i || debug_req_pending || debug_mode_q;
+  assign wake_from_sleep_o = irq_wu_ctrl_i || pending_debug || debug_mode_q;
 
   ////////////////////
   // Flops          //
@@ -389,8 +514,11 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
   always_ff @(posedge clk , negedge rst_n) begin
     if ( rst_n == 1'b0 ) begin
       ctrl_fsm_cs <= RESET;
+      debug_mode_q <= 1'b0;
     end else begin
       ctrl_fsm_cs <= ctrl_fsm_ns;
+      single_step_q <= single_step_n;
+      debug_mode_q <= debug_mode_n;
     end
   end
 
@@ -419,6 +547,8 @@ module cv32e40x_wb_controller_fsm import cv32e40x_pkg::*;
       end
     end
   end
+
+  assign debug_mode_o = debug_mode_q;
 
   
   /////////////////////

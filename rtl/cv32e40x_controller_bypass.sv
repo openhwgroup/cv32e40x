@@ -146,7 +146,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     deassert_we_o  = 1'b0;
     csr_stall_o    = 1'b0;
 
-    // deassert WE when the core is not decoding instructions TODO:OK: Remove
+    // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     if (~is_decoding_i)
       deassert_we_o = 1'b1;
 

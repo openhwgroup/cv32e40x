@@ -57,6 +57,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input  logic         halt_ex_i,
     input  logic         halt_wb_i,
 
+    output logic [1:0]   cnt_o,
     output logic         busy_o
 );
 
@@ -116,7 +117,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         data_req_valid;
 
   assign block_data_req = kill_ex_i || id_ex_pipe_i.instr.bus_resp.err ||
-                          !(id_ex_pipe_i.instr.mpu_status == MPU_OK);
+                          !(id_ex_pipe_i.instr.mpu_status == MPU_OK) || halt_ex_i;
 
   assign data_req_valid = id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid && !block_data_req;
 
@@ -379,6 +380,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   assign busy_o = (cnt_q != 2'b00) || trans_valid;
+
+  assign cnt_o  = cnt_q;
 
   //////////////////////////////////////////////////////////////////////////////
   // Transaction request generation
