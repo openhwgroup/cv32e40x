@@ -573,8 +573,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
           id_ex_pipe_o.div_en                 <= div_en;
           if (div_en) begin
-            id_ex_pipe_o.div_operator  <= div_operator;
-            id_ex_pipe_o.operand_c     <= operand_c; // TODO:OE this is just added to get SEC on obi.wdata (when req=0). remove in non-SEC commit
+            id_ex_pipe_o.div_operator         <= div_operator;
           end
           
           id_ex_pipe_o.mult_en                <= mult_en;
