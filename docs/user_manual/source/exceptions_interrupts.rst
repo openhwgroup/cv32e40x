@@ -77,7 +77,7 @@ ordered as follows:
 * ``irq_i[3]``
 * ``irq_i[7]``
 
-All interrupt lines are level-sensitive. There are two supported mechanisms by which interrupts can be cleared at the external source.
+The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events. There are two supported mechanisms by which `irq_i[31:0]`` interrupts can be cleared at the external source.
 
 * A software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
 * A hardware-based mechanism in which the ``irq_ack_o`` and ``irq_id_o[4:0]`` signals are used to clear the interrupt sourcee, e.g. by an external interrupt controller. ``irq_ack_o`` is a 1 ``clk_i`` cycle pulse during which ``irq_id_o[4:0]`` reflects the index in ``irq_id[]`` of the taken interrupt.
