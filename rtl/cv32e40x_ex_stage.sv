@@ -153,7 +153,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Inputs A and B are swapped in ID stage.
   // This is done becase the divider utilizes the shifter in the ALU to shift the divisor (div_i.op_b_i), and the ALU
   // shifter operates on alu_i.operand_a_i
-   cv32e40x_alu_div div_i
+   cv32e40x_div div_i
      (
       .clk                ( clk               ),
       .rst_n              ( rst_n             ),

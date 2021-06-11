@@ -25,7 +25,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_alu_div import cv32e40x_pkg::*;
+module cv32e40x_div import cv32e40x_pkg::*;
 #(
    parameter C_WIDTH     = 32,
    parameter C_LOG_WIDTH = 6
@@ -319,5 +319,5 @@ module cv32e40x_alu_div import cv32e40x_pkg::*;
     end
   end
   
-endmodule : cv32e40x_alu_div
+endmodule : cv32e40x_div
 

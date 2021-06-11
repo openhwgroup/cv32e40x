@@ -15,11 +15,11 @@
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Oivind Ekelund -   oivind.ekelund@silabs.com               //
 //                                                                            //
-// Description:    RTL assertions for the alu_div module                      //
+// Description:    RTL assertions for the div module                      //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_alu_div_sva
+module cv32e40x_div_sva
   import uvm_pkg::*;
   #(parameter C_WIDTH     = 0,
     parameter C_LOG_WIDTH = 0)
@@ -37,7 +37,7 @@ module cv32e40x_alu_div_sva
 );
 
   initial begin : p_assertions
-    assert (C_LOG_WIDTH == $clog2(C_WIDTH+1)) else `uvm_error("alu_div", "C_LOG_WIDTH must be $clog2(C_WIDTH+1)")
+    assert (C_LOG_WIDTH == $clog2(C_WIDTH+1)) else `uvm_error("div", "C_LOG_WIDTH must be $clog2(C_WIDTH+1)")
   end
   
   logic [5:0] cycle_count;
@@ -70,5 +70,5 @@ module cv32e40x_alu_div_sva
                      (valid_o |-> valid_i))
       else `uvm_error("div", "valid_o=1 when valid_i=0")
     
-endmodule // cv32e40x_alu_div_sva
+endmodule // cv32e40x_div_sva
 
