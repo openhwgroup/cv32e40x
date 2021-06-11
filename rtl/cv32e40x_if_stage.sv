@@ -81,6 +81,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        halt_if_i,
     input  logic        id_ready_i,
 
+    // to controller
+    output logic        if_valid_o,
+    output logic        if_ready_o,
     // misc signals
     output logic        if_busy_o,             // is the IF stage busy fetching instructions?
     output logic        perf_imiss_o           // Instruction Fetch Miss
@@ -256,6 +259,8 @@ instruction_obi_i
 
   assign if_busy_o    = prefetch_busy;
 
+  assign if_valid_o = if_valid;
+  assign if_ready_o = if_ready;
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)

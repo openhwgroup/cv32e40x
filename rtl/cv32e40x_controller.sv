@@ -44,6 +44,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        csr_status_i,               // decoder encountered an csr status instruction
 
+  input  logic        if_valid_i,
+  input  logic        if_ready_i,
   
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
@@ -93,7 +95,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic         debug_req_i,
   input  logic         debug_single_step_i,
   input  logic         debug_ebreakm_i,
-  input  logic         debug_trigger_match_i,
+  input  logic         debug_trigger_match_id_i,
   output logic         debug_wfi_no_sleep_o,
   output logic         debug_havereset_o,
   output logic         debug_running_o,
@@ -174,7 +176,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // Clocks and reset
     .clk                         ( clk           ),
     .clk_ungated_i               ( clk_ungated_i ),
-    .rst_n,
+    .rst_n                       ( rst_n         ),
   
     .fetch_enable_i              ( fetch_enable_i ),
     .ctrl_busy_o                 ( ctrl_busy_o    ),
@@ -182,6 +184,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     .jr_stall_i                  ( jr_stall_o     ),
 
+    .if_valid_i                  ( if_valid_i     ),
+    .if_ready_i                  ( if_ready_i     ),
     // to IF stage
     .instr_req_o                 ( instr_req_o    ),
     .pc_set_o                    ( pc_set_o       ),
@@ -235,7 +239,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_req_i                 ( debug_req_i              ),
     .debug_single_step_i         ( debug_single_step_i      ),
     .debug_ebreakm_i             ( debug_ebreakm_i          ),
-    .debug_trigger_match_i       ( debug_trigger_match_i    ),
+    .debug_trigger_match_id_i    ( debug_trigger_match_id_i ),
     .debug_wfi_no_sleep_o        ( debug_wfi_no_sleep_o     ),
     .debug_havereset_o           ( debug_havereset_o        ),
     .debug_running_o             ( debug_running_o          ),
@@ -285,10 +289,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       // From id_stage
       .regfile_alu_we_id_i        ( regfile_alu_we_id_i      ),
       .mret_id_i                  ( mret_id_i                ),
-      .dret_id_i                  ( 1'b0 /*dret_id_i*/                ),
+      .dret_id_i                  ( dret_id_i                ),
       .csr_en_id_i                ( csr_en_id_i              ),
       .csr_op_id_i                ( csr_op_id_i              ),
-    
+      .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
+
       // From EX
       .rf_we_ex_i                 ( rf_we_ex_i               ),
       .rf_waddr_ex_i              ( rf_waddr_ex_i            ),

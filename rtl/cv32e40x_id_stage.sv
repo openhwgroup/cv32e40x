@@ -69,6 +69,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // Debug Signal
     input  logic        debug_mode_i,
+    input  logic        debug_trigger_match_id_i,
 
     // Register file write back and forwards
     input  logic [31:0]    rf_wdata_wb_i,
@@ -233,7 +234,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign mret_insn_o = mret_insn;
   assign dret_insn_o = dret_insn;
-  
+
   assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
@@ -265,8 +266,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // signal to 0 for instructions that are done
   assign clear_instr_valid_o = id_ready_o /*| halt_id_i*/ | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
 
-  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i &&
-                            !(id_ex_pipe_o.instr.bus_resp.err || (id_ex_pipe_o.instr.mpu_status != MPU_OK));
+  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i;
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -627,6 +627,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.fencei_insn            <= fencei_insn;
           id_ex_pipe_o.mret_insn              <= mret_insn;
           id_ex_pipe_o.dret_insn              <= dret_insn;
+
+          id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
         end
       end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
@@ -693,7 +695,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign multi_cycle_id_stall = misaligned_stall_i;
 
   //TODO:OK Consider moving the wfi part of id_ready to controller/bypass logic
-  assign id_ready_o = (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i  && !(id_ex_pipe_o.wfi_insn && id_ex_pipe_o.instr_valid));
+  assign id_ready_o = kill_id_i || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i  && !(id_ex_pipe_o.wfi_insn && id_ex_pipe_o.instr_valid));
   assign id_valid_o = (if_id_pipe_i.instr_valid && !kill_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 

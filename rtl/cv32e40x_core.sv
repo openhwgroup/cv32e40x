@@ -180,9 +180,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        load_stall;
   logic        csr_stall;
 
+  logic        if_ready;
   logic        id_ready;
   logic        ex_ready;
 
+  logic        if_valid;
   logic        id_valid;
   logic        ex_valid;
   logic        wb_valid;
@@ -404,6 +406,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .halt_if_i           ( halt_if           ),
     .id_ready_i          ( id_ready          ),
 
+    .if_valid_o          ( if_valid          ),
+    .if_ready_o          ( if_ready          ),
+
     .if_busy_o           ( if_busy           ),
     .perf_imiss_o        ( perf_imiss        )
   );
@@ -461,6 +466,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Debug Signalf
     .debug_mode_i                 ( debug_mode           ),
+    .debug_trigger_match_id_i     ( debug_trigger_match  ),
 
     // Register file write back and forwards
     .rf_we_ex_i                   ( rf_we_ex             ),
@@ -738,6 +744,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .csr_status_i                   ( csr_status             ),
 
+    .if_valid_i                     ( if_valid               ),
+    .if_ready_i                     ( if_ready               ),
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
     .mret_id_i                      ( mret_insn_id           ),
@@ -788,7 +796,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .debug_req_i                    ( debug_req_i            ), 
     .debug_single_step_i            ( debug_single_step      ), // TODO:OK: Bypass?
     .debug_ebreakm_i                ( debug_ebreakm          ), // TODO:OK: Bypass?
-    .debug_trigger_match_i          ( debug_trigger_match    ),
+    .debug_trigger_match_id_i       ( debug_trigger_match    ),
     .debug_wfi_no_sleep_o           ( debug_wfi_no_sleep     ),
     .debug_havereset_o              ( debug_havereset_o      ),
     .debug_running_o                ( debug_running_o        ),

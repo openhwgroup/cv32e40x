@@ -940,6 +940,9 @@ typedef struct packed {
   // Branch target
   logic         branch_in_ex;
 
+  // Trigger match on insn
+  logic         trigger_match;
+
   // Signals for exception handling etc passed on for evaluation in WB stage
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
@@ -967,6 +970,9 @@ typedef struct packed {
   csr_opcode_e  csr_op;
   logic [11:0]  csr_addr;
   logic [31:0]  csr_wdata;
+
+  // Trigger match on insn
+  logic         trigger_match;
 
   // Signals for exception handling etc
   logic [31:0]  pc;

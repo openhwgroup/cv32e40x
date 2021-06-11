@@ -221,6 +221,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.mret_insn              <= id_ex_pipe_i.mret_insn;
         ex_wb_pipe_o.dret_insn              <= id_ex_pipe_i.dret_insn;
         ex_wb_pipe_o.data_mpu_status        <= MPU_OK; // TODO:OK: Set to actual MPU status when MPU is implemented on data side.
+        ex_wb_pipe_o.trigger_match          <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we just flush the current one out of the pipe

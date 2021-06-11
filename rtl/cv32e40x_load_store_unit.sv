@@ -116,8 +116,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Internally gated data_req
   logic         data_req_valid;
 
-  assign block_data_req = kill_ex_i || id_ex_pipe_i.instr.bus_resp.err ||
-                          !(id_ex_pipe_i.instr.mpu_status == MPU_OK) || halt_ex_i;
+  assign block_data_req = kill_ex_i || halt_ex_i;
 
   assign data_req_valid = id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid && !block_data_req;
 

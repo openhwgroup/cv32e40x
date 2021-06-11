@@ -150,7 +150,7 @@ always_ff @(posedge clk , negedge rst_ni)
       
     end
   end
-  
+
   // First mepc write for illegal instruction exception
   logic         first_cause_illegal_found;
   logic         first_cause_ecall_found;
@@ -241,7 +241,7 @@ always_ff @(posedge clk , negedge rst_ni)
   a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
 
   /* TODO:OK: Reintroduce once debug support is implemented in the new controller
-  // Single Step only decodes one instruction in non debug mode and next instruction decode is in debug mode
+  // Single Step only executes one instruction in non debug mode and next instruction WB is in debug mode
   logic inst_taken;
   assign inst_taken = id_valid && is_decoding;
 

@@ -51,7 +51,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     input  logic        dret_id_i,                  // dret in ID
     input  logic        csr_en_id_i,                // CSR in ID
     input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
-  
+    input  logic        debug_trigger_match_id_i,         // Trigger match in ID
     // From EX
     input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
     input rf_addr_t     rf_waddr_ex_i,              // write address currently in EX
@@ -147,8 +147,13 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     csr_stall_o    = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
-    if (~is_decoding_i)
+    // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
+    if (~is_decoding_i || if_id_pipe_i.instr.bus_resp.err ||
+        !(if_id_pipe_i.instr.mpu_status == MPU_OK) ||
+        debug_trigger_match_id_i) begin
+
       deassert_we_o = 1'b1;
+    end
 
     // Stall because of load operation
     if (
