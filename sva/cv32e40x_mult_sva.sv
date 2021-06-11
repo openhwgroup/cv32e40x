@@ -57,7 +57,7 @@ module cv32e40x_mult_sva
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
-  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o;
+  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO: could valid_o be used directly here?
 
   logic [31:0] mulh_result;
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
@@ -87,9 +87,11 @@ module cv32e40x_mult_sva
   // Check that multiplier inputs are not changed in the middle of a MULH operation
   logic         ready;
   assign ready = ready_o && ready_i;
+
+  // TODO: This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
   a_enable_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(valid_i)) else `uvm_error("mult", "Enable changed when MULH active")
+                     !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
 
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)

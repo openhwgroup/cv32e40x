@@ -44,7 +44,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   // Divider interface towards CLZ
   input logic               div_clz_en_i,
-  input logic [31:0]        div_clz_input_i,
+  input logic [31:0]        div_clz_data_i,
   output logic [5:0]        div_clz_result_o,
 
   // Divider interface towards shifter
@@ -119,15 +119,17 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] shift_right_result;
   logic [31:0] shift_left_result;
   
-  // shifter is also used for preparing operand for division
+  // Shifter is also used for preparing operand for division
   assign shift_amt = div_shift_en_i ? div_shift_amt_i[4:0] : operand_b_i[4:0];
 
-  assign shift_left = div_shift_en_i ||
-                      (operator_i == ALU_SLL);
+  // When divider is using the shifter, it requires shift left
+  assign shift_left = div_shift_en_i || (operator_i == ALU_SLL);
 
-  assign shift_arithmetic = div_shift_en_i ? 1'b0 :
-                            (operator_i == ALU_SRA) ||
-                            (operator_i == ALU_ADD) || (operator_i == ALU_SUB);
+  // Shift arithmetic (with sign extension) does not apply for shift left operations
+  assign shift_arithmetic = ((operator_i == ALU_SRA) ||
+                             (operator_i == ALU_ADD) ||
+                             (operator_i == ALU_SUB)) &&
+                            !shift_left;
 
   // choose the bit reversed or the normal input for shift operand a
   assign shift_op_a    = shift_left ? operand_a_rev : operand_a_i;
@@ -198,21 +200,21 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////////////////
 
   
-  logic [31:0] div_clz_input_rev;
+  logic [31:0] div_clz_data_rev;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
   
   generate
     genvar l;
     for(l = 0; l < 32; l++)
-    begin : gen_div_clz_inpu_rev
-      assign div_clz_input_rev[l] = div_clz_input_i[31-l];
+    begin : gen_div_clz_data_rev
+      assign div_clz_data_rev[l] = div_clz_data_i[31-l];
     end
   endgenerate
   
   cv32e40x_ff_one ff_one_i
   (
-    .in_i        ( div_clz_input_rev ),
+    .in_i        ( div_clz_data_rev ),
     .first_one_o ( ff1_result ),
     .no_ones_o   ( ff_no_one  )
   );

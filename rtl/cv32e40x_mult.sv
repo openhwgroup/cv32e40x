@@ -156,6 +156,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     endcase
   end // always_comb
 
+  // TODO: move logic into FSM. And implement abort if valid_i goes low mid multiplication (similar to divider FSM).
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
       mulh_acc     <=  '0;

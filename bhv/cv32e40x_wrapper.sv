@@ -128,7 +128,7 @@ module cv32e40x_wrapper
     core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
 
   bind cv32e40x_div:
-    core_i.ex_stage_i.div_i cv32e40x_div_sva #(.C_WIDTH (C_WIDTH), .C_LOG_WIDTH (C_LOG_WIDTH)) div_sva (.*);
+    core_i.ex_stage_i.div_i cv32e40x_div_sva div_sva (.*);
 
   bind cv32e40x_alignment_buffer:
     core_i.if_stage_i.prefetch_unit_i.alignment_buffer_i

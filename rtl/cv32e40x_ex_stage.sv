@@ -75,7 +75,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    div_result;
   
   logic           div_clz_en;   
-  logic [31:0]    div_clz_input;
+  logic [31:0]    div_clz_data;
   logic [5:0]     div_clz_result;
 
   logic           div_shift_en;
@@ -133,7 +133,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .ready_i             ( ex_downstream_ready        ),
       
     .div_clz_en_i        ( div_clz_en                 ),
-    .div_clz_input_i     ( div_clz_input              ),
+    .div_clz_data_i      ( div_clz_data               ),
     .div_clz_result_o    ( div_clz_result             ),
                                                      
     .div_shift_en_i      ( div_shift_en               ),
@@ -150,36 +150,38 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   //                                                //
   ////////////////////////////////////////////////////
 
+  // TODO: COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
+  
   // Inputs A and B are swapped in ID stage.
   // This is done becase the divider utilizes the shifter in the ALU to shift the divisor (div_i.op_b_i), and the ALU
   // shifter operates on alu_i.operand_a_i
    cv32e40x_div div_i
      (
-      .clk                ( clk               ),
-      .rst_n              ( rst_n             ),
+      .clk                ( clk                        ),
+      .rst_n              ( rst_n                      ),
 
       // Input IF
-      .const_div_cycles_en_i ( 1'b0                       ), // TODO connect to CSR
-      .operator_i            ( id_ex_pipe_i.div_operator  ),
-      .op_a_i                ( id_ex_pipe_i.alu_operand_b ),
-      .op_b_i                ( id_ex_pipe_i.alu_operand_a ),
+      .data_ind_timing_i  ( 1'b0                       ), // TODO connect to CSR
+      .operator_i         ( id_ex_pipe_i.div_operator  ),
+      .op_a_i             ( id_ex_pipe_i.alu_operand_b ), // Inputs A and B are swapped in ID stage.
+      .op_b_i             ( id_ex_pipe_i.alu_operand_a ), // Inputs A and B are swapped in ID stage.
       
       // ALU shifter interface
-      .alu_shift_en_o     ( div_shift_en      ),
-      .alu_shift_amt_o    ( div_shift_amt     ),
-      .alu_op_b_shifted_i ( div_op_a_shifted  ),
+      .alu_shift_en_o     ( div_shift_en               ),
+      .alu_shift_amt_o    ( div_shift_amt              ),
+      .alu_op_b_shifted_i ( div_op_a_shifted           ), // Inputs A and B are swapped in ID stage.
 
       // ALU CLZ interface
-      .alu_clz_en_o       ( div_clz_en        ),
-      .alu_clz_input_o    ( div_clz_input     ),
-      .alu_clz_result_i   ( div_clz_result    ),
+      .alu_clz_en_o       ( div_clz_en                 ),
+      .alu_clz_data_o     ( div_clz_data               ),
+      .alu_clz_result_i   ( div_clz_result             ),
       
       // Hand-Shakes
-      .valid_i           ( id_ex_pipe_i.div_en ),
-      .ready_o           ( div_ready           ),
-      .valid_o           ( div_valid           ),
-      .ready_i           ( ex_downstream_ready ),
-      .result_o          ( div_result          )
+      .valid_i           ( id_ex_pipe_i.div_en         ),
+      .ready_o           ( div_ready                   ),
+      .valid_o           ( div_valid                   ),
+      .ready_i           ( ex_downstream_ready         ),
+      .result_o          ( div_result                  )
       );
 
   

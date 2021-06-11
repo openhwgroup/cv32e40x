@@ -60,6 +60,7 @@ package cv32e40x_pkg;
 
 parameter ALU_OP_WIDTH = 4;
 
+  // TODO: Could a smarter encoding be used here?
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
  ALU_ADD   = 4'b1000,
