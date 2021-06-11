@@ -642,6 +642,7 @@ module cv32e40x_rvfi
           if (csr_debug_csr_save_i && rvfi_stage[i].rvfi_valid) begin
             rvfi_stage[i].rvfi_csr_wmask.dcsr <= csr_dcsr_we_i ? '1 : '0;
             rvfi_stage[i].rvfi_csr_wdata.dcsr <= csr_dcsr_n_i;
+            rvfi_stage[i].rvfi_csr_rdata.dcsr <= csr_dcsr_n_i;
           end
 
 
