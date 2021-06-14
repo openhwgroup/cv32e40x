@@ -23,7 +23,7 @@ The PMA can be deconfigured by setting ``PMA_NUM_REGIONS=0``. When doing this, `
 
 Address range
 ~~~~~~~~~~~~~
-The address boundaries of a PMA region are set in ``word_addr_low/word_addr_high``. These contain bits 33:2 of 34-bit, word aligned addresses. To get an address match, the transfer address ``addr`` must be in the range ``word_addr_low <= addr < word_addr_high``.
+The address boundaries of a PMA region are set in ``word_addr_low/word_addr_high``. These contain bits 33:2 of 34-bit, word aligned addresses. To get an address match, the transfer address ``addr`` must be in the range ``{word_addr_low, 2'b00} <= addr[33:0] < {word_addr_high, 2'b00}``. Note that ``addr[33:32] = 2'b00`` as the |corev| does not support Sv32.
 
 Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
@@ -48,7 +48,7 @@ Note that the ``atomic`` attribute is only used when the RV32A extension is incl
 
 Default attribution
 ~~~~~~~~~~~~~~~~~~~
-If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will be supported (``atomic=1``).
+If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
 
 If the PMA is configured (``PMA_NUM_REGIONS > 0``), memory regions not covered by any PMA regions are treated as I/O memory (``main=0``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
 
