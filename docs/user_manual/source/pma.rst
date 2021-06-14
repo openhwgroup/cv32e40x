@@ -48,7 +48,7 @@ Note that the ``atomic`` attribute is only used when the RV32A extension is incl
 
 Default attribution
 ~~~~~~~~~~~~~~~~~~~
-If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
+If the PMA is deconfigured (``PMA_NUM_REGIONS=0``), the entire memory range will be treated as main memory (``main=1``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will be supported (``atomic=1``).
 
 If the PMA is configured (``PMA_NUM_REGIONS > 0``), memory regions not covered by any PMA regions are treated as I/O memory (``main=0``), non-bufferable (``bufferable=0``), non-cacheable (``cacheable=0``) and atomics will not be supported (``atomic=0``).
 
