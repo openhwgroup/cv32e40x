@@ -28,9 +28,9 @@ module cv32e40x_mult_sva
    input logic [31:0] op_a_i,
    input logic [31:0] op_b_i,
    input logic        ready_o,
-   input logic        enable_i,
+   input logic        valid_i,
    input logic [31:0] result_o,
-   input logic        ex_ready_i,
+   input logic        ready_i,
    input logic [ 1:0] short_signed_i,
    input              mul_opcode_e operator_i,
    // Internal signals
@@ -51,13 +51,13 @@ module cv32e40x_mult_sva
   assign mul_result = $signed(op_a_i) * $signed(op_b_i);
   a_mul_result : // check multiplication result for MUL
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (enable_i && (operator_i == MUL_M32)) |->
+                     (valid_i && (operator_i == MUL_M32)) |->
                      (result_o == mul_result)) else `uvm_error("mult", "MUL result check failed")
 
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
-  assign mulh_result_valid = enable_i && (operator_i == MUL_H) && ready_o;
+  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO: could valid_o be used directly here?
 
   logic [31:0] mulh_result;
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
@@ -86,10 +86,12 @@ module cv32e40x_mult_sva
 
   // Check that multiplier inputs are not changed in the middle of a MULH operation
   logic         ready;
-  assign ready = ready_o && ex_ready_i;
+  assign ready = ready_o && ready_i;
+
+  // TODO: This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
   a_enable_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(enable_i)) else `uvm_error("mult", "Enable changed when MULH active")
+                     !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
 
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -110,7 +112,7 @@ module cv32e40x_mult_sva
 
   a_check_external_ready: // Check that the result is kept until execute stage ready is asserted and the result can be stored
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (ready_o && !ex_ready_i) |=> $stable(result_o))
+                     (ready_o && !ready_i) |=> $stable(result_o))
       else `uvm_error("mult", "Completed result changed while external ready was low")
 
   //////////////////////////////
@@ -148,7 +150,7 @@ module cv32e40x_mult_sva
   assign shift_result_ll = $signed({{16{mulh_al[16]}}, mulh_al[15:0]}) * $signed({{16{mulh_bl[16]}}, mulh_bl[15:0]});
   a_shift_result_ll : // Given MUL_H, first calculation is "al * bl"
     assert property (@(posedge clk) disable iff (!rst_n)
-                     ((mulh_state == ALBL) && enable_i && (operator_i == MUL_H)) |->
+                     ((mulh_state == ALBL) && valid_i && (operator_i == MUL_H)) |->
                      (int_result == shift_result_ll))
       else `uvm_error("mult", "MUL_H step 1/4 got wrong int_result")
 

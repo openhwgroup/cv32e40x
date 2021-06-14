@@ -15,7 +15,7 @@
 `ifndef COREV_ASSERT_OFF
   `include "cv32e40x_core_sva.sv"
   `include "cv32e40x_mult_sva.sv"
-  `include "cv32e40x_alu_div_sva.sv"
+  `include "cv32e40x_div_sva.sv"
   `include "cv32e40x_if_stage_sva.sv"
   `include "cv32e40x_sleep_unit_sva.sv"
   `include "cv32e40x_controller_fsm_sva.sv"
@@ -127,8 +127,8 @@ module cv32e40x_wrapper
   bind cv32e40x_prefetch_unit:
     core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
 
-  bind cv32e40x_alu_div:
-    core_i.ex_stage_i.alu_i.alu_div_i cv32e40x_alu_div_sva #(.C_WIDTH (C_WIDTH), .C_LOG_WIDTH (C_LOG_WIDTH)) alu_div_sva (.*);
+  bind cv32e40x_div:
+    core_i.ex_stage_i.div_i cv32e40x_div_sva div_sva (.*);
 
   bind cv32e40x_alignment_buffer:
     core_i.if_stage_i.prefetch_unit_i.alignment_buffer_i
