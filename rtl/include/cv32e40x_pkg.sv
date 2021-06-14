@@ -105,11 +105,6 @@ typedef enum logic [MUL_OP_WIDTH-1:0]
  } mul_opcode_e;
 
 // FSM state encoding
-//typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
-//                   DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
-//                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
-
-// WB centric controller FSM state
 typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
 
 
@@ -989,8 +984,7 @@ typedef struct packed {
 
 } ex_wb_pipe_t;
 
-  
-  
+
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //

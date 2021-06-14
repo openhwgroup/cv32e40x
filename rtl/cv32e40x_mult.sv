@@ -23,7 +23,8 @@
 // Description:    Multiplier unit.                                           //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-
+//TODO: Document how many writebacks happen for a multicycle mult?
+//      If not 1, interrupts might not work correctly
 module cv32e40x_mult import cv32e40x_pkg::*;
 (
   input  logic        clk,

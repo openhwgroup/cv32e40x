@@ -69,16 +69,19 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           alu_ready;
   logic           mult_ready;
 
+  logic instr_valid;
+  assign instr_valid = id_ex_pipe_i.instr_valid && !kill_ex_i;
+
   // Local signals after evaluating with instr_valid
   logic alu_en_gated;
   logic mult_en_gated;
   logic csr_en_gated;
   logic rf_we_gated;
   
-  assign alu_en_gated = id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
-  assign mult_en_gated = id_ex_pipe_i.mult_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
-  assign csr_en_gated = id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid && !kill_ex_i;
-  assign rf_we_gated = id_ex_pipe_i.rf_we && id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign alu_en_gated = id_ex_pipe_i.alu_en && instr_valid;
+  assign mult_en_gated = id_ex_pipe_i.mult_en && instr_valid;
+  assign csr_en_gated = id_ex_pipe_i.csr_en && instr_valid;
+  assign rf_we_gated = id_ex_pipe_i.rf_we && instr_valid;
 
   // ALU write port mux
   always_comb
@@ -181,7 +184,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.csr_en         <= 1'b0;
       ex_wb_pipe_o.csr_access     <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
-      ex_wb_pipe_o.csr_addr       <= '0;
+      ex_wb_pipe_o.csr_addr       <= 12'h000;
       ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
     end
     else
@@ -224,9 +227,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.trigger_match          <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
-        // so we just flush the current one out of the pipe
+        // so we introduce a bubble
         ex_wb_pipe_o.instr_valid <= 1'b0;
-        //ex_wb_pipe_o.rf_we <= 1'b0;
       end
     end
   end
@@ -236,6 +238,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
                        && wb_ready_i && !halt_ex_i);// || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid);// TODO: This done to support a simplification for RVFI and has not been verified
-  assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && instr_valid;
 
 endmodule // cv32e40x_ex_stage

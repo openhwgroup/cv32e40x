@@ -40,7 +40,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        clk_ungated_i,          // Ungated clock
     input  logic        rst_n,
 
-    input  logic        scan_cg_en_i,
     input  logic        deassert_we_i,
     input  logic        kill_id_i,
     input  logic        is_decoding_i,
@@ -50,7 +49,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic [31:0] jmp_target_o,
     
     // IF and ID stage signals
-    output logic        clear_instr_valid_o,
 
     output logic        id_ready_o,     // ID stage is ready for the next instruction
     input  logic        ex_ready_i,     // EX stage is ready for the next instruction
@@ -102,8 +100,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic        csr_en_o,
     output csr_opcode_e csr_op_o,
 
-    output logic        branch_taken_ex_o,
-
     output logic [1:0]  ctrl_transfer_insn_o,
     output logic [1:0]  ctrl_transfer_insn_raw_o,
 
@@ -127,6 +123,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic          jr_stall_i,
     input  logic          load_stall_i,
     input  logic          csr_stall_i,
+    input  logic          wfi_stall_i,
 
     // Register file
     input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS]
@@ -148,8 +145,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   localparam REG_D_LSB  = 7;
 
   logic [31:0] instr;
-
-  
 
   
   // Immediate decoding and sign extension
@@ -232,6 +227,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        ebrk_insn;
   logic        fencei_insn;
 
+  // Local instruction valid qualifier
+  logic        instr_valid;
+
+  assign instr_valid = if_id_pipe_i.instr_valid && !kill_id_i;
+
   assign mret_insn_o = mret_insn;
   assign dret_insn_o = dret_insn;
 
@@ -260,13 +260,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Destination register seclection
   //---------------------------------------------------------------------------
   assign rf_waddr_o = instr[REG_D_MSB:REG_D_LSB];
-
-  //TODO:OK: The following (two) assignments could perhaps be moved to the controller.
-  // kill instruction in the IF/ID stage by setting the instr_valid_id control
-  // signal to 0 for instructions that are done
-  assign clear_instr_valid_o = id_ready_o /*| halt_id_i*/ | branch_taken_ex_o; // TODO: branch_taken implies halt_id? Check with formal
-
-  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && id_ex_pipe_o.instr_valid && branch_decision_i;
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -695,8 +688,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign multi_cycle_id_stall = misaligned_stall_i;
 
   //TODO:OK Consider moving the wfi part of id_ready to controller/bypass logic
-  assign id_ready_o = kill_id_i || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i  && !(id_ex_pipe_o.wfi_insn && id_ex_pipe_o.instr_valid));
-  assign id_valid_o = (if_id_pipe_i.instr_valid && !kill_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
+  //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
+  //TODO:OK Halt and stall seems to be the same
+  assign id_ready_o = kill_id_i || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i && !wfi_stall_i);
+  assign id_valid_o = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 
 endmodule // cv32e40x_id_stage

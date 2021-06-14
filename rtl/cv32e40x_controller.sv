@@ -73,7 +73,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        block_data_addr_o,          // To LSU to prevent data_addr_wb_i updates between error and taken NMI
 
   // jump/branch signals
-  input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
+  input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
   input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
   input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
@@ -152,6 +152,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        jr_stall_o,
   output logic        load_stall_o,
   output logic        csr_stall_o,
+  output logic        wfi_stall_o,
 
   input  logic        id_ready_i,                 // ID stage is ready
   
@@ -165,13 +166,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_rvalid_i
 );
 
-  logic [4:0]         exc_cause;
-
-  // Mux selector for vectored IRQ PC
-  assign m_exc_vec_pc_mux_o = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
   
   // Main FSM and debug FSM
-  cv32e40x_wb_controller_fsm
+  cv32e40x_controller_fsm
   controller_fsm_i (
     // Clocks and reset
     .clk                         ( clk           ),
@@ -205,7 +202,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // From EX stage
     .id_ex_pipe_i                ( id_ex_pipe_i             ),
-    .branch_taken_ex_i           ( branch_taken_ex_i        ),
+    .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_valid_i                  ( ex_valid_i               ),
     .data_req_i                  ( data_req_i               ),
 
@@ -230,7 +227,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .irq_ack_o                   ( irq_ack_o                ),
     .irq_id_o                    ( irq_id_o                 ),
   
-    .exc_cause_o                 ( exc_cause                ),
+    .mtvec_mode_i                ( mtvec_mode_i             ),
+    .m_exc_vec_pc_mux_o          ( m_exc_vec_pc_mux_o       ),
   
     // Debug Signal
     .debug_mode_o                ( debug_mode_o             ),
@@ -317,6 +315,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       .jr_stall_o                 ( jr_stall_o               ),
       .load_stall_o               ( load_stall_o             ),
       .csr_stall_o                ( csr_stall_o              ),
+      .wfi_stall_o                ( wfi_stall_o              ),
   
       // To decoder
       .deassert_we_o              ( deassert_we_o            )

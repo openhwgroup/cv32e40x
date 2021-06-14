@@ -67,9 +67,7 @@ assign instr_valid = ex_wb_pipe_i.instr_valid && !kill_wb_i;
   assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid && !halt_wb_i; // TODO:OK: deassert in case of MPU error
   assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
 
-  assign rf_wdata_wb_o = ex_wb_pipe_i.data_req ? lsu_rdata_i : 
-                         ex_wb_pipe_i.csr_en   ? ex_wb_pipe_i.rf_wdata : 
-                         ex_wb_pipe_i.rf_wdata;
+  assign rf_wdata_wb_o = ex_wb_pipe_i.data_req ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
   assign data_req_wb_o = ex_wb_pipe_i.data_req && instr_valid;
 

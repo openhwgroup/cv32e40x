@@ -35,7 +35,7 @@ module cv32e40x_controller_fsm_sva
    input logic debug_halted_o,
    input logic debug_running_o,
    input logic debug_havereset_o,
-   input logic branch_taken_ex_i,
+   input logic branch_taken_ex,
    input       ctrl_state_e ctrl_fsm_cs,
    input       ctrl_state_e ctrl_fsm_ns,
    input logic irq_ack_o,
@@ -44,6 +44,7 @@ module cv32e40x_controller_fsm_sva
    input logic kill_id_o,
    input logic kill_ex_o,
    input logic kill_wb_o,
+   input logic if_valid_i,
    input if_id_pipe_t if_id_pipe_i,
    input id_ex_pipe_t id_ex_pipe_i,
    input ex_wb_pipe_t ex_wb_pipe_i,
@@ -56,7 +57,7 @@ module cv32e40x_controller_fsm_sva
   // possible without branch prediction in the IF stage
   //a_no_back_to_back_branching :
   //  assert property (@(posedge clk)
-  //                   (branch_taken_ex_i) |=> (~branch_taken_ex_i) )
+  //                   (branch_taken_ex) |=> (~branch_taken_ex) )
   //    else `uvm_error("controller", "Two branches back-to-back are taken")
 
   
@@ -107,5 +108,17 @@ module cv32e40x_controller_fsm_sva
   assert property (@(posedge clk)
                     (kill_wb_o) |-> (csr_op_i == CSR_OP_READ) )
     else `uvm_error("controller", "csr written while kill_wb is asserted")
+
+  // Check that no stages have valid instructions using RESET or BOOT_SET
+  a_reset_if_csr :
+    assert property (@(posedge clk)
+            ((ctrl_fsm_cs == RESET) || (ctrl_fsm_cs == BOOT_SET)) |-> (!if_valid_i && !if_id_pipe_i.instr_valid && !id_ex_pipe_i.instr_valid && !ex_wb_pipe_i.instr_valid) )
+      else `uvm_error("controller", "Instruction valid during RESET or BOOT_SET")
+
+  // Check that no LSU insn can be in EX when there is a WFI in WB
+  a_wfi_lsu_csr :
+  assert property (@(posedge clk)
+          (ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.data_req) )
+    else `uvm_error("controller", "LSU instruction follows WFI")
 endmodule // cv32e40x_controller_fsm_sva
 

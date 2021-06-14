@@ -55,13 +55,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // Output of IF Pipeline stage
     output if_id_pipe_t       if_id_pipe_o,
 
-    // PC from writeback (used for fencei)
-    input  logic [31:0] wb_pc_i,
+    // EX_WB pipe
+    input  ex_wb_pipe_t       ex_wb_pipe_i,
 
     output logic       [31:0] pc_if_o,
 
     // Forwarding ports - control signals
-    input  logic        clear_instr_valid_i,   // clear instruction valid bit in IF/ID pipe
     input  logic        pc_set_i,              // set the program counter to a new value
     input  logic [31:0] mepc_i,                // address used to restore PC when the interrupt/exception is served
 
@@ -147,7 +146,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
-      PC_FENCEI:    branch_addr_n = wb_pc_i + 4; // jump to next instr forces prefetch buffer reload
+      PC_FENCEI:    branch_addr_n = ex_wb_pipe_i.pc + 4; // jump to next instr forces prefetch buffer reload // TODO: Can avoid adder, PC should already be in pipeline
       default:;
     endcase
   end
@@ -286,8 +285,7 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
-        //$display("IF_PC 0 %08x", pc_if_o);
-      end else if (clear_instr_valid_i) begin
+      end else if (id_ready_i) begin
         // TODO: Check order of these if/elseifs, or if they are exclusive
         if_id_pipe_o.instr_valid      <= 1'b0;
       end

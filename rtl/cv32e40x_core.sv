@@ -100,7 +100,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;
 
-  logic              clear_instr_valid;
   logic              pc_set;
 
   pc_mux_e           pc_mux_id;         // Mux selector for next PC
@@ -115,7 +114,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id;
   logic [31:0] branch_target_ex;
-  logic        branch_decision;
+  logic        branch_decision_ex;
   logic        branch_taken_ex; // ID->controller
 
   logic        ctrl_busy;
@@ -131,6 +130,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // IF/ID pipeline
   if_id_pipe_t if_id_pipe;
+
+  // Controller FSM outputs
+  //ctrl_fsm_t   ctrl_fsm;
   
   // Register File Write Back
   logic        rf_we_wb;
@@ -179,6 +181,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        jr_stall;
   logic        load_stall;
   logic        csr_stall;
+  logic        wfi_stall;
 
   logic        if_ready;
   logic        id_ready;
@@ -196,7 +199,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Interrupts
   logic        m_irq_enable;
   logic [31:0] mepc, dpc;
-  logic [31:0] mie_bypass;
+  logic [31:0] mie;
   logic [31:0] mip;
 
   logic        csr_save_cause;
@@ -380,9 +383,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // IF/ID pipeline
     .if_id_pipe_o        ( if_id_pipe        ),
 
-    .wb_pc_i             ( ex_wb_pipe.pc     ),
+    .ex_wb_pipe_i        ( ex_wb_pipe        ),
     // control signals
-    .clear_instr_valid_i ( clear_instr_valid ),
     .pc_set_i            ( pc_set            ),
 
     .mepc_i              ( mepc              ), // exception return address
@@ -433,8 +435,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk_ungated_i                ( clk_i                ),     // Ungated clock
     .rst_n                        ( rst_ni               ),
 
-    .scan_cg_en_i                 ( scan_cg_en_i         ),
-
     .deassert_we_i                ( deassert_we          ),
 
     .kill_id_i                    ( kill_id              ),
@@ -442,11 +442,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .is_decoding_i                ( is_decoding          ),
 
     // Jumps and branches
-    .branch_decision_i            ( branch_decision      ),
+    .branch_decision_i            ( branch_decision_ex   ),
     .jmp_target_o                 ( jump_target_id       ),
 
     // IF and ID control signals
-    .clear_instr_valid_o          ( clear_instr_valid    ),
 
     .id_ready_o                   ( id_ready             ),
     .ex_ready_i                   ( ex_ready             ),
@@ -498,8 +497,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_en_o                     ( csr_en_id            ),
     .csr_op_o                     ( csr_op_id            ),
 
-    .branch_taken_ex_o            ( branch_taken_ex      ),
-
     .ctrl_transfer_insn_o         ( ctrl_transfer_insn   ),
     .ctrl_transfer_insn_raw_o     ( ctrl_transfer_insn_raw ),
     .debug_wfi_no_sleep_i         ( debug_wfi_no_sleep   ),
@@ -519,6 +516,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .jr_stall_i                   ( jr_stall             ),
     .load_stall_i                 ( load_stall           ),
     .csr_stall_i                  ( csr_stall            ),
+    .wfi_stall_i                  ( wfi_stall            ),
 
     .regfile_rdata_i              ( regfile_rdata        )
   );
@@ -551,7 +549,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_rdata_i                ( csr_rdata                    ),
 
     // To IF: Branch decision
-    .branch_decision_o          ( branch_decision              ),
+    .branch_decision_o          ( branch_decision_ex           ),
     .branch_target_o            ( branch_target_ex             ),
 
     // Register file forwarding signals (to ID)
@@ -666,6 +664,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init         ),
 
+    // IF/ID pipeline
+    .if_id_pipe_i               ( if_id_pipe             ),
+
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe             ),
 
@@ -677,7 +678,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_rdata_o                ( csr_rdata              ),
 
     // Interrupt related control signals
-    .mie_bypass_o               ( mie_bypass             ),
+    .mie_o                      ( mie                    ),
     .mip_i                      ( mip                    ),
     .m_irq_enable_o             ( m_irq_enable           ),
     .mepc_o                     ( mepc                   ),
@@ -694,8 +695,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .priv_lvl_o                 ( current_priv_lvl       ),
 
     .pc_if_i                    ( pc_if                  ),
-    .pc_id_i                    ( if_id_pipe.pc          ),
-    .pc_wb_i                    ( ex_wb_pipe.pc          ),
 
     .csr_save_if_i              ( csr_save_if            ),
     .csr_save_id_i              ( csr_save_id            ),
@@ -774,7 +773,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .block_data_addr_o              ( block_data_addr        ),
 
     // jump/branch control
-    .branch_taken_ex_i              ( branch_taken_ex        ),
+    .branch_decision_ex_i           ( branch_decision_ex     ),
     .ctrl_transfer_insn_i           ( ctrl_transfer_insn     ),
     .ctrl_transfer_insn_raw_i       ( ctrl_transfer_insn_raw ),
 
@@ -847,6 +846,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .jr_stall_o                     ( jr_stall               ),
     .load_stall_o                   ( load_stall             ),
     .csr_stall_o                    ( csr_stall              ),
+    .wfi_stall_o                    ( wfi_stall              ),
 
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
@@ -883,7 +883,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
     // To/from with cv32e40x_cs_registers
-    .mie_bypass_i         ( mie_bypass         ),
+    .mie_i                ( mie                ),
     .mip_o                ( mip                ),
     .m_ie_i               ( m_irq_enable       ),
     .current_priv_lvl_i   ( current_priv_lvl   )

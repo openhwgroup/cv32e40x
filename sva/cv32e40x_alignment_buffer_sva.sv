@@ -196,18 +196,7 @@ module cv32e40x_alignment_buffer_sva
       `uvm_error("Alignment buffer SVA",
                 $sformatf("Illegal resp_i.mpu_status"))
 
-  // Check that branch_i and kill_if_i are equal
-  property p_branch_kill;
-    @(posedge clk) disable iff (!rst_n) branch_i |-> kill_if_i;
-  endproperty
-
-  a_branch_kill:
-    assert property(p_branch_kill)
-    else
-      `uvm_error("Alignment buffer SVA",
-                $sformatf("branch_i and kill_if_i are not the same."))
-
-
+  
 
 endmodule // cv32e40x_alignment_buffer_sva
 
