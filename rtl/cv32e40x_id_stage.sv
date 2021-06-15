@@ -184,6 +184,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        mult_en;          // multiplication is used instead of ALU
   logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
 
+  // Divider control
+  logic         div_en;
+  div_opcode_e  div_operator;
+  
   // Data Memory Control
   logic        data_we;
   logic [1:0]  data_type;
@@ -438,6 +442,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .mult_operator_o                 ( mult_operator             ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
 
+    // DIV signals
+    .div_en_o                        ( div_en                    ),
+    .div_operator_o                  ( div_operator              ),
+
     // Register file control signals
     .rf_re_o                         ( rf_re_o                   ),
     .rf_we_o                         ( rf_we                     ),
@@ -498,10 +506,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_operand_b         <= '0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
 
+      id_ex_pipe_o.div_en                 <= 1'b0;
+      id_ex_pipe_o.div_operator           <= DIV_DIVU;
+
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
 
-      id_ex_pipe_o.prepost_useincr        <= 1'b0;
+      id_ex_pipe_o.prepost_useincr        <= 1'b1;
 
       id_ex_pipe_o.csr_access             <= 1'b0;
       id_ex_pipe_o.csr_en                 <= 1'b0;
@@ -552,11 +563,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           if (alu_en)
           begin
             id_ex_pipe_o.alu_operator         <= alu_operator;
-            id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
-            id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
             id_ex_pipe_o.operand_c            <= operand_c;
           end
 
+          if (alu_en || div_en) begin
+            id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
+            id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
+          end
+
+          id_ex_pipe_o.div_en                 <= div_en;
+          if (div_en) begin
+            id_ex_pipe_o.div_operator         <= div_operator;
+          end
+          
           id_ex_pipe_o.mult_en                <= mult_en;
           if (mult_en) begin
             id_ex_pipe_o.mult_operator        <= mult_operator;
@@ -586,18 +605,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.data_atop            <= data_atop;
           end
 
-          id_ex_pipe_o.data_misaligned        <= 1'b0;
+          id_ex_pipe_o.data_misaligned <= 1'b0;
 
-          id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
+          id_ex_pipe_o.branch_in_ex    <= ctrl_transfer_insn_o == BRANCH_COND;
 
           // Propagate signals needed for exception handling in WB
           // TODO:OK: Clock gating of pc if no existing exceptions
           //          and LSU it not in use
-          id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
-          id_ex_pipe_o.instr                  <= if_id_pipe_i.instr;
-          // Overwrite instruction word in case of compressed instruction
+          id_ex_pipe_o.pc              <= if_id_pipe_i.pc;
+
           if (if_id_pipe_i.is_compressed) begin
-            id_ex_pipe_o.instr.bus_resp.rdata   <= {16'h0, if_id_pipe_i.compressed_instr};
+            // Overwrite instruction word in case of compressed instruction
+            id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
+            id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
+            id_ex_pipe_o.instr.mpu_status     <= if_id_pipe_i.instr.mpu_status;
+          end
+          else begin
+            id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
           end
 
           // Exceptions and special instructions
@@ -628,6 +652,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.alu_operator           <= ALU_SLTU;        // todo: requires explanation
 
         id_ex_pipe_o.mult_en                <= 1'b0;
+
+        id_ex_pipe_o.div_en                 <= 1'b0;
 
       end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
        //In the EX stage there was a CSR access. To avoid multiple

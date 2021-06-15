@@ -98,7 +98,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
-  localparam USE_PMP             =  0;          // if PULP_SECURE is 1, you can still not use the PMP
+  localparam USE_PMP             =  0;
 
   logic              clear_instr_valid;
   logic              pc_set;
@@ -131,10 +131,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // IF/ID pipeline
   if_id_pipe_t if_id_pipe;
   
-  // Register Write Control
-  rf_addr_t    regfile_waddr_fw_wb_o;        // From WB to ID
-  logic        regfile_we_wb;
-
   // Register File Write Back
   logic        rf_we_wb;
   rf_addr_t    rf_waddr_wb;
@@ -158,7 +154,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_data_t    regfile_wdata[REGFILE_NUM_WRITE_PORTS];
   logic        regfile_we   [REGFILE_NUM_WRITE_PORTS];
 
-  logic regfile_alu_we_dec_o;
+  logic regfile_alu_we_dec;
 
   // CSR control
   logic [23:0] mtvec_addr;

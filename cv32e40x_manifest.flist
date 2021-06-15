@@ -32,6 +32,7 @@ ${DESIGN_RTL_DIR}/include/cv32e40x_pkg.sv
 ${DESIGN_RTL_DIR}/if_c_obi.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_tracer_pkg.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv
+${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_csr.sv
 ${DESIGN_RTL_DIR}/cv32e40x_cs_registers.sv
@@ -50,7 +51,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_mult.sv
 ${DESIGN_RTL_DIR}/cv32e40x_int_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ex_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_wb_stage.sv
-${DESIGN_RTL_DIR}/cv32e40x_alu_div.sv
+${DESIGN_RTL_DIR}/cv32e40x_div.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alu.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ff_one.sv
 ${DESIGN_RTL_DIR}/cv32e40x_popcnt.sv
@@ -67,5 +68,4 @@ ${DESIGN_RTL_DIR}/cv32e40x_pma.sv
 ${DESIGN_RTL_DIR}/cv32e40x_pc_target.sv
 
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_sim_clock_gate.sv
-${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_rvfi.sv

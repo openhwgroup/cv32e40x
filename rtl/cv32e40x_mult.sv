@@ -16,11 +16,11 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
-// Design Name:    Subword multiplier and MAC                                 //
+// Design Name:    Multiplier                                                 //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Advanced MAC unit for PULP.                                //
+// Description:    Multiplier unit.                                           //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,7 +29,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
-  input  logic        enable_i,
+  input  logic        valid_i,
   input  mul_opcode_e operator_i,
 
   // integer and short multiplier
@@ -41,7 +41,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   output logic [31:0] result_o,
 
   output logic        ready_o,
-  input  logic        ex_ready_i
+  output logic        valid_o,
+  input  logic        ready_i
 );
 
 
@@ -109,26 +110,33 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_a           = mulh_al;
     mulh_b           = mulh_bl;
     mulh_state_next  = mulh_state;
-    ready_o          = 1'b1;
-
+    ready_o          = 1'b0;
+    valid_o          = 1'b0;
+    
     case (mulh_state)
       ALBL: begin
-        if ((operator_i == MUL_H) && enable_i) begin
-          mulh_shift      = 1'b1;
-          ready_o         = 1'b0;
-          mulh_state_next = ALBH;
+        ready_o = 1'b1;
+        if(valid_i) begin
+          if (operator_i == MUL_H) begin
+            // Multicycle multiplication
+            mulh_shift      = 1'b1;
+            ready_o         = 1'b0;
+            mulh_state_next = ALBH;
+          end
+          else begin
+            // Single cycle multiplication
+            valid_o         = 1'b1;
+          end
         end
       end
 
       ALBH: begin
-        ready_o          = 1'b0;
         mulh_a           = mulh_al;
         mulh_b           = mulh_bh;
         mulh_state_next  = AHBL;
       end
 
       AHBL: begin
-        ready_o          = 1'b0;
         mulh_shift       = 1'b1;
         mulh_a           = mulh_ah;
         mulh_b           = mulh_bl;
@@ -138,21 +146,25 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       AHBH: begin
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
-        if (ex_ready_i)
+        valid_o           = 1'b1;
+        if (ready_i) begin
+          ready_o         = 1'b1;
           mulh_state_next = ALBL;
+        end
       end
       default: ;
     endcase
   end // always_comb
 
+  // TODO: move logic into FSM. And implement abort if valid_i goes low mid multiplication (similar to divider FSM).
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
       mulh_acc     <=  '0;
       mulh_state   <= ALBL;
-    end else if (enable_i && (operator_i == MUL_H)) begin
-      if (!ready_o) begin
+    end else if (valid_i && (operator_i == MUL_H)) begin
+      if (!valid_o) begin
         mulh_acc   <= mulh_acc_next;
-      end else if (!ex_ready_i) begin
+      end else if (!ready_i) begin
         mulh_acc   <= mulh_acc;
       end else begin
         mulh_acc   <=  '0;
