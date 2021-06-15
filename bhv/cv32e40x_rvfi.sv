@@ -634,7 +634,7 @@ module cv32e40x_rvfi
             rvfi_stage[i].rvfi_csr_wmask.mstatus <= '0;
             is_exception_wb_q <= 1'b1;
           end else if (is_exception_wb_q) begin
-            is_exception_wb_q <= !rvfi_stage[i].rvfi_valid;
+            is_exception_wb_q <= !(rvfi_stage[i-1].rvfi_valid || mret_q[i] || (lsu_rvalid_wb_i && data_req_q[i-1]));
             rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
             rvfi_stage[i].rvfi_csr_wmask.mstatus <= '1;
           end
