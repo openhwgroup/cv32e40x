@@ -33,6 +33,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter USE_PMP                 =  0,
   parameter A_EXTENSION             =  0,
+  parameter b_ext_e B_EXT           = None,
   parameter DEBUG_TRIGGER_EN        =  1
 )
 (
@@ -407,6 +408,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   cv32e40x_decoder
     #(
       .A_EXTENSION             ( A_EXTENSION            ),
+      .B_EXT                   ( B_EXT                  ),
       .USE_PMP                 ( USE_PMP                ),
       .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       )
       )

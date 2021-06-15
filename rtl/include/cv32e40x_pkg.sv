@@ -58,36 +58,41 @@ package cv32e40x_pkg;
 //                             |_|                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-parameter ALU_OP_WIDTH = 4;
+parameter ALU_OP_WIDTH = 5;
 
   // TODO: Could a smarter encoding be used here?
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- ALU_ADD   = 4'b1000,
- ALU_SUB   = 4'b1001,
+ ALU_ADD   = 5'b01000,
+ ALU_SUB   = 5'b01001,
  
- ALU_XOR   = 4'b1111,
- ALU_OR    = 4'b1110,
- ALU_AND   = 4'b0110,
+ ALU_XOR   = 5'b01111,
+ ALU_OR    = 5'b01110,
+ ALU_AND   = 5'b00110,
 
 // Shifts
- ALU_SRA   = 4'b0100,
- ALU_SRL   = 4'b0101,
- ALU_SLL   = 4'b0111,
+ ALU_SRA   = 5'b00100,
+ ALU_SRL   = 5'b00101,
+ ALU_SLL   = 5'b00111,
 
 // Comparisons
- ALU_LTS   = 4'b0000,
- ALU_LTU   = 4'b0001,
- ALU_GES   = 4'b1010,
- ALU_GEU   = 4'b1011,
- ALU_EQ    = 4'b1100,
- ALU_NE    = 4'b1101,
+ ALU_LTS   = 5'b00000,
+ ALU_LTU   = 5'b00001,
+ ALU_GES   = 5'b01010,
+ ALU_GEU   = 5'b01011,
+ ALU_EQ    = 5'b01100,
+ ALU_NE    = 5'b01101,
 
 // Set Lower Than operations
- ALU_SLTS  = 4'b0010,
- ALU_SLTU  = 4'b0011
- 
+ ALU_SLTS  = 5'b00010,
+ ALU_SLTU  = 5'b00011,
+
+  // B, Zba
+ ALU_B_SH1ADD = 5'b11100,
+ ALU_B_SH2ADD = 5'b11101,
+ ALU_B_SH3ADD = 5'b11110
 } alu_opcode_e;
+
   
 parameter MUL_OP_WIDTH = 1;
 
@@ -997,8 +1002,8 @@ typedef struct packed {
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
   
-  
-  
+  // Enum used for configuration of B extension
+  typedef enum logic [1:0] {None, Zba_Zbb_Zbs, Zba_Zbb_Zbc_Zbs} b_ext_e;
 
 
   
