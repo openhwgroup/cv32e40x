@@ -99,6 +99,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;
+  localparam b_ext_e B_EXT       = None;
 
   logic              clear_instr_valid;
   logic              pc_set;
@@ -413,7 +414,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_id_stage
   #(
     .USE_PMP                      ( USE_PMP                ),
-    .A_EXTENSION                  ( A_EXTENSION            )
+    .A_EXTENSION                  ( A_EXTENSION            ),
+    .B_EXT                        ( B_EXT                  )
   )
   id_stage_i
   (

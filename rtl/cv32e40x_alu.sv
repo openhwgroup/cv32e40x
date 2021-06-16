@@ -253,6 +253,12 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       // Non-vector comparisons
       ALU_SLTS,  ALU_SLTU: result_o = {31'b0, comparison_result_o};
 
+      // RV32B Zca instructions
+      // TODO: Investigate sharing ALU adder and shifter
+      ALU_B_SH1ADD: result_o = (operand_a_i << 1) + operand_b_i;
+      ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
+      ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
+
       default: ; // default case to suppress unique warning
     endcase
   end
