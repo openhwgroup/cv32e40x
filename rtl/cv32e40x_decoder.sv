@@ -28,7 +28,7 @@
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION       = 0,
-  parameter b_ext_e B_EXT     = None,
+  parameter b_ext_e B_EXT     = NONE,
   parameter USE_PMP           = 0,
   parameter DEBUG_TRIGGER_EN  = 1
 )
@@ -144,7 +144,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
-    if (B_EXT != None) begin: b_decoder
+    if (B_EXT != NONE) begin: b_decoder
       // RV32B extension decoder
       cv32e40x_b_decoder
         #(.B_EXT(B_EXT))

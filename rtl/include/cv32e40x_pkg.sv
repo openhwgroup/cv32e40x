@@ -1003,7 +1003,7 @@ typedef struct packed {
 
   
   // Enum used for configuration of B extension
-  typedef enum logic [1:0] {None, Zba_Zbb_Zbs, Zba_Zbb_Zbc_Zbs} b_ext_e;
+  typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
 
 
   
