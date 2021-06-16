@@ -58,9 +58,10 @@ Interrupts
 
 The ``irq_i[31:0]`` interrupts are controlled via the ``mstatus``, ``mie`` and ``mip`` CSRs. |corev| uses the upper 16 bits of ``mie`` and ``mip`` for custom interrupts (``irq_i[31:16]``),
 which reflects an intended custom extension in the RISC-V Basic (a.k.a. CLINT) interrupt architecture.
-After reset, all interrupts are disabled.
-To enable interrupts, both the global interrupt enable (MIE) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set.
-For more information, see the :ref:`cs-registers` documentation.
+After reset, all interrupts, except for NMIs, are disabled.
+To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
+
+NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
 
 If multiple interrupts are pending, they are handled in the fixed priority order defined by the RISC-V Privileged Specification, version 1.11 (see Machine Interrupt Registers, Section 3.1.9).
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
@@ -76,7 +77,7 @@ ordered as follows:
 * ``irq_i[3]``
 * ``irq_i[7]``
 
-All interrupt lines are level-sensitive. There are two supported mechanisms by which interrupts can be cleared at the external source.
+The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events. There are two supported mechanisms by which `irq_i[31:0]`` interrupts can be cleared at the external source.
 
 * A software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
 * A hardware-based mechanism in which the ``irq_ack_o`` and ``irq_id_o[4:0]`` signals are used to clear the interrupt sourcee, e.g. by an external interrupt controller. ``irq_ack_o`` is a 1 ``clk_i`` cycle pulse during which ``irq_id_o[4:0]`` reflects the index in ``irq_id[]`` of the taken interrupt.

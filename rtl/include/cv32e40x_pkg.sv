@@ -60,14 +60,15 @@ package cv32e40x_pkg;
 
 parameter ALU_OP_WIDTH = 5;
 
+  // TODO: Could a smarter encoding be used here?
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- ALU_ADD   = 5'b11000,
- ALU_SUB   = 5'b11001,
+ ALU_ADD   = 5'b01000,
+ ALU_SUB   = 5'b01001,
  
  ALU_XOR   = 5'b01111,
  ALU_OR    = 5'b01110,
- ALU_AND   = 5'b10101,
+ ALU_AND   = 5'b00110,
 
 // Shifts
  ALU_SRA   = 5'b00100,
@@ -86,23 +87,32 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_SLTS  = 5'b00010,
  ALU_SLTU  = 5'b00011,
 
-// div/rem
- ALU_DIVU  = 5'b10000,
- ALU_DIV   = 5'b10001,
- ALU_REMU  = 5'b10010,
- ALU_REM   = 5'b10011
- 
+  // B, Zba
+ ALU_B_SH1ADD = 5'b11100,
+ ALU_B_SH2ADD = 5'b11101,
+ ALU_B_SH3ADD = 5'b11110
 } alu_opcode_e;
+
   
 parameter MUL_OP_WIDTH = 1;
 
 typedef enum logic [MUL_OP_WIDTH-1:0]
 {
-
- MUL_M32   = 1'b0,
- MUL_H     = 1'b1
-
+ MUL_M32 = 1'b0,
+ MUL_H   = 1'b1
  } mul_opcode_e;
+
+parameter DIV_OP_WIDTH = 2;
+
+typedef enum logic [DIV_OP_WIDTH-1:0]
+{
+
+ DIV_DIVU= 2'b00,
+ DIV_DIV = 2'b01,
+ DIV_REMU= 2'b10,
+ DIV_REM = 2'b11
+
+ } div_opcode_e;
 
 // FSM state encoding
 typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
@@ -124,7 +134,7 @@ typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 typedef enum logic [1:0] {ALBL, ALBH, AHBL, AHBH} mult_state_e;
 
 // ALU divider FSM state encoding
-typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_FINISH} div_state_e;
+typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_DUMMY, DIV_FINISH} div_state_e;
 
 
 /////////////////////////////////////////////////////////
@@ -665,6 +675,8 @@ typedef struct packed {
   mul_opcode_e                       mult_operator;
   logic                              mult_en;
   logic [1:0]                        mult_signed_mode;
+  logic                              div_en;
+  div_opcode_e                       div_operator;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
   logic                              prepost_useincr;
@@ -698,6 +710,8 @@ typedef struct packed {
                                                           mult_operator                : MUL_M32,
                                                           mult_en                      : 1'b0,
                                                           mult_signed_mode             : 2'b00,
+                                                          div_en                       : 1'b0,
+                                                          div_operator                 : DIV_DIVU,
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
                                                           prepost_useincr              : 1'b1,
@@ -793,7 +807,7 @@ parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0,
                                             main            : 1'b1,
                                             bufferable      : 1'b0,
                                             cacheable       : 1'b0,
-                                            atomic          : 1'b0};
+                                            atomic          : 1'b1};
   
 // Default attribution when PMA is configured (Address is don't care)
 parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
@@ -911,6 +925,10 @@ typedef struct packed {
   logic [31:0]  mult_operand_b;
   logic [ 1:0]  mult_signed_mode;
 
+  // Divider control
+  logic         div_en;
+  div_opcode_e  div_operator;
+  
   // Register write control
   logic         rf_we;
   rf_addr_t     rf_waddr;
@@ -1051,8 +1069,8 @@ typedef struct packed {
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
   
-  
-  
+  // Enum used for configuration of B extension
+  typedef enum logic [1:0] {None, Zba_Zbb_Zbs, Zba_Zbb_Zbc_Zbs} b_ext_e;
 
 
   

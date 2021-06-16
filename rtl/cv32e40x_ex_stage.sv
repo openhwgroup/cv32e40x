@@ -68,7 +68,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           alu_cmp_result;
 
   logic           alu_ready;
+  logic           alu_valid;
   logic           mult_ready;
+  logic           mult_valid;
 
   logic instr_valid;
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex;
@@ -76,14 +78,38 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Local signals after evaluating with instr_valid
   logic alu_en_gated;
   logic mult_en_gated;
+  logic div_en_gated;
   logic csr_en_gated;
   logic rf_we_gated;
+  logic previous_exception;
   
-  assign alu_en_gated = id_ex_pipe_i.alu_en && instr_valid;
+  assign alu_en_gated  = id_ex_pipe_i.alu_en  && instr_valid;
   assign mult_en_gated = id_ex_pipe_i.mult_en && instr_valid;
-  assign csr_en_gated = id_ex_pipe_i.csr_en && instr_valid;
-  assign rf_we_gated = id_ex_pipe_i.rf_we && instr_valid;
+  assign div_en_gated  = id_ex_pipe_i.div_en  && instr_valid;
+  assign csr_en_gated  = id_ex_pipe_i.csr_en  && instr_valid;
+  assign rf_we_gated   = id_ex_pipe_i.rf_we   && instr_valid;
 
+  // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
+  // signal needed for ex_valid to go high in such cases
+  assign previous_exception = (id_ex_pipe_i.illegal_insn                 ||
+                               id_ex_pipe_i.instr.bus_resp.err           ||
+                               (id_ex_pipe_i.instr.mpu_status != MPU_OK) ||
+                               id_ex_pipe_i.trigger_match)               &&
+                              id_ex_pipe_i.instr_valid;
+
+  logic           div_ready;
+  logic           div_valid;
+  logic [31:0]    div_result;
+  
+  logic           div_clz_en;   
+  logic [31:0]    div_clz_data;
+  logic [5:0]     div_clz_result;
+
+  logic           div_shift_en;
+  logic [5:0]     div_shift_amt;
+  logic [31:0]    div_op_a_shifted;
+
+  
   // ALU write port mux
   always_comb
   begin
@@ -95,6 +121,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       rf_wdata_ex_o = alu_result;
     if (mult_en_gated)
       rf_wdata_ex_o = mult_result;
+    if (div_en_gated)
+      rf_wdata_ex_o = div_result;
     if (csr_en_gated)
       rf_wdata_ex_o = csr_rdata_i;
   end
@@ -111,12 +139,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // /_/   \_\_____\___/    //
   //                        //
   ////////////////////////////
-
+  
   cv32e40x_alu alu_i
   (
     .clk                 ( clk                        ),
     .rst_n               ( rst_n                      ),
-    .enable_i            ( alu_en_gated               ),
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
@@ -124,11 +151,64 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .result_o            ( alu_result                 ),
     .comparison_result_o ( alu_cmp_result             ),
 
+    .valid_i             ( alu_en_gated               ),
     .ready_o             ( alu_ready                  ),
-    .ex_ready_i          ( ex_ready_o                 )
+    .valid_o             ( alu_valid                  ),
+    .ready_i             ( wb_ready_i                 ),
+      
+    .div_clz_en_i        ( div_clz_en                 ),
+    .div_clz_data_i      ( div_clz_data               ),
+    .div_clz_result_o    ( div_clz_result             ),
+                                                     
+    .div_shift_en_i      ( div_shift_en               ),
+    .div_shift_amt_i     ( div_shift_amt              ),
+    .div_op_a_shifted_o  ( div_op_a_shifted           )
   );
 
+  ////////////////////////////////////////////////////
+  //  ____ _____     __     __  ____  _____ __  __  //
+  // |  _ \_ _\ \   / /    / / |  _ \| ____|  \/  | //
+  // | | | | | \ \ / /    / /  | |_) |  _| | |\/| | //
+  // | |_| | |  \ V /    / /   |  _ <| |___| |  | | //
+  // |____/___|  \_/    /_/    |_| \_\_____|_|  |_| //
+  //                                                //
+  ////////////////////////////////////////////////////
 
+  // TODO: COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
+  
+  // Inputs A and B are swapped in ID stage.
+  // This is done becase the divider utilizes the shifter in the ALU to shift the divisor (div_i.op_b_i), and the ALU
+  // shifter operates on alu_i.operand_a_i
+   cv32e40x_div div_i
+     (
+      .clk                ( clk                        ),
+      .rst_n              ( rst_n                      ),
+
+      // Input IF
+      .data_ind_timing_i  ( 1'b0                       ), // TODO connect to CSR
+      .operator_i         ( id_ex_pipe_i.div_operator  ),
+      .op_a_i             ( id_ex_pipe_i.alu_operand_b ), // Inputs A and B are swapped in ID stage.
+      .op_b_i             ( id_ex_pipe_i.alu_operand_a ), // Inputs A and B are swapped in ID stage.
+      
+      // ALU shifter interface
+      .alu_shift_en_o     ( div_shift_en               ),
+      .alu_shift_amt_o    ( div_shift_amt              ),
+      .alu_op_b_shifted_i ( div_op_a_shifted           ), // Inputs A and B are swapped in ID stage.
+
+      // ALU CLZ interface
+      .alu_clz_en_o       ( div_clz_en                 ),
+      .alu_clz_data_o     ( div_clz_data               ),
+      .alu_clz_result_i   ( div_clz_result             ),
+      
+      // Hand-Shakes
+      .valid_i           ( div_en_gated                ),
+      .ready_o           ( div_ready                   ),
+      .valid_o           ( div_valid                   ),
+      .ready_i           ( wb_ready_i                  ),
+      .result_o          ( div_result                  )
+      );
+
+  
   ////////////////////////////////////////////////////////////////
   //  __  __ _   _ _   _____ ___ ____  _     ___ _____ ____     //
   // |  \/  | | | | | |_   _|_ _|  _ \| |   |_ _| ____|  _ \    //
@@ -143,19 +223,15 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .clk             ( clk                           ),
     .rst_n           ( rst_n                         ),
 
-    .kill_i          ( ctrl_fsm_i.kill_ex            ), // TODO: Change to using valid instead
-    .enable_i        ( mult_en_gated                 ),
     .operator_i      ( id_ex_pipe_i.mult_operator    ),
-
     .short_signed_i  ( id_ex_pipe_i.mult_signed_mode ),
-
     .op_a_i          ( id_ex_pipe_i.mult_operand_a   ),
     .op_b_i          ( id_ex_pipe_i.mult_operand_b   ),
-
     .result_o        ( mult_result                   ),
-
+    .valid_i         ( mult_en_gated                  ),
     .ready_o         ( mult_ready                    ),
-    .ex_ready_i      ( ex_ready_o                    )
+    .valid_o         ( mult_valid                    ),
+    .ready_i         ( wb_ready_i                    )
   );
 
   ///////////////////////////////////////
@@ -239,8 +315,17 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
-  assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
-                       && wb_ready_i && !ctrl_fsm_i.halt_ex);// || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid);// TODO: This done to support a simplification for RVFI and has not been verified
-  assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && instr_valid;
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mult_ready && div_ready && lsu_ready_ex_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
+  // TODO: ex_valid_o shouldn't have to depend on wb_ready_i
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en  && alu_valid ) || 
+                       (id_ex_pipe_i.mult_en && mult_valid) ||
+                       (id_ex_pipe_i.div_en  && div_valid ) || 
+                       id_ex_pipe_i.csr_en || 
+                       id_ex_pipe_i.data_req ||
+                       previous_exception  ) && 
+                      lsu_ready_ex_i &&
+                      wb_ready_i &&
+                      instr_valid; // kill_ex factored into instr_valid
+  
 endmodule // cv32e40x_ex_stage

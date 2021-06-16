@@ -33,6 +33,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter USE_PMP                 =  0,
   parameter A_EXTENSION             =  0,
+  parameter b_ext_e B_EXT           = None,
   parameter DEBUG_TRIGGER_EN        =  1
 )
 (
@@ -176,6 +177,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        mult_en;          // multiplication is used instead of ALU
   logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
 
+  // Divider control
+  logic         div_en;
+  div_opcode_e  div_operator;
+  
   // Data Memory Control
   logic        data_we;
   logic [1:0]  data_type;
@@ -405,6 +410,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   cv32e40x_decoder
     #(
       .A_EXTENSION             ( A_EXTENSION            ),
+      .B_EXT                   ( B_EXT                  ),
       .USE_PMP                 ( USE_PMP                ),
       .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       )
       )
@@ -440,6 +446,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .mult_operator_o                 ( mult_operator             ),
     .mult_signed_mode_o              ( mult_signed_mode          ),
 
+    // DIV signals
+    .div_en_o                        ( div_en                    ),
+    .div_operator_o                  ( div_operator              ),
+
     // Register file control signals
     .rf_re_o                         ( rf_re_o                   ),
     .rf_we_o                         ( rf_we                     ),
@@ -462,7 +472,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_atop_o                     ( data_atop                 ),
 
     // debug mode
-    .debug_mode_i                    ( ctrl_fsm_i.debug_mode   ), // TODO: pass on ctrl_fsm_i
+    .debug_mode_i                    ( ctrl_fsm_i.debug_mode     ), // TODO: pass on ctrl_fsm_i
     .debug_wfi_no_sleep_i            ( ctrl_fsm_i.debug_wfi_no_sleep      ),
 
     // jump/branches
@@ -500,6 +510,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mult_operand_a         <= '0;
       id_ex_pipe_o.mult_operand_b         <= '0;
       id_ex_pipe_o.mult_signed_mode       <= 2'b00;
+
+      id_ex_pipe_o.div_en                 <= 1'b0;
+      id_ex_pipe_o.div_operator           <= DIV_DIVU;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
@@ -557,11 +570,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           if (alu_en)
           begin
             id_ex_pipe_o.alu_operator         <= alu_operator;
-            id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
-            id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
             id_ex_pipe_o.operand_c            <= operand_c;
           end
 
+          if (alu_en || div_en) begin
+            id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
+            id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
+          end
+
+          id_ex_pipe_o.div_en                 <= div_en;
+          if (div_en) begin
+            id_ex_pipe_o.div_operator         <= div_operator;
+          end
+          
           id_ex_pipe_o.mult_en                <= mult_en;
           if (mult_en) begin
             id_ex_pipe_o.mult_operator        <= mult_operator;

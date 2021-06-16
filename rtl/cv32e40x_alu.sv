@@ -29,7 +29,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 (
   input  logic                     clk,
   input  logic                     rst_n,
-  input  logic                     enable_i,
   input  alu_opcode_e              operator_i,
   input  logic [31:0]              operand_a_i,
   input  logic [31:0]              operand_b_i,
@@ -37,16 +36,25 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   output logic [31:0]              result_o,
   output logic                     comparison_result_o,
 
+  input logic                      valid_i,
   output logic                     ready_o,
-  input  logic                     ex_ready_i
+
+  output logic                     valid_o,
+  input  logic                     ready_i,
+
+  // Divider interface towards CLZ
+  input logic               div_clz_en_i,
+  input logic [31:0]        div_clz_data_i,
+  output logic [5:0]        div_clz_result_o,
+
+  // Divider interface towards shifter
+  input logic               div_shift_en_i,
+  input logic [5:0]         div_shift_amt_i,
+  output logic [31:0]       div_op_a_shifted_o
 );
 
   logic [31:0] operand_a_rev;
-  logic [31:0] operand_a_neg;
-  logic [31:0] operand_a_neg_rev;
-
-  assign operand_a_neg = ~operand_a_i;
-
+  
   // bit reverse operand_a for left shifts and bit counting
   generate
     genvar k;
@@ -56,22 +64,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // bit reverse operand_a_neg for left shifts and bit counting
-  generate
-    genvar m;
-    for(m = 0; m < 32; m++)
-    begin : gen_operand_a_neg_rev
-      assign operand_a_neg_rev[m] = operand_a_neg[31-m];
-    end
-  endgenerate
-
   logic [31:0] operand_b_neg;
 
   assign operand_b_neg = ~operand_b_i;
 
-
-  logic [5:0]  div_shift;
-  logic        div_valid;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //   ____            _   _ _   _                      _      _       _     _            //
@@ -122,16 +118,18 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] shift_result;
   logic [31:0] shift_right_result;
   logic [31:0] shift_left_result;
+  
+  // Shifter is also used for preparing operand for division
+  assign shift_amt = div_shift_en_i ? div_shift_amt_i[4:0] : operand_b_i[4:0];
 
-  // shifter is also used for preparing operand for division
-  assign shift_amt = div_valid ? div_shift[4:0] : operand_b_i[4:0];
+  // When divider is using the shifter, it requires shift left
+  assign shift_left = div_shift_en_i || (operator_i == ALU_SLL);
 
-  assign shift_left = (operator_i == ALU_SLL) ||
-                      (operator_i == ALU_DIV) || (operator_i == ALU_DIVU) ||
-                      (operator_i == ALU_REM) || (operator_i == ALU_REMU);
-
-  assign shift_arithmetic = (operator_i == ALU_SRA) ||
-                            (operator_i == ALU_ADD) || (operator_i == ALU_SUB);
+  // Shift arithmetic (with sign extension) does not apply for shift left operations
+  assign shift_arithmetic = ((operator_i == ALU_SRA) ||
+                             (operator_i == ALU_ADD) ||
+                             (operator_i == ALU_SUB)) &&
+                            !shift_left;
 
   // choose the bit reversed or the normal input for shift operand a
   assign shift_op_a    = shift_left ? operand_a_rev : operand_a_i;
@@ -154,6 +152,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   assign shift_result = shift_left ? shift_left_result : shift_right_result;
 
+  assign div_op_a_shifted_o = shift_left_result;
 
   //////////////////////////////////////////////////////////////////
   //   ____ ___  __  __ ____   _    ____  ___ ____   ___  _   _   //
@@ -200,121 +199,29 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                                   |_|           //
   /////////////////////////////////////////////////////////////////////
 
-  logic [31:0] ff_input;   // either op_a_i or its bit reversed version
-  logic [5:0]  cnt_result; // population count
-  logic [5:0]  clb_result; // count leading bits
+  
+  logic [31:0] div_clz_data_rev;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
-
-  cv32e40x_popcnt popcnt_i
-  (
-    .in_i        ( operand_a_i ),
-    .result_o    ( cnt_result  )
-  );
-
-  always_comb
-  begin
-    ff_input = '0;
-
-    case (operator_i)
-      ALU_DIVU,
-      ALU_REMU: ff_input = operand_a_rev;
-
-      ALU_DIV,
-      ALU_REM: begin
-        if (operand_a_i[31])
-          ff_input = operand_a_neg_rev;
-        else
-          ff_input = operand_a_rev;
-      end
-    endcase
-  end
-
+  
+  generate
+    genvar l;
+    for(l = 0; l < 32; l++)
+    begin : gen_div_clz_data_rev
+      assign div_clz_data_rev[l] = div_clz_data_i[31-l];
+    end
+  endgenerate
+  
   cv32e40x_ff_one ff_one_i
   (
-    .in_i        ( ff_input   ),
+    .in_i        ( div_clz_data_rev ),
     .first_one_o ( ff1_result ),
     .no_ones_o   ( ff_no_one  )
   );
 
-  // special case if ff1_res is 0 (no 1 found), then we keep the 0
-  // this is done in the result mux
-  assign clb_result  = ff1_result - 5'd1;
+  // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
+  assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
  
-  ////////////////////////////////////////////////////
-  //  ____ _____     __     __  ____  _____ __  __  //
-  // |  _ \_ _\ \   / /    / / |  _ \| ____|  \/  | //
-  // | | | | | \ \ / /    / /  | |_) |  _| | |\/| | //
-  // | |_| | |  \ V /    / /   |  _ <| |___| |  | | //
-  // |____/___|  \_/    /_/    |_| \_\_____|_|  |_| //
-  //                                                //
-  ////////////////////////////////////////////////////
-
-   logic [31:0] result_div;
-   logic        div_ready;
-   logic        div_signed;
-   logic        div_rem;
-   logic        div_op_a_signed;
-   logic [5:0]  div_shift_int;
-
-   // Decode operator
-   always_comb begin
-
-     div_signed = 1'b0;
-     div_rem    = 1'b0;
-     div_valid  = 1'b0;
-
-     unique case(operator_i)
-       ALU_DIVU: begin
-	       div_valid  = enable_i;
-         div_signed = 1'b0;
-         div_rem    = 1'b0;
-       end
-       ALU_DIV : begin
-	       div_valid  = enable_i;
-         div_signed = 1'b1;
-         div_rem    = 1'b0;
-       end
-       ALU_REMU: begin
-	       div_valid  = enable_i;
-         div_signed = 1'b0;
-         div_rem    = 1'b1;
-       end
-       ALU_REM : begin
-	       div_valid  = enable_i;
-         div_signed = 1'b1;
-         div_rem    = 1'b1;
-       end
-       default: ; // default case to suppress unique warning
-     endcase
-   end
-
-   assign div_op_a_signed = operand_a_i[31] & div_signed;
-   assign div_shift_int = ff_no_one ? 6'd31 : clb_result;
-   assign div_shift = div_shift_int + (div_op_a_signed ? 6'd0 : 6'd1);
-
-   // inputs A and B are swapped
-   cv32e40x_alu_div alu_div_i
-     (
-      .Clk_CI       ( clk               ),
-      .Rst_RBI      ( rst_n             ),
-
-      // input IF
-      .OpA_DI       ( operand_b_i       ),
-      .OpB_DI       ( shift_left_result ),
-      .OpBShift_DI  ( div_shift         ),
-      .OpBIsZero_SI ( (cnt_result == 0) ),
-
-      .OpBSign_SI   ( div_op_a_signed   ),
-      .DivSigned_SI ( div_signed        ),
-      .DivRem_SI    ( div_rem           ),
-      .Res_DO       ( result_div        ),
-
-      // Hand-Shake
-      .InVld_SI     ( div_valid         ),
-      .OutRdy_SI    ( ex_ready_i        ),
-      .OutVld_SO    ( div_ready         )
-      );
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -346,14 +253,18 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       // Non-vector comparisons
       ALU_SLTS,  ALU_SLTU: result_o = {31'b0, comparison_result_o};
 
-      // Division Unit Commands
-      ALU_DIV, ALU_DIVU,
-      ALU_REM, ALU_REMU: result_o = result_div;
+      // RV32B Zca instructions
+      // TODO: Investigate sharing ALU adder and shifter
+      ALU_B_SH1ADD: result_o = (operand_a_i << 1) + operand_b_i;
+      ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
+      ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
 
       default: ; // default case to suppress unique warning
     endcase
   end
 
-  assign ready_o = div_ready;
-
+  // No multicycle operations in the ALU. Valid/ready are passed through
+  assign valid_o = valid_i;
+  assign ready_o = ready_i;
+  
 endmodule
