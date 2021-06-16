@@ -41,8 +41,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        rst_n,
 
     input  logic        deassert_we_i,
-    input  logic        kill_id_i,
-    input  logic        is_decoding_i,
 
     // Jumps and branches
     input  logic        branch_decision_i,
@@ -63,10 +61,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // ID/EX pipeline 
     output id_ex_pipe_t id_ex_pipe_o,
 
+    // From controller FSM
+    input  ctrl_fsm_t   ctrl_fsm_i,
+
     input  PrivLvl_t    current_priv_lvl_i,
 
     // Debug Signal
-    input  logic        debug_mode_i,
     input  logic        debug_trigger_match_id_i,
 
     // Register file write back and forwards
@@ -103,14 +103,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic [1:0]  ctrl_transfer_insn_o,
     output logic [1:0]  ctrl_transfer_insn_raw_o,
 
-    input  logic        debug_wfi_no_sleep_i,
-
     // RF interface -> controller
     output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
     output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
     output rf_addr_t    rf_waddr_o,
 
-    output logic        regfile_alu_we_dec_o,
+    output logic        regfile_alu_we_id_o,
     
     // Forwarding from controller
     input  op_fw_mux_e    operand_a_fw_mux_sel_i,
@@ -118,7 +116,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  jalr_fw_mux_e  jalr_fw_mux_sel_i,
 
     // Halt and stalls from controller
-    input  logic          halt_id_i,
     input  logic          misaligned_stall_i,
     input  logic          jr_stall_i,
     input  logic          load_stall_i,
@@ -230,7 +227,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Local instruction valid qualifier
   logic        instr_valid;
 
-  assign instr_valid = if_id_pipe_i.instr_valid && !kill_id_i;
+  assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id;
 
   assign mret_insn_o = mret_insn;
   assign dret_insn_o = dret_insn;
@@ -465,8 +462,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_atop_o                     ( data_atop                 ),
 
     // debug mode
-    .debug_mode_i                    ( debug_mode_i              ),
-    .debug_wfi_no_sleep_i            ( debug_wfi_no_sleep_i      ),
+    .debug_mode_i                    ( ctrl_fsm_i.debug_mode   ), // TODO: pass on ctrl_fsm_i
+    .debug_wfi_no_sleep_i            ( ctrl_fsm_i.debug_wfi_no_sleep      ),
 
     // jump/branches
     .ctrl_transfer_insn_o            ( ctrl_transfer_insn_o      ),
@@ -474,7 +471,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
   );
 
-  assign regfile_alu_we_dec_o = rf_we_raw && !data_req_raw;
+  assign regfile_alu_we_id_o = rf_we_raw && !data_req_raw;
 
   
   /////////////////////////////////////////////////////////////////////////////////
@@ -521,10 +518,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.data_misaligned        <= 1'b0;
       id_ex_pipe_o.data_atop              <= 5'b0;
 
-      id_ex_pipe_o.pc                     <= '0;
+      id_ex_pipe_o.pc                     <= 32'h00000000;
 
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
+      id_ex_pipe_o.trigger_match          <= 1'b0;
       // Signals for exception handling
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.illegal_insn           <= 1'b0;
@@ -642,7 +640,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && is_decoding_i && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
+  assign minstret = id_valid_o && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin
@@ -676,21 +674,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // IF stage count
       mhpmevent_imiss_o          <= perf_imiss_i;
       // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_jr_stall_o       <= jr_stall_i && !halt_id_i && id_valid_q;
+      mhpmevent_jr_stall_o       <= jr_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
       // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_ld_stall_o       <= load_stall_i && !halt_id_i && id_valid_q;
+      mhpmevent_ld_stall_o       <= load_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
     end
   end
 
   assign csr_en_o = csr_en;
   assign csr_op_o = csr_op;
-  // stall control
+
+  // stall control for multicyle ID instructions (currently only misaligned LSU)
   assign multi_cycle_id_stall = misaligned_stall_i;
 
-  //TODO:OK Consider moving the wfi part of id_ready to controller/bypass logic
   //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
   //TODO:OK Halt and stall seems to be the same
-  assign id_ready_o = kill_id_i || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !halt_id_i && !wfi_stall_i);
+  assign id_ready_o = ctrl_fsm_i.kill_id || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !ctrl_fsm_i.halt_id && !wfi_stall_i);
   assign id_valid_o = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 

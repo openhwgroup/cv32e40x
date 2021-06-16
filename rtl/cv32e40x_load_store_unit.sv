@@ -32,7 +32,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input  logic         clk,
     input  logic         rst_n,
 
-    input  logic         kill_ex_i,
+    // From controller FSM
+    input  ctrl_fsm_t    ctrl_fsm_i,
+
     // output to data memory
     if_c_obi.master      m_c_obi_data_if,
 
@@ -43,9 +45,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic [31:0]  data_addr_wb_o,
     output logic         data_err_wb_o,
 
-    // Block updates of ex_wb_pipe_o.data_addr (from controller)
-    input  logic         block_data_addr_i,
-
     output logic [31:0]  lsu_rdata_o,          // LSU read data
     output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
 
@@ -53,10 +52,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic         lsu_ready_ex_o,       // LSU ready for new data in EX stage
     output logic         lsu_ready_wb_o,       // LSU ready for new data in WB stage
 
-    // halt signals to EX/WB portion of LSU
-    input  logic         halt_ex_i,
-    input  logic         halt_wb_i,
-
+    
     output logic [1:0]   cnt_o,
     output logic         busy_o
 );
@@ -116,7 +112,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Internally gated data_req
   logic         data_req_valid;
 
-  assign block_data_req = kill_ex_i || halt_ex_i;
+  assign block_data_req = ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex;
 
   assign data_req_valid = id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid && !block_data_req;
 
@@ -406,7 +402,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it WB stage is being used and the awaited response arrives (resp_rvalid).
-  assign lsu_ready_wb_o = (cnt_q == 2'b00) ? !halt_wb_i : resp_valid && !halt_wb_i; //TODO:OK is this ok or not?
+  assign lsu_ready_wb_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb; //TODO:OK is this ok or not?
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -419,10 +415,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o =                !data_req_valid  ?                                              !halt_ex_i :
-                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready && !halt_ex_i) : 
-                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && !halt_ex_i) : 
-                                                            resp_valid && !halt_ex_i; // TODO:OK is this ok or not?
+  assign lsu_ready_ex_o =                !data_req_valid  ?                                              !ctrl_fsm_i.halt_ex :
+                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
+                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
+                                                            resp_valid && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
   assign ctrl_update = lsu_ready_ex_o && data_req_valid;
@@ -494,7 +490,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       data_addr_wb_o <= 32'h0;
     end else begin
       // Update for valid addresses if not blocked by controller
-      if(!block_data_addr_i && (trans_valid && trans_ready)) begin
+      if(!ctrl_fsm_i.block_data_addr && (trans_valid && trans_ready)) begin
         data_addr_wb_o <= trans.addr;
       end
     end

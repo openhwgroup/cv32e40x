@@ -34,8 +34,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
-  input  logic        halt_ex_i,
-  input  logic        kill_ex_i,
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
 
@@ -44,6 +42,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // EX/WB pipeline 
   output ex_wb_pipe_t ex_wb_pipe_o,
+
+  // From controller FSM
+  input  ctrl_fsm_t   ctrl_fsm_i,
 
   // Register file forwarding signals (to ID)
   output logic        rf_we_ex_o,
@@ -70,7 +71,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           mult_ready;
 
   logic instr_valid;
-  assign instr_valid = id_ex_pipe_i.instr_valid && !kill_ex_i;
+  assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex;
 
   // Local signals after evaluating with instr_valid
   logic alu_en_gated;
@@ -142,7 +143,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .clk             ( clk                           ),
     .rst_n           ( rst_n                         ),
 
-    .kill_i          ( kill_ex_i                     ),
+    .kill_i          ( ctrl_fsm_i.kill_ex            ), // TODO: Change to using valid instead
     .enable_i        ( mult_en_gated                 ),
     .operator_i      ( id_ex_pipe_i.mult_operator    ),
 
@@ -186,6 +187,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr       <= 12'h000;
       ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
+
+      ex_wb_pipe_o.trigger_match  <= 1'b0;
     end
     else
     begin
@@ -237,7 +240,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
   assign ex_ready_o = (alu_ready && mult_ready && lsu_ready_ex_i
-                       && wb_ready_i && !halt_ex_i);// || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid);// TODO: This done to support a simplification for RVFI and has not been verified
+                       && wb_ready_i && !ctrl_fsm_i.halt_ex);// || (id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid);// TODO: This done to support a simplification for RVFI and has not been verified
   assign ex_valid_o = (alu_ready && mult_ready && lsu_ready_ex_i && wb_ready_i) && instr_valid;
 
 endmodule // cv32e40x_ex_stage

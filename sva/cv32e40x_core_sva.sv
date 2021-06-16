@@ -29,18 +29,14 @@ module cv32e40x_core_sva
   input logic        clk,
   input logic        rst_ni,
 
-  input logic        pc_set,
+  input ctrl_fsm_t   ctrl_fsm,
   input logic        id_valid,
   //input logic        multi_cycle_id_stall,
   input logic [4:0]  exc_cause,
-  input logic        debug_mode,
   input logic [31:0] mie,
-  input logic        is_decoding,
-  input logic        csr_save_cause,
   input logic        debug_single_step,
-  input              pc_mux_e pc_mux_id,
   input              if_id_pipe_t if_id_pipe,
-  input              exc_pc_mux_e exc_pc_mux_id,
+  input              id_stage_is_last,
    // probed id_stage signals
   /*
   input logic        id_stage_ebrk_insn,
@@ -50,7 +46,6 @@ module cv32e40x_core_sva
   input logic        id_stage_mpu_err,
   input logic        id_stage_instr_valid,
   */
-  input logic        kill_wb_i,
   input ex_wb_pipe_t ex_wb_pipe_i,
   input logic        branch_taken_in_ex,
   
@@ -71,7 +66,7 @@ module cv32e40x_core_sva
   // written to.
   property p_irq_enabled_0;
     @(posedge clk) disable iff (!rst_ni)
-    (pc_set && (pc_mux_id == PC_EXCEPTION) && (exc_pc_mux_id == EXC_PC_IRQ)) |->
+    (ctrl_fsm.pc_set && (ctrl_fsm.pc_mux == PC_EXCEPTION) && (ctrl_fsm.exc_pc_mux == EXC_PC_IRQ)) |->
     (mie[exc_cause] && cs_registers_mstatus_q.mie);
   endproperty
 
@@ -80,7 +75,7 @@ module cv32e40x_core_sva
   // Check that a taken IRQ was for an enabled cause and that mstatus.mie gets disabled
   property p_irq_enabled_1;
     @(posedge clk) disable iff (!rst_ni)
-      (pc_set && (pc_mux_id == PC_EXCEPTION) && (exc_pc_mux_id == EXC_PC_IRQ)) |=>
+      (ctrl_fsm.pc_set && (ctrl_fsm.pc_mux == PC_EXCEPTION) && (ctrl_fsm.exc_pc_mux == EXC_PC_IRQ)) |=>
       (cs_registers_mcause_q[31] && cs_registers_mie_q[cs_registers_mcause_q[4:0]] && !cs_registers_mstatus_q.mie);
   endproperty
 
@@ -114,19 +109,20 @@ always_ff @(posedge clk , negedge rst_ni)
       expected_instr_mpuerr_mepc <= 32'b0;
     end
     else begin
-      if (!first_illegal_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+      //TODO:OK: Update the following checks, as they fail with the new controller
+      if (!first_illegal_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
         !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK)) &&
           ex_wb_pipe_i.illegal_insn && !id_stage_controller_debug_mode_n) begin
         first_illegal_found   <= 1'b1;
         expected_illegal_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ecall_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+      if (!first_ecall_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
         !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn) &&
           ex_wb_pipe_i.ecall_insn && !id_stage_controller_debug_mode_n) begin
         first_ecall_found   <= 1'b1;
         expected_ecall_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ebrk_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+      if (!first_ebrk_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
         !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn || ex_wb_pipe_i.ecall_insn) &&
           ex_wb_pipe_i.ebrk_insn) begin
         first_ebrk_found   <= 1'b1;
@@ -135,13 +131,13 @@ always_ff @(posedge clk , negedge rst_ni)
       
       if (!first_instr_err_found && (ex_wb_pipe_i.instr.mpu_status == MPU_OK) &&
           ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr.bus_resp.err && !id_stage_controller_debug_mode_n &&
-          !kill_wb_i ) begin
+          !ctrl_fsm.kill_wb ) begin
           
         first_instr_err_found   <= 1'b1;
         expected_instr_err_mepc <= ex_wb_pipe.pc;
       end
       
-      if (!first_instr_mpuerr_found && ex_wb_pipe_i.instr_valid && !kill_wb_i &&
+      if (!first_instr_mpuerr_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
           (ex_wb_pipe_i.instr.mpu_status != MPU_OK) && !id_stage_controller_debug_mode_n) begin
         first_instr_mpuerr_found   <= 1'b1;
         expected_instr_mpuerr_mepc <= ex_wb_pipe.pc;
@@ -177,23 +173,23 @@ always_ff @(posedge clk , negedge rst_ni)
         actual_instr_mpuerr_mepc  <= 32'b0;
       end
       else begin
-        if (!first_cause_illegal_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ILLEGAL_INSN}) && csr_save_cause) begin
+        if (!first_cause_illegal_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ILLEGAL_INSN}) && ctrl_fsm.csr_save_cause) begin
           first_cause_illegal_found <= 1'b1;
           actual_illegal_mepc       <= cs_registers_mepc_n;
         end
-        if (!first_cause_ecall_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ECALL_MMODE}) && csr_save_cause) begin
+        if (!first_cause_ecall_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ECALL_MMODE}) && ctrl_fsm.csr_save_cause) begin
           first_cause_ecall_found <= 1'b1;
           actual_ecall_mepc       <= cs_registers_mepc_n;
         end
-        if (!first_cause_ebrk_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_BREAKPOINT}) && csr_save_cause) begin
+        if (!first_cause_ebrk_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_BREAKPOINT}) && ctrl_fsm.csr_save_cause) begin
           first_cause_ebrk_found <= 1'b1;
           actual_ebrk_mepc       <= cs_registers_mepc_n;
         end
-        if (!first_cause_instr_err_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_BUS_FAULT}) && csr_save_cause) begin
+        if (!first_cause_instr_err_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_BUS_FAULT}) && ctrl_fsm.csr_save_cause) begin
           first_cause_instr_err_found <= 1'b1;
           actual_instr_err_mepc       <= cs_registers_mepc_n;
         end
-        if (!first_cause_instr_mpuerr_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_FAULT}) && csr_save_cause) begin
+        if (!first_cause_instr_mpuerr_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_FAULT}) && ctrl_fsm.csr_save_cause) begin
           first_cause_instr_mpuerr_found <= 1'b1;
           actual_instr_mpuerr_mepc       <= cs_registers_mepc_n;
         end
@@ -239,17 +235,18 @@ always_ff @(posedge clk , negedge rst_ni)
 
   a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
 
-  /* TODO:OK: Reintroduce once debug support is implemented in the new controller
+  
   // Single Step only executes one instruction in non debug mode and next instruction WB is in debug mode
+  //TODO:OK Fix, as it now fails with the new controller/pipeline signalling
   logic inst_taken;
-  assign inst_taken = id_valid && is_decoding;
+  assign inst_taken = id_valid && id_stage_is_last;
 
   a_single_step :
     assert property (@(posedge clk) disable iff (!rst_ni)
-                     (inst_taken && debug_single_step && ~debug_mode)
+                     (inst_taken && debug_single_step && ~ctrl_fsm.debug_mode)
                      ##1 inst_taken [->1]
-                     |-> (debug_mode && debug_single_step))
+                     |-> (ctrl_fsm.debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step failed")
-  */
+  
 endmodule // cv32e40x_core_sva
 

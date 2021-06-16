@@ -116,7 +116,7 @@ module cv32e40x_wrapper
     .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
     .*);
   
-  bind cv32e40x_wb_controller_fsm:
+  bind cv32e40x_controller_fsm:
     core_i.controller_i.controller_fsm_i
       cv32e40x_controller_fsm_sva
         controller_fsm_sva   (
@@ -157,7 +157,6 @@ module cv32e40x_wrapper
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
                 .cs_registers_csr_cause_i         (core_i.cs_registers_i.csr_cause_i),
-                .kill_wb_i                        ( core_i.kill_wb),
                 .ex_wb_pipe_i                     ( core_i.ex_wb_pipe ),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
                 .exc_cause                        ( core_i.controller_i.controller_fsm_i.exc_cause_o),

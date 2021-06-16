@@ -109,14 +109,12 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   //TODO:OK: This CSR stall check is very restrictive
   //         Should only check EX vs WB, and also CSR/rd addr
-  // Detect when a CSR read is in ID
-  assign csr_read_in_id = (csr_en_id_i && (csr_op_id_i != CSR_OP_WRITE)) ||
-                          (mret_id_i || dret_id_i) && if_id_pipe_i.instr_valid;
+  // Detect when a CSR insn is in ID
+  assign csr_read_in_id = (csr_en_id_i || mret_id_i) && if_id_pipe_i.instr_valid;
 
-  // Detect when a CSR write in in EX or WB
-  assign csr_write_in_ex_wb = (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en && (id_ex_pipe_i.csr_op != CSR_OP_READ)) ||
-                              ((ex_wb_pipe_i.csr_en && (ex_wb_pipe_i.csr_op != CSR_OP_READ)) ||
-                              (ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn)) &&
+  // Detect when a CSR insn  in in EX or WB
+  assign csr_write_in_ex_wb = ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ||
+                              (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn) &&
                               ex_wb_pipe_i.instr_valid);
 
   // Stall ID when WFI is active in EX.

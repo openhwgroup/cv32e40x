@@ -984,7 +984,60 @@ typedef struct packed {
 
 } ex_wb_pipe_t;
 
+// Controller FSM outputs
+typedef struct packed {
+  logic        ctrl_busy;             // Core is busy processing instructions
+  logic        is_decoding;           // Core is decoding a valid instruction
 
+  // to IF stage
+  logic        instr_req;             // Start fetching instructions
+  logic        pc_set;                // jump to address set by pc_mux
+  pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
+  exc_pc_mux_e exc_pc_mux;            // Selects target PC for exception
+
+  // To WB stage
+  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+  logic        irq_ack;               // irq has been taken 
+  logic [4:0]  irq_id;                // id of taken irq (to toplevel pins)
+  logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+
+  // Debug outputs
+  logic        debug_mode;           // Flag signalling we are in debug mode
+  logic [2:0]  debug_cause;          // cause of debug entry
+  logic        debug_csr_save;       // Update debug CSRs
+  logic        debug_wfi_no_sleep;   // Debug prevents core from sleeping after WFI
+  logic        debug_havereset;      // Signal to external debugger that we have reset
+  logic        debug_running;        // Signal to external debugger that we are running (not in debug)
+  logic        debug_halted;         // Signal to external debugger that we are halted (in debug mode)
+
+  // Wakeup Signal to sleep unit
+  logic        wake_from_sleep;       // Wakeup (due to irq or debug)
+
+  // CSR signals
+  logic        csr_save_if;         // Save PC from IF stage
+  logic        csr_save_id;         // Save PC from ID stage
+  logic        csr_save_ex;         // Save PC from EX stage (currently unused)
+  logic        csr_save_wb;         // Save PC from WB stage
+  logic [5:0]  csr_cause;           // CSR cause (saves to mcause CSR)
+  logic        csr_restore_mret; // Restore CSR due to mret
+  logic        csr_restore_dret; // Restore CSR due to dret
+  logic        csr_save_cause;      // Update CSRs
+
+  // Halt signals
+  logic        halt_if; // Halt IF stage
+  logic        halt_id; // Halt ID stage
+  logic        halt_ex; // Halt EX stage
+  logic        halt_wb; // Halt WB stage
+
+  // Kill signals
+  logic        kill_if; // Kill IF stage
+  logic        kill_id; // Kill ID stage
+  logic        kill_ex; // Kill EX stage
+  logic        kill_wb; // Kill WB stage
+
+} ctrl_fsm_t;
+  
+  
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //

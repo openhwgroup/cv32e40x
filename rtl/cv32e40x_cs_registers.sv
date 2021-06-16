@@ -58,8 +58,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // EX/WB pipeline
   input ex_wb_pipe_t      ex_wb_pipe_i,
 
-  input logic             kill_wb_i,
-
+  // From controller FSM
+  input  ctrl_fsm_t       ctrl_fsm_i,
+ 
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
@@ -71,9 +72,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     mepc_o,
 
   // debug
-  input  logic            debug_mode_i,
-  input  logic  [2:0]     debug_cause_i,
-  input  logic            debug_csr_save_i,
   output logic [31:0]     dpc_o,
   output logic            debug_single_step_o,
   output logic            debug_ebreakm_o,
@@ -83,19 +81,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   input  logic [31:0]     pc_if_i,
 
-  input  logic            csr_save_if_i,
-  input  logic            csr_save_id_i,
-  input  logic            csr_save_ex_i,
-  input  logic            csr_save_wb_i,
-
-  input  logic            csr_restore_mret_i,
-  
-  input  logic            csr_restore_dret_i,
-  //coming from controller
-  input  logic [5:0]      csr_cause_i,
-  //coming from controller
-  input  logic            csr_save_cause_i,
-  
   // Performance Counters
   input  logic                 mhpmevent_minstret_i,
   input  logic                 mhpmevent_load_i,
@@ -175,8 +160,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mie_we;
   logic mie_rd_error;
 
-  logic [31:0] csr_mie_wdata;
-
   PrivLvl_t priv_lvl_n, priv_lvl_q;
 
   // Performance Counter Signals
@@ -202,7 +185,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_wdata    =  ex_wb_pipe_i.csr_wdata;
 
   //TODO: We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
-  assign csr_op       =  (!kill_wb_i && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
+  assign csr_op       =  (!ctrl_fsm_i.kill_wb && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
     
   // mip CSR
   assign mip = mip_i;
@@ -444,20 +427,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     // exception controller gets priority over other writes
     unique case (1'b1)
 
-      csr_save_cause_i: begin
+      ctrl_fsm_i.csr_save_cause: begin
         unique case (1'b1)
-          csr_save_if_i:
+          ctrl_fsm_i.csr_save_if:
             exception_pc = pc_if_i;
-          csr_save_id_i:
+          ctrl_fsm_i.csr_save_id:
             exception_pc = if_id_pipe_i.pc;
-          csr_save_ex_i:
+          ctrl_fsm_i.csr_save_ex:
             exception_pc = id_ex_pipe_i.pc;
-          csr_save_wb_i:
+          ctrl_fsm_i.csr_save_wb:
             exception_pc = ex_wb_pipe_i.pc;
           default:;
         endcase
 
-        if (debug_csr_save_i) begin
+        if (ctrl_fsm_i.debug_csr_save) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
             // mpstatus
             dcsr_n = '{
@@ -466,7 +449,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               stepie    : dcsr_q.stepie,
               step      : dcsr_q.step,
               prv       : PRIV_LVL_M,
-              cause     : debug_cause_i,
+              cause     : ctrl_fsm_i.debug_cause,
               default   : 'd0
             };
             dcsr_we = 1'b1;
@@ -483,23 +466,23 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mepc_n = exception_pc;
             mepc_we = 1'b1;
 
-            mcause_n       = {csr_cause_i[5], 26'd0, csr_cause_i[4:0]};
+            mcause_n       = {ctrl_fsm_i.csr_cause[5], 26'd0, ctrl_fsm_i.csr_cause[4:0]};
             mcause_we = 1'b1;
         end
-      end //csr_save_cause_i
+      end //ctrl_fsm_i.csr_save_cause
 
-      csr_restore_mret_i: begin //MRET
+      ctrl_fsm_i.csr_restore_mret: begin //MRET
         mstatus_n.mie  = mstatus_q.mpie;
         priv_lvl_n     = PRIV_LVL_M;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_M;
         mstatus_we = 1'b1;
-      end //csr_restore_mret_i
+      end //ctrl_fsm_i.csr_restore_mret
 
-      csr_restore_dret_i: begin //DRET
+      ctrl_fsm_i.csr_restore_dret: begin //DRET
           // Restore to the recorded privilege level
           priv_lvl_n = dcsr_q.prv;
-      end //csr_restore_dret_i
+      end //ctrl_fsm_i.csr_restore_dret
 
       default:;
     endcase
@@ -706,8 +689,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic tmatch_value_rd_error;
 
   // Write select
-  assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_waddr == CSR_TDATA1);
-  assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_waddr == CSR_TDATA2);
+  assign tmatch_control_we = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA1);
+  assign tmatch_value_we   = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA2);
 
   // All supported trigger types
   assign tinfo_types = 1 << TTYPE_MCONTROL;
