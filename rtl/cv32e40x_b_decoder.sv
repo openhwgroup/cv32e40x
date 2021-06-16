@@ -27,17 +27,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_b_decoder import cv32e40x_pkg::*;
-  #(parameter b_ext_e B_EXT = None)
+  #(parameter b_ext_e B_EXT = NONE)
   (
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
    output             decoder_ctrl_t decoder_ctrl_o
    );
 
-  localparam RV32B_ZBA = (B_EXT == Zba_Zbb_Zbs) || (B_EXT == Zba_Zbb_Zbc_Zbs);
-  localparam RV32B_ZBB = (B_EXT == Zba_Zbb_Zbs) || (B_EXT == Zba_Zbb_Zbc_Zbs);
-  localparam RV32B_ZBS = (B_EXT == Zba_Zbb_Zbs) || (B_EXT == Zba_Zbb_Zbc_Zbs);
-  localparam RV32B_ZBC = (B_EXT == Zba_Zbb_Zbc_Zbs);
+  localparam RV32B_ZBA = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+  localparam RV32B_ZBB = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+  localparam RV32B_ZBS = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+  localparam RV32B_ZBC = (B_EXT == ZBA_ZBB_ZBC_ZBS);
   
   always_comb
   begin
