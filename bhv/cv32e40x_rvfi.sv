@@ -360,6 +360,7 @@ module cv32e40x_rvfi
   logic         is_branch_ex;
   logic         is_exception_wb;
   logic         is_exception_wb_q;
+  logic         is_exception_wb_qq;
   logic         is_mret_wb;
   logic         is_dret_wb;
 
@@ -468,6 +469,7 @@ module cv32e40x_rvfi
 
         if (i == 2) begin
           is_exception_wb_q        <= 1'b0;
+          is_exception_wb_qq       <= 1'b0;
         end
 
       end else begin
@@ -630,13 +632,19 @@ module cv32e40x_rvfi
           endcase // case (1'b1)
 
           // CSR special cases
-          if (is_exception_wb) begin
+          if (is_exception_wb || is_exception_wb_q) begin
+            is_exception_wb_q  <= is_exception_wb;
+            is_exception_wb_qq <= is_exception_wb_q;
             rvfi_stage[i].rvfi_csr_wmask.mstatus <= '0;
-            is_exception_wb_q <= 1'b1;
-          end else if (is_exception_wb_q) begin
-            is_exception_wb_q <= !(rvfi_stage[i-1].rvfi_valid || mret_q[i] || (lsu_rvalid_wb_i && data_req_q[i-1]));
-            rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
-            rvfi_stage[i].rvfi_csr_wmask.mstatus <= '1;
+          end else if (is_exception_wb_qq) begin
+            if (rvfi_stage[i-1].rvfi_valid || mret_q[i] || (lsu_rvalid_wb_i && data_req_q[i-1])) begin
+              is_exception_wb_qq <= 1'b0;
+              rvfi_stage[i].rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
+              rvfi_stage[i].rvfi_csr_wmask.mstatus <= '1;
+            end else begin
+              is_exception_wb_qq <= 1'b1;
+              rvfi_stage[i].rvfi_csr_wmask.mstatus <= '0;
+            end
           end
 
           if (csr_debug_csr_save_i && rvfi_stage[i].rvfi_valid) begin
