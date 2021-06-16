@@ -14,7 +14,7 @@ Instantiation Template
   cv32e40x_core #(
       .LIB                      (         0 ),
       .A_EXT                    (         0 ),
-      .B_EXT                    (         0 ),
+      .B_EXT                    (      NONE ),
       .P_EXT                    (         0 ),
       .X_EXT                    (         0 ),
       .NUM_MHPMCOUNTERS         (         1 ),
@@ -92,7 +92,10 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``B_EXT``                    | bit            | 0             | Enable Bit Manipulation (B) support  (**not implemented yet**)     |
+| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation (B) support. ``B_EXT`` = NONE: no Bit      |
+|                              |                |               | Manipulation instructions are supported, ``B_EXT`` = ZBA_ZBB_ZBS:  |
+|                              |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
+|                              |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``P_EXT``                    | bit            | 0             | Enable Packed-SIMD (P) support (**not implemented yet**)           |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
