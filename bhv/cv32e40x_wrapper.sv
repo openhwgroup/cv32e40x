@@ -39,6 +39,10 @@
   `include "cv32e40x_tracer.sv"
 `endif
 
+`ifdef RISCV_FORMAL
+  `include "rvfi_macros.vh"
+`endif
+
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
@@ -103,6 +107,10 @@ module cv32e40x_wrapper
   // CPU Control Signals
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
+
+`ifdef RISCV_FORMAL
+  ,`RVFI_OUTPUTS
+`endif
 );
 
 
@@ -217,6 +225,126 @@ module cv32e40x_wrapper
           .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
 
+
+    cv32e40x_rvfi
+      rvfi_i
+        (.clk_i                    ( clk_i                                                         ),
+         .rst_ni                   ( rst_ni                                                        ),
+
+         .hart_id_i                ( core_i.hart_id_i                                                     ),
+         .irq_ack_i                ( core_i.irq_ack_o                                                     ),
+
+         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn_o                                     ),
+         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn_o                                        ),
+         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn_o                                        ),
+         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn_o                                       ),
+
+         .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
+         .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
+         .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
+         .instr_id_valid_i         ( core_i.id_stage_i.id_valid_o                                         ),
+         .instr_id_is_decoding_i   ( core_i.controller_i.is_decoding_o                                    ),
+
+         .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
+         .raddr_a_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
+         .rdata_b_id_i             ( core_i.id_stage_i.operand_b_fw                                       ),
+
+         .raddr_b_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
+
+         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
+         .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
+         .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
+
+         .pc_set_i                 ( core_i.if_stage_i.pc_set_i                                           ),
+         .pc_mux_i                 ( core_i.if_stage_i.pc_mux_i                                           ),
+         .exc_pc_mux_i             ( core_i.if_stage_i.exc_pc_mux_i                                       ),
+
+         .lsu_type_id_i            ( core_i.id_stage_i.data_type                                          ),
+         .lsu_we_id_i              ( core_i.id_stage_i.data_we                                            ),
+         .lsu_req_id_i             ( core_i.id_stage_i.data_req                                           ),
+
+         .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
+         .instr_ex_valid_i         ( core_i.ex_stage_i.ex_valid_o                                         ),
+
+         .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
+
+         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
+         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
+         .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
+         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
+         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
+
+
+         .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
+         .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
+         .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
+         .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
+         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
+
+         .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
+
+         .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
+
+         .is_debug_mode            ( core_i.controller_i.debug_mode_o                                     ),
+
+         // CSRs
+         .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
+         .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
+         .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),
+         .csr_misa_i               ( core_i.cs_registers_i.MISA_VALUE                                     ),
+         .csr_mie_q_i              ( core_i.cs_registers_i.mie_q                                          ),
+         .csr_mie_n_i              ( core_i.cs_registers_i.mie_n                                          ),
+         .csr_mie_we_i             ( core_i.cs_registers_i.mie_we                                         ),
+         .csr_mtvec_n_i            ( core_i.cs_registers_i.mtvec_n                                        ),
+         .csr_mtvec_q_i            ( core_i.cs_registers_i.mtvec_q                                        ),
+         .csr_mtvec_we_i           ( core_i.cs_registers_i.mtvec_we                                       ),
+         .csr_mcountinhibit_q_i    ( core_i.cs_registers_i.mcountinhibit_q                                ),
+         .csr_mcountinhibit_n_i    ( core_i.cs_registers_i.mcountinhibit_n                                ),
+         .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
+         .csr_mhpmevent_q_i        ( core_i.cs_registers_i.mhpmevent_q                                    ),
+         .csr_mhpmevent_n_i        ( core_i.cs_registers_i.mhpmevent_n                                    ),
+         .csr_mhpmevent_we_i       ( core_i.cs_registers_i.mhpmevent_we                                   ),
+         .csr_mscratch_q_i         ( core_i.cs_registers_i.mscratch_q                                     ),
+         .csr_mscratch_n_i         ( core_i.cs_registers_i.mscratch_n                                     ),
+         .csr_mscratch_we_i        ( core_i.cs_registers_i.mscratch_we                                    ),
+         .csr_mepc_q_i             ( core_i.cs_registers_i.mepc_q                                         ),
+         .csr_mepc_n_i             ( core_i.cs_registers_i.mepc_n                                         ),
+         .csr_mepc_we_i            ( core_i.cs_registers_i.mepc_we                                        ),
+         .csr_mcause_q_i           ( core_i.cs_registers_i.mcause_q                                       ),
+         .csr_mcause_n_i           ( core_i.cs_registers_i.mcause_n                                       ),
+         .csr_mcause_we_i          ( core_i.cs_registers_i.mcause_we                                      ),
+         .csr_mip_i                ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ),
+         .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
+         .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
+         .csr_tdata2_n_i           ( core_i.cs_registers_i.tmatch_value_n                                 ),
+         .csr_tdata2_q_i           ( core_i.cs_registers_i.tmatch_value_q                                 ),
+         .csr_tdata2_we_i          ( core_i.cs_registers_i.tmatch_value_we                                ),
+         .csr_tinfo_i              ( core_i.cs_registers_i.tinfo_types                                    ),
+         .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
+         .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
+         .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
+         .csr_debug_csr_save_i     ( core_i.cs_registers_i.debug_csr_save_i                               ),
+         .csr_dpc_q_i              ( core_i.cs_registers_i.dpc_q                                          ),
+         .csr_dpc_n_i              ( core_i.cs_registers_i.dpc_n                                          ),
+         .csr_dpc_we_i             ( core_i.cs_registers_i.dpc_we                                         ),
+         .csr_dscratch0_q_i        ( core_i.cs_registers_i.dscratch0_q                                    ),
+         .csr_dscratch0_n_i        ( core_i.cs_registers_i.dscratch0_n                                    ),
+         .csr_dscratch0_we_i       ( core_i.cs_registers_i.dscratch0_we                                   ),
+         .csr_dscratch1_q_i        ( core_i.cs_registers_i.dscratch1_q                                    ),
+         .csr_dscratch1_n_i        ( core_i.cs_registers_i.dscratch1_n                                    ),
+         .csr_dscratch1_we_i       ( core_i.cs_registers_i.dscratch1_we                                   ),
+         .csr_mhpmcounter_q_i      ( core_i.cs_registers_i.mhpmcounter_q                                  ),
+         .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
+         .csr_marchid_i            ( MARCHID                                                              ),
+         .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      )
+
+`ifdef RISCV_FORMAL
+         ,`RVFI_CONN
+`endif
+         );
+
+
 `ifdef CV32E40P_APU_TRACE
     cv32e40x_apu_tracer apu_tracer_i(
       .clk_i        ( core_i.rst_ni                ),
@@ -287,6 +415,7 @@ module cv32e40x_wrapper
     );
 `endif
 
+
     // instantiate the core
     cv32e40x_core
         #(
@@ -294,7 +423,5 @@ module cv32e40x_wrapper
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (.*);
-
-
 
 endmodule
