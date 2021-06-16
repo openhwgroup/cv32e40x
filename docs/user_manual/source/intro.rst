@@ -87,20 +87,32 @@ In addition, the following standard instruction set extensions are available fro
      - always enabled
 
    * - **Zce**: Standard Extension for Code-Size Reduction
-     - v0.29.1 (not ratified yet; version will change)
+     - v0.41.6 (not ratified yet; version will change)
      - always enabled
 
    * - **A**: Atomic Instructions
      - 2.1
      - optionally enabled based on ``A_EXT`` parameter
 
-   * - **B**: Bit Manipulation
-     - 0.93 (not ratified yet; version will change)
-     - optionally enabled based on ``B_EXT`` parameter
-
    * - **P**: Packed-SIMD Instructions
      - 0.9.2-draft-20210202 (not ratified yet; version will change)
      - optionally enabled based on ``P_EXT`` parameter
+
+   * - **Zba**: Bit Manipulation Address calculation instructions
+     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - optionally enabled based on ``B_EXT`` parameter
+
+   * - **Zbb**: Bit Manipulation Base instructions
+     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - optionally enabled based on ``B_EXT`` parameter
+
+   * - **Zbc**: Bit Manipulation Carry-Less Multiply instructions
+     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - optionally enabled based on ``B_EXT`` parameter
+
+   * - **Zbs**: Bit Manipulation Bit set, Bit clear, etc. instructions
+     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - optionally enabled based on ``B_EXT`` parameter
 
 The following custom instruction set extensions are available.
 
