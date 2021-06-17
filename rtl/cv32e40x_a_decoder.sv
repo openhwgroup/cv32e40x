@@ -45,25 +45,21 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
         if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
 
           decoder_ctrl_o.illegal_insn     = 1'b0;
-          decoder_ctrl_o.data_req         = 1'b1;
-          decoder_ctrl_o.data_type        = 2'b00;
           decoder_ctrl_o.rf_re[0]         = 1'b1;
           decoder_ctrl_o.rf_re[1]         = 1'b1;
           decoder_ctrl_o.rf_we            = 1'b1;
-          decoder_ctrl_o.prepost_useincr  = 1'b0; // only use alu_operand_a as address (not a+b)
           decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
           decoder_ctrl_o.alu_en           = 1'b1;
           decoder_ctrl_o.alu_operator     = ALU_SLTU;
-
-          decoder_ctrl_o.data_sign_ext    = 1'b1;
-
-          // Apply AMO instruction at `data_atop`.
-          decoder_ctrl_o.data_atop        = {1'b1, instr_rdata_i[31:27]};
+          decoder_ctrl_o.lsu_en           = 1'b1;
+          decoder_ctrl_o.lsu_type         = 2'b00;
+          decoder_ctrl_o.lsu_sign_ext     = 1'b1;
+          decoder_ctrl_o.lsu_atop         = {1'b1, instr_rdata_i[31:27]};
+          decoder_ctrl_o.lsu_prepost_useincr = 1'b0; // only use alu_operand_a as address (not a+b)
 
           unique case (instr_rdata_i[31:27])
             AMO_LR: begin
-              //decoder_ctrl_o.match     = 1'b1;
-              decoder_ctrl_o.data_we = 1'b0;
+              decoder_ctrl_o.lsu_we = 1'b0;
             end
             AMO_SC,
               AMO_SWAP,
@@ -75,7 +71,7 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
               AMO_MAX,
               AMO_MINU,
               AMO_MAXU: begin
-                decoder_ctrl_o.data_we = 1'b1;
+                decoder_ctrl_o.lsu_we = 1'b1;
                 decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
               end
             default : begin

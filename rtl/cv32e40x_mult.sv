@@ -34,7 +34,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  mul_opcode_e operator_i,
 
   // integer and short multiplier
-  input  logic [ 1:0] short_signed_i,
+  input  logic [ 1:0] signed_mode_i,
 
   input  logic [31:0] op_a_i,
   input  logic [31:0] op_b_i,
@@ -64,8 +64,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   logic        mulh_shift;
 
   // MULH State variables
-  mult_state_e mulh_state;
-  mult_state_e mulh_state_next;
+  mul_state_e  mulh_state;
+  mul_state_e  mulh_state_next;
 
   // MULH Part select operands
   logic [16:0] mulh_al;
@@ -96,11 +96,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   assign mulh_bl[16] = 1'b0;
 
   // Sign extention for the upper halfword is decided by the instuction used.
-  // MULH   :   signed x signed    : short_signed_i == 'b00
-  // MULHSU :   signed x unsigned  : short_signed_i == 'b01
-  // MULHU  : unsigned x unsigned  : short_signed_i == 'b11
-  assign mulh_ah[16] = short_signed_i[0] && op_a_i[31];
-  assign mulh_bh[16] = short_signed_i[1] && op_b_i[31];
+  // MULH   :   signed x signed    : signed_mode_i == 'b00
+  // MULHSU :   signed x unsigned  : signed_mode_i == 'b01
+  // MULHU  : unsigned x unsigned  : signed_mode_i == 'b11
+  assign mulh_ah[16] = signed_mode_i[0] && op_a_i[31];
+  assign mulh_bh[16] = signed_mode_i[1] && op_b_i[31];
 
   ////////////////
   //  MULH FSM  //

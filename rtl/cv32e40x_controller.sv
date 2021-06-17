@@ -54,10 +54,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  ex_wb_pipe_t ex_wb_pipe_i,
 
   // LSU
-  input  logic        data_misaligned_i,
-
-  input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
-  input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
+  input  logic        lsu_misaligned_i, // todo: proper postfix
+  input  logic        lsu_err_wb_i,               // LSU bus error in WB stage
+  input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -105,18 +104,18 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   output logic        csr_stall_o,
   output logic        wfi_stall_o,
 
-  input  logic        id_ready_i,                 // ID stage is ready
+  input  logic        id_ready_i,               // ID stage is ready
   
-  input  logic        ex_valid_i,                 // EX stage is done
+  input  logic        ex_valid_i,               // EX stage is done
 
-  input  logic        wb_ready_i,                 // WB stage is ready
+  input  logic        wb_ready_i,               // WB stage is ready
 
-  input  logic        data_req_wb_i,               // ALU data is written back in WB
-  input  logic        data_req_i,                  // OBI bus data request (EX)
+  input  logic        lsu_en_wb_i,              // LSU data is written back in WB
+  input  logic        data_req_i,               // OBI bus data request (EX)
   input  logic [1:0]  lsu_cnt_i,
   input  logic        data_rvalid_i,
 
-  output ctrl_fsm_t   ctrl_fsm_o                   // FSM outputs
+  output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
 );
 
   
@@ -154,13 +153,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .data_req_i                  ( data_req_i               ),
 
     // From WB stage
-    .data_err_wb_i               ( data_err_wb_i            ),
-    .data_addr_wb_i              ( data_addr_wb_i           ),
-    .wb_ready_i                  ( wb_ready_i               ),
-    .data_req_wb_i               ( data_req_wb_i            ),
-
-    .lsu_cnt_i                   ( lsu_cnt_i                ),
+    .lsu_err_wb_i                ( lsu_err_wb_i             ),
+    .lsu_addr_wb_i               ( lsu_addr_wb_i            ),
+    .lsu_en_wb_i                 ( lsu_en_wb_i              ),
+    .lsu_cnt_i                   ( lsu_cnt_i                ), // todo: use proper postfix
     .data_rvalid_i               ( data_rvalid_i            ),
+    .wb_ready_i                  ( wb_ready_i               ),
 
     // Interrupt Controller Signals
     .irq_req_ctrl_i              ( irq_req_ctrl_i           ),
@@ -211,10 +209,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
       .rf_we_wb_i                 ( rf_we_wb_i               ),
       .rf_waddr_wb_i              ( rf_waddr_wb_i            ),
       .wb_ready_i                 ( wb_ready_i               ),
-      .data_req_wb_i              ( data_req_wb_i            ),
+      .lsu_en_wb_i                ( lsu_en_wb_i              ),
   
       // From LSU
-      .data_misaligned_i          ( data_misaligned_i        ),
+      .lsu_misaligned_i           ( lsu_misaligned_i         ),
     
       // forwarding mux sel outputs
       .operand_a_fw_mux_sel_o     ( operand_a_fw_mux_sel_o   ),

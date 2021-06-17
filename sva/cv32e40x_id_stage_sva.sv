@@ -33,9 +33,9 @@ module cv32e40x_id_stage_sva
    input logic [31:0] instr,
    input logic        rf_we,
    input logic        alu_en,
-   input logic        mult_en,
+   input logic        mul_en,
    input logic        pc_set_o,
-   input logic        data_req,
+   input logic        lsu_en,
    input logic        wfi_insn,
    input logic        ebrk_insn,
    input logic        mret_insn,
@@ -68,9 +68,9 @@ module cv32e40x_id_stage_sva
       property p_branch_taken_ex;
         @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
                                                                            (alu_en == 1'b0) &&
-                                                                           (mult_en == 1'b0) &&
+                                                                           (mul_en == 1'b0) &&
                                                                            (rf_we == 1'b0) &&
-                                                                           (data_req == 1'b0));
+                                                                           (lsu_en == 1'b0));
       endproperty
 
       a_branch_taken_ex : assert property(p_branch_taken_ex) else `uvm_error("id_stage", "Assertion p_branch_taken_ex failed")
@@ -118,9 +118,9 @@ module cv32e40x_id_stage_sva
       property p_illegal_2;
         @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
                                                                          ecall_insn || wfi_insn || fencei_insn ||
-                                                                         alu_en || mult_en ||
+                                                                         alu_en || mul_en ||
                                                                          rf_we ||
-                                                                         csr_op != CSR_OP_READ || data_req);
+                                                                         csr_op != CSR_OP_READ || lsu_en);
       endproperty
 
       a_illegal_2 : assert property(p_illegal_2) else `uvm_error("id_stage", "Assertion p_illegal_2 failed")

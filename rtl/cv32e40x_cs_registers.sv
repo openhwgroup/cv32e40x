@@ -82,16 +82,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     pc_if_i,
 
   // Performance Counters
-  input  logic                 mhpmevent_minstret_i,
-  input  logic                 mhpmevent_load_i,
-  input  logic                 mhpmevent_store_i,
-  input  logic                 mhpmevent_jump_i,                // Jump instruction retired (j, jr, jal, jalr)
-  input  logic                 mhpmevent_branch_i,              // Branch instruction retired (beq, bne, etc.)
-  input  logic                 mhpmevent_branch_taken_i,        // Branch instruction taken
-  input  logic                 mhpmevent_compressed_i,
-  input  logic                 mhpmevent_jr_stall_i,
-  input  logic                 mhpmevent_imiss_i,
-  input  logic                 mhpmevent_ld_stall_i
+  input  logic            mhpmevent_minstret_i,
+  input  logic            mhpmevent_load_i,
+  input  logic            mhpmevent_store_i,
+  input  logic            mhpmevent_jump_i,                // Jump instruction retired (j, jr, jal, jalr)
+  input  logic            mhpmevent_branch_i,              // Branch instruction retired (beq, bne, etc.)
+  input  logic            mhpmevent_branch_taken_i,        // Branch instruction taken
+  input  logic            mhpmevent_compressed_i,
+  input  logic            mhpmevent_jr_stall_i,
+  input  logic            mhpmevent_imiss_i,
+  input  logic            mhpmevent_ld_stall_i,
+
+  // Handshakes
+  input  logic            valid_i,
+  output logic            ready_o,
+  output logic            valid_o,
+  input  logic            ready_i
 );
 
   
@@ -939,8 +945,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-
-
   //  Inhibit Regsiter: mcountinhibit_q
   //  Note: implemented counters are disabled out of reset to save power
   genvar inh_gidx;
@@ -960,6 +964,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
     end
   endgenerate
+
+  // No multicycle operations in the CSR. Valid/ready are passed through.
+  assign valid_o = valid_i;
+  assign ready_o = ready_i;
 
 endmodule
 

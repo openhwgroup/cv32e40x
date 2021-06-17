@@ -263,7 +263,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     endcase
   end
 
-  // No multicycle operations in the ALU. Valid/ready are passed through
+  // No multicycle operations in the ALU. Valid/ready are passed through.
   assign valid_o = valid_i;
   assign ready_o = ready_i;
   

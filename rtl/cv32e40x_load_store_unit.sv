@@ -42,8 +42,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     input id_ex_pipe_t   id_ex_pipe_i,
 
     // EX/WB pipeline
-    output logic [31:0]  data_addr_wb_o,
-    output logic         data_err_wb_o,
+    output logic [31:0]  lsu_addr_wb_o,
+    output logic         lsu_err_wb_o,
 
     output logic [31:0]  lsu_rdata_o,          // LSU read data
     output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
@@ -53,8 +53,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     output logic         lsu_ready_wb_o,       // LSU ready for new data in WB stage
 
     
-    output logic [1:0]   cnt_o,
-    output logic         busy_o
+    output logic [1:0]   cnt_o, // todo: proper names
+    output logic         busy_o,
+
+    // Handshakes
+    input  logic         valid_i,
+    output logic         ready_o,
+    output logic         valid_o,
+    input  logic         ready_i
 );
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
@@ -88,97 +94,97 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic         ctrl_update;            // Update load/store control info in WB stage
 
-  logic [31:0]  data_addr_int;
+  logic [31:0]  addr_int;
 
   // registers for data_rdata alignment and sign extension
-  logic [1:0]   data_type_q;
+  logic [1:0]   lsu_type_q;
+  logic         lsu_sign_ext_q;
+  logic         lsu_we_q;
   logic [1:0]   rdata_offset_q;
-  logic         data_sign_ext_q;
-  logic         data_we_q;
 
   logic [1:0]   wdata_offset;           // mux control for data to be written to memory
 
-  logic [3:0]   data_be;
-  logic [31:0]  data_wdata;
+  logic [3:0]   be;
+  logic [31:0]  wdata;
 
   logic         misaligned_st;          // high if we are currently performing the second part of a misaligned store
   logic         load_err_o, store_err_o;
 
   logic [31:0]  rdata_q;
 
-  // Signal to block external data_req
-  logic         block_data_req;
+  // Signal to block external OBI request
+  logic         block_lsu_en; // todo: find better name (old and new name are both not nice)
 
-  // Internally gated data_req
-  logic         data_req_valid;
+  // Internally gated lsu_en
+  logic         lsu_en_valid;
 
-  assign block_data_req = ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex;
+  assign block_lsu_en = ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex;
 
-  assign data_req_valid = id_ex_pipe_i.data_req && id_ex_pipe_i.instr_valid && !block_data_req;
+  assign lsu_en_valid = id_ex_pipe_i.lsu_en && id_ex_pipe_i.instr_valid && !block_lsu_en;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
   begin
-    case (id_ex_pipe_i.data_type) // Data type 00 byte, 01 halfword, 10 word
+    case (id_ex_pipe_i.lsu_type) // Data type 00 byte, 01 halfword, 10 word
       2'b00: begin // Writing a byte
-        case (data_addr_int[1:0])
-          2'b00: data_be = 4'b0001;
-          2'b01: data_be = 4'b0010;
-          2'b10: data_be = 4'b0100;
-          2'b11: data_be = 4'b1000;
-        endcase; // case (data_addr_int[1:0])
+        case (addr_int[1:0])
+          2'b00: be = 4'b0001;
+          2'b01: be = 4'b0010;
+          2'b10: be = 4'b0100;
+          2'b11: be = 4'b1000;
+        endcase; // case (addr_int[1:0])
       end
       2'b01:
       begin // Writing a half word
         if (misaligned_st == 1'b0)
         begin // non-misaligned case
-          case (data_addr_int[1:0])
-            2'b00: data_be = 4'b0011;
-            2'b01: data_be = 4'b0110;
-            2'b10: data_be = 4'b1100;
-            2'b11: data_be = 4'b1000;
-          endcase; // case (data_addr_int[1:0])
+          case (addr_int[1:0])
+            2'b00: be = 4'b0011;
+            2'b01: be = 4'b0110;
+            2'b10: be = 4'b1100;
+            2'b11: be = 4'b1000;
+          endcase; // case (addr_int[1:0])
         end
         else
         begin // misaligned case
-          data_be = 4'b0001;
+          be = 4'b0001;
         end
       end
       default:
       begin // Writing a word
         if (misaligned_st == 1'b0)
         begin // non-misaligned case
-          case (data_addr_int[1:0])
-            2'b00: data_be = 4'b1111;
-            2'b01: data_be = 4'b1110;
-            2'b10: data_be = 4'b1100;
-            2'b11: data_be = 4'b1000;
-          endcase; // case (data_addr_int[1:0])
+          case (addr_int[1:0])
+            2'b00: be = 4'b1111;
+            2'b01: be = 4'b1110;
+            2'b10: be = 4'b1100;
+            2'b11: be = 4'b1000;
+          endcase; // case (addr_int[1:0])
         end
         else
         begin // misaligned case
-          case (data_addr_int[1:0])
-            2'b00: data_be = 4'b0000; // this is not used, but included for completeness
-            2'b01: data_be = 4'b0001;
-            2'b10: data_be = 4'b0011;
-            2'b11: data_be = 4'b0111;
-          endcase; // case (data_addr_int[1:0])
+          case (addr_int[1:0])
+            2'b00: be = 4'b0000; // this is not used, but included for completeness
+            2'b01: be = 4'b0001;
+            2'b10: be = 4'b0011;
+            2'b11: be = 4'b0111;
+          endcase; // case (addr_int[1:0])
         end
       end
-    endcase; // case (id_ex_pipe_i.data_type)
+    endcase; // case (id_ex_pipe_i.lsu_type)
   end
 
   // prepare data to be written to the memory
   // we handle misaligned accesses, half word and byte accesses and
   // register offsets here
-  assign wdata_offset = data_addr_int[1:0] - id_ex_pipe_i.data_reg_offset[1:0];
+  assign wdata_offset = addr_int[1:0] - id_ex_pipe_i.lsu_reg_offset[1:0];
   always_comb
   begin
     case (wdata_offset)
-      2'b00: data_wdata = id_ex_pipe_i.operand_c[31:0];
-      2'b01: data_wdata = {id_ex_pipe_i.operand_c[23:0], id_ex_pipe_i.operand_c[31:24]};
-      2'b10: data_wdata = {id_ex_pipe_i.operand_c[15:0], id_ex_pipe_i.operand_c[31:16]};
-      2'b11: data_wdata = {id_ex_pipe_i.operand_c[ 7:0], id_ex_pipe_i.operand_c[31: 8]};
+      2'b00: wdata = id_ex_pipe_i.operand_c[31:0];
+      2'b01: wdata = {id_ex_pipe_i.operand_c[23:0], id_ex_pipe_i.operand_c[31:24]};
+      2'b10: wdata = {id_ex_pipe_i.operand_c[15:0], id_ex_pipe_i.operand_c[31:16]};
+      2'b11: wdata = {id_ex_pipe_i.operand_c[ 7:0], id_ex_pipe_i.operand_c[31: 8]};
     endcase; // case (wdata_offset)
   end
 
@@ -188,17 +194,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     if(rst_n == 1'b0)
     begin
-      data_type_q       <= '0;
-      rdata_offset_q    <= '0;
-      data_sign_ext_q   <= 1'b0;
-      data_we_q         <= 1'b0;
+      lsu_type_q       <= '0;
+      lsu_sign_ext_q   <= 1'b0;
+      lsu_we_q         <= 1'b0;
+      rdata_offset_q   <= '0;
     end
     else if (ctrl_update) // request was granted, we wait for rvalid and can continue to WB
     begin
-      data_type_q       <= id_ex_pipe_i.data_type;
-      rdata_offset_q    <= data_addr_int[1:0];
-      data_sign_ext_q   <= id_ex_pipe_i.data_sign_ext;
-      data_we_q         <= id_ex_pipe_i.data_we;
+      lsu_type_q       <= id_ex_pipe_i.lsu_type;
+      lsu_sign_ext_q   <= id_ex_pipe_i.lsu_sign_ext;
+      lsu_we_q         <= id_ex_pipe_i.lsu_we;
+      rdata_offset_q   <= addr_int[1:0];
     end
   end
 
@@ -211,7 +217,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //          |___/                                                     //
   ////////////////////////////////////////////////////////////////////////
 
-  logic [31:0] data_rdata_ext;
+  logic [31:0] rdata_ext;
 
   logic [31:0] rdata_w_ext; // sign extension for words, actually only misaligned assembly
   logic [31:0] rdata_h_ext; // sign extension for half words
@@ -234,7 +240,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[15:0]};
         else
           rdata_h_ext = {{16{resp_rdata[15]}}, resp_rdata[15:0]};
@@ -242,7 +248,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b01:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[23:8]};
         else
           rdata_h_ext = {{16{resp_rdata[23]}}, resp_rdata[23:8]};
@@ -250,7 +256,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b10:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[31:16]};
         else
           rdata_h_ext = {{16{resp_rdata[31]}}, resp_rdata[31:16]};
@@ -258,7 +264,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b11:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[7:0], rdata_q[31:24]};
         else
           rdata_h_ext = {{16{resp_rdata[7]}}, resp_rdata[7:0], rdata_q[31:24]};
@@ -272,14 +278,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[7:0]};
         else
           rdata_b_ext = {{24{resp_rdata[7]}}, resp_rdata[7:0]};
       end
 
       2'b01: begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[15:8]};
         else
           rdata_b_ext = {{24{resp_rdata[15]}}, resp_rdata[15:8]};
@@ -287,7 +293,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b10:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[23:16]};
         else
           rdata_b_ext = {{24{resp_rdata[23]}}, resp_rdata[23:16]};
@@ -295,7 +301,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b11:
       begin
-        if (data_sign_ext_q == 1'b0)
+        if (lsu_sign_ext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[31:24]};
         else
           rdata_b_ext = {{24{resp_rdata[31]}}, resp_rdata[31:24]};
@@ -306,10 +312,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // select word, half word or byte sign extended version
   always_comb
   begin
-    case (data_type_q)
-      2'b00:   data_rdata_ext = rdata_b_ext;
-      2'b01:   data_rdata_ext = rdata_h_ext;
-      default: data_rdata_ext = rdata_w_ext;
+    case (lsu_type_q)
+      2'b00:   rdata_ext = rdata_b_ext;
+      2'b01:   rdata_ext = rdata_h_ext;
+      default: rdata_ext = rdata_w_ext;
     endcase
   end
 
@@ -321,25 +327,25 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
     else
     begin
-      if (resp_valid && !data_we_q)
+      if (resp_valid && !lsu_we_q)
       begin
         // if we have detected a misaligned access, and we are
         // currently doing the first part of this access, then
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if (id_ex_pipe_i.data_misaligned || lsu_misaligned_o)
+        if (id_ex_pipe_i.lsu_misaligned || lsu_misaligned_o)
           rdata_q <= resp_rdata;
         else
-          rdata_q <= data_rdata_ext;
+          rdata_q <= rdata_ext;
       end
     end
   end
 
   // output to register file
-  assign lsu_rdata_o = (resp_valid == 1'b1) ? data_rdata_ext : rdata_q;
+  assign lsu_rdata_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
 
-  assign misaligned_st = id_ex_pipe_i.data_misaligned;
+  assign misaligned_st = id_ex_pipe_i.lsu_misaligned;
 
   // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
   assign load_err_o      = 1'b0; // Not currently used
@@ -353,25 +359,25 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_misaligned_o = 1'b0;
 
-    if (data_req_valid && !id_ex_pipe_i.data_misaligned)
+    if (lsu_en_valid && !id_ex_pipe_i.lsu_misaligned)
     begin
-      case (id_ex_pipe_i.data_type)
+      case (id_ex_pipe_i.lsu_type)
         2'b10: // word
         begin
-          if (data_addr_int[1:0] != 2'b00)
+          if (addr_int[1:0] != 2'b00)
             lsu_misaligned_o = 1'b1;
         end
         2'b01: // half word
         begin
-          if (data_addr_int[1:0] == 2'b11)
+          if (addr_int[1:0] == 2'b11)
             lsu_misaligned_o = 1'b1;
         end
-      endcase // case (id_ex_pipe_i.data_type)
+      endcase // case (id_ex_pipe_i.lsu_type)
     end
   end
 
   // generate address from operands
-  assign data_addr_int = (id_ex_pipe_i.prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b) : id_ex_pipe_i.alu_operand_a;
+  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b) : id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   assign busy_o = (cnt_q != 2'b00) || trans_valid;
@@ -383,21 +389,21 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //
   // Assumes that corresponding response is at least 1 cycle after request
   //
-  // - Only request transaction when EX stage requires data transfer (id_ex_pipe_i.data_req), and
+  // - Only request transaction when EX stage requires data transfer (id_ex_pipe_i.lsu_en), and
   // - maximum number of outstanding transactions will not be exceeded (cnt_q < DEPTH)
   //////////////////////////////////////////////////////////////////////////////
 
-  // For last phase of misaligned transfer the address needs to be word aligned (as LSB of data_be will be set)
-  assign trans.addr  = id_ex_pipe_i.data_misaligned ? {data_addr_int[31:2], 2'b00} : data_addr_int;
-  assign trans.we    = id_ex_pipe_i.data_we;
-  assign trans.be    = data_be;
-  assign trans.wdata = data_wdata;
-  assign trans.atop  = id_ex_pipe_i.data_atop;
+  // For last phase of misaligned transfer the address needs to be word aligned (as LSB of be will be set)
+  assign trans.addr  = id_ex_pipe_i.lsu_misaligned ? {addr_int[31:2], 2'b00} : addr_int;
+  assign trans.we    = id_ex_pipe_i.lsu_we;
+  assign trans.be    = be;
+  assign trans.wdata = wdata;
+  assign trans.atop  = id_ex_pipe_i.lsu_atop;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = data_req_valid && (cnt_q < DEPTH);
+  assign trans_valid = lsu_en_valid && (cnt_q < DEPTH);
 
 
   // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
@@ -406,7 +412,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
-  // - A data request (id_ex_pipe_i.data_req) has been forwarded/accepted (trans_valid && trans_ready)
+  // - A data request has been forwarded/accepted (trans_valid && trans_ready)
   // - The LSU WB stage is available such that EX and WB can be updated in lock step
   //
   // Default (if there is not even a data request) LSU EX is signaled to be ready, else
@@ -415,13 +421,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o =                !data_req_valid  ?                                              !ctrl_fsm_i.halt_ex :
+  assign lsu_ready_ex_o =                !lsu_en_valid  ?                                                !ctrl_fsm_i.halt_ex :
                                          (cnt_q == 2'b00) ? (              trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
                                          (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
                                                             resp_valid && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = lsu_ready_ex_o && data_req_valid;
+  assign ctrl_update = lsu_ready_ex_o && lsu_en_valid;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -477,7 +483,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
-  // In case of a detected error, updates to data_addr_wb_o will be
+  // In case of a detected error, updates to lsu_addr_wb_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK: If a store following a load with bus error has dependencies on the load result,
     // it may use use an unspecified address and should be avoided for security reasons.
@@ -487,18 +493,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   always_ff @(posedge clk, negedge rst_n)
   begin
     if(rst_n == 1'b0) begin
-      data_addr_wb_o <= 32'h0;
+      lsu_addr_wb_o <= 32'h0;
     end else begin
       // Update for valid addresses if not blocked by controller
       if(!ctrl_fsm_i.block_data_addr && (trans_valid && trans_ready)) begin
-        data_addr_wb_o <= trans.addr;
+        lsu_addr_wb_o <= trans.addr;
       end
     end
   end
 
   // Validate bus_error on rvalid (WB stage)
-  assign data_err_wb_o = resp_valid && resp_err;
-
+  assign lsu_err_wb_o = resp_valid && resp_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU
@@ -509,13 +514,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign trans.memtype   = 2'b00; // memtype is assigned in the MPU, tie off.
   
   cv32e40x_mpu
-    #(.IF_STAGE(0),
-      .A_EXTENSION(A_EXTENSION),
-      .CORE_RESP_TYPE(data_resp_t),
-      .BUS_RESP_TYPE(obi_data_resp_t),
-      .CORE_REQ_TYPE(obi_data_req_t),
-      .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-      .PMA_CFG(PMA_CFG))
+    #(.IF_STAGE        (0              ),
+      .A_EXTENSION     (A_EXTENSION    ),
+      .CORE_RESP_TYPE  (data_resp_t    ),
+      .BUS_RESP_TYPE   (obi_data_resp_t),
+      .CORE_REQ_TYPE   (obi_data_req_t ),
+      .PMA_NUM_REGIONS (PMA_NUM_REGIONS),
+      .PMA_CFG         (PMA_CFG        ))
   mpu_i
     (
      .clk                  ( clk             ),
@@ -561,5 +566,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     .m_c_obi_data_if       ( m_c_obi_data_if   )
   );
+
+  // ... todo
+  assign valid_o = valid_i;
+  assign ready_o = ready_i;
 
 endmodule

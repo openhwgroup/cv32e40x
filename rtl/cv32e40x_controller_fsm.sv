@@ -64,13 +64,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     input  id_ex_pipe_t id_ex_pipe_i,        
     input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
-    input  logic        data_req_i,                 // Data interface trans_valid
+    input  logic        data_req_i,                 // Data interface trans_valid // TODO: pick better name; is this the OBI signal or the signal before the MPU?
   
     // From WB stage
-    input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
-    input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
+    input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
+    input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
     input  logic        wb_ready_i,                 // WB stage is ready
-    input  logic        data_req_wb_i,              // ALU data is written back in WB
+    input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
     // From LSU
     input  logic [1:0]  lsu_cnt_i,                  // LSU outstanding
@@ -206,20 +206,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Single step will need to finish insn in WB, including LSU
   // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
-  assign single_step_allowed = !(id_ex_pipe_i.data_misaligned && id_ex_pipe_i.instr_valid) && !data_req_q;
+  assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !data_req_q;
                              
   
   assign pending_single_step = !debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
-  assign debug_allowed = !(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q;// &&
-                          //!(id_ex_pipe_i.data_misaligned && id_ex_pipe_i.instr_valid));
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !data_req_q;// &&
+                          //!(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid));
 
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
                          (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
                          (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q)   || // Ebreak with dcsr.ebreakm==1
                          //pending_single_step                                  || // single stepping, dcsr.step==1
-                          (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.data_misaligned;
+                          (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.lsu_misaligned;
 
                            
 
@@ -235,8 +235,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions
   // will be interruptable as they did not cause bus access in EX.
-  assign interrupt_allowed = ((!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
-                              !id_ex_pipe_i.data_misaligned) ||
+  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !data_req_q &&
+                              !id_ex_pipe_i.lsu_misaligned) ||
                                exception_in_wb) && !debug_mode_q; // TODO:OK: Just use instr bus_err/mpu_err/illegal_insn
 
   //////////////
@@ -501,7 +501,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Save pc from oldest valid instruction
           if( ex_wb_pipe_i.instr_valid ) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else if( id_ex_pipe_i.instr_valid && !id_ex_pipe_i.data_misaligned) begin
+          end else if( id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin
             ctrl_fsm_o.csr_save_ex = 1'b1;
           end else if( if_id_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_id = 1'b1;
@@ -532,7 +532,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // FSM state and debug_mode
   always_ff @(posedge clk , negedge rst_n) begin
-    if ( rst_n == 1'b0 ) begin
+    if (rst_n == 1'b0) begin
       ctrl_fsm_cs <= RESET;
       debug_mode_q <= 1'b0;
     end else begin
@@ -544,13 +544,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_mode = debug_mode_q;
 
   // Detect when data_req has been clocked, and lsu insn is still in EX
-  always_ff @(posedge clk , negedge rst_n) begin
-    if ( rst_n == 1'b0 ) begin
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
       data_req_q <= 1'b0;
     end else begin
-      if(data_req_i && !ex_valid_i) begin
+      if (data_req_i && !ex_valid_i) begin
         data_req_q <= 1'b1;
-      end else if(ex_valid_i) begin
+      end else if (ex_valid_i) begin
         data_req_q <= 1'b0;
       end
     end
@@ -558,7 +558,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
-    if ( !rst_n ) begin
+    if (rst_n == 1'b0) begin
       debug_req_q <= 1'b0;
     end else begin
       if( debug_req_i ) begin
@@ -573,7 +573,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // in single step mode
   // TODO:OK May reduce to one flop after moving dret jump to WB
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
-    if ( !rst_n ) begin
+    if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
       single_step_issue_q   <= 1'b0;
     end else begin
@@ -589,7 +589,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug state FSM //
   /////////////////////
   always_ff @(posedge clk , negedge rst_n) begin
-    if ( rst_n == 1'b0 ) begin
+    if (rst_n == 1'b0) begin
       debug_fsm_cs <= HAVERESET;
     end else begin
       debug_fsm_cs <= debug_fsm_ns;

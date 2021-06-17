@@ -92,7 +92,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        perf_imiss_i,
 
-    input  logic        data_req_wb_i,
+    input  logic        lsu_en_wb_i,
 
     output logic        mret_insn_o,
     output logic        dret_insn_o,
@@ -173,28 +173,27 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   jt_mux_e     ctrl_transfer_target_mux_sel;
 
   // Multiplier Control
-  mul_opcode_e mult_operator;    // multiplication operation selection
-  logic        mult_en;          // multiplication is used instead of ALU
-  logic [1:0]  mult_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
+  mul_opcode_e mul_operator;    // multiplication operation selection
+  logic        mul_en;          // multiplication is used instead of ALU
+  logic [1:0]  mul_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
 
   // Divider control
   logic         div_en;
   div_opcode_e  div_operator;
   
-  // Data Memory Control
-  logic        data_we;
-  logic [1:0]  data_type;
-  logic        data_sign_ext;
-  logic [1:0]  data_reg_offset;
-  logic        data_req;
-  logic        data_req_raw;
-  logic [5:0]  data_atop;               // Atomic memory instruction
+  // LSU
+  logic        lsu_en;
+  logic        lsu_we;
+  logic [1:0]  lsu_type;
+  logic        lsu_sign_ext;
+  logic [1:0]  lsu_reg_offset;
+  logic        lsu_en_raw;
+  logic [5:0]  lsu_atop;                // Atomic memory instruction
+  logic        lsu_prepost_useincr;
 
-  // CSR control
+  // CSR
   logic        csr_en;
   csr_opcode_e csr_op;
-  
-  logic        prepost_useincr;
 
   logic [31:0] operand_a_fw;
   logic [31:0] operand_b_fw;
@@ -442,9 +441,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .op_c_mux_sel_o                  ( op_c_mux_sel              ),
 
     // MUL signals
-    .mult_en_o                       ( mult_en                   ),
-    .mult_operator_o                 ( mult_operator             ),
-    .mult_signed_mode_o              ( mult_signed_mode          ),
+    .mul_en_o                        ( mul_en                    ),
+    .mul_operator_o                  ( mul_operator              ),
+    .mul_signed_mode_o               ( mul_signed_mode           ),
 
     // DIV signals
     .div_en_o                        ( div_en                    ),
@@ -455,21 +454,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .rf_we_o                         ( rf_we                     ),
     .rf_we_raw_o                     ( rf_we_raw                 ),
 
-    // CSR control signals
+    // CSR interface
     .csr_en_o                        ( csr_en                    ),
     .csr_status_o                    ( csr_status_o              ),
     .csr_op_o                        ( csr_op                    ),
     .current_priv_lvl_i              ( current_priv_lvl_i        ),
 
-    // Data bus interface
-    .data_req_o                      ( data_req                  ),
-    .data_req_raw_o                  ( data_req_raw              ),
-    .data_we_o                       ( data_we                   ),
-    .prepost_useincr_o               ( prepost_useincr           ),
-    .data_type_o                     ( data_type                 ),
-    .data_sign_ext_o                 ( data_sign_ext             ),
-    .data_reg_offset_o               ( data_reg_offset           ),
-    .data_atop_o                     ( data_atop                 ),
+    // LSU interface
+    .lsu_en_o                        ( lsu_en                    ),
+    .lsu_en_raw_o                    ( lsu_en_raw                ),
+    .lsu_we_o                        ( lsu_we                    ),
+    .lsu_prepost_useincr_o           ( lsu_prepost_useincr       ),
+    .lsu_type_o                      ( lsu_type                  ),
+    .lsu_sign_ext_o                  ( lsu_sign_ext              ),
+    .lsu_reg_offset_o                ( lsu_reg_offset            ),
+    .lsu_atop_o                      ( lsu_atop                  ),
 
     // debug mode
     .debug_mode_i                    ( ctrl_fsm_i.debug_mode     ), // TODO: pass on ctrl_fsm_i
@@ -481,7 +480,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
   );
 
-  assign regfile_alu_we_id_o = rf_we_raw && !data_req_raw;
+  assign regfile_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
   
   /////////////////////////////////////////////////////////////////////////////////
@@ -500,16 +499,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.instr_valid            <= 1'b0;
       id_ex_pipe_o.alu_en                 <= '0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
-      id_ex_pipe_o.alu_operand_a          <= '0;
-      id_ex_pipe_o.alu_operand_b          <= '0;
+      id_ex_pipe_o.alu_operand_a          <= 32'b0;
+      id_ex_pipe_o.alu_operand_b          <= 32'b0;
 
-      id_ex_pipe_o.operand_c              <= '0;
+      id_ex_pipe_o.operand_c              <= 32'b0;
 
-      id_ex_pipe_o.mult_en                <= 1'b0;
-      id_ex_pipe_o.mult_operator          <= MUL_M32;
-      id_ex_pipe_o.mult_operand_a         <= '0;
-      id_ex_pipe_o.mult_operand_b         <= '0;
-      id_ex_pipe_o.mult_signed_mode       <= 2'b00;
+      id_ex_pipe_o.mul_en                 <= 1'b0;
+      id_ex_pipe_o.mul_operator           <= MUL_M32;
+      id_ex_pipe_o.mul_operand_a          <= 32'b0;
+      id_ex_pipe_o.mul_operand_b          <= 32'b0;
+      id_ex_pipe_o.mul_signed_mode        <= 2'b0;
 
       id_ex_pipe_o.div_en                 <= 1'b0;
       id_ex_pipe_o.div_operator           <= DIV_DIVU;
@@ -517,25 +516,25 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
 
-      id_ex_pipe_o.prepost_useincr        <= 1'b1;
-
       id_ex_pipe_o.csr_access             <= 1'b0;
       id_ex_pipe_o.csr_en                 <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
-      id_ex_pipe_o.data_req               <= 1'b0;
-      id_ex_pipe_o.data_we                <= 1'b0;
-      id_ex_pipe_o.data_type              <= 2'b0;
-      id_ex_pipe_o.data_sign_ext          <= 1'b0;
-      id_ex_pipe_o.data_reg_offset        <= 2'b0;
-      id_ex_pipe_o.data_misaligned        <= 1'b0;
-      id_ex_pipe_o.data_atop              <= 5'b0;
+      id_ex_pipe_o.lsu_en                 <= 1'b0;
+      id_ex_pipe_o.lsu_we                 <= 1'b0;
+      id_ex_pipe_o.lsu_type               <= 2'b0;
+      id_ex_pipe_o.lsu_sign_ext           <= 1'b0;
+      id_ex_pipe_o.lsu_reg_offset         <= 2'b0;
+      id_ex_pipe_o.lsu_misaligned         <= 1'b0;
+      id_ex_pipe_o.lsu_atop               <= 5'b0;
+      id_ex_pipe_o.lsu_prepost_useincr    <= 1'b1;
 
-      id_ex_pipe_o.pc                     <= 32'h00000000;
+      id_ex_pipe_o.pc                     <= 32'b0;
 
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
       id_ex_pipe_o.trigger_match          <= 1'b0;
+
       // Signals for exception handling
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.illegal_insn           <= 1'b0;
@@ -557,14 +556,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           // if we are using post increments, then we have to use the
           // original value of the register for the second memory access
           // => keep it stalled
-          if (id_ex_pipe_o.prepost_useincr == 1'b1)
+          if (id_ex_pipe_o.lsu_prepost_useincr)
           begin
             id_ex_pipe_o.alu_operand_a        <= operand_a_fw;
           end
 
           id_ex_pipe_o.alu_operand_b          <= 32'h4;
-          id_ex_pipe_o.prepost_useincr        <= 1'b1;
-          id_ex_pipe_o.data_misaligned        <= 1'b1;
+          id_ex_pipe_o.lsu_prepost_useincr    <= 1'b1;
+          id_ex_pipe_o.lsu_misaligned         <= 1'b1;
         end else begin // !misaligned_stall_i
           id_ex_pipe_o.alu_en                 <= alu_en;
           if (alu_en)
@@ -583,12 +582,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.div_operator         <= div_operator;
           end
           
-          id_ex_pipe_o.mult_en                <= mult_en;
-          if (mult_en) begin
-            id_ex_pipe_o.mult_operator        <= mult_operator;
-            id_ex_pipe_o.mult_signed_mode     <= mult_signed_mode;
-            id_ex_pipe_o.mult_operand_a       <= alu_operand_a;
-            id_ex_pipe_o.mult_operand_b       <= alu_operand_b;
+          id_ex_pipe_o.mul_en                 <= mul_en;
+          if (mul_en) begin
+            id_ex_pipe_o.mul_operator         <= mul_operator;
+            id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
+            id_ex_pipe_o.mul_operand_a        <= alu_operand_a;
+            id_ex_pipe_o.mul_operand_b        <= alu_operand_b;
           end
 
           id_ex_pipe_o.rf_we                  <= rf_we;
@@ -596,30 +595,31 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
           end
 
-          id_ex_pipe_o.prepost_useincr        <= prepost_useincr;
 
           id_ex_pipe_o.csr_access             <= csr_en;
           id_ex_pipe_o.csr_en                 <= csr_en;
           id_ex_pipe_o.csr_op                 <= csr_op;
 
-          id_ex_pipe_o.data_req               <= data_req;
-          if (data_req)
+          id_ex_pipe_o.lsu_en                 <= lsu_en;
+          if (lsu_en)
           begin // only needed for LSU when there is an active request
-            id_ex_pipe_o.data_we              <= data_we;
-            id_ex_pipe_o.data_type            <= data_type;
-            id_ex_pipe_o.data_sign_ext        <= data_sign_ext;
-            id_ex_pipe_o.data_reg_offset      <= data_reg_offset;
-            id_ex_pipe_o.data_atop            <= data_atop;
+            id_ex_pipe_o.lsu_we               <= lsu_we;
+            id_ex_pipe_o.lsu_type             <= lsu_type;
+            id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
+            id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
+            id_ex_pipe_o.lsu_atop             <= lsu_atop;
           end
 
-          id_ex_pipe_o.data_misaligned <= 1'b0;
+          id_ex_pipe_o.lsu_prepost_useincr    <= lsu_prepost_useincr; // todo: inside above if statement?
 
-          id_ex_pipe_o.branch_in_ex    <= ctrl_transfer_insn_o == BRANCH_COND;
+          id_ex_pipe_o.lsu_misaligned         <= 1'b0; // todo: explain
+
+          id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
 
           // Propagate signals needed for exception handling in WB
           // TODO:OK: Clock gating of pc if no existing exceptions
           //          and LSU it not in use
-          id_ex_pipe_o.pc              <= if_id_pipe_i.pc;
+          id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
 
           if (if_id_pipe_i.is_compressed) begin
             // Overwrite instruction word in case of compressed instruction
@@ -685,8 +685,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_valid_q                 <= id_valid_o && is_last;
       // ID stage counts
       mhpmevent_minstret_o       <= minstret;
-      mhpmevent_load_o           <= minstret && data_req && !data_we;
-      mhpmevent_store_o          <= minstret && data_req && data_we;
+      mhpmevent_load_o           <= minstret && lsu_en && !lsu_we;
+      mhpmevent_store_o          <= minstret && lsu_en && lsu_we;
       mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR));
       mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn_o == BRANCH_COND);
       mhpmevent_compressed_o     <= minstret && if_id_pipe_i.is_compressed;

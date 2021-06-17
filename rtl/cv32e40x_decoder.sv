@@ -34,81 +34,80 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 )
 (
   // singals running to/from controller
-  input  logic        deassert_we_i,           // deassert we, we are stalled or not active
+  input  logic        deassert_we_i,            // deassert we, we are stalled or not active
 
-  output logic        illegal_insn_o,          // illegal instruction encountered
-  output logic        ebrk_insn_o,             // trap instruction encountered
+  output logic        illegal_insn_o,           // illegal instruction encountered
+  output logic        ebrk_insn_o,              // trap instruction encountered
 
-  output logic        mret_insn_o,             // return from exception instruction encountered (M)
-  output logic        dret_insn_o,             // return from debug (M)
+  output logic        mret_insn_o,              // return from exception instruction encountered (M)
+  output logic        dret_insn_o,              // return from debug (M)
 
-  output logic        ecall_insn_o,            // environment call (syscall) instruction encountered
-  output logic        wfi_insn_o,              // pipeline flush is requested
+  output logic        ecall_insn_o,             // environment call (syscall) instruction encountered
+  output logic        wfi_insn_o,               // pipeline flush is requested
 
-  output logic        fencei_insn_o,           // fence.i instruction
+  output logic        fencei_insn_o,            // fence.i instruction
 
   // from IF/ID pipeline
-  input  logic [31:0] instr_rdata_i,           // instruction read from instr memory/cache
-  input  logic        illegal_c_insn_i,        // compressed instruction decode failed
+  input  logic [31:0] instr_rdata_i,            // instruction read from instr memory/cache
+  input  logic        illegal_c_insn_i,         // compressed instruction decode failed
 
   // ALU signals
-  output logic        alu_en_o,                // ALU enable
+  output logic        alu_en_o,                 // ALU enable
   output alu_opcode_e alu_operator_o, // ALU operation selection
-  output alu_op_a_mux_e alu_op_a_mux_sel_o,      // operand a selection: reg value, PC, immediate or zero
-  output alu_op_b_mux_e alu_op_b_mux_sel_o,      // operand b selection: reg value or immediate
-  output op_c_mux_e     op_c_mux_sel_o,          // operand c selection: reg value or jump target
-  output imm_a_mux_e    imm_a_mux_sel_o,         // immediate selection for operand a
-  output imm_b_mux_e    imm_b_mux_sel_o,         // immediate selection for operand b
+  output alu_op_a_mux_e alu_op_a_mux_sel_o,     // operand a selection: reg value, PC, immediate or zero
+  output alu_op_b_mux_e alu_op_b_mux_sel_o,     // operand b selection: reg value or immediate
+  output op_c_mux_e     op_c_mux_sel_o,         // operand c selection: reg value or jump target
+  output imm_a_mux_e    imm_a_mux_sel_o,        // immediate selection for operand a
+  output imm_b_mux_e    imm_b_mux_sel_o,        // immediate selection for operand b
 
   // MUL related control signals
-  output mul_opcode_e mult_operator_o,         // Multiplication operation selection
-  output logic        mult_en_o,               // Perform integer multiplication
-  output logic [1:0]  mult_signed_mode_o,      // Multiplication in signed mode
+  output mul_opcode_e mul_operator_o,           // Multiplication operation selection
+  output logic        mul_en_o,                 // Perform integer multiplication
+  output logic [1:0]  mul_signed_mode_o,        // Multiplication in signed mode
   
   // DIV related control signals
-  output div_opcode_e  div_operator_o,         // Division operation selection
-  output logic         div_en_o,               // Perform division
+  output div_opcode_e  div_operator_o,          // Division operation selection
+  output logic         div_en_o,                // Perform division
 
   // Register file related signals
-  output logic        rf_we_o,                 // Write enable for register file
-  output logic        rf_we_raw_o,             // Write enable for register file without deassert
+  output logic        rf_we_o,                  // Write enable for register file
+  output logic        rf_we_raw_o,              // Write enable for register file without deassert
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
 
-  // CSR manipulation
-  output logic        csr_en_o,                // enable access to CSR
-  output logic        csr_status_o,            // access to xstatus CSR
-  output csr_opcode_e csr_op_o,                // operation to perform on CSR
-  input  PrivLvl_t    current_priv_lvl_i,      // The current privilege level
+  // CSR
+  output logic        csr_en_o,                 // enable access to CSR
+  output logic        csr_status_o,             // access to xstatus CSR
+  output csr_opcode_e csr_op_o,                 // operation to perform on CSR
+  input  PrivLvl_t    current_priv_lvl_i,       // The current privilege level // todo: proper name
 
-  // LD/ST unit signals
-  output logic        data_req_o,              // start transaction to data memory
-  output logic        data_req_raw_o,
-  output logic        data_we_o,               // data memory write enable
-  output logic        prepost_useincr_o,       // when not active bypass the alu result for address calculation
-  output logic [1:0]  data_type_o,             // data type on data memory: byte, half word or word
-  output logic        data_sign_ext_o,         // sign extension on read data from data memory
-  output logic [1:0]  data_reg_offset_o,       // offset in byte inside register for stores
-  output logic [5:0]  data_atop_o,             // Atomic memory access
+  // LSU
+  output logic        lsu_en_o,                 // start transaction to data memory
+  output logic        lsu_en_raw_o,
+  output logic        lsu_we_o,                 // data memory write enable
+  output logic        lsu_prepost_useincr_o,    // when not active bypass the alu result for address calculation
+  output logic [1:0]  lsu_type_o,               // data type on data memory: byte, half word or word
+  output logic        lsu_sign_ext_o,           // sign extension on read data from data memory
+  output logic [1:0]  lsu_reg_offset_o,         // offset in byte inside register for stores
+  output logic [5:0]  lsu_atop_o,               // Atomic memory access
 
-  input  logic        debug_mode_i,            // processor is in debug mode
-  input  logic        debug_wfi_no_sleep_i,    // do not let WFI cause sleep
+  input  logic        debug_mode_i,             // processor is in debug mode
+  input  logic        debug_wfi_no_sleep_i,     // do not let WFI cause sleep
 
   // jump/branches
-  output logic [1:0]  ctrl_transfer_insn_o,      // control transfer instructio is decoded
-  output logic [1:0]  ctrl_transfer_insn_raw_o,  // control transfer instruction without deassert
-  output jt_mux_e     ctrl_transfer_target_mux_sel_o        // jump target selection
-
+  output logic [1:0]  ctrl_transfer_insn_o,     // control transfer instructio is decoded
+  output logic [1:0]  ctrl_transfer_insn_raw_o, // control transfer instruction without deassert
+  output jt_mux_e     ctrl_transfer_target_mux_sel_o // jump target selection
 );
 
   // write enable/request control
   logic       rf_we;
-  logic       data_req;
+  logic       lsu_en;
   logic [1:0] ctrl_transfer_insn;
 
   csr_opcode_e csr_op;
 
   logic       alu_en;
-  logic       mult_en;
+  logic       mul_en;
   logic       div_en;
 
   decoder_ctrl_t decoder_i_ctrl;
@@ -189,25 +188,25 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign op_c_mux_sel_o                 = decoder_ctrl_mux.op_c_mux_sel;
   assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel;                 
   assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel;                 
-  assign mult_operator_o                = decoder_ctrl_mux.mult_operator;               
-  assign mult_en                        = decoder_ctrl_mux.mult_en;
-  assign mult_signed_mode_o             = decoder_ctrl_mux.mult_signed_mode;
+  assign mul_operator_o                 = decoder_ctrl_mux.mul_operator;               
+  assign mul_en                         = decoder_ctrl_mux.mul_en;
+  assign mul_signed_mode_o              = decoder_ctrl_mux.mul_signed_mode;
   assign div_en                         = decoder_ctrl_mux.div_en;
   assign div_operator_o                 = decoder_ctrl_mux.div_operator;
   assign rf_re_o                        = decoder_ctrl_mux.rf_re;                         
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
-  assign prepost_useincr_o              = decoder_ctrl_mux.prepost_useincr;               
   assign csr_en_o                       = decoder_ctrl_mux.csr_en;
   assign csr_status_o                   = decoder_ctrl_mux.csr_status;
   assign csr_op                         = decoder_ctrl_mux.csr_op;                          
   assign mret_insn_o                    = decoder_ctrl_mux.mret_insn;                     
   assign dret_insn_o                    = decoder_ctrl_mux.dret_insn;                     
-  assign data_req                       = decoder_ctrl_mux.data_req;                        
-  assign data_we_o                      = decoder_ctrl_mux.data_we;                       
-  assign data_type_o                    = decoder_ctrl_mux.data_type;                     
-  assign data_sign_ext_o                = decoder_ctrl_mux.data_sign_ext;
-  assign data_reg_offset_o              = decoder_ctrl_mux.data_reg_offset;               
-  assign data_atop_o                    = decoder_ctrl_mux.data_atop;                     
+  assign lsu_en                         = decoder_ctrl_mux.lsu_en;                        
+  assign lsu_we_o                       = decoder_ctrl_mux.lsu_we;                       
+  assign lsu_type_o                     = decoder_ctrl_mux.lsu_type;                     
+  assign lsu_sign_ext_o                 = decoder_ctrl_mux.lsu_sign_ext;
+  assign lsu_reg_offset_o               = decoder_ctrl_mux.lsu_reg_offset;               
+  assign lsu_atop_o                     = decoder_ctrl_mux.lsu_atop;                     
+  assign lsu_prepost_useincr_o          = decoder_ctrl_mux.lsu_prepost_useincr;               
   assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn;        
   assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn;                     
   assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn;                    
@@ -216,16 +215,15 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
 
   assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;
-  assign mult_en_o            = deassert_we_i ? 1'b0        : mult_en;
+  assign mul_en_o             = deassert_we_i ? 1'b0        : mul_en;
   assign div_en_o             = deassert_we_i ? 1'b0        : div_en;
-  assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
-  assign data_req_o           = deassert_we_i ? 1'b0        : data_req;
+  assign lsu_en_o             = deassert_we_i ? 1'b0        : lsu_en;
   assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op;
+  assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
   assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
 
   assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
   assign rf_we_raw_o              = rf_we;
-  assign data_req_raw_o           = data_req;
-
+  assign lsu_en_raw_o             = lsu_en;
   
 endmodule // cv32e40x_decoder

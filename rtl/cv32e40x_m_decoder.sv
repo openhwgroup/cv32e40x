@@ -53,26 +53,26 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
           // supported RV32M instructions
           {7'b000_0001, 3'b000}: begin // mul
             decoder_ctrl_o.illegal_insn  = 1'b0;
-            decoder_ctrl_o.mult_en       = 1'b1;
-            decoder_ctrl_o.mult_operator = MUL_M32;
+            decoder_ctrl_o.mul_en        = 1'b1;
+            decoder_ctrl_o.mul_operator  = MUL_M32;
           end
           {7'b000_0001, 3'b001}: begin // mulh
             decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mult_signed_mode = 2'b11;
-            decoder_ctrl_o.mult_en          = 1'b1;
-            decoder_ctrl_o.mult_operator    = MUL_H;
+            decoder_ctrl_o.mul_signed_mode  = 2'b11;
+            decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_operator     = MUL_H;
           end
           {7'b000_0001, 3'b010}: begin // mulhsu
             decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mult_signed_mode = 2'b01;
-            decoder_ctrl_o.mult_en          = 1'b1;
-            decoder_ctrl_o.mult_operator    = MUL_H;
+            decoder_ctrl_o.mul_signed_mode  = 2'b01;
+            decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_operator     = MUL_H;
           end
           {7'b000_0001, 3'b011}: begin // mulhu
             decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mult_signed_mode = 2'b00;
-            decoder_ctrl_o.mult_en          = 1'b1;
-            decoder_ctrl_o.mult_operator    = MUL_H;
+            decoder_ctrl_o.mul_signed_mode  = 2'b00;
+            decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_operator     = MUL_H;
           end
           {7'b000_0001, 3'b100}: begin // div
             decoder_ctrl_o.illegal_insn     = 1'b0;
