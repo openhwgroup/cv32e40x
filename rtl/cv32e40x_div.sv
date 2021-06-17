@@ -204,6 +204,8 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
         if (!valid_i) begin
           next_state = DIV_IDLE;
+          ready_o    = 1'b1;
+          valid_o    = 1'b0;
         end
         else begin
           
@@ -228,6 +230,8 @@ module cv32e40x_div import cv32e40x_pkg::*;
       DIV_DUMMY: begin
         if (!valid_i) begin
           next_state = DIV_IDLE;
+          ready_o    = 1'b1;
+          valid_o    = 1'b0;
         end
         else if (cnt_q_is_zero) begin
             next_state = DIV_FINISH;
@@ -235,11 +239,17 @@ module cv32e40x_div import cv32e40x_pkg::*;
       end
       /////////////////////////////////
       DIV_FINISH: begin
-        valid_o = 1'b1;
-        
-        if(ready_i || !valid_i) begin
-          ready_o     = 1'b1;
-          next_state  = DIV_IDLE;
+        if (!valid_i) begin
+          next_state = DIV_IDLE;
+          ready_o    = 1'b1;
+          valid_o    = 1'b0;
+        end else begin
+          valid_o = 1'b1;
+          
+          if(ready_i) begin
+            ready_o     = 1'b1;
+            next_state  = DIV_IDLE;
+          end
         end
       end
       /////////////////////////////////

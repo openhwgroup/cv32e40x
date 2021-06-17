@@ -318,6 +318,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mult_ready && div_ready && lsu_ready_ex_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
   // TODO: ex_valid_o shouldn't have to depend on wb_ready_i
+  // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
   assign ex_valid_o = ((id_ex_pipe_i.alu_en  && alu_valid ) || 
                        (id_ex_pipe_i.mult_en && mult_valid) ||
                        (id_ex_pipe_i.div_en  && div_valid ) || 

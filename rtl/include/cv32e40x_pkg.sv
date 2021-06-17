@@ -131,7 +131,7 @@ typedef enum logic [2:0] { HAVERESET = 3'b001, RUNNING = 3'b010, HALTED = 3'b100
 
 typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 
-typedef enum logic [1:0] {ALBL, ALBH, AHBL, AHBH} mult_state_e;
+typedef enum logic [1:0] {MUL_ALBL, MUL_ALBH, MUL_AHBL, MUL_AHBH} mult_state_e;
 
 // ALU divider FSM state encoding
 typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_DUMMY, DIV_FINISH} div_state_e;
