@@ -490,8 +490,11 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
           endcase // case (instr_rdata_i[31:20])
 
-        end
+          if (decoder_ctrl_o.illegal_insn) begin
+            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+          end
 
+        end
       end
 
       default: begin
