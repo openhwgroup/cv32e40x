@@ -113,6 +113,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_state_next  = mulh_state;
     ready_o          = 1'b0;
     valid_o          = 1'b0;
+    mulh_acc_next    = 33'h00000000;
     
     case (mulh_state)
       ALBL: begin
@@ -122,6 +123,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
             // Multicycle multiplication
             mulh_shift      = 1'b1;
             ready_o         = 1'b0;
+            mulh_acc_next   = (mulh_shift) ? result_shifted[32:0] : result[32:0];
             mulh_state_next = ALBH;
           end
           else begin
@@ -132,23 +134,34 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       ALBH: begin
-        mulh_a           = mulh_al;
-        mulh_b           = mulh_bh;
-        mulh_state_next  = AHBL;
+        if(!valid_i) begin
+          mulh_state_next = ALBL;
+        end else begin
+          mulh_a           = mulh_al;
+          mulh_b           = mulh_bh;
+          mulh_acc_next    = (mulh_shift) ? result_shifted[32:0] : result[32:0];
+          mulh_state_next  = AHBL;
+        end
       end
 
       AHBL: begin
-        mulh_shift       = 1'b1;
-        mulh_a           = mulh_ah;
-        mulh_b           = mulh_bl;
-        mulh_state_next  = AHBH;
+        if(!valid_i) begin
+          mulh_state_next = ALBL;
+        end else begin
+          mulh_shift       = 1'b1;
+          mulh_a           = mulh_ah;
+          mulh_b           = mulh_bl;
+          mulh_acc_next    = (mulh_shift) ? result_shifted[32:0] : result[32:0];
+          mulh_state_next  = AHBH;
+        end
       end
 
       AHBH: begin
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
         valid_o           = 1'b1;
-        if (ready_i) begin
+        mulh_acc_next     = ready_i ? '0 : mulh_acc;
+        if (ready_i || !valid_i) begin
           ready_o         = 1'b1;
           mulh_state_next = ALBL;
         end
@@ -157,26 +170,19 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     endcase
   end // always_comb
 
-  // TODO: move logic into FSM. And implement abort if valid_i goes low mid multiplication (similar to divider FSM).
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
       mulh_acc     <=  '0;
       mulh_state   <= ALBL;
-    end else if (valid_i && (operator_i == MUL_H)) begin
-      if (!valid_o) begin
-        mulh_acc   <= mulh_acc_next;
-      end else if (!ready_i) begin
-        mulh_acc   <= mulh_acc;
-      end else begin
-        mulh_acc   <=  '0;
-      end
+    end else begin
+      mulh_acc     <= mulh_acc_next;
       mulh_state   <= mulh_state_next;
     end
   end
 
   // MULH Shift Mux
   assign result_shifted = $signed(result) >>> 16;
-  assign mulh_acc_next  = (mulh_shift) ? result_shifted[32:0] : result[32:0];
+  //assign mulh_acc_next  = (mulh_shift) ? result_shifted[32:0] : result[32:0];
 
   ///////////////////////////
   //   32-bit multiplier   //
