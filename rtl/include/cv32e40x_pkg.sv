@@ -115,9 +115,9 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [4:0] { RESET, BOOT_SET, SLEEP, WAIT_SLEEP, FIRST_FETCH,
-                   DECODE, FLUSH_EX, FLUSH_WB, XRET_JUMP,
-                   DBG_TAKEN_ID, DBG_TAKEN_IF, DBG_FLUSH, DBG_WAIT_BRANCH} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
+
+
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -131,7 +131,7 @@ typedef enum logic [2:0] { HAVERESET = 3'b001, RUNNING = 3'b010, HALTED = 3'b100
 
 typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 
-typedef enum logic [1:0] {ALBL, ALBH, AHBL, AHBH} mult_state_e;
+typedef enum logic [1:0] {MUL_ALBL, MUL_ALBH, MUL_AHBL, MUL_AHBH} mult_state_e;
 
 // ALU divider FSM state encoding
 typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_DUMMY, DIV_FINISH} div_state_e;
@@ -953,9 +953,13 @@ typedef struct packed {
   // Branch target
   logic         branch_in_ex;
 
+  // Trigger match on insn
+  logic         trigger_match;
+
   // Signals for exception handling etc passed on for evaluation in WB stage
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
+  logic         instr_valid;      // instruction in EX is valid
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;
@@ -973,9 +977,20 @@ typedef struct packed {
   logic [31:0]  rf_wdata;
   logic         data_req;
 
+  // CSR signals
+  logic         csr_en;
+  logic         csr_access;
+  csr_opcode_e  csr_op;
+  logic [11:0]  csr_addr;
+  logic [31:0]  csr_wdata;
+
+  // Trigger match on insn
+  logic         trigger_match;
+
   // Signals for exception handling etc
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status
+  logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
   logic         ebrk_insn;
   logic         wfi_insn;
@@ -987,6 +1002,58 @@ typedef struct packed {
 
 } ex_wb_pipe_t;
 
+// Controller FSM outputs
+typedef struct packed {
+  logic        ctrl_busy;             // Core is busy processing instructions
+  logic        is_decoding;           // Core is decoding a valid instruction
+
+  // to IF stage
+  logic        instr_req;             // Start fetching instructions
+  logic        pc_set;                // jump to address set by pc_mux
+  pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
+  exc_pc_mux_e exc_pc_mux;            // Selects target PC for exception
+
+  // To WB stage
+  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+  logic        irq_ack;               // irq has been taken 
+  logic [4:0]  irq_id;                // id of taken irq (to toplevel pins)
+  logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+
+  // Debug outputs
+  logic        debug_mode;           // Flag signalling we are in debug mode
+  logic [2:0]  debug_cause;          // cause of debug entry
+  logic        debug_csr_save;       // Update debug CSRs
+  logic        debug_wfi_no_sleep;   // Debug prevents core from sleeping after WFI
+  logic        debug_havereset;      // Signal to external debugger that we have reset
+  logic        debug_running;        // Signal to external debugger that we are running (not in debug)
+  logic        debug_halted;         // Signal to external debugger that we are halted (in debug mode)
+
+  // Wakeup Signal to sleep unit
+  logic        wake_from_sleep;       // Wakeup (due to irq or debug)
+
+  // CSR signals
+  logic        csr_save_if;         // Save PC from IF stage
+  logic        csr_save_id;         // Save PC from ID stage
+  logic        csr_save_ex;         // Save PC from EX stage (currently unused)
+  logic        csr_save_wb;         // Save PC from WB stage
+  logic [5:0]  csr_cause;           // CSR cause (saves to mcause CSR)
+  logic        csr_restore_mret; // Restore CSR due to mret
+  logic        csr_restore_dret; // Restore CSR due to dret
+  logic        csr_save_cause;      // Update CSRs
+
+  // Halt signals
+  logic        halt_if; // Halt IF stage
+  logic        halt_id; // Halt ID stage
+  logic        halt_ex; // Halt EX stage
+  logic        halt_wb; // Halt WB stage
+
+  // Kill signals
+  logic        kill_if; // Kill IF stage
+  logic        kill_id; // Kill ID stage
+  logic        kill_ex; // Kill EX stage
+  logic        kill_wb; // Kill WB stage
+
+} ctrl_fsm_t;
   
   
   ///////////////////////////

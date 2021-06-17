@@ -1,31 +1,31 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
-// Copyright and related rights are licensed under the Solderpad Hardware
-// License, Version 0.51 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License at
-// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
-// or agreed to in writing, software, hardware and materials distributed under
-// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
+// Copyright 202[x] Silicon Labs, Inc.
+//
+// This file, and derivatives thereof are licensed under the
+// Solderpad License, Version 2.0 (the "License");
+// Use of this file means you agree to the terms and conditions
+// of the license and are in full compliance with the License.
+// You may obtain a copy of the License at
+//
+// https://solderpad.org/licenses/SHL-2.0/
+//
+// Unless required by applicable law or agreed to in writing, software
+// and hardware implementations thereof
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESSED OR IMPLIED.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:       Matthias Baer - baermatt@student.ethz.ch                   //
+// Engineer:       Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Additional contributions by:                                               //
-//                 Igor Loi - igor.loi@unibo.it                               //
-//                 Andreas Traber - atraber@student.ethz.ch                   //
-//                 Sven Stucki - svstucki@student.ethz.ch                     //
-//                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
-//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
-//                 Robert Balas - balasr@iis.ee.ethz.ch                       //
-//                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
-//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
-// Design Name:    Main controller                                            //
-// Project Name:   RI5CY                                                      //
+// Design Name:    cv32e40x_controller_fsm                                 //
+// Project Name:   CV32E40X                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Main CPU controller of the processor                       //
+// Description:    FSM of the pipeline controller                             //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,88 +36,64 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     input  logic        clk_ungated_i,              // Ungated clock
     input  logic        rst_n,
   
-    input  logic        fetch_enable_i,             // Start the decoding
-    output logic        ctrl_busy_o,                // Core is busy processing instructions
-    output logic        is_decoding_o,              // Core is in decoding state
-
+    input  logic        fetch_enable_i,             // Start executing
+    
     // From bypass logic
     input  logic        jr_stall_i,                 // There is a jr-stall pending
-    // to IF stage
-    output logic        instr_req_o,                // Start fetching instructions
-    output logic        pc_set_o,                   // jump to address set by pc_mux
-    output pc_mux_e     pc_mux_o,                   // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
-    output exc_pc_mux_e exc_pc_mux_o,               // Selects target PC for exception
+
+    // From IF stage
+    input  logic        if_valid_i,
+    input  logic        if_ready_i,
+    
   
     // From ID stage
     input  logic        id_ready_i,                 // ID stage is ready
     input  if_id_pipe_t if_id_pipe_i,
+    input  logic        mret_id_i,                  // mret in ID stage
+    input  logic        dret_id_i,                  // dret in ID stage
+
+    // From WB stage
+    input  ex_wb_pipe_t ex_wb_pipe_i,
 
     // From decoder
-    input  logic        illegal_insn_i,             // decoder encountered an invalid instruction
-    input  logic        ecall_insn_i,               // decoder encountered an ecall instruction
-    input  logic        mret_insn_i,                // decoder encountered an mret instruction
-    input  logic        dret_insn_i,                // decoder encountered an dret instruction
-    input  logic        wfi_insn_i,                 // decoder wants to execute a WFI
-    input  logic        ebrk_insn_i,                // decoder encountered an ebreak instruction
-    input  logic        fencei_insn_i,              // decoder encountered an fence.i instruction
     input  logic        csr_status_i,               // decoder encountered an csr status instruction
     input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
     input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
     // From EX stage
-    input  logic        branch_taken_ex_i,          // branch taken signal from EX ALU
+    input  id_ex_pipe_t id_ex_pipe_i,        
+    input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
     input  logic        ex_valid_i,                 // EX stage is done
+    input  logic        data_req_i,                 // Data interface trans_valid
   
     // From WB stage
     input  logic        data_err_wb_i,              // LSU caused bus_error in WB stage
     input  logic [31:0] data_addr_wb_i,             // Current LSU address in WB stage
     input  logic        wb_ready_i,                 // WB stage is ready
-    input  logic        data_req_wb_i,               // ALU data is written back in WB
+    input  logic        data_req_wb_i,              // ALU data is written back in WB
 
-    // To WB stage
-    output logic        block_data_addr_o,          // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+    // From LSU
+    input  logic [1:0]  lsu_cnt_i,                  // LSU outstanding
+    input  logic        data_rvalid_i,
 
     // Interrupt Controller Signals
-    input  logic        irq_req_ctrl_i,         // irq requst
-    input  logic [4:0]  irq_id_ctrl_i,          // irq id
-    input  logic        irq_wu_ctrl_i,          // irq wakeup control
-    input  PrivLvl_t    current_priv_lvl_i,     // Current running priviledge level
+    input  logic        irq_req_ctrl_i,             // irq requst
+    input  logic [4:0]  irq_id_ctrl_i,              // irq id
+    input  logic        irq_wu_ctrl_i,              // irq wakeup control
+    input  PrivLvl_t    current_priv_lvl_i,         // Current running priviledge level
   
-    output logic        irq_ack_o,              // irq has been taken 
-    output logic [4:0]  irq_id_o,               // id of taken irq (to toplevel pins)
-  
-    output logic [4:0]  exc_cause_o,            // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
-  
-    // Debug Signal
-    output logic         debug_mode_o,           // Flag signalling we are in debug mode
-    output logic [2:0]   debug_cause_o,          // cause of debug entry
-    output logic         debug_csr_save_o,       // Update debug CSRs
-    input  logic         debug_req_i,            // External debug request
-    input  logic         debug_single_step_i,    // dcsr.step from cs_registers
-    input  logic         debug_ebreakm_i,        // dcsr.ebreakm from cs_registers
-    input  logic         debug_trigger_match_i,        // Trigger match from cs_registers
-    output logic         debug_wfi_no_sleep_o,   // Debug prevents core from sleeping after WFI
-    output logic         debug_havereset_o,      // Signal to external debugger that we have reset
-    output logic         debug_running_o,        // Signal to external debugger that we are running (not in debug)
-    output logic         debug_halted_o,         // Signal to external debugger that we are halted (in debug mode)
-  
-    // Wakeup Signal
-    output logic        wake_from_sleep_o,       // Wakeup (due to irq or debug)
-  
-    // CSR signals
-    output logic        csr_save_if_o,         // Save PC from IF stage
-    output logic        csr_save_id_o,         // Save PC from ID stage
-    output logic        csr_save_ex_o,         // Save PC from EX stage (currently unused)
-    output logic [5:0]  csr_cause_o,           // CSR cause (saves to mcause CSR)
-    output logic        csr_restore_mret_id_o, // Restore CSR due to mret
-    output logic        csr_restore_dret_id_o, // Restore CSR due to dret
-    output logic        csr_save_cause_o,      // Update CSRs
-  
+    // From cs_registers
+    input logic  [1:0]  mtvec_mode_i,           
+    input  logic        debug_single_step_i,        // dcsr.step from cs_registers
+    input  logic        debug_ebreakm_i,            // dcsr.ebreakm from cs_registers
+    input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
+
+    // Toplevel input
+    input  logic        debug_req_i,                // External debug request
     
-    // Halt signals
-    output logic        halt_if_o, // Halt IF stage
-    output logic        halt_id_o,  // Halt ID stage
-    output logic        kill_if_o  // Kill IF stage
+    // All controller FSM outputs
+    output ctrl_fsm_t    ctrl_fsm_o
+    
   );
 
    // FSM state encoding
@@ -126,792 +102,506 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug state
   debug_state_e debug_fsm_cs, debug_fsm_ns;
 
-  logic jump_done, jump_done_q, jump_in_dec, branch_in_id;
-
-
-
-  logic debug_mode_q, debug_mode_n;
-  logic ebrk_force_debug_mode;
-  logic illegal_insn_q, illegal_insn_n;
-  logic instr_mpu_err, instr_mpu_err_q, instr_mpu_err_n;
-  logic debug_req_entry_q, debug_req_entry_n;
-  logic debug_force_wakeup_q, debug_force_wakeup_n;
-
+  // Sticky version of debug_req_i
   logic debug_req_q;
-  logic debug_req_pending;
 
-  // qualify wfi vs nosleep locally 
-  logic wfi_active;
+  // Debug mode
+  logic debug_mode_n;
+  logic debug_mode_q;
 
-  // Keep track of bus error on instruction side
-  logic instr_bus_err_n, instr_bus_err_q;
+  // Signals used for halting IF after first instruction
+  // during single step
+  // TODO:OK May reduce to a single bit after moving dret jump to WB
+  logic single_step_halt_if_n;
+  logic single_step_halt_if_q; // Halting IF after issuing one insn in single step mode
+  logic single_step_issue_n;
+  logic single_step_issue_q; // Signals when a single step fetch is expected
 
-  // Combined instr_err and instr_mpu_err
-  logic instr_invalidate;
-
-  // signals from if_id_pipe struct
-  logic instr_valid;
-  logic instr_err;
   
-  // Instruction fetch MPU error
-  assign instr_mpu_err = if_id_pipe_i.instr.mpu_status != MPU_OK;
-  assign instr_valid   = if_id_pipe_i.instr_valid;
-  assign instr_err     = if_id_pipe_i.instr.bus_resp.err;
-  assign instr_invalidate = instr_mpu_err || instr_err;
+  // Events in ID
+  logic jump_taken_id;
 
-  // TODO:OK: Handle data side bus errors
-  // Assert block_data_addr_o on bus error to prevent updates before NMI is taken
-  // release after NMI has been taken
-  // data_addr_wb_i is to be stored in mtval when an error occurs
-  // Tie off block_* for now
-  assign block_data_addr_o = 1'b0;
-  // data_err_wb_i
-  // data_addr_wb_i
+  // Events in EX
+  logic branch_taken_ex;
   
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  //   ____ ___  ____  _____    ____ ___  _   _ _____ ____   ___  _     _     _____ ____    //
-  //  / ___/ _ \|  _ \| ____|  / ___/ _ \| \ | |_   _|  _ \ / _ \| |   | |   | ____|  _ \   //
-  // | |  | | | | |_) |  _|   | |  | | | |  \| | | | | |_) | | | | |   | |   |  _| | |_) |  //
-  // | |__| |_| |  _ <| |___  | |__| |_| | |\  | | | |  _ <| |_| | |___| |___| |___|  _ <   //
-  //  \____\___/|_| \_\_____|  \____\___/|_| \_| |_| |_| \_\\___/|_____|_____|_____|_| \_\  //
-  //                                                                                        //
-  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Events in WB
+  logic exception_in_wb;
+  logic [4:0] exception_cause_wb;
+  logic wfi_in_wb;
+  logic fencei_in_wb;
+  logic mret_in_wb;
+  logic dret_in_wb;
+  logic ebreak_in_wb;
+  logic trigger_match_in_wb;
+  logic pending_nmi;
+  logic pending_debug;
+  logic pending_single_step;
+  logic pending_interrupt;
 
-  always_comb
-  begin
+  // Flags for allowing interrupt and debug
+  // TODO:OK Add flag for exception_allowed
+  logic interrupt_allowed;
+  logic debug_allowed;
+  logic single_step_allowed;
+  
+// Data request has been clocked without insn moving to WB
+  logic data_req_q;
+
+  logic [4:0] exc_cause; // id of taken interrupt
+
+  // Mux selector for vectored IRQ PC
+  assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
+    
+  assign ctrl_fsm_o.is_decoding = 1'b1; //TODO: May be removed, never driven to 1'b0
+  
+  ////////////////////////////////////////////////////////////////////
+
+  // ID stage
+  // A jump is taken in ID for jump instructions, and also for mret instructions
+  assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
+                        mret_id_i) && if_id_pipe_i.instr_valid && !jr_stall_i;
+
+  // EX stage 
+  // Branch taken for valid branch instructions in EX with valid decision
+  assign branch_taken_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
+
+  // TODO:OK: Add missing exception types
+  // Exception in WB if the following evaluates to 1
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK) ||
+                            ex_wb_pipe_i.instr.bus_resp.err           ||
+                            ex_wb_pipe_i.illegal_insn                 ||
+                            ex_wb_pipe_i.ecall_insn                   ||
+                            ex_wb_pipe_i.ebrk_insn) && ex_wb_pipe_i.instr_valid;
+                            
+                            
+  // Set exception cause
+  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err         ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn               ? EXC_CAUSE_ILLEGAL_INSN    :
+                              ex_wb_pipe_i.ecall_insn                 ? EXC_CAUSE_ECALL_MMODE     :
+                              EXC_CAUSE_BREAKPOINT;
+
+  // wfi in wb
+  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
+
+  // fencei in wb
+  assign fencei_in_wb = ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid;
+
+  // mret in wb
+  assign mret_in_wb = ex_wb_pipe_i.mret_insn && ex_wb_pipe_i.instr_valid;
+
+  // dret in wb
+  assign dret_in_wb = ex_wb_pipe_i.dret_insn && ex_wb_pipe_i.instr_valid;
+
+  // ebreak in wb
+  assign ebreak_in_wb = ex_wb_pipe_i.ebrk_insn && ex_wb_pipe_i.instr_valid;
+
+  // Trigger match in wb
+  assign trigger_match_in_wb = ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid;
+
+  // Pending NMI
+  assign pending_nmi = 1'b0;
+
+  // Debug //
+
+  // Single step will need to finish insn in WB, including LSU
+  // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
+  assign single_step_allowed = !(id_ex_pipe_i.data_misaligned && id_ex_pipe_i.instr_valid) && !data_req_q;
+                             
+  
+  assign pending_single_step = !debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid;
+
+  // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
+  assign debug_allowed = !(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q;// &&
+                          //!(id_ex_pipe_i.data_misaligned && id_ex_pipe_i.instr_valid));
+
+  assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
+                         (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
+                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q)   || // Ebreak with dcsr.ebreakm==1
+                         //pending_single_step                                  || // single stepping, dcsr.step==1
+                          (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.data_misaligned;
+
+                           
+
+  assign ctrl_fsm_o.debug_cause = (trigger_match_in_wb && !debug_mode_q)          ? DBG_CAUSE_TRIGGER :
+                                  (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK  :
+                                  ((debug_req_i || debug_req_q) && !debug_mode_q) ? DBG_CAUSE_HALTREQ :
+                                  DBG_CAUSE_STEP;
+
+  // TODO:OK: May allow interuption of Zce to idempotent memories
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
+
+  // Allow interrupts to be taken only if there is no data request in WB, 
+  // and no data_req has been clocked from EX to environment.
+  // LSU instructions which were suppressed due to previous exceptions
+  // will be interruptable as they did not cause bus access in EX.
+  assign interrupt_allowed = ((!(ex_wb_pipe_i.data_req && ex_wb_pipe_i.instr_valid) && !data_req_q &&
+                              !id_ex_pipe_i.data_misaligned) ||
+                               exception_in_wb) && !debug_mode_q; // TODO:OK: Just use instr bus_err/mpu_err/illegal_insn
+
+  //////////////
+  // FSM comb //
+  //////////////
+  always_comb begin
     // Default values
+    ctrl_fsm_ns = ctrl_fsm_cs;
+    ctrl_fsm_o.ctrl_busy = 1'b1;
+    ctrl_fsm_o.instr_req = 1'b1;
 
-    instr_req_o            = 1'b1;
+    ctrl_fsm_o.pc_mux    = PC_BOOT;
+    ctrl_fsm_o.pc_set = 1'b0;
 
+    ctrl_fsm_o.irq_ack = 1'b0;
+    ctrl_fsm_o.irq_id  = '0;
 
-    csr_save_if_o          = 1'b0;
-    csr_save_id_o          = 1'b0;
-    csr_save_ex_o          = 1'b0;
-    csr_restore_mret_id_o  = 1'b0;
+    // By default, no stages are halted
+    // If is halted if an insn has been issued during single step
+    // to avoid more than one instructions passing down the pipe.
+    ctrl_fsm_o.halt_if = single_step_halt_if_q;
+    ctrl_fsm_o.halt_id = 1'b0;
+    ctrl_fsm_o.halt_ex = 1'b0;
+    ctrl_fsm_o.halt_wb = 1'b0;
 
-    csr_restore_dret_id_o  = 1'b0;
+    // By default no stages are killed
+    ctrl_fsm_o.kill_if = 1'b0;
+    ctrl_fsm_o.kill_id = 1'b0;
+    ctrl_fsm_o.kill_ex = 1'b0;
+    ctrl_fsm_o.kill_wb = 1'b0;
 
-    csr_save_cause_o       = 1'b0;
+    ctrl_fsm_o.csr_restore_mret    = 1'b0;
+    ctrl_fsm_o.csr_restore_dret    = 1'b0;
+    ctrl_fsm_o.csr_save_if         = 1'b0;
+    ctrl_fsm_o.csr_save_id         = 1'b0;
+    ctrl_fsm_o.csr_save_ex         = 1'b0;
+    ctrl_fsm_o.csr_save_wb         = 1'b0;
+    ctrl_fsm_o.csr_save_cause      = 1'b0;
+    ctrl_fsm_o.csr_cause           = '0;
 
-    exc_cause_o            = '0;
-    exc_pc_mux_o           = EXC_PC_IRQ;
+    ctrl_fsm_o.exc_pc_mux          = EXC_PC_IRQ;
+    exc_cause             = '0; // TODO: Explicit width
 
-    csr_cause_o            = '0;
-
-    pc_mux_o               = PC_BOOT;
-    pc_set_o               = 1'b0;
-    kill_if_o              = 1'b0;
-    jump_done              = jump_done_q;
-
-    ctrl_fsm_ns            = ctrl_fsm_cs;
-
-    ctrl_busy_o            = 1'b1;
-
-    halt_if_o              = 1'b0;
-    halt_id_o              = 1'b0;
-    is_decoding_o          = 1'b0;
-    irq_ack_o              = 1'b0;
-    irq_id_o               = 5'b0;
-
-    jump_in_dec            = (ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL);
-
-    branch_in_id           = ctrl_transfer_insn_i == BRANCH_COND;
-
-    ebrk_force_debug_mode  = (debug_ebreakm_i && current_priv_lvl_i == PRIV_LVL_M);
-    debug_csr_save_o       = 1'b0;
-    debug_cause_o          = DBG_CAUSE_EBREAK;
-    debug_mode_n           = debug_mode_q;
-
-    illegal_insn_n         = illegal_insn_q;
-    instr_bus_err_n        = instr_bus_err_q;
-    instr_mpu_err_n        = instr_mpu_err_q;
-
-    // a trap towards the debug unit is generated when one of the
-    // following conditions are true:
-    // - ebreak instruction encountered
-    // - single-stepping mode enabled
-    // - illegal instruction exception and IIE bit is set
-    // - IRQ and INTE bit is set and no exception is currently running
-    // - Debuger requests halt
-
-    debug_req_entry_n       = debug_req_entry_q;
-
-    debug_force_wakeup_n    = debug_force_wakeup_q;
-
+    debug_mode_n          = debug_mode_q;
+    ctrl_fsm_o.debug_csr_save      = 1'b0;
+    ctrl_fsm_o.block_data_addr     = 1'b0;
+    
+    //Single step halting of IF TODO:OK: May optimize this to a single bit
+    single_step_halt_if_n = single_step_halt_if_q;
+    single_step_issue_n   = single_step_issue_q;
     unique case (ctrl_fsm_cs)
-      // We were just reset, wait for fetch_enable
-      RESET:
-      begin
-        is_decoding_o = 1'b0;
-        instr_req_o   = 1'b0;
-        if (fetch_enable_i == 1'b1)
-        begin
+      RESET: begin
+        ctrl_fsm_o.instr_req = 1'b0;
+        if ( fetch_enable_i ) begin
           ctrl_fsm_ns = BOOT_SET;
         end
       end
-
-      // copy boot address to instr fetch address
-      BOOT_SET:
-      begin
-        is_decoding_o = 1'b0;
-        instr_req_o   = 1'b1;
-        pc_mux_o      = PC_BOOT;
-        pc_set_o      = 1'b1;
-        kill_if_o     = 1'b1; // Not strictly required, but fails SEC if OBI is not constrained properly
-        if (debug_req_pending) begin
-            ctrl_fsm_ns = DBG_TAKEN_IF;
-            debug_force_wakeup_n = 1'b1;
-        end else begin
-            ctrl_fsm_ns   = FIRST_FETCH;
-        end
+      // BOOT_SET state required to prevent (timing) path from 
+      // fetch_enable_i via pc_set to instruction interface outputs
+      BOOT_SET: begin
+        ctrl_fsm_o.instr_req = 1'b1;
+        ctrl_fsm_o.pc_mux    = PC_BOOT;
+        ctrl_fsm_o.pc_set    = 1'b1;
+        ctrl_fsm_ns = FUNCTIONAL;
       end
+      FUNCTIONAL: begin
+        // NMI // TODO:OK: Implement
+        if (pending_nmi ) begin
+        // Debug entry (except single step which is handled later)
+        end else if( pending_debug ) begin
+          if( debug_allowed ) begin
+            // Halt the whole pipeline
+            ctrl_fsm_o.halt_if = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.halt_ex = 1'b1; // TODO: Assert halt_Ex |-> !ex_ready && suppresses not yet stared LOAD/STORES
+            ctrl_fsm_o.halt_wb = 1'b1;
 
-      WAIT_SLEEP:
-      begin
-        is_decoding_o = 1'b0;
-        ctrl_busy_o   = 1'b0;
-        instr_req_o   = 1'b0;
-        halt_if_o     = 1'b1;
-        halt_id_o     = 1'b1;
-        ctrl_fsm_ns   = SLEEP;
-      end
-
-      // instruction in if_stage is already valid
-      SLEEP:
-      begin
-        // we begin execution when an
-        // interrupt has arrived
-        is_decoding_o = 1'b0;
-        instr_req_o   = 1'b0;
-        halt_if_o     = 1'b1;
-        halt_id_o     = 1'b1;
-
-        // normal execution flow
-        // in debug mode or single step mode we leave immediately (wfi=nop)
-        if (wake_from_sleep_o) begin
-          if (debug_req_pending) begin
-              ctrl_fsm_ns = DBG_TAKEN_IF;
-              debug_force_wakeup_n = 1'b1;
+            ctrl_fsm_ns = DEBUG_TAKEN;
           end else begin
-              ctrl_fsm_ns  = FIRST_FETCH;
+            // Halt ID to allow debug @bubble later
+            ctrl_fsm_o.halt_id = 1'b1;
+          end
+        // IRQ
+        end else if( pending_interrupt) begin
+          if( interrupt_allowed ) begin
+            ctrl_fsm_o.kill_if = 1'b1;
+            ctrl_fsm_o.kill_id = 1'b1;
+            ctrl_fsm_o.kill_ex = 1'b1;
+            ctrl_fsm_o.kill_wb = 1'b1;
+
+            ctrl_fsm_o.pc_set     = 1'b1;
+            ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
+            ctrl_fsm_o.exc_pc_mux = EXC_PC_IRQ;
+            exc_cause  = irq_id_ctrl_i;
+
+            ctrl_fsm_o.irq_ack = 1'b1;
+            ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
+
+            ctrl_fsm_o.csr_save_cause  = 1'b1;
+            ctrl_fsm_o.csr_cause       = {1'b1,irq_id_ctrl_i};
+
+            // Save pc from oldest valid instruction
+            if(ex_wb_pipe_i.instr_valid ) begin
+              ctrl_fsm_o.csr_save_wb = 1'b1;
+            end else if( id_ex_pipe_i.instr_valid) begin
+              ctrl_fsm_o.csr_save_ex = 1'b1;
+            end else if( if_id_pipe_i.instr_valid) begin
+              ctrl_fsm_o.csr_save_id = 1'b1;
+            end else begin
+              // IF PC will always be valid as it points to the next
+              // instruction to be issued from IF to ID.
+              ctrl_fsm_o.csr_save_if = 1'b1;
+            end
+
+            // Unstall IF in case of single stepping
+            if(debug_single_step_i) begin
+              single_step_issue_n = 1'b1;
+              single_step_halt_if_n = 1'b0;
+            end
+          end else begin // !interrupt_allowed
+            // Halt ID to allow interrupt @bubble later
+            ctrl_fsm_o.halt_id = 1'b1; // TODO: Halt ID or EX?, to prevent new insn issue
           end
         end else begin
-          ctrl_busy_o = 1'b0;
-        end
-      end
+          if (exception_in_wb) begin
+            // TODO:OK: Must check if we are allowed to take exceptions
+            //          Applies to PMA/PMP on misaligned
+            // Kill all stages
+            ctrl_fsm_o.kill_if = 1'b1;
+            ctrl_fsm_o.kill_id = 1'b1;
+            ctrl_fsm_o.kill_ex = 1'b1;
+            ctrl_fsm_o.kill_wb = 1'b1;
 
-      FIRST_FETCH:
-      begin
-        is_decoding_o = 1'b0;
+            // Set pc to exception handler
+            ctrl_fsm_o.pc_set       = 1'b1;
+            ctrl_fsm_o.pc_mux       = PC_EXCEPTION;
+            ctrl_fsm_o.exc_pc_mux   = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
 
-        // ID stage is always ready
-        ctrl_fsm_ns = DECODE;
+            // Save CSR from WB
+            ctrl_fsm_o.csr_save_wb     = 1'b1;
+            ctrl_fsm_o.csr_save_cause  = !debug_mode_q; // Do not update CSRs if in debug mode
+            ctrl_fsm_o.csr_cause       = {1'b0, exception_cause_wb};
+          // Special insn
+          end else if( wfi_in_wb ) begin
+            // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
+            if( !debug_mode_q ) begin
+              ctrl_fsm_o.halt_if = 1'b1;
+              ctrl_fsm_o.halt_id = 1'b1;
+              ctrl_fsm_o.instr_req = 1'b0;
+              ctrl_fsm_ns = SLEEP;
+            end
+          end else if ( fencei_in_wb ) begin
+            // Kill all instructions and set pc to wb.pc + 4
+            ctrl_fsm_o.kill_if = 1'b1;
+            ctrl_fsm_o.kill_id = 1'b1;
+            ctrl_fsm_o.kill_ex = 1'b1;
+            ctrl_fsm_o.pc_set  = 1'b1;
+            ctrl_fsm_o.pc_mux  = PC_FENCEI;
 
-        // handle interrupts
-        if (irq_req_ctrl_i && ~(debug_req_pending || debug_mode_q)) begin
-          // This assumes that the pipeline is always flushed before
-          // going to sleep.
-          // Debug mode takes precedence over irq (see DECODE:)
+            //TODO:OK: Drive fence.i interface
+          end else if ( dret_in_wb ) begin
+            // Dret takes jump from WB stage
+            // Kill previous stages and jump to pc in dpc
+            ctrl_fsm_o.kill_if = 1'b1;
+            ctrl_fsm_o.kill_id = 1'b1;
+            ctrl_fsm_o.kill_ex = 1'b1;
+            
+            ctrl_fsm_o.pc_mux      = PC_DRET;
+            ctrl_fsm_o.pc_set      = 1'b1;
 
-          // Taken IRQ
-          halt_if_o         = 1'b1;
-          halt_id_o         = 1'b1;
-
-          pc_set_o          = 1'b1;
-          kill_if_o         = 1'b1;
-          pc_mux_o          = PC_EXCEPTION;
-          exc_pc_mux_o      = EXC_PC_IRQ;
-          exc_cause_o       = irq_id_ctrl_i;
-
-          // IRQ interface
-          irq_ack_o         = 1'b1;
-          irq_id_o          = irq_id_ctrl_i;
-
-          csr_save_cause_o  = 1'b1;
-          csr_cause_o       = {1'b1,irq_id_ctrl_i};
-          csr_save_if_o     = 1'b1;
-        end
-      end
-
-      DECODE:
-      begin
-          if (branch_taken_ex_i)
-          begin //taken branch
-            // there is a branch in the EX stage that is taken
-
-            is_decoding_o = 1'b0; // Kills instruction in ID (converted to NOP)
-
-            pc_mux_o      = PC_BRANCH;
-            pc_set_o      = 1'b1;
-            kill_if_o     = 1'b1;
-
-            // if we want to debug, flush the pipeline
-            // the current_pc_if will take the value of the next instruction to
-            // be executed (NPC)
-
-          end  //taken branch
-          // CHECK data side PMA/PMP (_ex_i) mutually exclusive with branch_taken_ex
-          //       order of branch_taken_ex_i and MPU errors does not matter
-          // CHECK data side bus_errors (_wb_i)
+            ctrl_fsm_o.csr_restore_dret  = 1'b1; //TODO:OK: Rename to csr_restore_dret_wb_o
+            single_step_issue_n = debug_single_step_i; // Expect single step issue
+            debug_mode_n  = 1'b0;
           
-           
-          // decode and execute instructions only if the current conditional
-          // branch in the EX stage is either not taken, or there is no
-          // conditional branch in the EX stage
-          else if (instr_valid) //valid block
-          begin: blk_decode_level1 // now analyze the current instruction in the ID stage
+          end else if( branch_taken_ex ) begin
+            ctrl_fsm_o.kill_if = 1'b1;
+            ctrl_fsm_o.kill_id = 1'b1;  
 
-            is_decoding_o = 1'b1;
-            illegal_insn_n = 1'b0;
-            instr_bus_err_n = 1'b0;
-            instr_mpu_err_n = 1'b0;
+            ctrl_fsm_o.pc_mux   = PC_BRANCH;
+            ctrl_fsm_o.pc_set   = 1'b1;
+            
+          end else if ( jump_taken_id ) begin
+            // kill_if
+            ctrl_fsm_o.kill_if = 1'b1;
 
-
-            if ( (debug_req_pending || debug_trigger_match_i) & ~debug_mode_q )
-              begin
-                //Serving the debug
-                halt_if_o         = 1'b1;
-                halt_id_o         = 1'b1;
-                ctrl_fsm_ns       = DBG_FLUSH;
-                debug_req_entry_n = 1'b1;
-              end
-            else if (irq_req_ctrl_i && ~debug_mode_q)
-              begin
-                // Taken IRQ
-
-                is_decoding_o     = 1'b0;
-                halt_if_o         = 1'b1;
-                halt_id_o         = 1'b1;
-
-                pc_set_o          = 1'b1;
-                kill_if_o         = 1'b1;
-                pc_mux_o          = PC_EXCEPTION;
-                exc_pc_mux_o      = EXC_PC_IRQ;
-                exc_cause_o       = irq_id_ctrl_i;
-
-                // IRQ interface
-                irq_ack_o         = 1'b1;
-                irq_id_o          = irq_id_ctrl_i;
-
-                csr_save_cause_o  = 1'b1;
-                csr_cause_o       = {1'b1,irq_id_ctrl_i};
-                csr_save_id_o     = 1'b1;
-              end
-            else
-              begin
-                // Check instruction side errors
-                // We need to check instruction errors AFTER the check for debug_trigger_match_i above.
-                // This is because we shall _not_ execute the instruction at the trigger address
-                // before entering debug (tdata1.timing == 0)
-                // MPU errors have higher priority than fetch errors, both have higher priority
-                // than illegal instructions.
-                if (instr_mpu_err) begin
-                  is_decoding_o  = 1'b0; 
-                  halt_if_o      = 1'b1; 
-                  halt_id_o      = 1'b0;
-                  ctrl_fsm_ns     = id_ready_i ? FLUSH_EX : DECODE;
-                  instr_mpu_err_n = 1'b1;
-                end
-                else if (instr_err) begin // Instruction fetch caused a bus error
-                  is_decoding_o     = 1'b0;
-                  halt_if_o         = 1'b1;
-                  halt_id_o         = 1'b0;
-                  ctrl_fsm_ns       = id_ready_i ? FLUSH_EX : DECODE;
-                  instr_bus_err_n   = 1'b1;
-                end
-                else if(illegal_insn_i) begin
-
-                  halt_if_o         = 1'b1;
-                  halt_id_o         = 1'b0;
-                  ctrl_fsm_ns       = id_ready_i ? FLUSH_EX : DECODE;
-                  illegal_insn_n    = 1'b1;
-
-                end else begin
-
-                  //decoding block
-                  unique case (1'b1)
-
-                    jump_in_dec: begin
-                    // handle unconditional jumps
-                    // we can jump directly since we know the address already
-                    // we don't need to worry about conditional branches here as they
-                    // will be evaluated in the EX stage
-                      pc_mux_o = PC_JUMP;
-                      // if there is a jr stall, wait for it to be gone
-                      if ((~jr_stall_i) && (~jump_done_q)) begin
-                        pc_set_o    = 1'b1;
-                        kill_if_o   = 1'b1;
-                        jump_done   = 1'b1;
-                      end
-                    end
-
-                    ebrk_insn_i: begin
-                      halt_if_o     = 1'b1;
-                      halt_id_o     = 1'b0;
-
-                      if (debug_mode_q) begin
-                        // we got back to the park loop in the debug rom
-                        ctrl_fsm_ns = DBG_FLUSH;
-                      end
-                      else if (ebrk_force_debug_mode) begin
-                        // debug module commands us to enter debug mode anyway
-                        ctrl_fsm_ns  = DBG_FLUSH;
-                      end else begin
-                        // otherwise just a normal ebreak exception
-                        ctrl_fsm_ns = id_ready_i ? FLUSH_EX : DECODE;
-                      end
-
-                    end
-
-                    wfi_active: begin
-                      halt_if_o     = 1'b1;
-                      halt_id_o     = 1'b0;
-                      ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
-                    end
-
-                    ecall_insn_i: begin
-                      halt_if_o     = 1'b1;
-                      halt_id_o     = 1'b0;
-                      ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
-                    end
-
-                    fencei_insn_i: begin
-                      halt_if_o     = 1'b1;
-                      halt_id_o     = 1'b0;
-                      ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
-                    end
-
-                    mret_insn_i | dret_insn_i: begin
-                      halt_if_o     = 1'b1;
-                      halt_id_o     = 1'b0;
-                      ctrl_fsm_ns           = id_ready_i ? FLUSH_EX : DECODE;
-                    end
-
-                    csr_status_i: begin
-                      halt_if_o     = 1'b1;
-                      ctrl_fsm_ns   = id_ready_i ? FLUSH_EX : DECODE;
-                    end
-
-                    default: begin
-                      ctrl_fsm_ns = DECODE;
-                    end
-
-                  endcase // unique case (1'b1)
-                end
-
-                if (debug_single_step_i & ~debug_mode_q) begin
-                    // prevent any more instructions from executing
-                    halt_if_o = 1'b1;
-
-                    // we don't handle dret here because its should be illegal
-                    // anyway in this context
-
-                    // illegal, ecall, ebrk and xrettransition to later to a DBG
-                    // state since we need the return address which is
-                    // determined later
-
-                    if (id_ready_i) begin
-                    // make sure the current instruction has been executed
-                        unique case(1'b1)
-
-                        illegal_insn_i | ecall_insn_i | instr_invalidate:
-                        begin
-                            ctrl_fsm_ns = FLUSH_EX;
-                        end
-                        
-                        // In the following checks we gate off with !instr_invalidate
-                        // as the decoder may decode a valid instruction even 
-                        // though the alignment buffer signals a bus_error 
-                        // or mpu_error, which invalidates the instruction.
-                        // TODO:OK: Maybe handle mpu/instr errs in decoder
-                        // and gate off mret/branch etc in the decoder, 
-                        // alternatively force the instruction to zero in the prefetch_unit
-                        (~ebrk_force_debug_mode & ebrk_insn_i && !instr_invalidate):
-                        begin
-                            ctrl_fsm_ns = FLUSH_EX;
-                        end
-
-                        mret_insn_i && !instr_invalidate:
-                        begin
-                            ctrl_fsm_ns = FLUSH_EX;
-                        end
-
-                        branch_in_id && !instr_invalidate:
-                        begin
-                            ctrl_fsm_ns    = DBG_WAIT_BRANCH;
-                        end
-
-                        default: begin
-                          // regular instruction or ebrk force debug
-                          ctrl_fsm_ns = DBG_FLUSH;
-                        end
-                        endcase // unique case (1'b1)
-                    end
-                end
-
-              end // else: !if (irq_req_ctrl_i && ~debug_mode_q)
-
-          end  //valid block
-          else begin
-            is_decoding_o         = 1'b0;
+            // Jumps in ID (JAL, JALR, mret, uret, dret)
+            if ( mret_id_i ) begin
+              ctrl_fsm_o.pc_mux      = debug_mode_q ? PC_EXCEPTION : PC_MRET;
+              ctrl_fsm_o.pc_set      = 1'b1; //TODO:OK: Could have a CSR write to mepc previous to this, add stall/bypass.
+              ctrl_fsm_o.exc_pc_mux  = EXC_PC_DBE; // Only used in debug mode
+            end else begin
+              ctrl_fsm_o.pc_mux = PC_JUMP;
+              ctrl_fsm_o.pc_set = 1'b1;
+            end
           end
+
+          // Mret in WB restores CSR regs
+          // 
+          if ( mret_in_wb && !ctrl_fsm_o.kill_wb) begin
+            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q; // TODO:OK: Rename to csr_restore_mret_wb_o
+          end
+
+          // Single step debug entry
+          // Need to be after exception/interrupt handling
+          // to ensure mepc and if_pc set correctly for use in dpc
+          if( pending_single_step ) begin
+            if( single_step_allowed ) begin
+              ctrl_fsm_ns = DEBUG_TAKEN;
+            end
+          end
+
+          // Detect first insn issue in single step after dret
+          // Used to block further issuing
+          if(single_step_issue_q && (if_valid_i && if_ready_i)) begin
+            single_step_halt_if_n = 1'b1;
+            single_step_issue_n = 1'b0;
+          end
+        end // !debug or interrupts
       end
+      SLEEP: begin
+        ctrl_fsm_o.ctrl_busy = 1'b0;
+        ctrl_fsm_o.instr_req = 1'b0;
 
-      // flush the pipeline, insert NOP into EX stage
-      FLUSH_EX:
-      begin
-        is_decoding_o = 1'b0;
+        ctrl_fsm_o.halt_wb   = 1'b1; // implicitly halts earlier stages
+        if(ctrl_fsm_o.wake_from_sleep) begin
+          ctrl_fsm_ns = FUNCTIONAL;
+          ctrl_fsm_o.ctrl_busy = 1'b1;
+        end
+      end
+      DEBUG_TAKEN: begin
+        // Clear flags for halting IF during single step
+        single_step_halt_if_n = 1'b0;
+        single_step_issue_n   = 1'b0;
 
-        halt_if_o = 1'b1;
-        halt_id_o = 1'b1;
+        // Kill all stages
+        ctrl_fsm_o.kill_if = 1'b1;
+        ctrl_fsm_o.kill_id = 1'b1;
+        ctrl_fsm_o.kill_ex = 1'b1;
+        ctrl_fsm_o.kill_wb = !debug_single_step_i; // Do not kill WB for single step
 
-        if (ex_valid_i) begin
-          //check done to prevent data harzard in the CSR registers
-          ctrl_fsm_ns = FLUSH_WB;
+        // Set pc
+        ctrl_fsm_o.pc_set     = 1'b1;
+        ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
+        ctrl_fsm_o.exc_pc_mux = EXC_PC_DBD;
 
-          if (instr_mpu_err_q) begin
-            csr_save_id_o     = 1'b1;
-            csr_save_cause_o  = !debug_mode_q;
-            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_FAULT};
-          end 
-          else if(instr_bus_err_q) begin
-            csr_save_id_o     = 1'b1;
-            csr_save_cause_o  = !debug_mode_q;
-            csr_cause_o       = {1'b0, EXC_CAUSE_INSTR_BUS_FAULT};
-          end
-          else if (illegal_insn_q) begin
-            csr_save_id_o     = 1'b1;
-            csr_save_cause_o  = !debug_mode_q;
-            csr_cause_o       = {1'b0, EXC_CAUSE_ILLEGAL_INSN};
+        // Save CSRs
+        ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
+        ctrl_fsm_o.debug_csr_save = 1'b1;
+
+        if( (debug_single_step_i)) begin
+          // Single step
+          // Should use pc from IF (next insn, as if is halted after first issue)
+          // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
+             // or trigger match, as timing=0 permits us from executing triggered insn before 
+             // entering debug mode
+          if((ebreak_in_wb && debug_ebreakm_i) || trigger_match_in_wb) begin
+            ctrl_fsm_o.csr_save_wb = 1'b1;
           end else begin
-            unique case (1'b1)
-              ebrk_insn_i: begin
-                csr_save_id_o     = 1'b1;
-                csr_save_cause_o  = 1'b1;
-                csr_cause_o       = {1'b0, EXC_CAUSE_BREAKPOINT};
-              end
-              ecall_insn_i: begin
-                csr_save_id_o     = 1'b1;
-                csr_save_cause_o  = !debug_mode_q;
-                csr_cause_o       = {1'b0, EXC_CAUSE_ECALL_MMODE};
-              end
-              default:;
-            endcase // unique case (1'b1)
+            ctrl_fsm_o.csr_save_if = 1'b1;
           end
-
-        end
-    end
-
-      // flush the pipeline, insert NOP into EX and WB stage
-      FLUSH_WB:
-      begin
-        is_decoding_o = 1'b0;
-
-        halt_if_o = 1'b1;
-        halt_id_o = 1'b1;
-
-        ctrl_fsm_ns = DECODE;
-        
-        if(instr_mpu_err_q) begin
-          pc_mux_o              = PC_EXCEPTION;
-          pc_set_o              = 1'b1;
-          kill_if_o             = 1'b1;
-          exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-          instr_mpu_err_n       = 1'b0;
-            if (debug_single_step_i && ~debug_mode_q)
-              ctrl_fsm_ns = DBG_TAKEN_IF;
-          
-        end 
-        else if(instr_bus_err_q) begin
-          pc_mux_o        = PC_EXCEPTION;
-          pc_set_o        = 1'b1;
-          kill_if_o       = 1'b1;
-          exc_pc_mux_o    = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-          instr_bus_err_n = 1'b0;
-          if (debug_single_step_i && ~debug_mode_q)
-            ctrl_fsm_ns = DBG_TAKEN_IF;
-        end 
-        else if(illegal_insn_q) begin
-            //exceptions
-            pc_mux_o              = PC_EXCEPTION;
-            pc_set_o              = 1'b1;
-            kill_if_o             = 1'b1;
-            exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-            illegal_insn_n        = 1'b0;
-            if (debug_single_step_i && ~debug_mode_q)
-                ctrl_fsm_ns = DBG_TAKEN_IF;
         end else begin
-          unique case(1'b1)
-            ebrk_insn_i: begin
-                //ebreak
-                pc_mux_o              = PC_EXCEPTION;
-                pc_set_o              = 1'b1;
-                kill_if_o             = 1'b1;
-                exc_pc_mux_o          = EXC_PC_EXCEPTION;
-
-                if (debug_single_step_i && ~debug_mode_q)
-                    ctrl_fsm_ns = DBG_TAKEN_IF;
-            end
-            ecall_insn_i: begin
-                //ecall
-                pc_mux_o              = PC_EXCEPTION;
-                pc_set_o              = 1'b1;
-                kill_if_o             = 1'b1;
-                exc_pc_mux_o          = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
-
-                if (debug_single_step_i && ~debug_mode_q)
-                    ctrl_fsm_ns = DBG_TAKEN_IF;
-            end
-
-            mret_insn_i: begin
-                csr_restore_mret_id_o =  !debug_mode_q;
-                ctrl_fsm_ns           = XRET_JUMP;
-            end
-            dret_insn_i: begin
-                csr_restore_dret_id_o = 1'b1;
-                ctrl_fsm_ns           = XRET_JUMP;
-            end
-
-            wfi_insn_i: begin
-                if ( debug_req_pending) begin
-                    ctrl_fsm_ns = DBG_TAKEN_IF;
-                    debug_force_wakeup_n = 1'b1;
-                end else begin
-                  ctrl_fsm_ns = WAIT_SLEEP;
-                end
-            end
-            fencei_insn_i: begin
-                // we just jump to instruction after the fence.i since that
-                // forces the instruction cache to refetch
-                pc_mux_o              = PC_FENCEI;
-                pc_set_o              = 1'b1;
-                kill_if_o             = 1'b1;
-            end
-            default:;
-          endcase
-        end
-        
-
-      end
-
-      XRET_JUMP:
-      begin
-        is_decoding_o = 1'b0;
-        ctrl_fsm_ns   = DECODE;
-        unique case(1'b1)
-          mret_insn_i: begin
-              //mret
-              pc_mux_o              = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              pc_set_o              = 1'b1;
-              kill_if_o             = 1'b1;
-              exc_pc_mux_o          = EXC_PC_DBE; // only used if in debug_mode
-          end
-          dret_insn_i: begin
-              //dret
-              // this case is only reachable while in debug_mode
-              pc_mux_o              = PC_DRET;
-              pc_set_o              = 1'b1;
-              debug_mode_n          = 1'b0;
-              kill_if_o             = 1'b1;
-          end
-          default:;
-        endcase
-
-        if (debug_single_step_i && ~debug_mode_q) begin
-          ctrl_fsm_ns = DBG_TAKEN_IF;
-        end
-      end
-
-      // a branch was in ID when trying to go to debug rom. Wait until we can
-      // determine branch target address (for saving into dpc) before proceeding
-      DBG_WAIT_BRANCH:
-      begin
-        is_decoding_o = 1'b0;
-        halt_if_o = 1'b1;
-
-        if (branch_taken_ex_i) begin
-          // there is a branch in the EX stage that is taken
-          pc_mux_o      = PC_BRANCH;
-          pc_set_o      = 1'b1;
-          kill_if_o     = 1'b1;
-        end
-
-        ctrl_fsm_ns = DBG_FLUSH;
-      end
-
-      // We enter this state when we encounter
-      // 1. ebreak during debug mode
-      // 2. trigger match
-      // 3. ebreak with forced entry into debug mode (ebreakm or ebreaku set).
-      // 4. halt request during decode
-      // Regular ebreak's go through FLUSH_EX and FLUSH_WB.
-      // For 1. we don't update dcsr and dpc while for 2., 3., & 4. we do
-      // dpc is set to the address of ebreak and trigger match
-      // not to the next instruction's (which is why we save the pc in id).
-      DBG_TAKEN_ID:
-      begin
-        is_decoding_o     = 1'b0;
-        pc_set_o          = 1'b1;
-        kill_if_o         = 1'b1;
-        pc_mux_o          = PC_EXCEPTION;
-        exc_pc_mux_o      = EXC_PC_DBD;
-        // If not in debug mode then save cause and dpc csrs
-        // else it was an ebreak in debug mode, so don't update csrs
-        if (~debug_mode_q) begin
-            csr_save_cause_o = 1'b1;
-            csr_save_id_o    = 1'b1;
-            debug_csr_save_o = 1'b1;
-            if (debug_trigger_match_i)
-                debug_cause_o = DBG_CAUSE_TRIGGER; // pri 4 (highest)
-            else if (ebrk_force_debug_mode & ebrk_insn_i)
-                debug_cause_o = DBG_CAUSE_EBREAK; // pri 3
-            else if (debug_req_entry_q)
-                debug_cause_o = DBG_CAUSE_HALTREQ;// pri 2 and 1
-
-        end
-        debug_req_entry_n  = 1'b0;
-        ctrl_fsm_ns        = DECODE;
-        debug_mode_n       = 1'b1;
-      end
-
-      // We enter this state for single stepping
-      // DPC is set the next instruction to be executed/fetched
-      DBG_TAKEN_IF:
-      begin
-        is_decoding_o     = 1'b0;
-        pc_set_o          = 1'b1;
-        kill_if_o         = 1'b1;
-        pc_mux_o          = PC_EXCEPTION;
-        exc_pc_mux_o      = EXC_PC_DBD;
-        csr_save_cause_o  = 1'b1;
-        debug_csr_save_o  = 1'b1;
-        if (debug_force_wakeup_q) 
-            debug_cause_o = DBG_CAUSE_HALTREQ;
-        else if (debug_single_step_i)
-            debug_cause_o = DBG_CAUSE_STEP; // pri 0
-        csr_save_if_o   = 1'b1;
-        ctrl_fsm_ns     = DECODE;
-        debug_mode_n    = 1'b1;
-        debug_force_wakeup_n = 1'b0;
-      end
-
-
-      DBG_FLUSH:
-      begin
-        is_decoding_o = 1'b0;
-
-        halt_if_o   = 1'b1;
-        halt_id_o   = 1'b1;
-
-        if(debug_mode_q                           |
-            debug_trigger_match_i                 |
-            (ebrk_force_debug_mode & ebrk_insn_i) |
-            debug_req_entry_q                     )
-          begin
-            ctrl_fsm_ns = DBG_TAKEN_ID;
-          end else
-          begin
-            // else must be debug_single_step_i
-            ctrl_fsm_ns = DBG_TAKEN_IF;
+          // Save pc from oldest valid instruction
+          if( ex_wb_pipe_i.instr_valid ) begin
+            ctrl_fsm_o.csr_save_wb = 1'b1;
+          end else if( id_ex_pipe_i.instr_valid && !id_ex_pipe_i.data_misaligned) begin
+            ctrl_fsm_o.csr_save_ex = 1'b1;
+          end else if( if_id_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_id = 1'b1;
+          end else begin
+            ctrl_fsm_o.csr_save_if = 1'b1;
           end
         end
-      
-      // Debug end
 
+        // Enter debug mode next cycle
+        debug_mode_n = 1'b1;
+        ctrl_fsm_ns = FUNCTIONAL;
+      end
       default: begin
-        is_decoding_o = 1'b0;
-        instr_req_o = 1'b0;
+        // should never happen
+        ctrl_fsm_o.instr_req = 1'b0;
         ctrl_fsm_ns = RESET;
       end
     endcase
   end
 
+  // Wakeup from sleep
+  assign ctrl_fsm_o.wake_from_sleep    = irq_wu_ctrl_i || pending_debug || debug_mode_q;
+  assign ctrl_fsm_o.debug_wfi_no_sleep = debug_mode_q || debug_single_step_i || trigger_match_in_wb;
 
-  // update registers
-  always_ff @(posedge clk , negedge rst_n)
-  begin : UPDATE_REGS
-    if ( rst_n == 1'b0 )
-    begin
-      ctrl_fsm_cs        <= RESET;
-      jump_done_q        <= 1'b0;
+  ////////////////////
+  // Flops          //
+  ////////////////////
 
-      debug_mode_q       <= 1'b0;
-      illegal_insn_q     <= 1'b0;
-      instr_bus_err_q    <= 1'b0;
-      instr_mpu_err_q    <= 1'b0;
-      
-      debug_req_entry_q  <= 1'b0;
-      debug_force_wakeup_q <= 1'b0;
-    end
-    else
-    begin
-      ctrl_fsm_cs        <= ctrl_fsm_ns;
-
-      // clear when id is valid (no instruction incoming)
-      jump_done_q        <= jump_done & (~id_ready_i);
-
-
-      debug_mode_q       <= debug_mode_n;
-
-      illegal_insn_q     <= illegal_insn_n;
-      instr_mpu_err_q    <= instr_mpu_err_n;
-
-      instr_bus_err_q    <= instr_bus_err_n;
-
-      debug_req_entry_q  <= debug_req_entry_n;
-      debug_force_wakeup_q <= debug_force_wakeup_n;
+  // FSM state and debug_mode
+  always_ff @(posedge clk , negedge rst_n) begin
+    if ( rst_n == 1'b0 ) begin
+      ctrl_fsm_cs <= RESET;
+      debug_mode_q <= 1'b0;
+    end else begin
+      ctrl_fsm_cs <= ctrl_fsm_ns;
+      debug_mode_q <= debug_mode_n;
     end
   end
 
-  // wakeup from sleep conditions
-  assign wake_from_sleep_o = irq_wu_ctrl_i || debug_req_pending || debug_mode_q;
+  assign ctrl_fsm_o.debug_mode = debug_mode_q;
 
-  // debug mode
-  assign debug_mode_o = debug_mode_q;
-  assign debug_req_pending = debug_req_i || debug_req_q;
-
-  
-  // Do not let WFI cause core_sleep_o (but treat as NOP):
-  //
-  // - During debug
-  
-
-  assign debug_wfi_no_sleep_o = debug_mode_q || debug_req_pending || debug_single_step_i || debug_trigger_match_i;
-
-  // Gate off wfi 
-  assign wfi_active = wfi_insn_i & ~debug_wfi_no_sleep_o;
+  // Detect when data_req has been clocked, and lsu insn is still in EX
+  always_ff @(posedge clk , negedge rst_n) begin
+    if ( rst_n == 1'b0 ) begin
+      data_req_q <= 1'b0;
+    end else begin
+      if(data_req_i && !ex_valid_i) begin
+        data_req_q <= 1'b1;
+      end else if(ex_valid_i) begin
+        data_req_q <= 1'b0;
+      end
+    end
+  end
 
   // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
-  always_ff @(posedge clk_ungated_i, negedge rst_n)
-    if ( !rst_n )
+  always_ff @(posedge clk_ungated_i, negedge rst_n) begin
+    if ( !rst_n ) begin
       debug_req_q <= 1'b0;
-    else
-      if( debug_req_i )
+    end else begin
+      if( debug_req_i ) begin
         debug_req_q <= 1'b1;
-      else if( debug_mode_q )
+      end else if( debug_mode_q ) begin
         debug_req_q <= 1'b0;
-
-  // Debug state FSM
-  always_ff @(posedge clk , negedge rst_n)
-  begin
-    if ( rst_n == 1'b0 )
-    begin
-      debug_fsm_cs <= HAVERESET;
+      end
     end
-    else
-    begin
+  end
+
+  // Flops used to gate if_valid after one instruction issued
+  // in single step mode
+  // TODO:OK May reduce to one flop after moving dret jump to WB
+  always_ff @(posedge clk_ungated_i, negedge rst_n) begin
+    if ( !rst_n ) begin
+      single_step_halt_if_q <= 1'b0;
+      single_step_issue_q   <= 1'b0;
+    end else begin
+      single_step_halt_if_q <= single_step_halt_if_n;
+      single_step_issue_q   <= single_step_issue_n;
+    end
+  end
+
+  
+
+  
+  /////////////////////
+  // Debug state FSM //
+  /////////////////////
+  always_ff @(posedge clk , negedge rst_n) begin
+    if ( rst_n == 1'b0 ) begin
+      debug_fsm_cs <= HAVERESET;
+    end else begin
       debug_fsm_cs <= debug_fsm_ns;
     end
   end
 
-  always_comb
-  begin
+  always_comb begin
     debug_fsm_ns = debug_fsm_cs;
 
     case (debug_fsm_cs)
-      HAVERESET:
-      begin
-        if (debug_mode_n || (ctrl_fsm_ns == FIRST_FETCH)) begin
+      HAVERESET: begin
+        if (debug_mode_n || (ctrl_fsm_ns == BOOT_SET)) begin
           if (debug_mode_n) begin
             debug_fsm_ns = HALTED;
           end else begin
@@ -920,15 +610,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
 
-      RUNNING:
-      begin
+      RUNNING: begin
         if (debug_mode_n) begin
           debug_fsm_ns = HALTED;
         end
       end
 
-      HALTED:
-      begin
+      HALTED: begin
         if (!debug_mode_n) begin
           debug_fsm_ns = RUNNING;
         end
@@ -940,8 +628,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     endcase
   end
 
-  assign debug_havereset_o = debug_fsm_cs[HAVERESET_INDEX];
-  assign debug_running_o = debug_fsm_cs[RUNNING_INDEX];
-  assign debug_halted_o = debug_fsm_cs[HALTED_INDEX];
+  assign ctrl_fsm_o.debug_havereset = debug_fsm_cs[HAVERESET_INDEX];
+  assign ctrl_fsm_o.debug_running   = debug_fsm_cs[RUNNING_INDEX];
+  assign ctrl_fsm_o.debug_halted    = debug_fsm_cs[HALTED_INDEX];
 
 endmodule //cv32e40x_controller_fsm

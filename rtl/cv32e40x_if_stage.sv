@@ -43,31 +43,22 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // Debug mode halt address
     input  logic [31:0] dm_halt_addr_i,
 
-    // instruction request control
-    input  logic        req_i,
-
-    // kill instruction
-    input  logic        kill_if_i,
-
     // instruction cache interface
     if_c_obi.master     m_c_obi_instr_if,
 
     // Output of IF Pipeline stage
     output if_id_pipe_t       if_id_pipe_o,
 
+    // EX_WB pipe
+    input  ex_wb_pipe_t       ex_wb_pipe_i,
+
     output logic       [31:0] pc_if_o,
 
     // Forwarding ports - control signals
-    input  logic        clear_instr_valid_i,   // clear instruction valid bit in IF/ID pipe
-    input  logic        pc_set_i,              // set the program counter to a new value
     input  logic [31:0] mepc_i,                // address used to restore PC when the interrupt/exception is served
 
     input  logic [31:0] dpc_i,                // address used to restore PC when the debug is served
 
-    input  pc_mux_e     pc_mux_i,              // sel for pc multiplexer
-    input  exc_pc_mux_e exc_pc_mux_i,          // selects ISR address
-
-    input  logic  [4:0] m_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
     output logic        csr_mtvec_init_o,      // tell CS regfile to init mtvec
 
     // jump and branch target and decision
@@ -75,19 +66,23 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic [31:0] branch_target_ex_i,      // jump target address
 
     // pipeline stall
-    input  logic        halt_if_i,
     input  logic        id_ready_i,
 
+    // to controller
+    output logic        if_valid_o,
+    output logic        if_ready_o,
     // misc signals
     output logic        if_busy_o,             // is the IF stage busy fetching instructions?
-    output logic        perf_imiss_o           // Instruction Fetch Miss
+    output logic        perf_imiss_o,           // Instruction Fetch Miss
+
+    input ctrl_fsm_t    ctrl_fsm_i
 );
 
   logic              if_valid, if_ready;
 
   // prefetch buffer related signals
   logic              prefetch_busy;
-  logic              branch_req;
+  
   logic       [31:0] branch_addr_n;
 
   logic       [31:0] exc_pc;
@@ -119,9 +114,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // exception PC selection mux
   always_comb
   begin : EXC_PC_MUX
-    unique case (exc_pc_mux_i)
+    unique case (ctrl_fsm_i.exc_pc_mux)
       EXC_PC_EXCEPTION:                        exc_pc = { mtvec_addr, 8'h0 }; //1.10 all the exceptions go to base address
-      EXC_PC_IRQ:                              exc_pc = { mtvec_addr, 1'b0, m_exc_vec_pc_mux_i, 2'b0 }; // interrupts are vectored
+      EXC_PC_IRQ:                              exc_pc = { mtvec_addr, 1'b0, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b0 }; // interrupts are vectored
       EXC_PC_DBD:                              exc_pc = { dm_halt_addr_i[31:2], 2'b0 };
       EXC_PC_DBE:                              exc_pc = { dm_exception_addr_i[31:2], 2'b0 };
       default:                                 exc_pc = { mtvec_addr, 8'h0 };
@@ -134,20 +129,20 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // Default assign PC_BOOT (should be overwritten in below case)
     branch_addr_n = {boot_addr_i[31:2], 2'b0};
 
-    unique case (pc_mux_i)
+    unique case (ctrl_fsm_i.pc_mux)
       PC_BOOT:      branch_addr_n = {boot_addr_i[31:2], 2'b0};
       PC_JUMP:      branch_addr_n = jump_target_id_i;
       PC_BRANCH:    branch_addr_n = branch_target_ex_i;
       PC_EXCEPTION: branch_addr_n = exc_pc;             // set PC to exception handler
       PC_MRET:      branch_addr_n = mepc_i; // PC is restored when returning from IRQ/exception
       PC_DRET:      branch_addr_n = dpc_i; //
-      PC_FENCEI:    branch_addr_n = if_id_pipe_o.pc + 4; // jump to next instr forces prefetch buffer reload
+      PC_FENCEI:    branch_addr_n = ex_wb_pipe_i.pc + 4; // jump to next instr forces prefetch buffer reload // TODO: Can avoid adder, PC should already be in pipeline
       default:;
     endcase
   end
 
   // tell CS register file to initialize mtvec on boot
-  assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
+  assign csr_mtvec_init_o = (ctrl_fsm_i.pc_mux == PC_BOOT) & ctrl_fsm_i.pc_set;
 
   // prefetch buffer, caches a fixed number of instructions
   cv32e40x_prefetch_unit prefetch_unit_i
@@ -155,11 +150,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),
 
-    .kill_if_i         ( kill_if_i                   ),
+    .kill_if_i         ( ctrl_fsm_i.kill_if          ), //TODO:OK: Pass on ctrl_fsm_i
 
-    .prefetch_en_i     ( req_i                       ),
+    .prefetch_en_i     ( ctrl_fsm_i.instr_req        ),
 
-    .branch_i          ( branch_req                  ),
+    .branch_i          ( ctrl_fsm_i.pc_set           ),
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
 
     .prefetch_ready_i  ( if_ready                    ),
@@ -239,19 +234,19 @@ instruction_obi_i
 
   // We are 'missing' in the if stage if we don't have a valid instruction
   // when the pipeline is ready and we are not branching
-  assign perf_imiss_o = !branch_req && if_ready && !halt_if_i && !prefetch_valid;
-
-  // Signal branch on pc_set_i
-  assign branch_req = pc_set_i;
+  assign perf_imiss_o = !ctrl_fsm_i.pc_set && if_ready && !ctrl_fsm_i.halt_if && !prefetch_valid;
 
   // if_stage ready if id_stage is ready
-  assign if_ready = id_ready_i && !halt_if_i;
+  assign if_ready = id_ready_i && !ctrl_fsm_i.halt_if;
+
 
   // if stage valid when prefetcher is valid and we are ready
   assign if_valid = if_ready && prefetch_valid;
 
   assign if_busy_o    = prefetch_busy;
 
+  assign if_valid_o = if_valid;
+  assign if_ready_o = if_ready;
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
@@ -277,7 +272,7 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
-      end else if (clear_instr_valid_i) begin
+      end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
     end

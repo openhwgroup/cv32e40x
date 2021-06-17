@@ -41,16 +41,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  logic        clk_ungated_i,          // Ungated clock
     input  logic        rst_n,
 
-    input  logic        scan_cg_en_i,
     input  logic        deassert_we_i,
-    input  logic        is_decoding_i,
 
     // Jumps and branches
     input  logic        branch_decision_i,
     output logic [31:0] jmp_target_o,
     
     // IF and ID stage signals
-    output logic        clear_instr_valid_o,
 
     output logic        id_ready_o,     // ID stage is ready for the next instruction
     input  logic        ex_ready_i,     // EX stage is ready for the next instruction
@@ -65,10 +62,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // ID/EX pipeline 
     output id_ex_pipe_t id_ex_pipe_o,
 
+    // From controller FSM
+    input  ctrl_fsm_t   ctrl_fsm_i,
+
     input  PrivLvl_t    current_priv_lvl_i,
 
     // Debug Signal
-    input  logic        debug_mode_i,
+    input  logic        debug_trigger_match_id_i,
 
     // Register file write back and forwards
     input  logic [31:0]    rf_wdata_wb_i,
@@ -94,29 +94,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     input  logic        data_req_wb_i,
 
-    // Decoder to controller
-    output logic        illegal_insn_o,
-    output logic        ecall_insn_o,
     output logic        mret_insn_o,
     output logic        dret_insn_o,
-    output logic        wfi_insn_o,
-    output logic        ebrk_insn_o,
-    output logic        fencei_insn_o,
+    // Decoder to controller
     output logic        csr_status_o,
-
-    output logic        branch_taken_ex_o,
+    output logic        csr_en_o,
+    output csr_opcode_e csr_op_o,
 
     output logic [1:0]  ctrl_transfer_insn_o,
     output logic [1:0]  ctrl_transfer_insn_raw_o,
-
-    input  logic        debug_wfi_no_sleep_i,
 
     // RF interface -> controller
     output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
     output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
     output rf_addr_t    rf_waddr_o,
 
-    output logic        regfile_alu_we_dec_o,
+    output logic        regfile_alu_we_id_o,
     
     // Forwarding from controller
     input  op_fw_mux_e    operand_a_fw_mux_sel_i,
@@ -124,10 +117,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     input  jalr_fw_mux_e  jalr_fw_mux_sel_i,
 
     // Halt and stalls from controller
-    input  logic          halt_id_i,
     input  logic          misaligned_stall_i,
     input  logic          jr_stall_i,
     input  logic          load_stall_i,
+    input  logic          csr_stall_i,
+    input  logic          wfi_stall_i,
 
     // Register file
     input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS]
@@ -149,8 +143,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   localparam REG_D_LSB  = 7;
 
   logic [31:0] instr;
-
-  
 
   
   // Immediate decoding and sign extension
@@ -228,6 +220,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic is_last; // Indicates that an instruction is in its last ID phase
 
+  // Special insn to travel down pipeline structs
+  logic        illegal_insn;
+  logic        ecall_insn;
+  logic        mret_insn;
+  logic        dret_insn;
+  logic        wfi_insn;
+  logic        ebrk_insn;
+  logic        fencei_insn;
+
+  // Local instruction valid qualifier
+  logic        instr_valid;
+
+  assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id;
+
+  assign mret_insn_o = mret_insn;
+  assign dret_insn_o = dret_insn;
+
   assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
@@ -253,13 +262,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Destination register seclection
   //---------------------------------------------------------------------------
   assign rf_waddr_o = instr[REG_D_MSB:REG_D_LSB];
-
-  //TODO:OK: The following (two) assignments could perhaps be moved to the controller.
-  // kill instruction in the IF/ID stage by setting the instr_valid_id control
-  // signal to 0 for instructions that are done
-  assign clear_instr_valid_o = id_ready_o | halt_id_i | branch_taken_ex_o;
-
-  assign branch_taken_ex_o = id_ex_pipe_o.branch_in_ex && branch_decision_i;
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -417,13 +419,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // controller related signals
     .deassert_we_i                   ( deassert_we_i             ),
 
-    .illegal_insn_o                  ( illegal_insn_o            ),
-    .ebrk_insn_o                     ( ebrk_insn_o               ),
-    .mret_insn_o                     ( mret_insn_o               ),
-    .dret_insn_o                     ( dret_insn_o               ),
-    .ecall_insn_o                    ( ecall_insn_o              ),
-    .wfi_insn_o                      ( wfi_insn_o                ),
-    .fencei_insn_o                   ( fencei_insn_o             ),
+    .illegal_insn_o                  ( illegal_insn              ),
+    .ebrk_insn_o                     ( ebrk_insn                 ),
+    .mret_insn_o                     ( mret_insn                 ),
+    .dret_insn_o                     ( dret_insn                 ),
+    .ecall_insn_o                    ( ecall_insn                ),
+    .wfi_insn_o                      ( wfi_insn                  ),
+    .fencei_insn_o                   ( fencei_insn               ),
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
@@ -470,8 +472,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .data_atop_o                     ( data_atop                 ),
 
     // debug mode
-    .debug_mode_i                    ( debug_mode_i              ),
-    .debug_wfi_no_sleep_i            ( debug_wfi_no_sleep_i      ),
+    .debug_mode_i                    ( ctrl_fsm_i.debug_mode     ), // TODO: pass on ctrl_fsm_i
+    .debug_wfi_no_sleep_i            ( ctrl_fsm_i.debug_wfi_no_sleep      ),
 
     // jump/branches
     .ctrl_transfer_insn_o            ( ctrl_transfer_insn_o      ),
@@ -479,7 +481,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
   );
 
-  assign regfile_alu_we_dec_o = rf_we_raw && !data_req_raw;
+  assign regfile_alu_we_id_o = rf_we_raw && !data_req_raw;
 
   
   /////////////////////////////////////////////////////////////////////////////////
@@ -495,6 +497,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
+      id_ex_pipe_o.instr_valid            <= 1'b0;
       id_ex_pipe_o.alu_en                 <= '0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
       id_ex_pipe_o.alu_operand_a          <= '0;
@@ -528,10 +531,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.data_misaligned        <= 1'b0;
       id_ex_pipe_o.data_atop              <= 5'b0;
 
-      id_ex_pipe_o.pc                     <= '0;
+      id_ex_pipe_o.pc                     <= 32'h00000000;
 
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
+      id_ex_pipe_o.trigger_match          <= 1'b0;
       // Signals for exception handling
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.illegal_insn           <= 1'b0;
@@ -541,12 +545,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.fencei_insn            <= 1'b0;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
+
     end else begin
       // normal pipeline unstall case
 
       if (id_valid_o)
       begin // unstall the whole pipeline
-
+        id_ex_pipe_o.instr_valid  <= 1'b1;
         if (misaligned_stall_i) begin
           // misaligned data access case
           // if we are using post increments, then we have to use the
@@ -627,36 +632,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           end
 
           // Exceptions and special instructions
-          id_ex_pipe_o.illegal_insn           <= illegal_insn_o;
-          id_ex_pipe_o.ebrk_insn              <= ebrk_insn_o;
-          id_ex_pipe_o.wfi_insn               <= wfi_insn_o;
-          id_ex_pipe_o.ecall_insn             <= ecall_insn_o;
-          id_ex_pipe_o.fencei_insn            <= fencei_insn_o;
-          id_ex_pipe_o.mret_insn              <= mret_insn_o;
-          id_ex_pipe_o.dret_insn              <= dret_insn_o;
+          id_ex_pipe_o.illegal_insn           <= illegal_insn;
+          id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
+          id_ex_pipe_o.wfi_insn               <= wfi_insn;
+          id_ex_pipe_o.ecall_insn             <= ecall_insn;
+          id_ex_pipe_o.fencei_insn            <= fencei_insn;
+          id_ex_pipe_o.mret_insn              <= mret_insn;
+          id_ex_pipe_o.dret_insn              <= dret_insn;
+
+          id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
         end
       end else if (ex_ready_i) begin
         // EX stage is ready but we don't have a new instruction for it,
-        // so we set all write enables to 0, but unstall the pipe
-
-        id_ex_pipe_o.rf_we                  <= 1'b0;
-
-        id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
-        id_ex_pipe_o.csr_access             <= 1'b0;
-        id_ex_pipe_o.csr_en                 <= 1'b0;
-
-        id_ex_pipe_o.data_req               <= 1'b0;
-        id_ex_pipe_o.data_misaligned        <= 1'b0;
-
-        id_ex_pipe_o.branch_in_ex           <= 1'b0;
-
-        id_ex_pipe_o.alu_en                 <= 1'b1;            // todo: requires explanation
-        id_ex_pipe_o.alu_operator           <= ALU_SLTU;        // todo: requires explanation
-
-        id_ex_pipe_o.mult_en                <= 1'b0;
-
-        id_ex_pipe_o.div_en                 <= 1'b0;
-
+        // so we set all instr_valid to 0 (stage will use this to locally gate *enables)
+        id_ex_pipe_o.instr_valid            <= 1'b0;
+        
       end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
        //In the EX stage there was a CSR access. To avoid multiple
        //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
@@ -667,11 +657,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   end
 
   // Performance Counter Events
-
+  //TODO:OK: Fix counters to reflect new controller behaviour
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && is_decoding_i && is_last && !(illegal_insn_o || ebrk_insn_o || ecall_insn_o);
+  assign minstret = id_valid_o && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin
@@ -705,16 +695,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // IF stage count
       mhpmevent_imiss_o          <= perf_imiss_i;
       // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_jr_stall_o       <= jr_stall_i && !halt_id_i && id_valid_q;
+      mhpmevent_jr_stall_o       <= jr_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
       // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_ld_stall_o       <= load_stall_i && !halt_id_i && id_valid_q;
+      mhpmevent_ld_stall_o       <= load_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
     end
   end
 
-  // stall control
+  assign csr_en_o = csr_en;
+  assign csr_op_o = csr_op;
+
+  // stall control for multicyle ID instructions (currently only misaligned LSU)
   assign multi_cycle_id_stall = misaligned_stall_i;
 
-  assign id_ready_o = (!multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i);
-  assign id_valid_o = (!halt_id_i && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
+  //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
+  //TODO:OK Halt and stall seems to be the same
+  assign id_ready_o = ctrl_fsm_i.kill_id || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !ctrl_fsm_i.halt_id && !wfi_stall_i);
+  assign id_valid_o = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
+
 
 endmodule // cv32e40x_id_stage

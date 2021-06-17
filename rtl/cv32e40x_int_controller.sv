@@ -35,7 +35,7 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   output logic        irq_wu_ctrl_o,
 
   // To/from cv32e40x_cs_registers
-  input  logic [31:0] mie_bypass_i,             // MIE CSR (bypass)
+  input  logic [31:0] mie_i,             // MIE CSR (bypass)
   output logic [31:0] mip_o,                    // MIP CSR
   input  logic        m_ie_i,                   // Interrupt enable bit from CSR (M mode)
   input  PrivLvl_t    current_priv_lvl_i
@@ -62,10 +62,10 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   assign mip_o = irq_q;
 
   // Qualify registered IRQ with MIE CSR to compute locally enabled IRQs
-  assign irq_local_qual = irq_q & mie_bypass_i;
+  assign irq_local_qual = irq_q & mie_i;
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
-  assign irq_wu_ctrl_o = |(irq_i & mie_bypass_i);
+  assign irq_wu_ctrl_o = |(irq_i & mie_i);
 
   // Global interrupt enable
   assign global_irq_enable = m_ie_i;

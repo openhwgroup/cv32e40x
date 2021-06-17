@@ -30,10 +30,7 @@ module cv32e40x_cs_registers_sva
    input logic        rst_n,
 
    input id_ex_pipe_t id_ex_pipe_i,
-   input logic [31:0] csr_rdata_o,
-   input logic [31:0] mie_n,
-   input logic        mie_we,
-   input logic [31:0] mie_bypass_o
+   input logic [31:0] csr_rdata_o
    );
 
    // Store last valid rdata output
@@ -47,11 +44,6 @@ module cv32e40x_cs_registers_sva
     end
   end
 
-
-  // Check that mie_bypass_o equals mie_n
-  a_mie_bypass : assert property (@(posedge clk) disable iff (!rst_n)
-                                  (mie_we) |-> (mie_bypass_o == mie_n))
-    else `uvm_error("cs_registers", "Assertion a_mie_bypass failed")
 
   // Check that read data is stable when csr_access is low
   a_stable_rdata: assert property (@(posedge clk) disable iff (!rst_n)

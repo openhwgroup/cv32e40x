@@ -49,23 +49,29 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
 
+  // IF/ID pipeline
+  input if_id_pipe_t      if_id_pipe_i,
+
   // ID/EX pipeline 
   input id_ex_pipe_t      id_ex_pipe_i,
 
+  // EX/WB pipeline
+  input ex_wb_pipe_t      ex_wb_pipe_i,
+
+  // From controller FSM
+  input  ctrl_fsm_t       ctrl_fsm_i,
+ 
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
   // Interrupts
-  output logic [31:0]     mie_bypass_o,
+  output logic [31:0]     mie_o,
   input  logic [31:0]     mip_i,
   output logic            m_irq_enable_o,
   
   output logic [31:0]     mepc_o,
 
   // debug
-  input  logic            debug_mode_i,
-  input  logic  [2:0]     debug_cause_i,
-  input  logic            debug_csr_save_i,
   output logic [31:0]     dpc_o,
   output logic            debug_single_step_o,
   output logic            debug_ebreakm_o,
@@ -74,20 +80,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output PrivLvl_t        priv_lvl_o,
 
   input  logic [31:0]     pc_if_i,
-  input  logic [31:0]     pc_id_i,
 
-  input  logic            csr_save_if_i,
-  input  logic            csr_save_id_i,
-  input  logic            csr_save_ex_i,
-
-  input  logic            csr_restore_mret_i,
-  
-  input  logic            csr_restore_dret_i,
-  //coming from controller
-  input  logic [5:0]      csr_cause_i,
-  //coming from controller
-  input  logic            csr_save_cause_i,
-  
   // Performance Counters
   input  logic                 mhpmevent_minstret_i,
   input  logic                 mhpmevent_load_i,
@@ -167,8 +160,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mie_we;
   logic mie_rd_error;
 
-  logic [31:0] csr_mie_wdata;
-
   PrivLvl_t priv_lvl_n, priv_lvl_q;
 
   // Performance Counter Signals
@@ -183,36 +174,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
   csr_opcode_e csr_op;
-  csr_num_e    csr_addr;
+  csr_num_e    csr_waddr;
+  csr_num_e    csr_raddr;
   logic [31:0] csr_wdata;
 
-  //  CSR access
-  assign csr_addr     =  csr_num_e'(id_ex_pipe_i.csr_en ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
-  assign csr_wdata    =  id_ex_pipe_i.alu_operand_a;
-  assign csr_op       =  id_ex_pipe_i.csr_op;
+  //  CSR access. Read in EX, write in WB //TODO:OK: Why suppression to 0?
+  assign csr_raddr    =  csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : '0);
+
+  assign csr_waddr     =  csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0);
+  assign csr_wdata    =  ex_wb_pipe_i.csr_wdata;
+
+  //TODO: We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
+  assign csr_op       =  (!ctrl_fsm_i.kill_wb && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
     
   // mip CSR
   assign mip = mip_i;
 
-  // mie_n is used instead of mie_q such that a CSR write to the MIE register can
-  // affect the instruction immediately following it.
-
-  // MIE CSR operation logic
-  always_comb
-  begin
-    csr_mie_wdata = csr_wdata;
-
-    case (csr_op)
-      CSR_OP_WRITE: csr_mie_wdata = csr_wdata;
-      CSR_OP_SET:   csr_mie_wdata = csr_wdata | mie_q;
-      CSR_OP_CLEAR: csr_mie_wdata = (~csr_wdata) & mie_q;
-      CSR_OP_READ: begin
-        csr_mie_wdata = csr_wdata;
-      end
-    endcase
-  end
-
-  assign mie_bypass_o = mie_we ? csr_mie_wdata & IRQ_MASK : mie_q;
 
   ////////////////////////////////////////////
   //   ____ ____  ____    ____              //
@@ -234,8 +211,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
     csr_rdata_int = csr_rdata_q;
-    if(id_ex_pipe_i.csr_access) begin
-      case (csr_addr)
+    if(id_ex_pipe_i.csr_access && id_ex_pipe_i.instr_valid) begin
+      case (csr_raddr)
         // mstatus: always M-mode, contains IE bit
         CSR_MSTATUS: csr_rdata_int = mstatus_q;
         // misa: machine isa register
@@ -313,7 +290,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
         CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
         CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
-          csr_rdata_int = mhpmcounter_q[csr_addr[4:0]][31:0];
+          csr_rdata_int = mhpmcounter_q[csr_raddr[4:0]][31:0];
 
         CSR_MCYCLEH,
         CSR_MINSTRETH,
@@ -335,7 +312,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
         CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
         CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
-          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_addr[4:0]][63:32] : '0;
+          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_raddr[4:0]][63:32] : '0;
 
         CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
 
@@ -347,7 +324,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
         CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
         CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
-          csr_rdata_int = mhpmevent_q[csr_addr[4:0]];
+          csr_rdata_int = mhpmevent_q[csr_raddr[4:0]];
 
         
         default:
@@ -394,7 +371,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mstatus_we               = 1'b0;
     mcause_n                 = {csr_wdata_int[31], 26'd0, csr_wdata_int[4:0]};
     mcause_we                = 1'b0;
-    exception_pc             = pc_id_i;
+    exception_pc             = if_id_pipe_i.pc;
     priv_lvl_n               = priv_lvl_q;
 
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
@@ -406,7 +383,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mie_we                   = 1'b0;
   
     if (csr_we_int) begin
-      case (csr_addr)
+      case (csr_waddr)
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
@@ -450,18 +427,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     // exception controller gets priority over other writes
     unique case (1'b1)
 
-      csr_save_cause_i: begin
+      ctrl_fsm_i.csr_save_cause: begin
         unique case (1'b1)
-          csr_save_if_i:
+          ctrl_fsm_i.csr_save_if:
             exception_pc = pc_if_i;
-          csr_save_id_i:
-            exception_pc = pc_id_i;
-          csr_save_ex_i:
+          ctrl_fsm_i.csr_save_id:
+            exception_pc = if_id_pipe_i.pc;
+          ctrl_fsm_i.csr_save_ex:
             exception_pc = id_ex_pipe_i.pc;
+          ctrl_fsm_i.csr_save_wb:
+            exception_pc = ex_wb_pipe_i.pc;
           default:;
         endcase
 
-        if (debug_csr_save_i) begin
+        if (ctrl_fsm_i.debug_csr_save) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
             // mpstatus
             dcsr_n = '{
@@ -470,7 +449,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               stepie    : dcsr_q.stepie,
               step      : dcsr_q.step,
               prv       : PRIV_LVL_M,
-              cause     : debug_cause_i,
+              cause     : ctrl_fsm_i.debug_cause,
               default   : 'd0
             };
             dcsr_we = 1'b1;
@@ -487,23 +466,23 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mepc_n = exception_pc;
             mepc_we = 1'b1;
 
-            mcause_n       = {csr_cause_i[5], 26'd0, csr_cause_i[4:0]};
+            mcause_n       = {ctrl_fsm_i.csr_cause[5], 26'd0, ctrl_fsm_i.csr_cause[4:0]};
             mcause_we = 1'b1;
         end
-      end //csr_save_cause_i
+      end //ctrl_fsm_i.csr_save_cause
 
-      csr_restore_mret_i: begin //MRET
+      ctrl_fsm_i.csr_restore_mret: begin //MRET
         mstatus_n.mie  = mstatus_q.mpie;
         priv_lvl_n     = PRIV_LVL_M;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_M;
         mstatus_we = 1'b1;
-      end //csr_restore_mret_i
+      end //ctrl_fsm_i.csr_restore_mret
 
-      csr_restore_dret_i: begin //DRET
+      ctrl_fsm_i.csr_restore_dret: begin //DRET
           // Restore to the recorded privilege level
           priv_lvl_n = dcsr_q.prv;
-      end //csr_restore_dret_i
+      end //ctrl_fsm_i.csr_restore_dret
 
       default:;
     endcase
@@ -685,6 +664,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign debug_ebreakm_o      = dcsr_q.ebreakm;
 
   assign priv_lvl_q   = PRIV_LVL_M;
+
+  assign mie_o = mie_q;
   
 
 
@@ -708,8 +689,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic tmatch_value_rd_error;
 
   // Write select
-  assign tmatch_control_we = csr_we_int & debug_mode_i & (csr_addr == CSR_TDATA1);
-  assign tmatch_value_we   = csr_we_int & debug_mode_i & (csr_addr == CSR_TDATA2);
+  assign tmatch_control_we = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA1);
+  assign tmatch_value_we   = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA2);
 
   // All supported trigger types
   assign tinfo_types = 1 << TTYPE_MCONTROL;
@@ -771,7 +752,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Breakpoint matching
   // We match against the next address, as the breakpoint must be taken before execution
   assign debug_trigger_match_o = tmatch_control_q[2] &
-                                 (pc_id_i[31:0] == tmatch_value_q[31:0]);
+                                 (if_id_pipe_i.pc[31:0] == tmatch_value_q[31:0]);
 
 
   /////////////////////////////////////////////////////////////////
@@ -807,36 +788,36 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mcountinhibit_we;
   logic mhpmevent_we;
 
-  assign mcountinhibit_we = csr_we_int & (  csr_addr == CSR_MCOUNTINHIBIT);
-  assign mhpmevent_we     = csr_we_int & ( (csr_addr == CSR_MHPMEVENT3  )||
-                                           (csr_addr == CSR_MHPMEVENT4  ) ||
-                                           (csr_addr == CSR_MHPMEVENT5  ) ||
-                                           (csr_addr == CSR_MHPMEVENT6  ) ||
-                                           (csr_addr == CSR_MHPMEVENT7  ) ||
-                                           (csr_addr == CSR_MHPMEVENT8  ) ||
-                                           (csr_addr == CSR_MHPMEVENT9  ) ||
-                                           (csr_addr == CSR_MHPMEVENT10 ) ||
-                                           (csr_addr == CSR_MHPMEVENT11 ) ||
-                                           (csr_addr == CSR_MHPMEVENT12 ) ||
-                                           (csr_addr == CSR_MHPMEVENT13 ) ||
-                                           (csr_addr == CSR_MHPMEVENT14 ) ||
-                                           (csr_addr == CSR_MHPMEVENT15 ) ||
-                                           (csr_addr == CSR_MHPMEVENT16 ) ||
-                                           (csr_addr == CSR_MHPMEVENT17 ) ||
-                                           (csr_addr == CSR_MHPMEVENT18 ) ||
-                                           (csr_addr == CSR_MHPMEVENT19 ) ||
-                                           (csr_addr == CSR_MHPMEVENT20 ) ||
-                                           (csr_addr == CSR_MHPMEVENT21 ) ||
-                                           (csr_addr == CSR_MHPMEVENT22 ) ||
-                                           (csr_addr == CSR_MHPMEVENT23 ) ||
-                                           (csr_addr == CSR_MHPMEVENT24 ) ||
-                                           (csr_addr == CSR_MHPMEVENT25 ) ||
-                                           (csr_addr == CSR_MHPMEVENT26 ) ||
-                                           (csr_addr == CSR_MHPMEVENT27 ) ||
-                                           (csr_addr == CSR_MHPMEVENT28 ) ||
-                                           (csr_addr == CSR_MHPMEVENT29 ) ||
-                                           (csr_addr == CSR_MHPMEVENT30 ) ||
-                                           (csr_addr == CSR_MHPMEVENT31 ) );
+  assign mcountinhibit_we = csr_we_int & (  csr_waddr == CSR_MCOUNTINHIBIT);
+  assign mhpmevent_we     = csr_we_int & ( (csr_waddr == CSR_MHPMEVENT3  )||
+                                           (csr_waddr == CSR_MHPMEVENT4  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT5  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT6  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT7  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT8  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT9  ) ||
+                                           (csr_waddr == CSR_MHPMEVENT10 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT11 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT12 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT13 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT14 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT15 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT16 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT17 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT18 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT19 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT20 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT21 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT22 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT23 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT24 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT25 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT26 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT27 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT28 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT29 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT30 ) ||
+                                           (csr_waddr == CSR_MHPMEVENT31 ) );
 
   // ------------------------
   // Increment value for performance counters
@@ -861,7 +842,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       // Event Control
       if(mhpmevent_we)
-        mhpmevent_n[csr_addr[4:0]] = csr_wdata_int;
+        mhpmevent_n[csr_waddr[4:0]] = csr_wdata_int;
     end
 
   genvar wcnt_gidx;
@@ -869,11 +850,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     for (wcnt_gidx=0; wcnt_gidx<32; wcnt_gidx++) begin : gen_mhpmcounter_write
 
       // Write lower counter bits
-      assign mhpmcounter_write_lower[wcnt_gidx] = csr_we_int && (csr_addr == (CSR_MCYCLE + wcnt_gidx));
+      assign mhpmcounter_write_lower[wcnt_gidx] = csr_we_int && (csr_waddr == (CSR_MCYCLE + wcnt_gidx));
 
       // Write upper counter bits
       assign mhpmcounter_write_upper[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                  csr_we_int && (csr_addr == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
+                                                  csr_we_int && (csr_waddr == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
 
       // Increment counter
       

@@ -123,7 +123,15 @@ module cv32e40x_wrapper
     // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
     .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
     .*);
-  bind cv32e40x_controller_fsm:      core_i.controller_i.controller_fsm_i     cv32e40x_controller_fsm_sva   controller_fsm_sva   (.*);
+  
+  bind cv32e40x_controller_fsm:
+    core_i.controller_i.controller_fsm_i
+      cv32e40x_controller_fsm_sva
+        controller_fsm_sva   (
+                              .lsu_outstanding_cnt (core_i.load_store_unit_i.cnt_q),
+                              .rf_we_wb_i          (core_i.wb_stage_i.rf_we_wb_o  ),
+                              .csr_op_i            (core_i.cs_registers_i.csr_op  ),
+                              .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
 
   bind cv32e40x_load_store_unit:
@@ -156,29 +164,22 @@ module cv32e40x_wrapper
                 .cs_registers_mepc_n              (core_i.cs_registers_i.mepc_n),
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
-                .cs_registers_csr_cause_i         (core_i.cs_registers_i.csr_cause_i),
-                // probed id_stage signals
-                .id_stage_ebrk_insn               (core_i.ebrk_insn),
-                .id_stage_ecall_insn              (core_i.ecall_insn),
-                .id_stage_illegal_insn            (core_i.illegal_insn),
-                .id_stage_instr_err               (core_i.controller_i.controller_fsm_i.instr_err),
-                .id_stage_mpu_err                 (core_i.controller_i.controller_fsm_i.instr_mpu_err),
-                .id_stage_instr_valid             (core_i.controller_i.controller_fsm_i.instr_valid),
-                .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex_i),
+                .cs_registers_csr_cause_i         (core_i.cs_registers_i.ctrl_fsm_i.csr_cause),
+                .ex_wb_pipe_i                     ( core_i.ex_wb_pipe ),
+                .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
+                .exc_cause                        ( core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
-                .exc_cause                        (core_i.controller_i.exc_cause),
-                .id_stage_controller_ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
-                .id_valid                         (core_i.id_stage_i.id_valid_o),
-                .multi_cycle_id_stall             (core_i.id_stage_i.multi_cycle_id_stall),
+                .id_stage_is_last                 (core_i.id_stage_i.is_last),
                 .*);
 
-  bind cv32e40x_sleep_unit:
-    core_i.sleep_unit_i cv32e40x_sleep_unit_sva
-      sleep_unit_sva (// probed id_stage_i.controller_i signals
-                      .id_stage_controller_ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
-                      .id_stage_controller_ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                      .*);
+bind cv32e40x_sleep_unit:
+  core_i.sleep_unit_i cv32e40x_sleep_unit_sva
+    sleep_unit_sva (// probed id_stage_i.controller_i signals
+                    .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
+                    .ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                    .*);
 
   bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva 
     decoder_sva(.clk(core_i.id_stage_i.clk), 
@@ -207,11 +208,11 @@ module cv32e40x_wrapper
     core_i.id_stage_i
     cv32e40x_dbg_helper
       dbg_help_i(.is_compressed(if_id_pipe_i.is_compressed),
-                 .rf_re    (core_i.rf_re                  ),
-                 .rf_raddr (core_i.rf_raddr               ),
+                 .rf_re    (core_i.rf_re_id               ),
+                 .rf_raddr (core_i.rf_raddr_id            ),
                  .rf_we    (core_i.id_stage_i.rf_we       ),
-                 .rf_waddr (core_i.rf_waddr               ),
-                 .illegal_insn (core_i.illegal_insn       ),
+                 .rf_waddr (core_i.rf_waddr_id            ),
+                 .illegal_insn (core_i.id_stage_i.illegal_insn       ),
                  .*);
   
     cv32e40x_core_log
@@ -219,8 +220,8 @@ module cv32e40x_wrapper
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
-          .is_decoding_i      ( core_i.is_decoding                 ),
-          .illegal_insn_dec_i ( core_i.illegal_insn                ),
+          .is_decoding_i      ( core_i.ctrl_fsm.is_decoding        ),
+          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn     ),
           .hart_id_i          ( core_i.hart_id_i                   ),
           .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
@@ -234,16 +235,16 @@ module cv32e40x_wrapper
          .hart_id_i                ( core_i.hart_id_i                                                     ),
          .irq_ack_i                ( core_i.irq_ack_o                                                     ),
 
-         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn_o                                     ),
-         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn_o                                        ),
-         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn_o                                        ),
-         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn_o                                       ),
+         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn                                     ),
+         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn                                        ),
+         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn                                        ),
+         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn                                       ),
 
          .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
          .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
          .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid_o                                         ),
-         .instr_id_is_decoding_i   ( core_i.controller_i.is_decoding_o                                    ),
+         .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
 
          .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
          .raddr_a_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
@@ -255,9 +256,9 @@ module cv32e40x_wrapper
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
 
-         .pc_set_i                 ( core_i.if_stage_i.pc_set_i                                           ),
-         .pc_mux_i                 ( core_i.if_stage_i.pc_mux_i                                           ),
-         .exc_pc_mux_i             ( core_i.if_stage_i.exc_pc_mux_i                                       ),
+         .pc_set_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_set                                    ),
+         .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                    ),
+         .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                                ),
 
          .lsu_type_id_i            ( core_i.id_stage_i.data_type                                          ),
          .lsu_we_id_i              ( core_i.id_stage_i.data_we                                            ),
@@ -285,7 +286,7 @@ module cv32e40x_wrapper
 
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
 
-         .is_debug_mode            ( core_i.controller_i.debug_mode_o                                     ),
+         .is_debug_mode            ( core_i.ctrl_fsm.debug_mode                                           ),
 
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
@@ -324,7 +325,7 @@ module cv32e40x_wrapper
          .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
-         .csr_debug_csr_save_i     ( core_i.cs_registers_i.debug_csr_save_i                               ),
+         .csr_debug_csr_save_i     ( core_i.cs_registers_i.ctrl_fsm_i.debug_csr_save                      ),
          .csr_dpc_q_i              ( core_i.cs_registers_i.dpc_q                                          ),
          .csr_dpc_n_i              ( core_i.cs_registers_i.dpc_n                                          ),
          .csr_dpc_we_i             ( core_i.cs_registers_i.dpc_we                                         ),
@@ -365,13 +366,14 @@ module cv32e40x_wrapper
 
       .pc             ( core_i.id_stage_i.if_id_pipe_i.pc              ),
       .instr          ( core_i.id_stage_i.instr                        ),
-      .controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
+      //.controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
       .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
       .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
-      .is_decoding    ( core_i.is_decoding                             ),
-      .is_illegal     ( core_i.illegal_insn                            ),
-      .trigger_match  ( core_i.debug_trigger_match                     ),
+      .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
+
+      .is_illegal     ( core_i.id_stage_i.illegal_insn                            ),
+      .trigger_match  ( core_i.debug_trigger_match_id                  ),
       .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),
       .rs2_value      ( core_i.id_stage_i.operand_b_fw                 ),
       .rs3_value      ( core_i.id_stage_i.operand_c                    ),
@@ -382,7 +384,7 @@ module cv32e40x_wrapper
       .rs3_is_fp('0),
       .rd_is_fp('0),
 
-      .ex_valid       ( core_i.ex_valid                             ),
+      .ex_valid       ( 1'b0/*core_i.ex_valid*/                             ),
       .ex_reg_addr    ( 5'b0                                        ),
       .ex_reg_we      ( 1'b0                                        ),
       .ex_reg_wdata   ( 32'b0                                       ),
@@ -394,15 +396,15 @@ module cv32e40x_wrapper
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
       .data_misaligned ( core_i.lsu_misaligned                      ),
 
-      .ebrk_insn      ( core_i.ebrk_insn                            ),
-      .debug_mode     ( core_i.debug_mode                           ),
-      .ebrk_force_debug_mode ( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
+      .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
+      .debug_mode     ( core_i.ctrl_fsm.debug_mode                  ),
+      .ebrk_force_debug_mode ( 1'b0),//( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
 
-      .wb_bypass      ( 1'b0 ), //( core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex ), // TODO: This done to support a simplification for RVFI and has not been verified
+      .wb_bypass      ( 1'b0/*core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex*/ ),
 
-      .wb_valid       ( core_i.wb_valid                             ),
+      .wb_valid       ( 1'b0/*core_i.wb_valid*/                             ),
       .wb_reg_addr    ( core_i.rf_waddr_wb                          ),
-      .wb_reg_we      ( core_i.rf_we_wb                             ),
+      .wb_reg_we      ( 1'b0/*core_i.rf_we_wb*/                             ),
       .wb_reg_wdata   ( core_i.rf_wdata_wb                          ),
 
       .imm_u_type     ( core_i.id_stage_i.imm_u_type                ),

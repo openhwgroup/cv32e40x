@@ -39,7 +39,7 @@ module cv32e40x_tracer
 
   input  logic [31:0] pc,
   input  logic [31:0] instr,
-  input  ctrl_state_e controller_state_i,
+  //input  ctrl_state_e controller_state_i,
 
   input  logic        compressed,
   input  logic        id_valid,
@@ -158,12 +158,12 @@ module cv32e40x_tracer
       cycles <= cycles + 1;
   end
 
-  initial begin
-    wait(rst_n == 1'b1);
-    $sformat(fn, "trace_core_%h.log", hart_id_i);
-    f = $fopen(fn, "w");
-    $fwrite(f, "Time\tCycle\tPC\tInstr\tDecoded instruction\tRegister and memory contents\n");
-  end
+    initial begin
+      wait(rst_n == 1'b1);
+      $sformat(fn, "trace_core_%h.log", hart_id_i);
+      f = $fopen(fn, "w");
+      $fwrite(f, "Time\tCycle\tPC\tInstr\tDecoded instruction\tRegister and memory contents\n");
+    end
 
   initial begin
     use_iss = 0;

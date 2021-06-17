@@ -39,14 +39,14 @@ module cv32e40x_sleep_unit_sva
    input logic core_sleep_o,
    input logic fetch_enable_d,
    input logic fetch_enable_q,
-   input       ctrl_state_e id_stage_controller_ctrl_fsm_cs,
-   input       ctrl_state_e id_stage_controller_ctrl_fsm_ns
+   input       ctrl_state_e ctrl_fsm_cs,
+   input       ctrl_state_e ctrl_fsm_ns
    );
 
   // Clock gate is disabled during RESET state of the controller
   property p_clock_en_0;
     @(posedge clk_ungated_i) disable iff (!rst_n)
-      ((id_stage_controller_ctrl_fsm_cs == RESET) && (id_stage_controller_ctrl_fsm_ns == RESET)) |->  (clock_en == 1'b0);
+      ((ctrl_fsm_cs == RESET) && (ctrl_fsm_ns == RESET)) |->  (clock_en == 1'b0);
   endproperty
 
   a_clock_en_0 : assert property(p_clock_en_0) else `uvm_error("sleep_unit", "Assertion a_clock_en_0 failed")
@@ -54,7 +54,7 @@ module cv32e40x_sleep_unit_sva
   // Clock gate is enabled when exit from RESET state is required
   property p_clock_en_1;
     @(posedge clk_ungated_i) disable iff (!rst_n)
-      ((id_stage_controller_ctrl_fsm_cs == RESET) && (id_stage_controller_ctrl_fsm_ns != RESET)) |-> (clock_en == 1'b1);
+      ((ctrl_fsm_cs == RESET) && (ctrl_fsm_ns != RESET)) |-> (clock_en == 1'b1);
   endproperty
 
   a_clock_en_1 : assert property(p_clock_en_1) else `uvm_error("sleep_unit", "Assertion a_clock_en_1 failed")
@@ -71,7 +71,7 @@ module cv32e40x_sleep_unit_sva
   // Clock gate is only possibly disabled in RESET or SLEEP
   property p_clock_en_4;
     @(posedge clk_ungated_i) disable iff (!rst_n)
-      (clock_en == 1'b0) -> ((id_stage_controller_ctrl_fsm_cs == RESET) || (id_stage_controller_ctrl_fsm_ns == SLEEP));
+      (clock_en == 1'b0) -> ((ctrl_fsm_cs == RESET) || (ctrl_fsm_ns == SLEEP));
   endproperty
 
   a_clock_en_4 : assert property(p_clock_en_4) else `uvm_error("sleep_unit", "Assertion a_clock_en_4 failed")
@@ -79,7 +79,7 @@ module cv32e40x_sleep_unit_sva
   // Clock gate is enabled when exit from SLEEP state is required
   property p_clock_en_5;
     @(posedge clk_ungated_i) disable iff (!rst_n) 
-      ((id_stage_controller_ctrl_fsm_cs == SLEEP) && (id_stage_controller_ctrl_fsm_ns != SLEEP)) |-> (clock_en == 1'b1);
+      ((ctrl_fsm_cs == SLEEP) && (ctrl_fsm_ns != SLEEP)) |-> (clock_en == 1'b1);
   endproperty
 
   a_clock_en_5 : assert property(p_clock_en_5) else `uvm_error("sleep_unit", "Assertion a_clock_en_5 failed")
@@ -87,7 +87,7 @@ module cv32e40x_sleep_unit_sva
   // Core sleep is only signaled in SLEEP state
   property p_core_sleep;
     @(posedge clk_ungated_i) disable iff (!rst_n)
-      (core_sleep_o == 1'b1) -> ((id_stage_controller_ctrl_fsm_cs == cv32e40x_pkg::SLEEP));
+      (core_sleep_o == 1'b1) -> ((ctrl_fsm_cs == cv32e40x_pkg::SLEEP));
   endproperty
 
   a_core_sleep : assert property(p_core_sleep) else `uvm_error("sleep_unit", "Assertion a_core_sleep failed")
@@ -95,7 +95,7 @@ module cv32e40x_sleep_unit_sva
   // Core can only become non-busy due to SLEEP entry
   property p_non_busy;
     @(posedge clk_ungated_i) disable iff (!rst_n)
-      (core_busy_d == 1'b0) |-> (id_stage_controller_ctrl_fsm_cs == WAIT_SLEEP) || (id_stage_controller_ctrl_fsm_cs == SLEEP);
+      (core_busy_d == 1'b0) |-> /*(ctrl_fsm_cs == WAIT_SLEEP) ||*/ (ctrl_fsm_cs == SLEEP);
   endproperty
 
   a_non_busy : assert property(p_non_busy) else `uvm_error("sleep_unit", "Assertion a_non_busy failed")
@@ -120,7 +120,7 @@ module cv32e40x_sleep_unit_sva
   // Sleep mode can only be entered in response to a WFI instruction
   property p_only_sleep_for_wfi;
       @(posedge clk_ungated_i) disable iff (!rst_n)
-        (core_sleep_o == 1'b1) |-> (id_stage_i.instr == { 12'b000100000101, 13'b0, OPCODE_SYSTEM });
+        (core_sleep_o == 1'b1) |-> (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 12'b000100000101, 13'b0, OPCODE_SYSTEM });
     endproperty
 
   a_only_sleep_for_wfi : assert property(p_only_sleep_for_wfi)

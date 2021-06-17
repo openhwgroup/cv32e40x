@@ -41,13 +41,20 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     input rf_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],   // Read addresses from decoder
     input rf_addr_t  rf_waddr_i,                           // Write address from decoder
 
+    input if_id_pipe_t  if_id_pipe_i,
+    input id_ex_pipe_t  id_ex_pipe_i,
+    input ex_wb_pipe_t  ex_wb_pipe_i,
+
     // From id_stage
     input  logic        regfile_alu_we_id_i,        // RF we in ID is due to an ALU ins, not LSU
-  
+    input  logic        mret_id_i,                  // mret in ID
+    input  logic        dret_id_i,                  // dret in ID
+    input  logic        csr_en_id_i,                // CSR in ID
+    input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
+    input  logic        debug_trigger_match_id_i,         // Trigger match in ID
     // From EX
     input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
     input rf_addr_t     rf_waddr_ex_i,              // write address currently in EX
-    input  logic        data_req_ex_i,              // data memory access is currently performed in EX stage
     
     // From WB
     input  logic        rf_we_wb_i,                 // Register file write enable from WB stage
@@ -67,6 +74,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     output logic        misaligned_stall_o,         // Stall due to misaligned load/store
     output logic        jr_stall_o,                 // Stall due to JR hazard (JR used result from EX or LSU result in WB)
     output logic        load_stall_o,               // Stall due to load operation
+    output logic        csr_stall_o,
+    output logic        wfi_stall_o,
 
     // To decoder
     output logic        deassert_we_o               // deassert write enable for next instruction
@@ -84,6 +93,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   logic                              rf_wr_ex_hz;
   logic                              rf_wr_wb_hz;
 
+  logic csr_read_in_id;
+  logic csr_write_in_ex_wb;
+
+  
+
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
   // / ___|| |_ __ _| | |  / ___|___  _ __ | |_ _ __ ___ | | //
@@ -92,6 +106,20 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // |____/ \__\__,_|_|_|  \____\___/|_| |_|\__|_|  \___/|_| //
   //                                                         //
   /////////////////////////////////////////////////////////////
+
+  //TODO:OK: This CSR stall check is very restrictive
+  //         Should only check EX vs WB, and also CSR/rd addr
+  // Detect when a CSR insn is in ID
+  assign csr_read_in_id = (csr_en_id_i || mret_id_i) && if_id_pipe_i.instr_valid;
+
+  // Detect when a CSR insn  in in EX or WB
+  assign csr_write_in_ex_wb = ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ||
+                              (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn) &&
+                              ex_wb_pipe_i.instr_valid);
+
+  // Stall ID when WFI is active in EX.
+  // Used to create an interruptible bubble after WFI
+  assign wfi_stall_o = (id_ex_pipe_i.wfi_insn && id_ex_pipe_i.instr_valid);
 
   genvar i;
   generate
@@ -123,16 +151,22 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   begin
     load_stall_o   = 1'b0;
     deassert_we_o  = 1'b0;
+    csr_stall_o    = 1'b0;
 
-    // deassert WE when the core is not decoding instructions
-    if (~is_decoding_i)
+    // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
+    // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
+    if (~is_decoding_i || if_id_pipe_i.instr.bus_resp.err ||
+        !(if_id_pipe_i.instr.mpu_status == MPU_OK) ||
+        debug_trigger_match_id_i) begin
+
       deassert_we_o = 1'b1;
+    end
 
     // Stall because of load operation
     if (
-        (data_req_ex_i && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (id_ex_pipe_i.data_req && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
         (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (data_req_ex_i && rf_we_ex_i && is_decoding_i && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (id_ex_pipe_i.data_req && rf_we_ex_i && is_decoding_i && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
         (!wb_ready_i   && rf_we_wb_i && is_decoding_i && !data_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
@@ -155,6 +189,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     else
     begin
       jr_stall_o     = 1'b0;
+    end
+
+    // Stall because of CSR read (direct or implied) in ID while CSR (implied or direct) is written in EX/WB
+    if (csr_read_in_id && csr_write_in_ex_wb ) begin
+      csr_stall_o = 1'b1;
     end
   end
 
