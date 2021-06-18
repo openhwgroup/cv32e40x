@@ -264,7 +264,7 @@ instruction_obi_i
     begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
-      if (if_valid)
+      if (if_valid) 
       begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr            <= instr_decompressed;
@@ -287,6 +287,4 @@ instruction_obi_i
     .illegal_instr_o ( illegal_c_insn          )
   );
 
-
-
-endmodule
+endmodule // cv32e40x_if_stage

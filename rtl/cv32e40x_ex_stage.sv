@@ -65,9 +65,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        lsu_valid_o,
   input  logic        lsu_ready_i,
 
-  output logic        ex_ready_o, // EX stage ready for new data
-  output logic        ex_valid_o, // EX stage gets new data
-  input  logic        wb_ready_i  // WB stage ready for new data
+  // Stage ready/valid
+  output logic        ex_ready_o,       // EX stage is ready for new data
+  output logic        ex_valid_o,       // EX stage has valid (non-bubble) data for next stage
+  input  logic        wb_ready_i        // WB stage is ready for new data
 );
 
   logic [31:0]    alu_result;
@@ -285,11 +286,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
     else
     begin
-      if (ex_valid_o) // wb_ready_i and id_ex_pipe_i.instr_valid is implied
-      begin
+      if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-        ex_wb_pipe_o.rf_we <= id_ex_pipe_i.rf_we;
-        ex_wb_pipe_o.lsu_en <= id_ex_pipe_i.lsu_en;
+        ex_wb_pipe_o.rf_we       <= id_ex_pipe_i.rf_we;
+        ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
           
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
@@ -299,28 +299,28 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // Update signals for CSR access in WB
-        ex_wb_pipe_o.csr_en  <= id_ex_pipe_i.csr_en;
+        ex_wb_pipe_o.csr_en     <= id_ex_pipe_i.csr_en;
         ex_wb_pipe_o.csr_access <= id_ex_pipe_i.csr_access; // TODO:OK: May revert to using only csr_en with the new instr_valid qualifier?
-        ex_wb_pipe_o.csr_op <= id_ex_pipe_i.csr_op;
+        ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op;
         if (id_ex_pipe_i.csr_en) begin
-          ex_wb_pipe_o.csr_addr <= id_ex_pipe_i.alu_operand_b[11:0];
+          ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;
         end
 
         // Propagate signals needed for exception handling in WB
         // TODO:OK: Clock gating of pc if no existing exceptions
         //          and LSU it not in use
-        ex_wb_pipe_o.pc                     <= id_ex_pipe_i.pc;
-        ex_wb_pipe_o.instr                  <= id_ex_pipe_i.instr;
-        ex_wb_pipe_o.illegal_insn           <= id_ex_pipe_i.illegal_insn;
-        ex_wb_pipe_o.ebrk_insn              <= id_ex_pipe_i.ebrk_insn;
-        ex_wb_pipe_o.wfi_insn               <= id_ex_pipe_i.wfi_insn;
-        ex_wb_pipe_o.ecall_insn             <= id_ex_pipe_i.ecall_insn;
-        ex_wb_pipe_o.fencei_insn            <= id_ex_pipe_i.fencei_insn;
-        ex_wb_pipe_o.mret_insn              <= id_ex_pipe_i.mret_insn;
-        ex_wb_pipe_o.dret_insn              <= id_ex_pipe_i.dret_insn;
-        ex_wb_pipe_o.lsu_mpu_status         <= MPU_OK; // TODO:OK: Set to actual MPU status when MPU is implemented on data side.
-        ex_wb_pipe_o.trigger_match          <= id_ex_pipe_i.trigger_match;
+        ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
+        ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
+        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn;
+        ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
+        ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
+        ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;
+        ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
+        ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
+        ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
+        ex_wb_pipe_o.lsu_mpu_status <= MPU_OK; // TODO:OK: Set to actual MPU status when MPU is implemented on data side.
+        ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we introduce a bubble
@@ -343,12 +343,12 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
   // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid) || 
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && !id_ex_pipe_i.lsu_en && alu_valid) || 
+                       (id_ex_pipe_i.alu_en &&  id_ex_pipe_i.lsu_en && alu_valid && lsu_valid_i) ||
                        (id_ex_pipe_i.mul_en && mul_valid) ||
                        (id_ex_pipe_i.div_en && div_valid) || 
                        (id_ex_pipe_i.csr_en && csr_valid_i) || 
-                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
                        previous_exception
-                      ) && lsu_ready_i && wb_ready_i && instr_valid; // todo: would like to remove lsu_ready_i from this expression, but that is not SEC clean
+                      ) && instr_valid; // todo: would like to remove lsu_ready_i from this expression, but that is not SEC clean
   
 endmodule // cv32e40x_ex_stage
