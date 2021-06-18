@@ -40,8 +40,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // CSR interface
   input  logic [31:0] csr_rdata_i,
   input  logic        csr_valid_i,
-  output logic        csr_ready_ex_o,
-  output logic        csr_valid_ex_o,
+  output logic        csr_ready_o,
+  output logic        csr_valid_o,
   input  logic        csr_ready_i,
 
   // EX/WB pipeline 
@@ -51,19 +51,18 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   // Register file forwarding signals (to ID)
-  output logic        rf_we_ex_o,
-  output rf_addr_t    rf_waddr_ex_o,
-  output logic [31:0] rf_wdata_ex_o,
+  output logic        rf_we_o,
+  output rf_addr_t    rf_waddr_o,
+  output logic [31:0] rf_wdata_o,
 
   // To IF: Jump and branch target and decision
   output logic        branch_decision_o,
   output logic [31:0] branch_target_o,
 
   // LSU interface
-  input logic         lsu_ready_ex_i, // EX part of LSU is done // todo: duplicate signal
   input  logic        lsu_valid_i,
-  output logic        lsu_ready_ex_o,
-  output logic        lsu_valid_ex_o,
+  output logic        lsu_ready_o,
+  output logic        lsu_valid_o,
   input  logic        lsu_ready_i,
 
   output logic        ex_ready_o, // EX stage ready for new data
@@ -124,18 +123,18 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_wdata_ex_o = 'b0; // TODO:OK get rid of this and make alu/mult/csr_en unique
+    rf_wdata_o = 'b0; // TODO:OK get rid of this and make alu/mult/csr_en unique
 
-    rf_we_ex_o    = rf_we_gated;
-    rf_waddr_ex_o = id_ex_pipe_i.rf_waddr;
+    rf_we_o    = rf_we_gated;
+    rf_waddr_o = id_ex_pipe_i.rf_waddr;
     if (alu_en_gated)
-      rf_wdata_ex_o = alu_result;
+      rf_wdata_o = alu_result;
     if (mul_en_gated)
-      rf_wdata_ex_o = mul_result;
+      rf_wdata_o = mul_result;
     if (div_en_gated)
-      rf_wdata_ex_o = div_result;
+      rf_wdata_o = div_result;
     if (csr_en_gated)
-      rf_wdata_ex_o = csr_rdata_i;
+      rf_wdata_o = csr_rdata_i;
   end
 
   // branch handling
@@ -266,8 +265,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.rf_we          <= 1'b0;
       ex_wb_pipe_o.rf_waddr       <= '0;
       ex_wb_pipe_o.rf_wdata       <= 32'b0;
-      ex_wb_pipe_o.lsu_en         <= 1'b0;
-
       ex_wb_pipe_o.pc             <= 32'h0;
       ex_wb_pipe_o.instr          <= INST_RESP_RESET_VAL;
       ex_wb_pipe_o.illegal_insn   <= 1'b0;
@@ -277,14 +274,13 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.fencei_insn    <= 1'b0;
       ex_wb_pipe_o.mret_insn      <= 1'b0;
       ex_wb_pipe_o.dret_insn      <= 1'b0;
+      ex_wb_pipe_o.lsu_en         <= 1'b0;
       ex_wb_pipe_o.lsu_mpu_status <= MPU_OK;
-
       ex_wb_pipe_o.csr_en         <= 1'b0;
       ex_wb_pipe_o.csr_access     <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr       <= 12'h000;
       ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
-
       ex_wb_pipe_o.trigger_match  <= 1'b0;
     end
     else
@@ -298,7 +294,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
           if (!id_ex_pipe_i.lsu_en) begin
-            ex_wb_pipe_o.rf_wdata <= rf_wdata_ex_o;
+            ex_wb_pipe_o.rf_wdata <= rf_wdata_o;
           end
         end
 
@@ -333,27 +329,27 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
   end
 
-  assign csr_valid_ex_o = csr_en_gated;
-  assign csr_ready_ex_o = wb_ready_i;
+  assign csr_valid_o = csr_en_gated;
+  assign csr_ready_o = wb_ready_i;
 
-  assign lsu_valid_ex_o = lsu_en_gated;
-  assign lsu_ready_ex_o = wb_ready_i;
+  assign lsu_valid_o = lsu_en_gated;
+  assign lsu_ready_o = wb_ready_i;
 
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && lsu_ready_ex_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
   // TODO: ex_valid_o shouldn't have to depend on wb_ready_i
   // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid ) || 
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid) || 
                        (id_ex_pipe_i.mul_en && mul_valid) ||
                        (id_ex_pipe_i.div_en && div_valid) || 
                        (id_ex_pipe_i.csr_en && csr_valid_i) || 
                        (id_ex_pipe_i.lsu_en /* && lsu_valid_i*/) ||
 
                        previous_exception  ) && 
-                      lsu_ready_ex_i &&
+                      lsu_ready_i &&
                       wb_ready_i &&
                       instr_valid; // kill_ex factored into instr_valid
   

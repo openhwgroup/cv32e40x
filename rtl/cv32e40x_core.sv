@@ -169,13 +169,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Load/store unit
   logic        lsu_misaligned;
   logic [31:0] lsu_rdata;
-  logic        lsu_ready_ex_org; // todo: remove
-  logic        lsu_ready_wb;
-
-  logic        lsu_valid;
+  logic        lsu_valid_0;
   logic        lsu_ready_ex;
   logic        lsu_valid_ex;
-  logic        lsu_ready;
+  logic        lsu_ready_0;
+  logic        lsu_valid_1;
+  logic        lsu_ready_wb;
+  logic        lsu_valid_wb;
+  logic        lsu_ready_1;
 
   // stall control from controller
   // TODO:OK: Merge to single stall signal for use in ID
@@ -189,6 +190,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        if_ready;
   logic        id_ready;
   logic        ex_ready;
+  logic        wb_ready;
 
   // Stage valid signals
   logic        if_valid;
@@ -420,11 +422,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .jmp_target_o                 ( jump_target_id            ),
 
     // IF and ID control signals
-
     .id_ready_o                   ( id_ready                  ),
     .ex_ready_i                   ( ex_ready                  ),
-    .wb_ready_i                   ( lsu_ready_wb              ),
-
+    .wb_ready_i                   ( wb_ready                  ),
     .id_valid_o                   ( id_valid                  ),
     .ex_valid_i                   ( ex_valid                  ),
 
@@ -440,7 +440,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // CSR ID/EX
     .current_priv_lvl_i           ( current_priv_lvl          ),
 
-    // Debug Signalf
+    // Debug Signals
     .debug_trigger_match_id_i     ( debug_trigger_match_id    ),       // from cs_registers (ID timing)
 
     // Register file write back and forwards
@@ -522,32 +522,29 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // CSR interface
     .csr_rdata_i                ( csr_rdata                    ),
     .csr_valid_i                ( csr_valid                    ),
-    .csr_ready_ex_o             ( csr_ready_ex                 ),
-    .csr_valid_ex_o             ( csr_valid_ex                 ),
+    .csr_ready_o                ( csr_ready_ex                 ),
+    .csr_valid_o                ( csr_valid_ex                 ),
     .csr_ready_i                ( csr_ready                    ),
 
-    // To IF: Branch decision
+    // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
     .branch_target_o            ( branch_target_ex             ),
 
-    // Register file forwarding signals (to ID)
-    .rf_we_ex_o                 ( rf_we_ex                     ),
-    .rf_waddr_ex_o              ( rf_waddr_ex                  ),
-    .rf_wdata_ex_o              ( rf_wdata_ex                  ),
+    // Register file forwarding
+    .rf_we_o                    ( rf_we_ex                     ),
+    .rf_waddr_o                 ( rf_waddr_ex                  ),
+    .rf_wdata_o                 ( rf_wdata_ex                  ),
 
     // LSU interface
-    .lsu_ready_ex_i             ( lsu_ready_ex_org             ),
-
-    .lsu_valid_i                ( lsu_valid                    ),
-    .lsu_ready_ex_o             ( lsu_ready_ex                 ),
-    .lsu_valid_ex_o             ( lsu_valid_ex                 ),
-    .lsu_ready_i                ( lsu_ready                    ),
+    .lsu_valid_i                ( lsu_valid_0                  ),
+    .lsu_ready_o                ( lsu_ready_ex                 ),
+    .lsu_valid_o                ( lsu_valid_ex                 ),
+    .lsu_ready_i                ( lsu_ready_0                  ),
 
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
-    .wb_ready_i                 ( lsu_ready_wb                 )
+    .wb_ready_i                 ( wb_ready                     )
   );
-
 
   ////////////////////////////////////////////////////////////////////////////////////////
   //    _     ___    _    ____    ____ _____ ___  ____  _____   _   _ _   _ ___ _____   //
@@ -570,7 +567,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From controller FSM
     .ctrl_fsm_i            ( ctrl_fsm           ),
 
-    //output to data memory
+    // Output to data memory
     .m_c_obi_data_if       ( m_c_obi_data_if    ),
 
     // ID/EX pipeline
@@ -581,18 +578,20 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_rdata_o           ( lsu_rdata          ), // todo: proper name
     .lsu_misaligned_o      ( lsu_misaligned     ), // todo: proper name
 
-    // control signals
-    .lsu_ready_ex_o        ( lsu_ready_ex_org   ),
-    .lsu_ready_wb_o        ( lsu_ready_wb       ),
-
-    .cnt_o                 ( lsu_cnt            ),  // Number of current outstanding transactions
+    // Control signals
+    .cnt_o                 ( lsu_cnt            ), // Number of current outstanding transactions
     .busy_o                ( lsu_busy           ),
 
     // Handshakes
-    .valid_i               ( lsu_valid_ex       ),
-    .ready_o               ( lsu_ready          ),
-    .valid_o               ( lsu_valid          ),
-    .ready_i               ( lsu_ready_ex       )
+    .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
+    .ready_0_o             ( lsu_ready_0        ),
+    .valid_0_o             ( lsu_valid_0        ),
+    .ready_0_i             ( lsu_ready_ex       ),
+
+    .valid_1_i             ( lsu_valid_wb       ), // Second LSU stage (WB)
+    .ready_1_o             ( lsu_ready_1        ),
+    .valid_1_o             ( lsu_valid_1        ),
+    .ready_1_i             ( lsu_ready_wb       )
   );
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -608,9 +607,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From controller FSM
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
 
+    // LSU interface
     .lsu_rdata_i                ( lsu_rdata                    ),
-    .csr_rdata_i                ( csr_rdata                    ), // todo: the timing of this looks weird
-    .lsu_ready_wb_i             ( lsu_ready_wb                 ),
+    .lsu_valid_i                ( lsu_valid_1                  ),
+    .lsu_ready_o                ( lsu_ready_wb                 ),
+    .lsu_valid_o                ( lsu_valid_wb                 ),
+    .lsu_ready_i                ( lsu_ready_1                  ),
+
+    .lsu_en_wb_o                ( lsu_en_wb                    ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
@@ -618,9 +622,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
   
     // WB valid, currently unused by RTL (could be used by RVFI?)
-    .wb_valid_o                 ( wb_valid                     ),
-
-    .lsu_en_wb_o                ( lsu_en_wb                    )
+    .wb_ready_o                 ( wb_ready                     ),
+    .wb_valid_o                 ( wb_valid                     )
   );
 
   //////////////////////////////////////
@@ -722,6 +725,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .fetch_enable_i                 ( fetch_enable           ),
 
+    // From ID/EX pipeline
+    .id_ex_pipe_i                   ( id_ex_pipe             ),
+
+    // From EX/WB pipeline
+    .ex_wb_pipe_i                   ( ex_wb_pipe             ),
+
     // From bypass module
     .deassert_we_o                  ( deassert_we_ct         ),
 
@@ -736,18 +745,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .dret_id_i                      ( dret_insn_id           ),
     .csr_en_id_i                    ( csr_en_id              ),
     .csr_op_id_i                    ( csr_op_id              ),
-
-    // From ID/EX pipeline
-    .id_ex_pipe_i                   ( id_ex_pipe             ),
-
-    // From EX/WB pipeline
-    .ex_wb_pipe_i                   ( ex_wb_pipe             ),
                                                                  
     // LSU
+    .lsu_cnt_i                      ( lsu_cnt                ),
     .lsu_misaligned_i               ( lsu_misaligned         ),
-
-    .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
+    .lsu_en_wb_i                    ( lsu_en_wb              ),
+    .lsu_err_wb_i                   ( lsu_err_wb             ),
   
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
@@ -795,11 +799,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
-    .wb_ready_i                     ( lsu_ready_wb           ),
-    .lsu_en_wb_i                    ( lsu_en_wb              ),
+    .wb_ready_i                     ( wb_ready               ),
 
     .data_req_i                     ( data_req_o             ),
-    .lsu_cnt_i                      ( lsu_cnt                ),
     .data_rvalid_i                  ( data_rvalid_i          ),
 
     .ctrl_fsm_o                     ( ctrl_fsm               )

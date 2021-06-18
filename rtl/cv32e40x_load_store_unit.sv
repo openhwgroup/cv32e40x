@@ -47,20 +47,20 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     output logic [31:0]  lsu_rdata_o,          // LSU read data
     output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
-
-    // stall signal
-    output logic         lsu_ready_ex_o,       // LSU ready for new data in EX stage
-    output logic         lsu_ready_wb_o,       // LSU ready for new data in WB stage
-
     
     output logic [1:0]   cnt_o, // todo: proper names
     output logic         busy_o,
 
     // Handshakes
-    input  logic         valid_i,
-    output logic         ready_o,
-    output logic         valid_o,
-    input  logic         ready_i
+    input  logic         valid_0_i,             // Handshakes for first LSU stage (EX)
+    output logic         ready_0_o,             // LSU ready for new data in EX stage
+    output logic         valid_0_o,
+    input  logic         ready_0_i,
+
+    input  logic         valid_1_i,             // Handshakes for second LSU stage (WB)
+    output logic         ready_1_o,             // LSU ready for new data in WB stage
+    output logic         valid_1_o,
+    input  logic         ready_1_i
 );
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
@@ -406,9 +406,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign trans_valid = lsu_en_valid && (cnt_q < DEPTH);
 
 
-  // LSU WB stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
-  // or if it WB stage is being used and the awaited response arrives (resp_rvalid).
-  assign lsu_ready_wb_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb; //TODO:OK is this ok or not?
+  // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
+  // or if it is being used and the awaited response arrives (resp_rvalid).
+  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb; //TODO:OK is this ok or not?
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -421,13 +421,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign lsu_ready_ex_o =                !lsu_en_valid  ?                                                !ctrl_fsm_i.halt_ex :
-                                         (cnt_q == 2'b00) ? (              trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
-                                         (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && !ctrl_fsm_i.halt_ex) : 
-                                                            resp_valid && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
+// todo: use ready_i  assign ready_o = ready_i;
+
+  assign ready_0_o = (!lsu_en_valid    ? 1'b1 :
+                      (cnt_q == 2'b00) ? (              trans_valid && trans_ready) :
+                      (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) :
+                                          resp_valid
+                     ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = lsu_ready_ex_o && lsu_en_valid;
+  assign ctrl_update = ready_0_o && lsu_en_valid;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -550,7 +553,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////
 
-  
   cv32e40x_data_obi_interface
   data_obi_i
   (
@@ -567,8 +569,4 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .m_c_obi_data_if       ( m_c_obi_data_if   )
   );
 
-  // ... todo
-  assign valid_o = valid_i;
-  assign ready_o = ready_i;
-
-endmodule
+endmodule // cv32e40x_load_store_unit
