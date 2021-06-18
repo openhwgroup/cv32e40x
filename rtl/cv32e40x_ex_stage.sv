@@ -349,6 +349,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.div_en && div_valid) || 
                        (id_ex_pipe_i.csr_en && csr_valid_i) || 
                        previous_exception
-                      ) && instr_valid; // todo: would like to remove lsu_ready_i from this expression, but that is not SEC clean
+                      ) && instr_valid;
   
 endmodule // cv32e40x_ex_stage
