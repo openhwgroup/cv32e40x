@@ -131,7 +131,7 @@ typedef enum logic [2:0] { HAVERESET = 3'b001, RUNNING = 3'b010, HALTED = 3'b100
 
 typedef enum logic {IDLE, BRANCH_WAIT} prefetch_state_e;
 
-typedef enum logic [1:0] {MUL_ALBL, MUL_ALBH, MUL_AHBL, MUL_AHBH} mult_state_e;
+typedef enum logic [1:0] {MUL_ALBL, MUL_ALBH, MUL_AHBL, MUL_AHBH} mul_state_e;
 
 // ALU divider FSM state encoding
 typedef enum logic [1:0] {DIV_IDLE, DIV_DIVIDE, DIV_DUMMY, DIV_FINISH} div_state_e;
@@ -672,25 +672,25 @@ typedef struct packed {
   op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
-  mul_opcode_e                       mult_operator;
-  logic                              mult_en;
-  logic [1:0]                        mult_signed_mode;
+  logic                              mul_en;
+  mul_opcode_e                       mul_operator;
+  logic [1:0]                        mul_signed_mode;
   logic                              div_en;
   div_opcode_e                       div_operator;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
-  logic                              prepost_useincr;
   logic                              csr_en;
   logic                              csr_status;
   csr_opcode_e                       csr_op;
+  logic                              lsu_en;
+  logic                              lsu_we;
+  logic [1:0]                        lsu_type;
+  logic                              lsu_sign_ext;
+  logic [1:0]                        lsu_reg_offset;
+  logic [5:0]                        lsu_atop;
+  logic                              lsu_prepost_useincr;
   logic                              mret_insn;
   logic                              dret_insn;
-  logic                              data_req;
-  logic                              data_we;
-  logic [1:0]                        data_type;
-  logic                              data_sign_ext;
-  logic [1:0]                        data_reg_offset;
-  logic [5:0]                        data_atop;
   logic                              illegal_insn;
   logic                              ebrk_insn;
   logic                              ecall_insn;
@@ -707,25 +707,25 @@ typedef struct packed {
                                                           op_c_mux_sel                 : OP_C_FWD,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
-                                                          mult_operator                : MUL_M32,
-                                                          mult_en                      : 1'b0,
-                                                          mult_signed_mode             : 2'b00,
+                                                          mul_en                       : 1'b0,
+                                                          mul_operator                 : MUL_M32,
+                                                          mul_signed_mode              : 2'b00,
                                                           div_en                       : 1'b0,
                                                           div_operator                 : DIV_DIVU,
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
-                                                          prepost_useincr              : 1'b1,
                                                           csr_en                       : 1'b0,
                                                           csr_status                   : 1'b0,
                                                           csr_op                       : CSR_OP_READ,
+                                                          lsu_en                       : 1'b0,
+                                                          lsu_we                       : 1'b0,
+                                                          lsu_type                     : 2'b00,
+                                                          lsu_sign_ext                 : 1'b0,
+                                                          lsu_reg_offset               : 2'b00,
+                                                          lsu_atop                     : 6'b000000,
+                                                          lsu_prepost_useincr          : 1'b1,
                                                           mret_insn                    : 1'b0,
                                                           dret_insn                    : 1'b0,
-                                                          data_req                     : 1'b0,
-                                                          data_we                      : 1'b0,
-                                                          data_type                    : 2'b00,
-                                                          data_sign_ext                : 1'b0,
-                                                          data_reg_offset              : 2'b00,
-                                                          data_atop                    : 6'b000000,
                                                           illegal_insn                 : 1'b1,
                                                           ebrk_insn                    : 1'b0,
                                                           ecall_insn                   : 1'b0,
@@ -872,7 +872,6 @@ typedef struct packed {
   logic                       exokay;
 } obi_data_resp_t;
 
-
 // Data/instruction transfer bundeled with MPU status
 typedef struct packed {
  obi_inst_resp_t             bus_resp;
@@ -919,11 +918,11 @@ typedef struct packed {
   logic [31:0]  operand_c; // Gated with alu_en but not used by ALU
 
   // Multiplier control
-  logic         mult_en;
-  mul_opcode_e  mult_operator;
-  logic [31:0]  mult_operand_a;
-  logic [31:0]  mult_operand_b;
-  logic [ 1:0]  mult_signed_mode;
+  logic         mul_en;
+  mul_opcode_e  mul_operator;
+  logic [31:0]  mul_operand_a;
+  logic [31:0]  mul_operand_b;
+  logic [ 1:0]  mul_signed_mode;
 
   // Divider control
   logic         div_en;
@@ -933,22 +932,20 @@ typedef struct packed {
   logic         rf_we;
   rf_addr_t     rf_waddr;
 
-  logic prepost_useincr;
-
-  // CSR control
-  logic         csr_access;
+  // CSR
   logic         csr_en;
-
+  logic         csr_access;
   csr_opcode_e  csr_op;
 
-  // Data Memory Control:  From ID stage (id-ex pipe) <--> load store unit
-  logic         data_req;
-  logic         data_we;
-  logic [1:0]   data_type;
-  logic         data_sign_ext;
-  logic [1:0]   data_reg_offset;
-  logic         data_misaligned;
-  logic [5:0]   data_atop;
+  // LSU
+  logic         lsu_en;
+  logic         lsu_we;
+  logic [1:0]   lsu_type;
+  logic         lsu_sign_ext;
+  logic [1:0]   lsu_reg_offset;
+  logic         lsu_misaligned;
+  logic [5:0]   lsu_atop;
+  logic         lsu_prepost_useincr;
 
   // Branch target
   logic         branch_in_ex;
@@ -975,14 +972,17 @@ typedef struct packed {
   logic         rf_we;
   rf_addr_t     rf_waddr;
   logic [31:0]  rf_wdata;
-  logic         data_req;
 
-  // CSR signals
+  // CSR
   logic         csr_en;
   logic         csr_access;
   csr_opcode_e  csr_op;
   logic [11:0]  csr_addr;
   logic [31:0]  csr_wdata;
+
+  // CSR
+  logic         lsu_en;
+  mpu_status_e  lsu_mpu_status; // MPU timing on gnt, ready in EX
 
   // Trigger match on insn
   logic         trigger_match;
@@ -998,8 +998,6 @@ typedef struct packed {
   logic         fencei_insn;
   logic         mret_insn; // TODO:OK: May be removed if mret is handled by the pipeline and not the controller
   logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
-  mpu_status_e  data_mpu_status; // MPU timing on gnt, ready in EX
-
 } ex_wb_pipe_t;
 
 // Controller FSM outputs

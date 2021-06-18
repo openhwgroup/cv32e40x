@@ -52,8 +52,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   output logic          wb_valid_o,
 
   // to JR forward logic
-  output logic          data_req_wb_o
-
+  output logic          lsu_en_wb_o
 );
 
 logic  instr_valid;
@@ -68,9 +67,9 @@ assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;
   assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid && !ctrl_fsm_i.halt_wb; // TODO:OK: deassert in case of MPU error
   assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
 
-  assign rf_wdata_wb_o = ex_wb_pipe_i.data_req ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
+  assign rf_wdata_wb_o = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
-  assign data_req_wb_o = ex_wb_pipe_i.data_req && instr_valid;
+  assign lsu_en_wb_o   = ex_wb_pipe_i.lsu_en && instr_valid;
 
   assign wb_valid_o    = lsu_ready_wb_i && !ctrl_fsm_i.halt_wb && instr_valid;
   

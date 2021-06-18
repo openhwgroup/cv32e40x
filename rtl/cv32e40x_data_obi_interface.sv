@@ -51,7 +51,6 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
 
   // OBI interface
   if_c_obi.master     m_c_obi_data_if
-
 );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -64,12 +63,10 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
 
   assign resp_valid_o = m_c_obi_data_if.s_rvalid.rvalid;
   assign resp_o       = m_c_obi_data_if.resp_payload;
-
   
   //////////////////////////////////////////////////////////////////////////////
   // OBI A Channel
   //////////////////////////////////////////////////////////////////////////////
-
 
   // If the incoming transaction itself is stable, then it satisfies the OBI protocol
   // and signals can be passed to/from OBI directly.
@@ -77,8 +74,5 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
   assign m_c_obi_data_if.req_payload = trans_i;
 
   assign trans_ready_o = m_c_obi_data_if.s_gnt.gnt;
-
-
-  
 
 endmodule // cv32e40x_data_obi_interface

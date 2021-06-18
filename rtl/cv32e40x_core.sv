@@ -159,13 +159,23 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [1:0]  mtvec_mode;
 
   logic [31:0] csr_rdata;
+  logic        csr_valid;
+  logic        csr_ready_ex;
+  logic        csr_valid_ex;
+  logic        csr_ready;
+
   PrivLvl_t    current_priv_lvl;
 
   // Load/store unit
   logic        lsu_misaligned;
   logic [31:0] lsu_rdata;
-  logic        lsu_ready_ex;
+  logic        lsu_ready_ex_org; // todo: remove
   logic        lsu_ready_wb;
+
+  logic        lsu_valid;
+  logic        lsu_ready_ex;
+  logic        lsu_valid_ex;
+  logic        lsu_ready;
 
   // stall control from controller
   // TODO:OK: Merge to single stall signal for use in ID
@@ -219,12 +229,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        mhpmevent_ld_stall;
   logic        perf_imiss;
 
-  // WB is writing back an ALU result
-  logic        data_req_wb;
-
-  // data bus error in WB
-  logic        data_err_wb;
-  logic [31:0] data_addr_wb;
+  // WB is writing back a LSU result
+  logic        lsu_en_wb;
 
   // Controller <-> decoder 
   logic       deassert_we_ct;
@@ -248,6 +254,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
 
+  // data bus error in WB
+  logic        lsu_err_wb;
+  logic [31:0] lsu_addr_wb;
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -455,7 +464,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .perf_imiss_i                 ( perf_imiss                ),
 
-    .data_req_wb_i                ( data_req_wb               ),
+    .lsu_en_wb_i                  ( lsu_en_wb                 ),
 
     .mret_insn_o                  ( mret_insn_id              ),
     .dret_insn_o                  ( dret_insn_id              ),
@@ -510,8 +519,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From controller FSM
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
 
-    // interface with CSRs
+    // CSR interface
     .csr_rdata_i                ( csr_rdata                    ),
+    .csr_valid_i                ( csr_valid                    ),
+    .csr_ready_ex_o             ( csr_ready_ex                 ),
+    .csr_valid_ex_o             ( csr_valid_ex                 ),
+    .csr_ready_i                ( csr_ready                    ),
 
     // To IF: Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
@@ -522,8 +535,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_ex_o              ( rf_waddr_ex                  ),
     .rf_wdata_ex_o              ( rf_wdata_ex                  ),
 
-    // stall control
-    .lsu_ready_ex_i             ( lsu_ready_ex                 ),
+    // LSU interface
+    .lsu_ready_ex_i             ( lsu_ready_ex_org             ),
+
+    .lsu_valid_i                ( lsu_valid                    ),
+    .lsu_ready_ex_o             ( lsu_ready_ex                 ),
+    .lsu_valid_ex_o             ( lsu_valid_ex                 ),
+    .lsu_ready_i                ( lsu_ready                    ),
 
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
@@ -558,18 +576,23 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
 
-    .data_addr_wb_o        ( data_addr_wb       ),
-    .data_err_wb_o         ( data_err_wb        ),
-
-    .lsu_rdata_o           ( lsu_rdata          ),
-    .lsu_misaligned_o      ( lsu_misaligned     ),
+    .lsu_addr_wb_o         ( lsu_addr_wb        ),
+    .lsu_err_wb_o          ( lsu_err_wb         ),
+    .lsu_rdata_o           ( lsu_rdata          ), // todo: proper name
+    .lsu_misaligned_o      ( lsu_misaligned     ), // todo: proper name
 
     // control signals
-    .lsu_ready_ex_o        ( lsu_ready_ex       ),
+    .lsu_ready_ex_o        ( lsu_ready_ex_org   ),
     .lsu_ready_wb_o        ( lsu_ready_wb       ),
 
     .cnt_o                 ( lsu_cnt            ),  // Number of current outstanding transactions
-    .busy_o                ( lsu_busy           )
+    .busy_o                ( lsu_busy           ),
+
+    // Handshakes
+    .valid_i               ( lsu_valid_ex       ),
+    .ready_o               ( lsu_ready          ),
+    .valid_o               ( lsu_valid          ),
+    .ready_i               ( lsu_ready_ex       )
   );
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -586,7 +609,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
 
     .lsu_rdata_i                ( lsu_rdata                    ),
-    .csr_rdata_i                ( csr_rdata                    ),
+    .csr_rdata_i                ( csr_rdata                    ), // todo: the timing of this looks weird
     .lsu_ready_wb_i             ( lsu_ready_wb                 ),
 
     // Write back to register file
@@ -597,7 +620,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // WB valid, currently unused by RTL (could be used by RVFI?)
     .wb_valid_o                 ( wb_valid                     ),
 
-    .data_req_wb_o              ( data_req_wb                  )
+    .lsu_en_wb_o                ( lsu_en_wb                    )
   );
 
   //////////////////////////////////////
@@ -673,7 +696,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mhpmevent_compressed_i     ( mhpmevent_compressed   ),
     .mhpmevent_jr_stall_i       ( mhpmevent_jr_stall     ),
     .mhpmevent_imiss_i          ( mhpmevent_imiss        ),
-    .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     )
+    .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     ),
+
+    // Handshakes
+    .valid_i                    ( csr_valid_ex           ),
+    .ready_o                    ( csr_ready              ),
+    .valid_o                    ( csr_valid              ),
+    .ready_i                    ( csr_ready_ex           )
   );
 
   ////////////////////////////////////////////////////////////////////
@@ -715,10 +744,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
                                                                  
     // LSU
-    .data_misaligned_i              ( lsu_misaligned         ),
+    .lsu_misaligned_i               ( lsu_misaligned         ),
 
-    .data_err_wb_i                  ( data_err_wb            ),
-    .data_addr_wb_i                 ( data_addr_wb           ),
+    .lsu_err_wb_i                   ( lsu_err_wb             ),
+    .lsu_addr_wb_i                  ( lsu_addr_wb            ),
   
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
@@ -767,7 +796,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( lsu_ready_wb           ),
-    .data_req_wb_i                  ( data_req_wb            ),
+    .lsu_en_wb_i                    ( lsu_en_wb              ),
 
     .data_req_i                     ( data_req_o             ),
     .lsu_cnt_i                      ( lsu_cnt                ),
@@ -829,7 +858,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Read ports
     .raddr_i            ( rf_raddr_id        ),
-    .rdata_o            ( regfile_rdata_id   ),
+    .rdata_o            ( regfile_rdata_id   ), // todo: get consistent naming
 
     // Write ports
     .waddr_i            ( regfile_waddr_wb      ),

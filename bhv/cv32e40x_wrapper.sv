@@ -229,16 +229,16 @@ bind cv32e40x_sleep_unit:
 
     cv32e40x_rvfi
       rvfi_i
-        (.clk_i                    ( clk_i                                                         ),
-         .rst_ni                   ( rst_ni                                                        ),
+        (.clk_i                    ( clk_i                                                                ),
+         .rst_ni                   ( rst_ni                                                               ),
 
          .hart_id_i                ( core_i.hart_id_i                                                     ),
          .irq_ack_i                ( core_i.irq_ack_o                                                     ),
 
-         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn                                     ),
-         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn                                        ),
-         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn                                        ),
-         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn                                       ),
+         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn                                       ),
+         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn                                          ),
+         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn                                          ),
+         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn                                         ),
 
          .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
          .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
@@ -256,13 +256,13 @@ bind cv32e40x_sleep_unit:
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
 
-         .pc_set_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_set                                    ),
-         .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                    ),
-         .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                                ),
+         .pc_set_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_set                                  ),
+         .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                  ),
+         .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                              ),
 
-         .lsu_type_id_i            ( core_i.id_stage_i.data_type                                          ),
-         .lsu_we_id_i              ( core_i.id_stage_i.data_we                                            ),
-         .lsu_req_id_i             ( core_i.id_stage_i.data_req                                           ),
+         .lsu_req_id_i             ( core_i.id_stage_i.lsu_en                                             ), // todo: rename signal in RVFI
+         .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
+         .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
          .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
          .instr_ex_valid_i         ( core_i.ex_stage_i.ex_valid_o                                         ),
@@ -272,9 +272,8 @@ bind cv32e40x_sleep_unit:
          .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
          .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
-         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.data_misaligned                ),
+         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
          .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
-
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
@@ -358,7 +357,7 @@ bind cv32e40x_sleep_unit:
 `endif
 
 `ifdef CV32E40X_TRACE_EXECUTION
-    cv32e40x_tracer tracer_i(
+    cv32e40x_tracer tracer_i( // todo: completely remove instane and file
       .clk_i          ( core_i.clk_i                                   ), // always-running clock for tracing
       .rst_n          ( core_i.rst_ni                                  ),
 

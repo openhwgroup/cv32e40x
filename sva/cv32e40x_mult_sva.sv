@@ -31,11 +31,11 @@ module cv32e40x_mult_sva
    input logic        valid_i,
    input logic [31:0] result_o,
    input logic        ready_i,
-   input logic [ 1:0] short_signed_i,
-   input              mul_opcode_e operator_i,
+   input logic [ 1:0] signed_mode_i,
+   input mul_opcode_e operator_i,
    // Internal signals
    input logic [32:0] mulh_acc,
-   input              mult_state_e mulh_state,
+   input mul_state_e  mulh_state,
    input logic [16:0] mulh_al,
    input logic [16:0] mulh_bl,
    input logic [16:0] mulh_ah,
@@ -63,7 +63,7 @@ module cv32e40x_mult_sva
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
   a_mulh_result : // check multiplication result for MULH
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (mulh_result_valid && (short_signed_i == 2'b11)) |->
+                     (mulh_result_valid && (signed_mode_i == 2'b11)) |->
                      (result_o == mulh_result))
       else `uvm_error("mult", "MULH result check failed")
 
@@ -71,7 +71,7 @@ module cv32e40x_mult_sva
   assign mulhsu_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * {32'b0, op_b_i}) >> 32;
   a_mulhsu_result : // check multiplication result for MULHSU
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (mulh_result_valid && (short_signed_i == 2'b01)) |->
+                     (mulh_result_valid && (signed_mode_i == 2'b01)) |->
                      (result_o == mulhsu_result))
       else `uvm_error("mult", "MULHSU result check failed")
 
@@ -79,7 +79,7 @@ module cv32e40x_mult_sva
   assign mulhu_result = ({32'b0, op_a_i} * {32'b0, op_b_i}) >> 32;
   a_mulhu_result : // check multiplication result for MULHU
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (mulh_result_valid && (short_signed_i == 2'b00)) |->
+                     (mulh_result_valid && (signed_mode_i == 2'b00)) |->
                      (result_o == mulhu_result))
       else `uvm_error("mult", "MULHU result check failed")
 
@@ -103,7 +103,7 @@ module cv32e40x_mult_sva
 
   a_sign_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(short_signed_i)) else `uvm_error("mult", "Sign changed when MULH active")
+                     !ready |=> $stable(signed_mode_i)) else `uvm_error("mult", "Sign changed when MULH active")
 
   a_operand_a_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)

@@ -60,10 +60,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     input  logic        rf_we_wb_i,                 // Register file write enable from WB stage
     input rf_addr_t     rf_waddr_wb_i,              // write address currently in WB
     input  logic        wb_ready_i,                 // WB stage is ready
-    input  logic        data_req_wb_i,              // LSU data is written back in WB
+    input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
     // From LSU
-    input  logic        data_misaligned_i,          // LSU detected a misaligned load/store instruction
+    input  logic        lsu_misaligned_i,           // LSU detected a misaligned load/store instruction
   
     // forwarding mux sel outputs
     output op_fw_mux_e    operand_a_fw_mux_sel_o,   // operand_a forward mux sel
@@ -164,10 +164,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-        (id_ex_pipe_i.data_req && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
-        (!wb_ready_i   && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (id_ex_pipe_i.data_req && rf_we_ex_i && is_decoding_i && !data_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
-        (!wb_ready_i   && rf_we_wb_i && is_decoding_i && !data_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
+        (id_ex_pipe_i.lsu_en && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (!wb_ready_i         && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
+        (id_ex_pipe_i.lsu_en && rf_we_ex_i && is_decoding_i && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (!wb_ready_i         && rf_we_wb_i && is_decoding_i && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
       deassert_we_o   = 1'b1;
@@ -180,7 +180,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        ((rf_we_wb_i && rf_rd_wb_match[0] && data_req_wb_i) ||
+        ((rf_we_wb_i && rf_rd_wb_match[0] && lsu_en_wb_i) ||
          (rf_we_ex_i && rf_rd_ex_match[0])))
     begin
       jr_stall_o      = 1'b1;
@@ -198,7 +198,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   end
 
   // stall because of misaligned data access
-  assign misaligned_stall_o = data_misaligned_i;
+  assign misaligned_stall_o = lsu_misaligned_i;
 
   // Forwarding control unit
   always_comb
@@ -229,13 +229,13 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Forwarding WB->ID for the jump register path
     // Only allowed if WB is writing back an ALU result; no forwarding for load result because of timing reasons
     if (rf_we_wb_i) begin
-      if (rf_rd_wb_match[0] && !data_req_wb_i) begin
+      if (rf_rd_wb_match[0] && !lsu_en_wb_i) begin
         jalr_fw_mux_sel_o = SELJ_FW_WB;
       end
     end
 
     // for misaligned memory accesses
-    if (data_misaligned_i)
+    if (lsu_misaligned_i)
     begin
       operand_a_fw_mux_sel_o  = SEL_FW_EX;
       operand_b_fw_mux_sel_o  = SEL_REGFILE;
