@@ -30,15 +30,15 @@ module cv32e40x_core_sva
   input logic        rst_ni,
 
   input ctrl_fsm_t   ctrl_fsm,
-  input logic        id_valid,
-  //input logic        multi_cycle_id_stall,
+  //input logic        multi_cycle_id_stall, // todo: clean up if really no longer needed
   input logic [4:0]  exc_cause,
   input logic [31:0] mie,
   input logic        debug_single_step,
   input              if_id_pipe_t if_id_pipe,
   input              id_stage_is_last,
+  input logic        id_stage_id_valid,
    // probed id_stage signals
-  /*
+  /* todo: clean up if really no longer needed
   input logic        id_stage_ebrk_insn,
   input logic        id_stage_ecall_insn,
   input logic        id_stage_illegal_insn,
@@ -239,7 +239,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // Single Step only executes one instruction in non debug mode and next instruction WB is in debug mode
   //TODO:OK Fix, as it now fails with the new controller/pipeline signalling
   logic inst_taken;
-  assign inst_taken = id_valid && id_stage_is_last;
+  assign inst_taken = id_stage_id_valid && id_stage_is_last;
 
   a_single_step :
     assert property (@(posedge clk) disable iff (!rst_ni)

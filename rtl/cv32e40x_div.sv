@@ -191,7 +191,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
       DIV_IDLE: begin
         ready_o = 1'b1;
         
-        if(valid_i) begin
+        if (valid_i) begin
           ready_o      = 1'b0;
           remainder_en = 1'b1;
           divisor_en   = 1'b1;
@@ -246,9 +246,9 @@ module cv32e40x_div import cv32e40x_pkg::*;
         end else begin
           valid_o = 1'b1;
           
-          if(ready_i) begin
-            ready_o     = 1'b1;
-            next_state  = DIV_IDLE;
+          if (ready_i) begin
+            ready_o    = 1'b1;
+            next_state = DIV_IDLE;
           end
         end
       end
@@ -274,7 +274,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
                        quotient_q;
 
   always_ff @(posedge clk, negedge rst_n) begin : p_regs
-    if(!rst_n) begin
+    if (rst_n == 1'b0) begin
        state       <= DIV_IDLE;
        remainder_q <= '0;
        divisor_q   <= '0;
