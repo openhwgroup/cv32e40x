@@ -165,13 +165,14 @@ module cv32e40x_wrapper
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
                 .cs_registers_csr_cause_i         (core_i.cs_registers_i.ctrl_fsm_i.csr_cause),
-                .ex_wb_pipe_i                     ( core_i.ex_wb_pipe ),
+                .ex_wb_pipe_i                     (core_i.ex_wb_pipe),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
-                .exc_cause                        ( core_i.controller_i.controller_fsm_i.exc_cause),
+                .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
                 .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .id_stage_is_last                 (core_i.id_stage_i.is_last),
+                .id_stage_id_valid                (core_i.id_stage_i.id_valid),
                 .*);
 
 bind cv32e40x_sleep_unit:
@@ -243,7 +244,7 @@ bind cv32e40x_sleep_unit:
          .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
          .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
          .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
-         .instr_id_valid_i         ( core_i.id_stage_i.id_valid_o                                         ),
+         .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
          .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
 
          .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
@@ -367,7 +368,7 @@ bind cv32e40x_sleep_unit:
       .instr          ( core_i.id_stage_i.instr                        ),
       //.controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
-      .id_valid       ( core_i.id_stage_i.id_valid_o                   ),
+      .id_valid       ( core_i.id_stage_i.id_valid                     ),
       .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
       .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
 

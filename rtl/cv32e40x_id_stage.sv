@@ -48,12 +48,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     output logic [31:0] jmp_target_o,
     
     // IF and ID stage signals
-
     output logic        id_ready_o,     // ID stage is ready for the next instruction
     input  logic        ex_ready_i,     // EX stage is ready for the next instruction
     input  logic        wb_ready_i,     // WB stage is ready for the next instruction
-
-    output logic        id_valid_o,     // ID stage is done
     input  logic        ex_valid_i,     // EX stage is done
  
     // IF/ID pipeline
@@ -206,6 +203,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] alu_operand_b;
 
   logic [31:0] operand_c;
+
+  logic        id_valid;
 
   // Performance counters
   logic        id_valid_q;
@@ -548,7 +547,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end else begin
       // normal pipeline unstall case
 
-      if (id_valid_o)
+      if (id_valid)
       begin // unstall the whole pipeline
         id_ex_pipe_o.instr_valid  <= 1'b1;
         if (misaligned_stall_i) begin
@@ -661,7 +660,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid_o && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
+  assign minstret = id_valid && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin
@@ -682,7 +681,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     else
     begin
       // Helper signal, id_valid may be 1'b1 to update EX for misaligned LSU, gate off to not count events in those cases
-      id_valid_q                 <= id_valid_o && is_last;
+      id_valid_q                 <= id_valid && is_last;
       // ID stage counts
       mhpmevent_minstret_o       <= minstret;
       mhpmevent_load_o           <= minstret && lsu_en && !lsu_we;
@@ -710,7 +709,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
   //TODO:OK Halt and stall seems to be the same
   assign id_ready_o = ctrl_fsm_i.kill_id || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !ctrl_fsm_i.halt_id && !wfi_stall_i);
-  assign id_valid_o = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
-
+  assign id_valid = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
 endmodule // cv32e40x_id_stage

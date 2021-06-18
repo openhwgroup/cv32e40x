@@ -53,14 +53,15 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   output logic [31:0]   rf_wdata_wb_o,
 
   output logic          wb_ready_o,
-  output logic          wb_valid_o,
 
   // to JR forward logic
   output logic          lsu_en_wb_o
 );
 
-logic  instr_valid;
-assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;
+  logic                 instr_valid;
+  logic                 wb_valid;       // Only used by RVFI
+
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;
 
 // We allow writebacks in case of bus errors.
 // Otherwise we would get a timing path from rvalid to rf_we
@@ -77,6 +78,6 @@ assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;
 
   assign wb_ready_o    = lsu_ready_i; // todo: Shouldn't this look like ex_ready_o :: ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex);
 
-  assign wb_valid_o    = lsu_ready_i && !ctrl_fsm_i.halt_wb && instr_valid; // todo: does not follow same structure as ex_valid_o
+  assign wb_valid      = lsu_ready_i && !ctrl_fsm_i.halt_wb && instr_valid; // todo: does not follow same structure as ex_valid_o
   
 endmodule // cv32e40x_wb_stage

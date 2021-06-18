@@ -194,10 +194,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Stage valid signals
   logic        if_valid;
-  logic        id_valid; //TODO:OK Unused outside id_stage, remove?
   logic        ex_valid;
-  logic        wb_valid; //TODO:OK Unused outside id_stage, remove? (RVFI may use this)
-
 
   // Interrupts
   logic        m_irq_enable; // interrupt_controller
@@ -425,7 +422,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_o                   ( id_ready                  ),
     .ex_ready_i                   ( ex_ready                  ),
     .wb_ready_i                   ( wb_ready                  ),
-    .id_valid_o                   ( id_valid                  ),
     .ex_valid_i                   ( ex_valid                  ),
 
     // IF/ID pipeline
@@ -621,9 +617,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
   
-    // WB valid, currently unused by RTL (could be used by RVFI?)
-    .wb_ready_o                 ( wb_ready                     ),
-    .wb_valid_o                 ( wb_valid                     )
+    .wb_ready_o                 ( wb_ready                     )
   );
 
   //////////////////////////////////////
