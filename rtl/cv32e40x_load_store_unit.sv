@@ -421,13 +421,23 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-// todo: use ready_i  assign ready_o = ready_i;
+// todo: use ready_0_i
+// todo: use valid_1_i
+// todo: drive valid_1_o
+// todo: use ready_1_i
+
+
 
   assign ready_0_o = (!lsu_en_valid    ? 1'b1 :
                       (cnt_q == 2'b00) ? (              trans_valid && trans_ready) :
                       (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) :
                                           resp_valid
                      ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
+
+  assign valid_0_o = valid_0_i && trans_valid && trans_ready;
+
+// todo: lsu_en_valid should maybe be replaced by valid_0_i
+
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
   assign ctrl_update = ready_0_o && lsu_en_valid;

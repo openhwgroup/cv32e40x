@@ -329,28 +329,26 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
   end
 
+  // CSR inputs are valid when CSR is enabled; CSR outputs need to remain valid until upstream stage is ready
   assign csr_valid_o = csr_en_gated;
   assign csr_ready_o = wb_ready_i;
 
+  // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until upstream stage is ready
   assign lsu_valid_o = lsu_en_gated;
   assign lsu_ready_o = wb_ready_i;
 
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
-  // TODO: ex_valid_o shouldn't have to depend on wb_ready_i
   // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
   assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid) || 
                        (id_ex_pipe_i.mul_en && mul_valid) ||
                        (id_ex_pipe_i.div_en && div_valid) || 
                        (id_ex_pipe_i.csr_en && csr_valid_i) || 
-                       (id_ex_pipe_i.lsu_en /* && lsu_valid_i*/) ||
-
-                       previous_exception  ) && 
-                      lsu_ready_i &&
-                      wb_ready_i &&
-                      instr_valid; // kill_ex factored into instr_valid
+                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
+                       previous_exception
+                      ) && lsu_ready_i && wb_ready_i && instr_valid; // todo: would like to remove lsu_ready_i from this expression, but that is not SEC clean
   
 endmodule // cv32e40x_ex_stage
