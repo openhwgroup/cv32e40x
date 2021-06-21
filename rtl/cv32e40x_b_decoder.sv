@@ -60,19 +60,19 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
         unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
           
           // Supported RV32B Zca instructions
-          {7'b001_0000, 3'b010}: begin
+          {7'b001_0000, 3'b010}: begin // Shift left by 1 and add (sh1add)
             if (RV32B_ZBA) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
               decoder_ctrl_o.alu_operator = ALU_B_SH1ADD;
             end
           end
-          {7'b001_0000, 3'b100}: begin
+          {7'b001_0000, 3'b100}: begin // Shift left by 2 and add (sh2add)
             if (RV32B_ZBA) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
               decoder_ctrl_o.alu_operator = ALU_B_SH2ADD;
             end
           end
-          {7'b001_0000, 3'b110}: begin
+          {7'b001_0000, 3'b110}: begin // Shift left by 3 and add (sh3add)
             if (RV32B_ZBA) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
               decoder_ctrl_o.alu_operator = ALU_B_SH3ADD;

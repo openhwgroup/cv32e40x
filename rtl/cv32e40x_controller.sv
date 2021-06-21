@@ -37,8 +37,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        fetch_enable_i,             // Start the decoding
 
-  input  logic        csr_status_i,               // decoder encountered an csr status instruction
-
   output logic        deassert_we_o,
   input  logic        if_valid_i,
   input  logic        if_ready_i,
@@ -112,8 +110,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        lsu_en_wb_i,              // LSU data is written back in WB
   input  logic        data_req_i,               // OBI bus data request (EX)
-  input  logic [1:0]  lsu_cnt_i,
-  input  logic        data_rvalid_i,
 
   output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
 );
@@ -140,9 +136,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .mret_id_i                   ( mret_id_i      ),
     .dret_id_i                   ( dret_id_i      ),
     .ex_wb_pipe_i                ( ex_wb_pipe_i   ),
-
-    // From decoder
-    .csr_status_i                ( csr_status_i   ),
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
@@ -156,8 +149,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
     .lsu_addr_wb_i               ( lsu_addr_wb_i            ),
     .lsu_en_wb_i                 ( lsu_en_wb_i              ),
-    .lsu_cnt_i                   ( lsu_cnt_i                ), // todo: use proper postfix
-    .data_rvalid_i               ( data_rvalid_i            ),
     .wb_ready_i                  ( wb_ready_i               ),
 
     // Interrupt Controller Signals

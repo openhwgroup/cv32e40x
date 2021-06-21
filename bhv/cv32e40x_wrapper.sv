@@ -31,10 +31,6 @@
 `include "cv32e40x_core_log.sv"
 `include "cv32e40x_dbg_helper.sv"
 
-`ifdef CV32E40X_APU_TRACE
-  `include "cv32e40x_apu_tracer.sv"
-`endif
-
 `ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_tracer.sv"
 `endif
@@ -277,13 +273,13 @@ bind cv32e40x_sleep_unit:
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
          .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
-         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
+         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_0_o                          ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
-         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
+         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 
@@ -347,18 +343,6 @@ bind cv32e40x_sleep_unit:
          ,`RVFI_CONN
 `endif
          );
-
-
-`ifdef CV32E40P_APU_TRACE
-    cv32e40x_apu_tracer apu_tracer_i(
-      .clk_i        ( core_i.rst_ni                ),
-      .rst_n        ( core_i.clk_i                 ),
-      .hart_id_i    ( core_i.hart_id_i             ),
-      .apu_valid_i  ( core_i.ex_stage_i.apu_valid  ),
-      .apu_waddr_i  ( core_i.ex_stage_i.apu_waddr  ),
-      .apu_result_i ( core_i.ex_stage_i.apu_result )
-  );
-`endif
 
 `ifdef CV32E40X_TRACE_EXECUTION
     cv32e40x_tracer tracer_i( // todo: completely remove instane and file

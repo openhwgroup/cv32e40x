@@ -113,9 +113,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        if_busy;
   logic        lsu_busy;
 
-  // LSU number of outstanding transactions
-  logic [1:0]  lsu_cnt;
-
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
 
@@ -167,13 +164,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
   PrivLvl_t    current_priv_lvl;
 
   // Load/store unit
-  logic        lsu_misaligned;
-  logic [31:0] lsu_rdata;
-  logic        lsu_valid_0;
+  logic        lsu_misaligned_ex;
+  logic [31:0] lsu_rdata_wb;
+  logic        lsu_err_wb;
+  logic [31:0] lsu_addr_wb;
+
+  logic        lsu_valid_0;             // Handshake with EX
   logic        lsu_ready_ex;
   logic        lsu_valid_ex;
   logic        lsu_ready_0;
-  logic        lsu_valid_1;
+
+  logic        lsu_valid_1;             // Handshake with WB
   logic        lsu_ready_wb;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
@@ -235,7 +236,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic       deassert_we_ct;
   logic       mret_insn_id;
   logic       dret_insn_id;
-  logic       csr_status_id;
   logic [1:0] ctrl_transfer_insn_id;
   logic [1:0] ctrl_transfer_insn_raw_id;
  
@@ -252,10 +252,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
-
-  // data bus error in WB
-  logic        lsu_err_wb;
-  logic [31:0] lsu_addr_wb;
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -462,7 +458,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .mret_insn_o                  ( mret_insn_id              ),
     .dret_insn_o                  ( dret_insn_id              ),
-    .csr_status_o                 ( csr_status_id             ),
 
     .csr_en_o                     ( csr_en_id                 ),
     .csr_op_o                     ( csr_op_id                 ),
@@ -535,6 +530,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_o                ( lsu_valid_ex                 ),
     .lsu_ready_i                ( lsu_ready_0                  ),
 
+    // Pipeline handshakes
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
     .wb_ready_i                 ( wb_ready                     )
@@ -558,25 +554,28 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk                   ( clk                ),
     .rst_n                 ( rst_ni             ),
 
-    // From controller FSM
-    .ctrl_fsm_i            ( ctrl_fsm           ),
-
-    // Output to data memory
-    .m_c_obi_data_if       ( m_c_obi_data_if    ),
-
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
 
-    .lsu_addr_wb_o         ( lsu_addr_wb        ),
-    .lsu_err_wb_o          ( lsu_err_wb         ),
-    .lsu_rdata_o           ( lsu_rdata          ), // todo: proper name
-    .lsu_misaligned_o      ( lsu_misaligned     ), // todo: proper name
+    // From controller FSM
+    .ctrl_fsm_i            ( ctrl_fsm           ),
+
+    // Data OBI interface
+    .m_c_obi_data_if       ( m_c_obi_data_if    ),
+
 
     // Control signals
-    .cnt_o                 ( lsu_cnt            ), // Number of current outstanding transactions
     .busy_o                ( lsu_busy           ),
 
-    // Handshakes
+    // Stage 0 outputs (EX)
+    .lsu_misaligned_0_o    ( lsu_misaligned_ex  ),
+
+    // Stage 1 outputs (WB)
+    .lsu_addr_1_o          ( lsu_addr_wb        ),
+    .lsu_err_1_o           ( lsu_err_wb         ),
+    .lsu_rdata_1_o         ( lsu_rdata_wb       ),
+
+    // Pipeline handshakes
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
     .ready_0_o             ( lsu_ready_0        ),
     .valid_0_o             ( lsu_valid_0        ),
@@ -602,7 +601,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
 
     // LSU interface
-    .lsu_rdata_i                ( lsu_rdata                    ),
+    .lsu_rdata_i                ( lsu_rdata_wb                 ),
     .lsu_valid_i                ( lsu_valid_1                  ),
     .lsu_ready_o                ( lsu_ready_wb                 ),
     .lsu_valid_o                ( lsu_valid_wb                 ),
@@ -726,8 +725,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From bypass module
     .deassert_we_o                  ( deassert_we_ct         ),
 
-    .csr_status_i                   ( csr_status_id          ),
-
     .if_valid_i                     ( if_valid               ),
     .if_ready_i                     ( if_ready               ),
 
@@ -739,8 +736,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_op_id_i                    ( csr_op_id              ),
                                                                  
     // LSU
-    .lsu_cnt_i                      ( lsu_cnt                ),
-    .lsu_misaligned_i               ( lsu_misaligned         ),
+    .lsu_misaligned_i               ( lsu_misaligned_ex      ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_en_wb_i                    ( lsu_en_wb              ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
@@ -794,7 +790,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .wb_ready_i                     ( wb_ready               ),
 
     .data_req_i                     ( data_req_o             ),
-    .data_rvalid_i                  ( data_rvalid_i          ),
 
     .ctrl_fsm_o                     ( ctrl_fsm               )
  );
