@@ -232,23 +232,20 @@ bind cv32e40x_sleep_unit:
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
 
-         .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
+
+         .wb_valid_i               (core_i.wb_stage_i.wb_valid                                            ),
+         .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0]            ),
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1]            ),
          .rs1_rdata_id_i           ( core_i.id_stage_i.operand_a_fw                                       ),
          .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
 
-         .instr_valid_wb_i         (core_i.wb_stage_i.ex_wb_pipe_i.instr_valid                            ),
-         .wb_valid_i               (core_i.wb_stage_i.wb_valid                                            ),
-
+         .insn_mret_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.mret_insn                             ),
          .insn_ebrk_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.ebrk_insn                             ),
          .insn_ecall_wb_i          ( core_i.wb_stage_i.ex_wb_pipe_i.ecall_insn                            ),
          .insn_fencei_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.fencei_insn                           ),
-
-
-         .insn_mret_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.mret_insn                             ),
          .illegal_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.illegal_insn                          ),
 
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
@@ -289,9 +286,6 @@ bind cv32e40x_sleep_unit:
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
-
-         .is_debug_mode            ( core_i.ctrl_fsm.debug_mode                                           ),
-
 
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),

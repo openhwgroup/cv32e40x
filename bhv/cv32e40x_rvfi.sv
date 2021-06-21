@@ -22,294 +22,291 @@ module cv32e40x_rvfi
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
   (
-  input logic                                clk_i,
-  input logic                                rst_ni,
+   input logic                                clk_i,
+   input logic                                rst_ni,
 
-  input logic [31:0]                         instr_rdata_wb_i,
-  input logic                                instr_valid_wb_i,
-  input logic                                wb_valid_i,
+   //// ID probes ////
+   input logic [31:0]                         pc_if_i,
+   input logic                                instr_id_valid_i,
+   input logic [31:0]                         jump_target_id_i,
+   // LSU
+   input logic                                lsu_en_id_i,
+   input logic                                lsu_we_id_i,
+   input logic [1:0]                          lsu_type_id_i,
+   // Register reads
+   input logic [4:0]                          rs1_addr_id_i,
+   input logic [31:0]                         rs1_rdata_id_i,
+   input logic [4:0]                          rs2_addr_id_i,
+   input logic [31:0]                         rs2_rdata_id_i,
 
-  input logic                                instr_id_valid_i,
+   //// EX probes ////
+   input logic                                insn_ebrk_ex_i,
+   input logic                                insn_ecall_ex_i,
+   input logic                                insn_fencei_ex_i,
+   input logic                                insn_mret_ex_i,
+   // LSU
+   input logic                                lsu_en_ex_i,
+   input logic                                illegal_insn_ex_i,
 
-  input logic [4:0]                          rs1_addr_id_i,
-  input logic [31:0]                         rs1_rdata_id_i,
-  input logic [4:0]                          rs2_addr_id_i,
-  input logic [31:0]                         rs2_rdata_id_i,
+   input logic                                instr_ex_ready_i,
+   input logic                                instr_ex_valid_i,
 
-  input logic                                insn_ebrk_wb_i,
-  input logic                                insn_ecall_wb_i,
-  input logic                                insn_fencei_wb_i,
-  input logic                                insn_mret_wb_i,
-  input logic                                illegal_insn_wb_i,
-  input logic                                rd_we_wb_i,
-  input logic [4:0]                          rd_addr_wb_i,
-  input logic [31:0]                         rd_wdata_wb_i,
+   input logic [31:0]                         branch_target_ex_i,
 
-  input logic [31:0]                         pc_wb_i,
-  input logic [31:0]                         pc_if_i,
-  input logic [31:0]                         jump_target_id_i,
+   input logic [31:0]                         lsu_addr_ex_i,
+   input logic [31:0]                         lsu_wdata_ex_i,
+   input logic                                lsu_misaligned_ex_i,
 
-  input logic                                pc_set_i,
-  input                                      pc_mux_e pc_mux_i,
-  input                                      exc_pc_mux_e exc_pc_mux_i,
+   //// WB probes ////
+   input logic [31:0]                         pc_wb_i,
+   input logic                                wb_valid_i,
+   input logic [31:0]                         instr_rdata_wb_i,
+   input logic                                insn_ebrk_wb_i,
+   input logic                                insn_ecall_wb_i,
+   input logic                                insn_fencei_wb_i,
+   input logic                                insn_mret_wb_i,
+   input logic                                illegal_insn_wb_i,
+   // Register writes
+   input logic                                rd_we_wb_i,
+   input logic [4:0]                          rd_addr_wb_i,
+   input logic [31:0]                         rd_wdata_wb_i,
+   // LSU
+   input logic                                lsu_en_wb_i,
+   input logic                                lsu_rvalid_wb_i,
+   input logic [31:0]                         lsu_rdata_wb_i,
+   // PC //
+   input logic                                pc_set_i,
+   input                                      pc_mux_e pc_mux_i,
+   input                                      exc_pc_mux_e exc_pc_mux_i,
+   input logic [31:0]                         exception_target_wb_i,
+   input logic [31:0]                         mepc_target_wb_i,
 
-  input logic [1:0]                          lsu_type_id_i,
-  input logic                                lsu_we_id_i,
-  input logic                                lsu_en_id_i,
-
-  input logic                                insn_ebrk_ex_i,
-  input logic                                insn_ecall_ex_i,
-  input logic                                insn_fencei_ex_i,
-  input logic                                insn_mret_ex_i,
-  input logic                                lsu_en_ex_i,
-  input logic                                lsu_en_wb_i,
-  input logic                                illegal_insn_ex_i,
-
-  input logic                                instr_ex_ready_i,
-  input logic                                instr_ex_valid_i,
-
-  input logic [31:0]                         branch_target_ex_i,
-
-  input logic [31:0]                         lsu_addr_ex_i,
-  input logic [31:0]                         lsu_wdata_ex_i,
-  input logic                                lsu_misaligned_ex_i,
-//  input logic                                lsu_is_misaligned_ex_i,
-
-  input logic                                lsu_rvalid_wb_i,
-  input logic [31:0]                         lsu_rdata_wb_i,
-
-  input logic [31:0]                         exception_target_wb_i,
-  input logic [31:0]                         mepc_target_wb_i,
-
-  input logic                                is_debug_mode,
-
-  //CSRs
-
-  input                                      Status_t csr_mstatus_n_i,
-  input                                      Status_t csr_mstatus_q_i,
-  input logic                                csr_mstatus_we_i,
-  input logic [31:0]                         csr_misa_i,
-  input logic [31:0]                         csr_mie_n_i,
-  input logic [31:0]                         csr_mie_q_i,
-  input logic                                csr_mie_we_i,
-  input                                      Mtvec_t csr_mtvec_n_i,
-  input                                      Mtvec_t csr_mtvec_q_i,
-  input logic                                csr_mtvec_we_i,
-  input logic [31:0]                         csr_mcountinhibit_n_i,
-  input logic [31:0]                         csr_mcountinhibit_q_i,
-  input logic                                csr_mcountinhibit_we_i,
-  input logic [31:0] [31:0]                  csr_mhpmevent_n_i,
-  input logic [31:0] [31:0]                  csr_mhpmevent_q_i,
-  input logic                                csr_mhpmevent_we_i,
-  input logic [31:0]                         csr_mscratch_n_i,
-  input logic [31:0]                         csr_mscratch_q_i,
-  input logic                                csr_mscratch_we_i,
-  input logic [31:0]                         csr_mepc_n_i,
-  input logic [31:0]                         csr_mepc_q_i,
-  input logic                                csr_mepc_we_i,
-  input                                      Mcause_t csr_mcause_n_i,
-  input                                      Mcause_t csr_mcause_q_i,
-  input logic                                csr_mcause_we_i,
-  input logic [31:0]                         csr_mip_i,
-  input logic [31:0]                         csr_tdata1_n_i,
-  input logic [31:0]                         csr_tdata1_q_i,
-  input logic                                csr_tdata1_we_i,
-  input logic [31:0]                         csr_tdata2_n_i,
-  input logic [31:0]                         csr_tdata2_q_i,
-  input logic                                csr_tdata2_we_i,
-  input logic [31:0]                         csr_tinfo_i,
-  input                                      Dcsr_t csr_dcsr_n_i,
-  input                                      Dcsr_t csr_dcsr_q_i,
-  input logic                                csr_dcsr_we_i,
-  input logic                                csr_debug_csr_save_i,
-  input logic [31:0]                         csr_dpc_n_i,
-  input logic [31:0]                         csr_dpc_q_i,
-  input logic                                csr_dpc_we_i,
-  input logic [31:0]                         csr_dscratch0_n_i,
-  input logic [31:0]                         csr_dscratch0_q_i,
-  input logic                                csr_dscratch0_we_i,
-  input logic [31:0]                         csr_dscratch1_n_i,
-  input logic [31:0]                         csr_dscratch1_q_i,
-  input logic                                csr_dscratch1_we_i,
+   //// CSR Probes ////
+   input                                      Status_t csr_mstatus_n_i,
+   input                                      Status_t csr_mstatus_q_i,
+   input logic                                csr_mstatus_we_i,
+   input logic [31:0]                         csr_misa_i,
+   input logic [31:0]                         csr_mie_n_i,
+   input logic [31:0]                         csr_mie_q_i,
+   input logic                                csr_mie_we_i,
+   input                                      Mtvec_t csr_mtvec_n_i,
+   input                                      Mtvec_t csr_mtvec_q_i,
+   input logic                                csr_mtvec_we_i,
+   input logic [31:0]                         csr_mcountinhibit_n_i,
+   input logic [31:0]                         csr_mcountinhibit_q_i,
+   input logic                                csr_mcountinhibit_we_i,
+   input logic [31:0] [31:0]                  csr_mhpmevent_n_i,
+   input logic [31:0] [31:0]                  csr_mhpmevent_q_i,
+   input logic                                csr_mhpmevent_we_i,
+   input logic [31:0]                         csr_mscratch_n_i,
+   input logic [31:0]                         csr_mscratch_q_i,
+   input logic                                csr_mscratch_we_i,
+   input logic [31:0]                         csr_mepc_n_i,
+   input logic [31:0]                         csr_mepc_q_i,
+   input logic                                csr_mepc_we_i,
+   input                                      Mcause_t csr_mcause_n_i,
+   input                                      Mcause_t csr_mcause_q_i,
+   input logic                                csr_mcause_we_i,
+   input logic [31:0]                         csr_mip_i,
+   input logic [31:0]                         csr_tdata1_n_i,
+   input logic [31:0]                         csr_tdata1_q_i,
+   input logic                                csr_tdata1_we_i,
+   input logic [31:0]                         csr_tdata2_n_i,
+   input logic [31:0]                         csr_tdata2_q_i,
+   input logic                                csr_tdata2_we_i,
+   input logic [15:0]                         csr_tinfo_i,
+   input                                      Dcsr_t csr_dcsr_n_i,
+   input                                      Dcsr_t csr_dcsr_q_i,
+   input logic                                csr_dcsr_we_i,
+   input logic                                csr_debug_csr_save_i,
+   input logic [31:0]                         csr_dpc_n_i,
+   input logic [31:0]                         csr_dpc_q_i,
+   input logic                                csr_dpc_we_i,
+   input logic [31:0]                         csr_dscratch0_n_i,
+   input logic [31:0]                         csr_dscratch0_q_i,
+   input logic                                csr_dscratch0_we_i,
+   input logic [31:0]                         csr_dscratch1_n_i,
+   input logic [31:0]                         csr_dscratch1_q_i,
+   input logic                                csr_dscratch1_we_i,
 
    // performance counters
    //  cycle,  instret,  hpcounter,  cycleh,  instreth,  hpcounterh
    // mcycle, minstret, mhpcounter, mcycleh, minstreth, mhpcounterh
-  input logic [31:0] [MHPMCOUNTER_WIDTH-1:0] csr_mhpmcounter_q_i,
+   input logic [31:0] [MHPMCOUNTER_WIDTH-1:0] csr_mhpmcounter_q_i,
 
-  input logic [31:0]                         csr_mvendorid_i,
-  input logic [31:0]                         csr_marchid_i,
-  input logic [31:0]                         csr_mhartid_i,
+   input logic [31:0]                         csr_mvendorid_i,
+   input logic [31:0]                         csr_marchid_i,
+   input logic [31:0]                         csr_mhartid_i,
 
 
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
   // the convention of RISC-V Formal Interface Specification.
-  output logic [ 0:0]                        rvfi_valid,
-  output logic [63:0]                        rvfi_order,
-  output logic [31:0]                        rvfi_insn,
-  output logic [ 0:0]                        rvfi_trap,
-  output logic [ 0:0]                        rvfi_halt,
-  output logic [ 0:0]                        rvfi_intr,
-  output logic [ 1:0]                        rvfi_mode,
-  output logic [ 1:0]                        rvfi_ixl,
-  output logic [ 0:0]                        rvfi_debug,
+   output logic [ 0:0]                        rvfi_valid,
+   output logic [63:0]                        rvfi_order,
+   output logic [31:0]                        rvfi_insn,
+   output logic [ 0:0]                        rvfi_trap,
+   output logic [ 0:0]                        rvfi_halt,
+   output logic [ 0:0]                        rvfi_intr,
+   output logic [ 1:0]                        rvfi_mode,
+   output logic [ 1:0]                        rvfi_ixl,
+   output logic [ 0:0]                        rvfi_dbg, // TODO: Rename to rvfi_debug
 
-  output logic [ 4:0]                        rvfi_rs1_addr,
-  output logic [ 4:0]                        rvfi_rs2_addr,
-  output logic [31:0]                        rvfi_rs1_rdata,
-  output logic [31:0]                        rvfi_rs2_rdata,
-  output logic [ 4:0]                        rvfi_rd_addr,
-  output logic [31:0]                        rvfi_rd_wdata,
-  output logic [31:0]                        rvfi_pc_rdata,
-  output logic [31:0]                        rvfi_pc_wdata,
-  output logic [31:0]                        rvfi_mem_addr,
-  output logic [ 3:0]                        rvfi_mem_rmask,
-  output logic [ 3:0]                        rvfi_mem_wmask,
-  output logic [31:0]                        rvfi_mem_rdata,
-  output logic [31:0]                        rvfi_mem_wdata,
+   output logic [ 4:0]                        rvfi_rs1_addr,
+   output logic [ 4:0]                        rvfi_rs2_addr,
+   output logic [31:0]                        rvfi_rs1_rdata,
+   output logic [31:0]                        rvfi_rs2_rdata,
+   output logic [ 4:0]                        rvfi_rd_addr,
+   output logic [31:0]                        rvfi_rd_wdata,
+   output logic [31:0]                        rvfi_pc_rdata,
+   output logic [31:0]                        rvfi_pc_wdata,
+   output logic [31:0]                        rvfi_mem_addr,
+   output logic [ 3:0]                        rvfi_mem_rmask,
+   output logic [ 3:0]                        rvfi_mem_wmask,
+   output logic [31:0]                        rvfi_mem_rdata,
+   output logic [31:0]                        rvfi_mem_wdata,
 
-  // CSRs
-  output logic [31:0]                        rvfi_csr_mstatus_rmask,
-  output logic [31:0]                        rvfi_csr_mstatus_wmask,
-  output logic [31:0]                        rvfi_csr_mstatus_rdata,
-  output logic [31:0]                        rvfi_csr_mstatus_wdata,
-  output logic [31:0]                        rvfi_csr_misa_rmask,
-  output logic [31:0]                        rvfi_csr_misa_wmask,
-  output logic [31:0]                        rvfi_csr_misa_rdata,
-  output logic [31:0]                        rvfi_csr_misa_wdata,
-  output logic [31:0]                        rvfi_csr_mie_rmask,
-  output logic [31:0]                        rvfi_csr_mie_wmask,
-  output logic [31:0]                        rvfi_csr_mie_rdata,
-  output logic [31:0]                        rvfi_csr_mie_wdata,
-  output logic [31:0]                        rvfi_csr_mtvec_rmask,
-  output logic [31:0]                        rvfi_csr_mtvec_wmask,
-  output logic [31:0]                        rvfi_csr_mtvec_rdata,
-  output logic [31:0]                        rvfi_csr_mtvec_wdata,
-  output logic [31:0]                        rvfi_csr_mcountinhibit_rmask,
-  output logic [31:0]                        rvfi_csr_mcountinhibit_wmask,
-  output logic [31:0]                        rvfi_csr_mcountinhibit_rdata,
-  output logic [31:0]                        rvfi_csr_mcountinhibit_wdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_rmask, // 3-31 implemented
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_wmask,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_rdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_wdata,
-  output logic [31:0]                        rvfi_csr_mscratch_rmask,
-  output logic [31:0]                        rvfi_csr_mscratch_wmask,
-  output logic [31:0]                        rvfi_csr_mscratch_rdata,
-  output logic [31:0]                        rvfi_csr_mscratch_wdata,
-  output logic [31:0]                        rvfi_csr_mepc_rmask,
-  output logic [31:0]                        rvfi_csr_mepc_wmask,
-  output logic [31:0]                        rvfi_csr_mepc_rdata,
-  output logic [31:0]                        rvfi_csr_mepc_wdata,
-  output logic [31:0]                        rvfi_csr_mcause_rmask,
-  output logic [31:0]                        rvfi_csr_mcause_wmask,
-  output logic [31:0]                        rvfi_csr_mcause_rdata,
-  output logic [31:0]                        rvfi_csr_mcause_wdata,
-  output logic [31:0]                        rvfi_csr_mtval_rmask,
-  output logic [31:0]                        rvfi_csr_mtval_wmask,
-  output logic [31:0]                        rvfi_csr_mtval_rdata,
-  output logic [31:0]                        rvfi_csr_mtval_wdata,
-  output logic [31:0]                        rvfi_csr_mip_rmask,
-  output logic [31:0]                        rvfi_csr_mip_wmask,
-  output logic [31:0]                        rvfi_csr_mip_rdata,
-  output logic [31:0]                        rvfi_csr_mip_wdata,
-  output logic [31:0]                        rvfi_csr_tselect_rmask,
-  output logic [31:0]                        rvfi_csr_tselect_wmask,
-  output logic [31:0]                        rvfi_csr_tselect_rdata,
-  output logic [31:0]                        rvfi_csr_tselect_wdata,
-  output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rmask, // 1-3 implemented
-  output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wmask,
-  output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rdata,
-  output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wdata,
-  output logic [31:0]                        rvfi_csr_tinfo_rmask,
-  output logic [31:0]                        rvfi_csr_tinfo_wmask,
-  output logic [31:0]                        rvfi_csr_tinfo_rdata,
-  output logic [31:0]                        rvfi_csr_tinfo_wdata,
-  output logic [31:0]                        rvfi_csr_mcontext_rmask,
-  output logic [31:0]                        rvfi_csr_mcontext_wmask,
-  output logic [31:0]                        rvfi_csr_mcontext_rdata,
-  output logic [31:0]                        rvfi_csr_mcontext_wdata,
-  output logic [31:0]                        rvfi_csr_scontext_rmask,
-  output logic [31:0]                        rvfi_csr_scontext_wmask,
-  output logic [31:0]                        rvfi_csr_scontext_rdata,
-  output logic [31:0]                        rvfi_csr_scontext_wdata,
-  output logic [31:0]                        rvfi_csr_dcsr_rmask,
-  output logic [31:0]                        rvfi_csr_dcsr_wmask,
-  output logic [31:0]                        rvfi_csr_dcsr_rdata,
-  output logic [31:0]                        rvfi_csr_dcsr_wdata,
-  output logic [31:0]                        rvfi_csr_dpc_rmask,
-  output logic [31:0]                        rvfi_csr_dpc_wmask,
-  output logic [31:0]                        rvfi_csr_dpc_rdata,
-  output logic [31:0]                        rvfi_csr_dpc_wdata,
-  output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_rmask, // 0-1 implemented
-  output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_wmask,
-  output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_rdata,
-  output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_wdata,
-  output logic [31:0]                        rvfi_csr_mcycle_rmask,
-  output logic [31:0]                        rvfi_csr_mcycle_wmask,
-  output logic [31:0]                        rvfi_csr_mcycle_rdata,
-  output logic [31:0]                        rvfi_csr_mcycle_wdata,
-  output logic [31:0]                        rvfi_csr_minstret_rmask,
-  output logic [31:0]                        rvfi_csr_minstret_wmask,
-  output logic [31:0]                        rvfi_csr_minstret_rdata,
-  output logic [31:0]                        rvfi_csr_minstret_wdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_rmask, // 3-31 implemented
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_wmask,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_rdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_wdata,
-  output logic [31:0]                        rvfi_csr_mcycleh_rmask,
-  output logic [31:0]                        rvfi_csr_mcycleh_wmask,
-  output logic [31:0]                        rvfi_csr_mcycleh_rdata,
-  output logic [31:0]                        rvfi_csr_mcycleh_wdata,
-  output logic [31:0]                        rvfi_csr_minstreth_rmask,
-  output logic [31:0]                        rvfi_csr_minstreth_wmask,
-  output logic [31:0]                        rvfi_csr_minstreth_rdata,
-  output logic [31:0]                        rvfi_csr_minstreth_wdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_rmask, // 3-31 implemented
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_wmask,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_rdata,
-  output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_wdata,
-  output logic [31:0]                        rvfi_csr_cycle_rmask,
-  output logic [31:0]                        rvfi_csr_cycle_wmask,
-  output logic [31:0]                        rvfi_csr_cycle_rdata,
-  output logic [31:0]                        rvfi_csr_cycle_wdata,
-  output logic [31:0]                        rvfi_csr_instret_rmask,
-  output logic [31:0]                        rvfi_csr_instret_wmask,
-  output logic [31:0]                        rvfi_csr_instret_rdata,
-  output logic [31:0]                        rvfi_csr_instret_wdata,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_rmask, // 3-31 implemented
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_wmask,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_rdata,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_wdata,
-  output logic [31:0]                        rvfi_csr_cycleh_rmask,
-  output logic [31:0]                        rvfi_csr_cycleh_wmask,
-  output logic [31:0]                        rvfi_csr_cycleh_rdata,
-  output logic [31:0]                        rvfi_csr_cycleh_wdata,
-  output logic [31:0]                        rvfi_csr_instreth_rmask,
-  output logic [31:0]                        rvfi_csr_instreth_wmask,
-  output logic [31:0]                        rvfi_csr_instreth_rdata,
-  output logic [31:0]                        rvfi_csr_instreth_wdata,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_rmask, // 3-31 implemented
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_wmask,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_rdata,
-  output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_wdata,
-  output logic [31:0]                        rvfi_csr_mvendorid_rmask,
-  output logic [31:0]                        rvfi_csr_mvendorid_wmask,
-  output logic [31:0]                        rvfi_csr_mvendorid_rdata,
-  output logic [31:0]                        rvfi_csr_mvendorid_wdata,
-  output logic [31:0]                        rvfi_csr_marchid_rmask,
-  output logic [31:0]                        rvfi_csr_marchid_wmask,
-  output logic [31:0]                        rvfi_csr_marchid_rdata,
-  output logic [31:0]                        rvfi_csr_marchid_wdata,
-  output logic [31:0]                        rvfi_csr_mimpid_rmask,
-  output logic [31:0]                        rvfi_csr_mimpid_wmask,
-  output logic [31:0]                        rvfi_csr_mimpid_rdata,
-  output logic [31:0]                        rvfi_csr_mimpid_wdata,
-  output logic [31:0]                        rvfi_csr_mhartid_rmask,
-  output logic [31:0]                        rvfi_csr_mhartid_wmask,
-  output logic [31:0]                        rvfi_csr_mhartid_rdata,
-  output logic [31:0]                        rvfi_csr_mhartid_wdata
+   // CSRs
+   output logic [31:0]                        rvfi_csr_mstatus_rmask,
+   output logic [31:0]                        rvfi_csr_mstatus_wmask,
+   output logic [31:0]                        rvfi_csr_mstatus_rdata,
+   output logic [31:0]                        rvfi_csr_mstatus_wdata,
+   output logic [31:0]                        rvfi_csr_misa_rmask,
+   output logic [31:0]                        rvfi_csr_misa_wmask,
+   output logic [31:0]                        rvfi_csr_misa_rdata,
+   output logic [31:0]                        rvfi_csr_misa_wdata,
+   output logic [31:0]                        rvfi_csr_mie_rmask,
+   output logic [31:0]                        rvfi_csr_mie_wmask,
+   output logic [31:0]                        rvfi_csr_mie_rdata,
+   output logic [31:0]                        rvfi_csr_mie_wdata,
+   output logic [31:0]                        rvfi_csr_mtvec_rmask,
+   output logic [31:0]                        rvfi_csr_mtvec_wmask,
+   output logic [31:0]                        rvfi_csr_mtvec_rdata,
+   output logic [31:0]                        rvfi_csr_mtvec_wdata,
+   output logic [31:0]                        rvfi_csr_mcountinhibit_rmask,
+   output logic [31:0]                        rvfi_csr_mcountinhibit_wmask,
+   output logic [31:0]                        rvfi_csr_mcountinhibit_rdata,
+   output logic [31:0]                        rvfi_csr_mcountinhibit_wdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_rmask, // 3-31 implemented
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_wmask,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_rdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmevent_wdata,
+   output logic [31:0]                        rvfi_csr_mscratch_rmask,
+   output logic [31:0]                        rvfi_csr_mscratch_wmask,
+   output logic [31:0]                        rvfi_csr_mscratch_rdata,
+   output logic [31:0]                        rvfi_csr_mscratch_wdata,
+   output logic [31:0]                        rvfi_csr_mepc_rmask,
+   output logic [31:0]                        rvfi_csr_mepc_wmask,
+   output logic [31:0]                        rvfi_csr_mepc_rdata,
+   output logic [31:0]                        rvfi_csr_mepc_wdata,
+   output logic [31:0]                        rvfi_csr_mcause_rmask,
+   output logic [31:0]                        rvfi_csr_mcause_wmask,
+   output logic [31:0]                        rvfi_csr_mcause_rdata,
+   output logic [31:0]                        rvfi_csr_mcause_wdata,
+   output logic [31:0]                        rvfi_csr_mtval_rmask,
+   output logic [31:0]                        rvfi_csr_mtval_wmask,
+   output logic [31:0]                        rvfi_csr_mtval_rdata,
+   output logic [31:0]                        rvfi_csr_mtval_wdata,
+   output logic [31:0]                        rvfi_csr_mip_rmask,
+   output logic [31:0]                        rvfi_csr_mip_wmask,
+   output logic [31:0]                        rvfi_csr_mip_rdata,
+   output logic [31:0]                        rvfi_csr_mip_wdata,
+   output logic [31:0]                        rvfi_csr_tselect_rmask,
+   output logic [31:0]                        rvfi_csr_tselect_wmask,
+   output logic [31:0]                        rvfi_csr_tselect_rdata,
+   output logic [31:0]                        rvfi_csr_tselect_wdata,
+   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rmask, // 1-3 implemented
+   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wmask,
+   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rdata,
+   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wdata,
+   output logic [31:0]                        rvfi_csr_tinfo_rmask,
+   output logic [31:0]                        rvfi_csr_tinfo_wmask,
+   output logic [31:0]                        rvfi_csr_tinfo_rdata,
+   output logic [31:0]                        rvfi_csr_tinfo_wdata,
+   output logic [31:0]                        rvfi_csr_mcontext_rmask,
+   output logic [31:0]                        rvfi_csr_mcontext_wmask,
+   output logic [31:0]                        rvfi_csr_mcontext_rdata,
+   output logic [31:0]                        rvfi_csr_mcontext_wdata,
+   output logic [31:0]                        rvfi_csr_scontext_rmask,
+   output logic [31:0]                        rvfi_csr_scontext_wmask,
+   output logic [31:0]                        rvfi_csr_scontext_rdata,
+   output logic [31:0]                        rvfi_csr_scontext_wdata,
+   output logic [31:0]                        rvfi_csr_dcsr_rmask,
+   output logic [31:0]                        rvfi_csr_dcsr_wmask,
+   output logic [31:0]                        rvfi_csr_dcsr_rdata,
+   output logic [31:0]                        rvfi_csr_dcsr_wdata,
+   output logic [31:0]                        rvfi_csr_dpc_rmask,
+   output logic [31:0]                        rvfi_csr_dpc_wmask,
+   output logic [31:0]                        rvfi_csr_dpc_rdata,
+   output logic [31:0]                        rvfi_csr_dpc_wdata,
+   output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_rmask, // 0-1 implemented
+   output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_wmask,
+   output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_rdata,
+   output logic [ 1:0] [31:0]                 rvfi_csr_dscratch_wdata,
+   output logic [31:0]                        rvfi_csr_mcycle_rmask,
+   output logic [31:0]                        rvfi_csr_mcycle_wmask,
+   output logic [31:0]                        rvfi_csr_mcycle_rdata,
+   output logic [31:0]                        rvfi_csr_mcycle_wdata,
+   output logic [31:0]                        rvfi_csr_minstret_rmask,
+   output logic [31:0]                        rvfi_csr_minstret_wmask,
+   output logic [31:0]                        rvfi_csr_minstret_rdata,
+   output logic [31:0]                        rvfi_csr_minstret_wdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_rmask, // 3-31 implemented
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_wmask,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_rdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounter_wdata,
+   output logic [31:0]                        rvfi_csr_mcycleh_rmask,
+   output logic [31:0]                        rvfi_csr_mcycleh_wmask,
+   output logic [31:0]                        rvfi_csr_mcycleh_rdata,
+   output logic [31:0]                        rvfi_csr_mcycleh_wdata,
+   output logic [31:0]                        rvfi_csr_minstreth_rmask,
+   output logic [31:0]                        rvfi_csr_minstreth_wmask,
+   output logic [31:0]                        rvfi_csr_minstreth_rdata,
+   output logic [31:0]                        rvfi_csr_minstreth_wdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_rmask, // 3-31 implemented
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_wmask,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_rdata,
+   output logic [31:0] [31:0]                 rvfi_csr_mhpmcounterh_wdata,
+   output logic [31:0]                        rvfi_csr_cycle_rmask,
+   output logic [31:0]                        rvfi_csr_cycle_wmask,
+   output logic [31:0]                        rvfi_csr_cycle_rdata,
+   output logic [31:0]                        rvfi_csr_cycle_wdata,
+   output logic [31:0]                        rvfi_csr_instret_rmask,
+   output logic [31:0]                        rvfi_csr_instret_wmask,
+   output logic [31:0]                        rvfi_csr_instret_rdata,
+   output logic [31:0]                        rvfi_csr_instret_wdata,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_rmask, // 3-31 implemented
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_wmask,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_rdata,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounter_wdata,
+   output logic [31:0]                        rvfi_csr_cycleh_rmask,
+   output logic [31:0]                        rvfi_csr_cycleh_wmask,
+   output logic [31:0]                        rvfi_csr_cycleh_rdata,
+   output logic [31:0]                        rvfi_csr_cycleh_wdata,
+   output logic [31:0]                        rvfi_csr_instreth_rmask,
+   output logic [31:0]                        rvfi_csr_instreth_wmask,
+   output logic [31:0]                        rvfi_csr_instreth_rdata,
+   output logic [31:0]                        rvfi_csr_instreth_wdata,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_rmask, // 3-31 implemented
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_wmask,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_rdata,
+   output logic [31:0] [31:0]                 rvfi_csr_hpmcounterh_wdata,
+   output logic [31:0]                        rvfi_csr_mvendorid_rmask,
+   output logic [31:0]                        rvfi_csr_mvendorid_wmask,
+   output logic [31:0]                        rvfi_csr_mvendorid_rdata,
+   output logic [31:0]                        rvfi_csr_mvendorid_wdata,
+   output logic [31:0]                        rvfi_csr_marchid_rmask,
+   output logic [31:0]                        rvfi_csr_marchid_wmask,
+   output logic [31:0]                        rvfi_csr_marchid_rdata,
+   output logic [31:0]                        rvfi_csr_marchid_wdata,
+   output logic [31:0]                        rvfi_csr_mimpid_rmask,
+   output logic [31:0]                        rvfi_csr_mimpid_wmask,
+   output logic [31:0]                        rvfi_csr_mimpid_rdata,
+   output logic [31:0]                        rvfi_csr_mimpid_wdata,
+   output logic [31:0]                        rvfi_csr_mhartid_rmask,
+   output logic [31:0]                        rvfi_csr_mhartid_wmask,
+   output logic [31:0]                        rvfi_csr_mhartid_rdata,
+   output logic [31:0]                        rvfi_csr_mhartid_wdata
 );
 
   // Propagating from ID stage
@@ -347,9 +344,7 @@ module cv32e40x_rvfi
 
   logic [63:0] lsu_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic          mret_wb_q;
   logic          wb_valid;
-
   logic         intr_d;
 
   logic         is_debug_entry_if;
@@ -359,10 +354,8 @@ module cv32e40x_rvfi
   logic         is_exception_wb;
   logic         is_exception_wb_q;
   logic         is_exception_wb_qq;
-  logic         is_mret_wb;
   logic         is_dret_wb;
   logic         branch_taken_ex;
-
 
   logic [6:0]   insn_opcode;
   logic [4:0]   insn_rd;
@@ -393,7 +386,6 @@ module cv32e40x_rvfi
   assign is_jump_id        = (pc_mux_i == PC_JUMP);
   assign is_branch_ex      = (pc_mux_i == PC_BRANCH);
   assign is_exception_wb   = (pc_mux_i == PC_EXCEPTION);
-  assign is_mret_wb        = (pc_mux_i == PC_MRET);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
   assign branch_taken_ex   = !lsu_en_ex_i &&
@@ -448,11 +440,10 @@ module cv32e40x_rvfi
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
 
-      mret_wb_q          <= 1'b0;
       is_exception_wb_q  <= 1'b0;
       is_exception_wb_qq <= 1'b0;
 
-      rvfi_debug         <= '0;
+      rvfi_dbg           <= '0;
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
@@ -492,7 +483,7 @@ module cv32e40x_rvfi
 
 
       //// EX Stage ////
-      if (instr_ex_ready_i) begin
+      if (instr_ex_valid_i) begin
         pc_wdata [STAGE_EX] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_ID];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
         rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
@@ -510,43 +501,38 @@ module cv32e40x_rvfi
 
       //// WB Stage ////
       rvfi_valid      <= wb_valid;
-      rvfi_order      <= wb_valid ? rvfi_order + 64'b1 : rvfi_order;
-      rvfi_debug      <= wb_valid ?    debug[STAGE_EX] : rvfi_debug;
-      rvfi_pc_rdata   <= pc_wb_i;
-      rvfi_insn       <= instr_rdata_wb_i;
-      rvfi_trap       <= illegal_insn_wb_i;
+      if (wb_valid) begin
+        rvfi_order      <= rvfi_order + 64'b1;
+        rvfi_dbg        <= debug[STAGE_EX];
+        rvfi_pc_rdata   <= pc_wb_i;
+        rvfi_insn       <= instr_rdata_wb_i;
+        rvfi_trap       <= illegal_insn_wb_i;
 
-      rvfi_mem_rdata  <= lsu_rdata_wb_i;
+        rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
-      rvfi_rd_addr    <= (rd_we_wb_i) ? rd_addr_wb_i  : '0;
-      rvfi_rd_wdata   <= (rd_we_wb_i) ? rd_wdata_wb_i : '0;
+        rvfi_rd_addr    <= (rd_we_wb_i) ? rd_addr_wb_i  : '0;
+        rvfi_rd_wdata   <= (rd_we_wb_i) ? rd_wdata_wb_i : '0;
 
-      // Store CSRs
-      rvfi_csr_rdata  <= wb_valid ? rvfi_csr_rdata_d : rvfi_csr_rdata;
-      rvfi_csr_rmask  <= wb_valid ? rvfi_csr_rmask_d : rvfi_csr_rmask;
-      rvfi_csr_wdata  <= wb_valid ? rvfi_csr_wdata_d : rvfi_csr_wdata;
-      rvfi_csr_wmask  <= wb_valid ? rvfi_csr_wmask_d : rvfi_csr_wmask;
+        // Store CSRs
+        rvfi_csr_rdata  <= rvfi_csr_rdata_d;
+        rvfi_csr_rmask  <= rvfi_csr_rmask_d;
+        rvfi_csr_wdata  <= rvfi_csr_wdata_d;
+        rvfi_csr_wmask  <= rvfi_csr_wmask_d;
 
-      rvfi_csr_wdata.mstatus <= (rvfi_valid || csr_mstatus_we_i) ? rvfi_csr_wdata_d.mstatus : rvfi_csr_wdata.mstatus;
-      rvfi_csr_wmask.mstatus <= (rvfi_valid || csr_mstatus_we_i) ? rvfi_csr_wmask_d.mstatus : rvfi_csr_wmask.mstatus;
+        rvfi_rs1_addr  <= rs1_addr [STAGE_EX];
+        rvfi_rs2_addr  <= rs2_addr [STAGE_EX];
+        rvfi_rs1_rdata <= rs1_rdata[STAGE_EX];
+        rvfi_rs2_rdata <= rs2_rdata[STAGE_EX];
+        rvfi_mem_rmask <= mem_rmask[STAGE_EX];
+        rvfi_mem_wmask <= mem_wmask[STAGE_EX];
+        rvfi_mem_addr  <= ex_mem_addr;
+        rvfi_mem_wdata <= ex_mem_wdata;
+      end
 
-
-
-      rvfi_rs1_addr  <= wb_valid ? rs1_addr [STAGE_EX] : rvfi_rs1_addr;
-      rvfi_rs2_addr  <= wb_valid ? rs2_addr [STAGE_EX] : rvfi_rs2_addr;
-      rvfi_rs1_rdata <= wb_valid ? rs1_rdata[STAGE_EX] : rvfi_rs1_rdata;
-      rvfi_rs2_rdata <= wb_valid ? rs2_rdata[STAGE_EX] : rvfi_rs2_rdata;
-      rvfi_mem_rmask <= wb_valid ? mem_rmask[STAGE_EX] : rvfi_mem_rmask;
-      rvfi_mem_wmask <= wb_valid ? mem_wmask[STAGE_EX] : rvfi_mem_wmask;
-
-      rvfi_mem_addr  <= wb_valid ?         ex_mem_addr : rvfi_mem_addr;
-      rvfi_mem_wdata <= wb_valid ?        ex_mem_wdata : rvfi_mem_wdata;
-
-      //if (insn_mret_wb_i || mret_wb_q) begin
-      //  //the MRET retires in one extra cycle, thus
-      //  rvfi_pc_wdata <= is_mret_wb ? mepc_target_wb_i  & ~32'b1 : exception_target_wb_i & ~32'b1;
-      //  mret_wb_q     <= !wb_valid;
-      //end
+      if (csr_mstatus_we_i) begin
+        rvfi_csr_wdata.mstatus <= rvfi_csr_wdata_d.mstatus;
+        rvfi_csr_wmask.mstatus <= rvfi_csr_wmask_d.mstatus;
+      end
 
       // Set expected next PC, half-word aligned
       if (insn_ebrk_wb_i || insn_ecall_wb_i || insn_fencei_wb_i) begin //ebreaks, ecall, fence.i
@@ -563,7 +549,7 @@ module cv32e40x_rvfi
         is_exception_wb_qq <= is_exception_wb_q;
         rvfi_csr_wmask.mstatus <= '0;
       end else if (is_exception_wb_qq) begin
-        if (wb_valid || mret_wb_q || (lsu_rvalid_wb_i && lsu_en_wb_i)) begin
+        if (wb_valid || insn_mret_wb_i || (lsu_rvalid_wb_i && lsu_en_wb_i)) begin
           is_exception_wb_qq <= 1'b0;
           rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
           rvfi_csr_wmask.mstatus <= '1;
@@ -578,7 +564,6 @@ module cv32e40x_rvfi
         rvfi_csr_wdata.dcsr <= csr_dcsr_n_i;
         rvfi_csr_rdata.dcsr <= csr_dcsr_n_i;
       end
-
 
     end
   end
@@ -662,7 +647,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mtval              = '0;
   assign rvfi_csr_rmask_d.mtval              = '1;
 
-  assign rvfi_csr_wdata_d.mip                = csr_mip_i; // FIXME:HB
+  assign rvfi_csr_wdata_d.mip                = csr_mip_i;
   assign rvfi_csr_wmask_d.mip                = '1;
   assign rvfi_csr_rdata_d.mip                = csr_mip_i;
   assign rvfi_csr_rmask_d.mip                = '1;
@@ -695,7 +680,7 @@ module cv32e40x_rvfi
 
   assign rvfi_csr_wdata_d.tinfo              = '0; // Read Only
   assign rvfi_csr_wmask_d.tinfo              = '0;
-  assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_i;
+  assign rvfi_csr_rdata_d.tinfo              = {16'h0, csr_tinfo_i};
   assign rvfi_csr_rmask_d.tinfo              = '1;
 
   assign rvfi_csr_wdata_d.mcontext           = '0; // Not implemented, read 0
