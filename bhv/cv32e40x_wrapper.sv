@@ -380,7 +380,6 @@ bind cv32e40x_sleep_unit:
       .ex_data_gnt    ( core_i.data_gnt_i                           ),
       .ex_data_we     ( core_i.data_we_o                            ),
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
-      .data_misaligned ( core_i.lsu_misaligned                      ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
       .debug_mode     ( core_i.ctrl_fsm.debug_mode                  ),
