@@ -234,7 +234,6 @@ bind cv32e40x_sleep_unit:
 
          .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
-         .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0]            ),
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1]            ),
@@ -242,6 +241,7 @@ bind cv32e40x_sleep_unit:
          .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
 
          .instr_valid_wb_i         (core_i.wb_stage_i.ex_wb_pipe_i.instr_valid                            ),
+         .wb_valid_i               (core_i.wb_stage_i.wb_valid                                            ),
 
          .insn_ebrk_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.ebrk_insn                             ),
          .insn_ecall_wb_i          ( core_i.wb_stage_i.ex_wb_pipe_i.ecall_insn                            ),
@@ -279,14 +279,12 @@ bind cv32e40x_sleep_unit:
          .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
-         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
-         //.csr_stall_id_i           ( core_i.id_stage_i.csr_stall_i                                        ),
 
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 

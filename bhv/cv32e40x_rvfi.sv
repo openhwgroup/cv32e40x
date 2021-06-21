@@ -27,9 +27,9 @@ module cv32e40x_rvfi
 
   input logic [31:0]                         instr_rdata_wb_i,
   input logic                                instr_valid_wb_i,
+  input logic                                wb_valid_i,
 
   input logic                                instr_id_valid_i,
-  input logic                                instr_id_is_decoding_i,
 
   input logic [4:0]                          rs1_addr_id_i,
   input logic [31:0]                         rs1_rdata_id_i,
@@ -73,7 +73,7 @@ module cv32e40x_rvfi
   input logic [31:0]                         lsu_addr_ex_i,
   input logic [31:0]                         lsu_wdata_ex_i,
   input logic                                lsu_misaligned_ex_i,
-  input logic                                lsu_is_misaligned_ex_i,
+//  input logic                                lsu_is_misaligned_ex_i,
 
   input logic                                lsu_rvalid_wb_i,
   input logic [31:0]                         lsu_rdata_wb_i,
@@ -347,22 +347,10 @@ module cv32e40x_rvfi
 
   logic [63:0] lsu_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  // When writeback stage is present RVFI information is emitted when instruction is finished in
-  // third stage but some information must be captured whilst the instruction is in the second
-  // stage. Without writeback stage RVFI information is all emitted when instruction retires in
-  // second stage. RVFI outputs are all straight from flops. So 2 stage pipeline requires a single
-  // set of flops (instr_info => RVFI_out), 3 stage pipeline requires two sets (instr_info => wb
-  // => RVFI_out)
-  localparam int RVFI_STAGES = 3;
-
   logic          mret_wb_q;
   logic          wb_valid;
 
   logic         intr_d;
-  logic         instr_id_done;
-
-  logic         ex_stage_ready_q;
-  logic         ex_stage_valid_q;
 
   logic         is_debug_entry_if;
   logic         is_debug_entry_id;
@@ -398,9 +386,7 @@ module cv32e40x_rvfi
 
   localparam STAGE_ID = 0;
   localparam STAGE_EX = 1;
-  localparam STAGE_WB = 2;
 
-  rvfi_instr_t rvfi_stage [RVFI_STAGES];
   rvfi_intr_t  instr_q;
 
   assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
@@ -414,37 +400,15 @@ module cv32e40x_rvfi
                              (pc_set_i && is_branch_ex) &&
                              !(illegal_insn_ex_i || insn_mret_ex_i || insn_ebrk_ex_i || insn_ecall_ex_i || insn_fencei_ex_i);
 
-
     // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_intr              = intr_d;
   assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3)
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
-  // An instruction in the ID stage is valid (instr_id_valid_i)
-  // when it's not stalled by the EX stage
-  // due to stalls in the EX stage, data hazards, or if it is not halted by the controller
-  // as due interrupts, debug requests, illegal instructions, ebreaks and ecalls
-  assign instr_id_done  = instr_id_valid_i && instr_id_is_decoding_i;
-
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      ex_stage_ready_q  <= '0;
-      ex_stage_valid_q  <= '0;
-    end else begin
-
-      // Keep instr in EX valid if next instruction is not valid
-      ex_stage_ready_q       <= instr_id_done || !instr_ex_ready_i && ex_stage_ready_q;
-      ex_stage_valid_q       <= instr_id_done || !instr_ex_valid_i && ex_stage_valid_q;
-
-      is_debug_entry_id      <= (instr_id_done) ? is_debug_entry_if : is_debug_entry_if || is_debug_entry_id;
-
-    end // else: !if(!rst_ni)
-  end // always_ff @
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      instr_q      <= '0;
+      instr_q           <= '0;
     end else begin
       // Store last valid instructions
       if(rvfi_valid) begin
@@ -463,13 +427,16 @@ module cv32e40x_rvfi
                   ((rvfi_order - instr_q.order) == 1) && // Is latest instruction
                   (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler
 
-  assign wb_valid = instr_valid_wb_i &&
-                    !lsu_is_misaligned_ex_i; // Suppress first misaligned access in wb
+  assign wb_valid = wb_valid_i &&
+                    !lsu_misaligned_ex_i || // Suppress first misaligned access in wb
+                    is_exception_wb; // Exceptions are reported as valid instructions in RVFI
+
 
   // Pipeline stage model //
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
+      is_debug_entry_id  <= 1'b0;
       pc_wdata           <= '0;
       debug              <= 1'b0;
       rs1_addr           <= '0;
@@ -511,7 +478,8 @@ module cv32e40x_rvfi
     end else begin
 
       //// ID Stage ////
-      if(instr_id_done) begin
+      if(instr_id_valid_i) begin
+        is_debug_entry_id   <= (instr_id_valid_i) ? is_debug_entry_if : is_debug_entry_if || is_debug_entry_id;
         debug    [STAGE_ID] <= is_debug_entry_id;
         pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
