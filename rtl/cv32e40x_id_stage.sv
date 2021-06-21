@@ -37,93 +37,89 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   parameter DEBUG_TRIGGER_EN        =  1
 )
 (
-    input  logic        clk,                    // Gated clock
-    input  logic        clk_ungated_i,          // Ungated clock
-    input  logic        rst_n,
+  input  logic        clk,                    // Gated clock
+  input  logic        clk_ungated_i,          // Ungated clock
+  input  logic        rst_n,
 
-    input  logic        deassert_we_i,
+  input  logic        deassert_we_i,
 
-    // Jumps and branches
-    input  logic        branch_decision_i,
-    output logic [31:0] jmp_target_o,
-    
-    // IF and ID stage signals
-    output logic        id_ready_o,     // ID stage is ready for the next instruction
-    input  logic        ex_ready_i,     // EX stage is ready for the next instruction
-    input  logic        wb_ready_i,     // WB stage is ready for the next instruction
-    input  logic        ex_valid_i,     // EX stage is done
- 
-    // IF/ID pipeline
-    input if_id_pipe_t if_id_pipe_i,
+  // Jumps and branches
+  input  logic        branch_decision_i,
+  output logic [31:0] jmp_target_o,
 
-    // ID/EX pipeline 
-    output id_ex_pipe_t id_ex_pipe_o,
+  // IF/ID pipeline
+  input if_id_pipe_t if_id_pipe_i,
 
-    // From controller FSM
-    input  ctrl_fsm_t   ctrl_fsm_i,
+  // ID/EX pipeline 
+  output id_ex_pipe_t id_ex_pipe_o,
 
-    input  PrivLvl_t    current_priv_lvl_i,
+  // From controller FSM
+  input  ctrl_fsm_t   ctrl_fsm_i,
 
-    // Debug Signal
-    input  logic        debug_trigger_match_id_i,
+  input  PrivLvl_t    current_priv_lvl_i,
 
-    // Register file write back and forwards
-    input  logic [31:0]    rf_wdata_wb_i,
-    input  logic [31:0]    rf_wdata_wb_alu_i,
+  // Debug Signal
+  input  logic        debug_trigger_match_id_i,
 
-    input  logic           rf_we_ex_i,
-    input  rf_addr_t       rf_waddr_ex_i,
-    input  logic [31:0]    rf_wdata_ex_i,
+  // Register file write back and forwards
+  input  logic [31:0]    rf_wdata_wb_i,
+  input  logic [31:0]    rf_wdata_wb_alu_i,
 
-    // Performance Counters
-    output logic        mhpmevent_minstret_o,
-    output logic        mhpmevent_load_o,
-    output logic        mhpmevent_store_o,
-    output logic        mhpmevent_jump_o,
-    output logic        mhpmevent_branch_o,
-    output logic        mhpmevent_branch_taken_o,
-    output logic        mhpmevent_compressed_o,
-    output logic        mhpmevent_jr_stall_o,
-    output logic        mhpmevent_imiss_o,
-    output logic        mhpmevent_ld_stall_o,
+  input  logic           rf_we_ex_i,
+  input  rf_addr_t       rf_waddr_ex_i,
+  input  logic [31:0]    rf_wdata_ex_i,
 
-    input  logic        perf_imiss_i,
+  // Performance Counters
+  output logic        mhpmevent_minstret_o,
+  output logic        mhpmevent_load_o,
+  output logic        mhpmevent_store_o,
+  output logic        mhpmevent_jump_o,
+  output logic        mhpmevent_branch_o,
+  output logic        mhpmevent_branch_taken_o,
+  output logic        mhpmevent_compressed_o,
+  output logic        mhpmevent_jr_stall_o,
+  output logic        mhpmevent_imiss_o,
+  output logic        mhpmevent_ld_stall_o,
 
-    input  logic        lsu_en_wb_i,
+  input  logic        perf_imiss_i,
 
-    output logic        mret_insn_o,
-    output logic        dret_insn_o,
-    // Decoder to controller
-    output logic        csr_status_o,
-    output logic        csr_en_o,
-    output csr_opcode_e csr_op_o,
+  input  logic        lsu_en_wb_i,
 
-    output logic [1:0]  ctrl_transfer_insn_o,
-    output logic [1:0]  ctrl_transfer_insn_raw_o,
+  output logic        mret_insn_o,
+  output logic        dret_insn_o,
+  // Decoder to controller
+  output logic        csr_status_o,
+  output logic        csr_en_o,
+  output csr_opcode_e csr_op_o,
 
-    // RF interface -> controller
-    output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
-    output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
-    output rf_addr_t    rf_waddr_o,
+  output logic [1:0]  ctrl_transfer_insn_o,
+  output logic [1:0]  ctrl_transfer_insn_raw_o,
 
-    output logic        regfile_alu_we_id_o,
-    
-    // Forwarding from controller
-    input  op_fw_mux_e    operand_a_fw_mux_sel_i,
-    input  op_fw_mux_e    operand_b_fw_mux_sel_i,
-    input  jalr_fw_mux_e  jalr_fw_mux_sel_i,
+  // RF interface -> controller
+  output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
+  output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
+  output rf_addr_t    rf_waddr_o,
 
-    // Halt and stalls from controller
-    input  logic          misaligned_stall_i,
-    input  logic          jr_stall_i,
-    input  logic          load_stall_i,
-    input  logic          csr_stall_i,
-    input  logic          wfi_stall_i,
+  output logic        regfile_alu_we_id_o,
 
-    // Register file
-    input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS]
+  // Forwarding from controller
+  input  op_fw_mux_e    operand_a_fw_mux_sel_i,
+  input  op_fw_mux_e    operand_b_fw_mux_sel_i,
+  input  jalr_fw_mux_e  jalr_fw_mux_sel_i,
 
-  
+  // Halt and stalls from controller
+  input  logic          misaligned_stall_i,
+  input  logic          jr_stall_i,
+  input  logic          load_stall_i,
+  input  logic          csr_stall_i,
+  input  logic          wfi_stall_i,
+
+  // Register file
+  input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS],
+
+  // Stage ready/valid
+  output logic        id_ready_o,     // ID stage is ready for new data
+  input  logic        ex_ready_i      // EX stage is ready for new data
 );
 
   // Source/Destination register instruction index
@@ -204,7 +200,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] operand_c;
 
-  logic        id_valid;
+  logic        id_valid;        // ID stage has valid (non-bubble) data for next stage
 
   // Performance counters
   logic        id_valid_q;
@@ -594,14 +590,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
           end
 
-
           id_ex_pipe_o.csr_access             <= csr_en;
           id_ex_pipe_o.csr_en                 <= csr_en;
           id_ex_pipe_o.csr_op                 <= csr_op;
 
           id_ex_pipe_o.lsu_en                 <= lsu_en;
-          if (lsu_en)
-          begin // only needed for LSU when there is an active request
+          if (lsu_en) begin
             id_ex_pipe_o.lsu_we               <= lsu_we;
             id_ex_pipe_o.lsu_type             <= lsu_type;
             id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;

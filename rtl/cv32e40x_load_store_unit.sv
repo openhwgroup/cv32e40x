@@ -434,7 +434,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                           resp_valid
                      ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
-  assign valid_0_o = valid_0_i && trans_valid && trans_ready;
+  assign valid_0_o = (!lsu_en_valid    ? 1'b0 :
+                      (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
+                      (cnt_q == 2'b01) ? (trans_valid && trans_ready) :
+                                          1'b1
+                     ) && valid_0_i; // todo: should not need to depend on resp_valid
 
 // todo: lsu_en_valid should maybe be replaced by valid_0_i
 

@@ -30,71 +30,69 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
-  (
-    // Clocks and reset
-    input  logic        clk,                        // Gated clock
-    input  logic        clk_ungated_i,              // Ungated clock
-    input  logic        rst_n,
-  
-    input  logic        fetch_enable_i,             // Start executing
-    
-    // From bypass logic
-    input  logic        jr_stall_i,                 // There is a jr-stall pending
+(
+  // Clocks and reset
+  input  logic        clk,                        // Gated clock
+  input  logic        clk_ungated_i,              // Ungated clock
+  input  logic        rst_n,
 
-    // From IF stage
-    input  logic        if_valid_i,
-    input  logic        if_ready_i,
-    
-  
-    // From ID stage
-    input  logic        id_ready_i,                 // ID stage is ready
-    input  if_id_pipe_t if_id_pipe_i,
-    input  logic        mret_id_i,                  // mret in ID stage
-    input  logic        dret_id_i,                  // dret in ID stage
+  input  logic        fetch_enable_i,             // Start executing
 
-    // From WB stage
-    input  ex_wb_pipe_t ex_wb_pipe_i,
+  // From bypass logic
+  input  logic        jr_stall_i,                 // There is a jr-stall pending  
 
-    // From decoder
-    input  logic        csr_status_i,               // decoder encountered an csr status instruction
-    input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
-    input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
+  // From ID stage
+  input  if_id_pipe_t if_id_pipe_i,
+  input  logic        mret_id_i,                  // mret in ID stage
+  input  logic        dret_id_i,                  // dret in ID stage
 
-    // From EX stage
-    input  id_ex_pipe_t id_ex_pipe_i,        
-    input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-    input  logic        ex_valid_i,                 // EX stage is done
-    input  logic        data_req_i,                 // Data interface trans_valid // TODO: pick better name; is this the OBI signal or the signal before the MPU?
-  
-    // From WB stage
-    input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
-    input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
-    input  logic        wb_ready_i,                 // WB stage is ready
-    input  logic        lsu_en_wb_i,                // LSU data is written back in WB
+  // From WB stage
+  input  ex_wb_pipe_t ex_wb_pipe_i,
 
-    // From LSU
-    input  logic [1:0]  lsu_cnt_i,                  // LSU outstanding
-    input  logic        data_rvalid_i,
+  // From decoder
+  input  logic        csr_status_i,               // decoder encountered an csr status instruction
+  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
+  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
-    // Interrupt Controller Signals
-    input  logic        irq_req_ctrl_i,             // irq requst
-    input  logic [4:0]  irq_id_ctrl_i,              // irq id
-    input  logic        irq_wu_ctrl_i,              // irq wakeup control
-    input  PrivLvl_t    current_priv_lvl_i,         // Current running priviledge level
-  
-    // From cs_registers
-    input logic  [1:0]  mtvec_mode_i,           
-    input  logic        debug_single_step_i,        // dcsr.step from cs_registers
-    input  logic        debug_ebreakm_i,            // dcsr.ebreakm from cs_registers
-    input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
+  // From EX stage
+  input  id_ex_pipe_t id_ex_pipe_i,        
+  input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
+  input  logic        data_req_i,                 // Data interface trans_valid // TODO: pick better name; is this the OBI signal or the signal before the MPU?
 
-    // Toplevel input
-    input  logic        debug_req_i,                // External debug request
-    
-    // All controller FSM outputs
-    output ctrl_fsm_t    ctrl_fsm_o
-    
-  );
+  // From WB stage
+  input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
+  input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
+  input  logic        lsu_en_wb_i,                // LSU data is written back in WB
+
+  // From LSU
+  input  logic [1:0]  lsu_cnt_i,                  // LSU outstanding
+  input  logic        data_rvalid_i,
+
+  // Interrupt Controller Signals
+  input  logic        irq_req_ctrl_i,             // irq requst
+  input  logic [4:0]  irq_id_ctrl_i,              // irq id
+  input  logic        irq_wu_ctrl_i,              // irq wakeup control
+  input  PrivLvl_t    current_priv_lvl_i,         // Current running priviledge level
+
+  // From cs_registers
+  input logic  [1:0]  mtvec_mode_i,           
+  input  logic        debug_single_step_i,        // dcsr.step from cs_registers
+  input  logic        debug_ebreakm_i,            // dcsr.ebreakm from cs_registers
+  input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
+
+  // Toplevel input
+  input  logic        debug_req_i,                // External debug request
+
+  // All controller FSM outputs
+  output ctrl_fsm_t    ctrl_fsm_o,
+
+  // From IF stage
+  input  logic        if_valid_i,       // IF stage has valid (non-bubble) data for next stage
+  input  logic        if_ready_i,       // IF stage is ready for new data
+  input  logic        id_ready_i,       // ID stage is ready for new data
+  input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
+  input  logic        wb_ready_i        // WB stage is ready for new data
+);
 
    // FSM state encoding
   ctrl_state_e ctrl_fsm_cs, ctrl_fsm_ns;
@@ -548,9 +546,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       data_req_q <= 1'b0;
     end else begin
-      if (data_req_i && !ex_valid_i) begin
+      if (data_req_i && !(ex_valid_i && wb_ready_i)) begin
         data_req_q <= 1'b1;
-      end else if (ex_valid_i) begin
+      end else if (ex_valid_i && wb_ready_i) begin
         data_req_q <= 1'b0;
       end
     end
