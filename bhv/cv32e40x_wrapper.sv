@@ -165,12 +165,13 @@ module cv32e40x_wrapper
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
                 .cs_registers_csr_cause_i         (core_i.cs_registers_i.ctrl_fsm_i.csr_cause),
-                .ex_wb_pipe_i                     (core_i.ex_wb_pipe),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
                 .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
                 .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
+                .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
                 .id_stage_is_last                 (core_i.id_stage_i.is_last),
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid),
                 .*);
@@ -195,13 +196,15 @@ bind cv32e40x_sleep_unit:
         .PMA_CFG(PMA_CFG))
   mpu_if_sva(.*);
 
+  // TODO: Reintroduce once LSU PMA support has been properly implemented in the controller
+  /*
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
     cv32e40x_mpu_sva
       #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .PMA_CFG(PMA_CFG))
   mpu_lsu_sva(.*);
-
+  */
 `endif //  `ifndef COREV_ASSERT_OFF
 
 

@@ -37,20 +37,14 @@ module cv32e40x_core_sva
   input              if_id_pipe_t if_id_pipe,
   input              id_stage_is_last,
   input logic        id_stage_id_valid,
-   // probed id_stage signals
-  /* todo: clean up if really no longer needed
-  input logic        id_stage_ebrk_insn,
-  input logic        id_stage_ecall_insn,
-  input logic        id_stage_illegal_insn,
-  input logic        id_stage_instr_err,
-  input logic        id_stage_mpu_err,
-  input logic        id_stage_instr_valid,
-  */
-  input ex_wb_pipe_t ex_wb_pipe_i,
+  input logic        irq_ack_o, // irq ack output
+  input ex_wb_pipe_t ex_wb_pipe,
   input logic        branch_taken_in_ex,
   
    // probed controller signals
-  input logic        id_stage_controller_debug_mode_n,
+  input logic        ctrl_debug_mode_n,
+  input logic        ctrl_pending_debug,
+  input logic        ctrl_debug_allowed,
   input              ctrl_state_e ctrl_fsm_ns,
    // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
@@ -109,36 +103,36 @@ always_ff @(posedge clk , negedge rst_ni)
       expected_instr_mpuerr_mepc <= 32'b0;
     end
     else begin
-      //TODO:OK: Update the following checks, as they fail with the new controller
-      if (!first_illegal_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
-        !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK)) &&
-          ex_wb_pipe_i.illegal_insn && !id_stage_controller_debug_mode_n) begin
+      // The code below checks for first occurence of each exception type in WB
+      // Multiple exceptions may occur at the same time, so the following
+      // code needs to check priority of what to expect
+      if (!first_illegal_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+        !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK)) &&
+          ex_wb_pipe.illegal_insn && !ctrl_debug_mode_n) begin
         first_illegal_found   <= 1'b1;
         expected_illegal_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ecall_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
-        !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn) &&
-          ex_wb_pipe_i.ecall_insn && !id_stage_controller_debug_mode_n) begin
+      if (!first_ecall_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+        !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn) &&
+          ex_wb_pipe.ecall_insn && !ctrl_debug_mode_n) begin
         first_ecall_found   <= 1'b1;
         expected_ecall_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ebrk_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
-        !(ex_wb_pipe_i.instr.bus_resp.err || (ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.illegal_insn || ex_wb_pipe_i.ecall_insn) &&
-          ex_wb_pipe_i.ebrk_insn) begin
+      if (!first_ebrk_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+        !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn || ex_wb_pipe.ecall_insn) &&
+          ex_wb_pipe.ebrk_insn) begin
         first_ebrk_found   <= 1'b1;
-        expected_ebrk_mepc <= ex_wb_pipe_i.pc;
+        expected_ebrk_mepc <= ex_wb_pipe.pc;
       end
       
-      if (!first_instr_err_found && (ex_wb_pipe_i.instr.mpu_status == MPU_OK) &&
-          ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr.bus_resp.err && !id_stage_controller_debug_mode_n &&
-          !ctrl_fsm.kill_wb ) begin
-          
+      if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+          ex_wb_pipe.instr_valid && ex_wb_pipe.instr.bus_resp.err && !ctrl_debug_mode_n ) begin
         first_instr_err_found   <= 1'b1;
         expected_instr_err_mepc <= ex_wb_pipe.pc;
       end
       
-      if (!first_instr_mpuerr_found && ex_wb_pipe_i.instr_valid && !ctrl_fsm.kill_wb &&
-          (ex_wb_pipe_i.instr.mpu_status != MPU_OK) && !id_stage_controller_debug_mode_n) begin
+      if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+          (ex_wb_pipe.instr.mpu_status != MPU_OK) && !ctrl_debug_mode_n) begin
         first_instr_mpuerr_found   <= 1'b1;
         expected_instr_mpuerr_mepc <= ex_wb_pipe.pc;
       end
@@ -236,17 +230,48 @@ always_ff @(posedge clk , negedge rst_ni)
   a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
 
   
-  // Single Step only executes one instruction in non debug mode and next instruction WB is in debug mode
-  //TODO:OK Fix, as it now fails with the new controller/pipeline signalling
+  // For checking single step, ID stage is used as it contains a 'is_last' signal.
+  // This makes it easy to count misaligned LSU ins as one instruction instead of two.
   logic inst_taken;
   assign inst_taken = id_stage_id_valid && id_stage_is_last;
 
-  a_single_step :
-    assert property (@(posedge clk) disable iff (!rst_ni)
+  // Support for single step assertion
+  // In case of single step + taken interrupt, the first instruction 
+  // of the interrupt handler must be fetched and passed down the pipeline.
+  // In that case ID stage will issue two instructions in M-mode instead of one.
+  logic interrupt_taken;
+  always_ff @(posedge clk , negedge rst_ni)
+    begin
+      if (rst_ni == 1'b0) begin
+        interrupt_taken <= 1'b0;
+      end
+      else begin
+        if(irq_ack_o == 1'b1) begin
+          interrupt_taken <= 1'b1;
+        end else if(ctrl_debug_mode_n) begin
+          interrupt_taken <= 1'b0;
+        end
+      end
+    end
+  
+  
+  // Single step without interrupts
+  // Should issue exactly one instruction from ID before entering debug_mode
+  a_single_step_no_irq :
+    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
                      (inst_taken && debug_single_step && ~ctrl_fsm.debug_mode)
                      ##1 inst_taken [->1]
                      |-> (ctrl_fsm.debug_mode && debug_single_step))
-      else `uvm_error("core", "Assertion a_single_step failed")
+      else `uvm_error("core", "Assertion a_single_step_no_irq failed")
+
+  // Single step with interrupt taken may issue up to two instructions
+  // before entering debug mode
+  a_single_step_with_irq :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (inst_taken && debug_single_step && ~ctrl_fsm.debug_mode && interrupt_taken) [->1:2]
+                      ##1 inst_taken [->1]
+                      |-> (ctrl_fsm.debug_mode && debug_single_step))
+      else `uvm_error("core", "Assertion a_single_step_with_irq failed")
   
 endmodule // cv32e40x_core_sva
 

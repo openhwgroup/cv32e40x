@@ -469,10 +469,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         single_step_halt_if_n = 1'b0;
         single_step_issue_n   = 1'b0;
 
-        // Kill all stages
-        ctrl_fsm_o.kill_if = 1'b1;
-        ctrl_fsm_o.kill_id = 1'b1;
-        ctrl_fsm_o.kill_ex = 1'b1;
+        // Kill stages
+        ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
+        ctrl_fsm_o.kill_id = !debug_single_step_i; // Should not be anything to kill for single step
+        ctrl_fsm_o.kill_ex = !debug_single_step_i; // Should not be anything to kill for single step
         ctrl_fsm_o.kill_wb = !debug_single_step_i; // Do not kill WB for single step
 
         // Set pc
