@@ -45,14 +45,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        mret_id_i,                  // mret in ID stage
   input  logic        dret_id_i,                  // dret in ID stage
+  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
+  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
   // From WB stage
   input  ex_wb_pipe_t ex_wb_pipe_i,
 
-  // From decoder
-  input  logic        csr_status_i,               // decoder encountered an csr status instruction
-  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
-  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,        
@@ -63,10 +61,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
   input  logic        lsu_en_wb_i,                // LSU data is written back in WB
-
-  // From LSU
-  input  logic [1:0]  lsu_cnt_i,                  // LSU outstanding
-  input  logic        data_rvalid_i,
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst

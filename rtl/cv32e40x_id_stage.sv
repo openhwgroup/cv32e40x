@@ -88,7 +88,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output logic        mret_insn_o,
   output logic        dret_insn_o,
   // Decoder to controller
-  output logic        csr_status_o,
   output logic        csr_en_o,
   output csr_opcode_e csr_op_o,
 
@@ -451,7 +450,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // CSR interface
     .csr_en_o                        ( csr_en                    ),
-    .csr_status_o                    ( csr_status_o              ),
     .csr_op_o                        ( csr_op                    ),
     .current_priv_lvl_i              ( current_priv_lvl_i        ),
 
