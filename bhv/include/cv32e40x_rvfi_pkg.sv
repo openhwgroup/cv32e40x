@@ -59,9 +59,6 @@ package cv32e40x_rvfi_pkg;
   } rvfi_csr_map_t;
 
   typedef struct packed {
-    logic        rvfi_valid;
-    logic [63:0] rvfi_order;
-    logic [31:0] rvfi_insn;
     logic        rvfi_trap;
     logic        rvfi_halt;
     logic        rvfi_intr;
@@ -73,18 +70,11 @@ package cv32e40x_rvfi_pkg;
     logic [31:0] rvfi_rs2_rdata;
     logic [31:0] rvfi_rs3_rdata;
     logic [ 4:0] rvfi_rd_addr;
-    logic [31:0] rvfi_rd_wdata;
-    logic [31:0] rvfi_pc_rdata;
     logic [31:0] rvfi_pc_wdata;
     logic [31:0] rvfi_mem_addr;
     logic [ 3:0] rvfi_mem_rmask;
     logic [ 3:0] rvfi_mem_wmask;
-    logic [31:0] rvfi_mem_rdata;
     logic [31:0] rvfi_mem_wdata;
-    rvfi_csr_map_t rvfi_csr_rdata;
-    rvfi_csr_map_t rvfi_csr_rmask;
-    rvfi_csr_map_t rvfi_csr_wdata;
-    rvfi_csr_map_t rvfi_csr_wmask;
   } rvfi_instr_t;
 
   typedef struct packed {

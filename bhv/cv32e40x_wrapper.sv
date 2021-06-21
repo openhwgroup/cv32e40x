@@ -226,33 +226,28 @@ bind cv32e40x_sleep_unit:
           .pc_id_i            ( core_i.if_id_pipe.pc               )
       );
 
-
     cv32e40x_rvfi
       rvfi_i
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
 
-         .hart_id_i                ( core_i.hart_id_i                                                     ),
-         .irq_ack_i                ( core_i.irq_ack_o                                                     ),
-
-         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn                                       ),
-         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn                                          ),
-         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn                                          ),
-         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn                                         ),
-
-         .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
-         .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
-         .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
-         .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
 
-         .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
-         .raddr_a_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
-         .rdata_b_id_i             ( core_i.id_stage_i.operand_b_fw                                       ),
+         .wb_valid_i               (core_i.wb_stage_i.wb_valid                                            ),
+         .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
 
-         .raddr_b_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1] ),
+         .rs1_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0]            ),
+         .rs2_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1]            ),
+         .rs1_rdata_id_i           ( core_i.id_stage_i.operand_a_fw                                       ),
+         .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
 
-         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
+         .insn_mret_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.mret_insn                             ),
+         .insn_ebrk_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.ebrk_insn                             ),
+         .insn_ecall_wb_i          ( core_i.wb_stage_i.ex_wb_pipe_i.ecall_insn                            ),
+         .insn_fencei_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.fencei_insn                           ),
+         .illegal_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.illegal_insn                          ),
+
+         .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
 
@@ -260,20 +255,26 @@ bind cv32e40x_sleep_unit:
          .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                  ),
          .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                              ),
 
-         .lsu_req_id_i             ( core_i.id_stage_i.lsu_en                                             ), // todo: rename signal in RVFI
+         .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
          .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
+
+         .insn_ebrk_ex_i           ( core_i.ex_stage_i.id_ex_pipe_i.ebrk_insn                             ),
+         .insn_ecall_ex_i          ( core_i.ex_stage_i.id_ex_pipe_i.ecall_insn                            ),
+         .insn_fencei_ex_i         ( core_i.ex_stage_i.id_ex_pipe_i.fencei_insn                           ),
+         .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
+         .insn_mret_ex_i           ( core_i.ex_stage_i.id_ex_pipe_i.mret_insn                             ),
+         .illegal_insn_ex_i        ( core_i.ex_stage_i.id_ex_pipe_i.illegal_insn                          ),
 
          .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
          .instr_ex_valid_i         ( core_i.ex_stage_i.ex_valid_o                                         ),
 
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
+         .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
          .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
-         .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
-         .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_0_o                          ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
@@ -284,8 +285,6 @@ bind cv32e40x_sleep_unit:
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
-
-         .is_debug_mode            ( core_i.ctrl_fsm.debug_mode                                           ),
 
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
@@ -381,7 +380,6 @@ bind cv32e40x_sleep_unit:
       .ex_data_gnt    ( core_i.data_gnt_i                           ),
       .ex_data_we     ( core_i.data_we_o                            ),
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
-      .data_misaligned ( core_i.lsu_misaligned                      ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
       .debug_mode     ( core_i.ctrl_fsm.debug_mode                  ),
@@ -403,7 +401,6 @@ bind cv32e40x_sleep_unit:
       .imm_clip_type  ( core_i.id_stage_i.instr[11:7]               )
     );
 `endif
-
 
     // instantiate the core
     cv32e40x_core
