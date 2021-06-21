@@ -232,17 +232,6 @@ bind cv32e40x_sleep_unit:
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
 
-         .hart_id_i                ( core_i.hart_id_i                                                     ),
-         .irq_ack_i                ( core_i.irq_ack_o                                                     ),
-
-         .illegal_insn_id_i        ( core_i.id_stage_i.illegal_insn                                       ),
-         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn                                          ),
-         .ebrk_insn_id_i           ( core_i.id_stage_i.ebrk_insn                                          ),
-         .ecall_insn_id_i          ( core_i.id_stage_i.ecall_insn                                         ),
-
-         .instr_is_compressed_id_i ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
-         .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
-         .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
          .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
          .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
@@ -263,7 +252,6 @@ bind cv32e40x_sleep_unit:
          .illegal_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.illegal_insn                          ),
 
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
 
@@ -271,7 +259,7 @@ bind cv32e40x_sleep_unit:
          .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                  ),
          .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                              ),
 
-         .lsu_req_id_i             ( core_i.id_stage_i.lsu_en                                             ), // todo: rename signal in RVFI
+         .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
          .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
@@ -290,7 +278,6 @@ bind cv32e40x_sleep_unit:
          .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
          .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
          .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
-         .lsu_req_ex_i             ( core_i.load_store_unit_i.trans_valid                                 ),
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
          .lsu_is_misaligned_ex_i   ( core_i.load_store_unit_i.lsu_misaligned_o                            ),
 
@@ -299,7 +286,7 @@ bind cv32e40x_sleep_unit:
          .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
-         .csr_stall_id_i           ( core_i.id_stage_i.csr_stall_i                                        ),
+         //.csr_stall_id_i           ( core_i.id_stage_i.csr_stall_i                                        ),
 
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 

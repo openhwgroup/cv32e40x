@@ -25,17 +25,6 @@ module cv32e40x_rvfi
   input logic                                clk_i,
   input logic                                rst_ni,
 
-  input logic [31:0]                         hart_id_i,
-
-  input logic                                irq_ack_i,
-  input logic                                illegal_insn_id_i,
-  input logic                                mret_insn_id_i,
-  input logic                                ebrk_insn_id_i,
-  input logic                                ecall_insn_id_i,
-
-  input logic                                instr_is_compressed_id_i,
-  input logic [15:0]                         instr_rdata_c_id_i,
-  input logic [31:0]                         instr_rdata_id_i,
   input logic [31:0]                         instr_rdata_wb_i,
   input logic                                instr_valid_wb_i,
 
@@ -55,10 +44,8 @@ module cv32e40x_rvfi
   input logic                                rd_we_wb_i,
   input logic [4:0]                          rd_addr_wb_i,
   input logic [31:0]                         rd_wdata_wb_i,
-  input logic                                csr_stall_id_i,
 
   input logic [31:0]                         pc_wb_i,
-  input logic [31:0]                         pc_id_i,
   input logic [31:0]                         pc_if_i,
   input logic [31:0]                         jump_target_id_i,
 
@@ -68,7 +55,7 @@ module cv32e40x_rvfi
 
   input logic [1:0]                          lsu_type_id_i,
   input logic                                lsu_we_id_i,
-  input logic                                lsu_req_id_i,
+  input logic                                lsu_en_id_i,
 
   input logic                                insn_ebrk_ex_i,
   input logic                                insn_ecall_ex_i,
@@ -85,7 +72,6 @@ module cv32e40x_rvfi
 
   input logic [31:0]                         lsu_addr_ex_i,
   input logic [31:0]                         lsu_wdata_ex_i,
-  input logic                                lsu_req_ex_i,
   input logic                                lsu_misaligned_ex_i,
   input logic                                lsu_is_misaligned_ex_i,
 
@@ -327,6 +313,8 @@ module cv32e40x_rvfi
 );
 
   // Propagating from ID stage
+  logic [1:0] [31:0] pc_wdata;
+  logic [1:0]        debug;
   logic [1:0] [ 4:0] rs1_addr;
   logic [1:0] [ 4:0] rs2_addr;
   logic [1:0] [31:0] rs1_rdata;
@@ -375,12 +363,6 @@ module cv32e40x_rvfi
 
   logic         ex_stage_ready_q;
   logic         ex_stage_valid_q;
-
-  logic [31:0]  id_pc_wdata;
-  logic [31:0]  ex_pc_wdata;
-
-  logic         id_debug;
-  logic         ex_debug;
 
   logic         is_debug_entry_if;
   logic         is_debug_entry_id;
@@ -488,8 +470,8 @@ module cv32e40x_rvfi
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      id_debug           <= 1'b0;
-      id_pc_wdata        <= '0;
+      pc_wdata           <= '0;
+      debug              <= 1'b0;
       rs1_addr           <= '0;
       rs2_addr           <= '0;
       rs1_rdata          <= '0;
@@ -498,9 +480,6 @@ module cv32e40x_rvfi
       mem_wmask          <= '0;
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
-
-      ex_debug           <= '0;
-      ex_pc_wdata        <= '0;
 
       mret_wb_q          <= 1'b0;
       is_exception_wb_q  <= 1'b0;
@@ -533,23 +512,21 @@ module cv32e40x_rvfi
 
       //// ID Stage ////
       if(instr_id_done) begin
-        id_debug    <= is_debug_entry_id;
-        id_pc_wdata <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
-
+        debug    [STAGE_ID] <= is_debug_entry_id;
+        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
-        rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)          ? rs1_rdata_id_i    : '0;
-        rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)          ? rs2_rdata_id_i    : '0;
-        mem_rmask[STAGE_ID] <= (lsu_req_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
-        mem_wmask[STAGE_ID] <= (lsu_req_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+        rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
+        rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0;
+        mem_rmask[STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+        mem_wmask[STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end
 
 
       //// EX Stage ////
       if (instr_ex_ready_i) begin
-        ex_debug            <= id_debug;
-        ex_pc_wdata         <= branch_taken_ex ? branch_target_ex_i : id_pc_wdata;
-
+        pc_wdata [STAGE_EX] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_ID];
+        debug    [STAGE_EX] <= debug    [STAGE_ID];
         rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
         rs2_addr [STAGE_EX] <= rs2_addr [STAGE_ID];
         rs1_rdata[STAGE_EX] <= rs1_rdata[STAGE_ID];
@@ -560,16 +537,13 @@ module cv32e40x_rvfi
         // Keep values when misaligned
         ex_mem_addr         <= (lsu_misaligned_ex_i) ? ex_mem_addr  : rvfi_mem_addr_d;
         ex_mem_wdata        <= (lsu_misaligned_ex_i) ? ex_mem_wdata : rvfi_mem_wdata_d;
-      end else begin
-        ex_debug            <= ex_debug;
-        ex_pc_wdata         <= ex_pc_wdata;
       end
 
 
       //// WB Stage ////
       rvfi_valid      <= wb_valid;
       rvfi_order      <= wb_valid ? rvfi_order + 64'b1 : rvfi_order;
-      rvfi_debug      <= wb_valid ?           ex_debug : rvfi_debug;
+      rvfi_debug      <= wb_valid ?    debug[STAGE_EX] : rvfi_debug;
       rvfi_pc_rdata   <= pc_wb_i;
       rvfi_insn       <= instr_rdata_wb_i;
       rvfi_trap       <= illegal_insn_wb_i;
@@ -588,11 +562,7 @@ module cv32e40x_rvfi
       rvfi_csr_wdata.mstatus <= (rvfi_valid || csr_mstatus_we_i) ? rvfi_csr_wdata_d.mstatus : rvfi_csr_wdata.mstatus;
       rvfi_csr_wmask.mstatus <= (rvfi_valid || csr_mstatus_we_i) ? rvfi_csr_wmask_d.mstatus : rvfi_csr_wmask.mstatus;
 
-      rvfi_pc_wdata     <= ex_pc_wdata & ~32'b1; // Half-word alignment
 
-      if (insn_mret_wb_i) begin
-        rvfi_pc_wdata <= mepc_target_wb_i & ~32'b1; // Half-word alignment
-      end
 
       rvfi_rs1_addr  <= wb_valid ? rs1_addr [STAGE_EX] : rvfi_rs1_addr;
       rvfi_rs2_addr  <= wb_valid ? rs2_addr [STAGE_EX] : rvfi_rs2_addr;
@@ -610,9 +580,13 @@ module cv32e40x_rvfi
       //  mret_wb_q     <= !wb_valid;
       //end
 
-      if (insn_ebrk_wb_i || insn_ecall_wb_i || insn_fencei_wb_i) begin
-        //ebreaks, ecall, fence.i
-        rvfi_pc_wdata   <= exception_target_wb_i & ~32'b1; // Half-word alignment
+      // Set expected next PC, half-word aligned
+      if (insn_ebrk_wb_i || insn_ecall_wb_i || insn_fencei_wb_i) begin //ebreaks, ecall, fence.i
+        rvfi_pc_wdata <= exception_target_wb_i & ~32'b1;
+      end else if (insn_mret_wb_i) begin // mret
+        rvfi_pc_wdata <= mepc_target_wb_i & ~32'b1;
+      end else begin
+        rvfi_pc_wdata <= pc_wdata[STAGE_EX] & ~32'b1;
       end
 
       // CSR special cases
