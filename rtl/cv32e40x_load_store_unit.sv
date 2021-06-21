@@ -29,38 +29,39 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     parameter int unsigned PMA_NUM_REGIONS = 0,
     parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
 (
-    input  logic         clk,
-    input  logic         rst_n,
+  input  logic        clk,
+  input  logic        rst_n,
 
-    // From controller FSM
-    input  ctrl_fsm_t    ctrl_fsm_i,
+  // From controller FSM
+  input  ctrl_fsm_t   ctrl_fsm_i,
 
-    // output to data memory
-    if_c_obi.master      m_c_obi_data_if,
+  // output to data memory
+  if_c_obi.master     m_c_obi_data_if,
 
-    // ID/EX pipeline
-    input id_ex_pipe_t   id_ex_pipe_i,
+  // ID/EX pipeline
+  input id_ex_pipe_t  id_ex_pipe_i,
 
-    // EX/WB pipeline
-    output logic [31:0]  lsu_addr_wb_o,
-    output logic         lsu_err_wb_o,
+  // Control outputs
+  output logic        busy_o,
 
-    output logic [31:0]  lsu_rdata_o,          // LSU read data
-    output logic         lsu_misaligned_o,     // Misaligned access was detected (to controller)
-    
-    output logic [1:0]   cnt_o, // todo: proper names
-    output logic         busy_o,
+  // Stage 0 outputs (EX)
+  output logic        lsu_misaligned_0_o,       // Misaligned access was detected (to controller)
 
-    // Handshakes
-    input  logic         valid_0_i,             // Handshakes for first LSU stage (EX)
-    output logic         ready_0_o,             // LSU ready for new data in EX stage
-    output logic         valid_0_o,
-    input  logic         ready_0_i,
+  // Stage 1 outputs (WB)
+  output logic [31:0] lsu_addr_1_o,
+  output logic        lsu_err_1_o,           
+  output logic [31:0] lsu_rdata_1_o,    // LSU read data
 
-    input  logic         valid_1_i,             // Handshakes for second LSU stage (WB)
-    output logic         ready_1_o,             // LSU ready for new data in WB stage
-    output logic         valid_1_o,
-    input  logic         ready_1_i
+  // Handshakes
+  input  logic        valid_0_i,        // Handshakes for first LSU stage (EX)
+  output logic        ready_0_o,        // LSU ready for new data in EX stage
+  output logic        valid_0_o,
+  input  logic        ready_0_i,
+
+  input  logic        valid_1_i,        // Handshakes for second LSU stage (WB)
+  output logic        ready_1_o,        // LSU ready for new data in WB stage
+  output logic        valid_1_o,
+  input  logic        ready_1_i
 );
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
@@ -334,7 +335,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if (id_ex_pipe_i.lsu_misaligned || lsu_misaligned_o)
+        if (id_ex_pipe_i.lsu_misaligned || lsu_misaligned_0_o)
           rdata_q <= resp_rdata;
         else
           rdata_q <= rdata_ext;
@@ -343,7 +344,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // output to register file
-  assign lsu_rdata_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
+  assign lsu_rdata_1_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
 
   assign misaligned_st = id_ex_pipe_i.lsu_misaligned;
 
@@ -353,11 +354,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
 
   // check for misaligned accesses that need a second memory access
-  // If one is detected, this is signaled with lsu_misaligned_o to
+  // If one is detected, this is signaled with lsu_misaligned_0_o to
   // the controller which selectively stalls the pipeline
   always_comb
   begin
-    lsu_misaligned_o = 1'b0;
+    lsu_misaligned_0_o = 1'b0;
 
     if (lsu_en_valid && !id_ex_pipe_i.lsu_misaligned)
     begin
@@ -365,12 +366,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         2'b10: // word
         begin
           if (addr_int[1:0] != 2'b00)
-            lsu_misaligned_o = 1'b1;
+            lsu_misaligned_0_o = 1'b1;
         end
         2'b01: // half word
         begin
           if (addr_int[1:0] == 2'b11)
-            lsu_misaligned_o = 1'b1;
+            lsu_misaligned_0_o = 1'b1;
         end
       endcase // case (id_ex_pipe_i.lsu_type)
     end
@@ -382,7 +383,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Busy if there are ongoing (or potentially outstanding) transfers
   assign busy_o = (cnt_q != 2'b00) || trans_valid;
 
-  assign cnt_o  = cnt_q;
 
   //////////////////////////////////////////////////////////////////////////////
   // Transaction request generation
@@ -422,16 +422,15 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
 // todo: use ready_0_i
+
 // todo: use valid_1_i
 // todo: drive valid_1_o
 // todo: use ready_1_i
 
-
-
   assign ready_0_o = (!lsu_en_valid    ? 1'b1 :
-                      (cnt_q == 2'b00) ? (              trans_valid && trans_ready) :
-                      (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready) :
-                                          resp_valid
+                      (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
+                      (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
+                                         (resp_valid                               && ready_0_i)
                      ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
   assign valid_0_o = (!lsu_en_valid    ? 1'b0 :
@@ -500,27 +499,27 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
-  // In case of a detected error, updates to lsu_addr_wb_o will be
+  // In case of a detected error, updates to lsu_addr_1_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK: If a store following a load with bus error has dependencies on the load result,
     // it may use use an unspecified address and should be avoided for security reasons.
     // The NMI should be taken before this store.
   
   // Folowing block is within the EX stage
-  always_ff @(posedge clk, negedge rst_n)
+  always_ff @(posedge clk, negedge rst_n) // todo: conditions used here seems different than other WB registers
   begin
     if(rst_n == 1'b0) begin
-      lsu_addr_wb_o <= 32'h0;
+      lsu_addr_1_o <= 32'h0;
     end else begin
       // Update for valid addresses if not blocked by controller
       if(!ctrl_fsm_i.block_data_addr && (trans_valid && trans_ready)) begin
-        lsu_addr_wb_o <= trans.addr;
+        lsu_addr_1_o <= trans.addr;
       end
     end
   end
 
   // Validate bus_error on rvalid (WB stage)
-  assign lsu_err_wb_o = resp_valid && resp_err;
+  assign lsu_err_1_o = resp_valid && resp_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU

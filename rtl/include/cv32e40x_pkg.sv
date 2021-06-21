@@ -680,7 +680,6 @@ typedef struct packed {
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic                              rf_we;
   logic                              csr_en;
-  logic                              csr_status;
   csr_opcode_e                       csr_op;
   logic                              lsu_en;
   logic                              lsu_we;
@@ -715,7 +714,6 @@ typedef struct packed {
                                                           rf_re                        : 2'b00,
                                                           rf_we                        : 1'b0,
                                                           csr_en                       : 1'b0,
-                                                          csr_status                   : 1'b0,
                                                           csr_op                       : CSR_OP_READ,
                                                           lsu_en                       : 1'b0,
                                                           lsu_we                       : 1'b0,

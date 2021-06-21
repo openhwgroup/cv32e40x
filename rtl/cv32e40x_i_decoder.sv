@@ -389,8 +389,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MEPC,
               CSR_MTVEC,
               CSR_MCAUSE : begin
-                // Not illegal, but treat as status CSR for side effect handling
-                decoder_ctrl_o.csr_status = 1'b1;
+                ; // do nothing, not illegal
               end
             // These are valid CSR registers
             CSR_MISA,
@@ -430,8 +429,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
               CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
               CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31 : begin
-                // Not illegal, but treat as status CSR to get accurate counts
-                decoder_ctrl_o.csr_status = 1'b1;
+                ; // do nothing, not illegal
               end
 
             // Hardware Performance Monitor (unprivileged read-only mirror CSRs)
@@ -460,7 +458,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                 if((decoder_ctrl_o.csr_op != CSR_OP_READ)) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end else begin
-                  decoder_ctrl_o.csr_status = 1'b1;
+                  ; // do nothing, not illegal
                 end
 
             // Debug register access
@@ -471,7 +469,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                 if(!debug_mode_i) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end else begin
-                decoder_ctrl_o.csr_status = 1'b1;
+                ; // do nothing, not illegal
               end
 
             // Debug Trigger register access

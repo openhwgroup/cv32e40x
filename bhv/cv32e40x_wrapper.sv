@@ -31,10 +31,6 @@
 `include "cv32e40x_core_log.sv"
 `include "cv32e40x_dbg_helper.sv"
 
-`ifdef CV32E40X_APU_TRACE
-  `include "cv32e40x_apu_tracer.sv"
-`endif
-
 `ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_tracer.sv"
 `endif
@@ -165,12 +161,13 @@ module cv32e40x_wrapper
                 .cs_registers_mcause_q            (core_i.cs_registers_i.mcause_q),
                 .cs_registers_mstatus_q           (core_i.cs_registers_i.mstatus_q),
                 .cs_registers_csr_cause_i         (core_i.cs_registers_i.ctrl_fsm_i.csr_cause),
-                .ex_wb_pipe_i                     (core_i.ex_wb_pipe),
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
                 .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
                 .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                .id_stage_controller_debug_mode_n (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
+                .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
+                .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
                 .id_stage_is_last                 (core_i.id_stage_i.is_last),
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid),
                 .*);
@@ -195,13 +192,15 @@ bind cv32e40x_sleep_unit:
         .PMA_CFG(PMA_CFG))
   mpu_if_sva(.*);
 
+  // TODO: Reintroduce once LSU PMA support has been properly implemented in the controller
+  /*
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
     cv32e40x_mpu_sva
       #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .PMA_CFG(PMA_CFG))
   mpu_lsu_sva(.*);
-
+  */
 `endif //  `ifndef COREV_ASSERT_OFF
 
 
@@ -281,7 +280,7 @@ bind cv32e40x_sleep_unit:
          .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
-         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_o                                 ),
+         .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
 
@@ -343,17 +342,6 @@ bind cv32e40x_sleep_unit:
          ,`RVFI_CONN
 `endif
          );
-
-`ifdef CV32E40P_APU_TRACE
-    cv32e40x_apu_tracer apu_tracer_i(
-      .clk_i        ( core_i.rst_ni                ),
-      .rst_n        ( core_i.clk_i                 ),
-      .hart_id_i    ( core_i.hart_id_i             ),
-      .apu_valid_i  ( core_i.ex_stage_i.apu_valid  ),
-      .apu_waddr_i  ( core_i.ex_stage_i.apu_waddr  ),
-      .apu_result_i ( core_i.ex_stage_i.apu_result )
-  );
-`endif
 
 `ifdef CV32E40X_TRACE_EXECUTION
     cv32e40x_tracer tracer_i( // todo: completely remove instane and file

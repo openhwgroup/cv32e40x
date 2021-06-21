@@ -266,5 +266,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // No multicycle operations in the ALU. Valid/ready are passed through.
   assign valid_o = valid_i;
   assign ready_o = ready_i;
+
+// todo: div and mult use a ready strategy as follows:  assign ready_o = !valid_i ? 1'b1 : ready_i;
   
 endmodule
