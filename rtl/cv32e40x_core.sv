@@ -421,8 +421,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // IF and ID control signals
     .id_ready_o                   ( id_ready                  ),
     .ex_ready_i                   ( ex_ready                  ),
-    .wb_ready_i                   ( wb_ready                  ),
-    .ex_valid_i                   ( ex_valid                  ),
 
     // IF/ID pipeline
     .if_id_pipe_i                 ( if_id_pipe                ),
