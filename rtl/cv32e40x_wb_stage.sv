@@ -35,49 +35,83 @@
 
 module cv32e40x_wb_stage import cv32e40x_pkg::*;
 (
+  input  logic          clk,            // Not used in RTL; only used by assertions
+  input  logic          rst_n,          // Not used in RTL; only used by assertions
+
   // EX/WB pipeline 
   input  ex_wb_pipe_t   ex_wb_pipe_i,
 
-  // From controller FSM
+  // Controller
   input  ctrl_fsm_t     ctrl_fsm_i,
+  output logic          lsu_en_wb_o,    // Used in forward/stall logic
 
-  // LSU interface
+  // LSU
   input  logic [31:0]   lsu_rdata_i,
-  input  logic          lsu_valid_i,
+
+  // Register file interface
+  output logic          rf_we_wb_o,     // Register file write enable
+  output rf_addr_t      rf_waddr_wb_o,  // Register file write address
+  output logic [31:0]   rf_wdata_wb_o,  // Register file write data
+
+  // LSU handshake interface
+  input  logic          lsu_valid_i,    // Not used on purpose
   output logic          lsu_ready_o,
   output logic          lsu_valid_o,
   input  logic          lsu_ready_i,
 
-  output logic          rf_we_wb_o,
-  output rf_addr_t      rf_waddr_wb_o,
-  output logic [31:0]   rf_wdata_wb_o,
-
-  output logic          wb_ready_o,
-
-  // to JR forward logic
-  output logic          lsu_en_wb_o
+  // Stage ready/valid
+  output logic          wb_ready_o
 );
 
   logic                 instr_valid;
   logic                 wb_valid;       // Only used by RVFI
+  logic                 lsu_en_gated;    // LSU enabled gated with all disqualifiers
 
-  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
-// We allow writebacks in case of bus errors.
-// Otherwise we would get a timing path from rvalid to rf_we
+  //////////////////////////////////////////////////////////////////////////////
+  // Controller interface
+  //
+  // LSU enabled computed as in EX stage, however once a load/store transaction
+  // is this far in the pipeline it should not longer get killed (as its
+  // data_req_o/data_ack_i handshake has already occurred. This is checked
+  // with the a_lsu_no_kill assertion.
 
-// Regfile is also written multiple times in case of misaligned
-// load/stores that require two transactions.
+  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && instr_valid; // todo: need to standardize on whether ex_wb_pipe_i.instr_valid needs to be a gating condition or not
+  assign lsu_en_wb_o  = lsu_en_gated;
 
-  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid && !ctrl_fsm_i.halt_wb; // TODO:OK: deassert in case of MPU error
+  //////////////////////////////////////////////////////////////////////////////
+  // Register file interface
+  //
+  // Note that write back is not suppressed during bus errors (in order to prevent
+  // a timing path from the late arriving data_err_i into the register file).
+  //
+  // Note that the register file is written twice in case of a misaligned load.
+  //
+  // Note that the register file is written multiple times in case waited loads (in
+  // order to prevent a timing path from the late arriving data_rvalid_i into the
+  // register file.
+
+  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK: deassert in case of MPU error
   assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
-
   assign rf_wdata_wb_o = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
-  assign lsu_en_wb_o   = ex_wb_pipe_i.lsu_en && instr_valid;
+  //////////////////////////////////////////////////////////////////////////////
+  // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
 
-  assign wb_ready_o    = lsu_ready_i; // todo: Shouldn't this look like ex_ready_o :: ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex);
+  assign lsu_valid_o = lsu_en_gated;
+  assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
 
-  assign wb_valid      = lsu_ready_i && !ctrl_fsm_i.halt_wb && instr_valid; // todo: does not follow same structure as ex_valid_o
+  //////////////////////////////////////////////////////////////////////////////
+  // Stage ready/valid
+
+  assign wb_ready_o = lsu_ready_i; // todo: Should have similar structure as ex_ready_o
+
+  // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
+  //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
+
+  assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1) ||          // Non-LSU instructions always have valid result in WB
+                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)      // LSU instructions have valid result based on data_rvalid_i
+                    ) && instr_valid;
   
 endmodule // cv32e40x_wb_stage
