@@ -127,7 +127,7 @@ module cv32e40x_id_stage_sva
       endproperty
 
       a_illegal_2 : assert property(p_illegal_2) else `uvm_error("id_stage", "Assertion p_illegal_2 failed")
-
+/*
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -141,6 +141,6 @@ module cv32e40x_id_stage_sva
                       (ctrl_fsm_i.kill_id)
                       |-> (id_ready_o && !id_valid))
       else `uvm_error("id_stage", "Kill should imply ready and not valid")
-
+*/
 endmodule // cv32e40x_id_stage_sva
 
