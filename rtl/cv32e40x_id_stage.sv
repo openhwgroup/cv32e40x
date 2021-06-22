@@ -465,9 +465,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .lsu_reg_offset_o                ( lsu_reg_offset            ),
     .lsu_atop_o                      ( lsu_atop                  ),
 
-    // debug mode
-    .debug_mode_i                    ( ctrl_fsm_i.debug_mode     ), // TODO: pass on ctrl_fsm_i
-    .debug_wfi_no_sleep_i            ( ctrl_fsm_i.debug_wfi_no_sleep      ),
+    // From controller fsm
+    .ctrl_fsm_i                      ( ctrl_fsm_i                ),
 
     // jump/branches
     .ctrl_transfer_insn_o            ( ctrl_transfer_insn_o      ),
@@ -601,11 +600,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
             id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
             id_ex_pipe_o.lsu_atop             <= lsu_atop;
+            id_ex_pipe_o.lsu_prepost_useincr  <= lsu_prepost_useincr;
           end
 
-          id_ex_pipe_o.lsu_prepost_useincr    <= lsu_prepost_useincr; // todo: inside above if statement?
-
-          id_ex_pipe_o.lsu_misaligned         <= 1'b0; // todo: explain
+          // Only applicable when misalignes_stall_i == 1'b1 (handled above).
+          // For all other cases it will be 1'b0
+          id_ex_pipe_o.lsu_misaligned         <= 1'b0;
 
           id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
 

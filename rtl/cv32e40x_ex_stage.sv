@@ -125,11 +125,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    
+    rf_wdata_o = alu_result;
     rf_we_o    = rf_we_gated;
     rf_waddr_o = id_ex_pipe_i.rf_waddr;
 
-    // TODO: Make unique case
+    // TODO: Investigate if these can be made unique (they're currently not)
     if (alu_en_gated)
       rf_wdata_o = alu_result;
     if (mul_en_gated)
