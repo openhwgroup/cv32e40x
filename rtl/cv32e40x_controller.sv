@@ -109,7 +109,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,               // WB stage is ready
 
   input  logic        lsu_en_wb_i,              // LSU data is written back in WB
-  input  logic        data_req_i,               // OBI bus data request (EX)
+  input  logic        obi_data_req_i,           // OBI bus data request (EX)
 
   output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
 );
@@ -126,6 +126,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .fetch_enable_i              ( fetch_enable_i ),
 
     .jr_stall_i                  ( jr_stall_o     ),
+    .csr_stall_i                 ( csr_stall_o    ),
 
     .if_valid_i                  ( if_valid_i     ),
     .if_ready_i                  ( if_ready_i     ),
@@ -143,7 +144,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .id_ex_pipe_i                ( id_ex_pipe_i             ),
     .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_valid_i                  ( ex_valid_i               ),
-    .data_req_i                  ( data_req_i               ),
+    .obi_data_req_i              ( obi_data_req_i           ),
 
     // From WB stage
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
@@ -171,9 +172,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Hazard/bypass/stall control instance
   cv32e40x_controller_bypass bypass_i (
-    
-      // From controller_fsm
-      .is_decoding_i              ( ctrl_fsm_o.is_decoding   ),
     
       .if_id_pipe_i               ( if_id_pipe_i             ),
       .id_ex_pipe_i               ( id_ex_pipe_i             ),

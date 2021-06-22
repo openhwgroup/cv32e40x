@@ -53,6 +53,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ID/EX pipeline 
   output id_ex_pipe_t id_ex_pipe_o,
 
+  // EX/WB pipeline
+  input  ex_wb_pipe_t ex_wb_pipe_i,
+
   // From controller FSM
   input  ctrl_fsm_t   ctrl_fsm_i,
 
@@ -63,7 +66,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Register file write back and forwards
   input  logic [31:0]    rf_wdata_wb_i,
-  input  logic [31:0]    rf_wdata_wb_alu_i,
 
   input  logic           rf_we_ex_i,
   input  rf_addr_t       rf_waddr_ex_i,
@@ -319,7 +321,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin: jalr_fw_mux
     case (jalr_fw_mux_sel_i)
-      SELJ_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
+      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;
       SELJ_REGFILE: jalr_fw = regfile_rdata_i[0];
       default:      jalr_fw = regfile_rdata_i[0];
     endcase // jalr_fw_mux_sel_i
@@ -652,7 +654,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
+  assign minstret = id_valid && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin

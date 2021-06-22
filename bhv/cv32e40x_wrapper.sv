@@ -220,10 +220,9 @@ bind cv32e40x_sleep_unit:
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
-          .is_decoding_i      ( core_i.ctrl_fsm.is_decoding        ),
-          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn     ),
-          .hart_id_i          ( core_i.hart_id_i                   ),
-          .pc_id_i            ( core_i.if_id_pipe.pc               )
+          .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
+          .hart_id_i          ( core_i.hart_id_i                   )
+          
       );
 
 
@@ -244,7 +243,7 @@ bind cv32e40x_sleep_unit:
          .instr_rdata_c_id_i       ( core_i.id_stage_i.if_id_pipe_i.compressed_instr                      ),
          .instr_rdata_id_i         ( core_i.id_stage_i.if_id_pipe_i.instr.bus_resp.rdata                  ),
          .instr_id_valid_i         ( core_i.id_stage_i.id_valid                                           ),
-         .instr_id_is_decoding_i   ( core_i.ctrl_fsm.is_decoding                                          ),
+         .instr_id_is_decoding_i   ( 1'b1                                                                 ), //TODO: Remove
 
          .rdata_a_id_i             ( core_i.id_stage_i.operand_a_fw                                       ),
          .raddr_a_id_i             ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0] ),
@@ -357,7 +356,7 @@ bind cv32e40x_sleep_unit:
       .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
       .id_valid       ( core_i.id_stage_i.id_valid                     ),
       .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
-      .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
+      .is_decoding    ( 1'b1                                           ),
 
       .is_illegal     ( core_i.id_stage_i.illegal_insn                            ),
       .trigger_match  ( core_i.debug_trigger_match_id                  ),
@@ -381,7 +380,7 @@ bind cv32e40x_sleep_unit:
       .ex_data_gnt    ( core_i.data_gnt_i                           ),
       .ex_data_we     ( core_i.data_we_o                            ),
       .ex_data_wdata  ( core_i.data_wdata_o                         ),
-      .data_misaligned ( core_i.lsu_misaligned                      ),
+      .data_misaligned ( core_i.lsu_misaligned_ex                   ),
 
       .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
       .debug_mode     ( core_i.ctrl_fsm.debug_mode                  ),
