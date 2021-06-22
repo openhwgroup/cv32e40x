@@ -8,7 +8,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Wrapper for a cv32e40x, containing cv32e40x, and tracer
+// Wrapper for a cv32e40x, containing cv32e40x and RVFI
 // Contributors: Davide Schiavone <davide@openhwgroup.org>
 //               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
@@ -33,10 +33,6 @@
 
 `include "cv32e40x_core_log.sv"
 `include "cv32e40x_dbg_helper.sv"
-
-`ifdef CV32E40X_TRACE_EXECUTION
-  `include "cv32e40x_tracer.sv"
-`endif
 
 `ifdef RISCV_FORMAL
   `include "rvfi_macros.vh"
@@ -368,67 +364,6 @@ bind cv32e40x_sleep_unit:
          ,`RVFI_CONN
 `endif
          );
-
-`ifdef CV32E40X_TRACE_EXECUTION
-    cv32e40x_tracer tracer_i( // todo: completely remove instane and file
-      .clk_i          ( core_i.clk_i                                   ), // always-running clock for tracing
-      .rst_n          ( core_i.rst_ni                                  ),
-
-      .hart_id_i      ( core_i.hart_id_i                               ),
-
-      .pc             ( core_i.id_stage_i.if_id_pipe_i.pc              ),
-      .instr          ( core_i.id_stage_i.instr                        ),
-      //.controller_state_i ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs            ),
-      .compressed     ( core_i.id_stage_i.if_id_pipe_i.is_compressed   ),
-      .id_valid       ( core_i.id_stage_i.id_valid                     ),
-      .multi_cycle_id_stall (core_i.id_stage_i.multi_cycle_id_stall    ),
-      .is_decoding    ( 1'b1/*core_i.is_decoding*/                             ), // TODO:OK: Hack/workaround to allow sims to run with new controller
-
-      .is_illegal     ( core_i.id_stage_i.illegal_insn                            ),
-      .trigger_match  ( core_i.debug_trigger_match_id                  ),
-      .rs1_value      ( core_i.id_stage_i.operand_a_fw                 ),
-      .rs2_value      ( core_i.id_stage_i.operand_b_fw                 ),
-      .rs3_value      ( core_i.id_stage_i.operand_c                    ),
-      .rs2_value_vec  ( core_i.id_stage_i.alu_operand_b                ),
-
-      .rs1_is_fp('0),
-      .rs2_is_fp('0),
-      .rs3_is_fp('0),
-      .rd_is_fp('0),
-
-      .ex_valid       ( 1'b0/*core_i.ex_valid*/                             ),
-      .ex_reg_addr    ( 5'b0                                        ),
-      .ex_reg_we      ( 1'b0                                        ),
-      .ex_reg_wdata   ( 32'b0                                       ),
-
-      .ex_data_addr   ( core_i.data_addr_o                          ),
-      .ex_data_req    ( core_i.data_req_o                           ),
-      .ex_data_gnt    ( core_i.data_gnt_i                           ),
-      .ex_data_we     ( core_i.data_we_o                            ),
-      .ex_data_wdata  ( core_i.data_wdata_o                         ),
-      .data_misaligned ( core_i.lsu_misaligned                      ),
-
-      .ebrk_insn      ( core_i.id_stage_i.ebrk_insn                 ),
-      .debug_mode     ( core_i.ctrl_fsm.debug_mode                  ),
-      .ebrk_force_debug_mode ( 1'b0),//( core_i.controller_i.controller_fsm_i.ebrk_force_debug_mode ),
-
-      .wb_bypass      ( 1'b0/*core_i.ex_stage_i.id_ex_pipe_i.branch_in_ex*/ ),
-
-      .wb_valid       ( 1'b0/*core_i.wb_valid*/                             ),
-      .wb_reg_addr    ( core_i.rf_waddr_wb                          ),
-      .wb_reg_we      ( 1'b0/*core_i.rf_we_wb*/                             ),
-      .wb_reg_wdata   ( core_i.rf_wdata_wb                          ),
-
-      .imm_u_type     ( core_i.id_stage_i.imm_u_type                ),
-      .imm_uj_type    ( core_i.id_stage_i.imm_uj_type               ),
-      .imm_i_type     ( core_i.id_stage_i.imm_i_type                ),
-      .imm_z_type     ( core_i.id_stage_i.imm_z_type                ),
-      .imm_s_type     ( core_i.id_stage_i.imm_s_type                ),
-      .imm_sb_type    ( core_i.id_stage_i.imm_sb_type               ),
-      .imm_clip_type  ( core_i.id_stage_i.instr[11:7]               )
-    );
-`endif
-
 
     // instantiate the core
     cv32e40x_core
