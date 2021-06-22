@@ -23,9 +23,14 @@
 module cv32e40x_if_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (input  logic        clk,
-   input  logic        rst_n,
-   if_c_obi.monitor    m_c_obi_instr_if);
+(
+  input  logic          clk,
+  input  logic          rst_n,
+
+  input logic           if_ready_o,
+  input logic           if_valid_o,  
+  if_c_obi.monitor      m_c_obi_instr_if
+);
 
   // Check that bus interface transactions are word aligned
   property p_instr_addr_word_aligned;
@@ -34,6 +39,20 @@ module cv32e40x_if_stage_sva
 
   a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned)
     else `uvm_error("if_stage", "Assertion a_instr_addr_word_aligned failed")
+
+  // Halt implies not ready and not valid
+  a_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.halt_if)
+                      |-> (!if_ready_o && !if_valid_o))
+      else `uvm_error("if_stage", "Halt should imply not ready and not valid")
+
+  // Kill implies ready and not valid
+  a_kill :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.kill_if)
+                      |-> (if_ready_o && !if_valid_o))
+      else `uvm_error("if_stage", "Kill should imply ready and not valid")
 
 endmodule // cv32e40x_if_stage
 

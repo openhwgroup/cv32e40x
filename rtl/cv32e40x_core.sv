@@ -163,7 +163,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   PrivLvl_t    current_priv_lvl;
 
-  // Load/store unit
+  // LSU
   logic        lsu_misaligned_ex;
   logic [31:0] lsu_rdata_wb;
   logic        lsu_err_wb;
@@ -559,12 +559,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
 
-    // From controller FSM
+    // Controller
     .ctrl_fsm_i            ( ctrl_fsm           ),
 
     // Data OBI interface
     .m_c_obi_data_if       ( m_c_obi_data_if    ),
-
 
     // Control signals
     .busy_o                ( lsu_busy           ),
@@ -573,11 +572,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_misaligned_0_o    ( lsu_misaligned_ex  ),
 
     // Stage 1 outputs (WB)
-    .lsu_addr_1_o          ( lsu_addr_wb        ),
-    .lsu_err_1_o           ( lsu_err_wb         ),
+    .lsu_addr_1_o          ( lsu_addr_wb        ), // To controller (has WB timing, but does not pass through WB stage)
+    .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
 
-    // Pipeline handshakes
+    // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
     .ready_0_o             ( lsu_ready_0        ),
     .valid_0_o             ( lsu_valid_0        ),
@@ -596,26 +595,31 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_wb_stage
   wb_stage_i
   (
+    .clk                        ( clk                          ), // Not used in RTL; only used by assertions
+    .rst_n                      ( rst_ni                       ), // Not used in RTL; only used by assertions
+
     // EX/WB pipeline
     .ex_wb_pipe_i               ( ex_wb_pipe                   ),
 
-    // From controller FSM
+    // Controller
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
-
-    // LSU interface
-    .lsu_rdata_i                ( lsu_rdata_wb                 ),
-    .lsu_valid_i                ( lsu_valid_1                  ),
-    .lsu_ready_o                ( lsu_ready_wb                 ),
-    .lsu_valid_o                ( lsu_valid_wb                 ),
-    .lsu_ready_i                ( lsu_ready_1                  ),
-
     .lsu_en_wb_o                ( lsu_en_wb                    ),
+
+    // LSU
+    .lsu_rdata_i                ( lsu_rdata_wb                 ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
+
+    // LSU handshakes
+    .lsu_valid_i                ( lsu_valid_1                  ),
+    .lsu_ready_o                ( lsu_ready_wb                 ),
+    .lsu_valid_o                ( lsu_valid_wb                 ),
+    .lsu_ready_i                ( lsu_ready_1                  ),
   
+    // Valid/ready
     .wb_ready_o                 ( wb_ready                     )
   );
 

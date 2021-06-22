@@ -59,7 +59,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        branch_decision_o,
   output logic [31:0] branch_target_o,
 
-  // LSU interface
+  // LSU handshake interface
   input  logic        lsu_valid_i,
   output logic        lsu_ready_o,
   output logic        lsu_valid_o,
@@ -104,7 +104,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [5:0]     div_shift_amt;
   logic [31:0]    div_op_a_shifted;
 
-  assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex;
+  assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex; // todo: why does halt_ex not factor in here just like in LSU?
+//  assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex; // todo: This gives SEC error
  
   assign alu_en_gated = id_ex_pipe_i.alu_en && instr_valid;
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid;
@@ -330,11 +331,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
   end
 
-  // CSR inputs are valid when CSR is enabled; CSR outputs need to remain valid until upstream stage is ready
+  // CSR inputs are valid when CSR is enabled; CSR outputs need to remain valid until downstream stage is ready
   assign csr_valid_o = csr_en_gated;
   assign csr_ready_o = wb_ready_i;
 
-  // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until upstream stage is ready
+  // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
   assign lsu_valid_o = lsu_en_gated;
   assign lsu_ready_o = wb_ready_i;
 

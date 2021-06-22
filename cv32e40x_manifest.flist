@@ -30,7 +30,6 @@
 
 ${DESIGN_RTL_DIR}/include/cv32e40x_pkg.sv
 ${DESIGN_RTL_DIR}/if_c_obi.sv
-${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_tracer_pkg.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv

@@ -283,7 +283,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
-        if ( fetch_enable_i ) begin
+        if (fetch_enable_i) begin
           ctrl_fsm_ns = BOOT_SET;
         end
       end
@@ -297,10 +297,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       end
       FUNCTIONAL: begin
         // NMI // TODO:OK: Implement
-        if (pending_nmi ) begin
+        if (pending_nmi) begin
         // Debug entry (except single step which is handled later)
-        end else if( pending_debug ) begin
-          if( debug_allowed ) begin
+        end else if (pending_debug) begin
+          if (debug_allowed) begin
             // Halt the whole pipeline
             ctrl_fsm_o.halt_if = 1'b1;
             ctrl_fsm_o.halt_id = 1'b1;
@@ -313,8 +313,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_id = 1'b1;
           end
         // IRQ
-        end else if( pending_interrupt) begin
-          if( interrupt_allowed ) begin
+        end else if (pending_interrupt) begin
+          if (interrupt_allowed) begin
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
@@ -332,11 +332,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_cause       = {1'b1,irq_id_ctrl_i};
 
             // Save pc from oldest valid instruction
-            if(ex_wb_pipe_i.instr_valid ) begin
+            if (ex_wb_pipe_i.instr_valid) begin
               ctrl_fsm_o.csr_save_wb = 1'b1;
-            end else if( id_ex_pipe_i.instr_valid) begin
+            end else if (id_ex_pipe_i.instr_valid) begin
               ctrl_fsm_o.csr_save_ex = 1'b1;
-            end else if( if_id_pipe_i.instr_valid) begin
+            end else if (if_id_pipe_i.instr_valid) begin
               ctrl_fsm_o.csr_save_id = 1'b1;
             end else begin
               // IF PC will always be valid as it points to the next
@@ -345,7 +345,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
 
             // Unstall IF in case of single stepping
-            if(debug_single_step_i) begin
+            if (debug_single_step_i) begin
               single_step_issue_n = 1'b1;
               single_step_halt_if_n = 1'b0;
             end
@@ -374,15 +374,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_save_cause  = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause       = {1'b0, exception_cause_wb};
           // Special insn
-          end else if( wfi_in_wb ) begin
+          end else if (wfi_in_wb) begin
             // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
-            if( !debug_mode_q ) begin
+            if (!debug_mode_q) begin
               ctrl_fsm_o.halt_if = 1'b1;
               ctrl_fsm_o.halt_id = 1'b1;
               ctrl_fsm_o.instr_req = 1'b0;
               ctrl_fsm_ns = SLEEP;
             end
-          end else if ( fencei_in_wb ) begin
+          end else if (fencei_in_wb) begin
             // Kill all instructions and set pc to wb.pc + 4
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
@@ -391,7 +391,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_mux  = PC_FENCEI;
 
             //TODO:OK: Drive fence.i interface
-          end else if ( dret_in_wb ) begin
+          end else if (dret_in_wb) begin
             // Dret takes jump from WB stage
             // Kill previous stages and jump to pc in dpc
             ctrl_fsm_o.kill_if = 1'b1;
@@ -405,19 +405,19 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             single_step_issue_n = debug_single_step_i; // Expect single step issue
             debug_mode_n  = 1'b0;
           
-          end else if( branch_taken_ex ) begin
+          end else if (branch_taken_ex) begin // todo: seems like branch might get taken multiple times if preceded by stalling load/store
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;  
 
             ctrl_fsm_o.pc_mux   = PC_BRANCH;
             ctrl_fsm_o.pc_set   = 1'b1;
             
-          end else if ( jump_taken_id ) begin
+          end else if (jump_taken_id) begin
             // kill_if
             ctrl_fsm_o.kill_if = 1'b1;
 
             // Jumps in ID (JAL, JALR, mret, uret, dret)
-            if ( mret_id_i ) begin
+            if (mret_id_i) begin
               ctrl_fsm_o.pc_mux      = debug_mode_q ? PC_EXCEPTION : PC_MRET;
               ctrl_fsm_o.pc_set      = 1'b1; //TODO:OK: Could have a CSR write to mepc previous to this, add stall/bypass (non-SEC).
               ctrl_fsm_o.exc_pc_mux  = EXC_PC_DBE; // Only used in debug mode
@@ -429,15 +429,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Mret in WB restores CSR regs
           // 
-          if ( mret_in_wb && !ctrl_fsm_o.kill_wb) begin
-            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
+          if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
+            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q; // TODO:OK: Rename to csr_restore_mret_wb_o
           end
 
           // Single step debug entry
           // Need to be after exception/interrupt handling
           // to ensure mepc and if_pc set correctly for use in dpc
-          if( pending_single_step ) begin
-            if( single_step_allowed ) begin
+          if (pending_single_step) begin
+            if (single_step_allowed) begin
               ctrl_fsm_ns = DEBUG_TAKEN;
             end
           end
@@ -480,7 +480,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
         ctrl_fsm_o.debug_csr_save = 1'b1;
 
-        if( (debug_single_step_i)) begin
+        if (debug_single_step_i) begin
           // Single step
           // Should use pc from IF (next insn, as if is halted after first issue)
           // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
@@ -493,11 +493,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
         end else begin
           // Save pc from oldest valid instruction
-          if( ex_wb_pipe_i.instr_valid ) begin
+          if (ex_wb_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else if( id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin
+          end else if (id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin
             ctrl_fsm_o.csr_save_ex = 1'b1;
-          end else if( if_id_pipe_i.instr_valid) begin
+          end else if (if_id_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_id = 1'b1;
           end else begin
             ctrl_fsm_o.csr_save_if = 1'b1;
@@ -555,9 +555,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       debug_req_q <= 1'b0;
     end else begin
-      if( debug_req_i ) begin
+      if (debug_req_i) begin
         debug_req_q <= 1'b1;
-      end else if( debug_mode_q ) begin
+      end else if (debug_mode_q) begin
         debug_req_q <= 1'b0;
       end
     end
