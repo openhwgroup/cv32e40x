@@ -18,13 +18,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-module cv32e40x_prefetch_unit_sva
+module cv32e40x_prefetch_unit_sva import cv32e40x_pkg::*;
   import uvm_pkg::*;
   (
    input logic        clk,
    input logic        rst_n,
-   input logic        prefetch_en_i,
-   input logic        branch_i,
+   input ctrl_fsm_t   ctrl_fsm_i,
    input logic        fetch_valid,
    input logic [31:0] branch_addr_i,
    input logic        prefetch_ready_i);
@@ -32,7 +31,7 @@ module cv32e40x_prefetch_unit_sva
 
   // Check that branch target address is half-word aligned (RV32-C)
   property p_branch_halfword_aligned;
-    @(posedge clk) (branch_i) |-> (branch_addr_i[0] == 1'b0);
+    @(posedge clk) (ctrl_fsm_i.pc_set) |-> (branch_addr_i[0] == 1'b0);
   endproperty
 
   a_branch_halfword_aligned : assert property(p_branch_halfword_aligned)
@@ -40,7 +39,7 @@ module cv32e40x_prefetch_unit_sva
 
   // Check that a taken branch can only occur if fetching is requested
   property p_branch_implies_req;
-      @(posedge clk) (branch_i) |-> (prefetch_en_i);
+      @(posedge clk) (ctrl_fsm_i.pc_set) |-> (ctrl_fsm_i.instr_req);
     endproperty
 
   a_branch_implies_req : assert property(p_branch_implies_req)

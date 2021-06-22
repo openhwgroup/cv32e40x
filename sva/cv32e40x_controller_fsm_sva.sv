@@ -45,7 +45,7 @@ module cv32e40x_controller_fsm_sva
   input logic           rf_we_wb_i,
   input csr_opcode_e    csr_op_i
 );
-
+/*
   // Back-to-back branch should not be possible due to kill of IF/ID stages after branch
   a_no_back_to_back_branch :
     assert property (@(posedge clk)
@@ -57,7 +57,7 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk)
                      (jump_taken_id) |=> (!jump_taken_id))
       else `uvm_error("controller", "Two jumps back-to-back are taken")
-  
+*/  
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :
     assert property (@(posedge clk)

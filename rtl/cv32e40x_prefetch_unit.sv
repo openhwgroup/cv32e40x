@@ -31,12 +31,10 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   input  logic        clk,
   input  logic        rst_n,
 
-  input  logic        kill_if_i,
+  input  ctrl_fsm_t   ctrl_fsm_i, 
 
-  input  logic        prefetch_en_i,
-  input  logic        branch_i,
   input  logic [31:0] branch_addr_i,
-
+  
   input  logic        prefetch_ready_i,
   output logic        prefetch_valid_o,
   output inst_resp_t  prefetch_instr_o,
@@ -93,11 +91,9 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .clk                  ( clk                    ),
     .rst_n                ( rst_n                  ),
 
-    .kill_if_i            ( kill_if_i              ),
-
+    .ctrl_fsm_i           ( ctrl_fsm_i             ),
+    
     .branch_addr_i        ( branch_addr_i          ),
-    .branch_i             ( branch_i               ),
-    .prefetch_en_i        ( prefetch_en_i          ),
     .prefetch_busy_o      ( prefetch_busy_o        ),
 
     // prefetch unit

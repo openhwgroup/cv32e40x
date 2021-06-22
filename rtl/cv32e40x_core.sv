@@ -424,6 +424,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // ID/EX pipeline
     .id_ex_pipe_o                 ( id_ex_pipe                ),
 
+    // EX/WB pipeline
+    .ex_wb_pipe_i                 ( ex_wb_pipe                ),
+
     // From controller
     .ctrl_fsm_i                   ( ctrl_fsm                  ),
 
@@ -438,7 +441,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_ex_i                ( rf_waddr_ex               ),
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
-    .rf_wdata_wb_alu_i            ( ex_wb_pipe.rf_wdata       ),       // TODO:OK:Change to ex_wb_pipe
 
     // Performance Counters
     .mhpmevent_minstret_o         ( mhpmevent_minstret        ),
@@ -754,15 +756,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
-    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK: Needs bypass?
+    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK: Needs bypass for 40S?
     
     // From CSR registers
-    .mtvec_mode_i                   ( mtvec_mode             ), // TODO:OK: Bypass?
+    .mtvec_mode_i                   ( mtvec_mode             ),
 
     // Debug signals
     .debug_req_i                    ( debug_req_i            ), 
-    .debug_single_step_i            ( debug_single_step      ), // TODO:OK: Bypass?
-    .debug_ebreakm_i                ( debug_ebreakm          ), // TODO:OK: Bypass?
+    .debug_single_step_i            ( debug_single_step      ),
+    .debug_ebreakm_i                ( debug_ebreakm          ),
     .debug_trigger_match_id_i       ( debug_trigger_match_id ),
     
     // Register File read, write back and forwards
@@ -793,7 +795,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( wb_ready               ),
 
-    .data_req_i                     ( data_req_o             ),
+    .obi_data_req_i                 ( data_req_o             ),
 
     .ctrl_fsm_o                     ( ctrl_fsm               )
  );

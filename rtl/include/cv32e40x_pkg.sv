@@ -1001,7 +1001,6 @@ typedef struct packed {
 // Controller FSM outputs
 typedef struct packed {
   logic        ctrl_busy;             // Core is busy processing instructions
-  logic        is_decoding;           // Core is decoding a valid instruction
 
   // to IF stage
   logic        instr_req;             // Start fetching instructions

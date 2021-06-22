@@ -32,9 +32,6 @@
 
 module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   (
-    // From controller_fsm
-    input  logic        is_decoding_i,              // Core is in decoding state (from FSM)
-  
     // From decoder
     input  logic [1:0]  ctrl_transfer_insn_raw_i,          // decoded control transfer instruction. Not gated with deassert
     input  logic [REGFILE_NUM_READ_PORTS-1:0]     rf_re_i, // Read enables from decoder
@@ -155,7 +152,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
-    if (~is_decoding_i || if_id_pipe_i.instr.bus_resp.err ||
+    if (if_id_pipe_i.instr.bus_resp.err ||
         !(if_id_pipe_i.instr.mpu_status == MPU_OK) ||
         debug_trigger_match_id_i) begin
 
@@ -166,8 +163,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     if (
         (id_ex_pipe_i.lsu_en && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
         (!wb_ready_i         && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (id_ex_pipe_i.lsu_en && rf_we_ex_i && is_decoding_i && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
-        (!wb_ready_i         && rf_we_wb_i && is_decoding_i && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
+        (id_ex_pipe_i.lsu_en && rf_we_ex_i && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (!wb_ready_i         && rf_we_wb_i && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
       deassert_we_o   = 1'b1;
