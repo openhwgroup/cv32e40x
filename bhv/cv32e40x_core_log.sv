@@ -36,16 +36,15 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_core_log
+module cv32e40x_core_log import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS    =  1
 )
 (
   input logic        clk_i,
-  input logic        is_decoding_i,
-  input logic        illegal_insn_dec_i,
-  input logic [31:0] hart_id_i,
-  input logic [31:0] pc_id_i
+  input ex_wb_pipe_t ex_wb_pipe_i,
+  input logic [31:0] hart_id_i
+  
 );
 
   // Log top level parameter values
@@ -58,8 +57,8 @@ module cv32e40x_core_log
   always_ff @(negedge clk_i)
   begin
     // print warning in case of decoding errors
-    if (is_decoding_i && illegal_insn_dec_i) begin
-      $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, hart_id_i[3:0], pc_id_i);
+    if (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.illegal_insn) begin
+      $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, hart_id_i[3:0], ex_wb_pipe_i.pc);
     end
   end
 

@@ -150,11 +150,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .clk               ( clk                         ),
     .rst_n             ( rst_n                       ),
 
-    .kill_if_i         ( ctrl_fsm_i.kill_if          ), //TODO:OK: Pass on ctrl_fsm_i
-
-    .prefetch_en_i     ( ctrl_fsm_i.instr_req        ),
-
-    .branch_i          ( ctrl_fsm_i.pc_set           ),
+    .ctrl_fsm_i        ( ctrl_fsm_i                  ),
+    
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
 
     .prefetch_ready_i  ( if_ready                    ),

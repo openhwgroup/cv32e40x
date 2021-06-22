@@ -241,10 +241,9 @@ bind cv32e40x_sleep_unit:
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
-          .is_decoding_i      ( core_i.ctrl_fsm.is_decoding        ),
-          .illegal_insn_dec_i ( core_i.id_stage_i.illegal_insn     ),
-          .hart_id_i          ( core_i.hart_id_i                   ),
-          .pc_id_i            ( core_i.if_id_pipe.pc               )
+          .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
+          .hart_id_i          ( core_i.hart_id_i                   )
+          
       );
 
     cv32e40x_rvfi

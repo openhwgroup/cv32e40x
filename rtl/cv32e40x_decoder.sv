@@ -89,9 +89,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic [1:0]  lsu_reg_offset_o,         // offset in byte inside register for stores
   output logic [5:0]  lsu_atop_o,               // Atomic memory access
 
-  input  logic        debug_mode_i,             // processor is in debug mode
-  input  logic        debug_wfi_no_sleep_i,     // do not let WFI cause sleep
-
+  input  ctrl_fsm_t   ctrl_fsm_i,               // Control signal from controller_fsm
   // jump/branches
   output logic [1:0]  ctrl_transfer_insn_o,     // control transfer instructio is decoded
   output logic [1:0]  ctrl_transfer_insn_raw_o, // control transfer instruction without deassert
@@ -120,8 +118,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
     i_decoder_i
       (.instr_rdata_i(instr_rdata_i),
-       .debug_mode_i(debug_mode_i),
-       .debug_wfi_no_sleep_i(debug_wfi_no_sleep_i),
+       .ctrl_fsm_i (ctrl_fsm_i),
        .decoder_ctrl_o(decoder_i_ctrl));
   
   // RV32M extension decoder
