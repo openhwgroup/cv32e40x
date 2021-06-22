@@ -59,6 +59,7 @@ module cv32e40x_rvfi
 
    //// WB probes ////
    input logic [31:0]                         pc_wb_i,
+   input logic                                wb_ready_i,
    input logic                                wb_valid_i,
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                insn_ebrk_wb_i,
@@ -82,6 +83,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         mepc_target_wb_i,
 
    //// CSR Probes ////
+   input logic [31:0]                         csr_raddr_i,
    input                                      Status_t csr_mstatus_n_i,
    input                                      Status_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
@@ -421,7 +423,7 @@ module cv32e40x_rvfi
 
   assign wb_valid = wb_valid_i &&
                     !lsu_misaligned_ex_i || // Suppress first misaligned access in wb
-                    is_exception_wb; // Exceptions are reported as valid instructions in RVFI
+                    illegal_insn_wb_i && is_exception_wb; // Illegal instructions are valid in RVFI (w/trap=1)
 
 
   // Pipeline stage model //
@@ -483,7 +485,7 @@ module cv32e40x_rvfi
 
 
       //// EX Stage ////
-      if (instr_ex_valid_i) begin
+      if (instr_ex_valid_i && wb_ready_i) begin
         pc_wdata [STAGE_EX] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_ID];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
         rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
@@ -599,7 +601,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rmask_d.mstatus            = '1;
 
   assign rvfi_csr_wdata_d.misa               = csr_misa_i; // WARL
-  assign rvfi_csr_wmask_d.misa               = '0; //FIXME:HB
+  assign rvfi_csr_wmask_d.misa               = (csr_raddr_i == CSR_MISA) ? '1 : '0;
   assign rvfi_csr_rdata_d.misa               = csr_misa_i;
   assign rvfi_csr_rmask_d.misa               = '1;
 
