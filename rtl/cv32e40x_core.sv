@@ -122,7 +122,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // IF/ID pipeline
   if_id_pipe_t if_id_pipe;
 
-  // Controller FSM outputs
+  // Controller
+  ctrl_byp_t   ctrl_byp;
   ctrl_fsm_t   ctrl_fsm;
   
   // Register File Write Back
@@ -179,14 +180,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
 
-  // stall control from controller
-  // TODO:OK: Merge to single stall signal for use in ID
-  logic        misaligned_stall_ct;
-  logic        jr_stall_ct;
-  logic        load_stall_ct;
-  logic        csr_stall_ct;
-  logic        wfi_stall_ct;
-
   // Stage ready signals
   logic        if_ready;
   logic        id_ready;
@@ -233,7 +226,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_en_wb;
 
   // Controller <-> decoder 
-  logic       deassert_we_ct;
   logic       mret_insn_id;
   logic       dret_insn_id;
   logic [1:0] ctrl_transfer_insn_id;
@@ -241,11 +233,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
  
   logic        csr_en_id;
   csr_opcode_e csr_op_id;
-
-  // Forward mux selectors controller -> id
-  op_fw_mux_e  operand_a_fw_mux_sel_ct;
-  op_fw_mux_e  operand_b_fw_mux_sel_ct;
-  jalr_fw_mux_e  jalr_fw_mux_sel_ct;
 
   // irq signals
   // TODO:OK Should find a proper suffix for signals from interrupt_controller
@@ -408,8 +395,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk_ungated_i                ( clk_i                     ),     // Ungated clock
     .rst_n                        ( rst_ni                    ),
 
-    .deassert_we_i                ( deassert_we_ct            ),     // from controller bypass
-
     // Jumps and branches
     .branch_decision_i            ( branch_decision_ex        ),
     .jmp_target_o                 ( jump_target_id            ),
@@ -424,7 +409,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // ID/EX pipeline
     .id_ex_pipe_o                 ( id_ex_pipe                ),
 
-    // From controller
+    // Controller
+    .ctrl_byp_i                   ( ctrl_byp                  ),
     .ctrl_fsm_i                   ( ctrl_fsm                  ),
 
     // CSR ID/EX
@@ -470,17 +456,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_o                   ( rf_waddr_id               ),
 
     .regfile_alu_we_id_o          ( regfile_alu_we_id         ),
-
-    .operand_a_fw_mux_sel_i       ( operand_a_fw_mux_sel_ct   ),
-    .operand_b_fw_mux_sel_i       ( operand_b_fw_mux_sel_ct   ),
-    .jalr_fw_mux_sel_i            ( jalr_fw_mux_sel_ct        ),
-
-    .misaligned_stall_i           ( misaligned_stall_ct       ),
-    .jr_stall_i                   ( jr_stall_ct               ),
-    .load_stall_i                 ( load_stall_ct             ),
-    .csr_stall_i                  ( csr_stall_ct              ),
-    .wfi_stall_i                  ( wfi_stall_ct              ),
-
     .regfile_rdata_i              ( regfile_rdata_id          )
   );
 
@@ -711,8 +686,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //   \____\___/|_| \_| |_| |_| \_\\___/|_____|_____|_____|_| \_\  //
   //                                                                //
   ////////////////////////////////////////////////////////////////////
-  cv32e40x_controller
-  controller_i
+  cv32e40x_controller controller_i
   (
     .clk                            ( clk                    ),         // Gated clock
     .clk_ungated_i                  ( clk_i                  ),         // Ungated clock
@@ -725,9 +699,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
-
-    // From bypass module
-    .deassert_we_o                  ( deassert_we_ct         ),
 
     .if_valid_i                     ( if_valid               ),
     .if_ready_i                     ( if_ready               ),
@@ -776,18 +747,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Write targets from ID
     .regfile_alu_we_id_i            ( regfile_alu_we_id      ),
-   
-    // Forwarding signals from bypass module
-    .operand_a_fw_mux_sel_o         ( operand_a_fw_mux_sel_ct),
-    .operand_b_fw_mux_sel_o         ( operand_b_fw_mux_sel_ct),
-    .jalr_fw_mux_sel_o              ( jalr_fw_mux_sel_ct     ),
-
-    // Stall signals
-    .misaligned_stall_o             ( misaligned_stall_ct    ),
-    .jr_stall_o                     ( jr_stall_ct            ),
-    .load_stall_o                   ( load_stall_ct          ),
-    .csr_stall_o                    ( csr_stall_ct           ),
-    .wfi_stall_o                    ( wfi_stall_ct           ),
 
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
@@ -795,6 +754,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .data_req_i                     ( data_req_o             ),
 
+    .ctrl_byp_o                     ( ctrl_byp               ),
     .ctrl_fsm_o                     ( ctrl_fsm               )
  );
 

@@ -37,7 +37,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        fetch_enable_i,             // Start the decoding
 
-  output logic        deassert_we_o,
   input  logic        if_valid_i,
   input  logic        if_ready_i,
   
@@ -82,11 +81,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic           rf_we_ex_i,            // Register file write enable from EX stage
   input  logic           rf_we_wb_i,            // Register file write enable from WB stage
 
-  // forwarding signals
-  output op_fw_mux_e  operand_a_fw_mux_sel_o,     // regfile ra data selector form ID stage
-  output op_fw_mux_e  operand_b_fw_mux_sel_o,     // regfile rb data selector form ID stage
-  output jalr_fw_mux_e  jalr_fw_mux_sel_o,          // data selector for jump target
-
   input rf_addr_t  rf_waddr_ex_i,
   input rf_addr_t  rf_waddr_wb_i,
 
@@ -94,48 +88,40 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input rf_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],
   input rf_addr_t  rf_waddr_i,
 
-
-  // stall signals
-  output logic        misaligned_stall_o,
-  output logic        jr_stall_o,
-  output logic        load_stall_o,
-  output logic        csr_stall_o,
-  output logic        wfi_stall_o,
-
   input  logic        id_ready_i,               // ID stage is ready
-  
   input  logic        ex_valid_i,               // EX stage is done
-
   input  logic        wb_ready_i,               // WB stage is ready
 
   input  logic        lsu_en_wb_i,              // LSU data is written back in WB
   input  logic        data_req_i,               // OBI bus data request (EX)
 
+  // Outputs
+  output ctrl_byp_t   ctrl_byp_o,
   output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
 );
 
   
   // Main FSM and debug FSM
-  cv32e40x_controller_fsm
-  controller_fsm_i (
+  cv32e40x_controller_fsm controller_fsm_i
+  (
     // Clocks and reset
-    .clk                         ( clk           ),
-    .clk_ungated_i               ( clk_ungated_i ),
-    .rst_n                       ( rst_n         ),
+    .clk                         ( clk                      ),
+    .clk_ungated_i               ( clk_ungated_i            ),
+    .rst_n                       ( rst_n                    ),
   
-    .fetch_enable_i              ( fetch_enable_i ),
+    .fetch_enable_i              ( fetch_enable_i           ),
 
-    .jr_stall_i                  ( jr_stall_o     ),
+    .ctrl_byp_i                  ( ctrl_byp_o               ),
 
-    .if_valid_i                  ( if_valid_i     ),
-    .if_ready_i                  ( if_ready_i     ),
+    .if_valid_i                  ( if_valid_i               ),
+    .if_ready_i                  ( if_ready_i               ),
   
     // From ID stage
-    .id_ready_i                  ( id_ready_i     ),
-    .if_id_pipe_i                ( if_id_pipe_i   ),
-    .mret_id_i                   ( mret_id_i      ),
-    .dret_id_i                   ( dret_id_i      ),
-    .ex_wb_pipe_i                ( ex_wb_pipe_i   ),
+    .id_ready_i                  ( id_ready_i               ),
+    .if_id_pipe_i                ( if_id_pipe_i             ),
+    .mret_id_i                   ( mret_id_i                ),
+    .dret_id_i                   ( dret_id_i                ),
+    .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
@@ -165,61 +151,49 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_ebreakm_i             ( debug_ebreakm_i          ),
     .debug_trigger_match_id_i    ( debug_trigger_match_id_i ),
 
+    // Outputs
     .ctrl_fsm_o                  ( ctrl_fsm_o               )
   );
   
 
   // Hazard/bypass/stall control instance
-  cv32e40x_controller_bypass bypass_i (
-    
-      // From controller_fsm
-      .is_decoding_i              ( ctrl_fsm_o.is_decoding   ),
-    
-      .if_id_pipe_i               ( if_id_pipe_i             ),
-      .id_ex_pipe_i               ( id_ex_pipe_i             ),
-      .ex_wb_pipe_i               ( ex_wb_pipe_i             ),
-      // From decoder
-      .ctrl_transfer_insn_raw_i   ( ctrl_transfer_insn_raw_i ),
-      .rf_re_i                    ( rf_re_i                  ),
-      .rf_raddr_i                 ( rf_raddr_i               ),
-      .rf_waddr_i                 ( rf_waddr_i               ),
-  
-      // From id_stage
-      .regfile_alu_we_id_i        ( regfile_alu_we_id_i      ),
-      .mret_id_i                  ( mret_id_i                ),
-      .dret_id_i                  ( dret_id_i                ),
-      .csr_en_id_i                ( csr_en_id_i              ),
-      .csr_op_id_i                ( csr_op_id_i              ),
-      .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
+  cv32e40x_controller_bypass bypass_i
+  (
+    // From controller_fsm
+    .is_decoding_i              ( ctrl_fsm_o.is_decoding   ),
 
-      // From EX
-      .rf_we_ex_i                 ( rf_we_ex_i               ),
-      .rf_waddr_ex_i              ( rf_waddr_ex_i            ),
-      
-      // From WB
-      .rf_we_wb_i                 ( rf_we_wb_i               ),
-      .rf_waddr_wb_i              ( rf_waddr_wb_i            ),
-      .wb_ready_i                 ( wb_ready_i               ),
-      .lsu_en_wb_i                ( lsu_en_wb_i              ),
-  
-      // From LSU
-      .lsu_misaligned_i           ( lsu_misaligned_i         ),
-    
-      // forwarding mux sel outputs
-      .operand_a_fw_mux_sel_o     ( operand_a_fw_mux_sel_o   ),
-      .operand_b_fw_mux_sel_o     ( operand_b_fw_mux_sel_o   ),
-      .jalr_fw_mux_sel_o          ( jalr_fw_mux_sel_o        ),
-  
-      // Stall outputs  
-      .misaligned_stall_o         ( misaligned_stall_o       ),
-      .jr_stall_o                 ( jr_stall_o               ),
-      .load_stall_o               ( load_stall_o             ),
-      .csr_stall_o                ( csr_stall_o              ),
-      .wfi_stall_o                ( wfi_stall_o              ),
-  
-      // To decoder
-      .deassert_we_o              ( deassert_we_o            )
-    
-    );
+    .if_id_pipe_i               ( if_id_pipe_i             ),
+    .id_ex_pipe_i               ( id_ex_pipe_i             ),
+    .ex_wb_pipe_i               ( ex_wb_pipe_i             ),
+    // From decoder
+    .ctrl_transfer_insn_raw_i   ( ctrl_transfer_insn_raw_i ),
+    .rf_re_i                    ( rf_re_i                  ),
+    .rf_raddr_i                 ( rf_raddr_i               ),
+    .rf_waddr_i                 ( rf_waddr_i               ),
+
+    // From id_stage
+    .regfile_alu_we_id_i        ( regfile_alu_we_id_i      ),
+    .mret_id_i                  ( mret_id_i                ),
+    .dret_id_i                  ( dret_id_i                ),
+    .csr_en_id_i                ( csr_en_id_i              ),
+    .csr_op_id_i                ( csr_op_id_i              ),
+    .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
+
+    // From EX
+    .rf_we_ex_i                 ( rf_we_ex_i               ),
+    .rf_waddr_ex_i              ( rf_waddr_ex_i            ),
+
+    // From WB
+    .rf_we_wb_i                 ( rf_we_wb_i               ),
+    .rf_waddr_wb_i              ( rf_waddr_wb_i            ),
+    .wb_ready_i                 ( wb_ready_i               ),
+    .lsu_en_wb_i                ( lsu_en_wb_i              ),
+
+    // From LSU
+    .lsu_misaligned_i           ( lsu_misaligned_i         ),
+
+    // Outputs
+    .ctrl_byp_o                 ( ctrl_byp_o               )
+  );
 
 endmodule // cv32e40x_controller

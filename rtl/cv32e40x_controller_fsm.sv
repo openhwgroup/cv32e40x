@@ -39,7 +39,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        fetch_enable_i,             // Start executing
 
   // From bypass logic
-  input  logic        jr_stall_i,                 // There is a jr-stall pending  
+  input  ctrl_byp_t   ctrl_byp_i,
 
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
@@ -151,7 +151,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // ID stage
   // A jump is taken in ID for jump instructions, and also for mret instructions
   assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
-                        mret_id_i) && if_id_pipe_i.instr_valid && !jr_stall_i;
+                        mret_id_i) && if_id_pipe_i.instr_valid && !ctrl_byp_i.jr_stall;
 
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
@@ -250,7 +250,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // If is halted if an insn has been issued during single step
     // to avoid more than one instructions passing down the pipe.
     ctrl_fsm_o.halt_if = single_step_halt_if_q;
-    ctrl_fsm_o.halt_id = 1'b0;
+    ctrl_fsm_o.halt_id = 1'b0; // todo ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
     ctrl_fsm_o.halt_ex = 1'b0;
     ctrl_fsm_o.halt_wb = 1'b0;
 

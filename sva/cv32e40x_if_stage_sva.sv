@@ -29,6 +29,7 @@ module cv32e40x_if_stage_sva
 
   input logic           if_ready_o,
   input logic           if_valid_o,  
+  input  ctrl_fsm_t     ctrl_fsm_i,
   if_c_obi.monitor      m_c_obi_instr_if
 );
 

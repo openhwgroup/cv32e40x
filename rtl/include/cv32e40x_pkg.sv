@@ -998,6 +998,19 @@ typedef struct packed {
   logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
 } ex_wb_pipe_t;
 
+// Controller Bypass outputs
+typedef struct packed {
+  op_fw_mux_e  operand_a_fw_mux_sel;  // Operand A forward mux sel
+  op_fw_mux_e  operand_b_fw_mux_sel;  // Operand B forward mux sel
+  jalr_fw_mux_e jalr_fw_mux_sel;      // Jump target forward mux sel
+  logic        misaligned_stall;      // Stall due to misaligned load/store
+  logic        jr_stall;              // Stall due to JR hazard (JR used result from EX or LSU result in WB)
+  logic        load_stall;            // Stall due to load operation
+  logic        csr_stall;
+  logic        wfi_stall;
+  logic        deassert_we;           // Deassert write enable for next instruction
+} ctrl_byp_t;
+
 // Controller FSM outputs
 typedef struct packed {
   logic        ctrl_busy;             // Core is busy processing instructions
@@ -1048,7 +1061,6 @@ typedef struct packed {
   logic        kill_id; // Kill ID stage
   logic        kill_ex; // Kill EX stage
   logic        kill_wb; // Kill WB stage
-
 } ctrl_fsm_t;
   
   

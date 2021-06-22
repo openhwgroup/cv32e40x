@@ -41,8 +41,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        clk_ungated_i,          // Ungated clock
   input  logic        rst_n,
 
-  input  logic        deassert_we_i,
-
   // Jumps and branches
   input  logic        branch_decision_i,
   output logic [31:0] jmp_target_o,
@@ -53,7 +51,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ID/EX pipeline 
   output id_ex_pipe_t id_ex_pipe_o,
 
-  // From controller FSM
+  // Controller
+  input  ctrl_byp_t   ctrl_byp_i,
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   input  PrivLvl_t    current_priv_lvl_i,
@@ -100,18 +99,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output rf_addr_t    rf_waddr_o,
 
   output logic        regfile_alu_we_id_o,
-
-  // Forwarding from controller
-  input  op_fw_mux_e    operand_a_fw_mux_sel_i,
-  input  op_fw_mux_e    operand_b_fw_mux_sel_i,
-  input  jalr_fw_mux_e  jalr_fw_mux_sel_i,
-
-  // Halt and stalls from controller
-  input  logic          misaligned_stall_i,
-  input  logic          jr_stall_i,
-  input  logic          load_stall_i,
-  input  logic          csr_stall_i,
-  input  logic          wfi_stall_i,
 
   // Register file
   input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS],
@@ -265,8 +252,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                       |_|                    |___/           //
   //////////////////////////////////////////////////////////////////
 
-  cv32e40x_pc_target
-  cv32e40x_pc_target_i
+  cv32e40x_pc_target cv32e40x_pc_target_i
   (
     .ctrl_transfer_target_mux_sel_i ( ctrl_transfer_target_mux_sel),
     .pc_id_i                        ( if_id_pipe_i.pc             ),
@@ -308,22 +294,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Operand a forwarding mux
   always_comb begin : operand_a_fw_mux
-    case (operand_a_fw_mux_sel_i)
+    case (ctrl_byp_i.operand_a_fw_mux_sel)
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_a_fw = regfile_rdata_i[0];
       default:      operand_a_fw = regfile_rdata_i[0];
-    endcase; // case (operand_a_fw_mux_sel_i)
+    endcase;
   end
-  
 
   always_comb begin: jalr_fw_mux
-    case (jalr_fw_mux_sel_i)
+    case (ctrl_byp_i.jalr_fw_mux_sel)
       SELJ_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
       SELJ_REGFILE: jalr_fw = regfile_rdata_i[0];
       default:      jalr_fw = regfile_rdata_i[0];
-    endcase // jalr_fw_mux_sel_i
-  end // jalr_fw_mux
+    endcase
+  end
 
   //////////////////////////////////////////////////////
   //   ___                                 _   ____   //
@@ -362,12 +347,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Operand b forwarding mux
   always_comb begin : operand_b_fw_mux
-    case (operand_b_fw_mux_sel_i)
+    case (ctrl_byp_i.operand_b_fw_mux_sel)
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
       SEL_REGFILE:  operand_b_fw = regfile_rdata_i[1];
       default:      operand_b_fw = regfile_rdata_i[1];
-    endcase; // case (operand_b_fw_mux_sel_i)
+    endcase;
   end
 
 
@@ -410,7 +395,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   decoder_i
   (
     // controller related signals
-    .deassert_we_i                   ( deassert_we_i             ),
+    .deassert_we_i                   ( ctrl_byp_i.deassert_we    ),
 
     .illegal_insn_o                  ( illegal_insn              ),
     .ebrk_insn_o                     ( ebrk_insn                 ),
@@ -544,7 +529,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       if (id_valid)
       begin // unstall the whole pipeline
         id_ex_pipe_o.instr_valid  <= 1'b1;
-        if (misaligned_stall_i) begin
+        if (ctrl_byp_i.misaligned_stall) begin
           // misaligned data access case
           // if we are using post increments, then we have to use the
           // original value of the register for the second memory access
@@ -557,7 +542,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.alu_operand_b          <= 32'h4;
           id_ex_pipe_o.lsu_prepost_useincr    <= 1'b1;
           id_ex_pipe_o.lsu_misaligned         <= 1'b1;
-        end else begin // !misaligned_stall_i
+        end else begin // !ctrl_byp_i.misaligned_stall
           id_ex_pipe_o.alu_en                 <= alu_en;
           if (alu_en)
           begin
@@ -686,9 +671,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // IF stage count
       mhpmevent_imiss_o          <= perf_imiss_i;
       // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_jr_stall_o       <= jr_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
+      mhpmevent_jr_stall_o       <= ctrl_byp_i.jr_stall && !ctrl_fsm_i.halt_id && id_valid_q;
       // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_ld_stall_o       <= load_stall_i && !ctrl_fsm_i.halt_id && id_valid_q;
+      mhpmevent_ld_stall_o       <= ctrl_byp_i.load_stall && !ctrl_fsm_i.halt_id && id_valid_q;
     end
   end
 
@@ -696,11 +681,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign csr_op_o = csr_op;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
-  assign multi_cycle_id_stall = misaligned_stall_i;
+  assign multi_cycle_id_stall = ctrl_byp_i.misaligned_stall;
 
   //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
   //TODO:OK Halt and stall seems to be the same
-  assign id_ready_o = ctrl_fsm_i.kill_id || (!csr_stall_i && !multi_cycle_id_stall && !jr_stall_i && !load_stall_i && ex_ready_i && !ctrl_fsm_i.halt_id && !wfi_stall_i);
+  assign id_ready_o = ctrl_fsm_i.kill_id || (!ctrl_byp_i.csr_stall && !multi_cycle_id_stall && !ctrl_byp_i.jr_stall && !ctrl_byp_i.load_stall && ex_ready_i && !ctrl_fsm_i.halt_id && !ctrl_byp_i.wfi_stall);
+
   assign id_valid = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
 
+// todo  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
+
+
+/*
+
+  assign id_valid = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i);
+
+
+*/
 endmodule // cv32e40x_id_stage
