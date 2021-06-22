@@ -26,7 +26,7 @@ module cv32e40x_rvfi
    input logic                                rst_ni,
 
    //// ID probes ////
-   input logic [31:0]                         pc_if_i,
+   input logic [31:0]                         pc_id_i,
    input logic                                instr_id_valid_i,
    input logic [31:0]                         jump_target_id_i,
    // LSU
@@ -83,7 +83,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         mepc_target_wb_i,
 
    //// CSR Probes ////
-   input logic [31:0]                         csr_raddr_i,
+   input csr_num_e                            csr_raddr_i,
    input                                      Status_t csr_mstatus_n_i,
    input                                      Status_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
@@ -330,6 +330,10 @@ module cv32e40x_rvfi
   logic [31:0] rvfi_mem_wdata_d;
   logic [31:0] rvfi_mem_addr_d;
 
+
+  logic [31:0] rvfi_rd_addr_d;
+  logic [31:0] rvfi_rd_wdata_d;
+
   // CSR inputs in struct format
   rvfi_csr_map_t rvfi_csr_rdata_d;
   rvfi_csr_map_t rvfi_csr_rmask_d;
@@ -472,15 +476,17 @@ module cv32e40x_rvfi
 
       //// ID Stage ////
       if(instr_id_valid_i) begin
-        is_debug_entry_id   <= (instr_id_valid_i) ? is_debug_entry_if : is_debug_entry_if || is_debug_entry_id;
+        is_debug_entry_id   <= is_debug_entry_if;
         debug    [STAGE_ID] <= is_debug_entry_id;
-        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
+        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_id_i + 4;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
         rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
         rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0;
         mem_rmask[STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask[STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+      end else begin
+        is_debug_entry_id   <= is_debug_entry_if || is_debug_entry_id;
       end
 
 
@@ -512,8 +518,8 @@ module cv32e40x_rvfi
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
-        rvfi_rd_addr    <= (rd_we_wb_i) ? rd_addr_wb_i  : '0;
-        rvfi_rd_wdata   <= (rd_we_wb_i) ? rd_wdata_wb_i : '0;
+        rvfi_rd_addr    <= rvfi_rd_addr_d;
+        rvfi_rd_wdata   <= rvfi_rd_wdata_d;
 
         // Store CSRs
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
@@ -589,6 +595,10 @@ module cv32e40x_rvfi
   // Align Memory write data
   assign rvfi_mem_wdata_d  = lsu_wdata_ror[31:0];
   assign lsu_wdata_ror     = {lsu_wdata_ex_i, lsu_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
+
+  // Destination Register
+  assign rvfi_rd_addr_d  = (rd_we_wb_i)           ? rd_addr_wb_i  : '0;
+  assign rvfi_rd_wdata_d = (rvfi_rd_addr_d != '0) ? rd_wdata_wb_i : '0;
 
   ////////////////////////////////
   //  CSRs                      //
