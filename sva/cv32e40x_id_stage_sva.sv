@@ -26,30 +26,33 @@
 module cv32e40x_id_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (
-   input logic        clk,
-   input logic        rst_n,
-   
-   input logic [31:0] instr,
-   input logic        rf_we,
-   input logic        alu_en,
-   input logic        mul_en,
-   input logic        pc_set_o,
-   input logic        lsu_en,
-   input logic        wfi_insn,
-   input logic        ebrk_insn,
-   input logic        mret_insn,
-   input logic        dret_insn,
-   input logic        ecall_insn,
-   input logic        fencei_insn,
-   input logic        ex_ready_i,
-   input logic        illegal_insn,
-   input logic        branch_decision_i,
-   input              csr_opcode_e csr_op,
-   input              pc_mux_e pc_mux_o,
-   input              if_id_pipe_t if_id_pipe_i,
-   input              id_ex_pipe_t id_ex_pipe_o
-   );
+(
+  input logic           clk,
+  input logic           rst_n,
+
+  input logic [31:0]    instr,
+  input logic           rf_we,
+  input logic           alu_en,
+  input logic           mul_en,
+  input logic           pc_set_o,
+  input logic           lsu_en,
+  input logic           wfi_insn,
+  input logic           ebrk_insn,
+  input logic           mret_insn,
+  input logic           dret_insn,
+  input logic           ecall_insn,
+  input logic           fencei_insn,
+  input logic           ex_ready_i,
+  input logic           illegal_insn,
+  input logic           branch_decision_i,
+  input csr_opcode_e    csr_op,
+  input pc_mux_e        pc_mux_o,
+  input if_id_pipe_t    if_id_pipe_i,
+  input id_ex_pipe_t    id_ex_pipe_o
+  input logic           wb_ready_o,
+  input logic           wb_valid,  
+  input ctrl_fsm_t      ctrl_fsm_i,
+);
 
   // make sure that branch decision is valid when jumping
   a_br_decision :
@@ -124,6 +127,20 @@ module cv32e40x_id_stage_sva
       endproperty
 
       a_illegal_2 : assert property(p_illegal_2) else `uvm_error("id_stage", "Assertion p_illegal_2 failed")
+
+  // Halt implies not ready and not valid
+  a_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.halt_id)
+                      |-> (!id_ready_o && !id_valid))
+      else `uvm_error("id_stage", "Halt should imply not ready and not valid")
+
+  // Kill implies ready and not valid
+  a_kill :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.kill_id)
+                      |-> (id_ready_o && !id_valid))
+      else `uvm_error("id_stage", "Kill should imply ready and not valid")
 
 endmodule // cv32e40x_id_stage_sva
 

@@ -113,15 +113,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic [31:0]  rdata_q;
 
-  // Signal to block external OBI request
-  logic         block_lsu_en; // todo: find better name (old and new name are both not nice)
-
   // Internally gated lsu_en
-  logic         lsu_en_valid;
+  logic         instr_valid;
+  logic         lsu_en_gated;    // LSU enabled gated with all disqualifiers
 
-  assign block_lsu_en = ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex;
-
-  assign lsu_en_valid = id_ex_pipe_i.lsu_en && id_ex_pipe_i.instr_valid && !block_lsu_en;
+  assign instr_valid  = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
+  assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
@@ -360,7 +357,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_misaligned_0_o = 1'b0;
 
-    if (lsu_en_valid && !id_ex_pipe_i.lsu_misaligned)
+    if (lsu_en_gated && !id_ex_pipe_i.lsu_misaligned)
     begin
       case (id_ex_pipe_i.lsu_type)
         2'b10: // word
@@ -389,7 +386,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //
   // Assumes that corresponding response is at least 1 cycle after request
   //
-  // - Only request transaction when EX stage requires data transfer (id_ex_pipe_i.lsu_en), and
+  // - Only request transaction when EX stage requires data transfer and
   // - maximum number of outstanding transactions will not be exceeded (cnt_q < DEPTH)
   //////////////////////////////////////////////////////////////////////////////
 
@@ -403,12 +400,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = lsu_en_valid && (cnt_q < DEPTH);
-
+  assign trans_valid = lsu_en_gated && (cnt_q < DEPTH);
 
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
-  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb; //TODO:OK is this ok or not?
+
+  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i; //TODO:OK is this ctrl_fsm_i.halt_wb usage ok or not? And if okay; should it already be part of ready_1_i?
+
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : resp_valid && valid_1_i; // todo: (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -421,29 +420,23 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-// todo: use ready_0_i
-
-// todo: use valid_1_i
-// todo: drive valid_1_o
-// todo: use ready_1_i
-
-  assign ready_0_o = (!lsu_en_valid    ? 1'b1 :
+  assign ready_0_o = (!lsu_en_gated    ? 1'b1 :
                       (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
                       (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
                                          (resp_valid                               && ready_0_i)
                      ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
 
-  assign valid_0_o = (!lsu_en_valid    ? 1'b0 :
+  assign valid_0_o = (!lsu_en_gated    ? 1'b0 :
                       (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
                       (cnt_q == 2'b01) ? (trans_valid && trans_ready) :
                                           1'b1
-                     ) && valid_0_i; // todo: should not need to depend on resp_valid
+                     ) && valid_0_i;
 
-// todo: lsu_en_valid should maybe be replaced by valid_0_i
+// todo: lsu_en_gated should maybe be replaced by valid_0_i
 
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = ready_0_o && lsu_en_valid;
+  assign ctrl_update = ready_0_o && lsu_en_gated;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -519,7 +512,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // Validate bus_error on rvalid (WB stage)
-  assign lsu_err_1_o = resp_valid && resp_err;
+  assign lsu_err_1_o = resp_valid && resp_err; // todo: this gating is a bit weird; all LSU WB stage outputs should only be used when resp_valid = 1
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU

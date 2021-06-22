@@ -28,31 +28,35 @@
 module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (
-   input logic clk,
-   input logic rst_n,
-   input logic debug_mode_q,
-   input ctrl_fsm_t ctrl_fsm_o,
-   input logic branch_taken_ex,
-   input       ctrl_state_e ctrl_fsm_cs,
-   input       ctrl_state_e ctrl_fsm_ns,
-   input logic [1:0] lsu_outstanding_cnt,
-   input logic if_valid_i,
-   input if_id_pipe_t if_id_pipe_i,
-   input id_ex_pipe_t id_ex_pipe_i,
-   input ex_wb_pipe_t ex_wb_pipe_i,
-   input logic rf_we_wb_i,
-   input csr_opcode_e csr_op_i
-   );
+(
+  input logic           clk,
+  input logic           rst_n,
+  input logic           debug_mode_q,
+  input ctrl_fsm_t      ctrl_fsm_o,
+  input logic           jump_taken_id,
+  input logic           branch_taken_ex,
+  input ctrl_state_e    ctrl_fsm_cs,
+  input ctrl_state_e    ctrl_fsm_ns,
+  input logic [1:0]     lsu_outstanding_cnt,
+  input logic           if_valid_i,
+  input if_id_pipe_t    if_id_pipe_i,
+  input id_ex_pipe_t    id_ex_pipe_i,
+  input ex_wb_pipe_t    ex_wb_pipe_i,
+  input logic           rf_we_wb_i,
+  input csr_opcode_e    csr_op_i
+);
 
-  // TODO: This assertion has been removed for a simplification for RVFI and has not been verified
-  // make sure that taken branches do not happen back-to-back, as this is not
-  // possible without branch prediction in the IF stage
-  //a_no_back_to_back_branching :
-  //  assert property (@(posedge clk)
-  //                   (branch_taken_ex) |=> (~branch_taken_ex) )
-  //    else `uvm_error("controller", "Two branches back-to-back are taken")
+  // Back-to-back branch should not be possible due to kill of IF/ID stages after branch
+  a_no_back_to_back_branch :
+    assert property (@(posedge clk)
+                     (branch_taken_ex) |=> (!branch_taken_ex))
+      else `uvm_error("controller", "Two branches back-to-back are taken")
 
+  // Back-to-back jump should not be possible due to kill of IF stage after branch
+  a_no_back_to_back_jump :
+    assert property (@(posedge clk)
+                     (jump_taken_id) |=> (!jump_taken_id))
+      else `uvm_error("controller", "Two jumps back-to-back are taken")
   
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :

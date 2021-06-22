@@ -13,19 +13,22 @@
 //               Halfdan Bechmann <halfdan.behcmann@silabs.com>
 
 `ifndef COREV_ASSERT_OFF
+  `include "cv32e40x_alignment_buffer_sva.sv"
+  `include "cv32e40x_controller_fsm_sva.sv"
   `include "cv32e40x_core_sva.sv"
-  `include "cv32e40x_mult_sva.sv"
+  `include "cv32e40x_cs_registers_sva.sv"
+  `include "cv32e40x_decoder_sva.sv"
   `include "cv32e40x_div_sva.sv"
   `include "cv32e40x_if_stage_sva.sv"
-  `include "cv32e40x_sleep_unit_sva.sv"
-  `include "cv32e40x_controller_fsm_sva.sv"
-  `include "cv32e40x_cs_registers_sva.sv"
+//  `include "cv32e40x_id_stage_sva.sv" // todo: why is this excluded (there is no instance of these assertions)
+  `include "cv32e40x_ex_stage_sva.sv"
+  `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
-  `include "cv32e40x_prefetch_unit_sva.sv"
-  `include "cv32e40x_alignment_buffer_sva.sv"
-  `include "cv32e40x_prefetcher_sva.sv"
-  `include "cv32e40x_decoder_sva.sv"
   `include "cv32e40x_mpu_sva.sv"
+  `include "cv32e40x_mult_sva.sv"
+  `include "cv32e40x_prefetcher_sva.sv"
+  `include "cv32e40x_prefetch_unit_sva.sv"
+  `include "cv32e40x_sleep_unit_sva.sv"
 `endif
 
 `include "cv32e40x_core_log.sv"
@@ -114,12 +117,47 @@ module cv32e40x_wrapper
 
   // RTL Assertions
 
+  bind cv32e40x_if_stage:
+    core_i.if_stage_i cv32e40x_if_stage_sva if_stage_sva
+    (
+      .m_c_obi_instr_if (core_i.m_c_obi_instr_if), // SVA monitor modport cannot connect to a master modport
+      .*
+    );
+
+/* todo: re-enable ID stage assertions
+
+  bind cv32e40x_id_stage:
+    core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
+    (
+      .*
+    );
+*/
+
+  bind cv32e40x_ex_stage:
+    core_i.ex_stage_i cv32e40x_ex_stage_sva ex_stage_sva
+    (
+      .*
+    );
+
+  bind cv32e40x_wb_stage:
+    core_i.wb_stage_i cv32e40x_wb_stage_sva wb_stage_sva
+    (
+      .*
+    );
+
+  bind cv32e40x_id_stage:
+    core_i.id_stage_i
+    cv32e40x_dbg_helper
+      dbg_help_i(.is_compressed(if_id_pipe_i.is_compressed),
+                 .rf_re    (core_i.rf_re_id               ),
+                 .rf_raddr (core_i.rf_raddr_id            ),
+                 .rf_we    (core_i.id_stage_i.rf_we       ),
+                 .rf_waddr (core_i.rf_waddr_id            ),
+                 .illegal_insn (core_i.id_stage_i.illegal_insn       ),
+                 .*);
+
   bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
-  bind cv32e40x_if_stage:        core_i.if_stage_i                  cv32e40x_if_stage_sva     if_stage_sva     (
-    // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
-    .m_c_obi_instr_if(core_i.m_c_obi_instr_if),
-    .*);
-  
+
   bind cv32e40x_controller_fsm:
     core_i.controller_i.controller_fsm_i
       cv32e40x_controller_fsm_sva
@@ -151,7 +189,6 @@ module cv32e40x_wrapper
     core_i.if_stage_i.prefetch_unit_i.prefetcher_i
       cv32e40x_prefetcher_sva  
         prefetcher_sva (.*);
-
 
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
@@ -202,18 +239,6 @@ bind cv32e40x_sleep_unit:
   mpu_lsu_sva(.*);
   */
 `endif //  `ifndef COREV_ASSERT_OFF
-
-
-  bind cv32e40x_id_stage:
-    core_i.id_stage_i
-    cv32e40x_dbg_helper
-      dbg_help_i(.is_compressed(if_id_pipe_i.is_compressed),
-                 .rf_re    (core_i.rf_re_id               ),
-                 .rf_raddr (core_i.rf_raddr_id            ),
-                 .rf_we    (core_i.id_stage_i.rf_we       ),
-                 .rf_waddr (core_i.rf_waddr_id            ),
-                 .illegal_insn (core_i.id_stage_i.illegal_insn       ),
-                 .*);
   
     cv32e40x_core_log
      #(
