@@ -104,11 +104,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Signals used for halting IF after first instruction
   // during single step
-  // TODO:OK May reduce to a single bit after moving dret jump to WB
   logic single_step_halt_if_n;
   logic single_step_halt_if_q; // Halting IF after issuing one insn in single step mode
-  logic single_step_issue_n;
-  logic single_step_issue_q; // Signals when a single step fetch is expected
 
   
   // Events in ID
@@ -277,9 +274,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.debug_csr_save      = 1'b0;
     ctrl_fsm_o.block_data_addr     = 1'b0;
     
-    //Single step halting of IF TODO:OK: May optimize this to a single bit
+    //Single step halting of IF
     single_step_halt_if_n = single_step_halt_if_q;
-    single_step_issue_n   = single_step_issue_q;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -346,7 +343,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
             // Unstall IF in case of single stepping
             if (debug_single_step_i) begin
-              single_step_issue_n = 1'b1;
               single_step_halt_if_n = 1'b0;
             end
           end else begin // !interrupt_allowed
@@ -402,7 +398,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_set      = 1'b1;
 
             ctrl_fsm_o.csr_restore_dret  = 1'b1;
-            single_step_issue_n = debug_single_step_i; // Expect single step issue
+
+            single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
           
           end else if (branch_taken_ex) begin // todo: seems like branch might get taken multiple times if preceded by stalling load/store
@@ -430,7 +427,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Mret in WB restores CSR regs
           // 
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
-            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q; // TODO:OK: Rename to csr_restore_mret_wb_o
+            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
 
           // Single step debug entry
@@ -444,9 +441,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Detect first insn issue in single step after dret
           // Used to block further issuing
-          if(single_step_issue_q && (if_valid_i && if_ready_i)) begin
+          if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && if_ready_i)) begin
             single_step_halt_if_n = 1'b1;
-            single_step_issue_n = 1'b0;
           end
         end // !debug or interrupts
       end
@@ -463,7 +459,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       DEBUG_TAKEN: begin
         // Clear flags for halting IF during single step
         single_step_halt_if_n = 1'b0;
-        single_step_issue_n   = 1'b0;
 
         // Kill stages
         ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
@@ -563,20 +558,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
-  // Flops used to gate if_valid after one instruction issued
+  // Flop used to gate if_valid after one instruction issued
   // in single step mode
-  // TODO:OK May reduce to one flop after moving dret jump to WB
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
-      single_step_issue_q   <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
-      single_step_issue_q   <= single_step_issue_n;
     end
   end
-
-  
 
   
   /////////////////////
