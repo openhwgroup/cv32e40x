@@ -420,11 +420,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign ready_0_o = (!lsu_en_gated    ? 1'b1 :
-                      (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
-                      (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
-                                         (resp_valid                               && ready_0_i)
-                     ) && !ctrl_fsm_i.halt_ex; // TODO:OK is this ok or not?
+  assign ready_0_o = !lsu_en_gated    ? 1'b1 :
+                     (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
+                     (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
+                                        (resp_valid                               && ready_0_i);
 
   assign valid_0_o = (!lsu_en_gated    ? 1'b0 :
                       (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
