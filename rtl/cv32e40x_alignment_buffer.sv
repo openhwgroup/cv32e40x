@@ -26,13 +26,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           clk,
   input  logic           rst_n,
 
-  // kill input from controller
-  input  logic           kill_if_i,
+  // Controller fsm inputs
+  input  ctrl_fsm_t      ctrl_fsm_i,
 
   // Branch control
-  input  logic           branch_i,         // Asserted if we are branching/jumping now
   input  logic [31:0]    branch_addr_i,
-  input  logic           prefetch_en_i,
   output logic           prefetch_busy_o,
   output logic           one_txn_pend_n,
 
@@ -105,11 +103,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                         n_incoming_ins;
 
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
-  assign fetch_valid_o = prefetch_en_i &&
+  assign fetch_valid_o = ctrl_fsm_i.instr_req &&
                          (outstanding_cnt_q < 2) &&
                          ((instr_cnt_q == 'd0) ||
                          (instr_cnt_q == 'd1 && outstanding_cnt_q == 2'd0) ||
-                         branch_i);
+                         ctrl_fsm_i.pc_set);
                                          
 
   // Busy if we expect any responses, or we have an active fetch_valid_o
@@ -119,7 +117,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign one_txn_pend_n = outstanding_cnt_n == FIFO_ADDR_DEPTH'(1);
 
   // Signal aligned branch to the prefetcher
-  assign fetch_branch_o = branch_i;
+  assign fetch_branch_o = ctrl_fsm_i.pc_set;
   assign fetch_branch_addr_o = {branch_addr_i[31:2], 2'b00};
 
   //////////////////
@@ -215,7 +213,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     instr_valid_o = 1'b0;
 
     // Invalidate output if we get killed
-    if (kill_if_i) begin
+    if (ctrl_fsm_i.kill_if) begin
       instr_valid_o = 1'b0;
     end else if (instr_addr_o[1]) begin
       // unaligned instruction
@@ -316,7 +314,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     instr_cnt_n = instr_cnt_q;
     n_flush_branch = outstanding_cnt_q;
 
-    if(kill_if_i) begin
+    if(ctrl_fsm_i.kill_if) begin
       // FIFO content is invalidated when IF is killed
       instr_cnt_n = 'd0;
 
@@ -369,7 +367,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // On a branch we need to know if it is aligned or not
     // the complete flag will be special cased for unaligned branches
     // as aligned=0 and complete=1 can only happen in that case
-    if(branch_i) begin
+    if(ctrl_fsm_i.pc_set) begin
       aligned_n = !branch_addr_i[1];
       complete_n = branch_addr_i[1];
     end else begin
@@ -455,7 +453,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
     // On a branch, the counter logic will calculate
     // the number of words to flush
-    if(branch_i) begin
+    if(ctrl_fsm_i.pc_set) begin
       n_flush_n = n_flush_branch;
     end else begin
       // Decrement flush counter on valid inputs
@@ -486,7 +484,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       
       // on a kill signal from outside we invalidate the content of the FIFO
       // completely and start from an empty state
-      if (kill_if_i) begin
+      if (ctrl_fsm_i.kill_if) begin
         valid_q <= '0;
       end else begin
         resp_q <= resp_n;
@@ -494,7 +492,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
 
       // Update address on a requested branch
-      if (branch_i) begin
+      if (ctrl_fsm_i.pc_set) begin
         addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this. 
       end else begin
         addr_q  <= addr_n;

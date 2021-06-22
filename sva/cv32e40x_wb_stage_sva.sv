@@ -71,4 +71,11 @@ module cv32e40x_wb_stage_sva
                       |-> (wb_ready_o && !wb_valid))
       else `uvm_error("wb_stage", "Kill should imply ready and not valid")
 
+  // Never kill and halt at the same time (as they have conflicting requirements on ready)
+  a_kill_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.kill_wb)
+                      |-> (!ctrl_fsm_i.halt_wb))
+      else `uvm_error("wb_stage", "Kill and halt should not both be asserted")
+
 endmodule // cv32e40x_wb_stage_sva

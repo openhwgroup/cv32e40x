@@ -51,6 +51,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ID/EX pipeline 
   output id_ex_pipe_t id_ex_pipe_o,
 
+  // EX/WB pipeline
+  input  ex_wb_pipe_t ex_wb_pipe_i,
+
   // Controller
   input  ctrl_byp_t   ctrl_byp_i,
   input  ctrl_fsm_t   ctrl_fsm_i,
@@ -62,7 +65,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Register file write back and forwards
   input  logic [31:0]    rf_wdata_wb_i,
-  input  logic [31:0]    rf_wdata_wb_alu_i,
 
   input  logic           rf_we_ex_i,
   input  rf_addr_t       rf_waddr_ex_i,
@@ -304,7 +306,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin: jalr_fw_mux
     case (ctrl_byp_i.jalr_fw_mux_sel)
-      SELJ_FW_WB:   jalr_fw = rf_wdata_wb_alu_i;
+      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;
       SELJ_REGFILE: jalr_fw = regfile_rdata_i[0];
       default:      jalr_fw = regfile_rdata_i[0];
     endcase
@@ -448,9 +450,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .lsu_reg_offset_o                ( lsu_reg_offset            ),
     .lsu_atop_o                      ( lsu_atop                  ),
 
-    // debug mode
-    .debug_mode_i                    ( ctrl_fsm_i.debug_mode     ), // TODO: pass on ctrl_fsm_i
-    .debug_wfi_no_sleep_i            ( ctrl_fsm_i.debug_wfi_no_sleep      ),
+    // From controller fsm
+    .ctrl_fsm_i                      ( ctrl_fsm_i                ),
 
     // jump/branches
     .ctrl_transfer_insn_o            ( ctrl_transfer_insn_o      ),
@@ -584,11 +585,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
             id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
             id_ex_pipe_o.lsu_atop             <= lsu_atop;
+            id_ex_pipe_o.lsu_prepost_useincr  <= lsu_prepost_useincr;
           end
 
-          id_ex_pipe_o.lsu_prepost_useincr    <= lsu_prepost_useincr; // todo: inside above if statement?
-
-          id_ex_pipe_o.lsu_misaligned         <= 1'b0; // todo: explain
+          // Only applicable when misalignes_stall_i == 1'b1 (handled above).
+          // For all other cases it will be 1'b0
+          id_ex_pipe_o.lsu_misaligned         <= 1'b0;
 
           id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
 
@@ -637,7 +639,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
   // are being counted; the manner in which CSR instructions access the performance counters guarantees
   // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid && ctrl_fsm_i.is_decoding && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
+  assign minstret = id_valid && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
 
   always_ff @(posedge clk , negedge rst_n)
   begin

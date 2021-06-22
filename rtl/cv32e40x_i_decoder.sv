@@ -34,10 +34,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
 
-   input logic        debug_mode_i,
-   input logic        debug_wfi_no_sleep_i,
-  
-   output             decoder_ctrl_t decoder_ctrl_o
+   input  ctrl_fsm_t     ctrl_fsm_i, // todo: each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing
+   output decoder_ctrl_t decoder_ctrl_o
    );
   
   always_comb
@@ -314,7 +312,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h7b2:  // dret
                 begin
-                  if(debug_mode_i) begin
+                  if (ctrl_fsm_i.debug_mode) begin
                     decoder_ctrl_o.dret_insn    =  1'b1;
                   end
                   else begin
@@ -325,7 +323,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               12'h105:  // wfi
               begin
                 decoder_ctrl_o.wfi_insn = 1'b1;
-                if (debug_wfi_no_sleep_i) begin
+                if (ctrl_fsm_i.debug_wfi_no_sleep) begin
                   // Treat as NOP (do not cause sleep mode entry)
                   // Using decoding similar to ADDI, but without register reads/writes, i.e.
                   // keep rf_we = 0, rf_re[0] = 0
@@ -466,7 +464,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_DPC,
               CSR_DSCRATCH0,
               CSR_DSCRATCH1 :
-                if(!debug_mode_i) begin
+                if (!ctrl_fsm_i.debug_mode) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end else begin
                 ; // do nothing, not illegal

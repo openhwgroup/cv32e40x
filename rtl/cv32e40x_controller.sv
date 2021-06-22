@@ -93,7 +93,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,               // WB stage is ready
 
   input  logic        lsu_en_wb_i,              // LSU data is written back in WB
-  input  logic        data_req_i,               // OBI bus data request (EX)
+  input  logic        obi_data_req_i,           // OBI bus data request (EX) // todo: Need to discuss if this is the signal we should use (can LSU experience break of its protocol)?
 
   // Outputs
   output ctrl_byp_t   ctrl_byp_o,
@@ -129,7 +129,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .id_ex_pipe_i                ( id_ex_pipe_i             ),
     .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_valid_i                  ( ex_valid_i               ),
-    .data_req_i                  ( data_req_i               ),
+    .obi_data_req_i              ( obi_data_req_i           ),
 
     // From WB stage
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
@@ -160,8 +160,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   cv32e40x_controller_bypass bypass_i
   (
     // From controller_fsm
-    .is_decoding_i              ( ctrl_fsm_o.is_decoding   ),
-
     .if_id_pipe_i               ( if_id_pipe_i             ),
     .id_ex_pipe_i               ( id_ex_pipe_i             ),
     .ex_wb_pipe_i               ( ex_wb_pipe_i             ),

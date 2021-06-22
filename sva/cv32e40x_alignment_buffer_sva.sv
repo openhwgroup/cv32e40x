@@ -25,7 +25,7 @@ module cv32e40x_alignment_buffer_sva
    input logic                     clk,
    input logic                     rst_n,
    input logic [0:2]               valid_q,
-   input logic                     branch_i,
+   input ctrl_fsm_t                ctrl_fsm_i,
    input logic [31:0]              branch_addr_i,
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
@@ -34,12 +34,10 @@ module cv32e40x_alignment_buffer_sva
    input logic                     instr_valid_o,
    input logic [31:0]              instr_addr_o,
    input logic                     resp_valid_i,
-   input logic                     prefetch_en_i,
    input logic                     resp_valid_gated,
    input logic [1:0]               outstanding_cnt_q,
    input logic [1:0]               n_flush_q,
-   input inst_resp_t               resp_i,
-   input logic                     kill_if_i
+   input inst_resp_t               resp_i
    );
 
   
@@ -57,7 +55,7 @@ module cv32e40x_alignment_buffer_sva
     if(rst_n == 1'b0) begin
       next_branch_addr <= 32'd0;
     end else begin      
-      if(branch_i) begin
+      if(ctrl_fsm_i.pc_set) begin
         next_branch_addr <= branch_addr_i;
       end     
     end
@@ -77,7 +75,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that FIFO is cleared the cycle after a branch
   property p_fifo_clear;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |=> (valid_q == 'b0);
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |=> (valid_q == 'b0);
   endproperty
   
     a_fifo_clear:
@@ -89,7 +87,7 @@ module cv32e40x_alignment_buffer_sva
 
     // Check that FIFO is signaled empty the cycle during a branch
   property p_fifo_empty_branch;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (instr_cnt_n == 'b0);
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (instr_cnt_n == 'b0);
   endproperty
   
     a_fifo_empty_branch:
@@ -102,7 +100,7 @@ module cv32e40x_alignment_buffer_sva
 
     // Check that instr_valid_o is zero when a branch is requested
   property p_branch_instr_valid;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (instr_valid_o == 1'b0);
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (instr_valid_o == 1'b0);
   endproperty
   
     a_branch_instr_valid:
@@ -117,7 +115,7 @@ module cv32e40x_alignment_buffer_sva
   property p_trans_ok;
     @(posedge clk) disable iff (!rst_n)
     ((instr_cnt_q > 'd1) || (instr_cnt_q == 'd0 && outstanding_cnt_q == 'd2)) &&
-    !branch_i
+    !ctrl_fsm_i.pc_set
     |-> (fetch_valid_o == 1'b0);
   endproperty
   
@@ -143,7 +141,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that we change branch_addr to prefetcher correctly
   property p_prefetcher_branch;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00});
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00});
   endproperty
   
     a_prefetcher_branch:
@@ -154,7 +152,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that we output correct pc for the first instruction after a branch
   property p_pc_after_branch;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr);
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |=> ((instr_valid_o == 1'b1) [->1:2]) ##0 (instr_addr_o == next_branch_addr);
   endproperty
   
     a_pc_after_branch:
@@ -165,7 +163,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that a taken branch can only occur if fetching is requested
   property p_branch_implies_req;
-    @(posedge clk) disable iff (!rst_n) (branch_i) |-> (prefetch_en_i);
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (ctrl_fsm_i.instr_req);
   endproperty
  
    a_branch_implies_req:

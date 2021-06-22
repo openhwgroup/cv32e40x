@@ -125,10 +125,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_wdata_o = 'b0; // TODO:OK get rid of this and make alu/mult/csr_en unique
-
+    rf_wdata_o = alu_result;
     rf_we_o    = rf_we_gated;
     rf_waddr_o = id_ex_pipe_i.rf_waddr;
+
+    // TODO: Investigate if these can be made unique (they're currently not)
     if (alu_en_gated)
       rf_wdata_o = alu_result;
     if (mul_en_gated)
@@ -302,7 +303,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // Update signals for CSR access in WB
         ex_wb_pipe_o.csr_en     <= id_ex_pipe_i.csr_en;
         ex_wb_pipe_o.csr_access <= id_ex_pipe_i.csr_access; // TODO:OK: May revert to using only csr_en with the new instr_valid qualifier?
-        ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op;
+        ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op; // todo: why can csr_op not be in below if-body?
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;

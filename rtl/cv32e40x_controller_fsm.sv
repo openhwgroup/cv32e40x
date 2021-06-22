@@ -51,11 +51,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From WB stage
   input  ex_wb_pipe_t ex_wb_pipe_i,
 
-
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,        
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-  input  logic        data_req_i,                 // Data interface trans_valid // TODO: pick better name; is this the OBI signal or the signal before the MPU?
+  input  logic        obi_data_req_i,             // LSU OBI interface req
 
   // From WB stage
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
@@ -78,7 +77,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        debug_req_i,                // External debug request
 
   // All controller FSM outputs
-  output ctrl_fsm_t    ctrl_fsm_o,
+  output ctrl_fsm_t   ctrl_fsm_o,
 
   // From IF stage
   input  logic        if_valid_i,       // IF stage has valid (non-bubble) data for next stage
@@ -103,11 +102,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Signals used for halting IF after first instruction
   // during single step
-  // TODO:OK May reduce to a single bit after moving dret jump to WB
   logic single_step_halt_if_n;
   logic single_step_halt_if_q; // Halting IF after issuing one insn in single step mode
-  logic single_step_issue_n;
-  logic single_step_issue_q; // Signals when a single step fetch is expected
 
   
   // Events in ID
@@ -137,27 +133,25 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic single_step_allowed;
   
 // Data request has been clocked without insn moving to WB
-  logic data_req_q;
+  logic obi_data_req_q;
 
   logic [4:0] exc_cause; // id of taken interrupt
 
   // Mux selector for vectored IRQ PC
   assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
-    
-  assign ctrl_fsm_o.is_decoding = 1'b1; //TODO: May be removed, never driven to 1'b0
   
   ////////////////////////////////////////////////////////////////////
 
   // ID stage
   // A jump is taken in ID for jump instructions, and also for mret instructions
-  assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) ||
-                        mret_id_i) && if_id_pipe_i.instr_valid && !ctrl_byp_i.jr_stall;
+  assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) || mret_id_i) && 
+                          if_id_pipe_i.instr_valid && !ctrl_byp_i.jr_stall; // && !ctrl_byp_i.csr_stall_i; // TODO: Do not jump when csr_stall (non-SEC); note adding csr_stall seems an incomplete patch
 
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
   assign branch_taken_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
 
-  // TODO:OK: Add missing exception types
+  // TODO:OK: Add missing exception types when implemented
   // Exception in WB if the following evaluates to 1
   assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK) ||
                             ex_wb_pipe_i.instr.bus_resp.err           ||
@@ -198,14 +192,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Single step will need to finish insn in WB, including LSU
   // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
-  assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !data_req_q;
+  assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q;
                              
   
   assign pending_single_step = !debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !data_req_q;// &&
-                          //!(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid));
+  // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;
 
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
                          (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
@@ -220,16 +214,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                                   ((debug_req_i || debug_req_q) && !debug_mode_q) ? DBG_CAUSE_HALTREQ :
                                   DBG_CAUSE_STEP;
 
-  // TODO:OK: May allow interuption of Zce to idempotent memories
+  
   assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no data_req has been clocked from EX to environment.
-  // LSU instructions which were suppressed due to previous exceptions
-  // will be interruptable as they did not cause bus access in EX.
-  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !data_req_q &&
-                              !id_ex_pipe_i.lsu_misaligned) ||
-                               exception_in_wb) && !debug_mode_q; // TODO:OK: Just use instr bus_err/mpu_err/illegal_insn
+  // LSU instructions which were suppressed due to previous exceptions or trigger match
+  // will be interruptable as they were convered to NOP in ID stage.
+  // TODO:OK: May allow interuption of Zce to idempotent memories
+  // TODO: Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid.
+  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
+                              !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
+                               
 
   //////////////
   // FSM comb //
@@ -270,15 +266,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.csr_cause           = '0;
 
     ctrl_fsm_o.exc_pc_mux          = EXC_PC_IRQ;
-    exc_cause             = '0; // TODO: Explicit width
+    exc_cause                      = 5'b0;
 
-    debug_mode_n          = debug_mode_q;
+    debug_mode_n                   = debug_mode_q;
     ctrl_fsm_o.debug_csr_save      = 1'b0;
     ctrl_fsm_o.block_data_addr     = 1'b0;
     
-    //Single step halting of IF TODO:OK: May optimize this to a single bit
+    //Single step halting of IF
     single_step_halt_if_n = single_step_halt_if_q;
-    single_step_issue_n   = single_step_issue_q;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -303,7 +299,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // Halt the whole pipeline
             ctrl_fsm_o.halt_if = 1'b1;
             ctrl_fsm_o.halt_id = 1'b1;
-            ctrl_fsm_o.halt_ex = 1'b1; // TODO: Assert halt_Ex |-> !ex_ready && suppresses not yet stared LOAD/STORES
+            ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
             ctrl_fsm_ns = DEBUG_TAKEN;
@@ -345,12 +341,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
             // Unstall IF in case of single stepping
             if (debug_single_step_i) begin
-              single_step_issue_n = 1'b1;
               single_step_halt_if_n = 1'b0;
             end
           end else begin // !interrupt_allowed
             // Halt ID to allow interrupt @bubble later
-            ctrl_fsm_o.halt_id = 1'b1; // TODO: Halt ID or EX?, to prevent new insn issue
+            // TODO: Consider effect of halting EX instead, could gain 1 cycle latency
+            ctrl_fsm_o.halt_id = 1'b1;
           end
         end else begin
           if (exception_in_wb) begin
@@ -399,8 +395,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_mux      = PC_DRET;
             ctrl_fsm_o.pc_set      = 1'b1;
 
-            ctrl_fsm_o.csr_restore_dret  = 1'b1; //TODO:OK: Rename to csr_restore_dret_wb_o
-            single_step_issue_n = debug_single_step_i; // Expect single step issue
+            ctrl_fsm_o.csr_restore_dret  = 1'b1;
+
+            single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
           
           end else if (branch_taken_ex) begin // todo: seems like branch might get taken multiple times if preceded by stalling load/store
@@ -417,7 +414,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // Jumps in ID (JAL, JALR, mret, uret, dret)
             if (mret_id_i) begin
               ctrl_fsm_o.pc_mux      = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              ctrl_fsm_o.pc_set      = 1'b1; //TODO:OK: Could have a CSR write to mepc previous to this, add stall/bypass.
+              ctrl_fsm_o.pc_set      = 1'b1; //TODO:OK: Could have a CSR write to mepc previous to this, add stall/bypass (non-SEC).
               ctrl_fsm_o.exc_pc_mux  = EXC_PC_DBE; // Only used in debug mode
             end else begin
               ctrl_fsm_o.pc_mux = PC_JUMP;
@@ -428,7 +425,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Mret in WB restores CSR regs
           // 
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
-            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q; // TODO:OK: Rename to csr_restore_mret_wb_o
+            ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
 
           // Single step debug entry
@@ -442,9 +439,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Detect first insn issue in single step after dret
           // Used to block further issuing
-          if(single_step_issue_q && (if_valid_i && if_ready_i)) begin
+          if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && if_ready_i)) begin
             single_step_halt_if_n = 1'b1;
-            single_step_issue_n = 1'b0;
           end
         end // !debug or interrupts
       end
@@ -461,7 +457,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       DEBUG_TAKEN: begin
         // Clear flags for halting IF during single step
         single_step_halt_if_n = 1'b0;
-        single_step_issue_n   = 1'b0;
 
         // Kill stages
         ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
@@ -538,12 +533,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Detect when data_req has been clocked, and lsu insn is still in EX
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
-      data_req_q <= 1'b0;
+      obi_data_req_q <= 1'b0;
     end else begin
-      if (data_req_i && !(ex_valid_i && wb_ready_i)) begin
-        data_req_q <= 1'b1;
+      if (obi_data_req_i && !(ex_valid_i && wb_ready_i)) begin
+        obi_data_req_q <= 1'b1;
       end else if (ex_valid_i && wb_ready_i) begin
-        data_req_q <= 1'b0;
+        obi_data_req_q <= 1'b0;
       end
     end
   end
@@ -561,20 +556,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
-  // Flops used to gate if_valid after one instruction issued
+  // Flop used to gate if_valid after one instruction issued
   // in single step mode
-  // TODO:OK May reduce to one flop after moving dret jump to WB
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
-      single_step_issue_q   <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
-      single_step_issue_q   <= single_step_issue_n;
     end
   end
-
-  
 
   
   /////////////////////
