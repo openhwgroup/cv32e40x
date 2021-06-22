@@ -34,7 +34,7 @@ module cv32e40x_ex_stage_sva
   input logic           ex_valid_o,  
   input ctrl_fsm_t      ctrl_fsm_i
 );
-
+/*
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -48,5 +48,5 @@ module cv32e40x_ex_stage_sva
                       (ctrl_fsm_i.kill_ex)
                       |-> (ex_ready_o && !ex_valid_o))
       else `uvm_error("ex_stage", "Kill should imply ready and not valid")
-
+*/
 endmodule // cv32e40x_ex_stage_sva
