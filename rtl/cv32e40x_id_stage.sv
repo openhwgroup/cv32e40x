@@ -192,7 +192,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Local instruction valid qualifier
   logic        instr_valid;
 
-  assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id;
+  assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
   assign mret_insn_o = mret_insn;
   assign dret_insn_o = dret_insn;
@@ -503,9 +503,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end else begin
       // normal pipeline unstall case
 
-      if (id_valid)
-      begin // unstall the whole pipeline
+      if (id_valid && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
+
         if (ctrl_byp_i.misaligned_stall) begin
           // misaligned data access case
           // if we are using post increments, then we have to use the
@@ -597,10 +597,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
         end
       end else if (ex_ready_i) begin
-        // EX stage is ready but we don't have a new instruction for it,
-        // so we set all instr_valid to 0 (stage will use this to locally gate *enables)
         id_ex_pipe_o.instr_valid            <= 1'b0;
-        
       end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
        //In the EX stage there was a CSR access. To avoid multiple
        //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
@@ -616,19 +613,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // stall control for multicyle ID instructions (currently only misaligned LSU)
   assign multi_cycle_id_stall = ctrl_byp_i.misaligned_stall;
 
-  //TODO:OK: Added description of how halt_<stage> signals work (how are multicycle insn treated)
-  //TODO:OK Halt and stall seems to be the same
-  assign id_ready_o = ctrl_fsm_i.kill_id || (!ctrl_byp_i.csr_stall && !multi_cycle_id_stall && !ctrl_byp_i.jr_stall && !ctrl_byp_i.load_stall && ex_ready_i && !ctrl_fsm_i.halt_id && !ctrl_byp_i.wfi_stall);
+  // Stage ready/valid
+  //
+  // Most stall conditions are factored into halt_id (and the will force both ready and valid to 0).
+  //
+  // Multi-cycle instruction related stalls are different; in that case ready will be 0 (as ID already
+  // contains the instruction following the misaligned load/store, but the id_ex_pipe_o registers
+  // are updated for the second phase of the misaligned load/store first, so the following instruction
+  // is not handled yet), whereas valid will be 1 to update the id_ex_pipe_o registers with the
+  // second phase of the misaligned load/store. Note that the misaligned load/store instruction
+  // itself is only in ID for one cycle.
 
-  assign id_valid = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i); // Allow ID to update id_ex_pipe for misaligned load/stores regardless of halt/ready
+  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
+  assign id_valid = instr_valid || multi_cycle_id_stall;
 
-// todo  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
+  // todo: would want to use the following expression, but this is not SEC clean; need to investigate
+  // assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
-
-/*
-
-  assign id_valid = (instr_valid && id_ready_o) || (multi_cycle_id_stall && ex_ready_i);
-
-
-*/
 endmodule // cv32e40x_id_stage
