@@ -280,7 +280,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.lsu_en         <= 1'b0;
       ex_wb_pipe_o.lsu_mpu_status <= MPU_OK;
       ex_wb_pipe_o.csr_en         <= 1'b0;
-      ex_wb_pipe_o.csr_access     <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr       <= 12'h000;
       ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
@@ -302,7 +301,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         // Update signals for CSR access in WB
         ex_wb_pipe_o.csr_en     <= id_ex_pipe_i.csr_en;
-        ex_wb_pipe_o.csr_access <= id_ex_pipe_i.csr_access; // TODO:OK: May revert to using only csr_en with the new instr_valid qualifier?
         ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op; // todo: why can csr_op not be in below if-body?
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
