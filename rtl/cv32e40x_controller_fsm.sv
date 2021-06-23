@@ -300,11 +300,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.irq_ack = 1'b0;
     ctrl_fsm_o.irq_id  = '0;
 
-    // By default, no stages are halted
-    // If is halted if an insn has been issued during single step
+    // IF stage is halted if an instruction has been issued during single step
     // to avoid more than one instructions passing down the pipe.
     ctrl_fsm_o.halt_if = single_step_halt_if_q;
-    ctrl_fsm_o.halt_id = 1'b0; // todo ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
+    // ID stage is halted for regular stalls (i.e. stalls for which the instruction
+    // currently in ID is not ready to be issued yet)
+    ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
     ctrl_fsm_o.halt_ex = 1'b0;
     ctrl_fsm_o.halt_wb = 1'b0;
 
