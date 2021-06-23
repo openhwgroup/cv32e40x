@@ -42,7 +42,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        rst_n,
 
   // Jumps and branches
-  input  logic        branch_decision_i,
   output logic [31:0] jmp_target_o,
 
   // IF/ID pipeline
@@ -69,20 +68,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic           rf_we_ex_i,
   input  rf_addr_t       rf_waddr_ex_i,
   input  logic [31:0]    rf_wdata_ex_i,
-
-  // Performance Counters
-  output logic        mhpmevent_minstret_o,
-  output logic        mhpmevent_load_o,
-  output logic        mhpmevent_store_o,
-  output logic        mhpmevent_jump_o,
-  output logic        mhpmevent_branch_o,
-  output logic        mhpmevent_branch_taken_o,
-  output logic        mhpmevent_compressed_o,
-  output logic        mhpmevent_jr_stall_o,
-  output logic        mhpmevent_imiss_o,
-  output logic        mhpmevent_ld_stall_o,
-
-  input  logic        perf_imiss_i,
 
   input  logic        lsu_en_wb_i,
 
@@ -125,7 +110,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] instr;
 
-  
   // Immediate decoding and sign extension
   logic [31:0] imm_i_type;
   logic [31:0] imm_s_type;
@@ -190,17 +174,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic        id_valid;        // ID stage has valid (non-bubble) data for next stage
 
-  // Performance counters
-  logic        id_valid_q;
-  logic        minstret;
-
   // Branch target address
   logic [31:0] bch_target;
 
   // Stall for multicycle ID instructions
   logic multi_cycle_id_stall;
-
-  logic is_last; // Indicates that an instruction is in its last ID phase
 
   // Special insn to travel down pipeline structs
   logic        illegal_insn;
@@ -218,8 +196,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign mret_insn_o = mret_insn;
   assign dret_insn_o = dret_insn;
-
-  assign is_last = !multi_cycle_id_stall;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
@@ -631,51 +607,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
        //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
        id_ex_pipe_o.csr_access              <= 1'b0;
       end
-    end
-  end
-
-  // Performance Counter Events
-  //TODO:OK: Fix counters to reflect new controller behaviour
-  // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
-  // are being counted; the manner in which CSR instructions access the performance counters guarantees
-  // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
-
-  always_ff @(posedge clk , negedge rst_n)
-  begin
-    if ( rst_n == 1'b0 )
-    begin
-      id_valid_q                 <= 1'b0;
-      mhpmevent_minstret_o       <= 1'b0;
-      mhpmevent_load_o           <= 1'b0;
-      mhpmevent_store_o          <= 1'b0;
-      mhpmevent_jump_o           <= 1'b0;
-      mhpmevent_branch_o         <= 1'b0;
-      mhpmevent_compressed_o     <= 1'b0;
-      mhpmevent_branch_taken_o   <= 1'b0;
-      mhpmevent_jr_stall_o       <= 1'b0;
-      mhpmevent_imiss_o          <= 1'b0;
-      mhpmevent_ld_stall_o       <= 1'b0;
-    end
-    else
-    begin
-      // Helper signal, id_valid may be 1'b1 to update EX for misaligned LSU, gate off to not count events in those cases
-      id_valid_q                 <= id_valid && is_last;
-      // ID stage counts
-      mhpmevent_minstret_o       <= minstret;
-      mhpmevent_load_o           <= minstret && lsu_en && !lsu_we;
-      mhpmevent_store_o          <= minstret && lsu_en && lsu_we;
-      mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR));
-      mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn_o == BRANCH_COND);
-      mhpmevent_compressed_o     <= minstret && if_id_pipe_i.is_compressed;
-      // EX stage count
-      mhpmevent_branch_taken_o   <= mhpmevent_branch_o && branch_decision_i;
-      // IF stage count
-      mhpmevent_imiss_o          <= perf_imiss_i;
-      // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_jr_stall_o       <= ctrl_byp_i.jr_stall && !ctrl_fsm_i.halt_id && id_valid_q;
-      // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_ld_stall_o       <= ctrl_byp_i.load_stall && !ctrl_fsm_i.halt_id && id_valid_q;
     end
   end
 

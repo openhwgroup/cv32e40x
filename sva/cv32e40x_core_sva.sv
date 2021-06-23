@@ -35,7 +35,7 @@ module cv32e40x_core_sva
   input logic [31:0] mie,
   input logic        debug_single_step,
   input              if_id_pipe_t if_id_pipe,
-  input              id_stage_is_last,
+  input              id_stage_multi_cycle_id_stall,
   input logic        id_stage_id_valid,
   input logic        irq_ack_o, // irq ack output
   input ex_wb_pipe_t ex_wb_pipe,
@@ -230,10 +230,10 @@ always_ff @(posedge clk , negedge rst_ni)
   a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
 
   
-  // For checking single step, ID stage is used as it contains a 'is_last' signal.
+  // For checking single step, ID stage is used as it contains a 'multi_cycle_id_stall' signal.
   // This makes it easy to count misaligned LSU ins as one instruction instead of two.
   logic inst_taken;
-  assign inst_taken = id_stage_id_valid && id_stage_is_last;
+  assign inst_taken = id_stage_id_valid && !id_stage_multi_cycle_id_stall;
 
   // Support for single step assertion
   // In case of single step + taken interrupt, the first instruction 
@@ -259,7 +259,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // Should issue exactly one instruction from ID before entering debug_mode
   a_single_step_no_irq :
     assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
-                     (inst_taken && debug_single_step && ~ctrl_fsm.debug_mode)
+                     (inst_taken && debug_single_step && !ctrl_fsm.debug_mode)
                      ##1 inst_taken [->1]
                      |-> (ctrl_fsm.debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step_no_irq failed")
@@ -268,7 +268,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // before entering debug mode
   a_single_step_with_irq :
     assert property (@(posedge clk) disable iff (!rst_ni)
-                      (inst_taken && debug_single_step && ~ctrl_fsm.debug_mode && interrupt_taken) [->1:2]
+                      (inst_taken && debug_single_step && !ctrl_fsm.debug_mode && interrupt_taken) [->1:2]
                       ##1 inst_taken [->1]
                       |-> (ctrl_fsm.debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")

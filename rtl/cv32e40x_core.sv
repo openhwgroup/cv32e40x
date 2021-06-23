@@ -207,21 +207,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // trigger match detected in cs_registers (using ID timing)
   logic        debug_trigger_match_id;
 
-  // Performance Counters
-  // Currently from ID
-  // TODO:OK: perf counter events should be moved to the controller, leaving as is for now
-  logic        mhpmevent_minstret;
-  logic        mhpmevent_load;
-  logic        mhpmevent_store;
-  logic        mhpmevent_jump;
-  logic        mhpmevent_branch;
-  logic        mhpmevent_branch_taken;
-  logic        mhpmevent_compressed;
-  logic        mhpmevent_jr_stall;
-  logic        mhpmevent_imiss;
-  logic        mhpmevent_ld_stall;
-  logic        perf_imiss;
-
   // WB is writing back a LSU result
   logic        lsu_en_wb;
 
@@ -350,6 +335,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .ex_wb_pipe_i        ( ex_wb_pipe                ),
     
+    .ctrl_fsm_i          ( ctrl_fsm                  ),
+
     .mepc_i              ( mepc                      ), // exception return address
 
     .dpc_i               ( dpc                       ), // debug return address
@@ -362,16 +349,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .jump_target_id_i    ( jump_target_id            ),
     .branch_target_ex_i  ( branch_target_ex          ),
 
-    // pipeline stalls
-    .id_ready_i          ( id_ready                  ),
+    .if_busy_o           ( if_busy                   ),
 
+    // Pipeline handshakes
     .if_valid_o          ( if_valid                  ),
     .if_ready_o          ( if_ready                  ),
-
-    .if_busy_o           ( if_busy                   ),
-    .perf_imiss_o        ( perf_imiss                ),
-
-    .ctrl_fsm_i          ( ctrl_fsm                  )
+    .id_ready_i          ( id_ready                  )
   );
 
 
@@ -396,12 +379,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rst_n                        ( rst_ni                    ),
 
     // Jumps and branches
-    .branch_decision_i            ( branch_decision_ex        ),
     .jmp_target_o                 ( jump_target_id            ),
-
-    // IF and ID control signals
-    .id_ready_o                   ( id_ready                  ),
-    .ex_ready_i                   ( ex_ready                  ),
 
     // IF/ID pipeline
     .if_id_pipe_i                 ( if_id_pipe                ),
@@ -428,20 +406,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
-    // Performance Counters
-    .mhpmevent_minstret_o         ( mhpmevent_minstret        ),
-    .mhpmevent_load_o             ( mhpmevent_load            ),
-    .mhpmevent_store_o            ( mhpmevent_store           ),
-    .mhpmevent_jump_o             ( mhpmevent_jump            ),
-    .mhpmevent_branch_o           ( mhpmevent_branch          ),
-    .mhpmevent_branch_taken_o     ( mhpmevent_branch_taken    ),
-    .mhpmevent_compressed_o       ( mhpmevent_compressed      ),
-    .mhpmevent_jr_stall_o         ( mhpmevent_jr_stall        ),
-    .mhpmevent_imiss_o            ( mhpmevent_imiss           ),
-    .mhpmevent_ld_stall_o         ( mhpmevent_ld_stall        ),
-
-    .perf_imiss_i                 ( perf_imiss                ),
-
     .lsu_en_wb_i                  ( lsu_en_wb                 ),
 
     .mret_insn_o                  ( mret_insn_id              ),
@@ -458,7 +422,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_o                   ( rf_waddr_id               ),
 
     .regfile_alu_we_id_o          ( regfile_alu_we_id         ),
-    .regfile_rdata_i              ( regfile_rdata_id          )
+    .regfile_rdata_i              ( regfile_rdata_id          ),
+
+    // Pipeline handshakes
+    .id_ready_o                   ( id_ready                  ),
+    .ex_ready_i                   ( ex_ready                  )
   );
 
 
@@ -660,18 +628,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .priv_lvl_o                 ( current_priv_lvl       ),
 
     .pc_if_i                    ( pc_if                  ),
-
-    // performance counter related signals
-    .mhpmevent_minstret_i       ( mhpmevent_minstret     ),
-    .mhpmevent_load_i           ( mhpmevent_load         ),
-    .mhpmevent_store_i          ( mhpmevent_store        ),
-    .mhpmevent_jump_i           ( mhpmevent_jump         ),
-    .mhpmevent_branch_i         ( mhpmevent_branch       ),
-    .mhpmevent_branch_taken_i   ( mhpmevent_branch_taken ),
-    .mhpmevent_compressed_i     ( mhpmevent_compressed   ),
-    .mhpmevent_jr_stall_i       ( mhpmevent_jr_stall     ),
-    .mhpmevent_imiss_i          ( mhpmevent_imiss        ),
-    .mhpmevent_ld_stall_i       ( mhpmevent_ld_stall     ),
 
     // Handshakes
     .valid_i                    ( csr_valid_ex           ),

@@ -226,6 +226,64 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
+  // Performance counter events
+  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid; // todo: Not correct; just put something here such that minstret counter will not get optimized away (and did not use wb_valid to avoid long timing path)
+  assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.branch = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.branch_taken = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.compressed = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.jr_stall = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.imiss = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.ld_stall = 1'b0; // todo
+
+/* todo: Below are the original events definitions; check which ones to keep. If needed the actual definition can be changed (there is no backward compatibility requirement).
+  // Performance Counter Events
+  //TODO:OK: Fix counters to reflect new controller behaviour
+  // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
+  // are being counted; the manner in which CSR instructions access the performance counters guarantees
+  // that this count will correspond to the retired isntructions count.
+  assign minstret = id_valid && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
+
+  always_ff @(posedge clk , negedge rst_n)
+  begin
+    if (rst_n == 1'b0)
+    begin
+      id_valid_q                 <= 1'b0;
+      mhpmevent_minstret_o       <= 1'b0;
+      mhpmevent_load_o           <= 1'b0;
+      mhpmevent_store_o          <= 1'b0;
+      mhpmevent_jump_o           <= 1'b0;
+      mhpmevent_branch_o         <= 1'b0;
+      mhpmevent_compressed_o     <= 1'b0;
+      mhpmevent_branch_taken_o   <= 1'b0;
+      mhpmevent_jr_stall_o       <= 1'b0;
+      mhpmevent_imiss_o          <= 1'b0;
+      mhpmevent_ld_stall_o       <= 1'b0;
+    end
+    else
+    begin
+      // Helper signal, id_valid may be 1'b1 to update EX for misaligned LSU, gate off to not count events in those cases
+      id_valid_q                 <= id_valid && is_last;
+      // ID stage counts
+      mhpmevent_minstret_o       <= minstret;
+      mhpmevent_load_o           <= minstret && lsu_en && !lsu_we;
+      mhpmevent_store_o          <= minstret && lsu_en && lsu_we;
+      mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR));
+      mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn_o == BRANCH_COND);
+      mhpmevent_compressed_o     <= minstret && if_id_pipe_i.is_compressed;
+      // EX stage count
+      mhpmevent_branch_taken_o   <= mhpmevent_branch_o && branch_decision_i;
+      // IF stage count
+      mhpmevent_imiss_o          <= perf_imiss_i;
+      // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
+      mhpmevent_jr_stall_o       <= ctrl_byp_i.jr_stall && !ctrl_fsm_i.halt_id && id_valid_q;
+      // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
+      mhpmevent_ld_stall_o       <= ctrl_byp_i.load_stall && !ctrl_fsm_i.halt_id && id_valid_q;
+    end
+  end
+*/
 
   //////////////
   // FSM comb //
@@ -356,7 +414,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.kill_wb = 1'b1;
+            ctrl_fsm_o.kill_wb = 1'b1; // todo: Let's work under the assumption that all write enables have already been suppressed before arriving in WB (add assertion for this)
 
             // Set pc to exception handler
             ctrl_fsm_o.pc_set       = 1'b1;

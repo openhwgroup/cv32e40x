@@ -342,6 +342,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // As valid always goes to the right and ready to the left, and we are able
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
+
+// todo: wb_ready_i should already be factored into the other ready signals now
+
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
 
   // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'

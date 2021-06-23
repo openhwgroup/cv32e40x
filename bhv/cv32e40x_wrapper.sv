@@ -201,7 +201,7 @@ module cv32e40x_wrapper
                 .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
-                .id_stage_is_last                 (core_i.id_stage_i.is_last),
+                .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid),
                 .*);
 
@@ -293,8 +293,8 @@ bind cv32e40x_sleep_unit:
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
          .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
-         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ),
-         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ),
+         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ), // todo: should really use further downstream signals, ideally OBI
+         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ), // todo: should really use further downstream signals, ideally OBI
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
