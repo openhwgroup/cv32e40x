@@ -107,7 +107,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // CSR update logic
   logic [31:0] csr_wdata_int;
   logic [31:0] csr_rdata_int;
-  logic [31:0] csr_rdata_q;
   logic        csr_we_int;
 
   // Interrupt control signals
@@ -199,134 +198,122 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // NOTE!!!: Any new CSR register added in this file must also be
   //   added to the valid CSR register list cv32e40x_decoder.v
 
-   genvar j;
-
-
-
   // read logic
   always_comb
   begin
-    csr_rdata_int = csr_rdata_q;
-    if(id_ex_pipe_i.csr_access && id_ex_pipe_i.instr_valid) begin
-      case (csr_raddr)
-        // mstatus: always M-mode, contains IE bit
-        CSR_MSTATUS: csr_rdata_int = mstatus_q;
-        // misa: machine isa register
-        CSR_MISA: csr_rdata_int = MISA_VALUE;
-        // mie: machine interrupt enable
-        CSR_MIE: begin
-          csr_rdata_int = mie_q;
-        end
+    case (csr_raddr)
+      // mstatus: always M-mode, contains IE bit
+      CSR_MSTATUS: csr_rdata_int = mstatus_q;
+      // misa: machine isa register
+      CSR_MISA: csr_rdata_int = MISA_VALUE;
+      // mie: machine interrupt enable
+      CSR_MIE: csr_rdata_int = mie_q;
+      // mtvec: machine trap-handler base address
+      CSR_MTVEC: csr_rdata_int = mtvec_q;
+      // mscratch: machine scratch
+      CSR_MSCRATCH: csr_rdata_int = mscratch_q;
+      // mepc: exception program counter
+      CSR_MEPC: csr_rdata_int = mepc_q;
+      // mcause: exception cause
+      CSR_MCAUSE: csr_rdata_int = mcause_q;
+      // mip: interrupt pending
+      CSR_MIP: csr_rdata_int = mip;
+      // mhartid: unique hardware thread id
+      CSR_MHARTID: csr_rdata_int = hart_id_i;
 
-        // mtvec: machine trap-handler base address
-        CSR_MTVEC: csr_rdata_int = mtvec_q;
-        // mscratch: machine scratch
-        CSR_MSCRATCH: csr_rdata_int = mscratch_q;
-        // mepc: exception program counter
-        CSR_MEPC: csr_rdata_int = mepc_q;
-        // mcause: exception cause
-        CSR_MCAUSE: csr_rdata_int = mcause_q;
-        // mip: interrupt pending
-        CSR_MIP: begin
-          csr_rdata_int = mip;
-        end
-        // mhartid: unique hardware thread id
-        CSR_MHARTID: csr_rdata_int = hart_id_i;
+      // mvendorid: Machine Vendor ID
+      CSR_MVENDORID: csr_rdata_int = {MVENDORID_BANK, MVENDORID_OFFSET};
 
-        // mvendorid: Machine Vendor ID
-        CSR_MVENDORID: csr_rdata_int = {MVENDORID_BANK, MVENDORID_OFFSET};
+      // marchid: Machine Architecture ID
+      CSR_MARCHID: csr_rdata_int = MARCHID;
 
-        // marchid: Machine Architecture ID
-        CSR_MARCHID: csr_rdata_int = MARCHID;
+      // unimplemented, read 0 CSRs
+      CSR_MIMPID,
+        CSR_MTVAL :
+          csr_rdata_int = 'b0;
 
-        // unimplemented, read 0 CSRs
-        CSR_MIMPID,
-          CSR_MTVAL :
-            csr_rdata_int = 'b0;
+      CSR_TSELECT,
+        CSR_TDATA3,
+        CSR_MCONTEXT,
+        CSR_SCONTEXT:
+              csr_rdata_int = 'b0; // Always read 0
+      CSR_TDATA1:
+              csr_rdata_int = tmatch_control_rdata;
+      CSR_TDATA2:
+              csr_rdata_int = tmatch_value_rdata;
+      CSR_TINFO:
+              csr_rdata_int = tinfo_types;
 
-        CSR_TSELECT,
-          CSR_TDATA3,
-          CSR_MCONTEXT,
-          CSR_SCONTEXT:
-                csr_rdata_int = 'b0; // Always read 0
-        CSR_TDATA1:
-                csr_rdata_int = tmatch_control_rdata;
-        CSR_TDATA2:
-                csr_rdata_int = tmatch_value_rdata;
-        CSR_TINFO:
-                csr_rdata_int = tinfo_types;
+      CSR_DCSR:
+              csr_rdata_int = dcsr_q;
+      CSR_DPC:
+              csr_rdata_int = dpc_q;
+      CSR_DSCRATCH0:
+              csr_rdata_int = dscratch0_q;
+      CSR_DSCRATCH1:
+              csr_rdata_int = dscratch1_q;
 
-        CSR_DCSR:
-                csr_rdata_int = dcsr_q;
-        CSR_DPC:
-                csr_rdata_int = dpc_q;
-        CSR_DSCRATCH0:
-                csr_rdata_int = dscratch0_q;
-        CSR_DSCRATCH1:
-                csr_rdata_int = dscratch1_q;
+      // Hardware Performance Monitor
+      CSR_MCYCLE,
+      CSR_MINSTRET,
+      CSR_MHPMCOUNTER3,
+      CSR_MHPMCOUNTER4,  CSR_MHPMCOUNTER5,  CSR_MHPMCOUNTER6,  CSR_MHPMCOUNTER7,
+      CSR_MHPMCOUNTER8,  CSR_MHPMCOUNTER9,  CSR_MHPMCOUNTER10, CSR_MHPMCOUNTER11,
+      CSR_MHPMCOUNTER12, CSR_MHPMCOUNTER13, CSR_MHPMCOUNTER14, CSR_MHPMCOUNTER15,
+      CSR_MHPMCOUNTER16, CSR_MHPMCOUNTER17, CSR_MHPMCOUNTER18, CSR_MHPMCOUNTER19,
+      CSR_MHPMCOUNTER20, CSR_MHPMCOUNTER21, CSR_MHPMCOUNTER22, CSR_MHPMCOUNTER23,
+      CSR_MHPMCOUNTER24, CSR_MHPMCOUNTER25, CSR_MHPMCOUNTER26, CSR_MHPMCOUNTER27,
+      CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31,
+      CSR_CYCLE,
+      CSR_INSTRET,
+      CSR_HPMCOUNTER3,
+      CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
+      CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
+      CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
+      CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
+      CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
+      CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
+      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
+        csr_rdata_int = mhpmcounter_q[csr_raddr[4:0]][31:0];
 
-        // Hardware Performance Monitor
-        CSR_MCYCLE,
-        CSR_MINSTRET,
-        CSR_MHPMCOUNTER3,
-        CSR_MHPMCOUNTER4,  CSR_MHPMCOUNTER5,  CSR_MHPMCOUNTER6,  CSR_MHPMCOUNTER7,
-        CSR_MHPMCOUNTER8,  CSR_MHPMCOUNTER9,  CSR_MHPMCOUNTER10, CSR_MHPMCOUNTER11,
-        CSR_MHPMCOUNTER12, CSR_MHPMCOUNTER13, CSR_MHPMCOUNTER14, CSR_MHPMCOUNTER15,
-        CSR_MHPMCOUNTER16, CSR_MHPMCOUNTER17, CSR_MHPMCOUNTER18, CSR_MHPMCOUNTER19,
-        CSR_MHPMCOUNTER20, CSR_MHPMCOUNTER21, CSR_MHPMCOUNTER22, CSR_MHPMCOUNTER23,
-        CSR_MHPMCOUNTER24, CSR_MHPMCOUNTER25, CSR_MHPMCOUNTER26, CSR_MHPMCOUNTER27,
-        CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31,
-        CSR_CYCLE,
-        CSR_INSTRET,
-        CSR_HPMCOUNTER3,
-        CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
-        CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
-        CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
-        CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
-        CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
-        CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
-        CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
-          csr_rdata_int = mhpmcounter_q[csr_raddr[4:0]][31:0];
+      CSR_MCYCLEH,
+      CSR_MINSTRETH,
+      CSR_MHPMCOUNTER3H,
+      CSR_MHPMCOUNTER4H,  CSR_MHPMCOUNTER5H,  CSR_MHPMCOUNTER6H,  CSR_MHPMCOUNTER7H,
+      CSR_MHPMCOUNTER8H,  CSR_MHPMCOUNTER9H,  CSR_MHPMCOUNTER10H, CSR_MHPMCOUNTER11H,
+      CSR_MHPMCOUNTER12H, CSR_MHPMCOUNTER13H, CSR_MHPMCOUNTER14H, CSR_MHPMCOUNTER15H,
+      CSR_MHPMCOUNTER16H, CSR_MHPMCOUNTER17H, CSR_MHPMCOUNTER18H, CSR_MHPMCOUNTER19H,
+      CSR_MHPMCOUNTER20H, CSR_MHPMCOUNTER21H, CSR_MHPMCOUNTER22H, CSR_MHPMCOUNTER23H,
+      CSR_MHPMCOUNTER24H, CSR_MHPMCOUNTER25H, CSR_MHPMCOUNTER26H, CSR_MHPMCOUNTER27H,
+      CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H,
+      CSR_CYCLEH,
+      CSR_INSTRETH,
+      CSR_HPMCOUNTER3H,
+      CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
+      CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
+      CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
+      CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
+      CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
+      CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
+      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
+        csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_raddr[4:0]][63:32] : '0;
 
-        CSR_MCYCLEH,
-        CSR_MINSTRETH,
-        CSR_MHPMCOUNTER3H,
-        CSR_MHPMCOUNTER4H,  CSR_MHPMCOUNTER5H,  CSR_MHPMCOUNTER6H,  CSR_MHPMCOUNTER7H,
-        CSR_MHPMCOUNTER8H,  CSR_MHPMCOUNTER9H,  CSR_MHPMCOUNTER10H, CSR_MHPMCOUNTER11H,
-        CSR_MHPMCOUNTER12H, CSR_MHPMCOUNTER13H, CSR_MHPMCOUNTER14H, CSR_MHPMCOUNTER15H,
-        CSR_MHPMCOUNTER16H, CSR_MHPMCOUNTER17H, CSR_MHPMCOUNTER18H, CSR_MHPMCOUNTER19H,
-        CSR_MHPMCOUNTER20H, CSR_MHPMCOUNTER21H, CSR_MHPMCOUNTER22H, CSR_MHPMCOUNTER23H,
-        CSR_MHPMCOUNTER24H, CSR_MHPMCOUNTER25H, CSR_MHPMCOUNTER26H, CSR_MHPMCOUNTER27H,
-        CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H,
-        CSR_CYCLEH,
-        CSR_INSTRETH,
-        CSR_HPMCOUNTER3H,
-        CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
-        CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
-        CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
-        CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
-        CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
-        CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
-        CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
-          csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_raddr[4:0]][63:32] : '0;
+      CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
 
-        CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
+      CSR_MHPMEVENT3,
+      CSR_MHPMEVENT4,  CSR_MHPMEVENT5,  CSR_MHPMEVENT6,  CSR_MHPMEVENT7,
+      CSR_MHPMEVENT8,  CSR_MHPMEVENT9,  CSR_MHPMEVENT10, CSR_MHPMEVENT11,
+      CSR_MHPMEVENT12, CSR_MHPMEVENT13, CSR_MHPMEVENT14, CSR_MHPMEVENT15,
+      CSR_MHPMEVENT16, CSR_MHPMEVENT17, CSR_MHPMEVENT18, CSR_MHPMEVENT19,
+      CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
+      CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
+      CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
+        csr_rdata_int = mhpmevent_q[csr_raddr[4:0]];
 
-        CSR_MHPMEVENT3,
-        CSR_MHPMEVENT4,  CSR_MHPMEVENT5,  CSR_MHPMEVENT6,  CSR_MHPMEVENT7,
-        CSR_MHPMEVENT8,  CSR_MHPMEVENT9,  CSR_MHPMEVENT10, CSR_MHPMEVENT11,
-        CSR_MHPMEVENT12, CSR_MHPMEVENT13, CSR_MHPMEVENT14, CSR_MHPMEVENT15,
-        CSR_MHPMEVENT16, CSR_MHPMEVENT17, CSR_MHPMEVENT18, CSR_MHPMEVENT19,
-        CSR_MHPMEVENT20, CSR_MHPMEVENT21, CSR_MHPMEVENT22, CSR_MHPMEVENT23,
-        CSR_MHPMEVENT24, CSR_MHPMEVENT25, CSR_MHPMEVENT26, CSR_MHPMEVENT27,
-        CSR_MHPMEVENT28, CSR_MHPMEVENT29, CSR_MHPMEVENT30, CSR_MHPMEVENT31:
-          csr_rdata_int = mhpmevent_q[csr_raddr[4:0]];
 
-        
-        default:
-          csr_rdata_int = '0;
-      endcase
-    end // id_ex_pipe_i.csr_access
+      default:
+        csr_rdata_int = '0;
+    endcase
   end
 
 
@@ -486,7 +473,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
   // CSR operation logic
-  // todo: csr_rdata_o in the following logic should come from ex_wb_pipe.rf_wdata which is the true CSR rdata from EX stage
+  // Using ex_wb_pipe_i.rf_wdata for read-modify-write since CSR was read in EX, written in WB
   always_comb
   begin
     csr_wdata_int = csr_wdata;
@@ -494,8 +481,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     case (csr_op)
       CSR_OP_WRITE: csr_wdata_int = csr_wdata;
-      CSR_OP_SET:   csr_wdata_int = csr_wdata | csr_rdata_o;
-      CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & csr_rdata_o;
+      CSR_OP_SET:   csr_wdata_int = csr_wdata | ex_wb_pipe_i.rf_wdata;
+      CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & ex_wb_pipe_i.rf_wdata;
 
       CSR_OP_READ: begin
         csr_wdata_int = csr_wdata;
@@ -504,15 +491,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     endcase
   end
 
-  // Keep last valid rdata
-  // todo: remove along with csr_access
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      csr_rdata_q <= 32'h0;
-    end else if (id_ex_pipe_i.csr_access) begin
-      csr_rdata_q <= csr_rdata_int;
-    end
-  end
 
   cv32e40x_csr #(
     .WIDTH      (32),

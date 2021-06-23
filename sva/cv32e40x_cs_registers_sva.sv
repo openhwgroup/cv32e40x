@@ -33,22 +33,6 @@ module cv32e40x_cs_registers_sva
    input logic [31:0] csr_rdata_o
    );
 
-   // Store last valid rdata output
-   logic [31:0] csr_rdata_last;
 
-   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      csr_rdata_last <= 32'h0;
-    end else if (id_ex_pipe_i.csr_access) begin
-      csr_rdata_last <= csr_rdata_o;
-    end
-  end
-
-
-  // Check that read data is stable when csr_access is low
-  a_stable_rdata: assert property (@(posedge clk) disable iff (!rst_n)
-                                  (!id_ex_pipe_i.csr_access) |-> (csr_rdata_o == csr_rdata_last))
-
-    else `uvm_error("cs_registers", "csr_rdata_o not stable while csr_access is low")
 endmodule // cv32e40x_cs_registers_sva
 
