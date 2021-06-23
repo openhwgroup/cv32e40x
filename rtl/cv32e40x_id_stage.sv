@@ -471,7 +471,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
 
-      id_ex_pipe_o.csr_access             <= 1'b0;
       id_ex_pipe_o.csr_en                 <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
@@ -550,7 +549,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
           end
 
-          id_ex_pipe_o.csr_access             <= csr_en;
           id_ex_pipe_o.csr_en                 <= csr_en;
           id_ex_pipe_o.csr_op                 <= csr_op;
 
@@ -598,11 +596,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
-      end else if (id_ex_pipe_o.csr_access) begin // TODO: We should get rid of this special case
-       //In the EX stage there was a CSR access. To avoid multiple
-       //writes to the RF, disable csr_access (cs_registers will keep it's rdata as it was when csr_access was 1'b1).
-       //Not doing it can overwrite the RF file with the currennt CSR value rather than the old one
-       id_ex_pipe_o.csr_access              <= 1'b0;
       end
     end
   end
