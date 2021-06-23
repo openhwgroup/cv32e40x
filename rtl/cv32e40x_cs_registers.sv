@@ -185,9 +185,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] csr_wdata;
 
   //  CSR access. Read in EX, write in WB
-  assign csr_raddr = csr_num_e'(id_ex_pipe_i.alu_operand_b[11:0]); // todo: reconsider suppressing to 0 as it was or adding separate registers to save power
+  // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
+  assign csr_raddr = csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : 12'b0);
 
-  assign csr_waddr = csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0); // This is already a separate register; so suppression to 0 seems a waste
+  // Not suppressing csr_waddr to zero when unused since its source are dedicated flipflops and would not save power as for raddr
+  assign csr_waddr = csr_num_e'(ex_wb_pipe_i.csr_addr);
   assign csr_wdata = ex_wb_pipe_i.csr_wdata;
 
   //TODO: We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
@@ -496,6 +498,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
   // CSR operation logic
+  // todo: csr_rdata_o in the following logic should come from ex_wb_pipe.rf_wdata which is the true CSR rdata from EX stage
   always_comb
   begin
     csr_wdata_int = csr_wdata;
@@ -514,6 +517,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   end
 
   // Keep last valid rdata
+  // todo: remove along with csr_access
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       csr_rdata_q <= 32'h0;
