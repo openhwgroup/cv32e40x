@@ -29,6 +29,7 @@ module cv32e40x_if_stage_sva
 
   input logic           if_ready_o,
   input logic           if_valid_o,  
+  input  ctrl_fsm_t     ctrl_fsm_i,
   if_c_obi.monitor      m_c_obi_instr_if
 );
 
@@ -39,7 +40,7 @@ module cv32e40x_if_stage_sva
 
   a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned)
     else `uvm_error("if_stage", "Assertion a_instr_addr_word_aligned failed")
-/*
+/* todo: uncomment and fix
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -53,6 +54,14 @@ module cv32e40x_if_stage_sva
                       (ctrl_fsm_i.kill_if)
                       |-> (if_ready_o && !if_valid_o))
       else `uvm_error("if_stage", "Kill should imply ready and not valid")
+
+  // Never kill and halt at the same time (as they have conflicting requirements on ready)
+  a_kill_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.kill_if)
+                      |-> (!ctrl_fsm_i.halt_if))
+      else `uvm_error("if_stage", "Kill and halt should not both be asserted")
+
 */
 endmodule // cv32e40x_if_stage
 

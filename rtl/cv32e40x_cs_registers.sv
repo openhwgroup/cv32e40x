@@ -185,10 +185,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] csr_wdata;
 
   //  CSR access. Read in EX, write in WB
-  assign csr_raddr    =  csr_num_e'(id_ex_pipe_i.alu_operand_b[11:0]);
+  assign csr_raddr = csr_num_e'(id_ex_pipe_i.alu_operand_b[11:0]); // todo: reconsider suppressing to 0 as it was or adding separate registers to save power
 
-  assign csr_waddr     =  csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0);
-  assign csr_wdata    =  ex_wb_pipe_i.csr_wdata;
+  assign csr_waddr = csr_num_e'((ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_addr : '0); // This is already a separate register; so suppression to 0 seems a waste
+  assign csr_wdata = ex_wb_pipe_i.csr_wdata;
 
   //TODO: We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
   assign csr_op       =  (!ctrl_fsm_i.kill_wb && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;

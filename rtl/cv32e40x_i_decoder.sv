@@ -34,7 +34,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
 
-   input  ctrl_fsm_t     ctrl_fsm_i,
+   input  ctrl_fsm_t     ctrl_fsm_i, // todo: each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing
    output decoder_ctrl_t decoder_ctrl_o
    );
   
@@ -312,7 +312,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h7b2:  // dret
                 begin
-                  if(ctrl_fsm_i.debug_mode) begin
+                  if (ctrl_fsm_i.debug_mode) begin
                     decoder_ctrl_o.dret_insn    =  1'b1;
                   end
                   else begin
@@ -464,7 +464,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               CSR_DPC,
               CSR_DSCRATCH0,
               CSR_DSCRATCH1 :
-                if(!ctrl_fsm_i.debug_mode) begin
+                if (!ctrl_fsm_i.debug_mode) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end else begin
                 ; // do nothing, not illegal
