@@ -427,7 +427,7 @@ module cv32e40x_rvfi
 
   assign wb_valid = wb_valid_i &&
                     !lsu_misaligned_ex_i || // Suppress first misaligned access in wb
-                    illegal_insn_wb_i && is_exception_wb; // Illegal instructions are valid in RVFI (w/trap=1)
+                    illegal_insn_wb_i && is_exception_wb; // Illegal instructions are valid in RVFI (w/trap=1) // todo: use brackets in this expression; also this doesn't take into account ebreak, etc.
 
 
   // Pipeline stage model //
@@ -478,7 +478,7 @@ module cv32e40x_rvfi
       if(instr_id_valid_i) begin
         is_debug_entry_id   <= is_debug_entry_if;
         debug    [STAGE_ID] <= is_debug_entry_id;
-        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_id_i + 4;
+        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_id_i + 4; // todo: why +4 (how about compressed instructions; why did pc_if_i not work)?
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
         rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
@@ -514,7 +514,7 @@ module cv32e40x_rvfi
         rvfi_dbg        <= debug[STAGE_EX];
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        rvfi_trap       <= illegal_insn_wb_i;
+        rvfi_trap       <= illegal_insn_wb_i; // todo: factor in other trap conditions
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 

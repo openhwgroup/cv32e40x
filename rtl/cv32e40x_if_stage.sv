@@ -52,30 +52,28 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     // EX_WB pipe
     input  ex_wb_pipe_t       ex_wb_pipe_i,
 
+    input ctrl_fsm_t    ctrl_fsm_i,
+
     output logic       [31:0] pc_if_o,
 
     // Forwarding ports - control signals
-    input  logic [31:0] mepc_i,                // address used to restore PC when the interrupt/exception is served
+    input  logic [31:0] mepc_i,                 // address used to restore PC when the interrupt/exception is served
 
-    input  logic [31:0] dpc_i,                // address used to restore PC when the debug is served
+    input  logic [31:0] dpc_i,                  // address used to restore PC when the debug is served
 
-    output logic        csr_mtvec_init_o,      // tell CS regfile to init mtvec
+    output logic        csr_mtvec_init_o,       // tell CS regfile to init mtvec
 
     // jump and branch target and decision
-    input  logic [31:0] jump_target_id_i,      // jump target address
-    input  logic [31:0] branch_target_ex_i,      // jump target address
+    input  logic [31:0] jump_target_id_i,       // jump target address
+    input  logic [31:0] branch_target_ex_i,     // jump target address
 
-    // pipeline stall
-    input  logic        id_ready_i,
+    // misc signals
+    output logic        if_busy_o,             // Is the IF stage busy fetching instructions?
 
-    // to controller
+    // Pipeline handshakes
     output logic        if_valid_o,
     output logic        if_ready_o,
-    // misc signals
-    output logic        if_busy_o,             // is the IF stage busy fetching instructions?
-    output logic        perf_imiss_o,           // Instruction Fetch Miss
-
-    input ctrl_fsm_t    ctrl_fsm_i
+    input  logic        id_ready_i
 );
 
   logic              if_valid, if_ready;
@@ -229,18 +227,13 @@ instruction_obi_i
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
 
-  // We are 'missing' in the if stage if we don't have a valid instruction
-  // when the pipeline is ready and we are not branching
-  assign perf_imiss_o = !ctrl_fsm_i.pc_set && if_ready && !ctrl_fsm_i.halt_if && !prefetch_valid;
-
   // if_stage ready if id_stage is ready
   assign if_ready = id_ready_i && !ctrl_fsm_i.halt_if;
-
 
   // if stage valid when prefetcher is valid and we are ready
   assign if_valid = if_ready && prefetch_valid;
 
-  assign if_busy_o    = prefetch_busy;
+  assign if_busy_o = prefetch_busy;
 
   assign if_valid_o = if_valid;
   assign if_ready_o = if_ready;

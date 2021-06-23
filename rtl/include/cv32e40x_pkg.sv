@@ -998,6 +998,20 @@ typedef struct packed {
   logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
 } ex_wb_pipe_t;
 
+// Performance counter events
+typedef struct packed {
+  logic                              minstret;
+  logic                              load;
+  logic                              store;
+  logic                              jump;
+  logic                              branch;
+  logic                              branch_taken;
+  logic                              compressed;
+  logic                              jr_stall;
+  logic                              imiss;
+  logic                              ld_stall;
+} mhpmevent_t;
+
 // Controller Bypass outputs
 typedef struct packed {
   op_fw_mux_e  operand_a_fw_mux_sel;  // Operand A forward mux sel
@@ -1049,6 +1063,9 @@ typedef struct packed {
   logic        csr_restore_dret; // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
 
+  // Performance counter events
+  mhpmevent_t  mhpmevent;
+
   // Halt signals
   logic        halt_if; // Halt IF stage
   logic        halt_id; // Halt ID stage
@@ -1061,8 +1078,7 @@ typedef struct packed {
   logic        kill_ex; // Kill EX stage
   logic        kill_wb; // Kill WB stage
 } ctrl_fsm_t;
-  
-  
+
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //
@@ -1075,11 +1091,6 @@ typedef struct packed {
   // OBI interface FSM state encoding
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
-  
   // Enum used for configuration of B extension
   typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
-
-
-  
-
 endpackage

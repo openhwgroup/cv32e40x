@@ -81,18 +81,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   input  logic [31:0]     pc_if_i,
 
-  // Performance Counters
-  input  logic            mhpmevent_minstret_i,
-  input  logic            mhpmevent_load_i,
-  input  logic            mhpmevent_store_i,
-  input  logic            mhpmevent_jump_i,                // Jump instruction retired (j, jr, jal, jalr)
-  input  logic            mhpmevent_branch_i,              // Branch instruction retired (beq, bne, etc.)
-  input  logic            mhpmevent_branch_taken_i,        // Branch instruction taken
-  input  logic            mhpmevent_compressed_i,
-  input  logic            mhpmevent_jr_stall_i,
-  input  logic            mhpmevent_imiss_i,
-  input  logic            mhpmevent_ld_stall_i,
-
   // Handshakes
   input  logic            valid_i,
   output logic            ready_o,
@@ -774,19 +762,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //                                                             //
   /////////////////////////////////////////////////////////////////
 
+  // todo: decide on whether events need to be registered first (to break critical timing paths)
+
   // ------------------------
   // Events to count
-  assign hpm_events[0]  = 1'b1;                                          // cycle counter
-  assign hpm_events[1]  = mhpmevent_minstret_i;                          // instruction counter
-  assign hpm_events[2]  = mhpmevent_ld_stall_i;                          // nr of load use hazards
-  assign hpm_events[3]  = mhpmevent_jr_stall_i;                          // nr of jump register hazards
-  assign hpm_events[4]  = mhpmevent_imiss_i;                             // cycles waiting for instruction fetches, excluding jumps and branches
-  assign hpm_events[5]  = mhpmevent_load_i;                              // nr of loads
-  assign hpm_events[6]  = mhpmevent_store_i;                             // nr of stores
-  assign hpm_events[7]  = mhpmevent_jump_i;                              // nr of jumps (unconditional)
-  assign hpm_events[8]  = mhpmevent_branch_i;                            // nr of branches (conditional)
-  assign hpm_events[9]  = mhpmevent_branch_taken_i;                      // nr of taken branches (conditional)
-  assign hpm_events[10] = mhpmevent_compressed_i;                        // compressed instruction counter
+  assign hpm_events[0]  = 1'b1;                                                 // Cycle counter
+  assign hpm_events[1]  = ctrl_fsm_i.mhpmevent.minstret;                        // Instruction counter
+  assign hpm_events[2]  = ctrl_fsm_i.mhpmevent.ld_stall;                        // Nr of load use hazards
+  assign hpm_events[3]  = ctrl_fsm_i.mhpmevent.jr_stall;                        // Nr of jump register hazards
+  assign hpm_events[4]  = ctrl_fsm_i.mhpmevent.imiss;                           // Cycles waiting for instruction fetches, excluding jumps and branches
+  assign hpm_events[5]  = ctrl_fsm_i.mhpmevent.load;                            // Nr of loads
+  assign hpm_events[6]  = ctrl_fsm_i.mhpmevent.store;                           // Nr of stores
+  assign hpm_events[7]  = ctrl_fsm_i.mhpmevent.jump;                            // Nr of jumps (unconditional)
+  assign hpm_events[8]  = ctrl_fsm_i.mhpmevent.branch;                          // Nr of branches (conditional)
+  assign hpm_events[9]  = ctrl_fsm_i.mhpmevent.branch_taken;                    // Nr of taken branches (conditional)
+  assign hpm_events[10] = ctrl_fsm_i.mhpmevent.compressed;                      // Compressed instruction counter
   assign hpm_events[11] = 1'b0;
   assign hpm_events[12] = 1'b0;
   assign hpm_events[13] = 1'b0;
@@ -970,7 +960,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   endgenerate
 
   // No multicycle operations in the CSR. Valid/ready are passed through.
-  assign valid_o = valid_i;
+  assign valid_o = valid_i; // todo: not consistent with MUL/DIV
   assign ready_o = ready_i;
 
 endmodule
