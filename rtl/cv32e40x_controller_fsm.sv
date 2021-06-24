@@ -415,7 +415,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.kill_wb = 1'b1; // todo: Let's work under the assumption that all write enables have already been suppressed before arriving in WB (add assertion for this)
+            ctrl_fsm_o.kill_wb = 1'b0; // All write enables are suppressed, no need to kill WB.
 
             // Set pc to exception handler
             ctrl_fsm_o.pc_set       = 1'b1;
