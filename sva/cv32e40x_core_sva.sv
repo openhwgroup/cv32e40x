@@ -30,7 +30,6 @@ module cv32e40x_core_sva
   input logic        rst_ni,
 
   input ctrl_fsm_t   ctrl_fsm,
-  //input logic        multi_cycle_id_stall, // todo: clean up if really no longer needed
   input logic [4:0]  exc_cause,
   input logic [31:0] mie,
   input logic        debug_single_step,

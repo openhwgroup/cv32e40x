@@ -49,7 +49,7 @@ module cv32e40x_div_sva
 
   // Assert that valid_o is set in the 34th cycle 
   // cycle_count==33 in the 34th cycle because the counter is reset in the cycle after division is accepted.
-  //TODO: This only applies to the 40S, data_ind_timing_i only exists there.
+  //TODO: lowThis only applies to the 40S, data_ind_timing_i only exists there.
   //      Keep commented until 40S fork, and then delete from 40X
   /*
   a_data_ind_timing :

@@ -43,20 +43,6 @@ module cv32e40x_wb_stage_sva
                       |-> (!ctrl_fsm_i.kill_wb))
       else `uvm_error("wb_stage", "LSU instruction killed in WB")
 
-
-// todo: Discuss whether we want early write enable suppression or not
-//
-//  // Check that registered 'write enable' type signals have already been suppressed if
-//  // registered instr_valid = 0.
-//  property p_early_write_enable_suppression;
-//    @(posedge clk) disable iff (!rst_n)
-//      (ex_wb_pipe_i.instr_valid == 1'b0) |-> ((ex_wb_pipe_i.rf_we == 1'b0) && (ex_wb_pipe_i.lsu_en == 1'b0));
-//  endproperty
-//
-//  a_early_write_enable_suppression : assert property(p_early_write_enable_suppression) else `uvm_error("wb_stage", "Write enables not suppressed yet")
-
-
-
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)

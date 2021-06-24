@@ -172,7 +172,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
      .pma_cacheable_o(bus_trans_cacheable));
 
   
-  assign pmp_err = 1'b0; // TODO connect to PMP
+  assign pmp_err = 1'b0; // TODO:OE connect to PMP
   assign mpu_err = pmp_err || pma_err;
 
   // Writes are only supported on the data interface

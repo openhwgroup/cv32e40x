@@ -179,7 +179,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_waddr = csr_num_e'(ex_wb_pipe_i.csr_addr);
   assign csr_wdata = ex_wb_pipe_i.csr_wdata;
 
-  //TODO: We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
+  //TODO:OK We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
   assign csr_op       =  (!ctrl_fsm_i.kill_wb && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
     
   // mip CSR
@@ -474,7 +474,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // CSR operation logic
   // Using ex_wb_pipe_i.rf_wdata for read-modify-write since CSR was read in EX, written in WB
-  always_comb
+  always_comb // todo: this circuit should use csr_en (if csr_en is 0 then csr_wdata_int should default to csr_wdata for power reasons
   begin
     csr_wdata_int = csr_wdata;
     csr_we_int    = 1'b1;
@@ -740,7 +740,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //                                                             //
   /////////////////////////////////////////////////////////////////
 
-  // todo: decide on whether events need to be registered first (to break critical timing paths)
+  // todo:low decide on whether events need to be registered first (to break critical timing paths)
 
   // ------------------------
   // Events to count
@@ -938,7 +938,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   endgenerate
 
   // No multicycle operations in the CSR. Valid/ready are passed through.
-  assign valid_o = valid_i; // todo: not consistent with MUL/DIV
+  assign valid_o = valid_i; // todo:ab not consistent with MUL/DIV
   assign ready_o = ready_i;
 
 endmodule

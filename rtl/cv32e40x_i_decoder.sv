@@ -34,7 +34,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
 
-   input  ctrl_fsm_t     ctrl_fsm_i, // todo: each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing
+   input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
    output decoder_ctrl_t decoder_ctrl_o
    );
   

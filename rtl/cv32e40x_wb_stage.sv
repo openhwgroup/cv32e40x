@@ -77,7 +77,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // data_req_o/data_ack_i handshake has already occurred. This is checked
   // with the a_lsu_no_kill assertion.
 
-  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && instr_valid; // todo: need to standardize on whether ex_wb_pipe_i.instr_valid needs to be a gating condition or not
+  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && instr_valid;
   assign lsu_en_wb_o  = lsu_en_gated;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // order to prevent a timing path from the late arriving data_rvalid_i into the
   // register file.
 
-  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK: deassert in case of MPU error
+  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
   assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
   assign rf_wdata_wb_o = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
@@ -105,13 +105,18 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
 
-  assign wb_ready_o = lsu_ready_i; // todo: Should have similar structure as ex_ready_o
+  assign wb_ready_o = lsu_ready_i;
 
+  // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
   //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
 
-// todo: document how wb_valid will behave for synchronous exceptions, i.e. wb_valid will be 1 (this is for easier interfacing with RVFI)
-// wb_valid will be 0 for interrupted instructions, debug entry, etc.
+  // wb_valid
+  //
+  // - Will be 0 for interrupted instruction and debug entry
+  // - Will be 1 for synchronous exceptions (which is easier to deal with for RVFI); this implies that wb_valid
+  //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
+  // - Will be 1 only for the second phase of a misaligned load/store
 
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1) ||          // Non-LSU instructions always have valid result in WB
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)      // LSU instructions have valid result based on data_rvalid_i

@@ -553,7 +553,7 @@ module cv32e40x_rvfi
       end
 
       // CSR special cases // todo: Explain this circuit; why is there a need for is_exception_wb_q and is_exception_wb_qq?
-      if (is_exception_wb || is_exception_wb_q) begin
+      if (is_exception_wb || is_exception_wb_q) begin // todo: align wit Oystein on naming
         is_exception_wb_q  <= is_exception_wb;
         is_exception_wb_qq <= is_exception_wb_q;
         rvfi_csr_wmask.mstatus <= '0;

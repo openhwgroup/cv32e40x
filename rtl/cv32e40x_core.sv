@@ -48,7 +48,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
-  input  logic [31:0] nmi_addr_i,               // TODO use
+  input  logic [31:0] nmi_addr_i,               // TODO:OK:low use
 
   // Instruction memory interface
   output logic        instr_req_o,
@@ -82,7 +82,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
-  input logic         fencei_flush_ack_i,       // TODO use
+  input logic         fencei_flush_ack_i,       // TODO:OK:low use
 
   // Debug Interface
   input  logic        debug_req_i,
@@ -220,7 +220,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   csr_opcode_e csr_op_id;
 
   // irq signals
-  // TODO:OK Should find a proper suffix for signals from interrupt_controller
+  // TODO:AB Should find a proper suffix for signals from interrupt_controller
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
@@ -253,7 +253,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign m_c_obi_data_if.resp_payload.err    = data_err_i;
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
 
-  assign fencei_flush_req_o = 1'b0; // TODO connect to controller when handshake is implemented
+  assign fencei_flush_req_o = 1'b0; // TODO:OK:low connect to controller when handshake is implemented
 
   assign debug_havereset_o = ctrl_fsm.debug_havereset;
   assign debug_halted_o    = ctrl_fsm.debug_halted;
@@ -683,7 +683,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
-    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK: Needs bypass for 40S?
+    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK:low Needs bypass for 40S?
     
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
@@ -769,7 +769,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Read ports
     .raddr_i            ( rf_raddr_id        ),
-    .rdata_o            ( regfile_rdata_id   ), // todo: get consistent naming
+    .rdata_o            ( regfile_rdata_id   ), // todo:AB get consistent naming
 
     // Write ports
     .waddr_i            ( regfile_waddr_wb      ),
