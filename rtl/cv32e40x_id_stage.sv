@@ -585,12 +585,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
           // Exceptions and special instructions
           id_ex_pipe_o.illegal_insn           <= illegal_insn;
-          id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
-          id_ex_pipe_o.wfi_insn               <= wfi_insn;
-          id_ex_pipe_o.ecall_insn             <= ecall_insn;
-          id_ex_pipe_o.fencei_insn            <= fencei_insn;
-          id_ex_pipe_o.mret_insn              <= mret_insn;
-          id_ex_pipe_o.dret_insn              <= dret_insn;
+
+          // Special instructions. Clear in case of exception or trigger match.
+          // For IF stage exceptions, instruction word may contain a legal instruction
+          // although the fetch failed (buffer not invalidated), so we need to suppress
+          // any decoded special instructions
+          id_ex_pipe_o.ebrk_insn              <= ctrl_byp_i.deassert_we ? 1'b0 : ebrk_insn;
+          id_ex_pipe_o.wfi_insn               <= ctrl_byp_i.deassert_we ? 1'b0 : wfi_insn;
+          id_ex_pipe_o.ecall_insn             <= ctrl_byp_i.deassert_we ? 1'b0 : ecall_insn;
+          id_ex_pipe_o.fencei_insn            <= ctrl_byp_i.deassert_we ? 1'b0 : fencei_insn;
+          id_ex_pipe_o.mret_insn              <= ctrl_byp_i.deassert_we ? 1'b0 : mret_insn;
+          id_ex_pipe_o.dret_insn              <= ctrl_byp_i.deassert_we ? 1'b0 : dret_insn;
 
           id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
         end
