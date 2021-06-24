@@ -405,9 +405,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
 
-  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i; //TODO:OK is this ctrl_fsm_i.halt_wb usage ok or not? And if okay; should it already be part of ready_1_i?
+  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
 
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : resp_valid && valid_1_i; // todo: (cnt_q == 2'b00) should be same as !WB.lsu_en
+  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned
+  // load/store only its second phase is marked as valid.
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : !lsu_misaligned_0_o && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -431,7 +433,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                           1'b1
                      ) && valid_0_i;
 
-// todo: lsu_en_gated should maybe be replaced by valid_0_i
+// todo:AB lsu_en_gated should maybe be replaced by valid_0_i
 
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
@@ -493,12 +495,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to lsu_addr_1_o will be
   // blocked by the controller until the NMI is taken.
-  // TODO:OK: If a store following a load with bus error has dependencies on the load result,
+  // TODO:OK:low If a store following a load with bus error has dependencies on the load result,
     // it may use use an unspecified address and should be avoided for security reasons.
     // The NMI should be taken before this store.
   
   // Folowing block is within the EX stage
-  always_ff @(posedge clk, negedge rst_n) // todo: conditions used here seems different than other WB registers
+  always_ff @(posedge clk, negedge rst_n) // todo:low conditions used here seems different than other WB registers (normally we would use if (ctrl_update))
   begin
     if(rst_n == 1'b0) begin
       lsu_addr_1_o <= 32'h0;
@@ -511,7 +513,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // Validate bus_error on rvalid (WB stage)
-  assign lsu_err_1_o = resp_valid && resp_err; // todo: this gating is a bit weird; all LSU WB stage outputs should only be used when resp_valid = 1
+  assign lsu_err_1_o = resp_valid && resp_err; // todo:low this gating is a bit weird; all LSU WB stage outputs should only be used when resp_valid = 1
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU

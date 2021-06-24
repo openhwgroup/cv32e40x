@@ -129,7 +129,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     rf_we_o    = rf_we_gated;
     rf_waddr_o = id_ex_pipe_i.rf_waddr;
 
-    // TODO: Investigate if these can be made unique (they're currently not)
+    // TODO:low Investigate if these can be made unique (they're currently not)
     if (alu_en_gated)
       rf_wdata_o = alu_result;
     if (mul_en_gated)
@@ -192,7 +192,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   //                                                //
   ////////////////////////////////////////////////////
 
-  // TODO: COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
+  // TODO:low COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
   
   // Inputs A and B are swapped in ID stage.
   // This is done becase the divider utilizes the shifter in the ALU to shift the divisor (div_i.op_b_i), and the ALU
@@ -203,7 +203,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .rst_n              ( rst_n                      ),
 
     // Input IF
-    .data_ind_timing_i  ( 1'b0                       ), // TODO connect to CSR
+    .data_ind_timing_i  ( 1'b0                       ), // TODO:OE:low connect to CSR
     .operator_i         ( id_ex_pipe_i.div_operator  ),
     .op_a_i             ( id_ex_pipe_i.alu_operand_b ), // Inputs A and B are swapped in ID stage.
     .op_b_i             ( id_ex_pipe_i.alu_operand_a ), // Inputs A and B are swapped in ID stage.
@@ -308,7 +308,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // Propagate signals needed for exception handling in WB
-        // TODO:OK: Clock gating of pc if no existing exceptions
+        // TODO:OK:low Clock gating of pc if no existing exceptions
         //          and LSU it not in use
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
@@ -319,7 +319,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
         ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
         ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
-        ex_wb_pipe_o.lsu_mpu_status <= MPU_OK; // TODO:OK: Set to actual MPU status when MPU is implemented on data side.
+        ex_wb_pipe_o.lsu_mpu_status <= MPU_OK; // TODO:OK:low Set to actual MPU status when MPU is implemented on data side.
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
@@ -341,17 +341,17 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // to finish branches without going to the WB stage, ex_valid does not
   // depend on ex_ready.
 
-// todo: wb_ready_i should already be factored into the other ready signals now
+// todo:ab wb_ready_i should already be factored into the other ready signals now
 
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex); // || (id_ex_pipe_i.branch_in_ex); // TODO: This is a simplification for RVFI and has not been verified //TODO: Check if removing branch_in_ex only causes counters to cex 
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex);
 
-  // TODO: Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
+  // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
   assign ex_valid_o = ((id_ex_pipe_i.alu_en && !id_ex_pipe_i.lsu_en && alu_valid) || 
                        (id_ex_pipe_i.alu_en &&  id_ex_pipe_i.lsu_en && alu_valid && lsu_valid_i) ||
                        (id_ex_pipe_i.mul_en && mul_valid) ||
                        (id_ex_pipe_i.div_en && div_valid) || 
                        (id_ex_pipe_i.csr_en && csr_valid_i) || 
-                       previous_exception
+                       previous_exception // todo:ab:remove
                       ) && instr_valid;
   
 endmodule // cv32e40x_ex_stage

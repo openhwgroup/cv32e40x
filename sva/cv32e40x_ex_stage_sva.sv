@@ -34,7 +34,7 @@ module cv32e40x_ex_stage_sva
   input logic           ex_valid_o,  
   input ctrl_fsm_t      ctrl_fsm_i
 );
-/* todo: uncomment and fix
+/* todo:medium uncomment and fix
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)

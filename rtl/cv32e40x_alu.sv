@@ -378,7 +378,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_SLTS,  ALU_SLTU: result_o = {31'b0, comparison_result_o};
 
       // RV32B Zca instructions
-      // TODO: Investigate sharing ALU adder and shifter
+      // TODO:OE: Investigate sharing ALU adder and shifter
       ALU_B_SH1ADD: result_o = (operand_a_i << 1) + operand_b_i;
       ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
       ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
@@ -391,6 +391,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   assign valid_o = valid_i;
   assign ready_o = ready_i;
 
-// todo: div and mult use a ready strategy as follows:  assign ready_o = !valid_i ? 1'b1 : ready_i;
+// todo:AB: div and mult use a ready strategy as follows:  assign ready_o = !valid_i ? 1'b1 : ready_i;
   
-endmodule
+endmodule // cv32e40x_alu

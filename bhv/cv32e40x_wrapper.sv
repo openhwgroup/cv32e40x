@@ -225,7 +225,7 @@ bind cv32e40x_sleep_unit:
         .PMA_CFG(PMA_CFG))
   mpu_if_sva(.*);
 
-  // TODO: Reintroduce once LSU PMA support has been properly implemented in the controller
+  // TODO:low Reintroduce once LSU PMA support has been properly implemented in the controller
   /*
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
@@ -294,8 +294,8 @@ bind cv32e40x_sleep_unit:
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
          .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
-         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ), // todo: should really use further downstream signals, ideally OBI
-         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ), // todo: should really use further downstream signals, ideally OBI
+         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ), // todo:low should really use further downstream signals, ideally OBI
+         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ), // todo:low should really use further downstream signals, ideally OBI
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
