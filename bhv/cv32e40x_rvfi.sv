@@ -25,6 +25,9 @@ module cv32e40x_rvfi
    input logic                                clk_i,
    input logic                                rst_ni,
 
+   //// IF Probes ////
+   input logic [31:0]                         pc_if_i,
+
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
    input logic                                instr_id_valid_i,
@@ -83,7 +86,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         mepc_target_wb_i,
 
    //// CSR Probes ////
-   input csr_num_e                            csr_raddr_i,
+   input                                      csr_num_e csr_raddr_i,
    input                                      Status_t csr_mstatus_n_i,
    input                                      Status_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
@@ -475,10 +478,10 @@ module cv32e40x_rvfi
     end else begin
 
       //// ID Stage ////
-      if(instr_id_valid_i) begin
+      if(instr_id_valid_i && instr_ex_ready_i) begin
         is_debug_entry_id   <= is_debug_entry_if;
         debug    [STAGE_ID] <= is_debug_entry_id;
-        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_id_i + 4; // todo: why +4 (how about compressed instructions; why did pc_if_i not work)?
+        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
         rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
