@@ -52,10 +52,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input              mpu_state_e state_q,
    input logic        mpu_err
    );
-  
-  // Checks for illegal PMA region configuration
-  initial begin : p_mpu_assertions
 
+
+  // Checks for illegal PMA region configuration
+
+  initial begin : p_mpu_assertions
     if (PMA_NUM_REGIONS != 0) begin
       assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
     end
@@ -69,9 +70,14 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
         assert (!PMA_CFG[i].cacheable) else `uvm_error("mpu", "PMA regions configured as I/O cannot be defined as cacheable")
       end
     end
-    
   end
-  
+
+  a_pma_valid_num_regions :
+    assert property (@(posedge clk)
+                     (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
+      else `uvm_error("mpu", "PMA number of regions is badly configured")
+
+
   // Should only give MPU error response during mpu_err_trans_valid
   a_mpu_status_no_obi_rvalid :
     assert property (@(posedge clk)
