@@ -407,7 +407,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i; //TODO:OK is this ctrl_fsm_i.halt_wb usage ok or not? And if okay; should it already be part of ready_1_i?
 
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : resp_valid && valid_1_i; // todo: (cnt_q == 2'b00) should be same as !WB.lsu_en
+  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned
+  // load/store only its second phase is marked as valid.
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : !lsu_misaligned_0_o && resp_valid && valid_1_i; // todo: (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
   // 

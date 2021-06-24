@@ -353,7 +353,7 @@ module cv32e40x_rvfi
 
   logic [63:0] lsu_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic          wb_valid;
+  logic         wb_valid;
   logic         intr_d;
 
   logic         is_debug_entry_if;
@@ -428,9 +428,7 @@ module cv32e40x_rvfi
                   ((rvfi_order - instr_q.order) == 1) && // Is latest instruction
                   (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler
 
-  assign wb_valid = wb_valid_i &&
-                    !lsu_misaligned_ex_i || // Suppress first misaligned access in wb
-                    illegal_insn_wb_i && is_exception_wb; // Illegal instructions are valid in RVFI (w/trap=1) // todo: use brackets in this expression; also this doesn't take into account ebreak, etc.
+  assign wb_valid = wb_valid_i;
 
 
   // Pipeline stage model //
@@ -554,7 +552,7 @@ module cv32e40x_rvfi
         rvfi_pc_wdata <= pc_wdata[STAGE_EX] & ~32'b1;
       end
 
-      // CSR special cases
+      // CSR special cases // todo: Explain this circuit; why is there a need for is_exception_wb_q and is_exception_wb_qq?
       if (is_exception_wb || is_exception_wb_q) begin
         is_exception_wb_q  <= is_exception_wb;
         is_exception_wb_qq <= is_exception_wb_q;

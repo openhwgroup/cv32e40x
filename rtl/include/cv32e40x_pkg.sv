@@ -976,7 +976,7 @@ typedef struct packed {
   logic [11:0]  csr_addr;
   logic [31:0]  csr_wdata;
 
-  // CSR
+  // LSU
   logic         lsu_en;
   mpu_status_e  lsu_mpu_status; // MPU timing on gnt, ready in EX
 

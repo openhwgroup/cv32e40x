@@ -115,6 +115,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1) ||          // Non-LSU instructions always have valid result in WB
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)      // LSU instructions have valid result based on data_rvalid_i
-                    ) && instr_valid; // todo: for misaligned load/store only signal valid during 2nd phase, factor this into lsu_valid_i in the LSU
+                    ) && instr_valid;
   
 endmodule // cv32e40x_wb_stage
