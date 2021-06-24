@@ -193,8 +193,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign rf_we                          = decoder_ctrl_mux.rf_we;                           
   assign csr_en_o                       = decoder_ctrl_mux.csr_en;
   assign csr_op                         = decoder_ctrl_mux.csr_op;                          
-  assign mret_insn_o                    = decoder_ctrl_mux.mret_insn;                     
-  assign dret_insn_o                    = decoder_ctrl_mux.dret_insn;                     
   assign lsu_en                         = decoder_ctrl_mux.lsu_en;                        
   assign lsu_we_o                       = decoder_ctrl_mux.lsu_we;                       
   assign lsu_type_o                     = decoder_ctrl_mux.lsu_type;                     
@@ -202,13 +200,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign lsu_reg_offset_o               = decoder_ctrl_mux.lsu_reg_offset;               
   assign lsu_atop_o                     = decoder_ctrl_mux.lsu_atop;                     
   assign lsu_prepost_useincr_o          = decoder_ctrl_mux.lsu_prepost_useincr;               
-  assign illegal_insn_o                 = decoder_ctrl_mux.illegal_insn;        
-  assign ebrk_insn_o                    = decoder_ctrl_mux.ebrk_insn;                     
-  assign ecall_insn_o                   = decoder_ctrl_mux.ecall_insn;                    
-  assign wfi_insn_o                     = decoder_ctrl_mux.wfi_insn;                      
-  assign fencei_insn_o                  = decoder_ctrl_mux.fencei_insn;                   
 
-
+  // Suppress control signals
   assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;
   assign mul_en_o             = deassert_we_i ? 1'b0        : mul_en;
   assign div_en_o             = deassert_we_i ? 1'b0        : div_en;
@@ -216,6 +209,16 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op;
   assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
   assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
+
+  // Suppress special instruction/illegal instruction bits
+  assign mret_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.mret_insn;
+  assign dret_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.dret_insn;
+  assign ebrk_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.ebrk_insn;
+  assign ecall_insn_o         = deassert_we_i ? 1'b0 : decoder_ctrl_mux.ecall_insn;
+  assign wfi_insn_o           = deassert_we_i ? 1'b0 : decoder_ctrl_mux.wfi_insn;
+  assign fencei_insn_o        = deassert_we_i ? 1'b0 : decoder_ctrl_mux.fencei_insn;
+  assign illegal_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
+
 
   assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
   assign rf_we_raw_o              = rf_we;
