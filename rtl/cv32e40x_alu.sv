@@ -323,11 +323,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                                   |_|           //
   /////////////////////////////////////////////////////////////////////
 
-  
   logic [31:0] div_clz_data_rev;
+  logic [31:0] clz_data_in;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
-  
+
+  assign clz_data_in = (operator_i == ALU_B_CTZ) ? div_clz_data_i : div_clz_data_rev;
+
   generate
     genvar l;
     for(l = 0; l < 32; l++)
@@ -335,10 +337,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       assign div_clz_data_rev[l] = div_clz_data_i[31-l];
     end
   endgenerate
-  
+
   cv32e40x_ff_one ff_one_i
   (
-    .in_i        ( div_clz_data_rev ),
+    .in_i        ( clz_data_in ),
     .first_one_o ( ff1_result ),
     .no_ones_o   ( ff_no_one  )
   );
@@ -382,6 +384,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH1ADD: result_o = (operand_a_i << 1) + operand_b_i;
       ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
       ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
+
+      ALU_B_CLZ, ALU_B_CTZ: result_o = div_clz_result_o;
 
       default: ; // default case to suppress unique warning
     endcase

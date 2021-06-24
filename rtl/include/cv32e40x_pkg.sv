@@ -65,17 +65,17 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
 {
  ALU_ADD   = 5'b01000,
  ALU_SUB   = 5'b01001,
- 
+
  ALU_XOR   = 5'b01111,
  ALU_OR    = 5'b01110,
  ALU_AND   = 5'b00110,
 
-// Shifts
+ // Shifts
  ALU_SRA   = 5'b00100,
  ALU_SRL   = 5'b00101,
  ALU_SLL   = 5'b00111,
 
-// Comparisons
+ // Comparisons
  ALU_LTS   = 5'b00000,
  ALU_LTU   = 5'b00001,
  ALU_GES   = 5'b01010,
@@ -83,14 +83,32 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_EQ    = 5'b01100,
  ALU_NE    = 5'b01101,
 
-// Set Lower Than operations
+ // Set Lower Than operations
  ALU_SLTS  = 5'b00010,
  ALU_SLTU  = 5'b00011,
 
-  // B, Zba
+ // B, Zba
  ALU_B_SH1ADD = 5'b11100,
  ALU_B_SH2ADD = 5'b11101,
- ALU_B_SH3ADD = 5'b11110
+ ALU_B_SH3ADD = 5'b11110,
+
+ // B, Zbb
+ ALU_B_CLZ      = 5'b10000,
+ ALU_B_CTZ      = 5'b10001,
+ ALU_B_CPOP     = 5'b10010
+
+// ALU_B_MIN
+// ALU_B_MINU
+// ALU_B_MAXU
+// ALU_B_SEXT_B
+// ALU_B_SEXT_H
+// ALU_B_ZEXT_H
+// ALU_B_ANDN
+// ALU_B_ORN
+// ALU_B_ROR
+// ALU_B_RORI
+// ALU_B_REV8
+// ALU_B_ORC_B
 } alu_opcode_e;
 
   

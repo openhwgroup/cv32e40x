@@ -52,13 +52,13 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
     decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
     decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
     decoder_ctrl_o.alu_en           = 1'b1;
-    
+
     unique case (instr_rdata_i[6:0])
-     
+
       OPCODE_OP: begin
 
         unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
-          
+
           // Supported RV32B Zca instructions
           {7'b001_0000, 3'b010}: begin // Shift left by 1 and add (sh1add)
             if (RV32B_ZBA) begin
@@ -78,7 +78,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator = ALU_B_SH3ADD;
             end
           end
-          
+
           default: begin
             // No match
             decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
@@ -86,12 +86,41 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
         endcase
 
       end // case: OPCODE_OP
-      
+
+
+      OPCODE_OPIMM: begin
+
+        unique case ({instr_rdata_i[31:25], instr_rdata_i[24:20], instr_rdata_i[14:12]})
+          {7'b011_0000, 5'b0_0000, 3'b001} : begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CLZ;
+            end
+          end
+          {7'b011_0000, 5'b0_0001, 3'b001} : begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CTZ;
+            end
+          end
+          {7'b011_0000, 5'b0_0010, 3'b001} : begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CPOP;
+            end
+          end
+          default: begin
+            // No match
+            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+          end
+        endcase
+      end // case: OPCODE_OPIMM
+
       default: begin
         // No match
         decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
       end
-      
+
     endcase // unique case (instr_rdata_i[6:0])
     
   end // always_comb

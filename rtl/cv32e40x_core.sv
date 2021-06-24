@@ -99,7 +99,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;
-  localparam b_ext_e B_EXT       = NONE;
+  localparam b_ext_e B_EXT       = ZBA_ZBB_ZBS;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
