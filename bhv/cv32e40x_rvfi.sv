@@ -544,7 +544,7 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      if (insn_ebrk_wb_i || insn_ecall_wb_i || insn_fencei_wb_i) begin //ebreaks, ecall, fence.i
+      if (insn_ebrk_wb_i || insn_ecall_wb_i) begin //ebreaks, ecall
         rvfi_pc_wdata <= exception_target_wb_i & ~32'b1;
       end else if (insn_mret_wb_i) begin // mret
         rvfi_pc_wdata <= mepc_target_wb_i & ~32'b1;
