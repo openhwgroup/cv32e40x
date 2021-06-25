@@ -35,6 +35,7 @@ module cv32e40x_controller_fsm_sva
   input ctrl_fsm_t      ctrl_fsm_o,
   input logic           jump_taken_id,
   input logic           branch_taken_ex,
+  input logic           branch_decision_ex_i,
   input ctrl_state_e    ctrl_fsm_cs,
   input ctrl_state_e    ctrl_fsm_ns,
   input logic [1:0]     lsu_outstanding_cnt,
@@ -57,7 +58,27 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk)
                      (jump_taken_id) |=> (!jump_taken_id))
       else `uvm_error("controller", "Two jumps back-to-back are taken")
-*/  
+*/
+
+
+
+  // Check that xret does not coincide with CSR write (to avoid using wrong return address)
+  // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
+  // as its write action happens before the xret CSR usage
+  property p_xret_csr;
+    @(posedge clk) disable iff (!rst_n)
+      (ctrl_fsm_o.pc_set && ((ctrl_fsm_o.pc_mux == PC_MRET) || (ctrl_fsm_o.pc_mux == PC_DRET))) |->
+                                (!(ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.csr_en && (ex_wb_pipe_i.csr_op != CSR_OP_READ)));
+  endproperty
+
+  a_xret_csr : assert property(p_xret_csr) else `uvm_error("controller", "Assertion a_xret_csr failed")
+
+  // make sure that branch decision is valid when jumping
+  a_br_decision :
+    assert property (@(posedge clk)
+                     (id_ex_pipe_i.branch_in_ex) |-> (branch_decision_ex_i !== 1'bx) )
+      else begin `uvm_warning("controller", $sformatf("%t, Branch decision is X in module %m", $time)); end
+
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :
     assert property (@(posedge clk)
@@ -77,14 +98,14 @@ module cv32e40x_controller_fsm_sva
       else `uvm_error("controller", "Interrupt taken while oustanding transactions are pending")
 
   // Ensure <stage>.instr_valid is zero following a kill_<prev_stage>
- /* TODO:OK Failing when bubble is inserted in ID (id_ready_o==0) when WFI is in EX. 
-            Will investigate how to solve
+ /* TODO:OK:low Failing when bubble is inserted in ID (id_ready_o==0) when WFI is in EX. 
+            Will investigate how to solve. Agreed that this assertion is maybe too strict. We only need to guarantee that if a stage is killed, that the instruction in that stage never reaches the following stage with instr_valid = 1 (it doesn't need instr_valid of the next stage 0 in the following cycle.
   a_kill_if :
   assert property (@(posedge clk)
                     (ctrl_fsm_o.kill_if) |=> (if_id_pipe_i.instr_valid == 1'b0) )
     else `uvm_error("controller", "if_id_pipe.instr_valid not zero after kill_if")
 */
-/* TODO:OK Failing when a DIV instruction is being executed
+/* TODO:OK:low Failing when a DIV instruction is being executed
            Causes ex_ready to be 0. Will be fixed then divider is interruptable
   a_kill_id :
   assert property (@(posedge clk)

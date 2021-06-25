@@ -51,7 +51,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  ex_wb_pipe_t ex_wb_pipe_i,
 
   // LSU
-  input  logic        lsu_misaligned_i, // todo: proper postfix
+  input  logic        lsu_misaligned_i, // todo:ab proper postfix
   input  logic        lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
 
@@ -93,14 +93,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,               // WB stage is ready
 
   input  logic        lsu_en_wb_i,              // LSU data is written back in WB
-  input  logic        obi_data_req_i,           // OBI bus data request (EX) // todo: Need to discuss if this is the signal we should use (can LSU experience break of its protocol)?
+  input  logic        obi_data_req_i,           // OBI bus data request (EX) // todo: Should look at 'trans' (goal (please check if true) it to not break a multicycle LSU instruction or already committed load/store; that cannot be judged by only looking at the OBI signals)
 
   // Outputs
   output ctrl_byp_t   ctrl_byp_o,
   output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
 );
 
-  
   // Main FSM and debug FSM
   cv32e40x_controller_fsm controller_fsm_i
   (

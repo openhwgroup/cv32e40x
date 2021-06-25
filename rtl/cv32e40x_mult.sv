@@ -23,8 +23,7 @@
 // Description:    Multiplier unit.                                           //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-//TODO: Document how many writebacks happen for a multicycle mult?
-//      If not 1, interrupts might not work correctly
+
 module cv32e40x_mult import cv32e40x_pkg::*;
 (
   input  logic        clk,
@@ -119,7 +118,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     case (mulh_state)
       MUL_ALBL: begin
         ready_o = 1'b1;
-        if(valid_i) begin
+        if (valid_i) begin
           if (operator_i == MUL_H) begin
             // Multicycle multiplication
             mulh_shift      = 1'b1;
@@ -135,7 +134,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       MUL_ALBH: begin
-        if(!valid_i) begin
+        if (!valid_i) begin
           mulh_state_next = MUL_ALBL;
           ready_o         = 1'b1;
           valid_o         = 1'b0;
@@ -148,7 +147,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       MUL_AHBL: begin
-        if(!valid_i) begin
+        if (!valid_i) begin
           mulh_state_next = MUL_ALBL;
           ready_o         = 1'b1;
           valid_o         = 1'b0;
@@ -162,7 +161,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       MUL_AHBH: begin
-        if(!valid_i) begin
+        if (!valid_i) begin
           mulh_state_next = MUL_ALBL;
           ready_o = 1'b1;
           valid_o = 1'b0;
@@ -183,14 +182,14 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     endcase
   end // always_comb
 
-  //TODO: Area increased after introducing killable mult (valid_i -> !valid_i during mult), investigate why and fix.
+  //TODO:medium Area increased after introducing killable mult (valid_i -> !valid_i during mult), investigate why and fix.
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-      mulh_acc     <=  '0;
-      mulh_state   <= MUL_ALBL;
+      mulh_acc   <=  '0;
+      mulh_state <= MUL_ALBL;
     end else begin
-      mulh_acc     <= mulh_acc_next;
-      mulh_state   <= mulh_state_next;
+      mulh_acc   <= mulh_acc_next;
+      mulh_state <= mulh_state_next;
     end
   end
 

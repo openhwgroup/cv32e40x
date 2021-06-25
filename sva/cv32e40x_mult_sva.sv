@@ -57,7 +57,7 @@ module cv32e40x_mult_sva
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
-  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO: could valid_o be used directly here?
+  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO:low could valid_o be used directly here?
 
   logic [31:0] mulh_result;
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
@@ -88,7 +88,7 @@ module cv32e40x_mult_sva
   logic         ready;
   assign ready = ready_o && ready_i;
 
-  // TODO: This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
+  // TODO:low This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
   //       Commented this away as it fails for the new controller. We should revisit this assertion
   /*
   a_enable_constant_when_mulh_active:
@@ -96,7 +96,7 @@ module cv32e40x_mult_sva
                      !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
   */
 
-  // TODO: These should depend on valid_i instead of !ready (valid_i |=> $stable()..
+  // TODO:low These should depend on valid_i instead of !ready (valid_i |=> $stable()..
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
                      !ready |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")

@@ -60,7 +60,7 @@ package cv32e40x_pkg;
 
 parameter ALU_OP_WIDTH = 5;
 
-  // TODO: Could a smarter encoding be used here?
+  // TODO:low Could a smarter encoding be used here?
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
  ALU_ADD   = 5'b01000,
@@ -959,9 +959,8 @@ typedef struct packed {
   logic         wfi_insn;
   logic         ecall_insn;
   logic         fencei_insn;
-  logic         mret_insn; // TODO:OK: May be removed if mret is handled by the pipeline and not the controller
-  logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
-
+  logic         mret_insn;
+  logic         dret_insn;
 } id_ex_pipe_t;
 
 // EX/WB pipeline
@@ -976,7 +975,7 @@ typedef struct packed {
   logic [11:0]  csr_addr;
   logic [31:0]  csr_wdata;
 
-  // CSR
+  // LSU
   logic         lsu_en;
   mpu_status_e  lsu_mpu_status; // MPU timing on gnt, ready in EX
 
@@ -992,8 +991,8 @@ typedef struct packed {
   logic         wfi_insn;
   logic         ecall_insn;
   logic         fencei_insn;
-  logic         mret_insn; // TODO:OK: May be removed if mret is handled by the pipeline and not the controller
-  logic         dret_insn; // TODO:OK: May be removed if dret is handled by the pipeline and not the controller
+  logic         mret_insn;
+  logic         dret_insn;
 } ex_wb_pipe_t;
 
 // Performance counter events
@@ -1021,6 +1020,7 @@ typedef struct packed {
   logic        csr_stall;
   logic        wfi_stall;
   logic        deassert_we;           // Deassert write enable for next instruction
+  logic        deassert_we_special;   // Deassert write enable and special insn bits
 } ctrl_byp_t;
 
 // Controller FSM outputs

@@ -20,7 +20,7 @@
   `include "cv32e40x_decoder_sva.sv"
   `include "cv32e40x_div_sva.sv"
   `include "cv32e40x_if_stage_sva.sv"
-//  `include "cv32e40x_id_stage_sva.sv" // todo: why is this excluded (there is no instance of these assertions)
+  `include "cv32e40x_id_stage_sva.sv"
   `include "cv32e40x_ex_stage_sva.sv"
   `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
@@ -120,14 +120,13 @@ module cv32e40x_wrapper
       .*
     );
 
-/* todo: re-enable ID stage assertions
 
   bind cv32e40x_id_stage:
     core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
     (
       .*
     );
-*/
+
 
   bind cv32e40x_ex_stage:
     core_i.ex_stage_i cv32e40x_ex_stage_sva ex_stage_sva
@@ -228,7 +227,7 @@ bind cv32e40x_sleep_unit:
              .instr_memtype_o(core_i.instr_memtype_o),
              .*);
 
-  // TODO: Reintroduce once LSU PMA support has been properly implemented in the controller
+  // TODO:low Reintroduce once LSU PMA support has been properly implemented in the controller
   /*
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
@@ -297,8 +296,8 @@ bind cv32e40x_sleep_unit:
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
          .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
-         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ), // todo: should really use further downstream signals, ideally OBI
-         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ), // todo: should really use further downstream signals, ideally OBI
+         .lsu_addr_ex_i            ( core_i.load_store_unit_i.trans.addr                                  ), // todo:low should really use further downstream signals, ideally OBI
+         .lsu_wdata_ex_i           ( core_i.load_store_unit_i.trans.wdata                                 ), // todo:low should really use further downstream signals, ideally OBI
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.id_ex_pipe_i.lsu_misaligned                 ),
 
          .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
@@ -312,11 +311,13 @@ bind cv32e40x_sleep_unit:
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
 
          // CSRs
-         .csr_raddr_i              ( core_i.cs_registers_i.csr_raddr                                      ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
          .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),
-         .csr_misa_i               ( core_i.cs_registers_i.MISA_VALUE                                     ),
+         .csr_misa_n_i             ( core_i.cs_registers_i.MISA_VALUE                                     ), // WARL
+         .csr_misa_q_i             ( core_i.cs_registers_i.MISA_VALUE                                     ),
+         .csr_misa_we_i            ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_MISA)                        ),
          .csr_mie_q_i              ( core_i.cs_registers_i.mie_q                                          ),
          .csr_mie_n_i              ( core_i.cs_registers_i.mie_n                                          ),
          .csr_mie_we_i             ( core_i.cs_registers_i.mie_we                                         ),
@@ -338,14 +339,20 @@ bind cv32e40x_sleep_unit:
          .csr_mcause_q_i           ( core_i.cs_registers_i.mcause_q                                       ),
          .csr_mcause_n_i           ( core_i.cs_registers_i.mcause_n                                       ),
          .csr_mcause_we_i          ( core_i.cs_registers_i.mcause_we                                      ),
-         .csr_mip_i                ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_n_i              ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_q_i              ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_we_i             ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_MIP)                         ),
          .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ),
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
          .csr_tdata2_n_i           ( core_i.cs_registers_i.tmatch_value_n                                 ),
          .csr_tdata2_q_i           ( core_i.cs_registers_i.tmatch_value_q                                 ),
          .csr_tdata2_we_i          ( core_i.cs_registers_i.tmatch_value_we                                ),
-         .csr_tinfo_i              ( core_i.cs_registers_i.tinfo_types                                    ),
+         .csr_tinfo_n_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),
+         .csr_tinfo_q_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),
+         .csr_tinfo_we_i           ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_TINFO)                       ),
          .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
@@ -359,7 +366,9 @@ bind cv32e40x_sleep_unit:
          .csr_dscratch1_q_i        ( core_i.cs_registers_i.dscratch1_q                                    ),
          .csr_dscratch1_n_i        ( core_i.cs_registers_i.dscratch1_n                                    ),
          .csr_dscratch1_we_i       ( core_i.cs_registers_i.dscratch1_we                                   ),
+         .csr_mhpmcounter_n_i      ( '0                               /* TODO:Connect when implemented */ ),
          .csr_mhpmcounter_q_i      ( core_i.cs_registers_i.mhpmcounter_q                                  ),
+         .csr_mhpmcounter_we_i     ( '0                               /* TODO:Connect when implemented */ ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      )

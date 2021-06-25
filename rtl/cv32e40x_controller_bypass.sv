@@ -88,9 +88,14 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   //                                                         //
   /////////////////////////////////////////////////////////////
 
-  //TODO:OK: This CSR stall check is very restrictive
+  //TODO:OK:low This CSR stall check is very restrictive
   //         Should only check EX vs WB, and also CSR/rd addr
   // Detect when a CSR insn is in ID
+  // Note that hazard detection uses the registered instr_valid signals. Usage of the local
+  // instr_valid signals would lead to a combinatorial loop via the halt signal.
+
+  // todo:low:Above loop reasoning only applies to halt_id; for other pipeline stages a local instr_valid signal can maybe be used.
+
   assign csr_read_in_id = (csr_en_id_i || mret_id_i) && if_id_pipe_i.instr_valid;
 
   // Detect when a CSR insn  in in EX or WB
@@ -99,7 +104,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
                               ex_wb_pipe_i.instr_valid);
 
   // Stall ID when WFI is active in EX.
-  // Used to create an interruptible bubble after WFI // todo: only needed for load/store following WFI; should actually halt EX when WFI in WB
+  // Used to create an interruptible bubble after WFI // todo:low only needed for load/store following WFI; should actually halt EX when WFI in WB
   assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.wfi_insn && id_ex_pipe_i.instr_valid);
 
   genvar i;
@@ -130,14 +135,15 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   always_comb
   begin
-    ctrl_byp_o.load_stall  = 1'b0;
-    ctrl_byp_o.deassert_we = 1'b0;
-    ctrl_byp_o.csr_stall   = 1'b0;
+    ctrl_byp_o.load_stall          = 1'b0;
+    ctrl_byp_o.deassert_we         = 1'b0;
+    ctrl_byp_o.deassert_we_special = 1'b0;
+    ctrl_byp_o.csr_stall           = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
     if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || debug_trigger_match_id_i) begin
-      ctrl_byp_o.deassert_we = 1'b1;
+      ctrl_byp_o.deassert_we_special = 1'b1;
     end
 
     // Stall because of load operation

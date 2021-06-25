@@ -373,7 +373,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   decoder_i
   (
     // controller related signals
-    .deassert_we_i                   ( ctrl_byp_i.deassert_we    ),
+    .deassert_we_i                   ( ctrl_byp_i.deassert_we         ),
+    .deassert_we_special_i           ( ctrl_byp_i.deassert_we_special ),
 
     .illegal_insn_o                  ( illegal_insn              ),
     .ebrk_insn_o                     ( ebrk_insn                 ),
@@ -569,7 +570,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
 
           // Propagate signals needed for exception handling in WB
-          // TODO:OK: Clock gating of pc if no existing exceptions
+          // TODO:OK:low Clock gating of pc if no existing exceptions
           //          and LSU it not in use
           id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
 
@@ -620,7 +621,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
   assign id_valid = instr_valid || multi_cycle_id_stall;
 
-  // todo: would want to use the following expression, but this is not SEC clean; need to investigate
+  // todo:AB would want to use the following expression, but this is not SEC clean; need to investigate
   // assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
 endmodule // cv32e40x_id_stage

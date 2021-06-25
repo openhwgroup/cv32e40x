@@ -127,13 +127,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic pending_interrupt;
 
   // Flags for allowing interrupt and debug
-  // TODO:OK Add flag for exception_allowed
+  // TODO:OK:low Add flag for exception_allowed
   logic interrupt_allowed;
   logic debug_allowed;
   logic single_step_allowed;
   
 // Data request has been clocked without insn moving to WB
-  logic obi_data_req_q;
+  logic obi_data_req_q; // todo: should really look at 'trans'; rename accordingly
 
   logic [4:0] exc_cause; // id of taken interrupt
 
@@ -142,24 +142,28 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   ////////////////////////////////////////////////////////////////////
 
+// todo: consider assertions like: jump_taken_id |-> ID's local instr_valid = 1
+
   // ID stage
   // A jump is taken in ID for jump instructions, and also for mret instructions
-  assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) || mret_id_i) && 
-                          if_id_pipe_i.instr_valid && !ctrl_byp_i.jr_stall; // && !ctrl_byp_i.csr_stall_i; // TODO: Do not jump when csr_stall (non-SEC); note adding csr_stall seems an incomplete patch
-
+  // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
+  // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
+  // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
+  assign jump_taken_id = (((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) && !ctrl_byp_i.jr_stall) ||
+                         (mret_id_i && !ctrl_byp_i.csr_stall)) &&
+                         if_id_pipe_i.instr_valid;
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
   assign branch_taken_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
 
-  // TODO:OK: Add missing exception types when implemented
+  // TODO:OK:low Add missing exception types when implemented
   // Exception in WB if the following evaluates to 1
   assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK) ||
                             ex_wb_pipe_i.instr.bus_resp.err           ||
                             ex_wb_pipe_i.illegal_insn                 ||
                             ex_wb_pipe_i.ecall_insn                   ||
                             ex_wb_pipe_i.ebrk_insn) && ex_wb_pipe_i.instr_valid;
-                            
-                            
+
   // Set exception cause
   assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK ? EXC_CAUSE_INSTR_FAULT     :
                               ex_wb_pipe_i.instr.bus_resp.err         ? EXC_CAUSE_INSTR_BUS_FAULT :
@@ -221,24 +225,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
-  // TODO:OK: May allow interuption of Zce to idempotent memories
-  // TODO: Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid.
+  // TODO:OK:low May allow interuption of Zce to idempotent memories
+  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid.
   assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid; // todo: Not correct; just put something here such that minstret counter will not get optimized away (and did not use wb_valid to avoid long timing path)
-  assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.branch = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.branch_taken = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.compressed = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.jr_stall = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.imiss = 1'b0; // todo
-  assign ctrl_fsm_o.mhpmevent.ld_stall = 1'b0; // todo
+  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid; // todo:low Not correct; just put something here such that minstret counter will not get optimized away (and did not use wb_valid to avoid long timing path)
+  assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.branch = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.branch_taken = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.compressed = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.jr_stall = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.imiss = 1'b0; // todo:low
+  assign ctrl_fsm_o.mhpmevent.ld_stall = 1'b0; // todo:low
 
-/* todo: Below are the original events definitions; check which ones to keep. If needed the actual definition can be changed (there is no backward compatibility requirement).
+/* todo:low Below are the original events definitions; check which ones to keep. If needed the actual definition can be changed (there is no backward compatibility requirement).
   // Performance Counter Events
   //TODO:OK: Fix counters to reflect new controller behaviour
   // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
@@ -350,7 +354,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_ns = FUNCTIONAL;
       end
       FUNCTIONAL: begin
-        // NMI // TODO:OK: Implement
+        // NMI // TODO:OK:low Implement
         if (pending_nmi) begin
         // Debug entry (except single step which is handled later)
         end else if (pending_debug) begin
@@ -403,13 +407,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               single_step_halt_if_n = 1'b0;
             end
           end else begin // !interrupt_allowed
-            // Halt ID to allow interrupt @bubble later
-            // TODO: Consider effect of halting EX instead, could gain 1 cycle latency
+            // Halt ID to allow interrupt on bubble later. This assumes that it is okay to interrupt
+            // any multi-cycle ID instruction in the middle.
+            // TODO:low Consider effect of halting EX instead, could gain 1 cycle latency
             ctrl_fsm_o.halt_id = 1'b1;
           end
         end else begin
           if (exception_in_wb) begin
-            // TODO:OK: Must check if we are allowed to take exceptions
+            // TODO:OK:low Must check if we are allowed to take exceptions
             //          Applies to PMA/PMP on misaligned
             // Kill all stages
             ctrl_fsm_o.kill_if = 1'b1;
@@ -443,7 +448,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_set  = 1'b1;
             ctrl_fsm_o.pc_mux  = PC_FENCEI;
 
-            //TODO:OK: Drive fence.i interface
+            //TODO:OK:low Drive fence.i interface
           end else if (dret_in_wb) begin
             // Dret takes jump from WB stage
             // Kill previous stages and jump to pc in dpc
@@ -459,22 +464,22 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
           
-          end else if (branch_taken_ex) begin // todo: seems like branch might get taken multiple times if preceded by stalling load/store
+          end else if (branch_taken_ex) begin // todo:high should only be taken exactly once (re-run cycle count / coremark benchmark with wait states); will not be sec clean
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;  
 
-            ctrl_fsm_o.pc_mux   = PC_BRANCH;
-            ctrl_fsm_o.pc_set   = 1'b1;
+            ctrl_fsm_o.pc_mux  = PC_BRANCH;
+            ctrl_fsm_o.pc_set  = 1'b1;
             
-          end else if (jump_taken_id) begin
+          end else if (jump_taken_id) begin // todo:high should only be taken exactly once (also measure impact, but measure branch taken impact first); will not be sec clean
             // kill_if
             ctrl_fsm_o.kill_if = 1'b1;
 
             // Jumps in ID (JAL, JALR, mret, uret, dret)
             if (mret_id_i) begin
-              ctrl_fsm_o.pc_mux      = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              ctrl_fsm_o.pc_set      = 1'b1; //TODO:OK: Could have a CSR write to mepc previous to this, add stall/bypass (non-SEC).
-              ctrl_fsm_o.exc_pc_mux  = EXC_PC_DBE; // Only used in debug mode
+              ctrl_fsm_o.pc_mux     = debug_mode_q ? PC_EXCEPTION : PC_MRET;
+              ctrl_fsm_o.pc_set     = 1'b1; //TODO:OK:high Could have a CSR write to mepc previous to this, add stall/bypass (non-SEC).
+              ctrl_fsm_o.exc_pc_mux = EXC_PC_DBE; // Only used in debug mode
             end else begin
               ctrl_fsm_o.pc_mux = PC_JUMP;
               ctrl_fsm_o.pc_set = 1'b1;
@@ -518,6 +523,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         single_step_halt_if_n = 1'b0;
 
         // Kill stages
+        // todo:ok: single step qualifier below must also check debug_mode_q
+        // ebreak in debug mode with debug_single_step_i (from dcsr) should kill id/ex
         ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
         ctrl_fsm_o.kill_id = !debug_single_step_i; // Should not be anything to kill for single step
         ctrl_fsm_o.kill_ex = !debug_single_step_i; // Should not be anything to kill for single step
