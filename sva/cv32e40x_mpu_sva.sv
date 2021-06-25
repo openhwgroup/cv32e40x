@@ -35,8 +35,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        execute_access_i,
    input logic        bus_trans_bufferable,
    input logic        bus_trans_cacheable,
+
+   // PMA signals
    input logic        pma_err,
    input logic [31:0] pma_addr,
+   input pma_region_t pma_cfg,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -82,6 +85,15 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
       else `uvm_error("mpu", "PMA number of regions is badly configured")
 
+  a_pma_region_match :
+    assert property (@(posedge clk)
+                     !pma_err
+                     |->
+                     ({pma_cfg.word_addr_low, 2'b00} <= pma_addr)
+                     && (pma_addr < {pma_cfg.word_addr_high, 2'b00}))
+                     //TODO split in two properties?
+      else `uvm_error("mpu", "PMA region match doesn't fit the bounds")
+
 
   // Cover PMA signals
 
@@ -92,12 +104,14 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     cp_bufferable: coverpoint bus_trans_bufferable;  // TODO is bus_trans right?
     cp_cacheable: coverpoint bus_trans_cacheable;  // TODO is bus_trans right?
     cp_atomic: coverpoint atomic_access_i;
-    cp_addr: coverpoint pma_addr[31:2] {
+    cp_addr: coverpoint pma_addr[31:2] {  // TODO check if spec justifies this
       bins min = {0};
       bins max = {30'h 3FFF_FFFF};
       bins range[3] = {[1 : 30'h 3FFF_FFFe]};
       illegal_bins il = default;
       }
+
+    //TODO crosses
   endgroup
 
   cg_pma cgpma = new;
