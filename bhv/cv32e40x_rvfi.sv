@@ -372,9 +372,6 @@ module cv32e40x_rvfi
   logic         is_debug_entry_id;
   logic         is_jump_id;
   logic         is_branch_ex;
-  logic         is_exception_wb;
-  logic         is_exception_wb_q;
-  logic         is_exception_wb_qq;
   logic         is_dret_wb;
   logic         branch_taken_ex;
 
@@ -406,7 +403,6 @@ module cv32e40x_rvfi
   assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
   assign is_jump_id        = (pc_mux_i == PC_JUMP);
   assign is_branch_ex      = (pc_mux_i == PC_BRANCH);
-  assign is_exception_wb   = (pc_mux_i == PC_EXCEPTION);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
   assign branch_taken_ex   = !lsu_en_ex_i &&
@@ -456,10 +452,7 @@ module cv32e40x_rvfi
       mem_wmask          <= '0;
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
-      ex_csr_rdata  <= '0;
-
-      is_exception_wb_q  <= 1'b0;
-      is_exception_wb_qq <= 1'b0;
+      ex_csr_rdata       <= '0;
 
       rvfi_dbg           <= '0;
       rvfi_valid         <= 1'b0;
@@ -551,11 +544,6 @@ module cv32e40x_rvfi
         rvfi_mem_wdata <= ex_mem_wdata;
       end
 
-      if (csr_mstatus_we_i) begin
-        rvfi_csr_wdata.mstatus <= rvfi_csr_wdata_d.mstatus;
-        rvfi_csr_wmask.mstatus <= rvfi_csr_wmask_d.mstatus;
-      end
-
       // Set expected next PC, half-word aligned
       if (insn_ebrk_wb_i || insn_ecall_wb_i) begin //ebreaks, ecall
         rvfi_pc_wdata <= exception_target_wb_i & ~32'b1;
@@ -565,21 +553,7 @@ module cv32e40x_rvfi
         rvfi_pc_wdata <= pc_wdata[STAGE_EX] & ~32'b1;
       end
 
-      // CSR special cases // todo: Explain this circuit; why is there a need for is_exception_wb_q and is_exception_wb_qq?
-      if (is_exception_wb || is_exception_wb_q) begin // todo: align wit Oystein on naming
-        is_exception_wb_q  <= is_exception_wb;
-        is_exception_wb_qq <= is_exception_wb_q;
-        rvfi_csr_wmask.mstatus <= '0;
-      end else if (is_exception_wb_qq) begin
-        if (wb_valid_i || insn_mret_wb_i || (lsu_rvalid_wb_i && lsu_en_wb_i)) begin
-          is_exception_wb_qq <= 1'b0;
-          rvfi_csr_wdata.mstatus <= csr_mstatus_q_i; // Take value already stored in mstatus
-          rvfi_csr_wmask.mstatus <= '1;
-        end else begin
-          is_exception_wb_qq <= 1'b1;
-          rvfi_csr_wmask.mstatus <= '0;
-        end
-      end
+      // CSR special cases
 
       if (csr_debug_csr_save_i && rvfi_valid) begin
         rvfi_csr_wmask.dcsr <= csr_dcsr_we_i ? '1 : '0;
