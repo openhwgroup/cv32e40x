@@ -19,6 +19,18 @@
 //               Halfdan Bechmann <halfdan.bechmann@silabs.com>
 
 package cv32e40x_rvfi_pkg;
+  import cv32e40x_pkg::*;
+
+  // RVFI only supports MHPMCOUNTER_WIDTH == 64
+  parameter MHPMCOUNTER_WORDS  = MHPMCOUNTER_WIDTH/32;
+
+  typedef struct packed { // Autonomously updated CSRs
+    logic [31:0] mcycle;
+    logic [31:0] mcycleh;
+    logic [31:0] cycle;
+    logic [31:0] cycleh;
+    logic [31:0] mip;
+  } rvfi_auto_csr_map_t;
 
   typedef struct packed {
     logic        [31:0] mstatus;

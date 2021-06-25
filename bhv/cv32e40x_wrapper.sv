@@ -309,11 +309,13 @@ bind cv32e40x_sleep_unit:
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
 
          // CSRs
-         .csr_raddr_i              ( core_i.cs_registers_i.csr_raddr                                      ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
          .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),
-         .csr_misa_i               ( core_i.cs_registers_i.MISA_VALUE                                     ),
+         .csr_misa_n_i             ( core_i.cs_registers_i.MISA_VALUE                                     ), // WARL
+         .csr_misa_q_i             ( core_i.cs_registers_i.MISA_VALUE                                     ),
+         .csr_misa_we_i            ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_MISA)                        ),
          .csr_mie_q_i              ( core_i.cs_registers_i.mie_q                                          ),
          .csr_mie_n_i              ( core_i.cs_registers_i.mie_n                                          ),
          .csr_mie_we_i             ( core_i.cs_registers_i.mie_we                                         ),
@@ -335,14 +337,20 @@ bind cv32e40x_sleep_unit:
          .csr_mcause_q_i           ( core_i.cs_registers_i.mcause_q                                       ),
          .csr_mcause_n_i           ( core_i.cs_registers_i.mcause_n                                       ),
          .csr_mcause_we_i          ( core_i.cs_registers_i.mcause_we                                      ),
-         .csr_mip_i                ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_n_i              ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_q_i              ( core_i.cs_registers_i.mip_i                                          ),
+         .csr_mip_we_i             ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_MIP)                         ),
          .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ),
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
          .csr_tdata2_n_i           ( core_i.cs_registers_i.tmatch_value_n                                 ),
          .csr_tdata2_q_i           ( core_i.cs_registers_i.tmatch_value_q                                 ),
          .csr_tdata2_we_i          ( core_i.cs_registers_i.tmatch_value_we                                ),
-         .csr_tinfo_i              ( core_i.cs_registers_i.tinfo_types                                    ),
+         .csr_tinfo_n_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),
+         .csr_tinfo_q_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),
+         .csr_tinfo_we_i           ( core_i.cs_registers_i.csr_we_int &&
+                                     (core_i.cs_registers_i.csr_waddr == CSR_TINFO)                       ),
          .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
@@ -356,7 +364,9 @@ bind cv32e40x_sleep_unit:
          .csr_dscratch1_q_i        ( core_i.cs_registers_i.dscratch1_q                                    ),
          .csr_dscratch1_n_i        ( core_i.cs_registers_i.dscratch1_n                                    ),
          .csr_dscratch1_we_i       ( core_i.cs_registers_i.dscratch1_we                                   ),
+         .csr_mhpmcounter_n_i      ( '0                               /* TODO:Connect when implemented */ ),
          .csr_mhpmcounter_q_i      ( core_i.cs_registers_i.mhpmcounter_q                                  ),
+         .csr_mhpmcounter_we_i     ( '0                               /* TODO:Connect when implemented */ ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      )
