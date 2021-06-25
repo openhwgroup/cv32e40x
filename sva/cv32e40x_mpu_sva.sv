@@ -42,7 +42,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input pma_region_t pma_cfg,
 
    // Core OBI signals
-   input logic [1:0]  instr_memtype_o,
+   input logic [ 1:0] instr_memtype_o,
+   input logic [31:0] instr_addr_o,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -101,17 +102,19 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      !bus_trans_bufferable |-> !instr_memtype_o[0])  // TODO is this logic "waterproof"?
       else `uvm_error("mpu", "instr OBI erronously flagged as bufferable")
+      // NB. The preconditions here are purposefully quite relaxed. Future changes might necessitate stricter conditions.
       //TODO also make "a_pma_obi_bufferable"?
 
   a_pma_obi_cacheable :
     assert property (@(posedge clk)
-                     // TODO need "req" condition?
                      bus_trans_cacheable |-> instr_memtype_o[1])
       else `uvm_error("mpu", "instr OBI should have been cacheable")
 
   a_pma_obi_noncacheable :
     assert property (@(posedge clk)
-                     !bus_trans_cacheable |-> !instr_memtype_o[1])  // TODO use XNOR for equivalence checking?
+                     !bus_trans_cacheable && (pma_addr == instr_addr_o)
+                     |->
+                     !instr_memtype_o[1])  // TODO use XNOR for equivalence checking?
       else `uvm_error("mpu", "instr OBI was erronously cacheable")
 
 
