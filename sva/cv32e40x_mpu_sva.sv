@@ -41,6 +41,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic [31:0] pma_addr,
    input pma_region_t pma_cfg,
 
+   // Core OBI signals
+   input logic [1:0]  instr_memtype_o,
+
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
    input logic        bus_trans_valid_o,
@@ -93,6 +96,23 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      && (pma_addr < {pma_cfg.word_addr_high, 2'b00}))
                      //TODO split in two properties?
       else `uvm_error("mpu", "PMA region match doesn't fit the bounds")
+
+  a_pma_obi_nonbufferable :
+    assert property (@(posedge clk)
+                     !bus_trans_bufferable |-> !instr_memtype_o[0])  // TODO is this logic "waterproof"?
+      else `uvm_error("mpu", "instr OBI erronously flagged as bufferable")
+      //TODO also make "a_pma_obi_bufferable"?
+
+  a_pma_obi_cacheable :
+    assert property (@(posedge clk)
+                     // TODO need "req" condition?
+                     bus_trans_cacheable |-> instr_memtype_o[1])
+      else `uvm_error("mpu", "instr OBI should have been cacheable")
+
+  a_pma_obi_noncacheable :
+    assert property (@(posedge clk)
+                     !bus_trans_cacheable |-> !instr_memtype_o[1])  // TODO use XNOR for equivalence checking?
+      else `uvm_error("mpu", "instr OBI was erronously cacheable")
 
 
   // Cover PMA signals
