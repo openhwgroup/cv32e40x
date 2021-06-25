@@ -27,20 +27,14 @@
 
 module cv32e40x_alu import cv32e40x_pkg::*;
 (
-  input  logic                     clk,
-  input  logic                     rst_n,
-  input  alu_opcode_e              operator_i,
-  input  logic [31:0]              operand_a_i,
-  input  logic [31:0]              operand_b_i,
+  input  logic              clk,
+  input  logic              rst_n,
+  input  alu_opcode_e       operator_i,
+  input  logic [31:0]       operand_a_i,
+  input  logic [31:0]       operand_b_i,
 
-  output logic [31:0]              result_o,
-  output logic                     comparison_result_o,
-
-  input logic                      valid_i,
-  output logic                     ready_o,
-
-  output logic                     valid_o,
-  input  logic                     ready_i,
+  output logic [31:0]       result_o,
+  output logic              comparison_result_o,
 
   // Divider interface towards CLZ
   input logic               div_clz_en_i,
@@ -387,10 +381,4 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     endcase
   end
 
-  // No multicycle operations in the ALU. Valid/ready are passed through.
-  assign valid_o = valid_i;
-  assign ready_o = ready_i;
-
-// todo:AB: div and mult use a ready strategy as follows:  assign ready_o = !valid_i ? 1'b1 : ready_i;
-  
 endmodule // cv32e40x_alu

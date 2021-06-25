@@ -77,7 +77,7 @@ module cv32e40x_controller_fsm_sva
   a_br_decision :
     assert property (@(posedge clk)
                      (id_ex_pipe_i.branch_in_ex) |-> (branch_decision_ex_i !== 1'bx) )
-      else begin `uvm_warning("controller", $sformatf("%t, Branch decision is X in module %m", $time)); end
+      else begin `uvm_error("controller", $sformatf("%t, Branch decision is X in module %m", $time)); end
 
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :
