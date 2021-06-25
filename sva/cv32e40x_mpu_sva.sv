@@ -32,6 +32,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    
    input logic        speculative_access_i,
    input logic        atomic_access_i,
+   input logic        execute_access_i,
+   input logic        bus_trans_bufferable,
+   input logic        bus_trans_cacheable,
+   input logic        pma_err,
+   input logic [31:0] pma_addr,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -76,6 +81,26 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
       else `uvm_error("mpu", "PMA number of regions is badly configured")
+
+
+  // Cover PMA signals
+
+  covergroup cg_pma @(posedge clk);
+    cp_err: coverpoint pma_err;
+    cp_exec: coverpoint execute_access_i;  // TODO what about instr side?
+    //TODO "cp_speculative"?
+    cp_bufferable: coverpoint bus_trans_bufferable;  // TODO is bus_trans right?
+    cp_cacheable: coverpoint bus_trans_cacheable;  // TODO is bus_trans right?
+    cp_atomic: coverpoint atomic_access_i;
+    cp_addr: coverpoint pma_addr[31:2] {
+      bins min = {0};
+      bins max = {30'h 3FFF_FFFF};
+      bins range[3] = {[1 : 30'h 3FFF_FFFe]};
+      illegal_bins il = default;
+      }
+  endgroup
+
+  cg_pma cgpma = new;
 
 
   // Should only give MPU error response during mpu_err_trans_valid
