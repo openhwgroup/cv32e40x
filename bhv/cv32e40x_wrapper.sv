@@ -20,7 +20,7 @@
   `include "cv32e40x_decoder_sva.sv"
   `include "cv32e40x_div_sva.sv"
   `include "cv32e40x_if_stage_sva.sv"
-//  `include "cv32e40x_id_stage_sva.sv" // todo: why is this excluded (there is no instance of these assertions)
+  `include "cv32e40x_id_stage_sva.sv"
   `include "cv32e40x_ex_stage_sva.sv"
   `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
@@ -120,14 +120,13 @@ module cv32e40x_wrapper
       .*
     );
 
-/* todo: re-enable ID stage assertions
 
   bind cv32e40x_id_stage:
     core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
     (
       .*
     );
-*/
+
 
   bind cv32e40x_ex_stage:
     core_i.ex_stage_i cv32e40x_ex_stage_sva ex_stage_sva

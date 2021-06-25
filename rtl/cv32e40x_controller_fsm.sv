@@ -142,15 +142,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   ////////////////////////////////////////////////////////////////////
 
-// todo: Explain why if_id_pipe_i.instr_valid is used instead of local instr_valid. Same for other stages.
-// need to prevent loops of course. Using the registers is preferred timing-wise most likely, so check synth results.
-// consider assertions like: jump_taken_id |-> ID's local instr_valid = 1
+// todo: consider assertions like: jump_taken_id |-> ID's local instr_valid = 1
 
   // ID stage
   // A jump is taken in ID for jump instructions, and also for mret instructions
-  assign jump_taken_id  = ((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) || mret_id_i) && 
-                          if_id_pipe_i.instr_valid && !ctrl_byp_i.jr_stall; // && !ctrl_byp_i.csr_stall_i; // TODO: Do not jump when csr_stall (non-SEC); note adding csr_stall seems an incomplete patch
-
+  // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
+  // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
+  // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
+  assign jump_taken_id = (((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) && !ctrl_byp_i.jr_stall) ||
+                         (mret_id_i && !ctrl_byp_i.csr_stall)) &&
+                         if_id_pipe_i.instr_valid;
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
   assign branch_taken_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
@@ -522,6 +523,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         single_step_halt_if_n = 1'b0;
 
         // Kill stages
+        // todo:ok: single step qualifier below must also check debug_mode_q
+        // ebreak in debug mode with debug_single_step_i (from dcsr) should kill id/ex
         ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
         ctrl_fsm_o.kill_id = !debug_single_step_i; // Should not be anything to kill for single step
         ctrl_fsm_o.kill_ex = !debug_single_step_i; // Should not be anything to kill for single step

@@ -34,7 +34,6 @@ module cv32e40x_id_stage_sva
   input logic           rf_we,
   input logic           alu_en,
   input logic           mul_en,
-  input logic           pc_set_o,
   input logic           lsu_en,
   input logic           wfi_insn,
   input logic           ebrk_insn,
@@ -44,28 +43,19 @@ module cv32e40x_id_stage_sva
   input logic           fencei_insn,
   input logic           ex_ready_i,
   input logic           illegal_insn,
-  input logic           branch_decision_i,
   input csr_opcode_e    csr_op,
-  input pc_mux_e        pc_mux_o,
   input if_id_pipe_t    if_id_pipe_i,
-  input id_ex_pipe_t    id_ex_pipe_o
-  input logic           wb_ready_o,
-  input logic           wb_valid,  
-  input ctrl_fsm_t      ctrl_fsm_i,
+  input id_ex_pipe_t    id_ex_pipe_o,
+  input ctrl_fsm_t      ctrl_fsm_i
 );
 
-  // make sure that branch decision is valid when jumping
-  a_br_decision :
-    assert property (@(posedge clk)
-                     (id_ex_pipe_o.branch_in_ex) |-> (branch_decision_i !== 1'bx) )
-      else begin `uvm_warning("id_stage", $sformatf("%t, Branch decision is X in module %m", $time)); end
 
     // the instruction delivered to the ID stage should always be valid
     a_valid_instr :
       assert property (@(posedge clk)
                        (if_id_pipe_i.instr_valid & (~if_id_pipe_i.illegal_c_insn)) |-> (!$isunknown(instr)) )
         else `uvm_warning("id_stage", $sformatf("%t, Instruction is valid, but has at least one X", $time));
-
+/* todo: check and fix/remove
       // Check that instruction after taken branch is flushed (more should actually be flushed, but that is not checked here)
       // and that EX stage is ready to receive flushed instruction immediately
       property p_branch_taken_ex;
@@ -77,7 +67,9 @@ module cv32e40x_id_stage_sva
       endproperty
 
       a_branch_taken_ex : assert property(p_branch_taken_ex) else `uvm_error("id_stage", "Assertion p_branch_taken_ex failed")
+*/
 
+/* todo: check and fix/remove
       // Check that if IRQ PC update does not coincide with IRQ related CSR write
       // MIE is excluded from the check because it has a bypass.
       property p_irq_csr;
@@ -92,18 +84,9 @@ module cv32e40x_id_stage_sva
       endproperty
 
       a_irq_csr : assert property(p_irq_csr) else `uvm_error("id_stage", "Assertion p_irq_csr failed")
+*/
 
-      // Check that xret does not coincide with CSR write (to avoid using wrong return address)
-      // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
-      // as its write action happens before the xret CSR usage
-      property p_xret_csr;
-        @(posedge clk) disable iff (!rst_n)
-          (pc_set_o && ((pc_mux_o == PC_MRET) || (pc_mux_o == PC_DRET))) |->
-                                   (!(id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)));
-      endproperty
-
-      a_xret_csr : assert property(p_xret_csr) else `uvm_error("id_stage", "Assertion a_xret_csr failed")
-
+/* todo: fix
       generate
         if (!A_EXTENSION) begin : gen_no_a_extension_assertions
 
@@ -116,7 +99,7 @@ module cv32e40x_id_stage_sva
 
         end
       endgenerate
-
+*/
       // Check that illegal instruction has no other side effects
       property p_illegal_2;
         @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
