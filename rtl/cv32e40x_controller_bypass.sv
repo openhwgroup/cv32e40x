@@ -135,14 +135,15 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   always_comb
   begin
-    ctrl_byp_o.load_stall  = 1'b0;
-    ctrl_byp_o.deassert_we = 1'b0;
-    ctrl_byp_o.csr_stall   = 1'b0;
+    ctrl_byp_o.load_stall          = 1'b0;
+    ctrl_byp_o.deassert_we         = 1'b0;
+    ctrl_byp_o.deassert_we_special = 1'b0;
+    ctrl_byp_o.csr_stall           = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
     if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || debug_trigger_match_id_i) begin
-      ctrl_byp_o.deassert_we = 1'b1;
+      ctrl_byp_o.deassert_we_special = 1'b1;
     end
 
     // Stall because of load operation

@@ -1020,6 +1020,7 @@ typedef struct packed {
   logic        csr_stall;
   logic        wfi_stall;
   logic        deassert_we;           // Deassert write enable for next instruction
+  logic        deassert_we_special;   // Deassert write enable and special insn bits
 } ctrl_byp_t;
 
 // Controller FSM outputs
