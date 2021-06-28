@@ -118,18 +118,16 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     case (mulh_state)
       MUL_ALBL: begin
         ready_o = 1'b1;
-        if (valid_i) begin
-          if (operator_i == MUL_H) begin
-            // Multicycle multiplication
-            mulh_shift      = 1'b1;
-            ready_o         = 1'b0;
-            mulh_state_next = MUL_ALBH;
-          end
-          else begin
-            // Single cycle multiplication
-            valid_o         = 1'b1;
-            mulh_acc_next   = '0;
-          end
+        if (operator_i == MUL_H) begin
+          // Multicycle multiplication
+          mulh_shift      = 1'b1;
+          ready_o         = 1'b0;
+          mulh_state_next = MUL_ALBH;
+        end
+        else begin
+          // Single cycle multiplication
+          valid_o         = 1'b1;
+          mulh_acc_next   = '0;
         end
       end
 
@@ -169,7 +167,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     end
   end // always_comb
 
-  //TODO:medium Area increased after introducing killable mult (valid_i -> !valid_i during mult), investigate why and fix.
   always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
       mulh_acc   <=  '0;
