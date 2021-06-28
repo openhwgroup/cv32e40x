@@ -139,11 +139,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
           ready_o         = 1'b1;
           valid_o         = 1'b0;
         end else begin
-          mulh_a           = mulh_al;
-          mulh_b           = mulh_bh;
           mulh_acc_next    = mulh_acc_res;
           mulh_state_next  = MUL_AHBL;
         end
+        mulh_a           = mulh_al;
+        mulh_b           = mulh_bh;
       end
 
       MUL_AHBL: begin
@@ -152,12 +152,12 @@ module cv32e40x_mult import cv32e40x_pkg::*;
           ready_o         = 1'b1;
           valid_o         = 1'b0;
         end else begin
-          mulh_shift       = 1'b1;
-          mulh_a           = mulh_ah;
-          mulh_b           = mulh_bl;
           mulh_acc_next    = mulh_acc_res;
           mulh_state_next  = MUL_AHBH;
         end
+        mulh_shift       = 1'b1;
+        mulh_a           = mulh_ah;
+        mulh_b           = mulh_bl;
       end
 
       MUL_AHBH: begin
@@ -167,8 +167,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
           valid_o = 1'b0;
           mulh_acc_next = '0;
         end else begin  
-          mulh_a            = mulh_ah;
-          mulh_b            = mulh_bh;
           valid_o           = 1'b1;
           mulh_acc_next     = mulh_acc;
           if (ready_i) begin
@@ -177,6 +175,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
             mulh_acc_next   = '0;
           end
         end
+        mulh_a            = mulh_ah;
+        mulh_b            = mulh_bh;
       end
       default: ;
     endcase
