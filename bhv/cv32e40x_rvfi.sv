@@ -32,6 +32,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_id_i,
    input logic                                instr_id_valid_i,
    input logic [31:0]                         jump_target_id_i,
+   input logic                                is_compressed_id_i,
    // LSU
    input logic                                lsu_en_id_i,
    input logic                                lsu_we_id_i,
@@ -405,6 +406,7 @@ module cv32e40x_rvfi
   assign is_branch_ex      = (pc_mux_i == PC_BRANCH);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
+
   assign branch_taken_ex   = !lsu_en_ex_i &&
                              (pc_set_i && is_branch_ex) &&
                              !(illegal_insn_ex_i || insn_mret_ex_i || insn_ebrk_ex_i || insn_ecall_ex_i || insn_fencei_ex_i);
@@ -482,7 +484,8 @@ module cv32e40x_rvfi
       if(instr_id_valid_i && instr_ex_ready_i) begin
         is_debug_entry_id   <= is_debug_entry_if;
         debug    [STAGE_ID] <= is_debug_entry_id;
-        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i : pc_if_i;
+        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i :
+                               (is_compressed_id_i)     ?      pc_id_i + 2 : pc_id_i + 4;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
         rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;

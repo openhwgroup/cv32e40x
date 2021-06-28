@@ -270,7 +270,8 @@ bind cv32e40x_sleep_unit:
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .jump_target_id_i         ( core_i.if_stage_i.jump_target_id_i                                   ),
+         .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
+         .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
 
          .pc_set_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_set                                  ),
          .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                  ),
