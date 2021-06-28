@@ -25,7 +25,8 @@
 
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   #(  parameter int unsigned PMA_NUM_REGIONS              = 0,
-      parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
+      parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT},
+      parameter int unsigned IS_INSTR_SIDE)
   (
    input logic        clk,
    input logic        rst_n,
@@ -46,6 +47,10 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic [31:0] instr_addr_o,
    input logic        instr_req_o,
    input logic        instr_gnt_i,
+   input logic [ 1:0] data_memtype_o,
+   input logic [31:0] data_addr_o,
+   input logic        data_req_o,
+   input logic        data_gnt_i,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -68,16 +73,36 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    );
 
 
+  // Assign signals depending on instr/data side instantiation
+  logic [ 1:0] obi_memtype;
+  logic [31:0] obi_addr;
+  logic        obi_req;
+  logic        obi_gnt;
+  generate
+    if (IS_INSTR_SIDE) begin
+      assign obi_memtype = instr_memtype_o;
+      assign obi_addr = instr_addr_o;
+      assign obi_req = instr_req_o;
+      assign obi_gnt = instr_gnt_i;
+    end else begin
+      assign obi_memtype = data_memtype_o;
+      assign obi_addr = data_addr_o;
+      assign obi_req = data_req_o;
+      assign obi_gnt = data_gnt_i;
+    end
+  endgenerate
+
+
   // Checks for illegal PMA region configuration
 
   logic is_addr_match;
-  assign is_addr_match = instr_addr_o == pma_addr;
+  assign is_addr_match = obi_addr == pma_addr;
 
   logic was_obi_waiting;
   assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
 
   logic was_obi_reqnognt;
-  always @(posedge clk) was_obi_reqnognt <= instr_req_o && !instr_gnt_i;
+  always @(posedge clk) was_obi_reqnognt <= obi_req && !obi_gnt;
 
   logic is_lobound_ok;
   logic is_hibound_ok;
@@ -116,31 +141,31 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   a_pma_obi_bufferable :
     assert property (@(posedge clk)
-                     bus_trans_bufferable <-> instr_memtype_o[0])  // TODO is this logic "waterproof"?
-      else `uvm_error("mpu", "instr OBI erronous bufferable flag")
+                     bus_trans_bufferable <-> obi_memtype[0])  // TODO is this logic "waterproof"?
+      else `uvm_error("mpu", "obi OBI erronous bufferable flag")
 
   a_pma_obi_cacheable :
     assert property (@(posedge clk)
-                     instr_memtype_o[1]
+                     obi_memtype[1]
                      <->
-                     (!was_obi_waiting && bus_trans_cacheable)
-                     ^ (was_obi_waiting && $past(instr_memtype_o[1])))
-      else `uvm_error("mpu", "instr OBI erronous cacheable flag")
+                     bus_trans_cacheable
+                     ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1]) && !!$past(rst_n)))
+      else `uvm_error("mpu", "obi erronous cacheable flag")
 
   a_pma_obi_reqallowed :
     assert property (@(posedge clk)
-                     instr_req_o
+                     obi_req
                      |->
-                     (!was_obi_waiting && !pma_err && is_addr_match)
-                     ^ (was_obi_waiting && $past(instr_req_o)))
-      else `uvm_error("mpu", "instr-side obi made request to pma-forbidden region")
+                     (!was_obi_waiting && !pma_err && is_addr_match)  // TODO should be "naturally disjoint"?
+                     ^ (was_obi_waiting && $past(obi_req)))
+      else `uvm_error("mpu", "obi made request to pma-forbidden region")
 
   a_pma_obi_reqdenied :
     assert property (@(posedge clk)
                      pma_err
                      |->
-                     !instr_req_o
-                     ^ (was_obi_waiting && $past(instr_req_o)))
+                     !obi_req
+                     ^ (was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "instr-side obi TODO")
 
 
