@@ -455,7 +455,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.instr_valid            <= 1'b0;
       id_ex_pipe_o.alu_en                 <= '0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
-      id_ex_pipe_o.alu_operand_a          <= 32'b0;
+      id_ex_pipe_o.alu_operand_a          <= 32'b0; // todo: path from data_rdata_i through WB to id_ex_pipe_o_reg_alu_operand_a seems longer than needed (too many gates in ID)
       id_ex_pipe_o.alu_operand_b          <= 32'b0;
 
       id_ex_pipe_o.operand_c              <= 32'b0;

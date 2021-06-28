@@ -157,10 +157,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [1:0]  mtvec_mode;
 
   logic [31:0] csr_rdata;
-  logic        csr_valid;
-  logic        csr_ready_ex;
-  logic        csr_valid_ex;
-  logic        csr_ready;
 
   PrivLvl_t    current_priv_lvl;
 
@@ -455,10 +451,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR interface
     .csr_rdata_i                ( csr_rdata                    ),
-    .csr_valid_i                ( csr_valid                    ),
-    .csr_ready_o                ( csr_ready_ex                 ),
-    .csr_valid_o                ( csr_valid_ex                 ),
-    .csr_ready_i                ( csr_ready                    ),
 
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
@@ -627,13 +619,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .priv_lvl_o                 ( current_priv_lvl       ),
 
-    .pc_if_i                    ( pc_if                  ),
-
-    // Handshakes
-    .valid_i                    ( csr_valid_ex           ),
-    .ready_o                    ( csr_ready              ),
-    .valid_o                    ( csr_valid              ),
-    .ready_i                    ( csr_ready_ex           )
+    .pc_if_i                    ( pc_if                  )
   );
 
   ////////////////////////////////////////////////////////////////////

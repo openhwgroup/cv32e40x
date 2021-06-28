@@ -39,10 +39,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // CSR interface
   input  logic [31:0] csr_rdata_i,
-  input  logic        csr_valid_i,
-  output logic        csr_ready_o,
-  output logic        csr_valid_o,
-  input  logic        csr_ready_i,
 
   // EX/WB pipeline 
   output ex_wb_pipe_t ex_wb_pipe_o,
@@ -77,16 +73,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   logic           alu_ready;
   logic           alu_valid;
+  logic           csr_ready;
+  logic           csr_valid;
   logic           mul_ready;
   logic           mul_valid;
 
   logic           instr_valid;
 
   // Local signals after evaluating with instr_valid
-  logic           alu_en_gated;
   logic           mul_en_gated;
   logic           div_en_gated;
-  logic           csr_en_gated;
   logic           lsu_en_gated;
   logic           rf_we_gated;
   logic           previous_exception;
@@ -107,10 +103,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex; // todo: why does halt_ex not factor in here just like in LSU?
 //  assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex; // todo: This gives SEC error
  
-  assign alu_en_gated = id_ex_pipe_i.alu_en && instr_valid;
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid;
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid;
-  assign csr_en_gated = id_ex_pipe_i.csr_en && instr_valid;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
   assign rf_we_gated  = id_ex_pipe_i.rf_we  && instr_valid;
 
@@ -125,22 +119,20 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_wdata_o = alu_result;
     rf_we_o    = rf_we_gated;
     rf_waddr_o = id_ex_pipe_i.rf_waddr;
 
-    // TODO:low Investigate if these can be made unique (they're currently not)
-    if (alu_en_gated)
-      rf_wdata_o = alu_result;
-    if (mul_en_gated)
-      rf_wdata_o = mul_result;
-    if (div_en_gated)
-      rf_wdata_o = div_result;
-    if (csr_en_gated)
-      rf_wdata_o = csr_rdata_i;
+    // There is no need to use gated versions of alu_en, mul_en, etc. as rf_wdata_o will be ignored
+    // for invalid instructions (as the register file write enable will be suppressed).
+    unique case (1'b1)
+      id_ex_pipe_i.mul_en : rf_wdata_o = mul_result;
+      id_ex_pipe_i.div_en : rf_wdata_o = div_result;
+      id_ex_pipe_i.csr_en : rf_wdata_o = csr_rdata_i;                           // alu_en = 1 here as well
+      default             : rf_wdata_o = alu_result;                            // Default on purpose
+    endcase
   end
 
-  // branch handling
+  // Branch handling
   assign branch_decision_o = alu_cmp_result;
   assign branch_target_o   = id_ex_pipe_i.operand_c;
 
@@ -174,13 +166,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
     // Result(s)
     .result_o            ( alu_result                 ),
-    .comparison_result_o ( alu_cmp_result             ),
-
-    // Handshakes
-    .valid_i             ( alu_en_gated               ),
-    .ready_o             ( alu_ready                  ),
-    .valid_o             ( alu_valid                  ),
-    .ready_i             ( wb_ready_i                 )
+    .comparison_result_o ( alu_cmp_result             )
   );
 
   ////////////////////////////////////////////////////
@@ -329,29 +315,31 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     end
   end
 
-  // CSR inputs are valid when CSR is enabled; CSR outputs need to remain valid until downstream stage is ready
-  assign csr_valid_o = csr_en_gated;
-  assign csr_ready_o = wb_ready_i;
-
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
   assign lsu_valid_o = lsu_en_gated;
   assign lsu_ready_o = wb_ready_i;
 
-  // As valid always goes to the right and ready to the left, and we are able
-  // to finish branches without going to the WB stage, ex_valid does not
-  // depend on ex_ready.
+  // ALU is single-cycle and output is therefore immediately valid (no handshake to optimize timing)
+  assign alu_valid = 1'b1;
+  assign alu_ready = wb_ready_i;
 
-// todo:ab wb_ready_i should already be factored into the other ready signals now
+  // CSR is single-cycle and output is therefore immediately valid (no handshake to optimize timing)
+  assign csr_valid = 1'b1;
+  assign csr_ready = wb_ready_i;
 
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && mul_ready && div_ready && csr_ready_i && lsu_ready_i && wb_ready_i && !ctrl_fsm_i.halt_ex);
+  // EX stage is ready immediately when killed and otherwise when its functional units are ready,
+  // unless the stage is being halted. The late (data_rvalid_i based) downstream wb_ready_i signal
+  // fans into the ready signals of all functional units.
+
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && mul_ready && div_ready && lsu_ready_i && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && !id_ex_pipe_i.lsu_en && alu_valid) || 
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && !id_ex_pipe_i.lsu_en && alu_valid) ||
                        (id_ex_pipe_i.alu_en &&  id_ex_pipe_i.lsu_en && alu_valid && lsu_valid_i) ||
                        (id_ex_pipe_i.mul_en && mul_valid) ||
-                       (id_ex_pipe_i.div_en && div_valid) || 
-                       (id_ex_pipe_i.csr_en && csr_valid_i) || 
+                       (id_ex_pipe_i.div_en && div_valid) ||
+                       (id_ex_pipe_i.csr_en && csr_valid) ||
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
-  
+
 endmodule // cv32e40x_ex_stage

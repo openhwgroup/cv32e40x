@@ -54,7 +54,7 @@ module cv32e40x_id_stage_sva
     a_valid_instr :
       assert property (@(posedge clk)
                        (if_id_pipe_i.instr_valid & (~if_id_pipe_i.illegal_c_insn)) |-> (!$isunknown(instr)) )
-        else `uvm_warning("id_stage", $sformatf("%t, Instruction is valid, but has at least one X", $time));
+        else `uvm_error("id_stage", $sformatf("%t, Instruction is valid, but has at least one X", $time));
 /* todo: check and fix/remove
       // Check that instruction after taken branch is flushed (more should actually be flushed, but that is not checked here)
       // and that EX stage is ready to receive flushed instruction immediately

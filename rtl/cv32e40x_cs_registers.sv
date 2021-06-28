@@ -79,13 +79,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   output PrivLvl_t        priv_lvl_o,
 
-  input  logic [31:0]     pc_if_i,
-
-  // Handshakes
-  input  logic            valid_i,
-  output logic            ready_o,
-  output logic            valid_o,
-  input  logic            ready_i
+  input  logic [31:0]     pc_if_i
 );
 
   
@@ -937,9 +931,4 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // No multicycle operations in the CSR. Valid/ready are passed through.
-  assign valid_o = valid_i; // todo:ab not consistent with MUL/DIV
-  assign ready_o = ready_i;
-
-endmodule
-
+endmodule // cv32e40x_cs_registers
