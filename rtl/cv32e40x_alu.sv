@@ -327,6 +327,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] clz_data_in;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
+  logic [ 5:0] cpop_result_o;
 
   assign clz_data_in = (operator_i == ALU_B_CTZ) ? div_clz_data_i : div_clz_data_rev;
 
@@ -348,6 +349,24 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
  
+
+  // CPOP
+  cv32e40x_alu_b_cpop alu_b_cpop_i
+    (.operand_i (operand_a_i),
+     .result_o  (cpop_result_o));
+
+  /////////////////////////////////
+  //    min/max instructions     //
+  /////////////////////////////////
+  logic [31:0]  min_result;
+  logic [31:0]  minu_result;
+  logic [31:0]  max_result;
+  logic [31:0]  maxu_result;
+
+  assign min_result  = (  $signed(operand_a_i) <   $signed(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign minu_result = ($unsigned(operand_a_i) < $unsigned(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign max_result  = (  $signed(operand_a_i) >   $signed(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign maxu_result = ($unsigned(operand_a_i) > $unsigned(operand_b_i)) ? operand_a_i : operand_b_i;
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -385,7 +404,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
       ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
 
-      ALU_B_CLZ, ALU_B_CTZ: result_o = div_clz_result_o;
+      // Zbb
+      ALU_B_CLZ, ALU_B_CTZ: result_o = {26'h0, div_clz_result_o};
+      ALU_B_CPOP:           result_o = {26'h0, cpop_result_o};
+      ALU_B_MIN:            result_o = min_result;
+      ALU_B_MINU:           result_o = minu_result;
+      ALU_B_MAX:            result_o = max_result;
+      ALU_B_MAXU:           result_o = maxu_result;
 
       default: ; // default case to suppress unique warning
     endcase

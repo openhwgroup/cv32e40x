@@ -16,7 +16,8 @@
 // limitations under the License.
 
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer        Oivind Ekelund - oivind.ekelund@silabs.com                 //
+// Engineers       Oivind Ekelund    -     oivind.ekelund@silabs.com          //
+//                 Halfdan Bechmann  -   halfdan.bechmann@silabs.com          //
 //                                                                            //
 // Design Name:    B Decoder                                                  //
 // Project Name:   CV32E40X                                                   //
@@ -79,6 +80,32 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
             end
           end
 
+
+          {7'b0000101, 3'b100}: begin // Return minimum number, signed (min)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_MIN;
+            end
+          end
+          {7'b0000101, 3'b101}: begin // Return minimum number, unsigned (minu)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_MINU;
+            end
+          end
+          {7'b0000101, 3'b110}: begin // Return maximum number, signed (max)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_MAX;
+            end
+          end
+          {7'b0000101, 3'b111}: begin // Return maximum number, signed (maxu)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_MAXU;
+            end
+          end
+
           default: begin
             // No match
             decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
@@ -109,6 +136,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator = ALU_B_CPOP;
             end
           end
+
           default: begin
             // No match
             decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
