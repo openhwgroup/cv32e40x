@@ -44,6 +44,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    // Core OBI signals
    input logic [ 1:0] instr_memtype_o,
    input logic [31:0] instr_addr_o,
+   input logic        instr_req_o,
+   input logic        instr_gnt_i,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -68,6 +70,15 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   // Checks for illegal PMA region configuration
 
+  logic is_addr_match;
+  assign is_addr_match = instr_addr_o == pma_addr;
+
+  logic was_obi_waiting;
+  assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
+
+  logic was_obi_reqnognt;
+  always @(posedge clk) was_obi_reqnognt <= instr_req_o && !instr_gnt_i;
+
   initial begin : p_mpu_assertions
     if (PMA_NUM_REGIONS != 0) begin
       assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
@@ -83,6 +94,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       end
     end
   end
+
+  // NB. The preconditions here are purposefully quite relaxed. Future changes might necessitate stricter conditions.
 
   a_pma_valid_num_regions :
     assert property (@(posedge clk)
@@ -102,7 +115,6 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      !bus_trans_bufferable |-> !instr_memtype_o[0])  // TODO is this logic "waterproof"?
       else `uvm_error("mpu", "instr OBI erronously flagged as bufferable")
-      // NB. The preconditions here are purposefully quite relaxed. Future changes might necessitate stricter conditions.
       //TODO also make "a_pma_obi_bufferable"?
 
   a_pma_obi_cacheable :
@@ -112,10 +124,18 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   a_pma_obi_noncacheable :
     assert property (@(posedge clk)
-                     !bus_trans_cacheable && (pma_addr == instr_addr_o)
+                     !bus_trans_cacheable && is_addr_match
                      |->
                      !instr_memtype_o[1])  // TODO use XNOR for equivalence checking?
       else `uvm_error("mpu", "instr OBI was erronously cacheable")
+
+  a_pma_obi_suppression :
+    assert property (@(posedge clk)
+                     instr_req_o
+                     |->
+                     (!pma_err && is_addr_match)
+                     || (was_obi_waiting && !is_addr_match))
+      else `uvm_error("mpu", "instr-side obi made request to pma-forbidden region")
 
 
   // Cover PMA signals

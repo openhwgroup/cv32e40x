@@ -226,6 +226,8 @@ bind cv32e40x_sleep_unit:
              .pma_cfg(pma_i.pma_cfg),
              .instr_memtype_o(core_i.instr_memtype_o),
              .instr_addr_o(core_i.instr_addr_o),
+             .instr_req_o(core_i.instr_req_o),
+             .instr_gnt_i(core_i.instr_gnt_i),
              .*);
 
   // TODO:low Reintroduce once LSU PMA support has been properly implemented in the controller
