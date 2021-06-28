@@ -113,7 +113,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_state_next  = mulh_state;
     ready_o          = 1'b0;
     valid_o          = 1'b0;
-    mulh_acc_next    = 33'h00000000;
+    mulh_acc_next    = mulh_acc_res;
     
     case (mulh_state)
       MUL_ALBL: begin
@@ -123,63 +123,50 @@ module cv32e40x_mult import cv32e40x_pkg::*;
             // Multicycle multiplication
             mulh_shift      = 1'b1;
             ready_o         = 1'b0;
-            mulh_acc_next   = mulh_acc_res;
             mulh_state_next = MUL_ALBH;
           end
           else begin
             // Single cycle multiplication
             valid_o         = 1'b1;
+            mulh_acc_next   = '0;
           end
         end
       end
 
       MUL_ALBH: begin
-        if (!valid_i) begin
-          mulh_state_next = MUL_ALBL;
-          ready_o         = 1'b1;
-          valid_o         = 1'b0;
-        end else begin
-          mulh_acc_next    = mulh_acc_res;
-          mulh_state_next  = MUL_AHBL;
-        end
+        mulh_state_next  = MUL_AHBL;
         mulh_a           = mulh_al;
         mulh_b           = mulh_bh;
       end
 
       MUL_AHBL: begin
-        if (!valid_i) begin
-          mulh_state_next = MUL_ALBL;
-          ready_o         = 1'b1;
-          valid_o         = 1'b0;
-        end else begin
-          mulh_acc_next    = mulh_acc_res;
-          mulh_state_next  = MUL_AHBH;
-        end
+        mulh_state_next  = MUL_AHBH;
         mulh_shift       = 1'b1;
         mulh_a           = mulh_ah;
         mulh_b           = mulh_bl;
       end
 
       MUL_AHBH: begin
-        if (!valid_i) begin
-          mulh_state_next = MUL_ALBL;
-          ready_o = 1'b1;
-          valid_o = 1'b0;
-          mulh_acc_next = '0;
-        end else begin  
-          valid_o           = 1'b1;
-          mulh_acc_next     = mulh_acc;
-          if (ready_i) begin
-            ready_o         = 1'b1;
-            mulh_state_next = MUL_ALBL;
-            mulh_acc_next   = '0;
-          end
-        end
+        valid_o           = 1'b1;
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
+        mulh_acc_next     = mulh_acc;
+
+        if (ready_i) begin
+          ready_o         = 1'b1;
+          mulh_state_next = MUL_ALBL;
+          mulh_acc_next   = '0;
+        end
       end
       default: ;
     endcase
+
+    if(!valid_i) begin
+      mulh_state_next = MUL_ALBL;
+      ready_o = 1'b1;
+      valid_o = 1'b0;
+      mulh_acc_next = '0;
+    end
   end // always_comb
 
   //TODO:medium Area increased after introducing killable mult (valid_i -> !valid_i during mult), investigate why and fix.
