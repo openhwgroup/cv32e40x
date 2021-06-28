@@ -79,6 +79,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   logic was_obi_reqnognt;
   always @(posedge clk) was_obi_reqnognt <= instr_req_o && !instr_gnt_i;
 
+  logic is_lobound_ok;
+  logic is_hibound_ok;
+  assign is_lobound_ok = {pma_cfg.word_addr_low, 2'b00} <= pma_addr;
+  assign is_hibound_ok = pma_addr < {pma_cfg.word_addr_high, 2'b00};
+
   initial begin : p_mpu_assertions
     if (PMA_NUM_REGIONS != 0) begin
       assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
@@ -104,12 +109,17 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   a_pma_region_match :
     assert property (@(posedge clk)
-                     !pma_err
+                     (is_lobound_ok && is_hibound_ok)
                      |->
-                     ({pma_cfg.word_addr_low, 2'b00} <= pma_addr)
-                     && (pma_addr < {pma_cfg.word_addr_high, 2'b00}))
-                     //TODO split in two properties?
+                     (pma_cfg != PMA_R_DEFAULT))
       else `uvm_error("mpu", "PMA region match doesn't fit the bounds")
+
+  a_pma_region_default :
+    assert property (@(posedge clk)
+                     !(is_lobound_ok && is_hibound_ok)
+                     |->
+                     (pma_cfg == PMA_R_DEFAULT))
+      else `uvm_error("mpu", "PMA non-match should result in defaults")
 
   a_pma_obi_nonbufferable :
     assert property (@(posedge clk)
@@ -156,8 +166,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
     //TODO crosses
   endgroup
-
   cg_pma cgpma = new;
+
+  cov_pma_nondefault :
+    cover property (@(posedge clk)
+      (pma_cfg != PMA_R_DEFAULT) && bus_trans_valid_o);
 
 
   // Should only give MPU error response during mpu_err_trans_valid
