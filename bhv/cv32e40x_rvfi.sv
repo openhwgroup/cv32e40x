@@ -44,13 +44,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         rs2_rdata_id_i,
 
    //// EX probes ////
-   input logic                                insn_ebrk_ex_i,
-   input logic                                insn_ecall_ex_i,
-   input logic                                insn_fencei_ex_i,
-   input logic                                insn_mret_ex_i,
+   input logic                                branch_taken_ex_i,
    // LSU
    input logic                                lsu_en_ex_i,
-   input logic                                illegal_insn_ex_i,
 
    input logic                                instr_ex_ready_i,
    input logic                                instr_ex_valid_i,
@@ -66,11 +62,8 @@ module cv32e40x_rvfi
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
    input logic [31:0]                         instr_rdata_wb_i,
-   input logic                                insn_ebrk_wb_i,
-   input logic                                insn_ecall_wb_i,
-   input logic                                insn_fencei_wb_i,
    input logic                                insn_mret_wb_i,
-   input logic                                illegal_insn_wb_i,
+   input logic                                exception_in_wb_i,
    // Register writes
    input logic                                rd_we_wb_i,
    input logic [4:0]                          rd_addr_wb_i,
@@ -372,9 +365,7 @@ module cv32e40x_rvfi
   logic         is_debug_entry_if;
   logic         is_debug_entry_id;
   logic         is_jump_id;
-  logic         is_branch_ex;
   logic         is_dret_wb;
-  logic         branch_taken_ex;
 
   logic [6:0]   insn_opcode;
   logic [4:0]   insn_rd;
@@ -403,15 +394,9 @@ module cv32e40x_rvfi
 
   assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
   assign is_jump_id        = (pc_mux_i == PC_JUMP);
-  assign is_branch_ex      = (pc_mux_i == PC_BRANCH);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
-
-  assign branch_taken_ex   = !lsu_en_ex_i &&
-                             (pc_set_i && is_branch_ex) &&
-                             !(illegal_insn_ex_i || insn_mret_ex_i || insn_ebrk_ex_i || insn_ecall_ex_i || insn_fencei_ex_i);
-
-    // Assign rvfi channels
+  // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_intr              = intr_d;
   assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3)
@@ -499,7 +484,7 @@ module cv32e40x_rvfi
 
       //// EX Stage ////
       if (instr_ex_valid_i && wb_ready_i) begin
-        pc_wdata [STAGE_EX] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_ID];
+        pc_wdata [STAGE_EX] <= branch_taken_ex_i ? branch_target_ex_i : pc_wdata[STAGE_ID];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
         rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
         rs2_addr [STAGE_EX] <= rs2_addr [STAGE_ID];
@@ -525,7 +510,7 @@ module cv32e40x_rvfi
         rvfi_dbg        <= debug[STAGE_EX];
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        rvfi_trap       <= illegal_insn_wb_i; // todo: factor in other trap conditions
+        rvfi_trap       <= exception_in_wb_i; // Set for all synchronous traps. TODO: Verify this is the intention of the spec
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
@@ -548,7 +533,7 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      if (insn_ebrk_wb_i || insn_ecall_wb_i) begin //ebreaks, ecall
+      if (exception_in_wb_i) begin
         rvfi_pc_wdata <= exception_target_wb_i & ~32'b1;
       end else if (insn_mret_wb_i) begin // mret
         rvfi_pc_wdata <= mepc_target_wb_i & ~32'b1;
@@ -557,7 +542,6 @@ module cv32e40x_rvfi
       end
 
       // CSR special cases
-
       if (csr_debug_csr_save_i && rvfi_valid) begin
         rvfi_csr_wmask.dcsr <= csr_dcsr_we_i ? '1 : '0;
         rvfi_csr_wdata.dcsr <= csr_dcsr_n_i;
