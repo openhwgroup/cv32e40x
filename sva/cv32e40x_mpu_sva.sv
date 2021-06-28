@@ -110,41 +110,29 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   a_pma_region_match :
     assert property (@(posedge clk)
                      (is_lobound_ok && is_hibound_ok)
-                     |->
+                     <->
                      (pma_cfg != PMA_R_DEFAULT))
-      else `uvm_error("mpu", "PMA region match doesn't fit the bounds")
+      else `uvm_error("mpu", "PMA region match and defaults mismatch")
 
-  a_pma_region_default :
+  a_pma_obi_bufferable :
     assert property (@(posedge clk)
-                     !(is_lobound_ok && is_hibound_ok)
-                     |->
-                     (pma_cfg == PMA_R_DEFAULT))
-      else `uvm_error("mpu", "PMA non-match should result in defaults")
-
-  a_pma_obi_nonbufferable :
-    assert property (@(posedge clk)
-                     !bus_trans_bufferable |-> !instr_memtype_o[0])  // TODO is this logic "waterproof"?
-      else `uvm_error("mpu", "instr OBI erronously flagged as bufferable")
-      //TODO also make "a_pma_obi_bufferable"?
+                     bus_trans_bufferable <-> instr_memtype_o[0])  // TODO is this logic "waterproof"?
+      else `uvm_error("mpu", "instr OBI erronous bufferable flag")
 
   a_pma_obi_cacheable :
     assert property (@(posedge clk)
-                     bus_trans_cacheable |-> instr_memtype_o[1])
-      else `uvm_error("mpu", "instr OBI should have been cacheable")
-
-  a_pma_obi_noncacheable :
-    assert property (@(posedge clk)
-                     !bus_trans_cacheable && is_addr_match
-                     |->
-                     !instr_memtype_o[1])  // TODO use XNOR for equivalence checking?
-      else `uvm_error("mpu", "instr OBI was erronously cacheable")
+                     instr_memtype_o[1]
+                     <->
+                     bus_trans_cacheable
+                     || (was_obi_waiting && $past(instr_memtype_o[1])))
+      else `uvm_error("mpu", "instr OBI erronous cacheable flag")
 
   a_pma_obi_suppression :
     assert property (@(posedge clk)
                      instr_req_o
                      |->
                      (!pma_err && is_addr_match)
-                     || (was_obi_waiting && !is_addr_match))
+                     || (was_obi_waiting && $past(instr_req_o)))
       else `uvm_error("mpu", "instr-side obi made request to pma-forbidden region")
 
 
