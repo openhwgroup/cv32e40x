@@ -262,10 +262,7 @@ bind cv32e40x_sleep_unit:
          .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
 
          .insn_mret_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.mret_insn                             ),
-         .insn_ebrk_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.ebrk_insn                             ),
-         .insn_ecall_wb_i          ( core_i.wb_stage_i.ex_wb_pipe_i.ecall_insn                            ),
-         .insn_fencei_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.fencei_insn                           ),
-         .illegal_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.illegal_insn                          ),
+         .exception_in_wb_i        ( core_i.controller_i.controller_fsm_i.exception_in_wb                 ),
 
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
@@ -281,12 +278,8 @@ bind cv32e40x_sleep_unit:
          .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
-         .insn_ebrk_ex_i           ( core_i.ex_stage_i.id_ex_pipe_i.ebrk_insn                             ),
-         .insn_ecall_ex_i          ( core_i.ex_stage_i.id_ex_pipe_i.ecall_insn                            ),
-         .insn_fencei_ex_i         ( core_i.ex_stage_i.id_ex_pipe_i.fencei_insn                           ),
+         .branch_taken_ex_i        ( core_i.controller_i.controller_fsm_i.branch_taken_ex                 ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
-         .insn_mret_ex_i           ( core_i.ex_stage_i.id_ex_pipe_i.mret_insn                             ),
-         .illegal_insn_ex_i        ( core_i.ex_stage_i.id_ex_pipe_i.illegal_insn                          ),
 
          .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
          .instr_ex_valid_i         ( core_i.ex_stage_i.ex_valid_o                                         ),
