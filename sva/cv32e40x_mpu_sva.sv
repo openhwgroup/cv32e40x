@@ -123,17 +123,25 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      instr_memtype_o[1]
                      <->
-                     bus_trans_cacheable
-                     || (was_obi_waiting && $past(instr_memtype_o[1])))
+                     (!was_obi_waiting && bus_trans_cacheable)
+                     ^ (was_obi_waiting && $past(instr_memtype_o[1])))
       else `uvm_error("mpu", "instr OBI erronous cacheable flag")
 
-  a_pma_obi_suppression :
+  a_pma_obi_reqallowed :
     assert property (@(posedge clk)
                      instr_req_o
                      |->
-                     (!pma_err && is_addr_match)
-                     || (was_obi_waiting && $past(instr_req_o)))
+                     (!was_obi_waiting && !pma_err && is_addr_match)
+                     ^ (was_obi_waiting && $past(instr_req_o)))
       else `uvm_error("mpu", "instr-side obi made request to pma-forbidden region")
+
+  a_pma_obi_reqdenied :
+    assert property (@(posedge clk)
+                     pma_err
+                     |->
+                     !instr_req_o
+                     ^ (was_obi_waiting && $past(instr_req_o)))
+      else `uvm_error("mpu", "instr-side obi TODO")
 
 
   // Cover PMA signals
