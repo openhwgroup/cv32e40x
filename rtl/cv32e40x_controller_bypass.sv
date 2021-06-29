@@ -55,7 +55,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // From WB
   input  logic        rf_we_wb_i,                 // Register file write enable from WB stage
-  input rf_addr_t     rf_waddr_wb_i,              // write address currently in WB
+  input  rf_addr_t    rf_waddr_wb_i,              // write address currently in WB
   input  logic        wb_ready_i,                 // WB stage is ready
   input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
@@ -193,19 +193,17 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     ctrl_byp_o.jalr_fw_mux_sel      = SELJ_REGFILE;
 
     // Forwarding WB -> ID
-    if (rf_we_wb_i)
-    begin
+    if (rf_we_wb_i) begin
       if (rf_rd_wb_match[0]) begin
         ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_WB;
       end
-      if ( rf_rd_wb_match[1]) begin
+      if (rf_rd_wb_match[1]) begin
         ctrl_byp_o.operand_b_fw_mux_sel = SEL_FW_WB;
       end
     end
 
     // Forwarding EX -> ID (not actually used when there is a load in EX)
-    if (rf_we_ex_i)
-    begin
+    if (rf_we_ex_i) begin
       if (rf_rd_ex_match[0]) begin
         ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_EX;
       end

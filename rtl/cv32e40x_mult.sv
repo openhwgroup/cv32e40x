@@ -45,7 +45,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   input  logic        ready_i
 );
 
-
   ///////////////////////////////////////////////////////////////
   //  ___ _  _ _____ ___ ___ ___ ___   __  __ _   _ _  _____   //
   // |_ _| \| |_   _| __/ __| __| _ \ |  \/  | | | | ||_   _|  //
@@ -113,32 +112,38 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_state_next  = mulh_state;
     ready_o          = 1'b0;
     valid_o          = 1'b0;
-    mulh_acc_next    = mulh_acc_res;
-    
+    mulh_acc_next    = mulh_acc;
+
+    // Case statement assumes valid_i = 1; the valid_i = 0 scenario
+    // is handled after the case statement.    
     case (mulh_state)
       MUL_ALBL: begin
-        ready_o = 1'b1;
         if (operator_i == MUL_H) begin
           // Multicycle multiplication
           mulh_shift      = 1'b1;
-          ready_o         = 1'b0;
           mulh_state_next = MUL_ALBH;
+          mulh_acc_next   = mulh_acc_res;
         end
         else begin
           // Single cycle multiplication
           valid_o         = 1'b1;
-          mulh_acc_next   = '0;
+
+          if (ready_i) begin
+            ready_o        = 1'b1;
+          end
         end
       end
 
       MUL_ALBH: begin
         mulh_state_next  = MUL_AHBL;
+        mulh_acc_next    = mulh_acc_res;
         mulh_a           = mulh_al;
         mulh_b           = mulh_bh;
       end
 
       MUL_AHBL: begin
         mulh_state_next  = MUL_AHBH;
+        mulh_acc_next    = mulh_acc_res;
         mulh_shift       = 1'b1;
         mulh_a           = mulh_ah;
         mulh_b           = mulh_bl;
@@ -148,7 +153,6 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         valid_o           = 1'b1;
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
-        mulh_acc_next     = mulh_acc;
 
         if (ready_i) begin
           ready_o         = 1'b1;
@@ -159,7 +163,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       default: ;
     endcase
 
-    if(!valid_i) begin
+    // Allow kill at any time
+    if (!valid_i) begin
       mulh_state_next = MUL_ALBL;
       ready_o = 1'b1;
       valid_o = 1'b0;
@@ -168,7 +173,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   end // always_comb
 
   always_ff @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
+    if (rst_n == 1'b0) begin
       mulh_acc   <=  '0;
       mulh_state <= MUL_ALBL;
     end else begin
@@ -179,7 +184,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   // MULH Shift Mux
   assign result_shifted = $signed(result) >>> 16;
-  assign mulh_acc_res   = (mulh_shift) ? result_shifted[32:0] : result[32:0];
+  assign mulh_acc_res   = mulh_shift ? result_shifted[32:0] : result[32:0];
 
   ///////////////////////////
   //   32-bit multiplier   //
@@ -199,9 +204,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
   //                                //
   ////////////////////////////////////
 
-  // 34bit Adder  - mulh_acc is always 0 for the MUL instruction //
-  assign result    = $signed(int_result) + $signed(mulh_acc);
+  // 34bit Adder - mulh_acc is always 0 for the MUL instruction
+  assign result   = $signed(int_result) + $signed(mulh_acc);
 
-  assign result_o  = result[31:0];
+  assign result_o = result[31:0];
 
 endmodule

@@ -186,76 +186,58 @@ module cv32e40x_div import cv32e40x_pkg::*;
     divisor_en     = 1'b0;
     quotient_en    = 1'b0;
 
+    // Case statement assumes valid_i = 1; the valid_i = 0 scenario
+    // is handled after the case statement.    
     case (state)
-      /////////////////////////////////
       DIV_IDLE: begin
-        ready_o = 1'b1;
-        
-        if (valid_i) begin
-          ready_o      = 1'b0;
-          remainder_en = 1'b1;
-          divisor_en   = 1'b1;
-          init_en      = 1'b1;
-          next_state   = DIV_DIVIDE;
-        end
+        remainder_en = 1'b1;
+        divisor_en   = 1'b1;
+        init_en      = 1'b1;
+        next_state   = DIV_DIVIDE;
       end
-      /////////////////////////////////
+
       DIV_DIVIDE: begin
+        remainder_en = comp_out;
+        divisor_en   = 1'b1;
+        quotient_en  = 1'b1;
 
-        if (!valid_i) begin
-          next_state = DIV_IDLE;
-          ready_o    = 1'b1;
-          valid_o    = 1'b0;
-        end
-        else begin
-          
-          remainder_en = comp_out;
-          divisor_en   = 1'b1;
-          quotient_en  = 1'b1;
-
-          // calculation finished
-          // one more divide cycle (32nd divide cycle)
-          if (cnt_q_is_zero) begin
-            if (data_ind_timing_i && |(cnt_d_dummy)) begin
-              init_dummy_cnt = 1'b1;
-              next_state = DIV_DUMMY;
-            end
-            else begin
-              next_state = DIV_FINISH;
-            end
-          end
-        end
-      end
-      /////////////////////////////////
-      DIV_DUMMY: begin
-        if (!valid_i) begin
-          next_state = DIV_IDLE;
-          ready_o    = 1'b1;
-          valid_o    = 1'b0;
-        end
-        else if (cnt_q_is_zero) begin
+        // calculation finished
+        // one more divide cycle (32nd divide cycle)
+        if (cnt_q_is_zero) begin
+          if (data_ind_timing_i && |(cnt_d_dummy)) begin
+            init_dummy_cnt = 1'b1;
+            next_state = DIV_DUMMY;
+          end else begin
             next_state = DIV_FINISH;
-        end
-      end
-      /////////////////////////////////
-      DIV_FINISH: begin
-        if (!valid_i) begin
-          next_state = DIV_IDLE;
-          ready_o    = 1'b1;
-          valid_o    = 1'b0;
-        end else begin
-          valid_o = 1'b1;
-          
-          if (ready_i) begin
-            ready_o    = 1'b1;
-            next_state = DIV_IDLE;
           end
         end
       end
-      /////////////////////////////////
+
+      DIV_DUMMY: begin
+        if (cnt_q_is_zero) begin
+          next_state = DIV_FINISH;
+        end
+      end
+
+      DIV_FINISH: begin
+        valid_o = 1'b1;        
+        if (ready_i) begin
+          ready_o    = 1'b1;
+          next_state = DIV_IDLE;
+        end
+      end
+
       default : /* default */ ;
-      /////////////////////////////////
+
     endcase
+
+    // Allow kill at any time
+    if (!valid_i) begin
+      next_state = DIV_IDLE;
+      ready_o    = 1'b1;
+      valid_o    = 1'b0;
+    end
+
   end
   
   ///////////////////////////////////////////////////////////////////////////////
