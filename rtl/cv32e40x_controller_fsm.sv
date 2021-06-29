@@ -321,7 +321,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.csr_restore_mret    = 1'b0;
     ctrl_fsm_o.csr_restore_dret    = 1'b0;
-    ctrl_fsm_o.csr_save_if         = 1'b0;
+    ctrl_fsm_o.csr_save_if         = 1'b0; // todo: can we send the correct pc to the CSR module instead of the separate save_* signals? (Keep the save signals local to this file, but move the pc mux from CSR to here)
     ctrl_fsm_o.csr_save_id         = 1'b0;
     ctrl_fsm_o.csr_save_ex         = 1'b0;
     ctrl_fsm_o.csr_save_wb         = 1'b0;
@@ -456,8 +456,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
             
-            ctrl_fsm_o.pc_mux      = PC_DRET;
-            ctrl_fsm_o.pc_set      = 1'b1;
+            ctrl_fsm_o.pc_mux  = PC_DRET;
+            ctrl_fsm_o.pc_set  = 1'b1;
 
             ctrl_fsm_o.csr_restore_dret  = 1'b1;
 
@@ -554,7 +554,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else if (id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin
+          end else if (id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin // todo: this same condition is not used in other places where ctrl_fsm_o.csr_save_ex is set to 1; what is the difference?
             ctrl_fsm_o.csr_save_ex = 1'b1;
           end else if (if_id_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_id = 1'b1;
