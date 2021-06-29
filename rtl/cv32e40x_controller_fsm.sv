@@ -107,10 +107,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   
   // Events in ID
+  logic jump_in_id;
   logic jump_taken_id;
 
   // Events in EX
+  logic branch_in_ex;
   logic branch_taken_ex;
+
+  logic branch_taken_n;
+  logic branch_taken_q;
   
   // Events in WB
   logic exception_in_wb;
@@ -142,19 +147,26 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   ////////////////////////////////////////////////////////////////////
 
-// todo: consider assertions like: jump_taken_id |-> ID's local instr_valid = 1
 
   // ID stage
   // A jump is taken in ID for jump instructions, and also for mret instructions
   // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
   // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
-  assign jump_taken_id = (((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL) && !ctrl_byp_i.jr_stall) ||
+  assign jump_in_id = ((((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL)) && !ctrl_byp_i.jr_stall) ||
                          (mret_id_i && !ctrl_byp_i.csr_stall)) &&
                          if_id_pipe_i.instr_valid;
+
+  // Blocking on branch_taken_q, as a jump has already been taken
+  assign jump_taken_id = jump_in_id && !branch_taken_q;
+
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
-  assign branch_taken_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
+  
+  assign branch_in_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
+
+  // Blocking on branch_taken_q, as a branch ha already been taken
+  assign branch_taken_ex = branch_in_ex && !branch_taken_q;
 
   // TODO:OK:low Add missing exception types when implemented
   // Exception in WB if the following evaluates to 1
@@ -171,8 +183,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ecall_insn                 ? EXC_CAUSE_ECALL_MMODE     :
                               EXC_CAUSE_BREAKPOINT;
 
-  // wfi in wb
-  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
+  // wfi in wb, if debug_mode we treat it as a NOP
+  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid && !debug_mode_q;
 
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid;
@@ -335,8 +347,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.debug_csr_save      = 1'b0;
     ctrl_fsm_o.block_data_addr     = 1'b0;
     
-    //Single step halting of IF
+    // Single step halting of IF
     single_step_halt_if_n = single_step_halt_if_q;
+
+    // Ensure jumps and branches are taken only once
+    branch_taken_n                 = branch_taken_q;
 
     unique case (ctrl_fsm_cs)
       RESET: begin
@@ -434,12 +449,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Special insn
           end else if (wfi_in_wb) begin
             // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
-            if (!debug_mode_q) begin
-              ctrl_fsm_o.halt_if = 1'b1;
-              ctrl_fsm_o.halt_id = 1'b1;
-              ctrl_fsm_o.instr_req = 1'b0;
-              ctrl_fsm_ns = SLEEP;
-            end
+            ctrl_fsm_o.halt_if = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.instr_req = 1'b0;
+            ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
             // Kill all instructions and set pc to wb.pc + 4
             ctrl_fsm_o.kill_if = 1'b1;
@@ -464,26 +477,34 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
           
-          end else if (branch_taken_ex) begin // todo:high should only be taken exactly once (re-run cycle count / coremark benchmark with wait states); will not be sec clean
+          end else if (branch_taken_ex) begin
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;  
 
             ctrl_fsm_o.pc_mux  = PC_BRANCH;
             ctrl_fsm_o.pc_set  = 1'b1;
+
+            // Set flag to avoid further branches to the same target
+            // if we are stalled
+            branch_taken_n     = 1'b1;
             
-          end else if (jump_taken_id) begin // todo:high should only be taken exactly once (also measure impact, but measure branch taken impact first); will not be sec clean
+          end else if (jump_taken_id) begin
             // kill_if
             ctrl_fsm_o.kill_if = 1'b1;
 
             // Jumps in ID (JAL, JALR, mret, uret, dret)
             if (mret_id_i) begin
               ctrl_fsm_o.pc_mux     = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              ctrl_fsm_o.pc_set     = 1'b1; //TODO:OK:high Could have a CSR write to mepc previous to this, add stall/bypass (non-SEC).
+              ctrl_fsm_o.pc_set     = 1'b1;
               ctrl_fsm_o.exc_pc_mux = EXC_PC_DBE; // Only used in debug mode
             end else begin
               ctrl_fsm_o.pc_mux = PC_JUMP;
               ctrl_fsm_o.pc_set = 1'b1;
             end
+
+            // Set flag to avoid further jumps to the same target
+            // if we are stalled
+            branch_taken_n = 1'b1;
           end
 
           // Mret in WB restores CSR regs
@@ -499,12 +520,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             if (single_step_allowed) begin
               ctrl_fsm_ns = DEBUG_TAKEN;
             end
-          end
-
-          // Detect first insn issue in single step after dret
-          // Used to block further issuing
-          if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && if_ready_i)) begin
-            single_step_halt_if_n = 1'b1;
           end
         end // !debug or interrupts
       end
@@ -522,14 +537,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // Clear flags for halting IF during single step
         single_step_halt_if_n = 1'b0;
 
-        // Kill stages
-        // todo:ok: single step qualifier below must also check debug_mode_q
-        // ebreak in debug mode with debug_single_step_i (from dcsr) should kill id/ex
-        ctrl_fsm_o.kill_if = 1'b1; // Needed regardless of single_step, to invalidate alignment_buffer
-        ctrl_fsm_o.kill_id = !debug_single_step_i; // Should not be anything to kill for single step
-        ctrl_fsm_o.kill_ex = !debug_single_step_i; // Should not be anything to kill for single step
-        ctrl_fsm_o.kill_wb = !debug_single_step_i; // Do not kill WB for single step
-
         // Set pc
         ctrl_fsm_o.pc_set     = 1'b1;
         ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
@@ -539,8 +546,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
         ctrl_fsm_o.debug_csr_save = 1'b1;
 
-        if (debug_single_step_i) begin
+        if (debug_single_step_i && !debug_mode_q) begin
           // Single step
+          // Only kill IF. WB should be allowed to complete
+          // ID and EX are empty as IF is blocked after one issue in single step mode
+          ctrl_fsm_o.kill_if = 1'b1;
+          ctrl_fsm_o.kill_id = 1'b0;
+          ctrl_fsm_o.kill_ex = 1'b0;
+          ctrl_fsm_o.kill_wb = 1'b0;
+
           // Should use pc from IF (next insn, as if is halted after first issue)
           // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
              // or trigger match, as timing=0 permits us from executing triggered insn before 
@@ -551,10 +565,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_save_if = 1'b1;
           end
         end else begin
+          // Kill pipeline
+          // Exception if we already are in debug mode. This is caused by ebreak and should be signalled
+          // as wb_valid
+          ctrl_fsm_o.kill_if = 1'b1;
+          ctrl_fsm_o.kill_id = 1'b1;
+          ctrl_fsm_o.kill_ex = 1'b1;
+          ctrl_fsm_o.kill_wb = !debug_mode_q;
+
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else if (id_ex_pipe_i.instr_valid && !id_ex_pipe_i.lsu_misaligned) begin
+          end else if (id_ex_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_ex = 1'b1;
           end else if (if_id_pipe_i.instr_valid) begin
             ctrl_fsm_o.csr_save_id = 1'b1;
@@ -573,6 +595,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_ns = RESET;
       end
     endcase
+
+    // Detect first insn issue in single step after dret
+    // Used to block further issuing
+    if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && if_ready_i)) begin
+      single_step_halt_if_n = 1'b1;
+    end
+
+    // Clear jump/branch flag when new insn is emitted from IF
+    if(branch_taken_q && if_valid_i && if_ready_i) begin
+      branch_taken_n = 1'b0;
+    end
   end
 
   // Wakeup from sleep
@@ -627,8 +660,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
+      branch_taken_q        <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
+      branch_taken_q        <= branch_taken_n;
     end
   end
 

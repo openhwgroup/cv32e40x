@@ -46,23 +46,36 @@ module cv32e40x_controller_fsm_sva
   input logic           rf_we_wb_i,
   input csr_opcode_e    csr_op_i
 );
-/*
+
+
   // Back-to-back branch should not be possible due to kill of IF/ID stages after branch
   a_no_back_to_back_branch :
     assert property (@(posedge clk)
-                     (branch_taken_ex) |=> (!branch_taken_ex))
+                     (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_BRANCH)) |=>
+                    !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_BRANCH)))
       else `uvm_error("controller", "Two branches back-to-back are taken")
+
+
+  // Helper signal
+  logic jump_taken;
+  assign jump_taken = (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_JUMP)) ||
+                      (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_MRET));
 
   // Back-to-back jump should not be possible due to kill of IF stage after branch
   a_no_back_to_back_jump :
     assert property (@(posedge clk)
-                     (jump_taken_id) |=> (!jump_taken_id))
+                     jump_taken |=> !jump_taken)
       else `uvm_error("controller", "Two jumps back-to-back are taken")
+
+/* todo: fix
+  // Check that a jump is taken only when ID is not killed
+  a_valid_jump :
+    assert property (@(posedge clk)
+                     jump_taken |-> if_id_pipe_i.instr_valid && !ctrl_fsm_o.kill_id)
+      else `uvm_error("controller", "Jump taken while ID is halted or killed")
 */
 
-
-
-  // Check that xret does not coincide with CSR write (to avoid using wrong return address)
+// Check that xret does not coincide with CSR write (to avoid using wrong return address)
   // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
   // as its write action happens before the xret CSR usage
   property p_xret_csr;
