@@ -26,7 +26,7 @@
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   #(  parameter int unsigned PMA_NUM_REGIONS              = 0,
       parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT},
-      parameter int unsigned IS_INSTR_SIDE)
+      parameter int unsigned IS_INSTR_SIDE = 0)
   (
    input logic        clk,
    input logic        rst_n,
@@ -74,6 +74,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
 
   // Assign signals depending on instr/data side instantiation
+
   logic [ 1:0] obi_memtype;
   logic [31:0] obi_addr;
   logic        obi_req;
@@ -93,21 +94,40 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   endgenerate
 
 
-  // Checks for illegal PMA region configuration
+  // PMA assertions helper signals
 
   logic is_addr_match;
   assign is_addr_match = obi_addr == pma_addr;
 
   logic was_obi_waiting;
-  assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
-
   logic was_obi_reqnognt;
+  assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
   always @(posedge clk) was_obi_reqnognt <= obi_req && !obi_gnt;
 
   logic is_lobound_ok;
   logic is_hibound_ok;
   assign is_lobound_ok = {pma_cfg.word_addr_low, 2'b00} <= pma_addr;
   assign is_hibound_ok = pma_addr < {pma_cfg.word_addr_high, 2'b00};
+
+  logic is_pma_matched;
+  int   pma_match_num;
+  always_comb begin
+    is_pma_matched = 0;
+    pma_match_num = 0;
+    for (int i = 0; i < PMA_NUM_REGIONS; i++) begin
+      if ((pma_cfg == PMA_CFG[i]) && !is_pma_matched) begin
+        is_pma_matched = 1;
+        pma_match_num = i;
+        break;
+      end
+    end
+  end
+  cov_pma_matchnone : cover property (@(posedge clk) (!is_pma_matched));
+  cov_pma_matchfirst : cover property (@(posedge clk) (is_pma_matched && (pma_match_num == 0)));
+  cov_pma_matchother : cover property (@(posedge clk) (is_pma_matched && (pma_match_num > 0)));
+
+
+  // Checks for illegal PMA region configuration
 
   initial begin : p_mpu_assertions
     if (PMA_NUM_REGIONS != 0) begin
@@ -134,23 +154,23 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   a_pma_region_match :
     assert property (@(posedge clk)
-                     (is_lobound_ok && is_hibound_ok)
-                     <->
-                     (pma_cfg != PMA_R_DEFAULT))
+                     is_pma_matched |-> (is_lobound_ok && is_hibound_ok))
       else `uvm_error("mpu", "PMA region match and defaults mismatch")
 
-  a_pma_obi_bufferable :
-    assert property (@(posedge clk)
-                     bus_trans_bufferable <-> obi_memtype[0])  // TODO is this logic "waterproof"?
-      else `uvm_error("mpu", "obi OBI erronous bufferable flag")
+  a_pma_obi_bufrequired :
+    assert property (@(posedge clk) bus_trans_bufferable |-> obi_memtype[0])
+      else `uvm_error("mpu", "obi should have had bufferable flag")
+  a_pma_obi_bufallowed :
+    assert property (@(posedge clk) obi_memtype[0] |-> bus_trans_bufferable)
+      else `uvm_error("mpu", "obi should not have had bufferable flag")
 
-  a_pma_obi_cacheable :
-    assert property (@(posedge clk)
-                     obi_memtype[1]
-                     <->
-                     bus_trans_cacheable
-                     ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1]) && !!$past(rst_n)))
-      else `uvm_error("mpu", "obi erronous cacheable flag")
+  a_pma_obi_cacherequired :
+    assert property (@(posedge clk) bus_trans_cacheable |-> obi_memtype[1])
+      else `uvm_error("mpu", "obi should have had cacheable flag")
+  a_pma_obi_cacheallowed :
+    assert property (@(posedge clk) obi_memtype[1]
+                     |-> bus_trans_cacheable ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1])))
+      else `uvm_error("mpu", "obi should not have had cacheable flag")
 
   a_pma_obi_reqallowed :
     assert property (@(posedge clk)
