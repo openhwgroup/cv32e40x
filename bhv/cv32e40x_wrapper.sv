@@ -261,12 +261,13 @@ bind cv32e40x_sleep_unit:
          .rs1_rdata_id_i           ( core_i.id_stage_i.operand_a_fw                                       ),
          .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
 
-         .insn_mret_wb_i           ( core_i.wb_stage_i.ex_wb_pipe_i.mret_insn                             ),
          .exception_in_wb_i        ( core_i.controller_i.controller_fsm_i.exception_in_wb                 ),
 
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
+         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn_o                                        ),
+         .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
          .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.is_compressed                         ),
 

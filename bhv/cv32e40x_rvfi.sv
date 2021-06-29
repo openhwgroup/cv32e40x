@@ -31,6 +31,8 @@ module cv32e40x_rvfi
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
    input logic                                instr_id_valid_i,
+   input logic                                mret_insn_id_i,
+   input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
    input logic                                is_compressed_id_i,
    // LSU
@@ -62,7 +64,6 @@ module cv32e40x_rvfi
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
    input logic [31:0]                         instr_rdata_wb_i,
-   input logic                                insn_mret_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
    input logic                                rd_we_wb_i,
@@ -364,7 +365,6 @@ module cv32e40x_rvfi
 
   logic         is_debug_entry_if;
   logic         is_debug_entry_id;
-  logic         is_jump_id;
   logic         is_dret_wb;
 
   logic [6:0]   insn_opcode;
@@ -393,7 +393,6 @@ module cv32e40x_rvfi
   rvfi_intr_t  instr_q;
 
   assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
-  assign is_jump_id        = (pc_mux_i == PC_JUMP);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
   // Assign rvfi channels
@@ -467,10 +466,15 @@ module cv32e40x_rvfi
 
       //// ID Stage ////
       if(instr_id_valid_i && instr_ex_ready_i) begin
+
+        if (jump_in_id_i) begin
+          pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i;
+        end else begin
+          pc_wdata [STAGE_ID] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
+        end
+
         is_debug_entry_id   <= is_debug_entry_if;
         debug    [STAGE_ID] <= is_debug_entry_id;
-        pc_wdata [STAGE_ID] <= (pc_set_i && is_jump_id) ? jump_target_id_i :
-                               (is_compressed_id_i)     ?      pc_id_i + 2 : pc_id_i + 4;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
         rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
@@ -533,13 +537,7 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      if (exception_in_wb_i) begin
-        rvfi_pc_wdata <= exception_target_wb_i & ~32'b1;
-      end else if (insn_mret_wb_i) begin // mret
-        rvfi_pc_wdata <= mepc_target_wb_i & ~32'b1;
-      end else begin
-        rvfi_pc_wdata <= pc_wdata[STAGE_EX] & ~32'b1;
-      end
+      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 : pc_wdata[STAGE_EX] & ~32'b1;
 
       // CSR special cases
       if (csr_debug_csr_save_i && rvfi_valid) begin
