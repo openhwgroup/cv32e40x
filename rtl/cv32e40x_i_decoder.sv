@@ -322,15 +322,15 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h105:  // wfi
               begin
-                decoder_ctrl_o.wfi_insn = 1'b1;
-                if (ctrl_fsm_i.debug_wfi_no_sleep) begin
-                  // Treat as NOP (do not cause sleep mode entry)
-                  // Using decoding similar to ADDI, but without register reads/writes, i.e.
-                  // keep rf_we = 0, rf_re[0] = 0
-                  decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
-                  decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;
-                  decoder_ctrl_o.alu_operator     = ALU_ADD;
-                end
+                // Treat as NOP
+                // Using decoding similar to ADDI, but without register reads/writes, i.e.
+                // keep rf_we = 0, rf_re[0] = 0
+                // Suppressing wfi_insn bit in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent
+                // sleeping when not allowed to.
+                decoder_ctrl_o.wfi_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
+                decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+                decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;
+                decoder_ctrl_o.alu_operator     = ALU_ADD;
               end
 
               default:
