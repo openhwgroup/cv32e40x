@@ -183,8 +183,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ecall_insn                 ? EXC_CAUSE_ECALL_MMODE     :
                               EXC_CAUSE_BREAKPOINT;
 
-  // wfi in wb, if debug_mode we treat it as a NOP
-  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid && !debug_mode_q;
+  // wfi in wb
+  assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
 
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.fencei_insn && ex_wb_pipe_i.instr_valid;
