@@ -145,8 +145,6 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     end
   end
 
-  // NB. The preconditions here are purposefully quite relaxed. Future changes might necessitate stricter conditions.
-
   a_pma_valid_num_regions :
     assert property (@(posedge clk)
                      (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
@@ -157,21 +155,27 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      is_pma_matched |-> (is_lobound_ok && is_hibound_ok))
       else `uvm_error("mpu", "PMA region match and defaults mismatch")
 
+  // Bufferable
   a_pma_obi_bufrequired :
-    assert property (@(posedge clk) bus_trans_bufferable |-> obi_memtype[0])
+    assert property (@(posedge clk) bus_trans_bufferable
+                     |-> obi_memtype[0] ^ (!obi_memtype[0] && was_obi_waiting && !$past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should have had bufferable flag")
   a_pma_obi_bufallowed :
-    assert property (@(posedge clk) obi_memtype[0] |-> bus_trans_bufferable)
+    assert property (@(posedge clk) obi_memtype[0]
+                     |-> bus_trans_bufferable ^ (!bus_trans_bufferable && was_obi_waiting && $past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should not have had bufferable flag")
 
+  // Cacheable
   a_pma_obi_cacherequired :
-    assert property (@(posedge clk) bus_trans_cacheable |-> obi_memtype[1])
+    assert property (@(posedge clk) bus_trans_cacheable
+                     |-> obi_memtype[1] ^ (!obi_memtype[1] && was_obi_waiting && !$past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should have had cacheable flag")
   a_pma_obi_cacheallowed :
     assert property (@(posedge clk) obi_memtype[1]
                      |-> bus_trans_cacheable ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should not have had cacheable flag")
 
+  // OBI req vs PMA err
   a_pma_obi_reqallowed :
     assert property (@(posedge clk)
                      obi_req
@@ -179,13 +183,10 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (!was_obi_waiting && !pma_err && is_addr_match)  // TODO should be "naturally disjoint"?
                      ^ (was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "obi made request to pma-forbidden region")
-
   a_pma_obi_reqdenied :
     assert property (@(posedge clk)
                      pma_err
-                     |->
-                     !obi_req
-                     ^ (was_obi_waiting && $past(obi_req)))
+                     |-> !obi_req ^ (was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "instr-side obi TODO")
 
 
