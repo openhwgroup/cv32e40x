@@ -216,18 +216,20 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   covergroup cg_pma @(posedge clk);
     cp_err: coverpoint pma_err;
     cp_exec: coverpoint execute_access_i;
-    //TODO "cp_speculative"?
     cp_bufferable: coverpoint bus_trans_bufferable;
     cp_cacheable: coverpoint bus_trans_cacheable;
     cp_atomic: coverpoint atomic_access_i;
-    cp_addr: coverpoint pma_addr[31:2] {  // TODO check if spec justifies this
+    cp_addr: coverpoint pma_addr[31:2] {
       bins min = {0};
       bins max = {30'h 3FFF_FFFF};
       bins range[3] = {[1 : 30'h 3FFF_FFFe]};
       illegal_bins il = default;
       }
 
-    //TODO crosses
+    x_err_exec: cross cp_err, cp_exec;
+    x_err_bufferable: cross cp_err, cp_bufferable;
+    x_err_cacheable: cross cp_err, cp_cacheable;
+    x_err_atomic: cross cp_err, cp_atomic;
   endgroup
   cg_pma cgpma = new;
 
