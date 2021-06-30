@@ -214,6 +214,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
  
   logic        csr_en_id;
   csr_opcode_e csr_op_id;
+  csr_num_e    csr_raddr_ex;
 
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
@@ -602,6 +603,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From controller FSM
     .ctrl_fsm_i                 ( ctrl_fsm               ),
 
+    .csr_raddr_o                ( csr_raddr_ex           ),
+
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
 
@@ -653,6 +656,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .dret_id_i                      ( dret_insn_id           ),
     .csr_en_id_i                    ( csr_en_id              ),
     .csr_op_id_i                    ( csr_op_id              ),
+    .csr_raddr_ex_i                 ( csr_raddr_ex           ),
                                                                  
     // LSU
     .lsu_misaligned_i               ( lsu_misaligned_ex      ),

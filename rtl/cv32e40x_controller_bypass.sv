@@ -48,6 +48,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        dret_id_i,                  // dret in ID
   input  logic        csr_en_id_i,                // CSR in ID
   input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
+  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (ID)
   input  logic        debug_trigger_match_id_i,         // Trigger match in ID
   // From EX
   input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
@@ -76,8 +77,13 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   logic                              rf_wr_ex_hz;
   logic                              rf_wr_wb_hz;
 
+  // Detect CSR read in ID (implicit and explicit)
   logic csr_read_in_id;
+  // Detect CSR write in EX or WB (implicit and explicit)
   logic csr_write_in_ex_wb;
+
+  // Detect minstret/minstreth read in EX.
+  logic minstret_read_in_ex;
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
@@ -90,6 +96,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   //TODO:OK:low This CSR stall check is very restrictive
   //         Should only check EX vs WB, and also CSR/rd addr
+  //         Also consider whether ID or EX should be stalled
   // Detect when a CSR insn is in ID
   // Note that hazard detection uses the registered instr_valid signals. Usage of the local
   // instr_valid signals would lead to a combinatorial loop via the halt signal.
@@ -102,6 +109,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign csr_write_in_ex_wb = ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ||
                               (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn) &&
                               ex_wb_pipe_i.instr_valid);
+
+  // minstret/minstreh is read in EX
+  assign minstret_read_in_ex =  ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) &&
+                                ((csr_raddr_ex_i  == CSR_MINSTRET) || (csr_raddr_ex_i == CSR_MINSTRETH)));
+
 
   // Stall ID when WFI is active in EX.
   // Used to create an interruptible bubble after WFI // todo:low only needed for load/store following WFI; should actually halt EX when WFI in WB
@@ -139,6 +151,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     ctrl_byp_o.deassert_we         = 1'b0;
     ctrl_byp_o.deassert_we_special = 1'b0;
     ctrl_byp_o.csr_stall           = 1'b0;
+    ctrl_byp_o.minstret_stall      = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
@@ -178,6 +191,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Stall because of CSR read (direct or implied) in ID while CSR (implied or direct) is written in EX/WB
     if (csr_read_in_id && csr_write_in_ex_wb) begin
       ctrl_byp_o.csr_stall = 1'b1;
+    end
+
+    // Stall (EX) due to minstret read
+    if (minstret_read_in_ex && ex_wb_pipe_i.instr_valid) begin
+      ctrl_byp_o.minstret_stall = 1'b1;
     end
   end
 

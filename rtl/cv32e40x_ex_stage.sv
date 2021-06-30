@@ -340,6 +340,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.div_en && div_valid) ||
                        (id_ex_pipe_i.csr_en && csr_valid) ||
                        previous_exception // todo:ab:remove
-                      ) && instr_valid;
+                      ) && instr_valid && !ctrl_fsm_i.halt_ex;
 
 endmodule // cv32e40x_ex_stage

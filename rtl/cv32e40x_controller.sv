@@ -46,6 +46,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        dret_id_i,
   input  logic        csr_en_id_i,
   input  csr_opcode_e csr_op_id_i,
+  input  csr_num_e    csr_raddr_ex_i,
 
   input  id_ex_pipe_t id_ex_pipe_i,
   input  ex_wb_pipe_t ex_wb_pipe_i,
@@ -174,6 +175,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .dret_id_i                  ( dret_id_i                ),
     .csr_en_id_i                ( csr_en_id_i              ),
     .csr_op_id_i                ( csr_op_id_i              ),
+    .csr_raddr_ex_i             ( csr_raddr_ex_i           ),
     .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
 
     // From EX

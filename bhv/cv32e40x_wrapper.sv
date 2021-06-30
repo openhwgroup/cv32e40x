@@ -358,9 +358,9 @@ bind cv32e40x_sleep_unit:
          .csr_dscratch1_q_i        ( core_i.cs_registers_i.dscratch1_q                                    ),
          .csr_dscratch1_n_i        ( core_i.cs_registers_i.dscratch1_n                                    ),
          .csr_dscratch1_we_i       ( core_i.cs_registers_i.dscratch1_we                                   ),
-         .csr_mhpmcounter_n_i      ( '0                               /* TODO:Connect when implemented */ ),
+         .csr_mhpmcounter_n_i      ( core_i.cs_registers_i.mhpmcounter_n                                  ),
          .csr_mhpmcounter_q_i      ( core_i.cs_registers_i.mhpmcounter_q                                  ),
-         .csr_mhpmcounter_we_i     ( '0                               /* TODO:Connect when implemented */ ),
+         .csr_mhpmcounter_we_i     ( core_i.cs_registers_i.mhpmcounter_we                                 ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      )

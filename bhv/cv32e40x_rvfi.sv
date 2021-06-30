@@ -693,8 +693,8 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mcycle             = csr_mhpmcounter_n_l [CSR_MCYCLE & 'hF];
   assign rvfi_csr_wmask_d.mcycle             = csr_mhpmcounter_we_l[CSR_MCYCLE & 'hF];
 
-  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
+  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF]; // not compliant to RVFI spec
+  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF]; // not compliant to RVFI spec
   assign rvfi_csr_wmask_d.minstret           = csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF];
 
   assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;

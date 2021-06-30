@@ -60,6 +60,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // From controller FSM
   input  ctrl_fsm_t       ctrl_fsm_i,
+
+  // To controller bypass logic
+  output csr_num_e        csr_raddr_o,
  
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
@@ -151,6 +154,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Performance Counter Signals
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters
+  logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_n;                    // performance counters next value
+  logic [31:0] [1:0]                   mhpmcounter_we;                   // performance counters write enable
   logic [31:0] [31:0]                  mhpmevent_q, mhpmevent_n;         // event enable
   logic [31:0]                         mcountinhibit_q, mcountinhibit_n; // performance counter enable
   logic [NUM_HPM_EVENTS-1:0]           hpm_events;                       // events for performance counters
@@ -168,6 +173,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //  CSR access. Read in EX, write in WB
   // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
   assign csr_raddr = csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : 12'b0);
+  assign csr_raddr_o = csr_raddr;
 
   // Not suppressing csr_waddr to zero when unused since its source are dedicated flipflops and would not save power as for raddr
   assign csr_waddr = csr_num_e'(ex_wb_pipe_i.csr_addr);
@@ -854,8 +860,40 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // ------------------------
+    // ------------------------
   // HPM Registers
+  // next value
+  genvar nxt_gidx;
+  generate
+    for (nxt_gidx = 0; nxt_gidx < 32; nxt_gidx++) begin : gen_mhpmcounter_nextvalue
+      // mcyclce  is located at index 0
+      // there is no counter at index 1
+      // minstret is located at index 2
+      // Programable HPM counters start at index 3
+      if( (nxt_gidx == 1) ||
+          (nxt_gidx >= (NUM_MHPMCOUNTERS+3) ) )
+        begin : gen_non_implemented
+          assign mhpmcounter_n[nxt_gidx]  = 'b0;
+          assign mhpmcounter_we[nxt_gidx] = 2'b0;
+      end
+      else begin : gen_implemented_nextvalue
+        always_comb begin
+          mhpmcounter_we[nxt_gidx] = 2'b0;
+          mhpmcounter_n[nxt_gidx]  = mhpmcounter_q[nxt_gidx];
+          if (mhpmcounter_write_lower[nxt_gidx]) begin
+            mhpmcounter_n[nxt_gidx][31:0] = csr_wdata_int;
+            mhpmcounter_we[nxt_gidx][0] = 1'b1;
+          end else if (mhpmcounter_write_upper[nxt_gidx]) begin
+            mhpmcounter_n[nxt_gidx][63:32] = csr_wdata_int;
+            mhpmcounter_we[nxt_gidx][1] = 1'b1;
+          end else if (mhpmcounter_write_increment[nxt_gidx]) begin
+            mhpmcounter_we[nxt_gidx] = 2'b1;
+            mhpmcounter_n[nxt_gidx] = mhpmcounter_increment[nxt_gidx];
+          end
+        end // always_comb
+      end
+    end
+  endgenerate
   //  Counter Registers: mhpcounter_q[]
   genvar cnt_gidx;
   generate
@@ -874,15 +912,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           if (!rst_n) begin
             mhpmcounter_q[cnt_gidx] <= 'b0;
           end else begin
-            
-            if (mhpmcounter_write_lower[cnt_gidx]) begin
-              mhpmcounter_q[cnt_gidx][31:0] <= csr_wdata_int;
-            end else if (mhpmcounter_write_upper[cnt_gidx]) begin
-              mhpmcounter_q[cnt_gidx][63:32] <= csr_wdata_int;
-            end else if (mhpmcounter_write_increment[cnt_gidx]) begin
-              mhpmcounter_q[cnt_gidx] <= mhpmcounter_increment[cnt_gidx];
+            if (mhpmcounter_we[cnt_gidx][0]) begin
+              mhpmcounter_q[cnt_gidx][31:0] <= mhpmcounter_n[cnt_gidx][31:0];
             end
-            
+            if (mhpmcounter_we[cnt_gidx][1]) begin
+              mhpmcounter_q[cnt_gidx][63:32] <= mhpmcounter_n[cnt_gidx][63:32];
+            end
           end
       end
     end

@@ -243,7 +243,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid; // todo:low Not correct; just put something here such that minstret counter will not get optimized away (and did not use wb_valid to avoid long timing path)
+  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid && !exception_in_wb && !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb; // todo: Should maybe use wb_stage local instr_valid, as the current code remakes that here.
   assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
@@ -322,7 +322,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
     // currently in ID is not ready to be issued yet)
     ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
-    ctrl_fsm_o.halt_ex = 1'b0;
+    // EX stage is halted when minstret/h is read
+    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
 
     // By default no stages are killed
