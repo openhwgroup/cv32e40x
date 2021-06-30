@@ -201,8 +201,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      obi_req
                      |->
-                     (!was_obi_waiting && !pma_err && is_addr_match)  // TODO should be "naturally disjoint"?
-                     ^ (was_obi_waiting && $past(obi_req)))
+                     (!pma_err && is_addr_match)
+                     ^ (!is_addr_match && was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "obi made request to pma-forbidden region")
   a_pma_obi_reqdenied :
     assert property (@(posedge clk)
