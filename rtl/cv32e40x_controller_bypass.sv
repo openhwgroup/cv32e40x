@@ -48,7 +48,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        dret_id_i,                  // dret in ID
   input  logic        csr_en_id_i,                // CSR in ID
   input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
-  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (ID)
+  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (EX)
   input  logic        debug_trigger_match_id_i,         // Trigger match in ID
   // From EX
   input  logic        rf_we_ex_i,                 // Register file write enable from EX stage

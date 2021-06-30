@@ -860,7 +860,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-    // ------------------------
+  // ------------------------
   // HPM Registers
   // next value
   genvar nxt_gidx;
