@@ -73,7 +73,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    );
 
 
-  // Assign signals depending on instr/data side instantiation
+  // Assign local signals depending on instr/data side instantiation
 
   logic [ 1:0] obi_memtype;
   logic [31:0] obi_addr;
@@ -111,13 +111,25 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   logic is_pma_matched;
   int   pma_match_num;
+  int   pma_lowest_match;
   always_comb begin
     is_pma_matched = 0;
-    pma_match_num = 0;
+    pma_match_num = 999;
+    pma_lowest_match = 999;
+
+    // Find pma module's attributes among cfgs
     for (int i = 0; i < PMA_NUM_REGIONS; i++) begin
-      if ((pma_cfg == PMA_CFG[i]) && !is_pma_matched) begin
+      if (pma_cfg == PMA_CFG[i]) begin
         is_pma_matched = 1;
         pma_match_num = i;
+        break;
+      end
+    end
+
+    // Find lowest region matching addr
+    for (int i = 0; i < PMA_NUM_REGIONS; i++) begin
+      if (({PMA_CFG[i].word_addr_low, 2'b00} <= pma_addr) && (pma_addr < {PMA_CFG[i].word_addr_high, 2'b00})) begin
+        pma_lowest_match = i;
         break;
       end
     end
@@ -150,10 +162,19 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
       else `uvm_error("mpu", "PMA number of regions is badly configured")
 
-  a_pma_region_match :
+  // Region matching
+  a_pma_match_bounds :
     assert property (@(posedge clk)
                      is_pma_matched |-> (is_lobound_ok && is_hibound_ok))
-      else `uvm_error("mpu", "PMA region match and defaults mismatch")
+      else `uvm_error("mpu", "PMA region match doesn't fit bounds")
+  a_pma_match_lowest :
+    assert property (@(posedge clk)
+                     is_pma_matched |-> (pma_match_num == pma_lowest_match))
+      else `uvm_error("mpu", "PMA region match wasn't lowest")
+  a_pma_match_index :
+    assert property (@(posedge clk)
+                     is_pma_matched |-> ((0 <= pma_match_num) && (pma_match_num <= 16)))
+      else `uvm_error("mpu", "illegal cfg index")
 
   // Bufferable
   a_pma_obi_bufrequired :
@@ -187,17 +208,17 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk)
                      pma_err
                      |-> !obi_req ^ (was_obi_waiting && $past(obi_req)))
-      else `uvm_error("mpu", "instr-side obi TODO")
+      else `uvm_error("mpu", "pma error should forbid obi req")
 
 
   // Cover PMA signals
 
   covergroup cg_pma @(posedge clk);
     cp_err: coverpoint pma_err;
-    cp_exec: coverpoint execute_access_i;  // TODO what about instr side?
+    cp_exec: coverpoint execute_access_i;
     //TODO "cp_speculative"?
-    cp_bufferable: coverpoint bus_trans_bufferable;  // TODO is bus_trans right?
-    cp_cacheable: coverpoint bus_trans_cacheable;  // TODO is bus_trans right?
+    cp_bufferable: coverpoint bus_trans_bufferable;
+    cp_cacheable: coverpoint bus_trans_cacheable;
     cp_atomic: coverpoint atomic_access_i;
     cp_addr: coverpoint pma_addr[31:2] {  // TODO check if spec justifies this
       bins min = {0};
