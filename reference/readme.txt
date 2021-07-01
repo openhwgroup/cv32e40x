@@ -3,6 +3,20 @@
  ../rtl/cv32e40x_alu.sv - Contains commented out shifter based on
  https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v 
 
+ - Reference code from https://github.com/riscv/riscv-bitmanip
+
+   Git hash b2fd3b8d7d9e43054358b15b1d77011936addb65 (main-history branch)
+
+   rvb_bextdep.v - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_bextdep/rvb_bextdep.v
+   rvb_bitcnt.v  - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_bitcnt/rvb_bitcnt.v
+   rvb_bmatxor.v - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_bmatxor/rvb_bmatxor.v
+   rvb_clmul.v   - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_clmul/rvb_clmul.v
+   rvb_crc.v     - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_crc/rvb_crc.v
+   rvb_full.v    - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_full/rvb_full.v
+   rvb_shifter.v - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v
+   rvb_simple.v  - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_simple/rvb_simple.v
+   rvb_zbb32.v   - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_zbb32/rvb_zbb32.v
+
 - PMP (from https://github.com/lowRISC/ibex.git, 93a76b390081b6b3b6cea2671c469f9293b998f2)
 
  - ibex_pmp.sv - Core of the Physical Memory Protection unit
@@ -17,3 +31,7 @@
  - ibex_if_stage.sv Dummy instruction generator instantiation
  - ibex_register_file_ff.sv - Register file
  - ibex_core.sv - Core (showing ECC encoder/decoder instantiations)
+
+
+
+
