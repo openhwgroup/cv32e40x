@@ -104,52 +104,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                    //
   ////////////////////////////////////////
 
-  logic        shift_left;         // should we shift left
-  logic        shift_arithmetic;
-
-  logic  [4:0] shift_amt;          // amount of shift used for the actual shifter
-  logic [31:0] shift_op_a;         // input of the shifter
-  logic [31:0] shift_result;
-  logic [31:0] shift_right_result;
-  logic [31:0] shift_left_result;
-  
-  // Shifter is also used for preparing operand for division
-  assign shift_amt = div_shift_en_i ? div_shift_amt_i[4:0] : operand_b_i[4:0];
-
-  // When divider is using the shifter, it requires shift left
-  assign shift_left = div_shift_en_i || (operator_i == ALU_SLL);
-
-  // Shift arithmetic (with sign extension) does not apply for shift left operations
-  assign shift_arithmetic = ((operator_i == ALU_SRA) ||
-                             (operator_i == ALU_ADD) ||
-                             (operator_i == ALU_SUB)) &&
-                            !shift_left;
-
-  // choose the bit reversed or the normal input for shift operand a
-  assign shift_op_a    = shift_left ? operand_a_rev : operand_a_i;
-
-  // right shifts, we let the synthesizer optimize this
-  logic [63:0] shift_op_a_32;
-
-  assign shift_op_a_32 = $signed({ {32{shift_arithmetic & shift_op_a[31]}}, shift_op_a});
-
-  assign shift_right_result = shift_op_a_32 >> shift_amt;
-
-  // bit reverse the shift_right_result for left shifts
-  genvar       j;
-  generate
-    for(j = 0; j < 32; j++)
-    begin : gen_shift_left_result
-      assign shift_left_result[j] = shift_right_result[31-j];
-    end
-  endgenerate
-
-  assign shift_result = shift_left ? shift_left_result : shift_right_result;
-
-  assign div_op_a_shifted_o = shift_left_result;
-
 /*
-
  // New shifter based on https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v 
 
  *  Copyright (C) 2019  Claire Wolf <claire@symbioticeda.com>
@@ -166,111 +121,214 @@ module cv32e40x_alu import cv32e40x_pkg::*;
  *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
+*/
+
+  // 30 29 27 26 14 13  3   Function
+  // --------------------   --------
+  //  0  0  0  0  0  0  W   SLL
+  //  0  0  0  0  1  0  W   SRL
+  //  1  0  0  0  1  0  W   SRA
+  //  0  1  0  0  0  0  W   SLO
+  //  0  1  0  0  1  0  W   SRO
+  //  1  1  0  0  0  0  W   ROL
+  //  1  1  0  0  1  0  W   ROR
+  // --------------------   --------
+  //  -  -  -  1  0  0  W   FSL
+  //  -  -  -  1  1  0  W   FSR
+  // --------------------   --------
+  //  0  1  1  0  0  0  W   SBSET
+  //  1  0  1  0  0  0  W   SBCLR
+  //  1  1  1  0  0  0  W   SBINV
+  //  1  0  1  0  1  0  W   SBEXT
+  // --------------------   --------
+  //  1  0  1  0  1  1  W   BFP
+
+  logic din_insn30, din_insn29, din_insn27, din_insn26, din_insn14;
+
+  logic [31:0] shifter_x;
+  logic [63:0] shifter_tmp;
+  logic        shifter_zbsmode;
+//logic        bfpmode;
+  logic [31:0] shifter_result;
+  logic [63:0] shifter_aa, shifter_bb;
+  logic [5:0]  shifter_shamt; // Shift amount
+
+  assign div_op_a_shifted_o = shifter_result;//shift_left_result;
+
+  // BFP
+  // wire [15:0] bfp_config = din_rs2[31:16];
+  // wire [5:0]  bfp_len = {!bfp_config[11:8], bfp_config[11:8]};
+  // wire [5:0]  bfp_off = bfp_config[4:0];
+  // wire [31:0] bfp_mask = 32'h FFFFFFFF << bfp_len;
+
+  always_comb begin
+    case (operator_i)
+      ALU_SLL: begin
+        din_insn30 = 1'b0;
+        din_insn29 = 1'b0;
+        din_insn27 = 1'b0;
+        din_insn26 = 1'b0;
+        din_insn14 = 1'b0;
+      end
+      ALU_SRL: begin
+        din_insn30 = 1'b0;
+        din_insn29 = 1'b0;
+        din_insn27 = 1'b0;
+        din_insn26 = 1'b0;
+        din_insn14 = 1'b1;
+      end
+      ALU_SRA: begin
+        din_insn30 = 1'b1;
+        din_insn29 = 1'b0;
+        din_insn27 = 1'b0;
+        din_insn26 = 1'b0;
+        din_insn14 = 1'b1;
+      end
+//      ALU_SLO: begin
+//        din_insn30 = 1'b0;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b0;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b0;
+//      end
+//      ALU_SRO: begin
+//        din_insn30 = 1'b0;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b0;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b1;
+//      end
+//      ALU_ROL: begin
+//        din_insn30 = 1'b1;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b0;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b0;
+//      end
+//      ALU_ROR: begin
+//        din_insn30 = 1'b1;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b0;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b1;
+//      end
+//      ALU_B_BSET: begin
+//        din_insn30 = 1'b0;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b1;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b0;
+//      end
+//      ALU_B_BCLR: begin
+//        din_insn30 = 1'b1;
+//        din_insn29 = 1'b0;
+//        din_insn27 = 1'b1;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b0;
+//      end
+//      ALU_B_BINV: begin
+//        din_insn30 = 1'b1;
+//        din_insn29 = 1'b1;
+//        din_insn27 = 1'b1;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b0;
+//      end
+//      ALU_B_BEXT: begin
+//        din_insn30 = 1'b1;
+//        din_insn29 = 1'b0;
+//        din_insn27 = 1'b1;
+//        din_insn26 = 1'b0;
+//        din_insn14 = 1'b1;
+//      end
+      // FSL, FSR, BFP not addded
+      default: begin
+        din_insn30 = 1'b0;
+        din_insn29 = 1'b0;
+        din_insn27 = 1'b0;
+        din_insn26 = 1'b0;
+        din_insn14 = 1'b0;
+      end
+    endcase // case (operator_i)
+
+    if (div_shift_en_i) begin
+      din_insn30 = 1'b0;
+      din_insn29 = 1'b0;
+      din_insn27 = 1'b0;
+      din_insn26 = 1'b0;
+      din_insn14 = 1'b0;
+    end
+  end
 
 
+//  assign bfpmode = 1'b0; //(operator_i == ALU_B_BFP);
+  assign shifter_zbsmode  = (din_insn30 || din_insn29) && din_insn27 && !din_insn26;
+  assign fsmode  = 1'b0; // (operator_i == ALU_B_FSL) ||
+                         // (operator_i == ALU_B_FSR);
 
-        // 30 29 27 26 14 13  3   Function
-        // --------------------   --------
-        //  0  0  0  0  0  0  W   SLL
-        //  0  0  0  0  1  0  W   SRL
-        //  1  0  0  0  1  0  W   SRA
-        //  0  1  0  0  0  0  W   SLO
-        //  0  1  0  0  1  0  W   SRO
-        //  1  1  0  0  0  0  W   ROL
-        //  1  1  0  0  1  0  W   ROR
-        // --------------------   --------
-        //  -  -  -  1  0  0  W   FSL
-        //  -  -  -  1  1  0  W   FSR
-        // --------------------   --------
-        //  0  1  1  0  0  0  W   SBSET
-        //  1  0  1  0  0  0  W   SBCLR
-        //  1  1  1  0  0  0  W   SBINV
-        //  1  0  1  0  1  0  W   SBEXT
-        // --------------------   --------
-        //  1  0  1  0  1  1  W   BFP
-
-        reg [63:0] tmp;
-
-        wire sbmode = SBOP && (din_insn30 || din_insn29) && din_insn27 && !din_insn26;
-        wire bfpmode = BFP && din_insn13;
-
-        reg [63:0] Y;
-        wire [63:0] A, B, X;
-        assign A = din_rs1;
-        assign B = din_rs3;
-        assign dout_rd = Y[31:0];
-
-        reg [63:0] aa, bb;
-        reg [5:0] shamt;
-
-        wire [15:0] bfp_config = din_rs2[31:16];
-
-        wire [5:0] bfp_len = {!bfp_config[11:8], bfp_config[11:8]};
-        wire [5:0] bfp_off = bfp_config[4:0];
-        wire [31:0] bfp_mask = 32'h FFFFFFFF << bfp_len;
-
-        always @* begin
-                shamt = din_rs2[5:0];
-                aa = A;
-                bb = B;
+        always_comb begin
+                shifter_shamt = div_shift_en_i ? div_shift_amt_i[5:0] : operand_b_i[5:0];
+                shifter_aa = operand_a_i;
+                shifter_bb = operand_b_i;
 
                 if (!din_insn26) begin
                     // Shift amount up to 31 for non-funnel shifts
-                    shamt[5] = 0;
+                    shifter_shamt[5] = 1'b0;
                 end
 
-                if (din_insn14) begin
+                if (din_insn14) begin // Reverse bit order
                    // Treat right shifts as left shifts with corrected shift amount
-                   shamt = -shamt;
+                   shifter_shamt = -shifter_shamt;
                 end
 
                 if (!din_insn26) begin
-                        casez ({din_insn30, din_insn29})
-                                2'b 0z: bb = {64{din_insn29}};
-                                2'b 10: bb = {64{A[31]}};
-                                2'b 11: bb = A;
-                        endcase
-                        if (sbmode && !din_insn14) begin
-                                aa = 1;
-                                bb = 0;
-                        end
+                  casez ({din_insn30, din_insn29})
+                    2'b 0z: shifter_bb = {64{din_insn29}};
+                    2'b 10: shifter_bb = {64{operand_a_i[31]}};
+                    2'b 11: shifter_bb = operand_a_i;
+                  endcase
+                  if (shifter_zbsmode && !din_insn14) begin
+                    shifter_aa = 1;
+                    shifter_bb = 0;
+                  end
                 end
 
-                if (bfpmode) begin
-                        aa = {32'h 0000_0000, ~bfp_mask};
-                        bb = 0;
-                        shamt = bfp_off;
-                end
+                //if (bfpmode) begin
+                //        aa = {32'h 0000_0000, ~bfp_mask};
+                //        bb = 0;
+                //        shamt = bfp_off;
+                //end
         end
 
-        always @* begin
-                Y = X;
-                if (sbmode) begin
+        always_comb begin
+                shifter_result = shifter_x;
+                if (shifter_zbsmode) begin
                         casez ({din_insn30, din_insn29, din_insn14})
-                                3'b zz1: Y = 1 &  X;
-                                3'b 0zz: Y = A |  X;
-                                3'b z0z: Y = A & ~X;
-                                3'b 11z: Y = A ^  X;
+                                3'b zz1: shifter_result =           1 &  shifter_x;
+                                3'b 0zz: shifter_result = operand_a_i |  shifter_x;
+                                3'b z0z: shifter_result = operand_a_i & ~shifter_x;
+                                3'b 11z: shifter_result = operand_a_i ^  shifter_x;
                         endcase
                 end
-                if (bfpmode)
-                        Y = (A & ~X) | {32'b0, din_rs2[31:0] & ~bfp_mask} << bfp_off;
+                //if (bfpmode)
+                //        shifter_result = (A & ~shifter_x) | {32'b0, din_rs2[31:0] & ~bfp_mask} << bfp_off;
         end
 
-        always @* begin
-                tmp = {bb[31:0], aa[31:0]};
-                tmp = shamt[5] ? {tmp[31:0], tmp[63:32]} : tmp;
-                tmp = shamt[4] ? {tmp[47:0], tmp[63:48]} : tmp;
-                tmp = shamt[3] ? {tmp[55:0], tmp[63:56]} : tmp;
-                tmp = shamt[2] ? {tmp[59:0], tmp[63:60]} : tmp;
-                tmp = shamt[1] ? {tmp[61:0], tmp[63:62]} : tmp;
-                tmp = shamt[0] ? {tmp[62:0], tmp[63:63]} : tmp;
+        always_comb begin
+                shifter_tmp = {shifter_bb[31:0], shifter_aa[31:0]};
+                shifter_tmp = shifter_shamt[5] ? {shifter_tmp[31:0], shifter_tmp[63:32]} : shifter_tmp;
+                shifter_tmp = shifter_shamt[4] ? {shifter_tmp[47:0], shifter_tmp[63:48]} : shifter_tmp;
+                shifter_tmp = shifter_shamt[3] ? {shifter_tmp[55:0], shifter_tmp[63:56]} : shifter_tmp;
+                shifter_tmp = shifter_shamt[2] ? {shifter_tmp[59:0], shifter_tmp[63:60]} : shifter_tmp;
+                shifter_tmp = shifter_shamt[1] ? {shifter_tmp[61:0], shifter_tmp[63:62]} : shifter_tmp;
+                shifter_tmp = shifter_shamt[0] ? {shifter_tmp[62:0], shifter_tmp[63:63]} : shifter_tmp;
         end
 
-        assign X = {32'bx, tmp[31:0]};
+        assign shifter_x = shifter_tmp[31:0];
 
 
-*/
+
+
+
 
   //////////////////////////////////////////////////////////////////
   //   ____ ___  __  __ ____   _    ____  ___ ____   ___  _   _   //
@@ -366,7 +424,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
       // Shift Operations
       ALU_SLL,
-      ALU_SRL, ALU_SRA:  result_o = shift_result;
+      ALU_SRL, ALU_SRA:  result_o = shifter_result;
 
       // Non-vector comparisons
       ALU_SLTS,  ALU_SLTU: result_o = {31'b0, comparison_result_o};
