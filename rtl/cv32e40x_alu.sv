@@ -313,11 +313,14 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                                   |_|           //
   /////////////////////////////////////////////////////////////////////
 
-  
   logic [31:0] div_clz_data_rev;
+  logic [31:0] clz_data_in;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
-  
+  logic [ 5:0] cpop_result_o;
+
+  assign clz_data_in = (operator_i == ALU_B_CTZ) ? div_clz_data_i : div_clz_data_rev;
+
   generate
     genvar l;
     for(l = 0; l < 32; l++)
@@ -325,10 +328,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       assign div_clz_data_rev[l] = div_clz_data_i[31-l];
     end
   endgenerate
-  
+
   cv32e40x_ff_one ff_one_i
   (
-    .in_i        ( div_clz_data_rev ),
+    .in_i        ( clz_data_in ),
     .first_one_o ( ff1_result ),
     .no_ones_o   ( ff_no_one  )
   );
@@ -336,6 +339,24 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
  
+
+  // CPOP
+  cv32e40x_alu_b_cpop alu_b_cpop_i
+    (.operand_i (operand_a_i),
+     .result_o  (cpop_result_o));
+
+  /////////////////////////////////
+  //    min/max instructions     //
+  /////////////////////////////////
+  logic [31:0]  min_result;
+  logic [31:0]  minu_result;
+  logic [31:0]  max_result;
+  logic [31:0]  maxu_result;
+
+  assign min_result  = (  $signed(operand_a_i) <   $signed(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign minu_result = ($unsigned(operand_a_i) < $unsigned(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign max_result  = (  $signed(operand_a_i) >   $signed(operand_b_i)) ? operand_a_i : operand_b_i;
+  assign maxu_result = ($unsigned(operand_a_i) > $unsigned(operand_b_i)) ? operand_a_i : operand_b_i;
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -372,6 +393,32 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH1ADD: result_o = (operand_a_i << 1) + operand_b_i;
       ALU_B_SH2ADD: result_o = (operand_a_i << 2) + operand_b_i;
       ALU_B_SH3ADD: result_o = (operand_a_i << 3) + operand_b_i;
+
+      // Zbb
+      ALU_B_CLZ, ALU_B_CTZ: result_o = {26'h0, div_clz_result_o};
+      ALU_B_CPOP:           result_o = {26'h0, cpop_result_o};
+      ALU_B_MIN:            result_o = min_result;
+      ALU_B_MINU:           result_o = minu_result;
+      ALU_B_MAX:            result_o = max_result;
+      ALU_B_MAXU:           result_o = maxu_result;
+
+      ALU_B_ANDN:           result_o = operand_a_i & ~operand_b_i;
+      ALU_B_ORN:            result_o = operand_a_i | ~operand_b_i;
+      ALU_B_XNOR:           result_o = operand_a_i ^ ~operand_b_i;
+
+      ALU_B_ORC_B:          result_o = {{(8){|operand_a_i[31:24]}},
+                                        {(8){|operand_a_i[23:16]}},
+                                        {(8){|operand_a_i[15:8]}},
+                                        {(8){|operand_a_i[7:0]}}};
+
+      ALU_B_REV8:           result_o = {operand_a_i[7:0],
+                                        operand_a_i[15:8],
+                                        operand_a_i[23:16],
+                                        operand_a_i[31:24]};
+
+      ALU_B_SEXT_B:         result_o = {{(24){operand_a_i[ 7]}}, operand_a_i[ 7:0]};
+      ALU_B_SEXT_H:         result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
+
 
       default: ; // default case to suppress unique warning
     endcase
