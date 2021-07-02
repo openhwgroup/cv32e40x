@@ -157,27 +157,27 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       else `uvm_error("mpu", "illegal cfg index")
 
   // Bufferable
-  a_pma_obi_bufrequired :
+  a_pma_obi_bufon :
     assert property (@(posedge clk) disable iff (!rst_n)
                      bus_trans_bufferable
                      |-> obi_memtype[0] ^ (!obi_memtype[0] && was_obi_waiting && !$past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should have had bufferable flag")
-  a_pma_obi_bufallowed :
+  a_pma_obi_bufoff :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     obi_memtype[0]
-                     |-> bus_trans_bufferable ^ (!bus_trans_bufferable && was_obi_waiting && $past(obi_memtype[0])))
+                     !bus_trans_bufferable
+                     |-> !obi_memtype[0] ^ (obi_memtype[0] && was_obi_waiting && $past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should not have had bufferable flag")
 
   // Cacheable
-  a_pma_obi_cacherequired :
+  a_pma_obi_cacheon :
     assert property (@(posedge clk) disable iff (!rst_n)
                      bus_trans_cacheable
                      |-> obi_memtype[1] ^ (!obi_memtype[1] && was_obi_waiting && !$past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should have had cacheable flag")
-  a_pma_obi_cacheallowed :
+  a_pma_obi_cacheoff :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     obi_memtype[1]
-                     |-> bus_trans_cacheable ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1])))
+                     !bus_trans_cacheable
+                     |-> !obi_memtype[1] ^ (obi_memtype[1] && was_obi_waiting && $past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should not have had cacheable flag")
 
   // OBI req vs PMA err
