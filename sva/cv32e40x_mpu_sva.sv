@@ -43,14 +43,10 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input pma_region_t pma_cfg,
 
    // Core OBI signals
-   input logic [ 1:0] instr_memtype_o,
-   input logic [31:0] instr_addr_o,
-   input logic        instr_req_o,
-   input logic        instr_gnt_i,
-   input logic [ 1:0] data_memtype_o,
-   input logic [31:0] data_addr_o,
-   input logic        data_req_o,
-   input logic        data_gnt_i,
+   input logic [ 1:0] obi_memtype,
+   input logic [31:0] obi_addr,
+   input logic        obi_req,
+   input logic        obi_gnt,
 
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
@@ -71,27 +67,6 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input              mpu_state_e state_q,
    input logic        mpu_err
    );
-
-
-  // Assign local signals depending on instr/data side instantiation
-
-  logic [ 1:0] obi_memtype;
-  logic [31:0] obi_addr;
-  logic        obi_req;
-  logic        obi_gnt;
-  generate
-    if (IS_INSTR_SIDE) begin
-      assign obi_memtype = instr_memtype_o;
-      assign obi_addr = instr_addr_o;
-      assign obi_req = instr_req_o;
-      assign obi_gnt = instr_gnt_i;
-    end else begin
-      assign obi_memtype = data_memtype_o;
-      assign obi_addr = data_addr_o;
-      assign obi_req = data_req_o;
-      assign obi_gnt = data_gnt_i;
-    end
-  endgenerate
 
 
   // PMA assertions helper signals
