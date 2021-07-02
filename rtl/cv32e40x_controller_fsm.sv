@@ -204,7 +204,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ebreak_in_wb = ex_wb_pipe_i.ebrk_insn && ex_wb_pipe_i.instr_valid;
 
   // Trigger match in wb
-  assign trigger_match_in_wb = ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid;
+  assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid) && !debug_mode_q;
 
   // Pending NMI
   assign pending_nmi = 1'b0;
@@ -234,7 +234,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   assign debug_cause_n = (pending_single_step) ? DBG_CAUSE_STEP :
-                         (trigger_match_in_wb && !debug_mode_q)          ? DBG_CAUSE_TRIGGER :
+                         (trigger_match_in_wb)          ? DBG_CAUSE_TRIGGER :
                          (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK  :
                          DBG_CAUSE_HALTREQ;
 
