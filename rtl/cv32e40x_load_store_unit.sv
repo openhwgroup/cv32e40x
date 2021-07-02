@@ -102,6 +102,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         lsu_sign_ext_q;
   logic         lsu_we_q;
   logic [1:0]   rdata_offset_q;
+  logic         last_q;
 
   logic [1:0]   wdata_offset;           // mux control for data to be written to memory
 
@@ -196,6 +197,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       lsu_sign_ext_q   <= 1'b0;
       lsu_we_q         <= 1'b0;
       rdata_offset_q   <= '0;
+      last_q           <= 1'b0;
     end
     else if (ctrl_update) // request was granted, we wait for rvalid and can continue to WB
     begin
@@ -203,6 +205,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       lsu_sign_ext_q   <= id_ex_pipe_i.lsu_sign_ext;
       lsu_we_q         <= id_ex_pipe_i.lsu_we;
       rdata_offset_q   <= addr_int[1:0];
+      // If we currently signal misaligned from first stage (EX), WB stage will not see the last transfer for this update. 
+      // Otherwise we are on the last. For non-misaligned we always mark as last.
+      last_q           <= lsu_misaligned_0_o ? 1'b0 : 1'b1;
     end
   end
 
@@ -343,7 +348,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // output to register file
   assign lsu_rdata_1_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
 
-  assign misaligned_st = id_ex_pipe_i.lsu_misaligned;
+  assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename
 
   // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
   assign load_err_o      = 1'b0; // Not currently used
@@ -408,8 +413,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned
-  // load/store only its second phase is marked as valid.
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : !lsu_misaligned_0_o && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
+  // load/store only its second phase is marked as valid (last_q == 1'b1).
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
