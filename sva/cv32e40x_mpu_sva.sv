@@ -102,7 +102,10 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   logic was_obi_waiting;
   logic was_obi_reqnognt;
   assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
-  always @(posedge clk) was_obi_reqnognt <= obi_req && !obi_gnt;
+  always @(posedge clk) begin
+    was_obi_reqnognt <= 0;
+    if (rst_n) was_obi_reqnognt <= obi_req && !obi_gnt;
+  end
 
   logic is_lobound_ok;
   logic is_hibound_ok;
@@ -134,9 +137,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       end
     end
   end
-  cov_pma_matchnone : cover property (@(posedge clk) (!is_pma_matched));
-  cov_pma_matchfirst : cover property (@(posedge clk) (is_pma_matched && (pma_match_num == 0)));
-  cov_pma_matchother : cover property (@(posedge clk) (is_pma_matched && (pma_match_num > 0)));
+  cov_pma_matchnone : cover property (@(posedge clk) disable iff (!rst_n) (!is_pma_matched));
+  cov_pma_matchfirst : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num == 0)));
+  cov_pma_matchother : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num > 0)));
 
 
   // Checks for illegal PMA region configuration
@@ -158,54 +161,58 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   end
 
   a_pma_valid_num_regions :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      (0 <= PMA_NUM_REGIONS) && (PMA_NUM_REGIONS <= 16))
       else `uvm_error("mpu", "PMA number of regions is badly configured")
 
   // Region matching
   a_pma_match_bounds :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      is_pma_matched |-> (is_lobound_ok && is_hibound_ok))
       else `uvm_error("mpu", "PMA region match doesn't fit bounds")
   a_pma_match_lowest :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      is_pma_matched |-> (pma_match_num == pma_lowest_match))
       else `uvm_error("mpu", "PMA region match wasn't lowest")
   a_pma_match_index :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      is_pma_matched |-> ((0 <= pma_match_num) && (pma_match_num <= 16)))
       else `uvm_error("mpu", "illegal cfg index")
 
   // Bufferable
   a_pma_obi_bufrequired :
-    assert property (@(posedge clk) bus_trans_bufferable
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     bus_trans_bufferable
                      |-> obi_memtype[0] ^ (!obi_memtype[0] && was_obi_waiting && !$past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should have had bufferable flag")
   a_pma_obi_bufallowed :
-    assert property (@(posedge clk) obi_memtype[0]
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     obi_memtype[0]
                      |-> bus_trans_bufferable ^ (!bus_trans_bufferable && was_obi_waiting && $past(obi_memtype[0])))
       else `uvm_error("mpu", "obi should not have had bufferable flag")
 
   // Cacheable
   a_pma_obi_cacherequired :
-    assert property (@(posedge clk) bus_trans_cacheable
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     bus_trans_cacheable
                      |-> obi_memtype[1] ^ (!obi_memtype[1] && was_obi_waiting && !$past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should have had cacheable flag")
   a_pma_obi_cacheallowed :
-    assert property (@(posedge clk) obi_memtype[1]
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     obi_memtype[1]
                      |-> bus_trans_cacheable ^ (!bus_trans_cacheable && was_obi_waiting && $past(obi_memtype[1])))
       else `uvm_error("mpu", "obi should not have had cacheable flag")
 
   // OBI req vs PMA err
   a_pma_obi_reqallowed :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      obi_req
                      |->
                      (!pma_err && is_addr_match)
                      ^ (!is_addr_match && was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "obi made request to pma-forbidden region")
   a_pma_obi_reqdenied :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      pma_err
                      |-> !obi_req ^ (was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "pma error should forbid obi req")
@@ -234,31 +241,31 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   cg_pma cgpma = new;
 
   cov_pma_nondefault :
-    cover property (@(posedge clk)
+    cover property (@(posedge clk) disable iff (!rst_n)
       (pma_cfg != PMA_R_DEFAULT) && bus_trans_valid_o);
 
 
   // Should only give MPU error response during mpu_err_trans_valid
   a_mpu_status_no_obi_rvalid :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      (mpu_status != MPU_OK) |-> (mpu_err_trans_valid) )
       else `uvm_error("mpu", "MPU error status wile not mpu_err_trans_valid")
 
   // MPU FSM and bus interface should never assert trans valid at the same time
   a_mpu_bus_mpu_err_valid :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      (! (bus_resp_valid_i && mpu_err_trans_valid) ))
       else `uvm_error("mpu", "MPU FSM and bus interface response collision")
 
   // Should only block core side upon when waiting for MPU error response
   a_mpu_block_core_iff_wait :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      (mpu_block_core) |-> (state_q != MPU_IDLE) )
       else `uvm_error("mpu", "MPU blocking core side when not needed")
 
   // Should only block OBI side upon MPU error
   a_mpu_block_bus_iff_err :
-    assert property (@(posedge clk)
+    assert property (@(posedge clk) disable iff (!rst_n)
                      (mpu_block_bus) |-> (mpu_err || (state_q != MPU_IDLE)) )
       else `uvm_error("mpu", "MPU blocking OBI side when not needed")
 
