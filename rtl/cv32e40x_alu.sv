@@ -412,6 +412,24 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_MAX:            result_o = max_result;
       ALU_B_MAXU:           result_o = maxu_result;
 
+      ALU_B_ANDN:           result_o = operand_a_i & ~operand_b_i;
+      ALU_B_ORN:            result_o = operand_a_i | ~operand_b_i;
+      ALU_B_XNOR:           result_o = operand_a_i ^ ~operand_b_i;
+
+      ALU_B_ORC_B:          result_o = {{(8){|operand_a_i[31:24]}},
+                                        {(8){|operand_a_i[23:16]}},
+                                        {(8){|operand_a_i[15:8]}},
+                                        {(8){|operand_a_i[7:0]}}};
+
+      ALU_B_REV8:           result_o = {operand_a_i[7:0],
+                                        operand_a_i[15:8],
+                                        operand_a_i[23:16],
+                                        operand_a_i[31:24]};
+
+      ALU_B_SEXT_B:         result_o = {{(24){operand_a_i[ 7]}}, operand_a_i[ 7:0]};
+      ALU_B_SEXT_H:         result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
+
+
       default: ; // default case to suppress unique warning
     endcase
   end

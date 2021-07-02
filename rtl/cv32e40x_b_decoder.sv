@@ -80,7 +80,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
             end
           end
 
-
+          // RVB Zbb
           {7'b0000101, 3'b100}: begin // Return minimum number, signed (min)
             if (RV32B_ZBB) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
@@ -106,6 +106,51 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
             end
           end
 
+          {7'b0100000, 3'b111}: begin // Return minimum number, signed (andn)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_ANDN;
+            end
+          end
+          {7'b0100000, 3'b110}: begin // Return minimum number, signed (orn)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_ORN;
+            end
+          end
+          {7'b0100000, 3'b100}: begin // Return minimum number, signed (xnor)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_XNOR;
+            end
+          end
+
+          // RVB Zbs
+          {7'b0010100, 3'b001}: begin // Set bit in rs1 at index specified by rs2 (bset)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_BSET;
+            end
+          end
+          {7'b0100100, 3'b001}: begin // Clear bit in rs1 at index specified by rs2 (bclr)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_BCLR;
+            end
+          end
+          {7'b0110100, 3'b001}: begin // Invert bit in rs1 at index specified by rs2 (binv)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_BCLR;
+            end
+          end
+          {7'b0100100, 3'b001}: begin // Extract bit from rs1 at index specified by rs2 (bclr)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_BCLR;
+            end
+          end
+
           default: begin
             // No match
             decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
@@ -118,6 +163,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
       OPCODE_OPIMM: begin
 
         unique case ({instr_rdata_i[31:25], instr_rdata_i[24:20], instr_rdata_i[14:12]})
+          // RVB Zbb
           {7'b011_0000, 5'b0_0000, 3'b001} : begin
             if (RV32B_ZBB) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
@@ -136,6 +182,63 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator = ALU_B_CPOP;
             end
           end
+
+          {7'b001_0100, 5'b0_0111, 3'b101}: begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_ORC_B;
+            end
+          end
+          {7'b011_0100, 5'b1_1000, 3'b101}: begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_REV8;
+            end
+          end
+
+          {7'b110_0000, 5'b0_0100, 3'b001}: begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_SEXT_B;
+            end
+          end
+          {7'b110_0000, 5'b0_0101, 3'b001}: begin
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_SEXT_H;
+            end
+          end
+
+          // RVB Zbs immediate
+          {7'b0010100, 5'bx_xxxx, 3'b001}: begin // Set bit in rs1 at index specified by rs2 (bset)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn     = 1'b0;
+              decoder_ctrl_o.alu_operator     = ALU_B_BSET;
+              decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            end
+          end
+          {7'b0100100, 5'bx_xxxx, 3'b001}: begin // Clear bit in rs1 at index specified by rs2 (bclr)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn     = 1'b0;
+              decoder_ctrl_o.alu_operator     = ALU_B_BCLR;
+              decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            end
+          end
+          {7'b0110100, 5'bx_xxxx, 3'b001}: begin // Invert bit in rs1 at index specified by rs2 (binv)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn     = 1'b0;
+              decoder_ctrl_o.alu_operator     = ALU_B_BCLR;
+              decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            end
+          end
+          {7'b0100100, 5'bx_xxxx, 3'b001}: begin // Extract bit from rs1 at index specified by rs2 (bclr)
+            if (RV32B_ZBS) begin
+              decoder_ctrl_o.illegal_insn     = 1'b0;
+              decoder_ctrl_o.alu_operator     = ALU_B_BCLR;
+              decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            end
+          end
+
 
           default: begin
             // No match
