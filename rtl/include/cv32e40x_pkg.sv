@@ -106,7 +106,7 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_ORN      = 6'b101101,
  ALU_B_XNOR     = 6'b101110,
  ALU_B_ROR      = 6'b101111,
- ALU_B_RORI     = 6'b110000,
+ ALU_B_ROL      = 6'b110000,
  ALU_B_REV8     = 6'b110001,
  ALU_B_ORC_B    = 6'b110010,
 

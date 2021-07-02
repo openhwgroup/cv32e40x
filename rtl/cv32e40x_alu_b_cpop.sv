@@ -28,8 +28,8 @@
 
 
 module cv32e40x_alu_b_cpop
-  (logic [31:0] operand_i,
-   logic [ 5:0] result_o);
+  (input  logic [31:0] operand_i,
+   output logic [ 5:0] result_o);
 
   logic [31:0][5:0] sum;
 
