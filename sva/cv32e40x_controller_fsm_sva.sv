@@ -44,7 +44,8 @@ module cv32e40x_controller_fsm_sva
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input logic           rf_we_wb_i,
-  input csr_opcode_e    csr_op_i
+  input csr_opcode_e    csr_op_i,
+  input logic           pending_single_step
 );
 
 
@@ -151,5 +152,11 @@ module cv32e40x_controller_fsm_sva
   assert property (@(posedge clk)
           (ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
     else `uvm_error("controller", "LSU instruction follows WFI")
+
+  // Check that no instructions are valid in ID or EX when a single step is taken
+  a_single_step_pipecheck :
+    assert property (@(posedge clk)
+            (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN)) |-> (!id_ex_pipe_i.instr_valid && !if_id_pipe_i.instr_valid))
+      else `uvm_error("controller", "ID and EX not empty when when single step is taken")
 endmodule // cv32e40x_controller_fsm_sva
 
