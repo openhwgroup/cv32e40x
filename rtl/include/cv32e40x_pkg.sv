@@ -1019,6 +1019,7 @@ typedef struct packed {
   logic        load_stall;            // Stall due to load operation
   logic        csr_stall;
   logic        wfi_stall;
+  logic        minstret_stall;        // Stall due to minstret/h read in EX
   logic        deassert_we;           // Deassert write enable for next instruction
   logic        deassert_we_special;   // Deassert write enable and special insn bits
 } ctrl_byp_t;

@@ -84,7 +84,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        if_ready_i,       // IF stage is ready for new data
   input  logic        id_ready_i,       // ID stage is ready for new data
   input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
-  input  logic        wb_ready_i        // WB stage is ready for new data
+  input  logic        wb_ready_i,       // WB stage is ready for new data,
+  input  logic        wb_valid_i        // WB stage ha valid (non-bubble) data
 );
 
    // FSM state encoding
@@ -254,7 +255,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = ex_wb_pipe_i.instr_valid; // todo:low Not correct; just put something here such that minstret counter will not get optimized away (and did not use wb_valid to avoid long timing path)
+  assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;
   assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
@@ -333,7 +334,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
     // currently in ID is not ready to be issued yet)
     ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
-    ctrl_fsm_o.halt_ex = 1'b0;
+    // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
+    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
 
     // By default no stages are killed
