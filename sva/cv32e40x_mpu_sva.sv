@@ -112,9 +112,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       end
     end
   end
-  cov_pma_matchnone : cover property (@(posedge clk) disable iff (!rst_n) (!is_pma_matched));
-  cov_pma_matchfirst : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num == 0)));
-  cov_pma_matchother : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num > 0)));
+  `ifndef FORMAL
+    cov_pma_matchnone : cover property (@(posedge clk) disable iff (!rst_n) (!is_pma_matched));
+    cov_pma_matchfirst : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num == 0)));
+    cov_pma_matchother : cover property (@(posedge clk) disable iff (!rst_n) (is_pma_matched && (pma_match_num > 0)));
+  `endif
 
 
   // Checks for illegal PMA region configuration
@@ -213,11 +215,15 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     x_err_cacheable: cross cp_err, cp_cacheable;
     x_err_atomic: cross cp_err, cp_atomic;
   endgroup
-  cg_pma cgpma = new;
+  `ifndef FORMAL
+    cg_pma cgpma = new;
+  `endif
 
-  cov_pma_nondefault :
-    cover property (@(posedge clk) disable iff (!rst_n)
-      (pma_cfg != PMA_R_DEFAULT) && bus_trans_valid_o);
+  `ifndef FORMAL
+    cov_pma_nondefault :
+      cover property (@(posedge clk) disable iff (!rst_n)
+        (pma_cfg != PMA_R_DEFAULT) && bus_trans_valid_o);
+  `endif
 
 
   // Should only give MPU error response during mpu_err_trans_valid
