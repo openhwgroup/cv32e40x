@@ -136,6 +136,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic interrupt_allowed;
   logic debug_allowed;
   logic single_step_allowed;
+
+  // Flops for debug cause
+  logic [2:0] debug_cause_n;
+  logic [2:0] debug_cause_q;
   
 // Data request has been clocked without insn moving to WB
   logic obi_data_req_q; // todo: should really look at 'trans'; rename accordingly
@@ -208,27 +212,34 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Single step will need to finish insn in WB, including LSU
   // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
+  // todo: better way of factoring in last part of a misaligned LSU instruction
   assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q;
                              
-  
-  assign pending_single_step = !debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid;
+  // Single step are mutually exclusive from any other reason to enter debug
+  assign pending_single_step = (!debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle
   assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;
 
+  // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
                          (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
                          (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q)   || // Ebreak with dcsr.ebreakm==1
-                         //pending_single_step                                  || // single stepping, dcsr.step==1
-                          (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.lsu_misaligned;
+                         (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.lsu_misaligned;
 
                            
+  // Determine cause of debug
+  // pending_single_step may only happen if no other causes for debug are true.
+  // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
+  assign debug_cause_n = (pending_single_step) ? DBG_CAUSE_STEP :
+                         (trigger_match_in_wb && !debug_mode_q)          ? DBG_CAUSE_TRIGGER :
+                         (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK  :
+                         DBG_CAUSE_HALTREQ;
 
-  assign ctrl_fsm_o.debug_cause = (trigger_match_in_wb && !debug_mode_q)          ? DBG_CAUSE_TRIGGER :
-                                  (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK  :
-                                  ((debug_req_i || debug_req_q) && !debug_mode_q) ? DBG_CAUSE_HALTREQ :
-                                  DBG_CAUSE_STEP;
+
+  // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
+  assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
   
   assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
@@ -546,7 +557,28 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
         ctrl_fsm_o.debug_csr_save = 1'b1;
 
-        if (debug_single_step_i && !debug_mode_q) begin
+        // debug_cause_q set when decision was made to enter debug
+        if (debug_cause_q != DBG_CAUSE_STEP) begin
+          // Kill pipeline
+          ctrl_fsm_o.kill_if = 1'b1;
+          ctrl_fsm_o.kill_id = 1'b1;
+          ctrl_fsm_o.kill_ex = 1'b1;
+          // Ebreak that causes debug entry should not be killed, otherwise RVFI will skip it
+          // Trigger match should also be signalled as not killed (all write enables are suppressed in ID), otherwise RVFI/ISS will not attempt to execute and detect trigger
+          // todo: Move some logic to RVFI instead?
+          ctrl_fsm_o.kill_wb = !(ebreak_in_wb || trigger_match_in_wb);
+
+          // Save pc from oldest valid instruction
+          if (ex_wb_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_wb = 1'b1;
+          end else if (id_ex_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_ex = 1'b1;
+          end else if (if_id_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_id = 1'b1;
+          end else begin
+            ctrl_fsm_o.csr_save_if = 1'b1;
+          end
+        end else begin
           // Single step
           // Only kill IF. WB should be allowed to complete
           // ID and EX are empty as IF is blocked after one issue in single step mode
@@ -561,25 +593,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
              // entering debug mode
           if((ebreak_in_wb && debug_ebreakm_i) || trigger_match_in_wb) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else begin
-            ctrl_fsm_o.csr_save_if = 1'b1;
-          end
-        end else begin
-          // Kill pipeline
-          // Exception if we already are in debug mode. This is caused by ebreak and should be signalled
-          // as wb_valid
-          ctrl_fsm_o.kill_if = 1'b1;
-          ctrl_fsm_o.kill_id = 1'b1;
-          ctrl_fsm_o.kill_ex = 1'b1;
-          ctrl_fsm_o.kill_wb = !debug_mode_q;
-
-          // Save pc from oldest valid instruction
-          if (ex_wb_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else if (id_ex_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_ex = 1'b1;
-          end else if (if_id_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_id = 1'b1;
           end else begin
             ctrl_fsm_o.csr_save_if = 1'b1;
           end
@@ -621,9 +634,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       ctrl_fsm_cs <= RESET;
       debug_mode_q <= 1'b0;
+      debug_cause_q <= DBG_CAUSE_NONE;
     end else begin
-      ctrl_fsm_cs <= ctrl_fsm_ns;
-      debug_mode_q <= debug_mode_n;
+      ctrl_fsm_cs   <= ctrl_fsm_ns;
+      debug_mode_q  <= debug_mode_n;
+      debug_cause_q <= debug_cause_n;
     end
   end
 
