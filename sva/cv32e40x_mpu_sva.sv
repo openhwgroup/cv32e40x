@@ -156,6 +156,31 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      is_pma_matched |-> ((0 <= pma_match_num) && (pma_match_num <= 16)))
       else `uvm_error("mpu", "illegal cfg index")
 
+  // RTL vs SVA expectations
+  pma_region_t pma_expected_cfg;
+  logic        pma_expected_err;
+  always_comb begin
+    pma_expected_cfg = NO_PMA_R_DEFAULT;
+    if (PMA_NUM_REGIONS > 0) begin
+      pma_expected_cfg = is_pma_matched ? PMA_CFG[pma_lowest_match] : PMA_R_DEFAULT;
+    end
+  end
+  assign pma_expected_err =
+    ((execute_access_i || speculative_access_i) && !pma_expected_cfg.main)
+    || (atomic_access_i && !pma_expected_cfg.atomic);
+  a_pma_expect_cfg :
+    assert property (@(posedge clk) disable iff (!rst_n) pma_cfg == pma_expected_cfg)
+      else `uvm_error("mpu", "RTL cfg don't match SVA expectations")
+  a_pma_expect_bufferable :
+    assert property (@(posedge clk) disable iff (!rst_n) bus_trans_bufferable == pma_expected_cfg.bufferable)
+      else `uvm_error("mpu", "expected different bufferable flag")
+  a_pma_expect_cacheable :
+    assert property (@(posedge clk) disable iff (!rst_n) bus_trans_cacheable == pma_expected_cfg.cacheable)
+      else `uvm_error("mpu", "expected different cacheable flag")
+  a_pma_expect_err :
+    assert property (@(posedge clk) disable iff (!rst_n) pma_err == pma_expected_err)
+      else `uvm_error("mpu", "expected different err flag")
+
   // Bufferable
   a_pma_obi_bufon :
     assert property (@(posedge clk) disable iff (!rst_n)
