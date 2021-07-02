@@ -185,6 +185,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Stage valid signals
   logic        if_valid;
   logic        ex_valid;
+  logic        wb_valid;
 
   // Interrupts
   logic        m_irq_enable; // interrupt_controller
@@ -214,6 +215,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
  
   logic        csr_en_id;
   csr_opcode_e csr_op_id;
+
+  csr_num_e    csr_raddr_ex;
 
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
@@ -555,7 +558,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_ready_i                ( lsu_ready_1                  ),
   
     // Valid/ready
-    .wb_ready_o                 ( wb_ready                     )
+    .wb_ready_o                 ( wb_ready                     ),
+    .wb_valid_o                 ( wb_valid                     )
   );
 
   //////////////////////////////////////
@@ -605,6 +609,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
 
+    // Raddr from first stage (EX)
+    .csr_raddr_o                ( csr_raddr_ex           ),
+
     // Interrupt related control signals
     .mie_o                      ( mie                    ),
     .mip_i                      ( mip                    ),
@@ -640,6 +647,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // From ID/EX pipeline
     .id_ex_pipe_i                   ( id_ex_pipe             ),
+
+    .csr_raddr_ex_i                 ( csr_raddr_ex           ),
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
@@ -695,6 +704,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( wb_ready               ),
+    .wb_valid_i                     ( wb_valid               ),
 
     .obi_data_req_i                 ( data_req_o             ),
 

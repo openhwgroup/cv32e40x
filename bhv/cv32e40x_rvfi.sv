@@ -488,7 +488,9 @@ module cv32e40x_rvfi
 
       //// EX Stage ////
       if (instr_ex_valid_i && wb_ready_i) begin
-        pc_wdata [STAGE_EX] <= branch_taken_ex_i ? branch_target_ex_i : pc_wdata[STAGE_ID];
+        pc_wdata [STAGE_EX] <= branch_taken_ex_i    ? branch_target_ex_i :
+                               !lsu_misaligned_ex_i ? pc_wdata[STAGE_ID] :
+                               pc_wdata[STAGE_EX];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
         rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
         rs2_addr [STAGE_EX] <= rs2_addr [STAGE_ID];
@@ -537,7 +539,9 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 : pc_wdata[STAGE_EX] & ~32'b1;
+      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 :
+                       (is_dret_wb       ) ? csr_dpc_q_i :
+                       pc_wdata[STAGE_EX] & ~32'b1;
 
       // CSR special cases
       if (csr_debug_csr_save_i && rvfi_valid) begin
@@ -694,7 +698,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mcycle             = csr_mhpmcounter_we_l[CSR_MCYCLE & 'hF];
 
   assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
+  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF];
   assign rvfi_csr_wmask_d.minstret           = csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF];
 
   assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;

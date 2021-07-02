@@ -60,7 +60,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input  logic          lsu_ready_i,
 
   // Stage ready/valid
-  output logic          wb_ready_o
+  output logic          wb_ready_o,
+  output logic          wb_valid_o
 );
 
   logic                 instr_valid;
@@ -121,5 +122,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1) ||          // Non-LSU instructions always have valid result in WB
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)      // LSU instructions have valid result based on data_rvalid_i
                     ) && instr_valid;
+
+  assign wb_valid_o = wb_valid;
   
 endmodule // cv32e40x_wb_stage
