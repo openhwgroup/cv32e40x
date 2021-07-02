@@ -8,6 +8,25 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
+/*
+ // New shifter based on https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v
+
+ *  Copyright (C) 2019  Claire Wolf <claire@symbioticeda.com>
+ *
+ *  Permission to use, copy, modify, and/or distribute this software for any
+ *  purpose with or without fee is hereby granted, provided that the above
+ *  copyright notice and this permission notice appear in all copies.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ *  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ *  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+*/
+
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:       Matthias Baer - baermatt@student.ethz.ch                   //
 //                                                                            //
@@ -104,230 +123,149 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                    //
   ////////////////////////////////////////
 
-/*
- // New shifter based on https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_shifter/rvb_shifter.v 
-
- *  Copyright (C) 2019  Claire Wolf <claire@symbioticeda.com>
- *
- *  Permission to use, copy, modify, and/or distribute this software for any
- *  purpose with or without fee is hereby granted, provided that the above
- *  copyright notice and this permission notice appear in all copies.
- *
- *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- *  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- *  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- *  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- *  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- *  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- *  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
-*/
-
-  // 30 29 27 26 14 13  3   Function
-  // --------------------   --------
-  //  0  0  0  0  0  0  W   SLL
-  //  0  0  0  0  1  0  W   SRL
-  //  1  0  0  0  1  0  W   SRA
-  //  0  1  0  0  0  0  W   SLO
-  //  0  1  0  0  1  0  W   SRO
-  //  1  1  0  0  0  0  W   ROL
-  //  1  1  0  0  1  0  W   ROR
-  // --------------------   --------
-  //  -  -  -  1  0  0  W   FSL
-  //  -  -  -  1  1  0  W   FSR
-  // --------------------   --------
-  //  0  1  1  0  0  0  W   SBSET
-  //  1  0  1  0  0  0  W   SBCLR
-  //  1  1  1  0  0  0  W   SBINV
-  //  1  0  1  0  1  0  W   SBEXT
-  // --------------------   --------
-  //  1  0  1  0  1  1  W   BFP
-
-  logic din_insn30, din_insn29, din_insn27, din_insn26, din_insn14;
+  logic        shifter_rotate;
+  logic        shifter_reverse;
+  logic        shifter_single_bit;
+  logic        shifter_arithmetic;
 
   logic [31:0] shifter_x;
   logic [63:0] shifter_tmp;
-  logic        shifter_zbsmode;
-//logic        bfpmode;
+  logic [5:0]  shifter_shamt; // Shift amount
   logic [31:0] shifter_result;
   logic [63:0] shifter_aa, shifter_bb;
-  logic [5:0]  shifter_shamt; // Shift amount
 
-  assign div_op_a_shifted_o = shifter_result;//shift_left_result;
-
-  // BFP
-  // wire [15:0] bfp_config = din_rs2[31:16];
-  // wire [5:0]  bfp_len = {!bfp_config[11:8], bfp_config[11:8]};
-  // wire [5:0]  bfp_off = bfp_config[4:0];
-  // wire [31:0] bfp_mask = 32'h FFFFFFFF << bfp_len;
+  assign div_op_a_shifted_o = shifter_result;
 
   always_comb begin
     case (operator_i)
       ALU_SLL: begin
-        din_insn30 = 1'b0;
-        din_insn29 = 1'b0;
-        din_insn27 = 1'b0;
-        din_insn26 = 1'b0;
-        din_insn14 = 1'b0;
+        shifter_arithmetic = 1'b0;
+        shifter_rotate = 1'b0;
+        shifter_single_bit = 1'b0;
+        shifter_reverse = 1'b0;
       end
       ALU_SRL: begin
-        din_insn30 = 1'b0;
-        din_insn29 = 1'b0;
-        din_insn27 = 1'b0;
-        din_insn26 = 1'b0;
-        din_insn14 = 1'b1;
+        shifter_arithmetic = 1'b0;
+        shifter_rotate = 1'b0;
+        shifter_single_bit = 1'b0;
+        shifter_reverse = 1'b1;
       end
       ALU_SRA: begin
-        din_insn30 = 1'b1;
-        din_insn29 = 1'b0;
-        din_insn27 = 1'b0;
-        din_insn26 = 1'b0;
-        din_insn14 = 1'b1;
+        shifter_arithmetic = 1'b1;
+        shifter_rotate = 1'b0;
+        shifter_single_bit = 1'b0;
+        shifter_reverse = 1'b1;
       end
 //      ALU_SLO: begin
-//        din_insn30 = 1'b0;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b0;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b0;
+//        shifter_arithmetic = 1'b0;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b0;
+//        shifter_reverse = 1'b0;
 //      end
 //      ALU_SRO: begin
-//        din_insn30 = 1'b0;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b0;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b1;
+//        shifter_arithmetic = 1'b0;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b0;
+//        shifter_reverse = 1'b1;
 //      end
 //      ALU_ROL: begin
-//        din_insn30 = 1'b1;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b0;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b0;
+//        shifter_arithmetic = 1'b1;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b0;
+//        shifter_reverse = 1'b0;
 //      end
 //      ALU_ROR: begin
-//        din_insn30 = 1'b1;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b0;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b1;
+//        shifter_arithmetic = 1'b1;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b0;
+//        shifter_reverse = 1'b1;
 //      end
 //      ALU_B_BSET: begin
-//        din_insn30 = 1'b0;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b1;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b0;
+//        shifter_arithmetic = 1'b0;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b1;
+//        shifter_reverse = 1'b0;
 //      end
 //      ALU_B_BCLR: begin
-//        din_insn30 = 1'b1;
-//        din_insn29 = 1'b0;
-//        din_insn27 = 1'b1;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b0;
+//        shifter_arithmetic = 1'b1;
+//        shifter_rotate = 1'b0;
+//        shifter_single_bit = 1'b1;
+//        shifter_reverse = 1'b0;
 //      end
 //      ALU_B_BINV: begin
-//        din_insn30 = 1'b1;
-//        din_insn29 = 1'b1;
-//        din_insn27 = 1'b1;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b0;
+//        shifter_arithmetic = 1'b1;
+//        shifter_rotate = 1'b1;
+//        shifter_single_bit = 1'b1;
+//        shifter_reverse = 1'b0;
 //      end
 //      ALU_B_BEXT: begin
-//        din_insn30 = 1'b1;
-//        din_insn29 = 1'b0;
-//        din_insn27 = 1'b1;
-//        din_insn26 = 1'b0;
-//        din_insn14 = 1'b1;
+//        shifter_arithmetic = 1'b1;
+//        shifter_rotate = 1'b0;
+//        shifter_single_bit = 1'b1;
+//        shifter_reverse = 1'b1;
 //      end
       // FSL, FSR, BFP not addded
       default: begin
-        din_insn30 = 1'b0;
-        din_insn29 = 1'b0;
-        din_insn27 = 1'b0;
-        din_insn26 = 1'b0;
-        din_insn14 = 1'b0;
+        shifter_arithmetic = 1'b0;
+        shifter_rotate = 1'b0;
+        shifter_single_bit = 1'b0;
+        shifter_reverse = 1'b0;
       end
     endcase // case (operator_i)
 
     if (div_shift_en_i) begin
-      din_insn30 = 1'b0;
-      din_insn29 = 1'b0;
-      din_insn27 = 1'b0;
-      din_insn26 = 1'b0;
-      din_insn14 = 1'b0;
+      shifter_arithmetic = 1'b0;
+      shifter_rotate = 1'b0;
+      shifter_single_bit = 1'b0;
+      shifter_reverse = 1'b0;
     end
   end
 
 
-//  assign bfpmode = 1'b0; //(operator_i == ALU_B_BFP);
-  assign shifter_zbsmode  = (din_insn30 || din_insn29) && din_insn27 && !din_insn26;
-  assign fsmode  = 1'b0; // (operator_i == ALU_B_FSL) ||
-                         // (operator_i == ALU_B_FSR);
+  always_comb begin
+    shifter_shamt = div_shift_en_i ? {1'b0, div_shift_amt_i[4:0]} : {1'b0, operand_b_i[4:0]};
+    shifter_aa = operand_a_i;
+    shifter_bb = operand_b_i;
 
-        always_comb begin
-                shifter_shamt = div_shift_en_i ? div_shift_amt_i[5:0] : operand_b_i[5:0];
-                shifter_aa = operand_a_i;
-                shifter_bb = operand_b_i;
+    if (shifter_reverse) begin
+      // Treat right shifts as left shifts with corrected shift amount
+      shifter_shamt = -shifter_shamt;
+    end
 
-                if (!din_insn26) begin
-                    // Shift amount up to 31 for non-funnel shifts
-                    shifter_shamt[5] = 1'b0;
-                end
+    casez ({shifter_arithmetic, shifter_rotate})
+      2'b 0z: shifter_bb = 64'h0;//{64{shifter_rotate}};
+      2'b 10: shifter_bb = {64{operand_a_i[31]}};
+      2'b 11: shifter_bb = {64{operand_a_i[31]}};//operand_a_i;
+    endcase
+    if (shifter_single_bit && !shifter_reverse) begin
+      shifter_aa = 1;
+      shifter_bb = 0;
+    end
+  end
 
-                if (din_insn14) begin // Reverse bit order
-                   // Treat right shifts as left shifts with corrected shift amount
-                   shifter_shamt = -shifter_shamt;
-                end
+  always_comb begin
+    shifter_result = shifter_x;
+    if (shifter_single_bit) begin
+      casez ({shifter_arithmetic, shifter_rotate, shifter_reverse})
+        3'b zz1: shifter_result =           1 &  shifter_x;
+        3'b 0zz: shifter_result = operand_a_i |  shifter_x;
+        3'b z0z: shifter_result = operand_a_i & ~shifter_x;
+        3'b 11z: shifter_result = operand_a_i ^  shifter_x;
+      endcase
+    end
+  end
 
-                if (!din_insn26) begin
-                  casez ({din_insn30, din_insn29})
-                    2'b 0z: shifter_bb = {64{din_insn29}};
-                    2'b 10: shifter_bb = {64{operand_a_i[31]}};
-                    2'b 11: shifter_bb = operand_a_i;
-                  endcase
-                  if (shifter_zbsmode && !din_insn14) begin
-                    shifter_aa = 1;
-                    shifter_bb = 0;
-                  end
-                end
+  always_comb begin
+    shifter_tmp = {shifter_bb[31:0], shifter_aa[31:0]};
+    shifter_tmp = shifter_shamt[5] ? {shifter_tmp[31:0], shifter_tmp[63:32]} : shifter_tmp;
+    shifter_tmp = shifter_shamt[4] ? {shifter_tmp[47:0], shifter_tmp[63:48]} : shifter_tmp;
+    shifter_tmp = shifter_shamt[3] ? {shifter_tmp[55:0], shifter_tmp[63:56]} : shifter_tmp;
+    shifter_tmp = shifter_shamt[2] ? {shifter_tmp[59:0], shifter_tmp[63:60]} : shifter_tmp;
+    shifter_tmp = shifter_shamt[1] ? {shifter_tmp[61:0], shifter_tmp[63:62]} : shifter_tmp;
+    shifter_tmp = shifter_shamt[0] ? {shifter_tmp[62:0], shifter_tmp[63:63]} : shifter_tmp;
+  end
 
-                //if (bfpmode) begin
-                //        aa = {32'h 0000_0000, ~bfp_mask};
-                //        bb = 0;
-                //        shamt = bfp_off;
-                //end
-        end
-
-        always_comb begin
-                shifter_result = shifter_x;
-                if (shifter_zbsmode) begin
-                        casez ({din_insn30, din_insn29, din_insn14})
-                                3'b zz1: shifter_result =           1 &  shifter_x;
-                                3'b 0zz: shifter_result = operand_a_i |  shifter_x;
-                                3'b z0z: shifter_result = operand_a_i & ~shifter_x;
-                                3'b 11z: shifter_result = operand_a_i ^  shifter_x;
-                        endcase
-                end
-                //if (bfpmode)
-                //        shifter_result = (A & ~shifter_x) | {32'b0, din_rs2[31:0] & ~bfp_mask} << bfp_off;
-        end
-
-        always_comb begin
-                shifter_tmp = {shifter_bb[31:0], shifter_aa[31:0]};
-                shifter_tmp = shifter_shamt[5] ? {shifter_tmp[31:0], shifter_tmp[63:32]} : shifter_tmp;
-                shifter_tmp = shifter_shamt[4] ? {shifter_tmp[47:0], shifter_tmp[63:48]} : shifter_tmp;
-                shifter_tmp = shifter_shamt[3] ? {shifter_tmp[55:0], shifter_tmp[63:56]} : shifter_tmp;
-                shifter_tmp = shifter_shamt[2] ? {shifter_tmp[59:0], shifter_tmp[63:60]} : shifter_tmp;
-                shifter_tmp = shifter_shamt[1] ? {shifter_tmp[61:0], shifter_tmp[63:62]} : shifter_tmp;
-                shifter_tmp = shifter_shamt[0] ? {shifter_tmp[62:0], shifter_tmp[63:63]} : shifter_tmp;
-        end
-
-        assign shifter_x = shifter_tmp[31:0];
-
-
-
-
+  assign shifter_x = shifter_tmp[31:0];
 
 
   //////////////////////////////////////////////////////////////////
