@@ -137,7 +137,7 @@ module cv32e40x_mult_sva
   // Check that accumulate register is 0 for MUL
   a_check_acc_mul_value_zero:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (operator_i == MUL_M32) |-> (mulh_acc == '0))
+                     (operator_i == MUL_M32) && valid_i |-> (mulh_acc == '0))
       else `uvm_error("mult", "Accumulate register not 0 for MUL instruction")
 
 
