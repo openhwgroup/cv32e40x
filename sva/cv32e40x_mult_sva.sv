@@ -85,9 +85,10 @@ module cv32e40x_mult_sva
       else `uvm_error("mult", "MULHU result check failed")
 
 
-  // Check that multiplier inputs are not changed in the middle of a MULH operation
-  logic         ready;
-  assign ready = ready_o && ready_i;
+  sequence s_insistent_valid;
+    @(posedge clk)
+    (valid_i && !ready_o) ##1 valid_i;
+  endsequence
 
   // TODO:low This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
   //       Commented this away as it fails for the new controller. We should revisit this assertion
@@ -97,28 +98,31 @@ module cv32e40x_mult_sva
                      !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
   */
 
-  // TODO:low These should depend on valid_i instead of !ready (valid_i |=> $stable()..
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")
+                     s_insistent_valid |-> $stable(operator_i))
+      else `uvm_error("mult", "Operator changed when MULH active")
 
   a_sign_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(signed_mode_i)) else `uvm_error("mult", "Sign changed when MULH active")
+                     s_insistent_valid |-> $stable(signed_mode_i))
+      else `uvm_error("mult", "Sign changed when MULH active")
 
   a_operand_a_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(op_a_i)) else `uvm_error("mult", "Operand A changed when MULH active")
+                     s_insistent_valid |-> $stable(op_a_i))
+      else `uvm_error("mult", "Operand A changed when MULH active")
 
   a_operand_b_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(op_b_i)) else `uvm_error("mult", "Operand B changed when MULH active")
-
+                     s_insistent_valid |-> $stable(op_b_i))
+      else `uvm_error("mult", "Operand B changed when MULH active")
 
   a_check_result_constant: // Check that the result is kept stable until receiver is ready
     assert property (@(posedge clk) disable iff (!rst_n)
                      (valid_o && !ready_i) ##1 valid_o |-> $stable(result_o))
       else `uvm_error("mult", "Completed result changed while receiving end was not ready")
+
 
   //////////////////////////////
   ////  Internal assertions ////
