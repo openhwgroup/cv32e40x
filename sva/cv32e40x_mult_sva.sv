@@ -30,6 +30,7 @@ module cv32e40x_mult_sva
    input logic        ready_o,
    input logic        valid_i,
    input logic [31:0] result_o,
+   input logic        valid_o,
    input logic        ready_i,
    input logic [ 1:0] signed_mode_i,
    input mul_opcode_e operator_i,
@@ -114,10 +115,10 @@ module cv32e40x_mult_sva
                      !ready |=> $stable(op_b_i)) else `uvm_error("mult", "Operand B changed when MULH active")
 
 
-  a_check_external_ready: // Check that the result is kept until execute stage ready is asserted and the result can be stored
+  a_check_result_constant: // Check that the result is kept stable until receiver is ready
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (ready_o && !ready_i) |=> $stable(result_o))
-      else `uvm_error("mult", "Completed result changed while external ready was low")
+                     (valid_o && !ready_i) ##1 valid_o |-> $stable(result_o))
+      else `uvm_error("mult", "Completed result changed while receiving end was not ready")
 
   //////////////////////////////
   ////  Internal assertions ////
