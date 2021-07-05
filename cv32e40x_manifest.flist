@@ -55,6 +55,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_div.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alu.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ff_one.sv
 ${DESIGN_RTL_DIR}/cv32e40x_popcnt.sv
+${DESIGN_RTL_DIR}/cv32e40x_alu_b_cpop.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller_fsm.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller_bypass.sv
 ${DESIGN_RTL_DIR}/cv32e40x_controller.sv

@@ -58,42 +58,67 @@ package cv32e40x_pkg;
 //                             |_|                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-parameter ALU_OP_WIDTH = 5;
+parameter ALU_OP_WIDTH = 6;
 
   // TODO:low Could a smarter encoding be used here?
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- ALU_ADD   = 5'b01000,
- ALU_SUB   = 5'b01001,
- 
- ALU_XOR   = 5'b01111,
- ALU_OR    = 5'b01110,
- ALU_AND   = 5'b00110,
+ ALU_ADD   = 6'b001000,
+ ALU_SUB   = 6'b001001,
 
-// Shifts
- ALU_SRA   = 5'b00100,
- ALU_SRL   = 5'b00101,
- ALU_SLL   = 5'b00111,
+ ALU_XOR   = 6'b001111,
+ ALU_OR    = 6'b001110,
+ ALU_AND   = 6'b000110,
 
-// Comparisons
- ALU_LTS   = 5'b00000,
- ALU_LTU   = 5'b00001,
- ALU_GES   = 5'b01010,
- ALU_GEU   = 5'b01011,
- ALU_EQ    = 5'b01100,
- ALU_NE    = 5'b01101,
+ // Shifts
+ ALU_SRA   = 6'b000100,
+ ALU_SRL   = 6'b000101,
+ ALU_SLL   = 6'b000111,
 
-// Set Lower Than operations
- ALU_SLTS  = 5'b00010,
- ALU_SLTU  = 5'b00011,
+ // Comparisons
+ ALU_LTS   = 6'b000000,
+ ALU_LTU   = 6'b000001,
+ ALU_GES   = 6'b001010,
+ ALU_GEU   = 6'b001011,
+ ALU_EQ    = 6'b001100,
+ ALU_NE    = 6'b001101,
 
-  // B, Zba
- ALU_B_SH1ADD = 5'b11100,
- ALU_B_SH2ADD = 5'b11101,
- ALU_B_SH3ADD = 5'b11110
+ // Set Lower Than operations
+ ALU_SLTS  = 6'b000010,
+ ALU_SLTU  = 6'b000011,
+
+ // B, Zba
+ ALU_B_SH1ADD   = 6'b100000,
+ ALU_B_SH2ADD   = 6'b100001,
+ ALU_B_SH3ADD   = 6'b100010,
+
+ // B, Zbb
+ ALU_B_CLZ      = 6'b100011,
+ ALU_B_CTZ      = 6'b100100,
+ ALU_B_CPOP     = 6'b100101,
+ ALU_B_MIN      = 6'b100110,
+ ALU_B_MINU     = 6'b100111,
+ ALU_B_MAX      = 6'b101000,
+ ALU_B_MAXU     = 6'b101001,
+ ALU_B_SEXT_B   = 6'b101010,
+ ALU_B_SEXT_H   = 6'b101011,
+ ALU_B_ANDN     = 6'b101100,
+ ALU_B_ORN      = 6'b101101,
+ ALU_B_XNOR     = 6'b101110,
+ ALU_B_ROR      = 6'b101111,
+ ALU_B_ROL      = 6'b110000,
+ ALU_B_REV8     = 6'b110001,
+ ALU_B_ORC_B    = 6'b110010,
+
+ // B, Zbs
+ ALU_B_BSET     = 6'b110011,
+ ALU_B_BCLR     = 6'b110100,
+ ALU_B_BINV     = 6'b110101,
+ ALU_B_BEXT     = 6'b110110
+
 } alu_opcode_e;
 
-  
+
 parameter MUL_OP_WIDTH = 1;
 
 typedef enum logic [MUL_OP_WIDTH-1:0]
