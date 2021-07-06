@@ -85,6 +85,7 @@ module cv32e40x_mult_sva
       else `uvm_error("mult", "MULHU result check failed")
 
 
+  // Check signal stability
   sequence s_insistent_valid;
     @(posedge clk)
     (valid_i && !ready_o) ##1 valid_i;
@@ -114,6 +115,19 @@ module cv32e40x_mult_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (valid_o && !ready_i) ##1 valid_o |-> $stable(result_o))
       else `uvm_error("mult", "Completed result changed while receiving end was not ready")
+
+
+  // Check handshake properties
+
+  a_outputs_are_input_qualified:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     valid_o |-> valid_i)
+      else `uvm_error("mult", "Outputs valid while inputs where unknown")
+
+  a_can_receive_expediently:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (valid_o && ready_i) |-> ready_o)
+      else `uvm_error("mult", "Outputs where consumed but didn't get ready for new inputs")
 
 
   //////////////////////////////
