@@ -90,14 +90,6 @@ module cv32e40x_mult_sva
     (valid_i && !ready_o) ##1 valid_i;
   endsequence
 
-  // TODO:low This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
-  //       Commented this away as it fails for the new controller. We should revisit this assertion
-  /*
-  a_enable_constant_when_mulh_active:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
-  */
-
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
                      s_insistent_valid |-> $stable(operator_i))
