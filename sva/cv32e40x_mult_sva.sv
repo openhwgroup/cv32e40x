@@ -58,7 +58,7 @@ module cv32e40x_mult_sva
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
-  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO:low could valid_o be used directly here?
+  assign mulh_result_valid = ((operator_i == MUL_H) && valid_i) && valid_o;
 
   logic [31:0] mulh_result;
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
