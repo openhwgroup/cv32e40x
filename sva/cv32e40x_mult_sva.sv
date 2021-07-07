@@ -52,8 +52,12 @@ module cv32e40x_mult_sva
   assign mul_result = $signed(op_a_i) * $signed(op_b_i);
   a_mul_result : // check multiplication result for MUL
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (valid_i && (operator_i == MUL_M32)) |->
-                     (result_o == mul_result)) else `uvm_error("mult", "MUL result check failed")
+                     (valid_i && (operator_i == MUL_M32)) |-> (result_o == mul_result))
+      else `uvm_error("mult", "MUL result check failed")
+  a_mul_valid : // check that MUL result is immediately qualified by valid_o
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (valid_i && (operator_i == MUL_M32)) |-> valid_o)
+      else `uvm_error("mult", "MUL result wasn't immediately valid")
 
 
   // Check result for all MULH flavors 
