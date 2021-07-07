@@ -49,7 +49,7 @@ It follows these specifications:
    https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.2.pdf
 
 .. [OPENHW-X] OpenHW eXtension Interface, version 0.1,
-   https://github.com/pulp-platform/riscv-extension-interface
+   https://github.com/openhwgroup/core-v-xif
 
 Many features in the RISC-V specification are optional, and |corev| can be parameterized to enable or disable some of them.
 
