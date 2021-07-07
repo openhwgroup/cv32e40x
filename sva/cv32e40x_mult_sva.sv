@@ -30,6 +30,7 @@ module cv32e40x_mult_sva
    input logic        ready_o,
    input logic        valid_i,
    input logic [31:0] result_o,
+   input logic        valid_o,
    input logic        ready_i,
    input logic [ 1:0] signed_mode_i,
    input mul_opcode_e operator_i,
@@ -51,13 +52,17 @@ module cv32e40x_mult_sva
   assign mul_result = $signed(op_a_i) * $signed(op_b_i);
   a_mul_result : // check multiplication result for MUL
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (valid_i && (operator_i == MUL_M32)) |->
-                     (result_o == mul_result)) else `uvm_error("mult", "MUL result check failed")
+                     (valid_i && (operator_i == MUL_M32)) |-> (result_o == mul_result))
+      else `uvm_error("mult", "MUL result check failed")
+  a_mul_valid : // check that MUL result is immediately qualified by valid_o
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (valid_i && (operator_i == MUL_M32)) |-> valid_o)
+      else `uvm_error("mult", "MUL result wasn't immediately valid")
 
 
   // Check result for all MULH flavors 
   logic               mulh_result_valid;
-  assign mulh_result_valid = valid_i && (operator_i == MUL_H) && ready_o; // TODO:low could valid_o be used directly here?
+  assign mulh_result_valid = ((operator_i == MUL_H) && valid_i) && valid_o;
 
   logic [31:0] mulh_result;
   assign mulh_result = ($signed({{32{op_a_i[31]}}, op_a_i}) * $signed({{32{op_b_i[31]}}, op_b_i})) >>> 32;
@@ -84,40 +89,50 @@ module cv32e40x_mult_sva
       else `uvm_error("mult", "MULHU result check failed")
 
 
-  // Check that multiplier inputs are not changed in the middle of a MULH operation
-  logic         ready;
-  assign ready = ready_o && ready_i;
+  // Check signal stability
+  sequence s_insistent_valid;
+    @(posedge clk)
+    (valid_i && !ready_o) ##1 valid_i;
+  endsequence
 
-  // TODO:low This assertion will soon be purposely broken as valid_i could be deasserted to abort ongoing multicyle instructions
-  //       Commented this away as it fails for the new controller. We should revisit this assertion
-  /*
-  a_enable_constant_when_mulh_active:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(valid_i)) else `uvm_error("mult", "valid_i changed when MULH active")
-  */
-
-  // TODO:low These should depend on valid_i instead of !ready (valid_i |=> $stable()..
   a_operator_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(operator_i)) else `uvm_error("mult", "Operator changed when MULH active")
+                     s_insistent_valid |-> $stable(operator_i))
+      else `uvm_error("mult", "Operator changed when MULH active")
 
   a_sign_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(signed_mode_i)) else `uvm_error("mult", "Sign changed when MULH active")
+                     s_insistent_valid |-> $stable(signed_mode_i))
+      else `uvm_error("mult", "Sign changed when MULH active")
 
   a_operand_a_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(op_a_i)) else `uvm_error("mult", "Operand A changed when MULH active")
+                     s_insistent_valid |-> $stable(op_a_i))
+      else `uvm_error("mult", "Operand A changed when MULH active")
 
   a_operand_b_constant_when_mulh_active:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !ready |=> $stable(op_b_i)) else `uvm_error("mult", "Operand B changed when MULH active")
+                     s_insistent_valid |-> $stable(op_b_i))
+      else `uvm_error("mult", "Operand B changed when MULH active")
 
-
-  a_check_external_ready: // Check that the result is kept until execute stage ready is asserted and the result can be stored
+  a_check_result_constant: // Check that the result is kept stable until receiver is ready
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (ready_o && !ready_i) |=> $stable(result_o))
-      else `uvm_error("mult", "Completed result changed while external ready was low")
+                     (valid_o && !ready_i) ##1 valid_o |-> $stable(result_o))
+      else `uvm_error("mult", "Completed result changed while receiving end was not ready")
+
+
+  // Check handshake properties
+
+  a_outputs_are_input_qualified:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     valid_o |-> valid_i)
+      else `uvm_error("mult", "Outputs valid while inputs where unknown")
+
+  a_can_receive_expediently:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (valid_o && ready_i) |-> ready_o)
+      else `uvm_error("mult", "Outputs where consumed but didn't get ready for new inputs")
+
 
   //////////////////////////////
   ////  Internal assertions ////
@@ -132,7 +147,7 @@ module cv32e40x_mult_sva
   // Check that accumulate register is 0 for MUL
   a_check_acc_mul_value_zero:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (operator_i == MUL_M32) |-> (mulh_acc == '0))
+                     (operator_i == MUL_M32) && valid_i |-> (mulh_acc == '0))
       else `uvm_error("mult", "Accumulate register not 0 for MUL instruction")
 
 
