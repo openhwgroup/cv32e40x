@@ -442,7 +442,7 @@ parameter MVENDORID_OFFSET = 7'h2;      // Final byte without parity bit
 parameter MVENDORID_BANK = 25'hC;       // Number of continuation codes
 
 // Machine Architecture ID (https://github.com/riscv/riscv-isa-manual/blob/master/marchid.md)
-parameter MARCHID = 32'h4;
+parameter MARCHID = 32'h14;
 
 parameter MTVEC_MODE        = 2'b01;
 parameter NUM_HPM_EVENTS    =   16;
