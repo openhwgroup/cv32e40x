@@ -409,6 +409,11 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SEXT_B:         result_o = {{(24){operand_a_i[ 7]}}, operand_a_i[ 7:0]};
       ALU_B_SEXT_H:         result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
 
+      // Zbs
+      ALU_B_BSET:           result_o = shifter_result;
+      ALU_B_BCLR:           result_o = shifter_result;
+      ALU_B_BINV:           result_o = shifter_result;
+      ALU_B_BEXT:           result_o = shifter_result;
 
       default: ; // default case to suppress unique warning
     endcase
