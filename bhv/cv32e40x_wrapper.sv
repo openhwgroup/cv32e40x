@@ -290,7 +290,7 @@ bind cv32e40x_sleep_unit:
          .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
-         .branch_taken_ex_i        ( core_i.controller_i.controller_fsm_i.branch_taken_ex                 ),
+         .branch_taken_ex_i        ( core_i.controller_i.controller_fsm_i.branch_in_ex                    ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
 
          .instr_ex_ready_i         ( core_i.ex_stage_i.ex_ready_o                                         ),
