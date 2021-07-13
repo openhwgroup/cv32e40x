@@ -605,8 +605,8 @@ module cv32e40x_rvfi
 
   assign rvfi_csr_rdata_d.mhpmevent          = csr_mhpmevent_q_i;
   assign rvfi_csr_wdata_d.mhpmevent          = csr_mhpmevent_n_i;
-  assign rvfi_csr_mhpmevent_wmask[2:0]       = '0; // No mhpevent0-2 registers
-  assign rvfi_csr_mhpmevent_wmask[31:3]      = csr_mhpmevent_we_i ? '1 : '0;
+  assign rvfi_csr_wmask_d.mhpmevent[2:0]     = '0; // No mhpevent0-2 registers
+  assign rvfi_csr_wmask_d.mhpmevent[31:3]    = csr_mhpmevent_we_i ? '1 : '0;
 
   // Machine trap handling
   assign rvfi_csr_rdata_d.mscratch           = csr_mscratch_q_i;
