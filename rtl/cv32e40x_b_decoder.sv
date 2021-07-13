@@ -156,7 +156,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator = ALU_B_BINV;
             end
           end
-          {7'b0100100, 3'b001}: begin // Extract bit from rs1 at index specified by rs2 (bext)
+          {7'b0100100, 3'b101}: begin // Extract bit from rs1 at index specified by rs2 (bext)
             if (RV32B_ZBS) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
               decoder_ctrl_o.alu_operator = ALU_B_BEXT;
@@ -250,7 +250,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
             end
           end
-          {7'b0100100, 5'b?_????, 3'b001}: begin // Extract bit from rs1 at index specified by immediate (bexti)
+          {7'b0100100, 5'b?_????, 3'b101}: begin // Extract bit from rs1 at index specified by immediate (bexti)
             if (RV32B_ZBS) begin
               decoder_ctrl_o.illegal_insn     = 1'b0;
               decoder_ctrl_o.alu_operator     = ALU_B_BEXT;
