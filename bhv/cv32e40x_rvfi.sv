@@ -46,7 +46,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         rs2_rdata_id_i,
 
    //// EX probes ////
-   input logic                                branch_taken_ex_i,
+   input logic                                branch_in_ex_i,
    // LSU
    input logic                                lsu_en_ex_i,
 
@@ -488,7 +488,7 @@ module cv32e40x_rvfi
 
       //// EX Stage ////
       if (instr_ex_valid_i && wb_ready_i) begin
-        pc_wdata [STAGE_EX] <= branch_taken_ex_i    ? branch_target_ex_i :
+        pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :
                                !lsu_misaligned_ex_i ? pc_wdata[STAGE_ID] :
                                pc_wdata[STAGE_EX];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
