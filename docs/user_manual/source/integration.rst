@@ -12,14 +12,17 @@ Instantiation Template
 .. code-block:: verilog
 
   cv32e40x_core #(
-      .LIB                      (         0 ),
-      .A_EXT                    (         0 ),
-      .B_EXT                    (      NONE ),
-      .P_EXT                    (         0 ),
-      .X_EXT                    (         0 ),
-      .NUM_MHPMCOUNTERS         (         1 ),
-      .PMA_NUM_REGIONS          (         1 ),
-      .PMA_CFG                  ( PMA_CFG[] )
+      .LIB                      (          0 ),
+      .A_EXT                    (          0 ),
+      .B_EXT                    (       NONE ),
+      .P_EXT                    (          0 ),
+      .X_EXT                    (          0 ),
+      .X_NUM_RS                 (          2 ),
+      .X_NUM_WB                 (          1 ),
+      .X_MISA                   ( 0x00000000 ),
+      .NUM_MHPMCOUNTERS         (          1 ),
+      .PMA_NUM_REGIONS          (          1 ),
+      .PMA_CFG                  (  PMA_CFG[] )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -101,6 +104,15 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_EXT``                    | bit            | 0             | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_NUM_RS``                 | int (2..3)     | 2             | Number of register file read ports that can be used by the         |
+|                              |                |               | eXtension interface.                                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_NUM_WB``                 | int (1..2)     | 2             | Number of register file write ports that can be used by the        |
+|                              |                |               | eXtension interface.                                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_MISA``                   | logic [31:0]   | 0x0000_0000   | MISA extensions implemented on the eXtension interface,            |
+|                              |                |               | see :ref:`csr-misa`.                                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                              |                |               | :ref:`performance-counters`                                        |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
@@ -109,6 +121,12 @@ Parameters
 | ``PMA_CFG[]``                | pma_region_t   | PMA_R_DEFAULT | PMA configuration.                                                 |
 |                              |                |               | Array of pma_region_t with PMA_NUM_REGIONS entries, see :ref:`pma` |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
+
+
+ 
+ 
+   
+
 
 Interfaces
 ----------
