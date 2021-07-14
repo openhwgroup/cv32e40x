@@ -347,6 +347,8 @@ Reset Value: 0x0000_1800
 | 0           | RO        | **User Interrupt Enable:** If you want to enable user level interrupt handling in your exception handler, set the Interrupt Enable UIE to 1 inside your handler code.                                                                                               |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+.. _csr-misa:
+
 Machine ISA (``misa``)
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -426,7 +428,7 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
 * **M** = 1
 * **P** = 1 if ``P_EXT`` = 1
 * **MXL** = 1 (i.e. XLEN = 32)
-* **X** = 1 if ``X_EXT`` = 1
+* If ``X_EXT`` = 1, then the value of ``X_MISA`` is ORed into the ``misa`` CSR.
 
 Machine Interrupt Enable Register (``mie``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
