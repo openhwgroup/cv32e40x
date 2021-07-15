@@ -136,7 +136,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [63:0] shifter_tmp;
   logic [5:0]  shifter_shamt;  // Shift amount
   logic [31:0] shifter_result; // Shift right
-  logic [63:0] shifter_aa, shifter_bb;
+  logic [31:0] shifter_aa, shifter_bb;
 
   assign div_op_a_shifted_o = shifter_result;
 
@@ -216,27 +216,25 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   always_comb begin
     shifter_shamt = div_shift_en_i ? {1'b0, div_shift_amt_i[4:0]} : {1'b0, operand_b_i[4:0]};
-    shifter_aa = operand_a_i;
-    shifter_bb = operand_b_i;
+    shifter_aa = shifter_operand_tieoff ? 1 : operand_a_i;
 
     if (shifter_rshift) begin
       // Treat right shifts as left shifts with corrected shift amount
       shifter_shamt = -shifter_shamt;
     end
 
-    casez ({shifter_arithmetic, shifter_rotate})
-      2'b 0?: shifter_bb = {64{shifter_rotate}};
-      2'b 10: shifter_bb = {64{operand_a_i[31]}};
-      2'b 11: shifter_bb = operand_a_i;
-    endcase
     if (shifter_operand_tieoff) begin
-      shifter_aa = 1;
       shifter_bb = 0;
+    end else if (shifter_arithmetic) begin
+      shifter_bb = shifter_rotate ? operand_a_i : {32{operand_a_i[31]}};
+    end else begin
+      shifter_bb = shifter_rotate ?          '1 : '0;
     end
+
   end
 
   always_comb begin
-    shifter_tmp = {shifter_bb[31:0], shifter_aa[31:0]};
+    shifter_tmp = {shifter_bb, shifter_aa};
     shifter_tmp = shifter_shamt[5] ? {shifter_tmp[31:0], shifter_tmp[63:32]} : shifter_tmp;
     shifter_tmp = shifter_shamt[4] ? {shifter_tmp[47:0], shifter_tmp[63:48]} : shifter_tmp;
     shifter_tmp = shifter_shamt[3] ? {shifter_tmp[55:0], shifter_tmp[63:56]} : shifter_tmp;
