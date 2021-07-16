@@ -35,6 +35,7 @@
 //                 Andreas Traber - atraber@student.ethz.ch                   //
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                                                                            //
 // Design Name:    ALU                                                        //
 // Project Name:   RI5CY                                                      //
@@ -49,6 +50,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   input  logic              clk,
   input  logic              rst_n,
   input  alu_opcode_e       operator_i,
+  input  alu_shifter_t      shifter_i,
   input  logic [31:0]       operand_a_i,
   input  logic [31:0]       operand_b_i,
 
@@ -125,126 +127,49 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   logic        shifter_rotate;
   logic        shifter_rshift;
-  logic        shifter_single_bit;
   logic        shifter_arithmetic;
+  logic        shifter_operand_tieoff; // Ties shifter oprand a to 1 and b to 0. Used for some single bit operations.
 
-  logic [31:0] shifter_x;
+  logic [31:0] shifter_bext_result;
+  logic [31:0] shifter_bset_result;
+  logic [31:0] shifter_bclr_result;
+  logic [31:0] shifter_binv_result;
+
   logic [63:0] shifter_tmp;
   logic [5:0]  shifter_shamt;  // Shift amount
   logic [31:0] shifter_result; // Shift right
-  logic [63:0] shifter_aa, shifter_bb;
+  logic [31:0] shifter_aa, shifter_bb;
+
+
+  assign shifter_rotate         = (div_shift_en_i) ? 1'b0 : shifter_i.rotate;
+  assign shifter_rshift         = (div_shift_en_i) ? 1'b0 : shifter_i.rshift;
+  assign shifter_arithmetic     = (div_shift_en_i) ? 1'b0 : shifter_i.arithmetic;
+  assign shifter_operand_tieoff = (div_shift_en_i) ? 1'b0 : shifter_i.operand_tieoff;
+
 
   assign div_op_a_shifted_o = shifter_result;
-
-  always_comb begin
-    case (operator_i) // TODO: Move this decoding logic to decoder
-      ALU_SLL: begin
-        shifter_arithmetic = 1'b0;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b0;
-      end
-      ALU_SRL: begin
-        shifter_arithmetic = 1'b0;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b1;
-      end
-      ALU_SRA: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b1;
-      end
-      ALU_B_ROL: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b1;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b0;
-      end
-      ALU_B_ROR: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b1;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b1;
-      end
-      ALU_B_BSET: begin
-        shifter_arithmetic = 1'b0;
-        shifter_rotate = 1'b1;
-        shifter_single_bit = 1'b1;
-        shifter_rshift = 1'b0;
-      end
-      ALU_B_BCLR: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b1;
-        shifter_rshift = 1'b0;
-      end
-      ALU_B_BINV: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b1;
-        shifter_single_bit = 1'b1;
-        shifter_rshift = 1'b0;
-      end
-      ALU_B_BEXT: begin
-        shifter_arithmetic = 1'b1;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b1;
-        shifter_rshift = 1'b1;
-      end
-      // FSL, FSR, BFP not addded
-      default: begin
-        shifter_arithmetic = 1'b0;
-        shifter_rotate = 1'b0;
-        shifter_single_bit = 1'b0;
-        shifter_rshift = 1'b0;
-      end
-    endcase // case (operator_i)
-
-    if (div_shift_en_i) begin
-      shifter_arithmetic = 1'b0;
-      shifter_rotate = 1'b0;
-      shifter_single_bit = 1'b0;
-      shifter_rshift = 1'b0;
-    end
-  end
-
-
   always_comb begin
     shifter_shamt = div_shift_en_i ? {1'b0, div_shift_amt_i[4:0]} : {1'b0, operand_b_i[4:0]};
-    shifter_aa = operand_a_i;
-    shifter_bb = operand_b_i;
+    shifter_aa = shifter_operand_tieoff ? 32'h1 : operand_a_i;
 
     if (shifter_rshift) begin
       // Treat right shifts as left shifts with corrected shift amount
       shifter_shamt = -shifter_shamt;
     end
 
-    casez ({shifter_arithmetic, shifter_rotate})
-      2'b 0?: shifter_bb = {64{shifter_rotate}};
-      2'b 10: shifter_bb = {64{operand_a_i[31]}};
-      2'b 11: shifter_bb = operand_a_i;
-    endcase
-    if (shifter_single_bit && !shifter_rshift) begin
-      shifter_aa = 1;
-      shifter_bb = 0;
+
+    if (shifter_operand_tieoff) begin
+      shifter_bb = 32'h0;
+    end else if (shifter_arithmetic) begin
+      shifter_bb = shifter_rotate ? operand_a_i : {32{operand_a_i[31]}};
+    end else begin
+      shifter_bb = shifter_rotate ?          '1 : '0;
     end
+
   end
 
   always_comb begin
-    shifter_result = shifter_x;
-    if (shifter_single_bit) begin
-      casez ({shifter_arithmetic, shifter_rotate, shifter_rshift})
-        3'b ??1: shifter_result =           1 &  shifter_x;
-        3'b 0??: shifter_result = operand_a_i |  shifter_x;
-        3'b ?0?: shifter_result = operand_a_i & ~shifter_x;
-        3'b 11?: shifter_result = operand_a_i ^  shifter_x;
-      endcase
-    end
-  end
-
-  always_comb begin
-    shifter_tmp = {shifter_bb[31:0], shifter_aa[31:0]};
+    shifter_tmp = {shifter_bb, shifter_aa};
     shifter_tmp = shifter_shamt[5] ? {shifter_tmp[31:0], shifter_tmp[63:32]} : shifter_tmp;
     shifter_tmp = shifter_shamt[4] ? {shifter_tmp[47:0], shifter_tmp[63:48]} : shifter_tmp;
     shifter_tmp = shifter_shamt[3] ? {shifter_tmp[55:0], shifter_tmp[63:56]} : shifter_tmp;
@@ -253,7 +178,12 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     shifter_tmp = shifter_shamt[0] ? {shifter_tmp[62:0], shifter_tmp[63:63]} : shifter_tmp;
   end
 
-  assign shifter_x = shifter_tmp[31:0];
+  assign shifter_result      = shifter_tmp[31:0];
+
+  assign shifter_bext_result =       32'h1 &  shifter_result;
+  assign shifter_bset_result = operand_a_i |  shifter_result;
+  assign shifter_bclr_result = operand_a_i & ~shifter_result;
+  assign shifter_binv_result = operand_a_i ^  shifter_result;
 
 
   //////////////////////////////////////////////////////////////////
@@ -410,10 +340,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SEXT_H:         result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
 
       // Zbs
-      ALU_B_BSET:           result_o = shifter_result;
-      ALU_B_BCLR:           result_o = shifter_result;
-      ALU_B_BINV:           result_o = shifter_result;
-      ALU_B_BEXT:           result_o = shifter_result;
+      ALU_B_BSET:           result_o = shifter_bset_result;
+      ALU_B_BCLR:           result_o = shifter_bclr_result;
+      ALU_B_BINV:           result_o = shifter_binv_result;
+      ALU_B_BEXT:           result_o = shifter_bext_result;
 
       default: ; // default case to suppress unique warning
     endcase

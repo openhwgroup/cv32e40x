@@ -80,6 +80,7 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGA_OR_FWD;
             decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_DIV;
+            decoder_ctrl_o.alu_shifter      = 4'b0000;
           end
           {7'b000_0001, 3'b101}: begin // divu
             decoder_ctrl_o.illegal_insn     = 1'b0;
@@ -87,6 +88,7 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGA_OR_FWD;
             decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_DIVU;
+            decoder_ctrl_o.alu_shifter      = 4'b0000;
           end
           {7'b000_0001, 3'b110}: begin // rem
             decoder_ctrl_o.illegal_insn     = 1'b0;
@@ -94,6 +96,7 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGA_OR_FWD;
             decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_REM;
+            decoder_ctrl_o.alu_shifter      = 4'b0000;
           end
           {7'b000_0001, 3'b111}: begin // remu
             decoder_ctrl_o.illegal_insn     = 1'b0;
@@ -101,6 +104,7 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGA_OR_FWD;
             decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_REMU;
+            decoder_ctrl_o.alu_shifter      = 4'b0000;
           end
 
           default: begin

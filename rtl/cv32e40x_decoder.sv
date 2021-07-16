@@ -55,6 +55,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // ALU signals
   output logic        alu_en_o,                 // ALU enable
   output alu_opcode_e alu_operator_o, // ALU operation selection
+  output alu_shifter_t  alu_shifter_o,          // ALU Shifter control
   output alu_op_a_mux_e alu_op_a_mux_sel_o,     // operand a selection: reg value, PC, immediate or zero
   output alu_op_b_mux_e alu_op_b_mux_sel_o,     // operand b selection: reg value or immediate
   output op_c_mux_e     op_c_mux_sel_o,         // operand c selection: reg value or jump target
@@ -180,6 +181,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign ctrl_transfer_target_mux_sel_o = decoder_ctrl_mux.ctrl_transfer_target_mux_sel;
   assign alu_en                         = decoder_ctrl_mux.alu_en;
   assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
+  assign alu_shifter_o                  = decoder_ctrl_mux.alu_shifter;
   assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
   assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
   assign op_c_mux_sel_o                 = decoder_ctrl_mux.op_c_mux_sel;

@@ -480,7 +480,15 @@ typedef struct packed {
   logic         uie; // Tie to zero when user mode is not enabled
 
 } Status_t;
-  
+
+
+  typedef struct packed {
+    logic        rotate;
+    logic        rshift;
+    logic        arithmetic;
+    logic        operand_tieoff;
+  } alu_shifter_t;
+
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
 parameter DBG_CAUSE_EBREAK     = 3'h1;
@@ -697,6 +705,7 @@ typedef struct packed {
   op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
+  alu_shifter_t                      alu_shifter;
   logic                              mul_en;
   mul_opcode_e                       mul_operator;
   logic [1:0]                        mul_signed_mode;
@@ -731,6 +740,7 @@ typedef struct packed {
                                                           op_c_mux_sel                 : OP_C_FWD,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
+                                                          alu_shifter                  : 4'b0000,
                                                           mul_en                       : 1'b0,
                                                           mul_operator                 : MUL_M32,
                                                           mul_signed_mode              : 2'b00,
@@ -936,6 +946,7 @@ typedef struct packed {
   // ALU Control
   logic         alu_en;
   alu_opcode_e  alu_operator;
+  alu_shifter_t alu_shifter;
   logic [31:0]  alu_operand_a;
   logic [31:0]  alu_operand_b;
   logic [31:0]  operand_c; // Gated with alu_en but not used by ALU

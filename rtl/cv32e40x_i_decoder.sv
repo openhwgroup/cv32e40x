@@ -209,11 +209,14 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           end
 
           3'b101: begin
-            if (instr_rdata_i[31:25] == 7'b0)
-              decoder_ctrl_o.alu_operator = ALU_SRL;  // Shift Right Logical by Immediate
-            else if (instr_rdata_i[31:25] == 7'b010_0000)
-              decoder_ctrl_o.alu_operator = ALU_SRA;  // Shift Right Arithmetically by Immediate
-            else begin
+            if (instr_rdata_i[31:25] == 7'b0) begin
+              decoder_ctrl_o.alu_operator       = ALU_SRL;     // Shift Right Logical by Immediate
+              decoder_ctrl_o.alu_shifter.rshift = 1'b1;
+            end else if (instr_rdata_i[31:25] == 7'b010_0000) begin
+              decoder_ctrl_o.alu_operator           = ALU_SRA; // Shift Right Arithmetically by Immediate
+              decoder_ctrl_o.alu_shifter.rshift     = 1'b1;
+              decoder_ctrl_o.alu_shifter.arithmetic = 1'b1;
+            end else begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
@@ -243,9 +246,15 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             {6'b00_0000, 3'b110}: decoder_ctrl_o.alu_operator = ALU_OR;    // Or
             {6'b00_0000, 3'b111}: decoder_ctrl_o.alu_operator = ALU_AND;   // And
             {6'b00_0000, 3'b001}: decoder_ctrl_o.alu_operator = ALU_SLL;   // Shift Left Logical
-            {6'b00_0000, 3'b101}: decoder_ctrl_o.alu_operator = ALU_SRL;   // Shift Right Logical
-            {6'b10_0000, 3'b101}: decoder_ctrl_o.alu_operator = ALU_SRA;   // Shift Right Arithmetic
-
+            {6'b00_0000, 3'b101}: begin
+              decoder_ctrl_o.alu_operator       = ALU_SRL;                 // Shift Right Logical
+              decoder_ctrl_o.alu_shifter.rshift = 1'b1;
+            end
+            {6'b10_0000, 3'b101}: begin
+              decoder_ctrl_o.alu_operator           = ALU_SRA;             // Shift Right Arithmetic
+              decoder_ctrl_o.alu_shifter.rshift     = 1'b1;
+              decoder_ctrl_o.alu_shifter.arithmetic = 1'b1;
+            end
             default: begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
