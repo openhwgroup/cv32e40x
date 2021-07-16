@@ -50,7 +50,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   input  logic              clk,
   input  logic              rst_n,
   input  alu_opcode_e       operator_i,
-  input  Alu_shifter_t      shifter_i,
+  input  alu_shifter_t      shifter_i,
   input  logic [31:0]       operand_a_i,
   input  logic [31:0]       operand_b_i,
 
@@ -127,8 +127,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   logic        shifter_rotate;
   logic        shifter_rshift;
-  logic        shifter_operand_tieoff;
   logic        shifter_arithmetic;
+  logic        shifter_operand_tieoff; // Ties shifter oprand a to 1 and b to 0. Used for some single bit operations.
 
   logic [31:0] shifter_bext_result;
   logic [31:0] shifter_bset_result;
@@ -150,7 +150,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   assign div_op_a_shifted_o = shifter_result;
   always_comb begin
     shifter_shamt = div_shift_en_i ? {1'b0, div_shift_amt_i[4:0]} : {1'b0, operand_b_i[4:0]};
-    shifter_aa = shifter_operand_tieoff ? 1 : operand_a_i;
+    shifter_aa = shifter_operand_tieoff ? 32'h1 : operand_a_i;
 
     if (shifter_rshift) begin
       // Treat right shifts as left shifts with corrected shift amount
@@ -159,7 +159,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
 
     if (shifter_operand_tieoff) begin
-      shifter_bb = 0;
+      shifter_bb = 32'h0;
     end else if (shifter_arithmetic) begin
       shifter_bb = shifter_rotate ? operand_a_i : {32{operand_a_i[31]}};
     end else begin
@@ -180,7 +180,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   assign shifter_result      = shifter_tmp[31:0];
 
-  assign shifter_bext_result =           1 &  shifter_result;
+  assign shifter_bext_result =       32'h1 &  shifter_result;
   assign shifter_bset_result = operand_a_i |  shifter_result;
   assign shifter_bclr_result = operand_a_i & ~shifter_result;
   assign shifter_binv_result = operand_a_i ^  shifter_result;

@@ -487,7 +487,7 @@ typedef struct packed {
     logic        rshift;
     logic        arithmetic;
     logic        operand_tieoff;
-  } Alu_shifter_t;
+  } alu_shifter_t;
 
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
@@ -705,7 +705,7 @@ typedef struct packed {
   op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
-  Alu_shifter_t                      alu_shifter;
+  alu_shifter_t                      alu_shifter;
   logic                              mul_en;
   mul_opcode_e                       mul_operator;
   logic [1:0]                        mul_signed_mode;
@@ -946,7 +946,7 @@ typedef struct packed {
   // ALU Control
   logic         alu_en;
   alu_opcode_e  alu_operator;
-  Alu_shifter_t alu_shifter;
+  alu_shifter_t alu_shifter;
   logic [31:0]  alu_operand_a;
   logic [31:0]  alu_operand_b;
   logic [31:0]  operand_c; // Gated with alu_en but not used by ALU

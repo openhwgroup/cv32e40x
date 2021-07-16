@@ -128,7 +128,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU Control
   logic        alu_en;
   alu_opcode_e alu_operator;
-  Alu_shifter_t  alu_shifter;
+  alu_shifter_t  alu_shifter;
   alu_op_a_mux_e alu_op_a_mux_sel;
   alu_op_b_mux_e alu_op_b_mux_sel;
 
