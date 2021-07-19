@@ -268,7 +268,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // before entering debug mode
   a_single_step_with_irq :
     assert property (@(posedge clk) disable iff (!rst_ni)
-                      (inst_taken && debug_single_step && !ctrl_fsm.debug_mode && interrupt_taken) [->1:2]
+                      (inst_taken && debug_single_step && !ctrl_fsm.debug_mode && interrupt_taken) [*1:2]
                       ##1 inst_taken [->1]
                       |-> (ctrl_fsm.debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")
