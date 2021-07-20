@@ -38,7 +38,13 @@ The |corev| eXtension interface is compliant to CORE-V-XIF. The CORE-V-IF specif
 
 * ``X_DATAWIDTH`` is the width of an integer register in bits and needs to match the XLEN of the core, so for  |corev| ``X_DATAWIDTH`` = 32.
 * ``X_NUM_RS`` specifies the number of register file read ports that can be used by CORE-V-XIF. Legal values are 2 and 3.
-* ``X_NUM_WB`` specifies the number of register file write ports that can be used by CORE-V-XIF. Legal values are 1 and 2.
+* ``X_RFR_WIDTH`` specifies the register file read access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
+* ``X_RFW_WIDTH`` specifies the register file write access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
+* ``X_MEM_WIDTH`` specifies the memory access width for loads/stores via the eXtension interface. (Legal values are TBD.)
+
+.. note::
+
+   |corev| currently only supports ``X_RFR_WIDTH`` = 32. |corev| currently only supports ``X_RFW_WIDTH`` = 32. |corev| currently only supports ``X_MEM_WIDTH`` = 32.
 
 The major features of CORE-V-XIF are:
 
@@ -54,6 +60,17 @@ The major features of CORE-V-XIF are:
 
   CORE-V-XIF optionally supports implementation of custom ISA extensions mandating dual register file writebacks. Dual writeback
   is supported for even-odd register pairs (``Xn`` and ``Xn+1`` with ``n <> 0`` and ``Xn`` extracted from instruction bits ``[11:7]``.
+
+  Dual register file writeback is only supported if XLEN = 32.
+
+* Support for dual read instructions (per source operand).
+
+  CORE-V-XIF optionally supports implementation of custom ISA extensions mandating dual register file reads. Dual read
+  is supported for even-odd register pairs (``Xn`` and ``Xn+1`` and ``Xn`` extracted from instruction bits `[19:15]``,
+  ``[24:20]`` and ``[31:27]`` (i.e. ``rs1``, ``rs2`` and ``rs3``). Dual read can therefore provide six 32-bit operands
+  per instruction.
+
+  Dual register file read is only supported if XLEN = 32.
 
 * Support for ternary operations.
 
@@ -200,7 +217,7 @@ The signals in ``x_compressed_resp_i`` are valid when ``x_compressed_valid_o`` a
   |                        |                         |                                                                                                                 |
   |                        |                         |                                                                                                                 |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``rs[X_NUM_RS-1:0]``   | logic [31:0]            | Register file source operands for the offloaded instruction.                                                    |
+  | ``rs[X_NUM_RS-1:0]``   | logic [X_RFR_WIDTH-1:0] | Register file source operands for the offloaded instruction.                                                    |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``rs_valid``           | logic [X_NUM_RS-1:0]    | Validity of the register file source operand(s).                                                                |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -215,6 +232,16 @@ The ``instr`` signal remain stable during an issue request transaction. The ``rs
 can transition from 0 to 1, but is not allowed to transition back to 0 during a transaction. The ``rs`` signals are only required to be stable during the part
 of a transaction in which these signals are considered to be valid.
 
+The ``rs[X_NUM_RS-1:0]`` signals provide the register file operand(s) to the coprocessor. In case that ``XLEN`` = ``X_RFR_WIDTH``, then the regular register file
+operands corresponding to ``rs1``, ``rs2`` or ``rs3`` are provided. In case ``XLEN`` != ``X_RFR_WIDTH`` (i.e. ``XLEN`` = 32 and ``X_RFR_WIDTH`` = 64), then the
+``rs[X_NUM_RS-1:0]`` signals provide two 32-bit register file operands per index (corresponding to even/odd register pairs) with the even register specified
+in ``rs1``, ``rs2`` or ``rs3``. The register file operand for the even register file index is provided in the lower 32 bits; the register file operand for the
+odd register file index is provided in the upper 32 bits.
+
+.. note::
+
+   |corev| currently only supports ``X_RFR_WIDTH`` = 32.
+
 :numref:`Issue response type` describes the ``x_issue_resp_t`` type.
 
 .. table:: Issue response type
@@ -227,8 +254,11 @@ of a transaction in which these signals are considered to be valid.
   |                        |                      | the instruction is not accepted, then the core will cause an illegal instruction trap unless this offloaded      | 
   |                        |                      | instruction is killed.                                                                                           | 
   +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
-  | ``writeback``          | logic [X_NUM_WB-1:0] | Will the coprocessor perform a writeback to ``rd`` (and ``rd+1``)?                                               | 
-  |                        |                      | A coprocessor must signal ``writeback`` as 0 for non-accepted instructions.                                      | 
+  | ``dualwrite``          | logic                | Will the coprocessor perform a dual writeback to ``rd`` and ``rd+1``?                                            | 
+  |                        |                      | A coprocessor must signal ``dualwrite`` as 0 for non-accepted instructions.                                      | 
+  +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
+  | ``dualread``           | logic                | Will the coprocessor require dual reads from ``rs1\rs2\rs3`` and ``rs1+1\rs2+1\rs3+1``?                          | 
+  |                        |                      | A coprocessor must signal ``dualread`` as 0 for non-accepted instructions.                                       | 
   +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
   | ``loadstore``          | logic                | Is the offloaded instruction a load/store instruction?                                                           | 
   |                        |                      | A coprocessor must signal ``loadstore`` as 0 for non-accepted instructions. (Only) if an instruction is          | 
@@ -327,23 +357,23 @@ The signals in ``x_commit_o`` are valid when ``x_commit_valid_o`` is 1.
 .. table:: Memory request type
   :name: Memory request type
 
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | **Signal**             | **Type**         | **Description**                                                                                                 |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``                 | [3:0]            | Identification of the offloaded instruction.                                                                    |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``addr``               | logic [31:0]     | Virtual address of the memory transaction.                                                                      |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``we``                 | logic            | Write enable of the memory transaction.                                                                         |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``size``               | logic [1:0]      | Size of the memory transaction. 0: byte, 1: halfword, 2: word.                                                  |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``wdata``              | logic [31:0]     | Write data of a store memory transaction.                                                                       |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``last``               | logic            | Is this the last memory transaction for the offloaded instruction?                                              |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``spec``               | logic            | Is the memory transaction speculative?                                                                          |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | **Signal**   | **Type**                   | **Description**                                                                                                 |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``id``       | logic [3:0]                | Identification of the offloaded instruction.                                                                    |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``addr``     | logic [31:0]               | Virtual address of the memory transaction.                                                                      |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``we``       | logic                      | Write enable of the memory transaction.                                                                         |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``size``     | logic [1:0]                | Size of the memory transaction. 0: byte, 1: halfword, 2: word.                                                  |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``wdata``    | logic [X_MEM_WIDTH-1:0]    | Write data of a store memory transaction.                                                                       |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``last``     | logic                      | Is this the last memory transaction for the offloaded instruction?                                              |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``spec``     | logic                      | Is the memory transaction speculative?                                                                          |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 The memory request interface can be used by the coprocessor to initiate data side memory read or memory write transactions. All memory transactions, no matter if
 they are initiated by |corev| itself or by a coprocessor via the memory request interface, are treated equally. Specifically this equal treatment applies to:
@@ -402,15 +432,15 @@ The signals in ``x_mem_resp_o`` are valid when ``x_mem_valid_i`` and  ``x_mem_re
 .. table:: Memory result type
   :name: Memory result type
 
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | **Signal**             | **Type**         | **Description**                                                                                                 |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``                 | [3:0]            | Identification of the offloaded instruction.                                                                    |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``rdata``              | logic [31:0]     | Read data of a read memory transaction. Only used for reads.                                                    |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``err``                | logic            | Did the instruction cause a bus error?                                                                          |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | **Signal**    |          **Type**         | **Description**                                                                                                 |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``id``        | logic [3:0]               | Identification of the offloaded instruction.                                                                    |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``rdata``     | logic [X_MEM_WIDTH-1:0]   | Read data of a read memory transaction. Only used for reads.                                                    |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``err``       | logic                     | Did the instruction cause a bus error?                                                                          |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 The memory result interface is used to provide a result from |corev| to the coprocessor for every memory transaction (i.e. for both read and write transactions).
 No memory result transaction is performed for instructions that led to a synchronous exception as signaled via the memory (request/response) interface. If a
@@ -445,21 +475,21 @@ have exactly one result group transaction (even if no data needs to be written b
 .. table:: Result packet type
   :name: Result packet type
 
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | **Signal**             | **Type**         | **Description**                                                                                                 |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``                 | [3:0]            | Identification of the offloaded instruction.                                                                    |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``data[X_NUM_WB-1:0]`` | logic [31:0]     | Register file write data value(s).                                                                              |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``rd[X_NUM_WB-1:0]``   | logic [4:0]      | Register file destination address(es).                                                                          |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``we[X_NUM_WB-1:0]``   | logic            | Register file write enable(s).                                                                                  |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``exc``                | logic            | Did the instruction cause a synchronous exception?                                                              |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``exccode``            | logic [5:0]      | Excecption code.                                                                                                |
-  +------------------------+------------------+-----------------------------------------------------------------------------------------------------------------+
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | **Signal**    | **Type**                  | **Description**                                                                                                 |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``id``        | logic [3:0]               | Identification of the offloaded instruction.                                                                    |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``data``      | logic [X_RFW_WIDTH-1:0]   | Register file write data value(s).                                                                              |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``rd ``       | logic [4:0]               | Register file destination address(es).                                                                          |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``we``        | logic                     | Register file write enable(s).                                                                                  |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``exc``       | logic                     | Did the instruction cause a synchronous exception?                                                              |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``exccode``   | logic [5:0]               | Excecption code.                                                                                                |
+  +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 A result transaction is defined as the combination of all ``x_result_i`` signals during which ``x_result_valid_i`` is 1 and the ``id`` remains unchanged. I.e. a new
 transaction can be started by just changing the ``id`` signal and keeping the valid signal asserted.
@@ -530,7 +560,7 @@ Major differences with respect to CV-X-IF v0.1 specification
 * Renamed parameters
 * Replaced p_*, q_*, etc. with more logical names
 * Limited scope to point-to-point core-coprocessor interface only (but added ``id`` so that interconnect can be build)
-* Replaced TernaryOps and DualWriteback  by X_NUM_RS and X_NUM_WB parameters respectively and made result interface match register file interface more closely (data/rd/we).
+* Replaced TernaryOps by X_NUM_RS parameters respectively and made result interface match register file interface more closely (data/rd/we).
 * Removed concept of *asynchronous external* memory mode
 * Removed concept of *probe* memory access mode
 * Generalized *error* to *exc* and *exccode* (exceptions are no longer restricted to load/store instructions)
