@@ -225,19 +225,19 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
-                         (((debug_req_i || debug_req_q) && !debug_mode_q)      || // External request
-                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q)   || // Ebreak with dcsr.ebreakm==1
-                         (ebreak_in_wb && debug_mode_q)) && !id_ex_pipe_i.lsu_misaligned;
+                         (
+                          ((debug_req_i || debug_req_q) && !debug_mode_q) ||    // External request
+                          (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
+                          (ebreak_in_wb && debug_mode_q) // todo: explain why this line is needed
+                         ) && !id_ex_pipe_i.lsu_misaligned;
 
-                           
   // Determine cause of debug
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
-  assign debug_cause_n = (pending_single_step) ? DBG_CAUSE_STEP :
-                         (trigger_match_in_wb)          ? DBG_CAUSE_TRIGGER :
-                         (ebreak_in_wb && !debug_mode_q)                 ? DBG_CAUSE_EBREAK  :
+  assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
+                         trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
+                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
-
 
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
