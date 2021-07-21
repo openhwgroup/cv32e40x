@@ -38,9 +38,10 @@ The |corev| eXtension interface is compliant to CORE-V-XIF. The CORE-V-IF specif
 
 * ``X_DATAWIDTH`` is the width of an integer register in bits and needs to match the XLEN of the core, so for  |corev| ``X_DATAWIDTH`` = 32.
 * ``X_NUM_RS`` specifies the number of register file read ports that can be used by CORE-V-XIF. Legal values are 2 and 3.
+* ``X_ID_WIDTH`` specifies the width of each of the ID signals of the eXtension interface. Legal values are 1-32.
+* ``X_MEM_WIDTH`` specifies the memory access width for loads/stores via the eXtension interface. (Legal values are TBD.)
 * ``X_RFR_WIDTH`` specifies the register file read access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
 * ``X_RFW_WIDTH`` specifies the register file write access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
-* ``X_MEM_WIDTH`` specifies the memory access width for loads/stores via the eXtension interface. (Legal values are TBD.)
 
 .. note::
 
@@ -153,7 +154,7 @@ the instructions need to obey the same instruction dependency rules, memory cons
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``instr``              | logic [15:0]            | Offloaded compressed instruction.                                                                               |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``                 | logic [3:0]             | Identification number of the offloaded compressed instruction.                                                  |
+  | ``id``                 | logic [X_ID_WIDTH-1:0]  | Identification number of the offloaded compressed instruction.                                                  |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 The ``instr[15:0]`` signal is used to signal compressed instructions that are considered illegal by |corev| itself. A coprocessor can provide an uncompressed instruction
@@ -213,7 +214,7 @@ The signals in ``x_compressed_resp_i`` are valid when ``x_compressed_valid_o`` a
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``instr``              | logic [31:0]            | Offloaded instruction.                                                                                          |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``                 | logic [3:0]             | Identification of the offloaded instruction.                                                                    |
+  | ``id``                 | logic [X_ID_WIDTH-1:0]  | Identification of the offloaded instruction.                                                                    |
   |                        |                         |                                                                                                                 |
   |                        |                         |                                                                                                                 |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -306,15 +307,15 @@ The signals in ``x_issue_resp_i`` are valid when ``x_issue_req_o`` and ``x_issue
 .. table:: Commit packet type
   :name: Commit packet type
 
-  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``id``                    | logic [3:0]     | Identification of the offloaded instruction. Valid when ``x_commit_valid_o`` is 1.                                           |
-  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
-  | ``x_commit_kill``         | logic           | Shall an offloaded instruction be killed? If ``x_commit_valid_o`` is 1 and ``x_commit_kill`` is 0, then the core guarantees  |
-  |                           |                 | that the offloaded instruction (``id``) is no longer speculative, will not get killed (e.g. due to misspeculation or an      |
-  |                           |                 | exception in a preceding instruction), and is allowed to be committed. If ``x_commit_valid_o`` is 1 and ``x_commit_kill`` is |
-  |                           |                 | 1, then the offloaded instruction (``id``) shall be killed in the coprocessor and the coprocessor must guarantee that the    |
-  |                           |                 | related instruction does/did not change architectural state.                                                                 |
-  +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
+  +--------------------+------------------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``id``             | logic [X_ID_WIDTH-1:0] | Identification of the offloaded instruction. Valid when ``x_commit_valid_o`` is 1.                                           |
+  +--------------------+------------------------+------------------------------------------------------------------------------------------------------------------------------+
+  | ``x_commit_kill``  | logic                  | Shall an offloaded instruction be killed? If ``x_commit_valid_o`` is 1 and ``x_commit_kill`` is 0, then the core guarantees  |
+  |                    |                        | that the offloaded instruction (``id``) is no longer speculative, will not get killed (e.g. due to misspeculation or an      |
+  |                    |                        | exception in a preceding instruction), and is allowed to be committed. If ``x_commit_valid_o`` is 1 and ``x_commit_kill`` is |
+  |                    |                        | 1, then the offloaded instruction (``id``) shall be killed in the coprocessor and the coprocessor must guarantee that the    |
+  |                    |                        | related instruction does/did not change architectural state.                                                                 |
+  +--------------------+------------------------+------------------------------------------------------------------------------------------------------------------------------+
 
 The ``x_commit_valid_o`` signal will be 1 exactly one ``clk_i`` cycle for every offloaded instruction by the coprocessor (whether accepted or not). The ``id`` value indicates which offloaded
 instruction is allowed to be committed or is supposed to be killed. The ``id`` values of subsequent commit transactions will increment (and wrap around)
@@ -360,7 +361,7 @@ The signals in ``x_commit_o`` are valid when ``x_commit_valid_o`` is 1.
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | **Signal**   | **Type**                   | **Description**                                                                                                 |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``       | logic [3:0]                | Identification of the offloaded instruction.                                                                    |
+  | ``id``       | logic [X_ID_WIDTH-1:0]     | Identification of the offloaded instruction.                                                                    |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``addr``     | logic [31:0]               | Virtual address of the memory transaction.                                                                      |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -435,7 +436,7 @@ The signals in ``x_mem_resp_o`` are valid when ``x_mem_valid_i`` and  ``x_mem_re
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
   | **Signal**    |          **Type**         | **Description**                                                                                                 |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``        | logic [3:0]               | Identification of the offloaded instruction.                                                                    |
+  | ``id``        | logic [X_ID_WIDTH-1:0]    | Identification of the offloaded instruction.                                                                    |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``rdata``     | logic [X_MEM_WIDTH-1:0]   | Read data of a read memory transaction. Only used for reads.                                                    |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -467,7 +468,8 @@ The signals in ``x_mem_result_o`` are valid when ``x_mem_result_valid_o`` is 1.
   | ``x_result_i``            | x_result_t      | input           | Result packet.                                                                                                               |
   +---------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
 
-The coprocessor shall provide results to the core via the result interface in the same order as it received and accepted issue transactions. Each accepted offloaded (and not killed) instruction shall
+The coprocessor shall provide results to the core via the result interface. A coprocessor is allowed to provide results to the core in an out of order fashion. A coprocessor is only
+allowed to provide a result for an instruction once the core has indicated (via the commit interface) that this instruction is allowed to be committed. Each accepted offloaded (committed and not killed) instruction shall
 have exactly one result group transaction (even if no data needs to be written back to the core's register file).
 
 :numref:`Result packet type` describes the ``x_result_t`` type.
@@ -478,7 +480,7 @@ have exactly one result group transaction (even if no data needs to be written b
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
   | **Signal**    | **Type**                  | **Description**                                                                                                 |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
-  | ``id``        | logic [3:0]               | Identification of the offloaded instruction.                                                                    |
+  | ``id``        | logic [X_ID_WIDTH-1:0]    | Identification of the offloaded instruction.                                                                    |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``data``      | logic [X_RFW_WIDTH-1:0]   | Register file write data value(s).                                                                              |
   +---------------+---------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -507,13 +509,14 @@ The following rules apply to the relative ordering of the interface handshakes:
 * Every issue interface transaction has an associated commit interface transaction and both interfaces use a matching transaction ordering.
 * If an offloaded instruction is accepted as a ``loadstore`` instruction and not killed, then for each such instruction one or more memory transaction must occur
   via the memory interface. The transaction ordering on the memory interface interface must correspond to the transaction ordering on the issue interface.
-* If an offloaded instruction is accepted and not killed, then for each such instruction one result transaction must occur via the result interface (even
+* If an offloaded instruction is accepted and allowed to commit, then for each such instruction one result transaction must occur via the result interface (even
   if no writeback needs to happen to the core's register file). The transaction ordering on the result interface must correspond to the transaction ordering
   on the issue interface.
 * A commit interface handshake cannot be initiated before the corresponding issue interface handshake is initiated.
 * A memory (request/response) interface handshake cannot be initiated before the corresponding issue interface handshake is initiated.
 * A memory result interface handshake cannot be initiated before the corresponding memory request interface handshake is completed.
 * A result interface handshake cannot be initiated before the corresponding issue interface handshake is initiated.
+* A result interface handshake cannot be initiated before the corresponding commit interface handshake is initiated (and the instruction is allowed to commit).
 * A memory (request/response) interface handshake cannot be initiated for instructions that were killed in an earlier cycle.
 * A memory result interface handshake cannot be initiated for instructions that were killed in an earlier cycle.
 * A result interface handshake cannot be (or have been) initiated for killed instructions.
