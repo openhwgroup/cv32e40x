@@ -255,7 +255,10 @@ odd register file index is provided in the upper 32 bits.
   |                        |                      | the instruction is not accepted, then the core will cause an illegal instruction trap unless this offloaded      | 
   |                        |                      | instruction is killed.                                                                                           | 
   +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
-  | ``dualwrite``          | logic                | Will the coprocessor perform a dual writeback to ``rd`` and ``rd+1``?                                            | 
+  | ``writeback``          | logic                | Will the coprocessor perform a writeback in the core to ``rd``?                                                  | 
+  |                        |                      | A coprocessor must signal ``writeback`` as 0 for non-accepted instructions.                                      | 
+  +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
+  | ``dualwrite``          | logic                | Will the coprocessor perform a dual writeback in the core to ``rd`` and ``rd+1``?                                | 
   |                        |                      | A coprocessor must signal ``dualwrite`` as 0 for non-accepted instructions.                                      | 
   +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
   | ``dualread``           | logic                | Will the coprocessor require dual reads from ``rs1\rs2\rs3`` and ``rs1+1\rs2+1\rs3+1``?                          | 
