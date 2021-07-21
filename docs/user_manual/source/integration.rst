@@ -18,7 +18,10 @@ Instantiation Template
       .P_EXT                    (          0 ),
       .X_EXT                    (          0 ),
       .X_NUM_RS                 (          2 ),
-      .X_NUM_WB                 (          1 ),
+      .X_ID_WIDTH               (          4 ),
+      .X_MEM_WIDTH              (         32 ),
+      .X_RFR_WIDTH              (         32 ),
+      .X_RFW_WIDTH              (         32 ),
       .X_MISA                   ( 0x00000000 ),
       .NUM_MHPMCOUNTERS         (          1 ),
       .PMA_NUM_REGIONS          (          1 ),
@@ -107,8 +110,13 @@ Parameters
 | ``X_NUM_RS``                 | int (2..3)     | 2             | Number of register file read ports that can be used by the         |
 |                              |                |               | eXtension interface.                                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_NUM_WB``                 | int (1..2)     | 2             | Number of register file write ports that can be used by the        |
-|                              |                |               | eXtension interface.                                               |
+| ``X_ID_WIDTH``               | int (1..32)    | 4             | Identification width for the eXtension interface.                  |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_MEM_WIDTH``              | int (32)       | 32            | Memory access width for loads/stores via the eXtension interface.  |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_RFR_WIDTH``              | int (32)       | 32            | Register file read access width for the eXtension interface.       |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_RFW_WIDTH``              | int (32)       | 32            | Register file write access width for the eXtension interface.      |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_MISA``                   | logic [31:0]   | 0x0000_0000   | MISA extensions implemented on the eXtension interface,            |
 |                              |                |               | see :ref:`csr-misa`.                                               |
@@ -121,12 +129,6 @@ Parameters
 | ``PMA_CFG[]``                | pma_region_t   | PMA_R_DEFAULT | PMA configuration.                                                 |
 |                              |                |               | Array of pma_region_t with PMA_NUM_REGIONS entries, see :ref:`pma` |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-
-
- 
- 
-   
-
 
 Interfaces
 ----------
