@@ -222,7 +222,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
   // Also do not allow debug when EX is handling the second part of a misaligned load/store.
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !id_ex_pipe_i.lsu_misaligned;
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid);
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
@@ -249,7 +249,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
-  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid.
+  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid. 
+  // todo: if lsu_misaligned remain in below expression, then it should be qualified with id_ex_pipe_i.instr_valid
   assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
