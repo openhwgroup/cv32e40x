@@ -242,7 +242,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
   
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q; // todo: explain why !debug_mode_q is used here (it does not seem logical to use that to qualify pending interrupts)
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no data_req has been clocked from EX to environment.
