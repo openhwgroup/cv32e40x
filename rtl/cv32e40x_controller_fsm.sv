@@ -220,16 +220,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign pending_single_step = (!debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
-  // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;
+  // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
+  // Also do not allow debug when EX is handling the second part of a misaligned load/store.
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid);
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
-                         (
-                          ((debug_req_i || debug_req_q) && !debug_mode_q) ||    // External request
-                          (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
-                          (ebreak_in_wb && debug_mode_q) // todo: explain why this line is needed
-                         ) && !id_ex_pipe_i.lsu_misaligned;
+                         ((debug_req_i || debug_req_q) && !debug_mode_q) ||    // External request
+                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
+                         (ebreak_in_wb && debug_mode_q); // todo: explain why this line is needed
 
   // Determine cause of debug
   // pending_single_step may only happen if no other causes for debug are true.
@@ -243,14 +242,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
   
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q; // todo: explain why !debug_mode_q is used here (it does not seem logical to use that to qualify pending interrupts)
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
-  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid.
+  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid. 
+  // todo: if lsu_misaligned remain in below expression, then it should be qualified with id_ex_pipe_i.instr_valid
   assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
                               !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
                                
