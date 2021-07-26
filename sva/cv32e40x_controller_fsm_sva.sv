@@ -45,7 +45,8 @@ module cv32e40x_controller_fsm_sva
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input logic           rf_we_wb_i,
   input csr_opcode_e    csr_op_i,
-  input logic           pending_single_step
+  input logic           pending_single_step,
+  input logic           trigger_match_in_wb
 );
 
 
@@ -158,5 +159,11 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk)
             (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN)) |-> (!id_ex_pipe_i.instr_valid && !if_id_pipe_i.instr_valid))
       else `uvm_error("controller", "ID and EX not empty when when single step is taken")
+
+  // Check trigger match never happens during debug_mode
+  a_trigger_match_in_debug :
+    assert property (@(posedge clk)
+            ctrl_fsm_o.debug_mode |-> !trigger_match_in_wb)
+      else `uvm_error("controller", "Trigger match during debug mode")
 endmodule // cv32e40x_controller_fsm_sva
 
