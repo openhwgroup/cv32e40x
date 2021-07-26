@@ -204,7 +204,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ebreak_in_wb = ex_wb_pipe_i.ebrk_insn && ex_wb_pipe_i.instr_valid;
 
   // Trigger match in wb
-  assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid) && !debug_mode_q;
+  // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
+  assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid);
 
   // Pending NMI
   assign pending_nmi = 1'b0;
@@ -225,10 +226,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid);
 
   // Debug pending for any other reason than single step
-  assign pending_debug = (trigger_match_in_wb && !debug_mode_q) ||
+  assign pending_debug = (trigger_match_in_wb) ||
                          ((debug_req_i || debug_req_q) && !debug_mode_q) ||    // External request
                          (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
-                         (ebreak_in_wb && debug_mode_q); // todo: explain why this line is needed
+                         (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
   // Determine cause of debug
   // pending_single_step may only happen if no other causes for debug are true.

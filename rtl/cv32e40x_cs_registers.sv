@@ -727,7 +727,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Breakpoint matching
   // We match against the next address, as the breakpoint must be taken before execution
-  assign debug_trigger_match_o = tmatch_control_q[2] &
+  // Matching is disabled when ctrl_fsm_i.debug_mode == 1'b1
+  assign debug_trigger_match_o = tmatch_control_q[2] && !ctrl_fsm_i.debug_mode &&
                                  (if_id_pipe_i.pc[31:0] == tmatch_value_q[31:0]);
 
 
