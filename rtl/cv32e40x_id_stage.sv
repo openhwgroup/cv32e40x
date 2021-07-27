@@ -526,12 +526,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.alu_en                 <= alu_en;
           if (alu_en)
           begin
-            id_ex_pipe_o.alu_operator         <= alu_operator;
             id_ex_pipe_o.alu_shifter          <= alu_shifter;
             id_ex_pipe_o.operand_c            <= operand_c;
           end
 
           if (alu_en || div_en) begin
+            id_ex_pipe_o.alu_operator         <= alu_operator;
             id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
             id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
           end
