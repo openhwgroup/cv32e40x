@@ -99,8 +99,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         unique case (instr_rdata_i[14:12])
           3'b000: decoder_ctrl_o.alu_operator = ALU_EQ;
           3'b001: decoder_ctrl_o.alu_operator = ALU_NE;
-          3'b100: decoder_ctrl_o.alu_operator = ALU_LTS;
-          3'b101: decoder_ctrl_o.alu_operator = ALU_GES;
+          3'b100: decoder_ctrl_o.alu_operator = ALU_LT;
+          3'b101: decoder_ctrl_o.alu_operator = ALU_GE;
           3'b110: decoder_ctrl_o.alu_operator = ALU_LTU;
           3'b111: decoder_ctrl_o.alu_operator = ALU_GEU;
           default: begin
@@ -195,7 +195,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
         unique case (instr_rdata_i[14:12])
           3'b000: decoder_ctrl_o.alu_operator = ALU_ADD;  // Add Immediate
-          3'b010: decoder_ctrl_o.alu_operator = ALU_SLTS; // Set to one if Lower Than Immediate
+          3'b010: decoder_ctrl_o.alu_operator = ALU_SLT;  // Set to one if Lower Than Immediate
           3'b011: decoder_ctrl_o.alu_operator = ALU_SLTU; // Set to one if Lower Than Immediate Unsigned
           3'b100: decoder_ctrl_o.alu_operator = ALU_XOR;  // Exclusive Or with Immediate
           3'b110: decoder_ctrl_o.alu_operator = ALU_OR;   // Or with Immediate
@@ -210,12 +210,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
           3'b101: begin
             if (instr_rdata_i[31:25] == 7'b0) begin
-              decoder_ctrl_o.alu_operator       = ALU_SRL;     // Shift Right Logical by Immediate
-              decoder_ctrl_o.alu_shifter.rshift = 1'b1;
+              decoder_ctrl_o.alu_operator = ALU_SRL; // Shift Right Logical by Immediate
             end else if (instr_rdata_i[31:25] == 7'b010_0000) begin
-              decoder_ctrl_o.alu_operator           = ALU_SRA; // Shift Right Arithmetically by Immediate
-              decoder_ctrl_o.alu_shifter.rshift     = 1'b1;
-              decoder_ctrl_o.alu_shifter.arithmetic = 1'b1;
+              decoder_ctrl_o.alu_operator = ALU_SRA; // Shift Right Arithmetically by Immediate
             end else begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
@@ -238,22 +235,19 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
           unique case ({instr_rdata_i[30:25], instr_rdata_i[14:12]})
             // RV32I ALU operations
-            {6'b00_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_ADD;   // Add
-            {6'b10_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_SUB;   // Sub
-            {6'b00_0000, 3'b010}: decoder_ctrl_o.alu_operator = ALU_SLTS;  // Set Lower Than
-            {6'b00_0000, 3'b011}: decoder_ctrl_o.alu_operator = ALU_SLTU;  // Set Lower Than Unsigned
-            {6'b00_0000, 3'b100}: decoder_ctrl_o.alu_operator = ALU_XOR;   // Xor
-            {6'b00_0000, 3'b110}: decoder_ctrl_o.alu_operator = ALU_OR;    // Or
-            {6'b00_0000, 3'b111}: decoder_ctrl_o.alu_operator = ALU_AND;   // And
-            {6'b00_0000, 3'b001}: decoder_ctrl_o.alu_operator = ALU_SLL;   // Shift Left Logical
+            {6'b00_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_ADD;  // Add
+            {6'b10_0000, 3'b000}: decoder_ctrl_o.alu_operator = ALU_SUB;  // Sub
+            {6'b00_0000, 3'b010}: decoder_ctrl_o.alu_operator = ALU_SLT;  // Set Lower Than
+            {6'b00_0000, 3'b011}: decoder_ctrl_o.alu_operator = ALU_SLTU; // Set Lower Than Unsigned
+            {6'b00_0000, 3'b100}: decoder_ctrl_o.alu_operator = ALU_XOR;  // Xor
+            {6'b00_0000, 3'b110}: decoder_ctrl_o.alu_operator = ALU_OR;   // Or
+            {6'b00_0000, 3'b111}: decoder_ctrl_o.alu_operator = ALU_AND;  // And
+            {6'b00_0000, 3'b001}: decoder_ctrl_o.alu_operator = ALU_SLL;  // Shift Left Logical
             {6'b00_0000, 3'b101}: begin
-              decoder_ctrl_o.alu_operator       = ALU_SRL;                 // Shift Right Logical
-              decoder_ctrl_o.alu_shifter.rshift = 1'b1;
+              decoder_ctrl_o.alu_operator                     = ALU_SRL;  // Shift Right Logical
             end
             {6'b10_0000, 3'b101}: begin
-              decoder_ctrl_o.alu_operator           = ALU_SRA;             // Shift Right Arithmetic
-              decoder_ctrl_o.alu_shifter.rshift     = 1'b1;
-              decoder_ctrl_o.alu_shifter.arithmetic = 1'b1;
+              decoder_ctrl_o.alu_operator                     = ALU_SRA;  // Shift Right Arithmetic
             end
             default: begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;

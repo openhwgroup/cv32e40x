@@ -367,9 +367,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .USE_PMP                      ( USE_PMP                ),
-    .A_EXTENSION                  ( A_EXTENSION            ),
-    .B_EXT                        ( B_EXT                  )
+    .USE_PMP                      ( USE_PMP                   ),
+    .A_EXTENSION                  ( A_EXTENSION               ),
+    .B_EXT                        ( B_EXT                     )
   )
   id_stage_i
   (
@@ -437,8 +437,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //  |_____/_/\_\ |____/ |_/_/   \_\____|_____|     //
   //                                                 //
   /////////////////////////////////////////////////////
-  cv32e40x_ex_stage
-  ex_stage_i
+  cv32e40x_ex_stage ex_stage_i
   (
     .clk                        ( clk                          ),
     .rst_n                      ( rst_ni                       ),
