@@ -309,9 +309,9 @@ bind cv32e40x_sleep_unit:
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
-         .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ),
+         .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ), // todo: make names match
 
-         .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ),
+         .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ), // todo: make names match
 
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
@@ -346,10 +346,10 @@ bind cv32e40x_sleep_unit:
          .csr_mip_q_i              ( core_i.cs_registers_i.mip_i                                          ),
          .csr_mip_we_i             ( core_i.cs_registers_i.csr_we_int &&
                                      (core_i.cs_registers_i.csr_waddr == CSR_MIP)                         ),
-         .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ),
+         .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ), // todo:ok:rename in RTL to use official CSR names from priv spec
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
-         .csr_tdata2_n_i           ( core_i.cs_registers_i.tmatch_value_n                                 ),
+         .csr_tdata2_n_i           ( core_i.cs_registers_i.tmatch_value_n                                 ), // todo:ok:rename in RTL to use official CSR names from priv spec
          .csr_tdata2_q_i           ( core_i.cs_registers_i.tmatch_value_q                                 ),
          .csr_tdata2_we_i          ( core_i.cs_registers_i.tmatch_value_we                                ),
          .csr_tinfo_n_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),

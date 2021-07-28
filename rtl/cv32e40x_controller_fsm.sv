@@ -163,7 +163,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                          if_id_pipe_i.instr_valid;
 
   // Blocking on branch_taken_q, as a jump has already been taken
-  assign jump_taken_id = jump_in_id && !branch_taken_q;
+  assign jump_taken_id = jump_in_id && !branch_taken_q; // todo: RVFI does not use jump_taken_id (which is not in itself an issue); we should have an assertion showing that the target address remains constant during jump_in_id; same remark for branches
 
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
