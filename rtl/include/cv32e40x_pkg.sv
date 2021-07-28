@@ -13,6 +13,7 @@
 //                                                                            //
 // Additional contributions by:                                               //
 //                 Sven Stucki - svstucki@student.ethz.ch                     //
+//                 Arjan Bink - arjan.bink@silabs.com                         //
 //                                                                            //
 //                                                                            //
 // Design Name:    RISC-V processor core                                      //
@@ -61,63 +62,73 @@ package cv32e40x_pkg;
 parameter ALU_OP_WIDTH = 6;
 
   // TODO:low Could a smarter encoding be used here?
+
+// Note: Certain bits in alu_opcode_e are referred to directly in the ALU:
+//
+// - Bit 2: Right shift?
+//          Used for ALU_SLL, ALU_B_ROL,  ALU_B_ROR, ALU_B_BCLR,
+//          ALU_B_BSET, ALU_B_BINV, ALU_SRL, ALU_SRA, ALU_B_BEXT.
+// - Bit 3: Should B operand of adder be negated?
+//          Used for ALU_ADD, ALU_SUB.
+// - Bit 3: Are operands signed?
+//          Used for ALU_SLT, ALU_SLTU, ALU_LT, ALU_GE, ALU_LTU, ALU_GEU,
+//          ALU_B_MIN, ALU_B_MINU, ALU_B_MAX, ALU_B_MAXU
+// - Bit 5: Is the operator a B extension operation?
+
 typedef enum logic [ALU_OP_WIDTH-1:0]
 {
- ALU_ADD   = 6'b001000,
- ALU_SUB   = 6'b001001,
+ ALU_ADD      = 6'b000000, // funct3 = 000, negate_b(3)
+ ALU_SUB      = 6'b001000, // funct3 = 000, negate_b(3)
 
- ALU_XOR   = 6'b001111,
- ALU_OR    = 6'b001110,
- ALU_AND   = 6'b000110,
+ ALU_XOR      = 6'b000100, // funct3 = 100
+ ALU_OR       = 6'b000110, // funct3 = 110
+ ALU_AND      = 6'b000111, // funct3 = 111
 
- // Shifts
- ALU_SRA   = 6'b000100,
- ALU_SRL   = 6'b000101,
- ALU_SLL   = 6'b000111,
+ ALU_B_XNOR   = 6'b101100, // funct3 = 100, zbb
+ ALU_B_ORN    = 6'b101110, // funct3 = 110, zbb
+ ALU_B_ANDN   = 6'b101111, // funct3 = 111, zbb
 
- // Comparisons
- ALU_LTS   = 6'b000000,
- ALU_LTU   = 6'b000001,
- ALU_GES   = 6'b001010,
- ALU_GEU   = 6'b001011,
- ALU_EQ    = 6'b001100,
- ALU_NE    = 6'b001101,
+ // Comparisons // todo: comparator operators do not need to be part of ALU operators
+ ALU_EQ       = 6'b010000, // funct3 = 000
+ ALU_NE       = 6'b010001, // funct3 = 001
+ ALU_SLT      = 6'b011010, // funct3 = 010, signed(3)
+ ALU_SLTU     = 6'b010011, // funct3 = 011, unsigned(3)
+ ALU_LT       = 6'b011100, // funct3 = 100, signed(3)
+ ALU_GE       = 6'b011101, // funct3 = 101, signed(3)
+ ALU_LTU      = 6'b010110, // funct3 = 110, unsigned(3)
+ ALU_GEU      = 6'b010111, // funct3 = 111, unsigned(3)
 
- // Set Lower Than operations
- ALU_SLTS  = 6'b000010,
- ALU_SLTU  = 6'b000011,
+ ALU_B_MIN    = 6'b111100, // funct3 = 100, signed(3), minimum(1)
+ ALU_B_MINU   = 6'b110101, // funct3 = 101, unsigned(3), minimum(1)
+ ALU_B_MAX    = 6'b111110, // funct3 = 110, signed(3), maximum(1)
+ ALU_B_MAXU   = 6'b110111, // funct3 = 111, unsigned(3), maximum(1)
+
+ ALU_SLL      = 6'b000001, // funct3 = 001, left(2)
+ ALU_B_ROL    = 6'b100001, // funct3 = 001, left(2)
+ ALU_B_ROR    = 6'b100101, // funct3 = 101, right(2)
+ ALU_B_BCLR   = 6'b101001, // funct3 = 001, Zbs, left(2)
+ ALU_B_BSET   = 6'b110001, // funct3 = 001, Zbs, left(2)
+ ALU_B_BINV   = 6'b111001, // funct3 = 001, Zbs, left(2)
+ ALU_SRL      = 6'b000101, // funct3 = 101, right(2)
+ ALU_SRA      = 6'b001101, // funct3 = 101, right(2)
+ ALU_B_BEXT   = 6'b111101, // funct3 = 101, Zbs, right(2)
 
  // B, Zba
- ALU_B_SH1ADD   = 6'b100000,
- ALU_B_SH2ADD   = 6'b100001,
- ALU_B_SH3ADD   = 6'b100010,
+ ALU_B_SH1ADD = 6'b100010, // funct3 = 010
+ ALU_B_SH2ADD = 6'b100100, // funct3 = 100
+ ALU_B_SH3ADD = 6'b100110, // funct3 = 110
 
  // B, Zbb
- ALU_B_CLZ      = 6'b100011,
- ALU_B_CTZ      = 6'b100100,
- ALU_B_CPOP     = 6'b100101,
- ALU_B_MIN      = 6'b100110,
- ALU_B_MINU     = 6'b100111,
- ALU_B_MAX      = 6'b101000,
- ALU_B_MAXU     = 6'b101001,
- ALU_B_SEXT_B   = 6'b101010,
- ALU_B_SEXT_H   = 6'b101011,
- ALU_B_ANDN     = 6'b101100,
- ALU_B_ORN      = 6'b101101,
- ALU_B_XNOR     = 6'b101110,
- ALU_B_ROR      = 6'b101111,
- ALU_B_ROL      = 6'b110000,
- ALU_B_REV8     = 6'b110001,
- ALU_B_ORC_B    = 6'b110010,
+ ALU_B_CLZ    = 6'b100000, // (funct3 = 001)
+ ALU_B_CTZ    = 6'b101000, // (funct3 = 001)
+ ALU_B_CPOP   = 6'b100011, // (funct3 = 001)
 
- // B, Zbs
- ALU_B_BSET     = 6'b110011,
- ALU_B_BCLR     = 6'b110100,
- ALU_B_BINV     = 6'b110101,
- ALU_B_BEXT     = 6'b110110
+ ALU_B_SEXT_B = 6'b110000, // (funct3 = 001)
+ ALU_B_SEXT_H = 6'b111000, // (funct3 = 001)
 
+ ALU_B_REV8   = 6'b110100, // (funct3 = 101)
+ ALU_B_ORC_B  = 6'b110010  // (funct3 = 101)
 } alu_opcode_e;
-
 
 parameter MUL_OP_WIDTH = 1;
 
@@ -141,8 +152,6 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
 
 // FSM state encoding
 typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
-
-
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -481,14 +490,6 @@ typedef struct packed {
 
 } Status_t;
 
-
-  typedef struct packed {
-    logic        rotate;
-    logic        rshift;
-    logic        arithmetic;
-    logic        operand_tieoff;
-  } alu_shifter_t;
-
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
 parameter DBG_CAUSE_EBREAK     = 3'h1;
@@ -705,7 +706,6 @@ typedef struct packed {
   op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
-  alu_shifter_t                      alu_shifter;
   logic                              mul_en;
   mul_opcode_e                       mul_operator;
   logic [1:0]                        mul_signed_mode;
@@ -740,7 +740,6 @@ typedef struct packed {
                                                           op_c_mux_sel                 : OP_C_FWD,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
-                                                          alu_shifter                  : 4'b0000,
                                                           mul_en                       : 1'b0,
                                                           mul_operator                 : MUL_M32,
                                                           mul_signed_mode              : 2'b00,
@@ -946,7 +945,6 @@ typedef struct packed {
   // ALU Control
   logic         alu_en;
   alu_opcode_e  alu_operator;
-  alu_shifter_t alu_shifter;
   logic [31:0]  alu_operand_a;
   logic [31:0]  alu_operand_b;
   logic [31:0]  operand_c; // Gated with alu_en but not used by ALU

@@ -128,7 +128,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // ALU Control
   logic        alu_en;
   alu_opcode_e alu_operator;
-  alu_shifter_t  alu_shifter;
   alu_op_a_mux_e alu_op_a_mux_sel;
   alu_op_b_mux_e alu_op_b_mux_sel;
 
@@ -365,12 +364,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   ///////////////////////////////////////////////
 
   cv32e40x_decoder
-    #(
-      .A_EXTENSION             ( A_EXTENSION            ),
-      .B_EXT                   ( B_EXT                  ),
-      .USE_PMP                 ( USE_PMP                ),
-      .DEBUG_TRIGGER_EN        ( DEBUG_TRIGGER_EN       )
-      )
+  #(
+    .A_EXTENSION                     ( A_EXTENSION               ),
+    .B_EXT                           ( B_EXT                     ),
+    .USE_PMP                         ( USE_PMP                   ),
+    .DEBUG_TRIGGER_EN                ( DEBUG_TRIGGER_EN          )
+  )
   decoder_i
   (
     // controller related signals
@@ -392,7 +391,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // ALU signals
     .alu_en_o                        ( alu_en                    ),
     .alu_operator_o                  ( alu_operator              ),
-    .alu_shifter_o                   ( alu_shifter               ),
     .alu_op_a_mux_sel_o              ( alu_op_a_mux_sel          ),
     .alu_op_b_mux_sel_o              ( alu_op_b_mux_sel          ),
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
@@ -457,7 +455,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.instr_valid            <= 1'b0;
       id_ex_pipe_o.alu_en                 <= '0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
-      id_ex_pipe_o.alu_shifter            <= 4'b0000;
       id_ex_pipe_o.alu_operand_a          <= 32'b0; // todo: path from data_rdata_i through WB to id_ex_pipe_o_reg_alu_operand_a seems longer than needed (too many gates in ID)
       id_ex_pipe_o.alu_operand_b          <= 32'b0;
 
@@ -526,7 +523,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.alu_en                 <= alu_en;
           if (alu_en)
           begin
-            id_ex_pipe_o.alu_shifter          <= alu_shifter;
             id_ex_pipe_o.operand_c            <= operand_c;
           end
 

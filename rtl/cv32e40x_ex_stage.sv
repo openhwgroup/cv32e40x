@@ -151,7 +151,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .rst_n               ( rst_n                      ),
 
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
-    .shifter_i           ( id_ex_pipe_i.alu_shifter   ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
     
@@ -167,7 +166,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
     // Result(s)
     .result_o            ( alu_result                 ),
-    .comparison_result_o ( alu_cmp_result             )
+    .cmp_result_o        ( alu_cmp_result             )
   );
 
   ////////////////////////////////////////////////////
