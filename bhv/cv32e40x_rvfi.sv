@@ -398,7 +398,7 @@ module cv32e40x_rvfi
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_intr              = intr_d;
-  assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3)
+  assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3) // todo: Get this info from the design itself (will not be constant for the 40S)
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -407,7 +407,7 @@ module cv32e40x_rvfi
     end else begin
       // Store last valid instructions
       if(rvfi_valid) begin
-        instr_q.valid    <= rvfi_valid && !is_dret_wb;
+        instr_q.valid    <= rvfi_valid && !is_dret_wb; // todo: why is this ' && !is_dret_wb' done here?; looks a bit like a hack
         instr_q.order    <= rvfi_order;
         instr_q.pc_wdata <= rvfi_pc_wdata;
       end else begin
@@ -420,7 +420,7 @@ module cv32e40x_rvfi
   assign intr_d = rvfi_valid                          && // Current instruction valid
                   instr_q.valid                       && // Previous instruction valid
                   ((rvfi_order - instr_q.order) == 1) && // Is latest instruction
-                  (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler
+                  (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler // todo: get definitive answer on whether intr signal should be 1 for debug entry as well?
 
 
   // Pipeline stage model //
@@ -464,11 +464,13 @@ module cv32e40x_rvfi
 
     end else begin
 
+// todo: why is IF stage not modeled? It could be used to propagate first ISR and first debug instruction through the RVFI pipeline
+
       //// ID Stage ////
       if(instr_id_valid_i && instr_ex_ready_i) begin
 
         if (jump_in_id_i) begin
-          pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i;
+          pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i; // todo: could IF stage's branch_addr_n be used in both cases? (the current design is clean in that it only uses ID stage signals; the proposal covers more of the RTL)
         end else begin
           pc_wdata [STAGE_ID] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end
@@ -477,18 +479,18 @@ module cv32e40x_rvfi
         debug    [STAGE_ID] <= is_debug_entry_id;
         rs1_addr [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr [STAGE_ID] <= rs2_addr_id_i;
-        rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0;
-        rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0;
+        rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
+        rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
         mem_rmask[STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask[STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end else begin
-        is_debug_entry_id   <= is_debug_entry_if || is_debug_entry_id;
+        is_debug_entry_id   <= is_debug_entry_if || is_debug_entry_id; // todo: this should not be needed
       end
 
 
       //// EX Stage ////
       if (instr_ex_valid_i && wb_ready_i) begin
-        pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :
+        pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :  // todo: could IF stage's branch_addr_n be used here? (the current design is clean in that it only uses EX stage signals; the proposal covers more of the RTL)
                                !lsu_misaligned_ex_i ? pc_wdata[STAGE_ID] :
                                pc_wdata[STAGE_EX];
         debug    [STAGE_EX] <= debug    [STAGE_ID];
@@ -499,7 +501,7 @@ module cv32e40x_rvfi
         mem_rmask[STAGE_EX] <= mem_rmask[STAGE_ID];
         mem_wmask[STAGE_EX] <= mem_wmask[STAGE_ID];
 
-        // Keep values when misaligned
+        // Keep values when misaligned // todo: explain why
         ex_mem_addr         <= (lsu_misaligned_ex_i) ? ex_mem_addr  : rvfi_mem_addr_d;
         ex_mem_wdata        <= (lsu_misaligned_ex_i) ? ex_mem_wdata : rvfi_mem_wdata_d;
 
@@ -539,7 +541,7 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 :
+      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 : // todo: why is exception_in_wb_i handled here? Is a synchronous exception supposed to set rvfi_intr or not?
                        (is_dret_wb       ) ? csr_dpc_q_i :
                        pc_wdata[STAGE_EX] & ~32'b1;
 
