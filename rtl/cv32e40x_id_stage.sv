@@ -526,7 +526,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
             id_ex_pipe_o.operand_c            <= operand_c;
           end
 
-          if (alu_en || div_en) begin
+          if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
             id_ex_pipe_o.alu_operator         <= alu_operator;
             id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
             id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
