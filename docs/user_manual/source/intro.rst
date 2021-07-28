@@ -46,7 +46,7 @@ It follows these specifications:
    https://github.com/riscv/riscv-code-size-reduction/blob/master/ISA%20proposals/Huawei/Zce_spec.adoc
 
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.2,
-   https://github.com/openhwgroup/core-v-docs/blob/master/cores/cv32e40p/OBI-v1.2.pdf
+   https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.2.pdf
 
 .. [OPENHW-X] OpenHW eXtension Interface, version 0.1,
    https://github.com/openhwgroup/core-v-xif
