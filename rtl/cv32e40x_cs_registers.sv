@@ -167,17 +167,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                         mhpmcounter_write_upper;          // write 32 upper bits mhpmcounter_q
   logic [31:0]                         mhpmcounter_write_increment;      // write increment of mhpmcounter_q
 
+  // Local instr_valid
+  logic instr_valid;
 
   csr_opcode_e csr_op;
   csr_num_e    csr_waddr;
   csr_num_e    csr_raddr;
   logic [31:0] csr_wdata;
-  logic        csr_we;
+  logic        csr_en_gated;
 
   logic illegal_csr_read;  // Current CSR cannot be read
   logic illegal_csr_write; // Current CSR cannot be written
 
-  //  CSR access. Read in EX, write in WB
+  // Local instr_valid for write portion (WB)
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;// && !ctrl_fsm_i.halt_wb; todo:ok: Not SEC equivalent
+
+  // CSR access. Read in EX, write in WB
   // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
   assign csr_raddr = csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : 12'b0);
   assign csr_raddr_o = csr_raddr;
@@ -189,7 +194,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_op    =  ex_wb_pipe_i.csr_op;
 
   // CSR write operations in WB, actual csr_we_int may still become 1'b0 in case of CSR_OP_READ
-  assign csr_we    = (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.csr_en) && !ctrl_fsm_i.kill_wb;
+  assign csr_en_gated    = ex_wb_pipe_i.csr_en && instr_valid;
     
   // mip CSR
   assign mip = mip_i;
@@ -510,7 +515,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Using ex_wb_pipe_i.rf_wdata for read-modify-write since CSR was read in EX, written in WB
   always_comb
   begin
-    if(!csr_we) begin
+    if(!csr_en_gated) begin
       csr_wdata_int = csr_wdata;
       csr_we_int    = 1'b0;
     end else begin
