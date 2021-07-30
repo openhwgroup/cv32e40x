@@ -215,8 +215,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
  
   logic        csr_en_id;
   csr_opcode_e csr_op_id;
-
   csr_num_e    csr_raddr_ex;
+  logic        csr_illegal;
 
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
@@ -453,6 +453,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR interface
     .csr_rdata_i                ( csr_rdata                    ),
+    .csr_illegal_i              ( csr_illegal                  ),
 
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
@@ -607,6 +608,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
+
+    .csr_illegal_o              (csr_illegal             ),
 
     // Raddr from first stage (EX)
     .csr_raddr_o                ( csr_raddr_ex           ),

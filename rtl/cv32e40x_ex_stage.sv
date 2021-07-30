@@ -39,6 +39,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // CSR interface
   input  logic [31:0] csr_rdata_i,
+  input  logic        csr_illegal_i,
 
   // EX/WB pipeline 
   output ex_wb_pipe_t ex_wb_pipe_o,
@@ -106,7 +107,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid;
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
-  assign rf_we_gated  = id_ex_pipe_i.rf_we  && instr_valid;
+  assign rf_we_gated  = id_ex_pipe_i.rf_we  && instr_valid && !csr_illegal_i;
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
   // signal needed for ex_valid to go high in such cases
@@ -275,7 +276,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-        ex_wb_pipe_o.rf_we       <= id_ex_pipe_i.rf_we;
+        // Deassert rf_we in case of illegal csr instruction
+        ex_wb_pipe_o.rf_we       <= csr_illegal_i ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
           
         if (id_ex_pipe_i.rf_we) begin
@@ -286,11 +288,12 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // Update signals for CSR access in WB
-        ex_wb_pipe_o.csr_en     <= id_ex_pipe_i.csr_en;
-        ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op; // todo: why can csr_op not be in below if-body?
+        // deassert csr_en in case of illegal csr instruction
+        ex_wb_pipe_o.csr_en     <= csr_illegal_i ? 1'b0 : id_ex_pipe_i.csr_en;
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;
+          ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op;
         end
 
         // Propagate signals needed for exception handling in WB
@@ -298,7 +301,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
-        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn;
+        // CSR illegal instruction detected in this stage, OR'ing in the status
+        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i;
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
         ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;

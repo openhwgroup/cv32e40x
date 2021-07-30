@@ -67,6 +67,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
+  // To EX stage
+  output logic            csr_illegal_o, // 1'b1 for illegal CSR access.
+
   // Interrupts
   output logic [31:0]     mie_o,
   input  logic [31:0]     mip_i,
@@ -164,13 +167,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                         mhpmcounter_write_upper;          // write 32 upper bits mhpmcounter_q
   logic [31:0]                         mhpmcounter_write_increment;      // write increment of mhpmcounter_q
 
+  // Local instr_valid
+  logic instr_valid;
 
   csr_opcode_e csr_op;
   csr_num_e    csr_waddr;
   csr_num_e    csr_raddr;
   logic [31:0] csr_wdata;
+  logic        csr_en_gated;
 
-  //  CSR access. Read in EX, write in WB
+  logic illegal_csr_read;  // Current CSR cannot be read
+  logic illegal_csr_write; // Current CSR cannot be written
+
+  // Local instr_valid for write portion (WB)
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;// && !ctrl_fsm_i.halt_wb; todo:ok: Not SEC equivalent
+
+  // CSR access. Read in EX, write in WB
   // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
   assign csr_raddr = csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : 12'b0);
   assign csr_raddr_o = csr_raddr;
@@ -179,11 +191,26 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_waddr = csr_num_e'(ex_wb_pipe_i.csr_addr);
   assign csr_wdata = ex_wb_pipe_i.csr_wdata;
 
-  //TODO:OK We should have a better way for killing CSR insn other than forcing csr_op to CSR_OP_READ (csr_en already exists in pipeline)
-  assign csr_op       =  (!ctrl_fsm_i.kill_wb && ex_wb_pipe_i.instr_valid) ? ex_wb_pipe_i.csr_op : CSR_OP_READ;
+  assign csr_op    =  ex_wb_pipe_i.csr_op;
+
+  // CSR write operations in WB, actual csr_we_int may still become 1'b0 in case of CSR_OP_READ
+  assign csr_en_gated    = ex_wb_pipe_i.csr_en && instr_valid;
     
   // mip CSR
   assign mip = mip_i;
+
+  ////////////////////////////////////////
+  // Determine if CSR access is illegal //
+  // Both read and write validity is    //
+  // checked in the first (EX) stage    //
+  // Invalid writes will suppress ex_wb //
+  // signals and avoid writing in WB    //
+  ////////////////////////////////////////
+  assign illegal_csr_write = (id_ex_pipe_i.csr_op != CSR_OP_READ) &&
+                             (id_ex_pipe_i.csr_en) &&
+                             (csr_raddr[11:10] == 2'b11); // Priv spec section 2.1
+
+  assign csr_illegal_o = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ? illegal_csr_write || illegal_csr_read : 1'b0;
 
 
   ////////////////////////////////////////////
@@ -201,6 +228,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // read logic
   always_comb
   begin
+    illegal_csr_read = 1'b0;
+
     case (csr_raddr)
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = mstatus_q;
@@ -244,14 +273,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_TINFO:
               csr_rdata_int = tinfo_types;
 
-      CSR_DCSR:
+      CSR_DCSR: begin
               csr_rdata_int = dcsr_q;
-      CSR_DPC:
+              illegal_csr_read = !ctrl_fsm_i.debug_mode;
+      end
+      CSR_DPC: begin
               csr_rdata_int = dpc_q;
-      CSR_DSCRATCH0:
+              illegal_csr_read = !ctrl_fsm_i.debug_mode;
+      end
+      CSR_DSCRATCH0: begin
               csr_rdata_int = dscratch0_q;
-      CSR_DSCRATCH1:
+              illegal_csr_read = !ctrl_fsm_i.debug_mode;
+      end
+      CSR_DSCRATCH1: begin
               csr_rdata_int = dscratch1_q;
+              illegal_csr_read = !ctrl_fsm_i.debug_mode;
+      end
 
       // Hardware Performance Monitor
       CSR_MCYCLE,
@@ -311,8 +348,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         csr_rdata_int = mhpmevent_q[csr_raddr[4:0]];
 
 
-      default:
-        csr_rdata_int = '0;
+      default: begin
+        csr_rdata_int    = '0;
+        illegal_csr_read = 1'b1;
+      end
     endcase
   end
 
@@ -474,21 +513,24 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // CSR operation logic
   // Using ex_wb_pipe_i.rf_wdata for read-modify-write since CSR was read in EX, written in WB
-  always_comb // todo: this circuit should use csr_en (if csr_en is 0 then csr_wdata_int should default to csr_wdata for power reasons
+  always_comb
   begin
-    csr_wdata_int = csr_wdata;
-    csr_we_int    = 1'b1;
+    if(!csr_en_gated) begin
+      csr_wdata_int = csr_wdata;
+      csr_we_int    = 1'b0;
+    end else begin
+      csr_we_int    = 1'b1;
+      case (csr_op)
+        CSR_OP_WRITE: csr_wdata_int = csr_wdata;
+        CSR_OP_SET:   csr_wdata_int = csr_wdata | ex_wb_pipe_i.rf_wdata;
+        CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & ex_wb_pipe_i.rf_wdata;
 
-    case (csr_op)
-      CSR_OP_WRITE: csr_wdata_int = csr_wdata;
-      CSR_OP_SET:   csr_wdata_int = csr_wdata | ex_wb_pipe_i.rf_wdata;
-      CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & ex_wb_pipe_i.rf_wdata;
-
-      CSR_OP_READ: begin
-        csr_wdata_int = csr_wdata;
-        csr_we_int    = 1'b0;
-      end
-    endcase
+        CSR_OP_READ: begin
+          csr_wdata_int = csr_wdata;
+          csr_we_int    = 1'b0;
+        end
+      endcase
+    end
   end
 
 
