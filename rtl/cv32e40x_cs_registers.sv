@@ -930,7 +930,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mhpmcounter_n[nxt_gidx][63:32] = csr_wdata_int;
             mhpmcounter_we[nxt_gidx][1] = 1'b1;
           end else if (mhpmcounter_write_increment[nxt_gidx]) begin
-            mhpmcounter_we[nxt_gidx] = 2'b1;
+            mhpmcounter_we[nxt_gidx] = 2'b11;
             mhpmcounter_n[nxt_gidx] = mhpmcounter_increment[nxt_gidx];
           end
         end // always_comb
