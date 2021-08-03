@@ -179,6 +179,8 @@ The signals in ``x_compressed_req_o`` are valid when ``x_compressed_valid_o`` is
   +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+ 
   | ``instr``              | logic [31:0]         | Uncompressed instruction.                                                                                       |
   +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``               | logic [1:0]          | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
+  +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``accept``             | logic                | Is the offloaded compressed instruction (``id``) accepted by the coprocessor?                                   | 
   |                        |                      | If the compressed instruction is not accepted, then the core will cause an illegal instruction trap unless this | 
   |                        |                      | instruction is killed in the core's pipeline.                                                                   | 
@@ -218,6 +220,8 @@ the instruction will cause an illegal instruction fault.
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``instr``              | logic [31:0]            | Offloaded instruction.                                                                                          |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``               | logic [1:0]             | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
+  +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``id``                 | logic [X_ID_WIDTH-1:0]  | Identification of the offloaded instruction.                                                                    |
   |                        |                         |                                                                                                                 |
   |                        |                         |                                                                                                                 |
@@ -230,10 +234,10 @@ the instruction will cause an illegal instruction fault.
 A issue request transaction is defined as the combination of all ``x_issue_req_o`` signals during which ``x_issue_valid_o`` is 1 and the ``id`` remains unchanged. I.e. a new
 transaction can be started by just changing the ``id`` signal and keeping the valid signal asserted.
 
-The ``instr``, ``id`` and ``rs_valid`` signals are valid when ``x_issue_valid_o`` is 1. The ``rs`` is only considered valid when ``x_issue_valid_o`` is 1 and the corresponding
+The ``instr``, ``mode``, ``id`` and ``rs_valid`` signals are valid when ``x_issue_valid_o`` is 1. The ``rs`` is only considered valid when ``x_issue_valid_o`` is 1 and the corresponding
 bit in ``rs_valid`` is 1 as well.
 
-The ``instr`` signal remain stable during an issue request transaction. The ``rs_valid`` bits are not required to be stable during the transaction. Each bit
+The ``instr`` and ``mode`` signals remain stable during an issue request transaction. The ``rs_valid`` bits are not required to be stable during the transaction. Each bit
 can transition from 0 to 1, but is not allowed to transition back to 0 during a transaction. The ``rs`` signals are only required to be stable during the part
 of a transaction in which these signals are considered to be valid.
 
@@ -376,6 +380,8 @@ The signals in ``x_commit_o`` are valid when ``x_commit_valid_o`` is 1.
   | ``id``       | logic [X_ID_WIDTH-1:0]     | Identification of the offloaded instruction.                                                                    |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``addr``     | logic [31:0]               | Virtual address of the memory transaction.                                                                      |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``     | logic [1:0]                | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``we``       | logic                      | Write enable of the memory transaction.                                                                         |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
