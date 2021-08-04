@@ -45,7 +45,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output logic [31:0] jmp_target_o,
 
   // IF/ID pipeline
-  input if_id_pipe_t if_id_pipe_i,
+  input  if_id_pipe_t if_id_pipe_i,
 
   // ID/EX pipeline 
   output id_ex_pipe_t id_ex_pipe_o,
@@ -63,11 +63,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        debug_trigger_match_id_i,
 
   // Register file write back and forwards
-  input  logic [31:0]    rf_wdata_wb_i,
+  input  logic [31:0] rf_wdata_wb_i,
 
-  input  logic           rf_we_ex_i,
-  input  rf_addr_t       rf_waddr_ex_i,
-  input  logic [31:0]    rf_wdata_ex_i,
+  input  logic        rf_we_ex_i,
+  input  rf_addr_t    rf_waddr_ex_i,
+  input  logic [31:0] rf_wdata_ex_i,
 
   input  logic        lsu_en_wb_i,
 
@@ -165,11 +165,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] jalr_fw;
 
+  logic [31:0] operand_a;
   logic [31:0] operand_b;
-
-  logic [31:0] alu_operand_a;
-  logic [31:0] alu_operand_b;
-
   logic [31:0] operand_c;
 
   logic        id_valid;        // ID stage has valid (non-bubble) data for next stage
@@ -252,14 +249,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //       |_|                                          //
   ////////////////////////////////////////////////////////
 
-  // ALU_Op_a Mux
-  always_comb begin : alu_operand_a_mux
+  // Operand A Mux
+  always_comb begin : operand_a_mux
     case (alu_op_a_mux_sel)
-      OP_A_REGA_OR_FWD:  alu_operand_a = operand_a_fw;
-      OP_A_REGB_OR_FWD:  alu_operand_a = operand_b_fw;
-      OP_A_CURRPC:       alu_operand_a = if_id_pipe_i.pc;
-      OP_A_IMM:          alu_operand_a = imm_a;
-      default:           alu_operand_a = operand_a_fw;
+      OP_A_REGA_OR_FWD:  operand_a = operand_a_fw;
+      OP_A_CURRPC:       operand_a = if_id_pipe_i.pc;
+      OP_A_IMM:          operand_a = imm_a;
+      default:           operand_a = operand_a_fw;
     endcase; // case (alu_op_a_mux_sel)
   end
 
@@ -270,7 +266,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     endcase
   end
 
-  // Operand a forwarding mux
+  // Operand A forwarding mux
   always_comb begin : operand_a_fw_mux
     case (ctrl_byp_i.operand_a_fw_mux_sel)
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
@@ -308,22 +304,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     endcase
   end
 
-  // ALU_Op_b Mux
-  always_comb begin : alu_operand_b_mux
+  // Operand B Mux
+  always_comb begin : operand_b_mux
     case (alu_op_b_mux_sel)
-      OP_B_REGA_OR_FWD:  operand_b = operand_a_fw;
       OP_B_REGB_OR_FWD:  operand_b = operand_b_fw;
       OP_B_IMM:          operand_b = imm_b;
       default:           operand_b = operand_b_fw;
     endcase // case (alu_op_b_mux_sel)
   end
 
-
-  // choose normal or scalar replicated version of operand b
-  assign alu_operand_b = operand_b;
-
-
-  // Operand b forwarding mux
+  // Operand B forwarding mux
   always_comb begin : operand_b_fw_mux
     case (ctrl_byp_i.operand_b_fw_mux_sel)
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
@@ -332,7 +322,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       default:      operand_b_fw = regfile_rdata_i[1];
     endcase;
   end
-
 
   //////////////////////////////////////////////////////
   //   ___                                 _    ____  //
@@ -528,21 +517,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
           if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
             id_ex_pipe_o.alu_operator         <= alu_operator;
-            id_ex_pipe_o.alu_operand_a        <= alu_operand_a;
-            id_ex_pipe_o.alu_operand_b        <= alu_operand_b;
+            id_ex_pipe_o.alu_operand_a        <= operand_a;
+            id_ex_pipe_o.alu_operand_b        <= operand_b;
           end
 
           id_ex_pipe_o.div_en                 <= div_en;
           if (div_en) begin
-            id_ex_pipe_o.div_operator         <= div_operator;
+            id_ex_pipe_o.div_operator         <= div_operator; // todo: consider letting div/rem use mul_operands
           end
           
           id_ex_pipe_o.mul_en                 <= mul_en;
           if (mul_en) begin
             id_ex_pipe_o.mul_operator         <= mul_operator;
             id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
-            id_ex_pipe_o.mul_operand_a        <= alu_operand_a;
-            id_ex_pipe_o.mul_operand_b        <= alu_operand_b;
+            id_ex_pipe_o.mul_operand_a        <= operand_a;
+            id_ex_pipe_o.mul_operand_b        <= operand_b;
           end
 
           id_ex_pipe_o.rf_we                  <= rf_we;

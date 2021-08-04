@@ -93,12 +93,12 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    div_result;
   
   logic           div_clz_en;   
-  logic [31:0]    div_clz_data;
+  logic [31:0]    div_clz_data_rev;
   logic [5:0]     div_clz_result;
 
   logic           div_shift_en;
   logic [5:0]     div_shift_amt;
-  logic [31:0]    div_op_a_shifted;
+  logic [31:0]    div_op_b_shifted;
 
   //assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex; // todo: why does halt_ex not factor in here just like in LSU?
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex; // todo: This gives SEC error, explain why this is ok.
@@ -147,22 +147,19 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   
   cv32e40x_alu alu_i
   (
-    .clk                 ( clk                        ),
-    .rst_n               ( rst_n                      ),
-
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
     
     // ALU CLZ interface
     .div_clz_en_i        ( div_clz_en                 ),
-    .div_clz_data_i      ( div_clz_data               ),
+    .div_clz_data_rev_i  ( div_clz_data_rev           ),
     .div_clz_result_o    ( div_clz_result             ),
                                                      
     // ALU shifter interface
     .div_shift_en_i      ( div_shift_en               ),
     .div_shift_amt_i     ( div_shift_amt              ),
-    .div_op_a_shifted_o  ( div_op_a_shifted           ),
+    .div_op_b_shifted_o  ( div_op_b_shifted           ),
 
     // Result(s)
     .result_o            ( alu_result                 ),
@@ -180,9 +177,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // TODO:low COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
   
-  // Inputs A and B are swapped in ID stage.
-  // This is done becase the divider utilizes the shifter in the ALU to shift the divisor (div_i.op_b_i), and the ALU
-  // shifter operates on alu_i.operand_a_i
   cv32e40x_div div_i
   (
     .clk                ( clk                        ),
@@ -191,16 +185,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     // Input IF
     .data_ind_timing_i  ( 1'b0                       ), // TODO:OE:low connect to CSR
     .operator_i         ( id_ex_pipe_i.div_operator  ),
-    .op_a_i             ( id_ex_pipe_i.alu_operand_b ), // Inputs A and B are swapped in ID stage.
-    .op_b_i             ( id_ex_pipe_i.alu_operand_a ), // Inputs A and B are swapped in ID stage.
+    .op_a_i             ( id_ex_pipe_i.alu_operand_a ),
+    .op_b_i             ( id_ex_pipe_i.alu_operand_b ),
 
     // ALU CLZ interface
     .alu_clz_result_i   ( div_clz_result             ),
     .alu_clz_en_o       ( div_clz_en                 ),
-    .alu_clz_data_o     ( div_clz_data               ),
+    .alu_clz_data_rev_o ( div_clz_data_rev           ),
 
     // ALU shifter interface
-    .alu_op_b_shifted_i ( div_op_a_shifted           ), // Inputs A and B are swapped in ID stage.
+    .alu_op_b_shifted_i ( div_op_b_shifted           ),
     .alu_shift_en_o     ( div_shift_en               ),
     .alu_shift_amt_o    ( div_shift_amt              ),
 
