@@ -50,7 +50,6 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
 
     // Common signals for all instructions
     decoder_ctrl_o.rf_re[0]         = 1'b1;
-    decoder_ctrl_o.rf_re[1]         = 1'b1;
     decoder_ctrl_o.rf_we            = 1'b1;
     decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
     decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
@@ -59,6 +58,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
     unique case (instr_rdata_i[6:0])
 
       OPCODE_OP: begin
+        decoder_ctrl_o.rf_re[1]     = 1'b1;
 
         unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
 
@@ -175,6 +175,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
 
 
       OPCODE_OPIMM: begin
+        decoder_ctrl_o.rf_re[1]     = 1'b0;
 
         unique casez ({instr_rdata_i[31:25], instr_rdata_i[24:20], instr_rdata_i[14:12]})
           // RVB Zbb
