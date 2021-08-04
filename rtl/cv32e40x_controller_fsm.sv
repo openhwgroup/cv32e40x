@@ -59,7 +59,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From WB stage
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
-  input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst

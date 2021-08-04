@@ -69,8 +69,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  rf_addr_t       rf_waddr_ex_i,
   input  logic [31:0]    rf_wdata_ex_i,
 
-  input  logic        lsu_en_wb_i,
-
   output logic        mret_insn_o,
   output logic        dret_insn_o,
   // Decoder to controller

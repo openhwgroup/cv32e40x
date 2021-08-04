@@ -128,6 +128,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   
   // Register File Write Back
   logic        rf_we_wb;
+  logic        rf_we_wb_raw; // Unaffected by kill/halt
   rf_addr_t    rf_waddr_wb;
   logic [31:0] rf_wdata_wb;
 
@@ -405,8 +406,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
-    .lsu_en_wb_i                  ( lsu_en_wb                 ),
-
     .mret_insn_o                  ( mret_insn_id              ),
     .dret_insn_o                  ( dret_insn_id              ),
 
@@ -548,6 +547,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
+    .rf_we_wb_raw_o             ( rf_we_wb_raw                 ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
 
@@ -697,7 +697,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_i                     ( rf_waddr_id            ),
     .rf_we_ex_i                     ( rf_we_ex               ),
     .rf_waddr_ex_i                  ( rf_waddr_ex            ),
-    .rf_we_wb_i                     ( rf_we_wb               ),
+    .rf_we_wb_i                     ( rf_we_wb_raw           ),
     .rf_waddr_wb_i                  ( rf_waddr_wb            ),
 
     // Write targets from ID

@@ -137,7 +137,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From WB stage
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
     .lsu_addr_wb_i               ( lsu_addr_wb_i            ),
-    .lsu_en_wb_i                 ( lsu_en_wb_i              ),
     .wb_ready_i                  ( wb_ready_i               ),
     .wb_valid_i                  ( wb_valid_i               ),
 

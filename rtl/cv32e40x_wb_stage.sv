@@ -50,6 +50,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Register file interface
   output logic          rf_we_wb_o,     // Register file write enable
+  output logic          rf_we_wb_raw_o, // Raw rf_we, not affected by kill/halt
   output rf_addr_t      rf_waddr_wb_o,  // Register file write address
   output logic [31:0]   rf_wdata_wb_o,  // Register file write data
 
@@ -66,7 +67,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   logic                 instr_valid;
   logic                 wb_valid;       // Only used by RVFI
-  logic                 lsu_en_gated;   // LSU enabled gated with all disqualifiers
+  logic                 lsu_en_gated;   // LSU enabled gated with ex_wb_pipe.instr_valid
 
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
@@ -78,7 +79,9 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // data_req_o/data_ack_i handshake has already occurred. This is checked
   // with the a_lsu_no_kill assertion.
 
-  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && instr_valid;
+  // lsu_en_wb_o is only used by the bypass module
+  // Should not factor in kill/halt, otherwise stall conditions could be temporarily removed while halted/killed
+  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
   assign lsu_en_wb_o  = lsu_en_gated;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -93,13 +96,17 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // order to prevent a timing path from the late arriving data_rvalid_i into the
   // register file.
 
-  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
-  assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
-  assign rf_wdata_wb_o = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
+  assign rf_we_wb_raw_o = ex_wb_pipe_i.rf_we && ex_wb_pipe_i.instr_valid; // Used for hazard detection, must be kept stable regardless of kill/halt
+  assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
+  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
 
+  // Does not depend on local instr_valid (ie kept high for stalls and kills)
+  // Ok, as controller will never kill ongoing LSU instructions, and thus
+  // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
   assign lsu_valid_o = lsu_en_gated;
   assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
 
