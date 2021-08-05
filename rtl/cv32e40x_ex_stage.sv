@@ -83,7 +83,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           mul_en_gated;
   logic           div_en_gated;
   logic           lsu_en_gated;
-  logic           rf_we;
   logic           previous_exception;
 
   // Divider signals
