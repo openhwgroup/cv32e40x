@@ -525,16 +525,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
             ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
-
-          // Single step debug entry
-          // Need to be after exception/interrupt handling
-          // to ensure mepc and if_pc set correctly for use in dpc
-          if (pending_single_step) begin
-            if (single_step_allowed) begin
-              ctrl_fsm_ns = DEBUG_TAKEN;
-            end
-          end
         end // !debug or interrupts
+
+        // Single step debug entry
+          // Need to be after (in parallell with) exception/interrupt handling
+          // to ensure mepc and if_pc set correctly for use in dpc,
+          // and to ensure only one instruction can retire during single step
+        if (pending_single_step) begin
+          if (single_step_allowed) begin
+            ctrl_fsm_ns = DEBUG_TAKEN;
+          end
+        end
       end
       SLEEP: begin
         ctrl_fsm_o.ctrl_busy = 1'b0;
