@@ -77,10 +77,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Regfile target
   input  logic         regfile_alu_we_id_i,        // currently decoded we enable
 
-  // Forwarding signals from regfile
-  input  logic         rf_we_ex_i,            // Register file write enable from EX stage
-  input  logic         rf_we_wb_i,            // Register file write enable from WB stage
-
   // CSR raddr in ex
   input  csr_num_e     csr_raddr_ex_i,
 
@@ -96,7 +92,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        wb_ready_i,               // WB stage is ready
   input  logic        wb_valid_i,                // WB stage is done
 
-  input  logic        lsu_en_wb_i,              // LSU data is written back in WB
   input  logic        obi_data_req_i,           // OBI bus data request (EX) // todo: Should look at 'trans' (goal (please check if true) it to not break a multicycle LSU instruction or already committed load/store; that cannot be judged by only looking at the OBI signals)
 
   // Outputs
@@ -181,15 +176,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
 
     // From EX
-    .rf_we_ex_i                 ( rf_we_ex_i               ),
     .rf_waddr_ex_i              ( rf_waddr_ex_i            ),
     .csr_raddr_ex_i             ( csr_raddr_ex_i           ),
 
     // From WB
-    .rf_we_wb_i                 ( rf_we_wb_i               ),
     .rf_waddr_wb_i              ( rf_waddr_wb_i            ),
     .wb_ready_i                 ( wb_ready_i               ),
-    .lsu_en_wb_i                ( lsu_en_wb_i              ),
 
     // From LSU
     .lsu_misaligned_i           ( lsu_misaligned_i         ),

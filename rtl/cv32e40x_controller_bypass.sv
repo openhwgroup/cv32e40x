@@ -48,17 +48,17 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        dret_id_i,                  // dret in ID
   input  logic        csr_en_id_i,                // CSR in ID
   input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID)
-  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (EX)
+
+  // From cs_registers
   input  logic        debug_trigger_match_id_i,         // Trigger match in ID
+
   // From EX
-  input  logic        rf_we_ex_i,                 // Register file write enable from EX stage
   input rf_addr_t     rf_waddr_ex_i,              // write address currently in EX
+  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (EX)
 
   // From WB
-  input  logic        rf_we_wb_i,                 // Register file write enable from WB stage
   input  rf_addr_t    rf_waddr_wb_i,              // write address currently in WB
   input  logic        wb_ready_i,                 // WB stage is ready
-  input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
   // From LSU
   input  logic        lsu_misaligned_i,           // LSU detected a misaligned load/store instruction
@@ -84,6 +84,20 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // Detect minstret/minstreth read in EX.
   logic minstret_read_in_ex;
+
+  // EX register file write enable
+  logic rf_we_ex;
+  assign rf_we_ex = id_ex_pipe_i.rf_we && id_ex_pipe_i.instr_valid;
+
+  // WB register file write enable
+  logic rf_we_wb;
+  assign rf_we_wb = ex_wb_pipe_i.rf_we && ex_wb_pipe_i.instr_valid;
+
+  // WB lsu_en
+  logic lsu_en_wb;
+  assign lsu_en_wb = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
+
+  // todo: make all qualifiers here, and use those signals later in the file
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
@@ -161,10 +175,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // Stall because of load operation
     if (
-        (id_ex_pipe_i.lsu_en && rf_we_ex_i && |rf_rd_ex_hz) || // load-use hazard (EX)
-        (!wb_ready_i         && rf_we_wb_i && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (id_ex_pipe_i.lsu_en && rf_we_ex_i && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
-        (!wb_ready_i         && rf_we_wb_i && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
+        (id_ex_pipe_i.lsu_en && rf_we_ex && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
+        (id_ex_pipe_i.lsu_en && rf_we_ex && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (!wb_ready_i         && rf_we_wb && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
       ctrl_byp_o.deassert_we = 1'b1;
@@ -177,8 +191,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // we don't care about in which state the ctrl_fsm is as we deassert_we
     // anyway when we are not in DECODE
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        ((rf_we_wb_i && rf_rd_wb_match[0] && lsu_en_wb_i) ||
-         (rf_we_ex_i && rf_rd_ex_match[0])))
+        ((rf_we_wb && rf_rd_wb_match[0] && lsu_en_wb) ||
+         (rf_we_ex && rf_rd_ex_match[0])))
     begin
       ctrl_byp_o.jr_stall    = 1'b1;
       ctrl_byp_o.deassert_we = 1'b1;
@@ -211,7 +225,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     ctrl_byp_o.jalr_fw_mux_sel      = SELJ_REGFILE;
 
     // Forwarding WB -> ID
-    if (rf_we_wb_i) begin
+    if (rf_we_wb) begin
       if (rf_rd_wb_match[0]) begin
         ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_WB;
       end
@@ -221,7 +235,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
 
     // Forwarding EX -> ID (not actually used when there is a load in EX)
-    if (rf_we_ex_i) begin
+    if (rf_we_ex) begin
       if (rf_rd_ex_match[0]) begin
         ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_EX;
       end
@@ -232,8 +246,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // Forwarding WB->ID for the jump register path
     // Only allowed if WB is writing back an ALU result; no forwarding for load result because of timing reasons
-    if (rf_we_wb_i) begin
-      if (rf_rd_wb_match[0] && !lsu_en_wb_i) begin
+    if (rf_we_wb) begin
+      if (rf_rd_wb_match[0] && !lsu_en_wb) begin
         ctrl_byp_o.jalr_fw_mux_sel = SELJ_FW_WB;
       end
     end

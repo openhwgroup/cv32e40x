@@ -128,12 +128,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   
   // Register File Write Back
   logic        rf_we_wb;
-  logic        rf_we_wb_raw; // Unaffected by kill/halt
   rf_addr_t    rf_waddr_wb;
   logic [31:0] rf_wdata_wb;
 
   // Forwarding RF from EX
-  logic        rf_we_ex;
   rf_addr_t    rf_waddr_ex;
   logic [31:0] rf_wdata_ex;
 
@@ -204,9 +202,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // trigger match detected in cs_registers (using ID timing)
   logic        debug_trigger_match_id;
-
-  // WB is writing back a LSU result
-  logic        lsu_en_wb;
 
   // Controller <-> decoder 
   logic       mret_insn_id;
@@ -401,7 +396,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .debug_trigger_match_id_i     ( debug_trigger_match_id    ),       // from cs_registers (ID timing)
 
     // Register file write back and forwards
-    .rf_we_ex_i                   ( rf_we_ex                  ),
     .rf_waddr_ex_i                ( rf_waddr_ex               ),
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
@@ -459,7 +453,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .branch_target_o            ( branch_target_ex             ),
 
     // Register file forwarding
-    .rf_we_o                    ( rf_we_ex                     ),
     .rf_waddr_o                 ( rf_waddr_ex                  ),
     .rf_wdata_o                 ( rf_wdata_ex                  ),
 
@@ -540,14 +533,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Controller
     .ctrl_fsm_i                 ( ctrl_fsm                     ),
-    .lsu_en_wb_o                ( lsu_en_wb                    ),
 
     // LSU
     .lsu_rdata_i                ( lsu_rdata_wb                 ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
-    .rf_we_wb_raw_o             ( rf_we_wb_raw                 ),
     .rf_waddr_wb_o              ( rf_waddr_wb                  ),
     .rf_wdata_wb_o              ( rf_wdata_wb                  ),
 
@@ -668,7 +659,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // LSU
     .lsu_misaligned_i               ( lsu_misaligned_ex      ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
-    .lsu_en_wb_i                    ( lsu_en_wb              ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
   
     // jump/branch control
@@ -695,9 +685,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_re_i                        ( rf_re_id               ),       
     .rf_raddr_i                     ( rf_raddr_id            ),
     .rf_waddr_i                     ( rf_waddr_id            ),
-    .rf_we_ex_i                     ( rf_we_ex               ),
     .rf_waddr_ex_i                  ( rf_waddr_ex            ),
-    .rf_we_wb_i                     ( rf_we_wb_raw           ),
     .rf_waddr_wb_i                  ( rf_waddr_wb            ),
 
     // Write targets from ID
