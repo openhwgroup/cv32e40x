@@ -43,7 +43,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Controller
   input  ctrl_fsm_t     ctrl_fsm_i,
-  output logic          lsu_en_wb_o,    // Used in forward/stall logic
 
   // LSU
   input  logic [31:0]   lsu_rdata_i,
@@ -66,20 +65,18 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   logic                 instr_valid;
   logic                 wb_valid;       // Only used by RVFI
-  logic                 lsu_en_gated;   // LSU enabled gated with all disqualifiers
 
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
   //////////////////////////////////////////////////////////////////////////////
-  // Controller interface
+  // Controller interface todo: move/remove this block of comment?
   //
   // LSU enabled computed as in EX stage, however once a load/store transaction
   // is this far in the pipeline it should not longer get killed (as its
   // data_req_o/data_ack_i handshake has already occurred. This is checked
   // with the a_lsu_no_kill assertion.
 
-  assign lsu_en_gated = ex_wb_pipe_i.lsu_en && instr_valid;
-  assign lsu_en_wb_o  = lsu_en_gated;
+
 
   //////////////////////////////////////////////////////////////////////////////
   // Register file interface
@@ -93,14 +90,17 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // order to prevent a timing path from the late arriving data_rvalid_i into the
   // register file.
 
-  assign rf_we_wb_o    = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
-  assign rf_waddr_wb_o = ex_wb_pipe_i.rf_waddr;
-  assign rf_wdata_wb_o = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
+  assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
+  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
 
-  assign lsu_valid_o = lsu_en_gated;
+  // Does not depend on local instr_valid (ie kept high for stalls and kills)
+  // Ok, as controller will never kill ongoing LSU instructions, and thus
+  // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
+  assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid; // todo: move to LSU?
   assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
 
   //////////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
-  //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
+  //  assign wb_ready_o = ctrl_fsThankm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
 
   // wb_valid
   //

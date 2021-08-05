@@ -62,14 +62,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Debug Signal
   input  logic        debug_trigger_match_id_i,
 
-  // Register file write back and forwards
+  // Register file write data from WB stage
   input  logic [31:0]    rf_wdata_wb_i,
 
-  input  logic           rf_we_ex_i,
-  input  rf_addr_t       rf_waddr_ex_i,
+  // Register file write data from EX stage
   input  logic [31:0]    rf_wdata_ex_i,
-
-  input  logic        lsu_en_wb_i,
 
   output logic        mret_insn_o,
   output logic        dret_insn_o,

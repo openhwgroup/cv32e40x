@@ -48,8 +48,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   // Register file forwarding signals (to ID)
-  output logic        rf_we_o,
-  output rf_addr_t    rf_waddr_o,
   output logic [31:0] rf_wdata_o,
 
   // To IF: Jump and branch target and decision
@@ -85,7 +83,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           mul_en_gated;
   logic           div_en_gated;
   logic           lsu_en_gated;
-  logic           rf_we_gated;
   logic           previous_exception;
 
   // Divider signals
@@ -104,10 +101,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   //assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex; // todo: why does halt_ex not factor in here just like in LSU?
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex; // todo: This gives SEC error, explain why this is ok.
  
-  assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid;
-  assign div_en_gated = id_ex_pipe_i.div_en && instr_valid;
-  assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
-  assign rf_we_gated  = id_ex_pipe_i.rf_we  && instr_valid && !csr_illegal_i;
+  assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
+  assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
+  assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
+
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
   // signal needed for ex_valid to go high in such cases
@@ -120,9 +117,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_we_o    = rf_we_gated;
-    rf_waddr_o = id_ex_pipe_i.rf_waddr;
-
     // There is no need to use gated versions of alu_en, mul_en, etc. as rf_wdata_o will be ignored
     // for invalid instructions (as the register file write enable will be suppressed).
     unique case (1'b1)
