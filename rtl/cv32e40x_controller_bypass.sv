@@ -38,6 +38,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input rf_addr_t  rf_raddr_i[REGFILE_NUM_READ_PORTS],   // Read addresses from decoder
   input rf_addr_t  rf_waddr_i,                           // Write address from decoder
 
+  // Pipeline registers
   input if_id_pipe_t  if_id_pipe_i,
   input id_ex_pipe_t  id_ex_pipe_i,
   input ex_wb_pipe_t  ex_wb_pipe_i,
@@ -53,11 +54,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        debug_trigger_match_id_i,         // Trigger match in ID
 
   // From EX
-  input rf_addr_t     rf_waddr_ex_i,              // write address currently in EX
   input  csr_num_e    csr_raddr_ex_i,             // CSR read address (EX)
 
   // From WB
-  input  rf_addr_t    rf_waddr_wb_i,              // write address currently in WB
   input  logic        wb_ready_i,                 // WB stage is ready
 
   // From LSU
@@ -96,6 +95,14 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // WB lsu_en
   logic lsu_en_wb;
   assign lsu_en_wb = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
+
+  // EX rf_waddr
+  rf_addr_t  rf_waddr_ex;
+  assign rf_waddr_ex = id_ex_pipe_i.rf_waddr;
+
+  // WB rf_waddr
+  rf_addr_t  rf_waddr_wb;
+  assign rf_waddr_wb = ex_wb_pipe_i.rf_waddr;
 
   // todo: make all qualifiers here, and use those signals later in the file
 
@@ -137,10 +144,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   generate
     for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
       // Does register file read address match write address in EX (excluding R0)?
-      assign rf_rd_ex_match[i] = (rf_waddr_ex_i == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+      assign rf_rd_ex_match[i] = (rf_waddr_ex == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
 
       // Does register file read address match write address in WB (excluding R0)?
-      assign rf_rd_wb_match[i] = (rf_waddr_wb_i == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+      assign rf_rd_wb_match[i] = (rf_waddr_wb == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
 
       // Load-read hazard (for any instruction following a load)
       assign rf_rd_ex_hz[i] = rf_rd_ex_match[i];
@@ -149,10 +156,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   endgenerate
 
   // Does register file write address match write address in EX?
-  assign rf_wr_ex_match = (rf_waddr_ex_i == rf_waddr_i);
+  assign rf_wr_ex_match = (rf_waddr_ex == rf_waddr_i);
 
   // Does register file write address match write address in WB?
-  assign rf_wr_wb_match = (rf_waddr_wb_i == rf_waddr_i);
+  assign rf_wr_wb_match = (rf_waddr_wb == rf_waddr_i);
 
   // Load-write hazard (for non-load instruction following a load)
   // TODO:OK: Shouldn't bee needed as we now have a single write port

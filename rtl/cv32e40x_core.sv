@@ -132,7 +132,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] rf_wdata_wb;
 
   // Forwarding RF from EX
-  rf_addr_t    rf_waddr_ex;
   logic [31:0] rf_wdata_ex;
 
   // Register file signals from ID/decoder to controller
@@ -396,7 +395,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .debug_trigger_match_id_i     ( debug_trigger_match_id    ),       // from cs_registers (ID timing)
 
     // Register file write back and forwards
-    .rf_waddr_ex_i                ( rf_waddr_ex               ),
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
@@ -453,7 +451,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .branch_target_o            ( branch_target_ex             ),
 
     // Register file forwarding
-    .rf_waddr_o                 ( rf_waddr_ex                  ),
     .rf_wdata_o                 ( rf_wdata_ex                  ),
 
     // LSU interface
@@ -685,8 +682,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_re_i                        ( rf_re_id               ),       
     .rf_raddr_i                     ( rf_raddr_id            ),
     .rf_waddr_i                     ( rf_waddr_id            ),
-    .rf_waddr_ex_i                  ( rf_waddr_ex            ),
-    .rf_waddr_wb_i                  ( rf_waddr_wb            ),
 
     // Write targets from ID
     .regfile_alu_we_id_i            ( regfile_alu_we_id      ),

@@ -80,9 +80,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // CSR raddr in ex
   input  csr_num_e     csr_raddr_ex_i,
 
-  input rf_addr_t      rf_waddr_ex_i,
-  input rf_addr_t      rf_waddr_wb_i,
-
   input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
   input rf_addr_t     rf_raddr_i[REGFILE_NUM_READ_PORTS],
   input rf_addr_t     rf_waddr_i,
@@ -176,11 +173,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
 
     // From EX
-    .rf_waddr_ex_i              ( rf_waddr_ex_i            ),
     .csr_raddr_ex_i             ( csr_raddr_ex_i           ),
 
     // From WB
-    .rf_waddr_wb_i              ( rf_waddr_wb_i            ),
     .wb_ready_i                 ( wb_ready_i               ),
 
     // From LSU

@@ -48,8 +48,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   // Register file forwarding signals (to ID)
-  output logic        rf_we_o,
-  output rf_addr_t    rf_waddr_o,
   output logic [31:0] rf_wdata_o,
 
   // To IF: Jump and branch target and decision
@@ -108,12 +106,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
 
-  // Local rf_we only used in bypass module to detect hazards
-  // Not using local instr_valid to keep stall situations constant while halted
-  // Not gating off with !csr_illegal_i
-  //   Younger instructions will be killed before they reach WB anyway
-  //   Prevents one extra gate in the bypass paths
-  assign rf_we        = id_ex_pipe_i.rf_we  && id_ex_pipe_i.instr_valid;
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
   // signal needed for ex_valid to go high in such cases
@@ -126,9 +118,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // ALU write port mux
   always_comb
   begin
-    rf_we_o    = rf_we;
-    rf_waddr_o = id_ex_pipe_i.rf_waddr;
-
     // There is no need to use gated versions of alu_en, mul_en, etc. as rf_wdata_o will be ignored
     // for invalid instructions (as the register file write enable will be suppressed).
     unique case (1'b1)
