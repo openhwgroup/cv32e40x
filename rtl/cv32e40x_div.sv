@@ -42,7 +42,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
     
     // CLZ interface towards ALU
     output logic               alu_clz_en_o,
-    output logic [31:0]        alu_clz_data_o,
+    output logic [31:0]        alu_clz_data_rev_o,
     input logic [5:0]          alu_clz_result_i,
 
     // Shifter interface towards ALU
@@ -57,12 +57,14 @@ module cv32e40x_div import cv32e40x_pkg::*;
     // Output handshake and result
     input logic                ready_i,
     output logic               valid_o,
-    output logic [31:0] result_o
+    output logic [31:0]        result_o
   );
 
   ///////////////////////////////////////////////////////////////////////////////
   // Signal declarations
   ///////////////////////////////////////////////////////////////////////////////
+
+  logic [31:0] alu_clz_data;
 
   logic [31:0] quotient_q, quotient_d;
   logic [31:0] remainder_q, remainder_d;
@@ -77,6 +79,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
   logic [31:0] add_b_mux;
   logic [31:0] divisor_mux;
   logic [31:0] res_mux;
+  logic [32:0] op_b_alt;
 
   logic [5:0] cnt_q, cnt_d, cnt_d_dummy;
   logic cnt_q_is_zero;
@@ -101,31 +104,42 @@ module cv32e40x_div import cv32e40x_pkg::*;
   ///////////////////////////////////////////////////////////////////////////////
   // Interaction with CLZ and shift circuitry in the ALU
   ///////////////////////////////////////////////////////////////////////////////
-  
-  // In case of negative op_b, we want invert op_b_i to count leading ones
+
+  // In case of negative op_b, invert op_b_i to count leading ones
+  // and shift one less to preserve sign bit
+  assign op_b_alt = (~op_b_i << 1);
+
   always_comb
   begin
-    alu_clz_data_o = '0;
-
-    case (operator_i)
+    unique case (operator_i)
       DIV_DIVU,
-      DIV_REMU: alu_clz_data_o = op_b_i;
+      DIV_REMU: alu_clz_data = op_b_i;
 
       DIV_DIV,
       DIV_REM: begin
-        if (op_b_is_neg)
-          alu_clz_data_o = ~op_b_i;
-        else
-          alu_clz_data_o = op_b_i;
+        if (op_b_is_neg) begin
+          alu_clz_data = {op_b_alt[31:1], 1'b1};
+        end else begin
+          alu_clz_data = op_b_i;
+        end
       end
     endcase
   end
+
+  // CLZ circuit needs reversed input
+  generate
+    genvar l;
+    for (l = 0; l < 32; l++)
+    begin : gen_div_clz_data_rev
+      assign alu_clz_data_rev_o[l] = alu_clz_data[31-l];
+    end
+  endgenerate
 
   assign alu_clz_en_o = valid_i;
   
   // Deternmine initial shift of divisor
   assign op_b_is_neg = op_b_i[31] & div_signed;
-  assign alu_shift_amt_o = alu_clz_result_i - (op_b_is_neg ? 6'd1 : 6'd0); // If op_b is negative, shift one less to preserve sign bit
+  assign alu_shift_amt_o = alu_clz_result_i ;
   assign alu_shift_en_o  = valid_i;
 
   // Check for op_b_i == 0
@@ -147,7 +161,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
   // Main adder and adder input muxes
   assign add_b_mux = init_en ? 0 : remainder_q;
-  assign add_a_mux = init_en ? op_a_i  : divisor_q;
+  assign add_a_mux = init_en ? op_a_i : divisor_q;
   assign add_out   = init_remainder_pos ? add_b_mux + add_a_mux : add_b_mux - $signed(add_a_mux);
 
   // Result mux, negate if necessary

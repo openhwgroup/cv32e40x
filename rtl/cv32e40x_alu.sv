@@ -18,7 +18,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Arjan Bink - arjan.bink@silabs.com                         //
-//                 Kristine Døsvik  - kristine.dosvik@silabs.com              //
+//                 Kristine Dï¿½svik  - kristine.dosvik@silabs.com              //
 //                                                                            //
 // Design Name:    ALU                                                        //
 // Project Name:   RI5CY                                                      //
@@ -49,8 +49,6 @@
 
 module cv32e40x_alu import cv32e40x_pkg::*;
 (
-  input  logic              clk,
-  input  logic              rst_n,
   input  alu_opcode_e       operator_i,
   input  logic [31:0]       operand_a_i,
   input  logic [31:0]       operand_b_i,
@@ -60,13 +58,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   // Divider interface towards CLZ
   input logic               div_clz_en_i,
-  input logic [31:0]        div_clz_data_i,
+  input logic [31:0]        div_clz_data_rev_i,
   output logic [5:0]        div_clz_result_o,
 
   // Divider interface towards shifter
   input logic               div_shift_en_i,
   input logic [5:0]         div_shift_amt_i,
-  output logic [31:0]       div_op_a_shifted_o
+  output logic [31:0]       div_op_b_shifted_o
 );
 
   ////////////////////////////////////
@@ -124,20 +122,19 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   assign shifter_rshift = operator_i[2];
 
-  assign div_op_a_shifted_o = shifter_result;
-
   always_comb begin
-    shifter_shamt = div_shift_en_i ? {1'b0, div_shift_amt_i[4:0]} : {1'b0, operand_b_i[4:0]};
-
-    if (shifter_rshift) begin
-      // Treat right shifts as left shifts with corrected shift amount
-      shifter_shamt = -shifter_shamt;
+    if (div_shift_en_i) begin
+      shifter_shamt =  {1'b0, div_shift_amt_i[4:0]};    // DIV(U), REM(U) always use shift left
+    end else if (shifter_rshift) begin
+      shifter_shamt = -{1'b0, operand_b_i[4:0]};
+    end else begin
+      shifter_shamt =  {1'b0, operand_b_i[4:0]};
     end
   end
 
   always_comb begin
     // Defaults (ALU_SLL, ALU_SRL, ALU_B_BEXT, DIV_DIVU, DIV_DIVU, DIV_REM, DIV_REMU)
-    shifter_aa = operand_a_i;
+    shifter_aa = div_shift_en_i ? operand_b_i : operand_a_i;
     shifter_bb = 32'h0;
 
     unique case (operator_i)
@@ -179,12 +176,14 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     endcase
   end
 
+  assign div_op_b_shifted_o = shifter_tmp[31:0];
+
   //////////////////////////////////////////////////////////////////
   // Shift and add
 
   logic [31:0] result_shnadd;
   
-  assign result_shnadd = (operand_a_i << ((operator_i == ALU_B_SH1ADD) ? 1 : (operator_i == ALU_B_SH2ADD) ? 2 : 3)) + operand_b_i;
+  assign result_shnadd = (operand_a_i << ((operator_i == ALU_B_SH1ADD) ? 1 : (operator_i == ALU_B_SH2ADD) ? 2 : 3)) + operand_b_i; // todo: consider alternatives
 
   //////////////////////////////////////////////////////////////////
   //   ____ ___  __  __ ____   _    ____  ___ ____   ___  _   _   //
@@ -241,19 +240,21 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                                                   |_|           //
   /////////////////////////////////////////////////////////////////////
 
-  logic [31:0] div_clz_data_rev;
   logic [31:0] clz_data_in;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
   logic [ 5:0] cpop_result_o;
+  logic [31:0] operand_a_rev;
 
-  assign clz_data_in = (operator_i == ALU_B_CTZ) ? div_clz_data_i : div_clz_data_rev;
+  assign clz_data_in = div_clz_en_i ? div_clz_data_rev_i :
+                       (operator_i == ALU_B_CTZ) ? operand_a_i : operand_a_rev;
 
+  // Bit reverse operand_a for bit counting
   generate
-    genvar l;
-    for(l = 0; l < 32; l++)
-    begin : gen_div_clz_data_rev
-      assign div_clz_data_rev[l] = div_clz_data_i[31-l];
+    genvar k;
+    for (k = 0; k < 32; k++)
+    begin : gen_operand_a_rev
+      assign operand_a_rev[k] = operand_a_i[31-k];
     end
   endgenerate
 
@@ -266,8 +267,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
-
-
+ 
   // CPOP
   cv32e40x_alu_b_cpop alu_b_cpop_i
     (.operand_i (operand_a_i),
@@ -358,7 +358,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH2ADD,
       ALU_B_SH3ADD : result_o = result_shnadd;
 
-      ALU_B_CLZ,
+      ALU_B_CLZ, 
       ALU_B_CTZ    : result_o = {26'h0, div_clz_result_o};
       ALU_B_CPOP   : result_o = {26'h0, cpop_result_o};
 

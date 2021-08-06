@@ -639,8 +639,7 @@ typedef enum logic {
 typedef enum logic[1:0] {
                          OP_A_REGA_OR_FWD = 2'b00,
                          OP_A_CURRPC      = 2'b01,
-                         OP_A_IMM         = 2'b10,
-                         OP_A_REGB_OR_FWD = 2'b11
+                         OP_A_IMM         = 2'b10
                          } alu_op_a_mux_e;
 
 
@@ -652,11 +651,10 @@ typedef enum logic {
 
 
 // operand b selection
-typedef enum logic[1:0] {
-                         OP_B_REGB_OR_FWD = 2'b00,
-                         OP_B_IMM         = 2'b10,
-                         OP_B_REGA_OR_FWD = 2'b11
-                         } alu_op_b_mux_e;
+typedef enum logic {
+                    OP_B_REGB_OR_FWD = 1'b0,
+                    OP_B_IMM         = 1'b1
+                    } alu_op_b_mux_e;
 
 // immediate b selection
 typedef enum logic[1:0] {
