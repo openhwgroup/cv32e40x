@@ -139,6 +139,27 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
             end
           end
 
+          // RVB Zbc
+          {7'b0000101, 3'b001}: begin // Carry-less Multiply (clmul)
+            if (RV32B_ZBC) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CLMUL;
+            end
+          end
+          {7'b0000101, 3'b011}: begin // Carry-less Multiply upper bits (clmulh)
+            if (RV32B_ZBC) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CLMULH;
+            end
+          end
+          {7'b0000101, 3'b010}: begin // Carry-less Multiply reversed (clmulr)
+            if (RV32B_ZBC) begin
+              decoder_ctrl_o.illegal_insn = 1'b0;
+              decoder_ctrl_o.alu_operator = ALU_B_CLMULR;
+            end
+          end
+
+
           // RVB Zbs
           {7'b0010100, 3'b001}: begin // Set bit in rs1 at index specified by rs2 (bset)
             if (RV32B_ZBS) begin

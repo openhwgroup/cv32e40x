@@ -265,12 +265,57 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
- 
+
 
   // CPOP
   cv32e40x_alu_b_cpop alu_b_cpop_i
     (.operand_i (operand_a_i),
      .result_o  (cpop_result_o));
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //   ____                      _                 __  __       _ _   _       _ _           _   _              //
+  //  / ___|__ _ _ __ _ __ _   _| | ___  ___ ___  |  \/  |_   _| | |_(_)_ __ | (_) ___ __ _| |_(_) ___  _ __   //
+  // | |   / _` | '__| '__| | | | |/ _ \/ __/ __| | |\/| | | | | | __| | '_ \| | |/ __/ _` | __| |/ _ \| '_ \  //
+  // | |__| (_| | |  | |  | |_| | |  __/\__ \__ \ | |  | | |_| | | |_| | |_) | | | (_| (_| | |_| | (_) | | | | //
+  //  \____\__,_|_|  |_|   \__, |_|\___||___/___/ |_|  |_|\__,_|_|\__|_| .__/|_|_|\___\__,_|\__|_|\___/|_| |_| //
+  //                       |___/                                       |_|                                     //
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  logic [31:0] clmul_result;
+  logic [31:0] clmul_shift_a;
+  logic [31:0] clmulh_result;
+  logic [31:0] clmulh_shift_a;
+  logic [31:0] clmulr_result;
+  logic [31:0] clmulr_shift_a;
+
+  // CLMUL
+  always_comb begin
+    clmul_result  = '0;
+    clmul_shift_a = '0;
+    for (integer i = 0; i < 32; i++) begin
+      clmul_shift_a = (operand_a_i << i);
+      if(operand_b_i[i]) clmul_result = clmul_result ^ clmul_shift_a;
+    end
+  end
+  // CLMULH
+  always_comb begin
+    clmulh_result  = '0;
+    clmulh_shift_a = '0;
+    for (integer i = 0; i < 32; i++) begin
+      clmulh_shift_a = (operand_a_i >> (32 - i));
+      if(operand_b_i[i]) clmulh_result = clmulh_result ^ clmulh_shift_a;
+    end
+  end
+  // CLMULR
+  always_comb begin
+    clmulr_result  = '0;
+    clmulr_shift_a = '0;
+    for (integer i = 0; i < 32; i++) begin
+      clmulr_shift_a = (operand_a_i >> (31 - i));
+      if(operand_b_i[i]) clmulr_result = clmulr_result ^ clmulr_shift_a;
+    end
+  end
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -318,7 +363,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH2ADD,
       ALU_B_SH3ADD : result_o = result_shnadd;
 
-      ALU_B_CLZ, 
+      ALU_B_CLZ,
       ALU_B_CTZ    : result_o = {26'h0, div_clz_result_o};
       ALU_B_CPOP   : result_o = {26'h0, cpop_result_o};
 
@@ -334,6 +379,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
       ALU_B_SEXT_B : result_o = {{(24){operand_a_i[ 7]}}, operand_a_i[ 7:0]};
       ALU_B_SEXT_H : result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
+
+      ALU_B_CLMUL  : result_o = clmul_result;
+      ALU_B_CLMULH : result_o = clmulh_result;
+      ALU_B_CLMULR : result_o = clmulr_result;
 
       default: ;
     endcase

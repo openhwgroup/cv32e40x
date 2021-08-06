@@ -119,15 +119,21 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_SH3ADD = 6'b100110, // funct3 = 110
 
  // B, Zbb
- ALU_B_CLZ    = 6'b100000, // (funct3 = 001)
- ALU_B_CTZ    = 6'b101000, // (funct3 = 001)
- ALU_B_CPOP   = 6'b100011, // (funct3 = 001)
+ ALU_B_CLZ    = 6'b100000, // funct3 = 001
+ ALU_B_CTZ    = 6'b101000, // funct3 = 001
+ ALU_B_CPOP   = 6'b100011, // funct3 = 001
 
- ALU_B_SEXT_B = 6'b110000, // (funct3 = 001)
- ALU_B_SEXT_H = 6'b111000, // (funct3 = 001)
+ ALU_B_SEXT_B = 6'b110000, // funct3 = 001
+ ALU_B_SEXT_H = 6'b111000, // funct3 = 001
 
- ALU_B_REV8   = 6'b110100, // (funct3 = 101)
- ALU_B_ORC_B  = 6'b110010  // (funct3 = 101)
+ ALU_B_REV8   = 6'b110100, // funct3 = 101
+ ALU_B_ORC_B  = 6'b110010, // funct3 = 101
+
+ // B, Zbc
+ ALU_B_CLMUL  = 6'b100111, // funct3 = 001
+ ALU_B_CLMULH = 6'b101011, // funct3 = 011
+ ALU_B_CLMULR = 6'b101010  // funct3 = 010
+
 } alu_opcode_e;
 
 parameter MUL_OP_WIDTH = 1;
