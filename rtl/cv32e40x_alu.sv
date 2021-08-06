@@ -67,6 +67,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   output logic [31:0]       div_op_b_shifted_o
 );
 
+  logic [31:0] operand_a_rev;
+  logic [31:0] operand_b_rev;
+
+  // Reverse operands
+  assign operand_a_rev = {<<{operand_a_i}};
+  assign operand_b_rev = {<<{operand_b_i}};
+
   ////////////////////////////////////
   //     _       _     _            //
   //    / \   __| | __| | ___ _ __  //
@@ -244,19 +251,9 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
   logic [ 5:0] cpop_result_o;
-  logic [31:0] operand_a_rev;
 
   assign clz_data_in = div_clz_en_i ? div_clz_data_rev_i :
                        (operator_i == ALU_B_CTZ) ? operand_a_i : operand_a_rev;
-
-  // Bit reverse operand_a for bit counting
-  generate
-    genvar k;
-    for (k = 0; k < 32; k++)
-    begin : gen_operand_a_rev
-      assign operand_a_rev[k] = operand_a_i[31-k];
-    end
-  endgenerate
 
   cv32e40x_ff_one ff_one_i
   (
@@ -283,8 +280,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                       |___/                                       |_|                                     //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  logic [31:0] operand_a_rev;
-  logic [31:0] operand_b_rev;
 
   logic [31:0] clmul_op_a;
   logic [31:0] clmul_op_b;
@@ -292,10 +287,6 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] clmul_result;
   logic [31:0] clmulr_result;
   logic [31:0] clmulh_result;
-
-  // Reverse operands
-  assign operand_a_rev = {<<{operand_a_i}};
-  assign operand_b_rev = {<<{operand_b_i}};
 
   assign clmul_op_a = (operator_i != ALU_B_CLMUL) ? operand_a_rev : operand_a_i;
   assign clmul_op_b = (operator_i != ALU_B_CLMUL) ? operand_b_rev : operand_b_i;
