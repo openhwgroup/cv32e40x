@@ -18,6 +18,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Arjan Bink - arjan.bink@silabs.com                         //
+//                 Kristine Døsvik  - kristine.dosvik@silabs.com              //
 //                                                                            //
 // Design Name:    ALU                                                        //
 // Project Name:   RI5CY                                                      //
@@ -282,40 +283,34 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                       |___/                                       |_|                                     //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  logic [31:0] clmul_result;
-  logic [31:0] clmul_shift_a;
-  logic [31:0] clmulh_result;
-  logic [31:0] clmulh_shift_a;
-  logic [31:0] clmulr_result;
-  logic [31:0] clmulr_shift_a;
+  logic [31:0] operand_a_rev;
+  logic [31:0] operand_b_rev;
 
-  // CLMUL
+  logic [31:0] clmul_op_a;
+  logic [31:0] clmul_op_b;
+
+  logic [31:0] clmul_result;
+  logic [31:0] clmulr_result;
+  logic [31:0] clmulh_result;
+
+  // Reverse operands
+  assign operand_a_rev = {<<{operand_a_i}};
+  assign operand_b_rev = {<<{operand_b_i}};
+
+  assign clmul_op_a = (operator_i != ALU_B_CLMUL) ? operand_a_rev : operand_a_i;
+  assign clmul_op_b = (operator_i != ALU_B_CLMUL) ? operand_b_rev : operand_b_i;
+
   always_comb begin
-    clmul_result  = '0;
-    clmul_shift_a = '0;
+    clmul_result ='0;
     for (integer i = 0; i < 32; i++) begin
-      clmul_shift_a = (operand_a_i << i);
-      if(operand_b_i[i]) clmul_result = clmul_result ^ clmul_shift_a;
+      for (integer j = 0; j < i+1; j++) begin
+        clmul_result[i] = clmul_result[i] ^ (clmul_op_a[i-j] & clmul_op_b[j]);
+      end
     end
   end
-  // CLMULH
-  always_comb begin
-    clmulh_result  = '0;
-    clmulh_shift_a = '0;
-    for (integer i = 0; i < 32; i++) begin
-      clmulh_shift_a = (operand_a_i >> (32 - i));
-      if(operand_b_i[i]) clmulh_result = clmulh_result ^ clmulh_shift_a;
-    end
-  end
-  // CLMULR
-  always_comb begin
-    clmulr_result  = '0;
-    clmulr_shift_a = '0;
-    for (integer i = 0; i < 32; i++) begin
-      clmulr_shift_a = (operand_a_i >> (31 - i));
-      if(operand_b_i[i]) clmulr_result = clmulr_result ^ clmulr_shift_a;
-    end
-  end
+
+  assign clmulr_result = {<<{clmul_result}}; // Reverse for clmulr
+  assign clmulh_result = {1'b0, clmulr_result[31:1]};
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
