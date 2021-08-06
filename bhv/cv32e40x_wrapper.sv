@@ -159,7 +159,7 @@ module cv32e40x_wrapper
         controller_fsm_sva   (
                               .lsu_outstanding_cnt (core_i.load_store_unit_i.cnt_q),
                               .rf_we_wb_i          (core_i.wb_stage_i.rf_we_wb_o  ),
-                              .csr_op_i            (core_i.cs_registers_i.csr_op  ),
+                              .csr_we_i            (core_i.cs_registers_i.csr_we_int  ),
                               .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
 

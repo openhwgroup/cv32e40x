@@ -39,6 +39,7 @@ module cv32e40x_core_sva
   input logic        ex_ready,
   input logic        irq_ack_o, // irq ack output
   input ex_wb_pipe_t ex_wb_pipe,
+  input logic        wb_valid,
   input logic        branch_taken_in_ex,
   
    // probed controller signals
@@ -272,6 +273,14 @@ always_ff @(posedge clk , negedge rst_ni)
                       ##1 inst_taken [->1]
                       |-> (ctrl_fsm.debug_mode && debug_single_step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")
+
+  // Check that only a single instruction can retire during single step
+  a_single_step_retire :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (wb_valid && debug_single_step && !ctrl_fsm.debug_mode)
+                      ##1 wb_valid [->1]
+                      |-> (ctrl_fsm.debug_mode && debug_single_step))
+      else `uvm_error("core", "Multiple instructions retired during single stepping")
   
 endmodule // cv32e40x_core_sva
 

@@ -59,7 +59,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From WB stage
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
-  input  logic        lsu_en_wb_i,                // LSU data is written back in WB
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
@@ -526,16 +525,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
             ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
-
-          // Single step debug entry
-          // Need to be after exception/interrupt handling
-          // to ensure mepc and if_pc set correctly for use in dpc
-          if (pending_single_step) begin
-            if (single_step_allowed) begin
-              ctrl_fsm_ns = DEBUG_TAKEN;
-            end
-          end
         end // !debug or interrupts
+
+        // Single step debug entry
+          // Need to be after (in parallell with) exception/interrupt handling
+          // to ensure mepc and if_pc set correctly for use in dpc,
+          // and to ensure only one instruction can retire during single step
+        if (pending_single_step) begin
+          if (single_step_allowed) begin
+            ctrl_fsm_ns = DEBUG_TAKEN;
+          end
+        end
       end
       SLEEP: begin
         ctrl_fsm_o.ctrl_busy = 1'b0;

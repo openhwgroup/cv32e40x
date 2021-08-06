@@ -87,14 +87,14 @@ CORE-V-XIF consists of six interfaces:
 * **Compressed interface**. Signaling of compressed instruction to be offloaded.
 * **Issue (request/response) interface**. Signaling of the uncompressed instruction to be offloaded including its register file based operands.
 * **Commit interface**. Signaling of control signals related to whether instructions can be committed or should be killed.
-* **Memory (request/response) interface**. Signaling of load/store related signals (i.e. its transaction request signals).
-* **Memory result interface**. Signaling of load/store related signals (i.e. its transaction result signals).
+* **Memory (request/response) interface**. Signaling of load/store related signals (i.e. its transaction request signals). This interface is optional.
+* **Memory result interface**. Signaling of load/store related signals (i.e. its transaction result signals). This interface is optional.
 * **Result interface**. Signaling of the instruction result(s).
 
 Operating principle
 -------------------
 
-|corev| will attempt to offload every (compressed or non-compressed) instruction that it does not recognize as a legal instruction itself. In cases of a
+|corev| will attempt to offload every (compressed or non-compressed) instruction that it does not recognize as a legal instruction itself. In case of a
 compressed instruction the coprocessor must first provide the core with a matching uncompressed (i.e. 32-bit) instruction using the compressed interface.
 This non-compressed instruction is then attempted for offload via the issue interface.
 
@@ -179,12 +179,18 @@ The signals in ``x_compressed_req_o`` are valid when ``x_compressed_valid_o`` is
   +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+ 
   | ``instr``              | logic [31:0]         | Uncompressed instruction.                                                                                       |
   +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``               | logic [1:0]          | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
+  +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``accept``             | logic                | Is the offloaded compressed instruction (``id``) accepted by the coprocessor?                                   | 
   |                        |                      | If the compressed instruction is not accepted, then the core will cause an illegal instruction trap unless this | 
   |                        |                      | instruction is killed in the core's pipeline.                                                                   | 
   +------------------------+----------------------+-----------------------------------------------------------------------------------------------------------------+ 
 
 The signals in ``x_compressed_resp_i`` are valid when ``x_compressed_valid_o`` and ``x_compressed_ready_i`` are both 1. There are no stability requirements.
+
+|corev| will attempt to offload every compressed instruction that it does not recognize as a legal instruction itself. |corev| might also attempt to offload
+compressed instructions that it does recognize as legal instructions itself. In case that both the core and the coprocessor accept the same instruction as being valid,
+the instruction will cause an illegal instruction fault.
 
 :numref:`Issue interface signals` describes the issue interface signals.
 
@@ -214,6 +220,8 @@ The signals in ``x_compressed_resp_i`` are valid when ``x_compressed_valid_o`` a
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``instr``              | logic [31:0]            | Offloaded instruction.                                                                                          |
   +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``               | logic [1:0]             | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
+  +------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``id``                 | logic [X_ID_WIDTH-1:0]  | Identification of the offloaded instruction.                                                                    |
   |                        |                         |                                                                                                                 |
   |                        |                         |                                                                                                                 |
@@ -226,10 +234,10 @@ The signals in ``x_compressed_resp_i`` are valid when ``x_compressed_valid_o`` a
 A issue request transaction is defined as the combination of all ``x_issue_req_o`` signals during which ``x_issue_valid_o`` is 1 and the ``id`` remains unchanged. I.e. a new
 transaction can be started by just changing the ``id`` signal and keeping the valid signal asserted.
 
-The ``instr``, ``id`` and ``rs_valid`` signals are valid when ``x_issue_valid_o`` is 1. The ``rs`` is only considered valid when ``x_issue_valid_o`` is 1 and the corresponding
+The ``instr``, ``mode``, ``id`` and ``rs_valid`` signals are valid when ``x_issue_valid_o`` is 1. The ``rs`` is only considered valid when ``x_issue_valid_o`` is 1 and the corresponding
 bit in ``rs_valid`` is 1 as well.
 
-The ``instr`` signal remain stable during an issue request transaction. The ``rs_valid`` bits are not required to be stable during the transaction. Each bit
+The ``instr`` and ``mode`` signals remain stable during an issue request transaction. The ``rs_valid`` bits are not required to be stable during the transaction. Each bit
 can transition from 0 to 1, but is not allowed to transition back to 0 during a transaction. The ``rs`` signals are only required to be stable during the part
 of a transaction in which these signals are considered to be valid.
 
@@ -273,11 +281,16 @@ odd register file index is provided in the upper 32 bits.
   |                        |                      | A coprocessor must signal ``exc`` as 0 for non-accepted instructions.                                            | 
   +------------------------+----------------------+------------------------------------------------------------------------------------------------------------------+ 
 
-The core will attempt to offload instructions via the issue interface for the following two scenarios:
+The core will attempt to offload instructions via the issue interface for the following two main scenarios:
 
 * The instruction is originally non-compressed and it is not recognized as a valid instruction by the core's non-compressed instruction decoder.
 * The instruction is originally compressed and the coprocessor accepted the compressed instruction and provided a 32-bit uncompressed instruction.
   In this case the 32-bit uncompressed instruction will be attempted for offload even if it matches in the core's non-compressed instruction decoder.
+
+Apart from the above two main scenarios |corev| might also attempt to offload
+(compressed/uncompressed) instructions that it does recognize as legal instructions itself. In case that both the core and the coprocessor accept the same instruction as being valid,
+the instruction will cause an illegal instruction fault.
+
 
 A coprocessor can (only) accept an offloaded instruction when:
 
@@ -287,7 +300,7 @@ A coprocessor can (only) accept an offloaded instruction when:
 A transaction is considered offloaded/accepted on the positive edge of ``clk_i`` when ``x_issue_valid_o``, ``x_issue_ready_i`` and ``accept`` are aserted.
 A transaction is considered rejected on the positive edge of ``clk_i`` when ``x_issue_valid_o`` and ``x_issue_ready_i`` are asserted while ``accept`` is deaserted.
 
-The signals in ``x_issue_resp_i`` are valid when ``x_issue_req_o`` and ``x_issue_resp_i`` are both 1. There are no stability requirements.
+The signals in ``x_issue_resp_i`` are valid when ``x_issue_req_o`` and ``x_issue_ready_i`` are both 1. There are no stability requirements.
 
 :numref:`Commit interface signals` describes the commit interface signals.
 
@@ -368,6 +381,8 @@ The signals in ``x_commit_o`` are valid when ``x_commit_valid_o`` is 1.
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``addr``     | logic [31:0]               | Virtual address of the memory transaction.                                                                      |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
+  | ``mode``     | logic [1:0]                | Privilege level (2'b00 = User, 2'b01 = Supervisor, 2'b10 = Reserved, 2'b11 = Machine).                          |
+  +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``we``       | logic                      | Write enable of the memory transaction.                                                                         |
   +--------------+----------------------------+-----------------------------------------------------------------------------------------------------------------+
   | ``size``     | logic [1:0]                | Size of the memory transaction. 0: byte, 1: halfword, 2: word.                                                  |
@@ -416,6 +431,8 @@ in case of a PMP fault. A synchronous exception will lead to a trap in |corev| u
 
 The signals in ``x_mem_resp_o`` are valid when ``x_mem_valid_i`` and  ``x_mem_ready_o`` are both 1. There are no stability requirements.
 
+The memory (request/response) interface is optional. If it is included, then the memory result interface shall also be included.
+
 :numref:`Memory result interface signals` describes the memory result interface signals.
 
 .. table:: Memory result interface signals
@@ -453,6 +470,8 @@ Memory result transactions are provided by the core in the same order (with matc
 signals whether a bus error occurred. If so, then an NMI is signaled, just like for bus errors caused by non-offloaded loads and stores. 
 
 The signals in ``x_mem_result_o`` are valid when ``x_mem_result_valid_o`` is 1.
+
+The memory result interface is optional. If it is included, then the memory (request/response) interface shall also be included.
 
 :numref:`Result interface signals` describes the result interface signals.
 
@@ -513,7 +532,7 @@ The following rules apply to the relative ordering of the interface handshakes:
 * If an offloaded instruction is accepted as a ``loadstore`` instruction and not killed, then for each such instruction one or more memory transaction must occur
   via the memory interface. The transaction ordering on the memory interface interface must correspond to the transaction ordering on the issue interface.
 * If an offloaded instruction is accepted and allowed to commit, then for each such instruction one result transaction must occur via the result interface (even
-  if no writeback needs to happen to the core's register file). The transaction ordering on the result interface must correspond to the transaction ordering
+  if no writeback needs to happen to the core's register file). The transaction ordering on the result interface does not have to correspond to the transaction ordering
   on the issue interface.
 * A commit interface handshake cannot be initiated before the corresponding issue interface handshake is initiated.
 * A memory (request/response) interface handshake cannot be initiated before the corresponding issue interface handshake is initiated.
@@ -529,8 +548,8 @@ Handshake rules
 
 The following handshake pairs exist on the eXtension interface:
 
-* ``x_compressed_valid_o`` with``x_compressed_ready_i``.
-* ``x_issue_valid_o`` with``x_issue_ready_i``.
+* ``x_compressed_valid_o`` with ``x_compressed_ready_i``.
+* ``x_issue_valid_o`` with ``x_issue_ready_i``.
 * ``x_commit_valid_o`` with implicit always ready signal.
 * ``x_mem_valid_i`` with ``x_mem_ready_o``.
 * ``x_mem_result_valid_o`` with implicit always ready signal.
