@@ -17,6 +17,13 @@
    rvb_simple.v  - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_simple/rvb_simple.v
    rvb_zbb32.v   - https://github.com/riscv/riscv-bitmanip/blob/main-history/verilog/rvb_zbb32/rvb_zbb32.v
 
+ - Code from https://github.com/chipsalliance/Cores-SweRV-EL2
+
+   Git hash 7045b803cab825bc3bb3dbca0cb019e55098acc4
+
+   el2_exu_mul_ctl.sv (CQ 23537) - Swerv bit manipulation circuitry - https://github.com/chipsalliance/Cores-SweRV-EL2/blob/master/design/exu/el2_exu_mul_ctl.sv
+
+
 - PMP (from https://github.com/lowRISC/ibex.git, 93a76b390081b6b3b6cea2671c469f9293b998f2)
 
  - ibex_pmp.sv - Core of the Physical Memory Protection unit
@@ -32,6 +39,7 @@
  - ibex_register_file_ff.sv - Register file
  - ibex_core.sv - Core (showing ECC encoder/decoder instantiations)
 
+- Branch prediction (from https://github.com/chipsalliance/Cores-SweRV-EL2, 7045b803cab825bc3bb3dbca0cb019e55098acc4)
 
-
-
+ - el2_ifu_bp_ctl.sv (CQ 23538) - Branch predictor - https://github.com/chipsalliance/Cores-SweRV-EL2/blob/master/design/ifu/el2_ifu_bp_ctl.sv
+ - el2_ifu.sv (CQ 23538) - Fetch unit instantiating the branch predictor - https://github.com/chipsalliance/Cores-SweRV-EL2/blob/master/design/ifu/el2_ifu.sv
