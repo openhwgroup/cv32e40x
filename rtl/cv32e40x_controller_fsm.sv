@@ -332,7 +332,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // to avoid more than one instructions passing down the pipe.
     ctrl_fsm_o.halt_if = single_step_halt_if_q;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
-    // currently in ID is not ready to be issued yet). Also halted it interruptor debug pending
+    // currently in ID is not ready to be issued yet). Also halted if interrupt or debug pending
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
     ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
                          (pending_interrupt && !interrupt_allowed) ||
