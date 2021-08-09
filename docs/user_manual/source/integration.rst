@@ -148,9 +148,9 @@ Interfaces
 |                         |                         |     | functional operation.                      |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``boot_addr_i``         | 32                      | in  | Boot address. First program counter after  |
-|                         |                         |     | reset = ``boot_addr_i``. Must be half-word |
-|                         |                         |     | aligned. Do not change after enabling core |
-|                         |                         |     | via ``fetch_enable_i``                     |
+|                         |                         |     | reset = ``boot_addr_i``. Must be           |
+|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``mtvec_addr_i``        | 32                      | in  | ``mtvec`` address. Initial value for the   |
 |                         |                         |     | address part of :ref:`csr-mtvec`.          |
@@ -158,7 +158,7 @@ Interfaces
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``nmi_addr_i``          | 32                      | in  | ``NMI`` address. Target address for NMIs.  |
-|                         |                         |     | Must be half-word aligned.                 |
+|                         |                         |     | Must be word aligned.                      |
 |                         |                         |     | Do not change after enabling core          |
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
