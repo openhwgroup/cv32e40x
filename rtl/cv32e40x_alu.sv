@@ -242,7 +242,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [31:0] clz_data_in;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
-  logic [ 5:0] cpop_result_o;
+  logic [ 5:0] cpop_result;
   logic [31:0] operand_a_rev;
 
   assign clz_data_in = div_clz_en_i ? div_clz_data_rev_i :
@@ -268,9 +268,12 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
 
   // CPOP
-  cv32e40x_alu_b_cpop alu_b_cpop_i
-    (.operand_i (operand_a_i),
-     .result_o  (cpop_result_o));
+  always_comb begin
+    cpop_result = 6'h0;
+    for (integer i=0; i < 32; i++) begin
+      cpop_result += {5'h0, operand_a_i[i]};
+    end
+  end
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -320,7 +323,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
       ALU_B_CLZ, 
       ALU_B_CTZ    : result_o = {26'h0, div_clz_result_o};
-      ALU_B_CPOP   : result_o = {26'h0, cpop_result_o};
+      ALU_B_CPOP   : result_o = {26'h0, cpop_result};
 
 
       ALU_B_MIN,
