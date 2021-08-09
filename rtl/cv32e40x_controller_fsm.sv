@@ -332,8 +332,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // to avoid more than one instructions passing down the pipe.
     ctrl_fsm_o.halt_if = single_step_halt_if_q;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
-    // currently in ID is not ready to be issued yet)
-    ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall;
+    // currently in ID is not ready to be issued yet). Also halted it interruptor debug pending
+    // but not allowed to be taken. This is to create an interruptible bubble in WB.
+    ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
+                         (pending_interrupt && !interrupt_allowed) ||
+                         (pending_debug && !debug_allowed);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
@@ -385,60 +388,48 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // NMI // TODO:OK:low Implement
         if (pending_nmi) begin
         // Debug entry (except single step which is handled later)
-        end else if (pending_debug) begin
-          if (debug_allowed) begin
-            // Halt the whole pipeline
-            ctrl_fsm_o.halt_if = 1'b1;
-            ctrl_fsm_o.halt_id = 1'b1;
-            ctrl_fsm_o.halt_ex = 1'b1;
-            ctrl_fsm_o.halt_wb = 1'b1;
+        end else if (pending_debug && debug_allowed) begin
+          // Halt the whole pipeline
+          ctrl_fsm_o.halt_if = 1'b1;
+          ctrl_fsm_o.halt_id = 1'b1;
+          ctrl_fsm_o.halt_ex = 1'b1;
+          ctrl_fsm_o.halt_wb = 1'b1;
 
-            ctrl_fsm_ns = DEBUG_TAKEN;
-          end else begin
-            // Halt ID to allow debug @bubble later
-            ctrl_fsm_o.halt_id = 1'b1;
-          end
+          ctrl_fsm_ns = DEBUG_TAKEN;
         // IRQ
-        end else if (pending_interrupt) begin
-          if (interrupt_allowed) begin
-            ctrl_fsm_o.kill_if = 1'b1;
-            ctrl_fsm_o.kill_id = 1'b1;
-            ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.kill_wb = 1'b1;
+        end else if (pending_interrupt && interrupt_allowed) begin
+          ctrl_fsm_o.kill_if = 1'b1;
+          ctrl_fsm_o.kill_id = 1'b1;
+          ctrl_fsm_o.kill_ex = 1'b1;
+          ctrl_fsm_o.kill_wb = 1'b1;
 
-            ctrl_fsm_o.pc_set     = 1'b1;
-            ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
-            ctrl_fsm_o.exc_pc_mux = EXC_PC_IRQ;
-            exc_cause  = irq_id_ctrl_i;
+          ctrl_fsm_o.pc_set     = 1'b1;
+          ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
+          ctrl_fsm_o.exc_pc_mux = EXC_PC_IRQ;
+          exc_cause  = irq_id_ctrl_i;
 
-            ctrl_fsm_o.irq_ack = 1'b1;
-            ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
+          ctrl_fsm_o.irq_ack = 1'b1;
+          ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
 
-            ctrl_fsm_o.csr_save_cause  = 1'b1;
-            ctrl_fsm_o.csr_cause       = {1'b1,irq_id_ctrl_i};
+          ctrl_fsm_o.csr_save_cause  = 1'b1;
+          ctrl_fsm_o.csr_cause       = {1'b1,irq_id_ctrl_i};
 
-            // Save pc from oldest valid instruction
-            if (ex_wb_pipe_i.instr_valid) begin
-              ctrl_fsm_o.csr_save_wb = 1'b1;
-            end else if (id_ex_pipe_i.instr_valid) begin
-              ctrl_fsm_o.csr_save_ex = 1'b1;
-            end else if (if_id_pipe_i.instr_valid) begin
-              ctrl_fsm_o.csr_save_id = 1'b1;
-            end else begin
-              // IF PC will always be valid as it points to the next
-              // instruction to be issued from IF to ID.
-              ctrl_fsm_o.csr_save_if = 1'b1;
-            end
+          // Save pc from oldest valid instruction
+          if (ex_wb_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_wb = 1'b1;
+          end else if (id_ex_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_ex = 1'b1;
+          end else if (if_id_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_id = 1'b1;
+          end else begin
+            // IF PC will always be valid as it points to the next
+            // instruction to be issued from IF to ID.
+            ctrl_fsm_o.csr_save_if = 1'b1;
+          end
 
-            // Unstall IF in case of single stepping
-            if (debug_single_step_i) begin
-              single_step_halt_if_n = 1'b0;
-            end
-          end else begin // !interrupt_allowed
-            // Halt ID to allow interrupt on bubble later. This assumes that it is okay to interrupt
-            // any multi-cycle ID instruction in the middle.
-            // TODO:low Consider effect of halting EX instead, could gain 1 cycle latency
-            ctrl_fsm_o.halt_id = 1'b1;
+          // Unstall IF in case of single stepping
+          if (debug_single_step_i) begin
+            single_step_halt_if_n = 1'b0;
           end
         end else begin
           if (exception_in_wb) begin
