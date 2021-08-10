@@ -32,6 +32,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
   parameter LIB                          =  0,
+  parameter b_ext_e B_EXT                =  NONE,
   parameter int unsigned PMA_NUM_REGIONS =  0,
   parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT}
 )
@@ -99,7 +100,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   localparam A_EXTENSION         =  0;
   localparam N_PMP_ENTRIES       = 16;
   localparam USE_PMP             =  0;
-  localparam b_ext_e B_EXT       =  NONE;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
