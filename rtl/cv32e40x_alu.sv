@@ -18,6 +18,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Arjan Bink - arjan.bink@silabs.com                         //
+//                 Kristine D�svik  - kristine.dosvik@silabs.com              //
 //                                                                            //
 // Design Name:    ALU                                                        //
 // Project Name:   RI5CY                                                      //
@@ -65,6 +66,13 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   input logic [5:0]         div_shift_amt_i,
   output logic [31:0]       div_op_b_shifted_o
 );
+
+  logic [31:0] operand_a_rev;
+  logic [31:0] operand_b_rev;
+
+  // Reverse operands
+  assign operand_a_rev = {<<{operand_a_i}};
+  assign operand_b_rev = {<<{operand_b_i}};
 
   ////////////////////////////////////
   //     _       _     _            //
@@ -243,34 +251,57 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   logic [4:0]  ff1_result; // holds the index of the first '1'
   logic        ff_no_one;  // if no ones are found
   logic [ 5:0] cpop_result_o;
-  logic [31:0] operand_a_rev;
 
   assign clz_data_in = div_clz_en_i ? div_clz_data_rev_i :
                        (operator_i == ALU_B_CTZ) ? operand_a_i : operand_a_rev;
 
-  // Bit reverse operand_a for bit counting
-  generate
-    genvar k;
-    for (k = 0; k < 32; k++)
-    begin : gen_operand_a_rev
-      assign operand_a_rev[k] = operand_a_i[31-k];
-    end
-  endgenerate
-
   cv32e40x_ff_one ff_one_i
   (
     .in_i        ( clz_data_in ),
-    .first_one_o ( ff1_result  ),
-    .no_ones_o   ( ff_no_one   )
+    .first_one_o ( ff1_result ),
+    .no_ones_o   ( ff_no_one  )
   );
 
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
-
+ 
   // CPOP
   cv32e40x_alu_b_cpop alu_b_cpop_i
     (.operand_i (operand_a_i),
      .result_o  (cpop_result_o));
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //   ____                      _                 __  __       _ _   _       _ _           _   _              //
+  //  / ___|__ _ _ __ _ __ _   _| | ___  ___ ___  |  \/  |_   _| | |_(_)_ __ | (_) ___ __ _| |_(_) ___  _ __   //
+  // | |   / _` | '__| '__| | | | |/ _ \/ __/ __| | |\/| | | | | | __| | '_ \| | |/ __/ _` | __| |/ _ \| '_ \  //
+  // | |__| (_| | |  | |  | |_| | |  __/\__ \__ \ | |  | | |_| | | |_| | |_) | | | (_| (_| | |_| | (_) | | | | //
+  //  \____\__,_|_|  |_|   \__, |_|\___||___/___/ |_|  |_|\__,_|_|\__|_| .__/|_|_|\___\__,_|\__|_|\___/|_| |_| //
+  //                       |___/                                       |_|                                     //
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+  logic [31:0] clmul_op_a;
+  logic [31:0] clmul_op_b;
+
+  logic [31:0] clmul_result;
+  logic [31:0] clmulr_result;
+  logic [31:0] clmulh_result;
+
+  assign clmul_op_a = (operator_i != ALU_B_CLMUL) ? operand_a_rev : operand_a_i;
+  assign clmul_op_b = (operator_i != ALU_B_CLMUL) ? operand_b_rev : operand_b_i;
+
+  always_comb begin
+    clmul_result ='0;
+    for (integer i = 0; i < 32; i++) begin
+      for (integer j = 0; j < i+1; j++) begin
+        clmul_result[i] = clmul_result[i] ^ (clmul_op_a[i-j] & clmul_op_b[j]);
+      end
+    end
+  end
+
+  assign clmulr_result = {<<{clmul_result}}; // Reverse for clmulr
+  assign clmulh_result = {1'b0, clmulr_result[31:1]};
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
@@ -334,6 +365,10 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
       ALU_B_SEXT_B : result_o = {{(24){operand_a_i[ 7]}}, operand_a_i[ 7:0]};
       ALU_B_SEXT_H : result_o = {{(16){operand_a_i[15]}}, operand_a_i[15:0]};
+
+      ALU_B_CLMUL  : result_o = clmul_result;
+      ALU_B_CLMULH : result_o = clmulh_result;
+      ALU_B_CLMULR : result_o = clmulr_result;
 
       default: ;
     endcase
