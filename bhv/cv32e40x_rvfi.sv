@@ -80,6 +80,11 @@ module cv32e40x_rvfi
    input logic [31:0]                         exception_target_wb_i,
    input logic [31:0]                         mepc_target_wb_i,
 
+   input                                      PrivLvl_t current_priv_lvl_i,
+
+   input logic                                debug_mode_i,
+   input logic [2:0]                          debug_cause_i,
+
    //// CSR Probes ////
    input                                      Status_t csr_mstatus_n_i,
    input                                      Status_t csr_mstatus_q_i,
@@ -157,16 +162,21 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
    output logic [ 1:0]                        rvfi_ixl,
-   output logic [ 0:0]                        rvfi_dbg, // TODO: Rename to rvfi_debug
 
+   output logic [ 0:0]                        rvfi_debug,
+   output logic [ 0:0]                        rvfi_dbg_mode,
+   output logic [ 2:0]                        rvfi_dbg_cause,
+
+   output logic [ 4:0]                        rvfi_rd_addr,
+   output logic [31:0]                        rvfi_rd_wdata,
    output logic [ 4:0]                        rvfi_rs1_addr,
    output logic [ 4:0]                        rvfi_rs2_addr,
    output logic [31:0]                        rvfi_rs1_rdata,
    output logic [31:0]                        rvfi_rs2_rdata,
-   output logic [ 4:0]                        rvfi_rd_addr,
-   output logic [31:0]                        rvfi_rd_wdata,
+
    output logic [31:0]                        rvfi_pc_rdata,
    output logic [31:0]                        rvfi_pc_wdata,
+
    output logic [31:0]                        rvfi_mem_addr,
    output logic [ 3:0]                        rvfi_mem_rmask,
    output logic [ 3:0]                        rvfi_mem_wmask,
@@ -398,7 +408,6 @@ module cv32e40x_rvfi
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_intr              = intr_d;
-  assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3) // todo: Get this info from the design itself (will not be constant for the 40S)
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -439,8 +448,9 @@ module cv32e40x_rvfi
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
       ex_csr_rdata       <= '0;
-
-      rvfi_dbg           <= '0;
+      rvfi_debug         <= '0;
+      rvfi_dbg_mode      <= '0;
+      rvfi_dbg_cause     <= '0;
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
@@ -515,7 +525,6 @@ module cv32e40x_rvfi
       rvfi_valid      <= wb_valid_i;
       if (wb_valid_i) begin
         rvfi_order      <= rvfi_order + 64'b1;
-        rvfi_dbg        <= debug[STAGE_EX];
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
         rvfi_trap       <= exception_in_wb_i; // Set for all synchronous traps. TODO: Verify this is the intention of the spec
@@ -538,6 +547,12 @@ module cv32e40x_rvfi
         rvfi_mem_wmask <= mem_wmask[STAGE_EX];
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
+
+        rvfi_mode      <= current_priv_lvl_i;
+
+        rvfi_debug     <= debug[STAGE_EX];
+        rvfi_dbg_mode  <= debug_mode_i;
+        rvfi_dbg_cause <= debug_cause_i;
       end
 
       // Set expected next PC, half-word aligned
@@ -553,7 +568,8 @@ module cv32e40x_rvfi
       end
 
     end
-  end
+  end // always_ff @
+
 
   //////////////////
 

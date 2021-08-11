@@ -312,6 +312,9 @@ bind cv32e40x_sleep_unit:
          .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ), // todo: make names match
 
          .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ), // todo: make names match
+         .current_priv_lvl_i       ( core_i.current_priv_lvl                                              ),
+         .debug_mode_i             ( core_i.ctrl_fsm.debug_mode                                           ),
+         .debug_cause_i            ( core_i.ctrl_fsm.debug_cause                                          ),
 
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
