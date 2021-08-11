@@ -154,11 +154,13 @@ The |corev| core is fully synthesizable.
 It has been designed mainly for ASIC designs, but FPGA synthesis
 is supported as well.
 
-All the files in the ``rtl`` and ``rtl/include`` folders are synthesizable. The user must provide a clock-gating module that instantiates
+All the files in the ``rtl`` and ``rtl/include`` folders are synthesizable. The top level module is called ``cv32e40x_core``.
+
+The user must provide a clock-gating module that instantiates
 the clock-gating cells of the target technology. This file must have the same interface and module name of the one provided for simulation-only purposes
 at ``bhv/cv32e40x_sim_clock_gate.sv`` (see :ref:`clock-gating-cell`).
 
-The ``constraints/cv32e40x_core.sdc`` file provides an example of synthesis constraints.
+The ``constraints/cv32e40x_core.sdc`` file provides an example of synthesis constraints. No synthesis scripts are provided.
 
 ASIC Synthesis
 ^^^^^^^^^^^^^^
