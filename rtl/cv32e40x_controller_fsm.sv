@@ -559,8 +559,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b1;
           // Ebreak that causes debug entry should not be killed, otherwise RVFI will skip it
           // Trigger match should also be signalled as not killed (all write enables are suppressed in ID), otherwise RVFI/ISS will not attempt to execute and detect trigger
+          // Ebreak during debug_mode restarts from dm_halt_addr, without CSR updates. Not killing ebreak due to the same RVFI/ISS reasons.
           // todo: Move some logic to RVFI instead?
-          ctrl_fsm_o.kill_wb = !(ebreak_in_wb || trigger_match_in_wb);
+          ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER) ||
+                                (debug_mode_q && ebreak_in_wb));
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
@@ -666,7 +668,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Flop used to gate if_valid after one instruction issued
   // in single step mode
-  always_ff @(posedge clk_ungated_i, negedge rst_n) begin
+  always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
