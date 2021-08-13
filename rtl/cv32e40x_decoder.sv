@@ -29,7 +29,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION       = 0,
   parameter b_ext_e B_EXT     = NONE,
-  parameter USE_PMP           = 0,
   parameter DEBUG_TRIGGER_EN  = 1
 )
 (

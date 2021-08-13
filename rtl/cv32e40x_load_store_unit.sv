@@ -110,7 +110,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [31:0]  wdata;
 
   logic         misaligned_st;          // high if we are currently performing the second part of a misaligned store
-  logic         load_err_o, store_err_o;
 
   logic [31:0]  rdata_q;
 
@@ -350,9 +349,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename
 
-  // Note: PMP is not fully supported at the moment (not even if USE_PMP = 1)
-  assign load_err_o      = 1'b0; // Not currently used
-  assign store_err_o     = 1'b0; // Not currently used
 
 
   // check for misaligned accesses that need a second memory access

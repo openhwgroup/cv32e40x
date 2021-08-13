@@ -31,8 +31,6 @@
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION      = 0,
-  parameter USE_PMP          = 0,
-  parameter N_PMP_ENTRIES    = 16,
   parameter NUM_MHPMCOUNTERS = 1
 )
 (
