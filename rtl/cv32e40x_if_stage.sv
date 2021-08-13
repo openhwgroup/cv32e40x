@@ -191,9 +191,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     (
      .clk                  ( clk   ),
      .rst_n                ( rst_n ),
-     .speculative_access_i ( 1'b1  ), // Instruction fetches are speculative
      .atomic_access_i      ( 1'b0  ), // No atomic transfers on instruction side
-     .execute_access_i     ( 1'b1  ), // All accesses are intended for execution
 
      .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
      .core_trans_valid_i   ( prefetch_trans_valid    ),

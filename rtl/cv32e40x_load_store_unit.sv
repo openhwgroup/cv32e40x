@@ -540,9 +540,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     (
      .clk                  ( clk             ),
      .rst_n                ( rst_n           ),
-     .speculative_access_i ( 1'b0            ), // Load/stores are not speculative
      .atomic_access_i      ( 1'b0            ), // TODO:OE update to support atomic PMA checks
-     .execute_access_i     ( 1'b0            ), // No accesses are intended for execution
 
      .core_one_txn_pend_n  ( cnt_is_one_next ),
      .core_trans_valid_i   ( trans_valid     ),
