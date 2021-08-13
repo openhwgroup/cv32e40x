@@ -434,7 +434,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end else begin
           if (exception_in_wb) begin
             // TODO:OK:low Must check if we are allowed to take exceptions
-            //          Applies to PMA/PMP on misaligned
+            //          Applies to PMA on misaligned
             // Kill all stages
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;

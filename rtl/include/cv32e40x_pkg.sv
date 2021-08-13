@@ -250,28 +250,6 @@ typedef enum logic[11:0] {
   CSR_MTVAL          = 12'h343,
   CSR_MIP            = 12'h344,
 
-  // Physical memory protection (PMP)
-  CSR_PMPCFG0        = 12'h3A0,         // Not included (USE_PMP = 0)
-  CSR_PMPCFG1        = 12'h3A1,         // Not included (USE_PMP = 0)
-  CSR_PMPCFG2        = 12'h3A2,         // Not included (USE_PMP = 0)
-  CSR_PMPCFG3        = 12'h3A3,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR0       = 12'h3B0,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR1       = 12'h3B1,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR2       = 12'h3B2,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR3       = 12'h3B3,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR4       = 12'h3B4,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR5       = 12'h3B5,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR6       = 12'h3B6,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR7       = 12'h3B7,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR8       = 12'h3B8,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR9       = 12'h3B9,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR10      = 12'h3BA,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR11      = 12'h3BB,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR12      = 12'h3BC,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR13      = 12'h3BD,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR14      = 12'h3BE,         // Not included (USE_PMP = 0)
-  CSR_PMPADDR15      = 12'h3BF,         // Not included (USE_PMP = 0)
-
   // Trigger
   CSR_TSELECT        = 12'h7A0,
   CSR_TDATA1         = 12'h7A1,
@@ -461,10 +439,6 @@ parameter MARCHID = 32'h14;
 
 parameter MTVEC_MODE        = 2'b01;
 parameter NUM_HPM_EVENTS    =   16;
-
-parameter MAX_N_PMP_ENTRIES = 16;
-parameter MAX_N_PMP_CFG     =  4;
-
 
 parameter MSTATUS_UIE_BIT      = 0;
 parameter MSTATUS_SIE_BIT      = 1;
@@ -853,7 +827,7 @@ parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0,
                                          cacheable       : 1'b0,
                                          atomic          : 1'b0};
 
-// MPU status. Used for PMA and PMP
+// MPU status. Used for PMA
 typedef enum logic [1:0] {
                           MPU_OK       = 2'h0,
                           MPU_RE_FAULT = 2'h1,

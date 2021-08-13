@@ -98,8 +98,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   
   // Unused parameters and signals (left in code for future design extensions)
   localparam A_EXTENSION         =  0;
-  localparam N_PMP_ENTRIES       = 16;
-  localparam USE_PMP             =  0;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
@@ -362,7 +360,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   /////////////////////////////////////////////////
   cv32e40x_id_stage
   #(
-    .USE_PMP                      ( USE_PMP                   ),
     .A_EXTENSION                  ( A_EXTENSION               ),
     .B_EXT                        ( B_EXT                     )
   )
@@ -563,8 +560,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_cs_registers
   #(
     .A_EXTENSION      ( A_EXTENSION           ),
-    .USE_PMP          ( USE_PMP               ),
-    .N_PMP_ENTRIES    ( N_PMP_ENTRIES         ),
     .NUM_MHPMCOUNTERS ( NUM_MHPMCOUNTERS      )
   )
   cs_registers_i
