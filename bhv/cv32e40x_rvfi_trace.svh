@@ -20,12 +20,12 @@
 
 
   integer      f;
-  string       fn;
   string insn_str;
 
   initial begin
 
     wait(rst_ni == 1'b1);
+    f = $fopen ("trace_rvfi.log", "w");
     $fwrite(f, "PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata\n");
 
     while(1) begin
