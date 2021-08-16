@@ -65,6 +65,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_wb_i,
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
+   input logic                                ebreak_in_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
@@ -486,7 +487,8 @@ module cv32e40x_rvfi
         // IF stage is killed and not valid during debug entry. If debug is taken,
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (debug_taken_if) begin
-          debug_cause_if_next <= debug_cause_i; // debug cause input only valid during debug taken
+          // Debug cause input only valid during debug taken
+          debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i; // Debug entry from debug mode caused by EBREAK is not captured by debug_cause_i
         end
       end
 
