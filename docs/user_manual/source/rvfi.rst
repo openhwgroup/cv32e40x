@@ -21,30 +21,35 @@ Trace output file
 -----------------
 
 Tracing can be enabled during simulation by defining **CV32E40X_TRACE_EXECUTION**. All traced instructions are written to a log file.
-The log file is named ``trace_core_<HARTID>.log``, with ``<HARTID>`` being the 32 digit hart ID of the core being traced.
+The log file is named ``trace_rvfi.log``.
 
 Trace output format
 -------------------
 
 The trace output is in tab-separated columns.
 
-1. **Time**: The current simulation time.
-2. **Cycle**: The number of cycles since the last reset.
-3. **PC**: The program counter
-4. **Instr**: The executed instruction (base 16).
-   32 bit wide instructions (8 hex digits) are uncompressed instructions, 16 bit wide instructions (4 hex digits) are compressed instructions.
-5. **Decoded instruction**: The decoded (disassembled) instruction in a format equal to what objdump produces when calling it like ``objdump -Mnumeric -Mno-aliases -D``.
-   - Unsigned numbers are given in hex (prefixed with ``0x``), signed numbers are given as decimal numbers.
-   - Numeric register names are used (e.g. ``x1``).
-   - Symbolic CSR names are used.
-   - Jump/branch targets are given as absolute address if possible (PC + immediate).
-6. **Register and memory contents**: For all accessed registers, the value before and after the instruction execution is given. Writes to registers are indicated as ``registername=value``, reads as ``registername:value``. For memory accesses, the address and the loaded and stored data are given.
+1.  **PC**: The program counter
+2.  **Instr**: The executed instruction (base 16).
+    32 bit wide instructions (8 hex digits) are uncompressed instructions, 16 bit wide instructions (4 hex digits) are compressed instructions.
+3.  **rs1_addr** Register read port 1 source address, 0x0 if not used by instruction
+4.  **rs1_data** Register read port 1 read data, 0x0 if not used by instruction
+5.  **rs2_addr** Register read port 2 source address, 0x0 if not used by instruction
+6.  **rs2_data** Register read port 2 read data, 0x0 if not used by instruction
+7.  **rd_addr**  Register write port 1 destination address, 0x0 if not used by instruction
+8.  **rd_data**  Register write port 1 write data, 0x0 if not used by instruction
+9.  **mem_addr** Memory address for instructions accessing memory
+10. **rvfi_mem_rmask** Bitmask specifying which bytes in rvfi_mem_rdata contain valid read data
+11. **rvfi_mem_wmask** Bitmask specifying which bytes in rvfi_mem_wdata contain valid write data
+12. **rvfi_mem_rdata** The data read from memory address specified in mem_addr
+13. **rvfi_mem_wdata** The data written to memory address specified in mem_addr
+
 
 .. code-block:: text
 
-  Time          Cycle      PC       Instr    Decoded instruction Register and memory contents
-            130         61 00000150 4481     c.li    x9,0        x9=0x00000000
-            132         62 00000152 00008437 lui     x8,0x8      x8=0x00008000
-            134         63 00000156 fff40413 addi    x8,x8,-1    x8:0x00008000  x8=0x00007fff
-            136         64 0000015a 8c65     c.and   x8,x9       x8:0x00007fff  x9:0x00000000  x8=0x00000000
-            142         67 0000015c c622     c.swsp  x8,12(x2)   x2:0x00002000  x8:0x00000000 PA:0x0000200c store:0x00000000  load:0xffffffff
+PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata
+00001f9c  14c70793        0e   000096c8        0c   00000000       0f  00009814    00009814         0         0  00000000  00000000
+00001fa0  14f72423        0e   000096c8        0f   00009814       00  00000000    00009810         0         f  00000000  00009814
+00001fa4  0000bf6d        1f   00000000        1b   00000000       00  00000000    00001fa6         0         0  00000000  00000000
+00001f5e  000043d8        0f   00009814        04   00000000       0e  00000000    00009818         f         0  00000000  00000000
+00001f60  0000487d        00   00000000        1f   00000000       10  0000001f    0000001f         0         0  00000000  00000000
+
