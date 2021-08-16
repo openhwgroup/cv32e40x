@@ -565,7 +565,7 @@ module cv32e40x_rvfi
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
 
-        rvfi_mode      <= current_priv_lvl_i;
+        rvfi_mode      <= current_priv_lvl_i; // todo: Verify / explain this when user mode is implemented
 
         rvfi_dbg       <= debug_cause[STAGE_EX];
         rvfi_dbg_mode  <= debug_mode [STAGE_EX];
