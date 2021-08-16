@@ -26,11 +26,13 @@ module cv32e40x_rvfi
    input logic                                rst_ni,
 
    //// IF Probes ////
+   input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
 
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
-   input logic                                instr_id_valid_i,
+   input logic                                id_valid_i,
+   input logic                                id_ready_i,
    input logic                                mret_insn_id_i,
    input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
@@ -50,8 +52,8 @@ module cv32e40x_rvfi
    // LSU
    input logic                                lsu_en_ex_i,
 
-   input logic                                instr_ex_ready_i,
-   input logic                                instr_ex_valid_i,
+   input logic                                ex_ready_i,
+   input logic                                ex_valid_i,
 
    input logic [31:0]                         branch_target_ex_i,
 
@@ -63,6 +65,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_wb_i,
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
+   input logic                                ebreak_in_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
@@ -79,6 +82,11 @@ module cv32e40x_rvfi
    input                                      exc_pc_mux_e exc_pc_mux_i,
    input logic [31:0]                         exception_target_wb_i,
    input logic [31:0]                         mepc_target_wb_i,
+
+   input                                      PrivLvl_t current_priv_lvl_i,
+
+   input logic                                debug_mode_i,
+   input logic [2:0]                          debug_cause_i,
 
    //// CSR Probes ////
    input                                      Status_t csr_mstatus_n_i,
@@ -157,16 +165,20 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
    output logic [ 1:0]                        rvfi_ixl,
-   output logic [ 0:0]                        rvfi_dbg, // TODO: Rename to rvfi_debug
 
+   output logic [ 2:0]                        rvfi_dbg,
+   output logic [ 0:0]                        rvfi_dbg_mode,
+
+   output logic [ 4:0]                        rvfi_rd_addr,
+   output logic [31:0]                        rvfi_rd_wdata,
    output logic [ 4:0]                        rvfi_rs1_addr,
    output logic [ 4:0]                        rvfi_rs2_addr,
    output logic [31:0]                        rvfi_rs1_rdata,
    output logic [31:0]                        rvfi_rs2_rdata,
-   output logic [ 4:0]                        rvfi_rd_addr,
-   output logic [31:0]                        rvfi_rd_wdata,
+
    output logic [31:0]                        rvfi_pc_rdata,
    output logic [31:0]                        rvfi_pc_wdata,
+
    output logic [31:0]                        rvfi_mem_addr,
    output logic [ 3:0]                        rvfi_mem_rmask,
    output logic [ 3:0]                        rvfi_mem_wmask,
@@ -317,14 +329,15 @@ module cv32e40x_rvfi
 );
 
   // Propagating from ID stage
-  logic [1:0] [31:0] pc_wdata;
-  logic [1:0]        debug;
-  logic [1:0] [ 4:0] rs1_addr;
-  logic [1:0] [ 4:0] rs2_addr;
-  logic [1:0] [31:0] rs1_rdata;
-  logic [1:0] [31:0] rs2_rdata;
-  logic [1:0] [31:0] mem_rmask;
-  logic [1:0] [31:0] mem_wmask;
+  logic [2:0] [31:0] pc_wdata;
+  logic [2:0]        debug_mode;
+  logic [2:0] [2:0]  debug_cause;
+  logic [2:0] [ 4:0] rs1_addr;
+  logic [2:0] [ 4:0] rs2_addr;
+  logic [2:0] [31:0] rs1_rdata;
+  logic [2:0] [31:0] rs2_rdata;
+  logic [2:0] [31:0] mem_rmask;
+  logic [2:0] [31:0] mem_wmask;
 
   //Propagating from EX stage
   logic [31:0]       ex_mem_addr;
@@ -363,8 +376,8 @@ module cv32e40x_rvfi
 
   logic         intr_d;
 
-  logic         is_debug_entry_if;
-  logic         is_debug_entry_id;
+  logic [2:0]   debug_cause_if_next;
+  logic         debug_taken_if;
   logic         is_dret_wb;
 
   logic [6:0]   insn_opcode;
@@ -387,18 +400,18 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  localparam STAGE_ID = 0;
-  localparam STAGE_EX = 1;
+  localparam STAGE_IF = 0;
+  localparam STAGE_ID = 1;
+  localparam STAGE_EX = 2;
 
   rvfi_intr_t  instr_q;
 
-  assign is_debug_entry_if = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
+  assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_intr              = intr_d;
-  assign rvfi_mode              = 2'b11; // Privilege level: Machine-mode (3) // todo: Get this info from the design itself (will not be constant for the 40S)
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -422,14 +435,14 @@ module cv32e40x_rvfi
                   ((rvfi_order - instr_q.order) == 1) && // Is latest instruction
                   (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler // todo: get definitive answer on whether intr signal should be 1 for debug entry as well?
 
-
   // Pipeline stage model //
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      is_debug_entry_id  <= 1'b0;
+      debug_cause_if_next<= '0;
       pc_wdata           <= '0;
-      debug              <= 1'b0;
+      debug_mode         <= 1'b0;
+      debug_cause        <= '0;
       rs1_addr           <= '0;
       rs2_addr           <= '0;
       rs1_rdata          <= '0;
@@ -439,8 +452,8 @@ module cv32e40x_rvfi
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
       ex_csr_rdata       <= '0;
-
       rvfi_dbg           <= '0;
+      rvfi_dbg_mode      <= '0;
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
@@ -464,10 +477,25 @@ module cv32e40x_rvfi
 
     end else begin
 
-// todo: why is IF stage not modeled? It could be used to propagate first ISR and first debug instruction through the RVFI pipeline
+      // todo: Could IF stage be used to propagate first ISR through the RVFI pipeline?
+      //// IF Stage ////
+      if (if_valid_i && id_ready_i) begin
+        debug_cause[STAGE_IF]<= debug_cause_if_next;
+        debug_cause_if_next  <= '0;
+        debug_mode[STAGE_IF] <= debug_mode_i; // Probing in IF to make sure any LSU instructions that are not killed can complete
+      end else begin
+        // IF stage is killed and not valid during debug entry. If debug is taken,
+        // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
+        if (debug_taken_if) begin
+          // Debug cause input only valid during debug taken
+          // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
+          // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
+          debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
+        end
+      end
 
       //// ID Stage ////
-      if(instr_id_valid_i && instr_ex_ready_i) begin
+      if(id_valid_i && ex_ready_i) begin
 
         if (jump_in_id_i) begin
           pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i; // todo: could IF stage's branch_addr_n be used in both cases? (the current design is clean in that it only uses ID stage signals; the proposal covers more of the RTL)
@@ -475,31 +503,30 @@ module cv32e40x_rvfi
           pc_wdata [STAGE_ID] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end
 
-        is_debug_entry_id   <= is_debug_entry_if;
-        debug    [STAGE_ID] <= is_debug_entry_id;
-        rs1_addr [STAGE_ID] <= rs1_addr_id_i;
-        rs2_addr [STAGE_ID] <= rs2_addr_id_i;
-        rs1_rdata[STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
-        rs2_rdata[STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
-        mem_rmask[STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
-        mem_wmask[STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
-      end else begin
-        is_debug_entry_id   <= is_debug_entry_if || is_debug_entry_id; // todo: this should not be needed
+        debug_mode [STAGE_ID] <= debug_mode [STAGE_IF];
+        debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
+        rs1_addr   [STAGE_ID] <= rs1_addr_id_i;
+        rs2_addr   [STAGE_ID] <= rs2_addr_id_i;
+        rs1_rdata  [STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
+        rs2_rdata  [STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
+        mem_rmask  [STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+        mem_wmask  [STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end
 
 
       //// EX Stage ////
-      if (instr_ex_valid_i && wb_ready_i) begin
+      if (ex_valid_i && wb_ready_i) begin
         pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :  // todo: could IF stage's branch_addr_n be used here? (the current design is clean in that it only uses EX stage signals; the proposal covers more of the RTL)
                                !lsu_misaligned_ex_i ? pc_wdata[STAGE_ID] :
                                pc_wdata[STAGE_EX];
-        debug    [STAGE_EX] <= debug    [STAGE_ID];
-        rs1_addr [STAGE_EX] <= rs1_addr [STAGE_ID];
-        rs2_addr [STAGE_EX] <= rs2_addr [STAGE_ID];
-        rs1_rdata[STAGE_EX] <= rs1_rdata[STAGE_ID];
-        rs2_rdata[STAGE_EX] <= rs2_rdata[STAGE_ID];
-        mem_rmask[STAGE_EX] <= mem_rmask[STAGE_ID];
-        mem_wmask[STAGE_EX] <= mem_wmask[STAGE_ID];
+        debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
+        debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
+        rs1_addr   [STAGE_EX] <= rs1_addr   [STAGE_ID];
+        rs2_addr   [STAGE_EX] <= rs2_addr   [STAGE_ID];
+        rs1_rdata  [STAGE_EX] <= rs1_rdata  [STAGE_ID];
+        rs2_rdata  [STAGE_EX] <= rs2_rdata  [STAGE_ID];
+        mem_rmask  [STAGE_EX] <= mem_rmask  [STAGE_ID];
+        mem_wmask  [STAGE_EX] <= mem_wmask  [STAGE_ID];
 
         // Keep values when misaligned // todo: explain why
         ex_mem_addr         <= (lsu_misaligned_ex_i) ? ex_mem_addr  : rvfi_mem_addr_d;
@@ -515,7 +542,6 @@ module cv32e40x_rvfi
       rvfi_valid      <= wb_valid_i;
       if (wb_valid_i) begin
         rvfi_order      <= rvfi_order + 64'b1;
-        rvfi_dbg        <= debug[STAGE_EX];
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
         rvfi_trap       <= exception_in_wb_i; // Set for all synchronous traps. TODO: Verify this is the intention of the spec
@@ -538,6 +564,11 @@ module cv32e40x_rvfi
         rvfi_mem_wmask <= mem_wmask[STAGE_EX];
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
+
+        rvfi_mode      <= current_priv_lvl_i; // todo: Verify / explain this when user mode is implemented
+
+        rvfi_dbg       <= debug_cause[STAGE_EX];
+        rvfi_dbg_mode  <= debug_mode [STAGE_EX];
       end
 
       // Set expected next PC, half-word aligned
@@ -553,7 +584,8 @@ module cv32e40x_rvfi
       end
 
     end
-  end
+  end // always_ff @
+
 
   //////////////////
 
