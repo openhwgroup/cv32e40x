@@ -488,7 +488,9 @@ module cv32e40x_rvfi
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (debug_taken_if) begin
           // Debug cause input only valid during debug taken
-          debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i; // Debug entry from debug mode caused by EBREAK is not captured by debug_cause_i
+          // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
+          // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
+          debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
         end
       end
 
