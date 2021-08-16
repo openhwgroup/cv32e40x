@@ -21,8 +21,11 @@
 
    Git hash 7045b803cab825bc3bb3dbca0cb019e55098acc4
 
-   el2_exu_mul_ctl.sv (CQ 23537) - Swerv bit manipulation circuitry - https://github.com/chipsalliance/Cores-SweRV-EL2/blob/master/design/exu/el2_exu_mul_ctl.sv
-
+   - el2_exu_mul_ctl.sv (CQ 23537) - Swerv bit manipulation circuitry - https://github.com/chipsalliance/Cores-SweRV-EL2/blob/master/design/exu/el2_exu_mul_ctl.sv
+   - el2_exu.sv (CQ 23532) - Swerv execute unit/stage
+   - el2_exu_alu_ctl.sv (CQ 23532) - ALU of Swerv containing bit manipulation instructions
+   - el2_exu_div_ctl.sv (CQ 23532) - Divider circuit(s) of Swerv
+   - beh_lib.sv (CQ 23532) - Library with adders, ECC encoding, ECC decoding, etc.
 
 - PMP (from https://github.com/lowRISC/ibex.git, 93a76b390081b6b3b6cea2671c469f9293b998f2)
 
