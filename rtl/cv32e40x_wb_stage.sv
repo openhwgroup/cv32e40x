@@ -84,7 +84,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Note that write back is not suppressed during bus errors (in order to prevent
   // a timing path from the late arriving data_err_i into the register file).
   //
-  // Note that the register file is written twice in case of a misaligned load.
+  // Note that the register file is only written for the last part of a misaligned load.
+  // (rf_we suppressed in ex_stage for the first part)
   //
   // Note that the register file is written multiple times in case waited loads (in
   // order to prevent a timing path from the late arriving data_rvalid_i into the
