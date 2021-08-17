@@ -178,14 +178,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             ex_wb_pipe_i.instr.bus_resp.err           ||
                             ex_wb_pipe_i.illegal_insn                 ||
                             ex_wb_pipe_i.ecall_insn                   ||
-                            ex_wb_pipe_i.ebrk_insn) && ex_wb_pipe_i.instr_valid;
+                            ex_wb_pipe_i.ebrk_insn                    ||
+                            (ex_wb_pipe_i.lsu_mpu_status != MPU_OK))  && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
-  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK ? EXC_CAUSE_INSTR_FAULT     :
-                              ex_wb_pipe_i.instr.bus_resp.err         ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              ex_wb_pipe_i.illegal_insn               ? EXC_CAUSE_ILLEGAL_INSN    :
-                              ex_wb_pipe_i.ecall_insn                 ? EXC_CAUSE_ECALL_MMODE     :
-                              EXC_CAUSE_BREAKPOINT;
+  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK       ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err               ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn                     ? EXC_CAUSE_ILLEGAL_INSN    :
+                              ex_wb_pipe_i.ecall_insn                       ? EXC_CAUSE_ECALL_MMODE     :
+                              ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
+                              (ex_wb_pipe_i.lsu_mpu_status == MPU_WR_FAULT) ? EXC_CAUSE_STORE_FAULT     :
+                              (ex_wb_pipe_i.lsu_mpu_status == MPU_RE_FAULT) ? EXC_CAUSE_LOAD_FAULT      :
+                              'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
