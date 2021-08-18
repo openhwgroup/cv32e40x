@@ -111,6 +111,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [31:0]  wdata;
 
   logic         misaligned_st;          // high if we are currently performing the second part of a misaligned store
+  logic         misaligned_access;
 
   logic [31:0]  rdata_q;
 
@@ -350,6 +351,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename
 
+  // misaligned_access is high for both transfers of a misaligned transfer
+  assign misaligned_access = misaligned_st || lsu_misaligned_0_o;
 
 
   // check for misaligned accesses that need a second memory access
@@ -537,22 +540,23 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       .PMA_CFG         (PMA_CFG        ))
   mpu_i
     (
-     .clk                  ( clk             ),
-     .rst_n                ( rst_n           ),
-     .atomic_access_i      ( 1'b0            ), // TODO:OE update to support atomic PMA checks
+     .clk                  ( clk               ),
+     .rst_n                ( rst_n             ),
+     .atomic_access_i      ( 1'b0              ), // TODO:OE update to support atomic PMA checks
+     .misaligned_access_i  ( misaligned_access ),
 
-     .core_one_txn_pend_n  ( cnt_is_one_next ),
-     .core_trans_valid_i   ( trans_valid     ),
-     .core_trans_ready_o   ( trans_ready     ),
-     .core_trans_i         ( trans           ),
-     .core_resp_valid_o    ( resp_valid      ),
-     .core_resp_o          ( resp            ),
+     .core_one_txn_pend_n  ( cnt_is_one_next   ),
+     .core_trans_valid_i   ( trans_valid       ),
+     .core_trans_ready_o   ( trans_ready       ),
+     .core_trans_i         ( trans             ),
+     .core_resp_valid_o    ( resp_valid        ),
+     .core_resp_o          ( resp              ),
 
-     .bus_trans_valid_o    ( bus_trans_valid ),
-     .bus_trans_ready_i    ( bus_trans_ready ),
-     .bus_trans_o          ( bus_trans       ),
-     .bus_resp_valid_i     ( bus_resp_valid  ),
-     .bus_resp_i           ( bus_resp        ));
+     .bus_trans_valid_o    ( bus_trans_valid   ),
+     .bus_trans_ready_i    ( bus_trans_ready   ),
+     .bus_trans_o          ( bus_trans         ),
+     .bus_resp_valid_i     ( bus_resp_valid    ),
+     .bus_resp_i           ( bus_resp          ));
 
   // Extract rdata and err from response struct
   assign resp_rdata = resp.bus_resp.rdata;
