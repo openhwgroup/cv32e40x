@@ -988,7 +988,6 @@ typedef struct packed {
 
   // LSU
   logic         lsu_en;
-  mpu_status_e  lsu_mpu_status; // MPU timing on gnt, ready in EX
 
   // Trigger match on insn
   logic         trigger_match;

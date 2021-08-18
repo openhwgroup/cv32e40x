@@ -46,7 +46,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Stage 0 outputs (EX)
   output logic        lsu_misaligned_0_o,       // Misaligned access was detected (to controller)
-  output mpu_status_e lsu_mpu_status_0_o,       // MPU (PMA) status (to ex_stage)
+  output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller
 
   // Stage 1 outputs (WB)
   output logic [31:0] lsu_addr_1_o,
@@ -349,7 +349,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // output to register file
   assign lsu_rdata_1_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
 
-  assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename
+  assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename && possibly kill?
 
   // misaligned_access is high for both transfers of a misaligned transfer
   assign misaligned_access = misaligned_st || lsu_misaligned_0_o;
@@ -441,7 +441,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 // todo:AB lsu_en_gated should maybe be replaced by valid_0_i
 
   // Export mpu status to EX stage
-  assign lsu_mpu_status_0_o = resp.mpu_status;
+  assign lsu_mpu_status_1_o = resp.mpu_status;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
   assign ctrl_update = ready_0_o && lsu_en_gated;

@@ -158,7 +158,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // LSU
   logic        lsu_misaligned_ex;
-  mpu_status_e lsu_mpu_status_ex;
+  mpu_status_e lsu_mpu_status_wb;
   logic [31:0] lsu_rdata_wb;
   logic        lsu_err_wb;
   logic [31:0] lsu_addr_wb;
@@ -456,7 +456,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_ready_o                ( lsu_ready_ex                 ),
     .lsu_valid_o                ( lsu_valid_ex                 ),
     .lsu_ready_i                ( lsu_ready_0                  ),
-    .lsu_mpu_status_i           ( lsu_mpu_status_ex            ),
     .lsu_misaligned_i           ( lsu_misaligned_ex)           ,
 
     // Pipeline handshakes
@@ -497,7 +496,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Stage 0 outputs (EX)
     .lsu_misaligned_0_o    ( lsu_misaligned_ex  ),
-    .lsu_mpu_status_0_o    ( lsu_mpu_status_ex  ),
+    .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
 
     // Stage 1 outputs (WB)
     .lsu_addr_1_o          ( lsu_addr_wb        ), // To controller (has WB timing, but does not pass through WB stage)
@@ -654,6 +653,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
                                                                  
     // LSU
     .lsu_misaligned_i               ( lsu_misaligned_ex      ),
+    .lsu_mpu_status_i               ( lsu_mpu_status_wb      ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
   
