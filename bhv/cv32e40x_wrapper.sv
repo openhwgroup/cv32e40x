@@ -31,6 +31,7 @@
   `include "cv32e40x_sleep_unit_sva.sv"
 `endif
 
+`include "cv32e40x_wrapper.vh"
 `include "cv32e40x_core_log.sv"
 `include "cv32e40x_dbg_helper.sv"
 
@@ -385,6 +386,8 @@ bind cv32e40x_sleep_unit:
 
 `ifdef RISCV_FORMAL
          ,`RVFI_CONN
+`else
+         ,`RVFI_TIEOFF
 `endif
          );
 
