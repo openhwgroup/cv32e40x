@@ -29,8 +29,8 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
       parameter type         CORE_RESP_TYPE               = inst_resp_t,
       parameter type         BUS_RESP_TYPE                = obi_inst_resp_t,
-      parameter int unsigned PMA_NUM_REGIONS              = 0,
-      parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT})
+      parameter int          PMA_NUM_REGIONS              = 0,
+      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
   (
    input logic  clk,
    input logic  rst_n,
