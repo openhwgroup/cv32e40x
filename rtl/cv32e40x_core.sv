@@ -533,6 +533,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // LSU
     .lsu_rdata_i                ( lsu_rdata_wb                 ),
+    .lsu_mpu_status_i           ( lsu_mpu_status_wb            ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),

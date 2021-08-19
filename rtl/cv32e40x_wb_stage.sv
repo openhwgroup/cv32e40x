@@ -46,6 +46,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // LSU
   input  logic [31:0]   lsu_rdata_i,
+  input  mpu_status_e   lsu_mpu_status_i,
 
   // Register file interface
   output logic          rf_we_wb_o,     // Register file write enable
@@ -90,8 +91,11 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Note that the register file is written multiple times in case waited loads (in
   // order to prevent a timing path from the late arriving data_rvalid_i into the
   // register file.
+  //
+  // In case of MPU/PMA error, the register file should not be written.
+  // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
-  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && (lsu_mpu_status_i == MPU_OK) && instr_valid;
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
   assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 

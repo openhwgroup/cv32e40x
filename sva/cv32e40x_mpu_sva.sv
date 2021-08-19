@@ -182,9 +182,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   a_pma_expect_cacheable :
     assert property (@(posedge clk) disable iff (!rst_n) bus_trans_cacheable == pma_expected_cfg.cacheable)
       else `uvm_error("mpu", "expected different cacheable flag")
-//  a_pma_expect_err :
-//    assert property (@(posedge clk) disable iff (!rst_n) pma_err == pma_expected_err)
-//      else `uvm_error("mpu", "expected different err flag")
+  a_pma_expect_err :
+    assert property (@(posedge clk) disable iff (!rst_n) pma_err == pma_expected_err)
+      else `uvm_error("mpu", "expected different err flag")
 
   // Bufferable
   logic obibuf_expected;
