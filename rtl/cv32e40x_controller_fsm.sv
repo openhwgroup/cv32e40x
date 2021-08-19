@@ -146,6 +146,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic [4:0] exc_cause; // id of taken interrupt
 
+
   // Mux selector for vectored IRQ PC
   assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
   
@@ -214,10 +215,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Single step will need to finish insn in WB, including LSU
   // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
   // todo: better way of factoring in last part of a misaligned LSU instruction
+  // todo:ok: May factor away single_step_allowed completely once PMA/LSU support is merged
   assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q;
                              
   // Single step are mutually exclusive from any other reason to enter debug
-  assign pending_single_step = (!debug_mode_q && debug_single_step_i && ex_wb_pipe_i.instr_valid) && !pending_debug;
+  assign pending_single_step = (!debug_mode_q && debug_single_step_i && wb_valid_i) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
