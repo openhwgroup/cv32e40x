@@ -42,6 +42,7 @@ The |corev| eXtension interface is compliant to CORE-V-XIF. The CORE-V-IF specif
 * ``X_MEM_WIDTH`` specifies the memory access width for loads/stores via the eXtension interface. (Legal values are TBD.)
 * ``X_RFR_WIDTH`` specifies the register file read access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
 * ``X_RFW_WIDTH`` specifies the register file write access width for the eXtension interface. If XLEN = 32, then the legal values are 32 and 64. If XLEN = 64, then the legal value is (only) 64.
+* ``X_USER_WIDTH`` specifies the user signal width for the eXtension interface.
 
 .. note::
 
@@ -82,7 +83,7 @@ The major features of CORE-V-XIF are:
 
   CORE-V-XIF indicates whether offloaded instructions are allowed to be commited (or should be killed).
 
-CORE-V-XIF consists of six interfaces:
+CORE-V-XIF consists of seven interfaces:
 
 * **Compressed interface**. Signaling of compressed instruction to be offloaded.
 * **Issue (request/response) interface**. Signaling of the uncompressed instruction to be offloaded including its register file based operands.
@@ -90,6 +91,7 @@ CORE-V-XIF consists of six interfaces:
 * **Memory (request/response) interface**. Signaling of load/store related signals (i.e. its transaction request signals). This interface is optional.
 * **Memory result interface**. Signaling of load/store related signals (i.e. its transaction result signals). This interface is optional.
 * **Result interface**. Signaling of the instruction result(s).
+* **User interface**. Signaling of a user signal for custom purpose.
 
 Operating principle
 -------------------
@@ -125,6 +127,9 @@ before a ``WFI`` instruction have fully completed (so that sleep mode can be ent
 
 In short: From a functional perspective it should not matter whether an instruction is handled inside the core or inside a coprocessor. In both cases
 the instructions need to obey the same instruction dependency rules, memory consistency rules, load/store address checks, fences, etc.
+
+The user interface can be used to provide additional data from the |corev| to the coprocessor. The coprocessor can respond to this data.
+The transaction can be done at any point of the offloading process. 
 
 :numref:`Compressed interface signals` describes the compressed interface signals.
 
@@ -520,6 +525,30 @@ transaction can be started by just changing the ``id`` signal and keeping the va
 
 The signals in ``x_result_i`` are valid when ``x_result_valid_i`` is 1. These signals remain stable during a result transaction.
 
+:numref:`User interface signals` describes the user interface signals.
+
+.. table:: User interface signals
+  :name: User interface signals
+
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+  | **Signal**                | **Type**                | **Direction**   | **Description**                                                                              |
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+  | ``x_user_valid_o``        | logic                   | output          | User request valid. Indicates that the core has a valid user data to send.                   |
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+  | ``x_user_ready_i``        | logic                   | input           | User request ready. The user data signaled via ``x_user_o`` is accepted by the coprocessor   |
+  |                           |                         |                 | when ``x_user_valid_o`` and  ``x_user_ready_i`` are both 1.                                  |
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+  | ``x_user_o``              | logic[X_USER_WIDTH-1:0] | output          | User data to be sent to the coprocessor.                                                     |
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+  | ``x_user_rsp_i``          | logic[X_USER_WIDTH-1:0] | input           | Coprocessor response to the data sent by the core.                                           |
+  +---------------------------+-------------------------+-----------------+----------------------------------------------------------------------------------------------+
+ 
+A user transaction is defined as the signal ``x_user_o`` during which ``x_user_valid_o`` is 1 and ``x_user_o`` remains unchanged. I.e. a new transaction can be started by changing ``x_user_o`` and keeping the valid signal asserted.
+
+The signal ``x_user_o`` is valid when ``x_user_valid_o`` is 1. These signals remain stable during a user transaction.
+
+The signal ``x_user_rsp_i`` is valid when ``x_user_valid_o`` and ``x_user_ready_i`` are both 1. There are no stability requirements.
+
 Interface dependencies
 ----------------------
 
@@ -542,6 +571,7 @@ The following rules apply to the relative ordering of the interface handshakes:
 * A memory (request/response) interface handshake cannot be initiated for instructions that were killed in an earlier cycle.
 * A memory result interface handshake cannot be initiated for instructions that were killed in an earlier cycle.
 * A result interface handshake cannot be (or have been) initiated for killed instructions.
+* The user interface transaction are independant from the other interface transactions.
 
 Handshake rules
 ---------------
@@ -554,6 +584,7 @@ The following handshake pairs exist on the eXtension interface:
 * ``x_mem_valid_i`` with ``x_mem_ready_o``.
 * ``x_mem_result_valid_o`` with implicit always ready signal.
 * ``x_result_valid_i`` with ``x_result_ready_o``.
+* ``x_user_valid_o`` with ``x_user_ready_i``.
 
 The only rule related to valid and ready signals is that:
 
@@ -595,7 +626,7 @@ Major differences with respect to CV-X-IF v0.1 specification
 * Removed *p_range*
 * Removed *rd_clean* (WAW hazards are addressed by not allowing any out of order transactions on any interface)
 * Required that all interfaces (also the result interface) perform transactions according to program order
-
+* Added a user interface for custom purposes (for example : build an interconnect to connect multiple times the same coprocessor)
 
 
 
