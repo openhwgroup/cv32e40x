@@ -24,8 +24,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
-  #(  parameter int unsigned PMA_NUM_REGIONS              = 0,
-      parameter pma_region_t PMA_CFG[(PMA_NUM_REGIONS ? (PMA_NUM_REGIONS-1) : 0):0] = '{default:PMA_R_DEFAULT},
+  #(  parameter int PMA_NUM_REGIONS              = 0,
+      parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
       parameter int unsigned IS_INSTR_SIDE = 0)
   (
    input logic        clk,
