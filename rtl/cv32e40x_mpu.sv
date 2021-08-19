@@ -62,6 +62,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   logic        mpu_block_core;
   logic        mpu_block_bus;
   logic        mpu_err_trans_valid;
+  logic        mpu_err_trans_ready;
   mpu_status_e mpu_status;
   mpu_state_e  state_q, state_n;
   logic        bus_trans_cacheable;
@@ -80,18 +81,22 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   // will be completed by this FSM
   always_comb begin
 
-    state_n        = state_q;
-    mpu_status     = MPU_OK;
-    mpu_block_core = 1'b0;
-    mpu_block_bus  = 1'b0;
+    state_n             = state_q;
+    mpu_status          = MPU_OK;
+    mpu_block_core      = 1'b0;
+    mpu_block_bus       = 1'b0;
     mpu_err_trans_valid = 1'b0;
+    mpu_err_trans_ready = 1'b0;
 
     case(state_q)
       MPU_IDLE: begin
-        if (mpu_err && core_trans_valid_i && bus_trans_ready_i) begin
+        if (mpu_err && core_trans_valid_i) begin
 
           // Block transfer from going out on the bus.
           mpu_block_bus  = 1'b1;
+
+          // Signal to the core that the transfer was accepted (but will be consumed by the MPU)
+          mpu_err_trans_ready = 1'b1;
 
           if(core_trans_we) begin
             // MPU error on write
@@ -101,6 +106,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
             // MPU error on read
             state_n = core_one_txn_pend_n ? MPU_RE_ERR_RESP : MPU_RE_ERR_WAIT;
           end
+
         end
       end
       MPU_RE_ERR_WAIT, MPU_WR_ERR_WAIT: begin
@@ -123,6 +129,8 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
         mpu_err_trans_valid = 1'b1;
         mpu_status = (state_q == MPU_RE_ERR_RESP) ? MPU_RE_FAULT : MPU_WR_FAULT;
 
+        // Go back to IDLE uncoditionally. 
+        // The core is expected to always be ready for the response
         state_n = MPU_IDLE;
 
       end
@@ -154,7 +162,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign core_resp_o.mpu_status = mpu_status;
 
   // Signal ready towards core
-  assign core_trans_ready_o     = bus_trans_ready_i && !mpu_block_core;
+  assign core_trans_ready_o     = (bus_trans_ready_i && !mpu_block_core) || mpu_err_trans_ready;
 
   // PMA - Physical Memory Attribution
   cv32e40x_pma
