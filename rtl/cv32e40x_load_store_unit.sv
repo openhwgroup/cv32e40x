@@ -413,8 +413,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned
-  // load/store only its second phase is marked as valid (last_q == 1'b1).
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
+  // load/store only its second phase is marked as valid (last_q == 1'b1), except if the first access failed MPU checks, indicated by resp.mpu_status
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : (last_q || (resp.mpu_status != MPU_OK)) && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
