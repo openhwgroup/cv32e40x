@@ -263,7 +263,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-        // Deassert rf_we in case of illegal csr instruction, PMA error in LSU or
+        // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned LSU goes to WB.
         ex_wb_pipe_o.rf_we       <= (csr_illegal_i               ||
                                     lsu_misaligned_i)             ? 1'b0 : id_ex_pipe_i.rf_we;
@@ -290,8 +290,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
+
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i;
+
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
         ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;

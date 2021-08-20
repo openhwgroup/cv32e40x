@@ -31,8 +31,13 @@ module cv32e40x_ex_stage_sva
   input logic           rst_n,
 
   input logic           ex_ready_o,
-  input logic           ex_valid_o,  
-  input ctrl_fsm_t      ctrl_fsm_i
+  input logic           ex_valid_o,
+  input logic           wb_ready_i,
+  input ctrl_fsm_t      ctrl_fsm_i,
+
+  input id_ex_pipe_t    id_ex_pipe_i,
+  input ex_wb_pipe_t    ex_wb_pipe_o,
+  input logic           lsu_misaligned_i
 );
 /* todo:medium uncomment and fix
   // Halt implies not ready and not valid
@@ -56,4 +61,10 @@ module cv32e40x_ex_stage_sva
                       |-> (!ctrl_fsm_i.halt_ex))
       else `uvm_error("ex_stage", "Kill and halt should not both be asserted")
 */
+
+// First access of misaligned LSU should have rf_we deasserted
+a_misaligned_rf_we:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ex_valid_o && wb_ready_i && id_ex_pipe_i.lsu_en && lsu_misaligned_i)
+                    |=> !ex_wb_pipe_o.rf_we);
 endmodule // cv32e40x_ex_stage_sva

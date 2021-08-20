@@ -65,7 +65,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 );
 
   logic                 instr_valid;
-  logic                 wb_valid;       // Only used by RVFI
+  logic                 wb_valid;
 
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
@@ -86,7 +86,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // a timing path from the late arriving data_err_i into the register file).
   //
   // Note that the register file is only written for the last part of a misaligned load.
-  // (rf_we suppressed in ex_stage for the first part)
+  // (rf_we suppressed in ex_stage for the first part, lsu aggregates data for second part)
   //
   // Note that the register file is written multiple times in case waited loads (in
   // order to prevent a timing path from the late arriving data_rvalid_i into the
@@ -115,7 +115,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
-  //  assign wb_ready_o = ctrl_fsThankm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
+  //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
 
   // wb_valid
   //
