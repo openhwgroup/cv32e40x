@@ -59,6 +59,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        lsu_ready_o,
   output logic        lsu_valid_o,
   input  logic        lsu_ready_i,
+  input  logic        lsu_misaligned_i,       // LSU is performing first part of a misaligned instruction
 
   // Stage ready/valid
   output logic        ex_ready_o,       // EX stage is ready for new data
@@ -252,7 +253,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.mret_insn      <= 1'b0;
       ex_wb_pipe_o.dret_insn      <= 1'b0;
       ex_wb_pipe_o.lsu_en         <= 1'b0;
-      ex_wb_pipe_o.lsu_mpu_status <= MPU_OK;
       ex_wb_pipe_o.csr_en         <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr       <= 12'h000;
@@ -263,8 +263,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-        // Deassert rf_we in case of illegal csr instruction
-        ex_wb_pipe_o.rf_we       <= csr_illegal_i ? 1'b0 : id_ex_pipe_i.rf_we;
+        // Deassert rf_we in case of illegal csr instruction or
+        // when the first half of a misaligned LSU goes to WB.
+        ex_wb_pipe_o.rf_we       <= (csr_illegal_i               ||
+                                    lsu_misaligned_i)             ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
           
         if (id_ex_pipe_i.rf_we) begin
@@ -288,15 +290,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
+
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i;
+
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
         ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;
         ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
         ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
         ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
-        ex_wb_pipe_o.lsu_mpu_status <= MPU_OK; // TODO:OK:low Set to actual MPU status when MPU is implemented on data side.
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,

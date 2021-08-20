@@ -192,7 +192,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
      .clk                  ( clk   ),
      .rst_n                ( rst_n ),
      .atomic_access_i      ( 1'b0  ), // No atomic transfers on instruction side
-
+     .misaligned_access_i  ( 1'b0  ), // MPU on instruction side will not issue misaligned access fault
+                                      // Misaligned access to main is allowed, and accesses outside main will result in instruction access fault (which will have priority over misaligned from I/O fault)
+     
      .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
      .core_trans_valid_i   ( prefetch_trans_valid    ),
      .core_trans_ready_o   ( prefetch_trans_ready    ),

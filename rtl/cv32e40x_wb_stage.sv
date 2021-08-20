@@ -46,6 +46,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // LSU
   input  logic [31:0]   lsu_rdata_i,
+  input  mpu_status_e   lsu_mpu_status_i,
 
   // Register file interface
   output logic          rf_we_wb_o,     // Register file write enable
@@ -64,9 +65,12 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 );
 
   logic                 instr_valid;
-  logic                 wb_valid;       // Only used by RVFI
+  logic                 wb_valid;
+  logic                 lsu_exception;
 
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
+
+  assign lsu_exception = (lsu_mpu_status_i != MPU_OK);
 
   //////////////////////////////////////////////////////////////////////////////
   // Controller interface todo: move/remove this block of comment?
@@ -84,13 +88,17 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Note that write back is not suppressed during bus errors (in order to prevent
   // a timing path from the late arriving data_err_i into the register file).
   //
-  // Note that the register file is written twice in case of a misaligned load.
+  // Note that the register file is only written for the last part of a misaligned load.
+  // (rf_we suppressed in ex_stage for the first part, lsu aggregates data for second part)
   //
   // Note that the register file is written multiple times in case waited loads (in
   // order to prevent a timing path from the late arriving data_rvalid_i into the
   // register file.
+  //
+  // In case of MPU/PMA error, the register file should not be written.
+  // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
-  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && instr_valid ; // TODO:OK:low deassert in case of MPU error (already do this in EX stage)
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && instr_valid;
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
   assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
 
@@ -110,17 +118,19 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
-  //  assign wb_ready_o = ctrl_fsThankm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
+  //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
 
   // wb_valid
   //
   // - Will be 0 for interrupted instruction and debug entry
   // - Will be 1 for synchronous exceptions (which is easier to deal with for RVFI); this implies that wb_valid
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
-  // - Will be 1 only for the second phase of a misaligned load/store
+  // - Will be 1 only for the second phase of a misaligned load/store that completes without MPU errors.
+  //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
 
-  assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1) ||          // Non-LSU instructions always have valid result in WB
-                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)      // LSU instructions have valid result based on data_rvalid_i
+  assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1)        ||     // Non-LSU instructions always have valid result in WB, also for exceptions.
+                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i) ||     // LSU instructions have valid result based on data_rvalid_i
+                     ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
                     ) && instr_valid;
 
   assign wb_valid_o = wb_valid;

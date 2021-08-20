@@ -35,7 +35,8 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    input logic  clk,
    input logic  rst_n,
 
-   input logic  atomic_access_i, // Indicate that ongoing access is atomic
+   input logic  atomic_access_i,     // Indicate that ongoing access is atomic
+   input logic  misaligned_access_i, // Indicate that ongoing access is part of a misaligned access
 
    // Interface towards bus interface
    input logic  bus_trans_ready_i,
@@ -174,6 +175,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
      .speculative_access_i(speculative_access),
      .atomic_access_i(atomic_access_i),
      .execute_access_i(execute_access),
+     .misaligned_access_i(misaligned_access_i),
      .pma_err_o(pma_err),
      .pma_bufferable_o(bus_trans_bufferable),
      .pma_cacheable_o(bus_trans_cacheable));
@@ -196,4 +198,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     end
   endgenerate
 
+// TODO:OE any way to check that the 2nd access of a failed misalgn will not reach the MPU?
+  
 endmodule

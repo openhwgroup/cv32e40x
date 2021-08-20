@@ -33,6 +33,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
    input logic        speculative_access_i, // Indicate that ongoing access is speculative
    input logic        atomic_access_i,      // Indicate that ongoing access is atomic
    input logic        execute_access_i,     // Indicate that ongoing access is intended for execution
+   input logic        misaligned_access_i,  // Indicate that ongoing access is part of a misaligned access
    output logic       pma_err_o,
    output logic       pma_bufferable_o,
    output logic       pma_cacheable_o
@@ -103,7 +104,11 @@ module cv32e40x_pma import cv32e40x_pkg::*;
     if (execute_access_i && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
     end
-    
+
+    // Misaligned access to I/O memory
+    if (misaligned_access_i && !pma_cfg.main) begin
+      pma_err_o   = 1'b1;
+    end
   end
 
   // Set cacheable and bufferable based on PMA region attributes
