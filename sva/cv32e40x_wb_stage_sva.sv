@@ -33,7 +33,8 @@ module cv32e40x_wb_stage_sva
   input logic           wb_ready_o,
   input logic           wb_valid,  
   input ctrl_fsm_t      ctrl_fsm_i,
-  input ex_wb_pipe_t    ex_wb_pipe_i
+  input ex_wb_pipe_t    ex_wb_pipe_i,
+  input mpu_status_e    lsu_mpu_status_i
 );
 
   // LSU instructions should not get killed once in WB (as they commit already in EX).
@@ -63,5 +64,12 @@ module cv32e40x_wb_stage_sva
                       (ctrl_fsm_i.kill_wb)
                       |-> (!ctrl_fsm_i.halt_wb))
       else `uvm_error("wb_stage", "Kill and halt should not both be asserted")
+
+  // MPU should never signal error on non-LSU instructions
+  a_nonlsu_error:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (!ex_wb_pipe_i.lsu_en)
+                      |-> (lsu_mpu_status_i == MPU_OK))
+      else `uvm_error("wb_stage", "MPU error on non LSU instruction")
 
 endmodule // cv32e40x_wb_stage_sva
