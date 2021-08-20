@@ -456,7 +456,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_ready_o                ( lsu_ready_ex                 ),
     .lsu_valid_o                ( lsu_valid_ex                 ),
     .lsu_ready_i                ( lsu_ready_0                  ),
-    .lsu_misaligned_i           ( lsu_misaligned_ex)           ,
+    .lsu_misaligned_i           ( lsu_misaligned_ex            ),
 
     // Pipeline handshakes
     .ex_ready_o                 ( ex_ready                     ),
@@ -653,8 +653,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_op_id_i                    ( csr_op_id              ),
                                                                  
     // LSU
-    .lsu_misaligned_i               ( lsu_misaligned_ex      ),
-    .lsu_mpu_status_i               ( lsu_mpu_status_wb      ),
+    .lsu_misaligned_ex_i            ( lsu_misaligned_ex      ),
+    .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
   

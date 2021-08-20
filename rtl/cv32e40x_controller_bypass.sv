@@ -60,7 +60,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        wb_ready_i,                 // WB stage is ready
 
   // From LSU
-  input  logic        lsu_misaligned_i,           // LSU detected a misaligned load/store instruction
+  input  logic        lsu_misaligned_ex_i,           // LSU detected a misaligned load/store instruction
 
   // Controller Bypass outputs
   output ctrl_byp_t     ctrl_byp_o
@@ -184,8 +184,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     if (
         (id_ex_pipe_i.lsu_en && rf_we_ex && |rf_rd_ex_hz) || // load-use hazard (EX)
         (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (id_ex_pipe_i.lsu_en && rf_we_ex && !lsu_misaligned_i && rf_wr_ex_hz) ||  // TODO: remove?
-        (!wb_ready_i         && rf_we_wb && !lsu_misaligned_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
+        (id_ex_pipe_i.lsu_en && rf_we_ex && !lsu_misaligned_ex_i && rf_wr_ex_hz) ||  // TODO: remove?
+        (!wb_ready_i         && rf_we_wb && !lsu_misaligned_ex_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
        )
     begin
       ctrl_byp_o.deassert_we = 1'b1;
@@ -221,7 +221,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   end
 
   // stall because of misaligned data access
-  assign ctrl_byp_o.misaligned_stall = lsu_misaligned_i;
+  assign ctrl_byp_o.misaligned_stall = lsu_misaligned_ex_i;
 
   // Forwarding control unit
   always_comb
@@ -260,7 +260,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
 
     // for misaligned memory accesses
-    if (lsu_misaligned_i)
+    if (lsu_misaligned_ex_i)
     begin
       ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_EX;
       ctrl_byp_o.operand_b_fw_mux_sel = SEL_REGFILE;

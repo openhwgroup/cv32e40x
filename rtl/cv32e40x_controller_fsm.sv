@@ -61,7 +61,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
 
   // From LSU (WB)
-  input  mpu_status_e lsu_mpu_status_i,           // MPU status (WB timing)
+  input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
@@ -182,7 +182,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             ex_wb_pipe_i.illegal_insn                 ||
                             ex_wb_pipe_i.ecall_insn                   ||
                             ex_wb_pipe_i.ebrk_insn                    ||
-                            (lsu_mpu_status_i != MPU_OK))             && ex_wb_pipe_i.instr_valid;
+                            (lsu_mpu_status_wb_i != MPU_OK))          && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
   assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK       ? EXC_CAUSE_INSTR_FAULT     :
@@ -190,8 +190,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.illegal_insn                     ? EXC_CAUSE_ILLEGAL_INSN    :
                               ex_wb_pipe_i.ecall_insn                       ? EXC_CAUSE_ECALL_MMODE     :
                               ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
-                              (lsu_mpu_status_i == MPU_WR_FAULT)            ? EXC_CAUSE_STORE_FAULT     :
-                              (lsu_mpu_status_i == MPU_RE_FAULT)            ? EXC_CAUSE_LOAD_FAULT      :
+                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
+                              (lsu_mpu_status_wb_i == MPU_RE_FAULT)         ? EXC_CAUSE_LOAD_FAULT      :
                               'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
 
   // wfi in wb
