@@ -223,7 +223,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
   // todo: better way of factoring in last part of a misaligned LSU instruction
   // todo:ok: May factor away single_step_allowed completely once PMA/LSU support is merged
-  assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q;
+  assign single_step_allowed = 1'b1;//!(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q; //FIXME
                              
   // Single step are mutually exclusive from any other reason to enter debug
   assign pending_single_step = (!debug_mode_q && debug_single_step_i && wb_valid_i) && !pending_debug;
@@ -231,7 +231,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
   // Also do not allow debug when EX is handling the second part of a misaligned load/store.
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid);
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;// && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid); // FIXME
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -260,8 +260,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // TODO:OK:low May allow interuption of Zce to idempotent memories
   // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid. 
   // todo: if lsu_misaligned remain in below expression, then it should be qualified with id_ex_pipe_i.instr_valid
-  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
-                              !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
+  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q/* &&
+                              !id_ex_pipe_i.lsu_misaligned*/)) && !debug_mode_q;
                                
   // Performance counter events
   assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;

@@ -220,9 +220,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
   end
 
-  // stall because of misaligned data access
-  assign ctrl_byp_o.misaligned_stall = lsu_misaligned_ex_i;
-
   // Forwarding control unit
   always_comb
   begin
@@ -259,12 +256,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
       end
     end
 
-    // for misaligned memory accesses
-    if (lsu_misaligned_ex_i)
-    begin
-      ctrl_byp_o.operand_a_fw_mux_sel = SEL_FW_EX;
-      ctrl_byp_o.operand_b_fw_mux_sel = SEL_REGFILE;
-    end
   end
 
 endmodule // cv32e40x_controller_bypass
