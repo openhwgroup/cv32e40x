@@ -951,7 +951,6 @@ typedef struct packed {
   logic [1:0]   lsu_type;
   logic         lsu_sign_ext;
   logic [1:0]   lsu_reg_offset;
-  logic         lsu_misaligned;
   logic [5:0]   lsu_atop;
   logic         lsu_prepost_useincr;
 
@@ -1024,7 +1023,6 @@ typedef struct packed {
   op_fw_mux_e  operand_a_fw_mux_sel;  // Operand A forward mux sel
   op_fw_mux_e  operand_b_fw_mux_sel;  // Operand B forward mux sel
   jalr_fw_mux_e jalr_fw_mux_sel;      // Jump target forward mux sel
-  logic        misaligned_stall;      // Stall due to misaligned load/store
   logic        jr_stall;              // Stall due to JR hazard (JR used result from EX or LSU result in WB)
   logic        load_stall;            // Stall due to load operation
   logic        csr_stall;

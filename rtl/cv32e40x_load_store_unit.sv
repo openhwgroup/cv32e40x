@@ -115,6 +115,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic [31:0]  rdata_q;
 
+  logic ready_0;      // internal first stage ready
+
   // Internally gated lsu_en
   logic         instr_valid;
   logic         lsu_en_gated;    // LSU enabled gated with all disqualifiers
@@ -209,6 +211,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       // If we currently signal misaligned from first stage (EX), WB stage will not see the last transfer for this update. 
       // Otherwise we are on the last. For non-misaligned we always mark as last.
       last_q           <= lsu_misaligned_0_o ? 1'b0 : 1'b1;
+    end
+  end
+
+  // Tracking misaligned state
+  always_ff @(posedge clk, negedge rst_n) begin
+    if(rst_n == 1'b0) begin
+      misaligned_st    <= 1'b0;
+    end else begin
+      if(ctrl_fsm_i.kill_ex) begin
+        misaligned_st <= 1'b0; // Reset misaligned_st when killed
+      end else if (ctrl_update) begin // Move from EX to WB, store misaligned state internally
+        misaligned_st    <= lsu_misaligned_0_o;
+      end
     end
   end
 
@@ -338,7 +353,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if (id_ex_pipe_i.lsu_misaligned || lsu_misaligned_0_o)
+        if (misaligned_st || lsu_misaligned_0_o)
           rdata_q <= resp_rdata;
         else
           rdata_q <= rdata_ext;
@@ -351,8 +366,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Output will be valid (valid_1_o) only for the last phase of misaligned.
   assign lsu_rdata_1_o = rdata_ext;
 
-  assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename && possibly kill?
-
   // misaligned_access is high for both transfers of a misaligned transfer
   assign misaligned_access = misaligned_st || lsu_misaligned_0_o;
 
@@ -364,7 +377,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_misaligned_0_o = 1'b0;
 
-    if (lsu_en_gated && !id_ex_pipe_i.lsu_misaligned)
+    if (lsu_en_gated && !misaligned_st)
     begin
       case (id_ex_pipe_i.lsu_type)
         2'b10: // word
@@ -382,7 +395,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // generate address from operands
-  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b) : id_ex_pipe_i.alu_operand_a;
+  // todo: operand_b is a 12 bit immediate. May be able to optimize this adder (look at SweRV refefence)
+  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (misaligned_st ? 'h4 : 'h0)) :
+                                                          id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   assign busy_o = (cnt_q != 2'b00) || trans_valid;
@@ -398,7 +413,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // For last phase of misaligned transfer the address needs to be word aligned (as LSB of be will be set)
-  assign trans.addr  = id_ex_pipe_i.lsu_misaligned ? {addr_int[31:2], 2'b00} : addr_int;
+  assign trans.addr  = misaligned_st ? {addr_int[31:2], 2'b00} : addr_int;
   assign trans.we    = id_ex_pipe_i.lsu_we;
   assign trans.be    = be;
   assign trans.wdata = wdata;
@@ -429,7 +444,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
-  assign ready_0_o = !lsu_en_gated    ? 1'b1 :
+  // todo:AB lsu_en_gated should maybe be replaced by valid_0_i
+  assign ready_0   = !lsu_en_gated    ? 1'b1 :
                      (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
                      (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
                                         (resp_valid                               && ready_0_i);
@@ -440,13 +456,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                           1'b1
                      ) && valid_0_i;
 
-// todo:AB lsu_en_gated should maybe be replaced by valid_0_i
+  // External ready only when not handling multi cycle misaligned
+  assign ready_0_o = ready_0 && !(lsu_misaligned_0_o);
+
+  
 
   // Export mpu status to WB stage/controller
   assign lsu_mpu_status_1_o = resp.mpu_status;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = ready_0_o && lsu_en_gated;
+  assign ctrl_update = ready_0 && lsu_en_gated;
 
 
   //////////////////////////////////////////////////////////////////////////////
