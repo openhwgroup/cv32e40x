@@ -262,10 +262,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
-  // TODO:low Should be able remove lsu_misaligned as well, but is not SEC clean since the code does not check for id_ex_pipe.instr_valid. 
-  // todo: if lsu_misaligned remain in below expression, then it should be qualified with id_ex_pipe_i.instr_valid
-  assign interrupt_allowed = ((!(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q &&
-                              !id_ex_pipe_i.lsu_misaligned)) && !debug_mode_q;
+  assign interrupt_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !debug_mode_q;
                                
   // Performance counter events
   assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;
