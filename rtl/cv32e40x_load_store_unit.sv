@@ -347,7 +347,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // output to register file
-  assign lsu_rdata_1_o = (resp_valid == 1'b1) ? rdata_ext : rdata_q;
+  // Always rdata_ext regardless of aligned/misaligned
+  // Output will be valid (valid_1_o) only for the last phase of misaligned.
+  assign lsu_rdata_1_o = rdata_ext;
 
   assign misaligned_st = id_ex_pipe_i.lsu_misaligned; // todo: rename && possibly kill?
 
