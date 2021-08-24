@@ -220,18 +220,22 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug //
 
   // Single step will need to finish insn in WB, including LSU
-  // Need to check for finished multicycle instructions, avoiding rvalid (would cause path to instr_o)
-  // todo: better way of factoring in last part of a misaligned LSU instruction
-  // todo:ok: May factor away single_step_allowed completely once PMA/LSU support is merged
-  assign single_step_allowed = !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid) && !obi_data_req_q;
+  // LSU will now set valid_1_o only for second part of misaligned instructions.
+  // We can always allow single step when checking for wb_valid_i in 'pending_single_step'
+  // - no other instructions should be in the pipeline.
+  // todo:ok: Remove 'single_step_allowed'
+  assign single_step_allowed = 1'b1;
                              
   // Single step are mutually exclusive from any other reason to enter debug
   assign pending_single_step = (!debug_mode_q && debug_single_step_i && wb_valid_i) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
-  // Also do not allow debug when EX is handling the second part of a misaligned load/store.
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !(id_ex_pipe_i.lsu_misaligned && id_ex_pipe_i.instr_valid);
+  // For misaligned LSU, if the first phase just arrived in EX, we may kill it and enter debug.
+  //  - If first phase stays in EX for more than one cycle, obi_data_req_q will be 1 and block debug.
+  //  - When first phase arrives in WB, we block debug. If first phase in WB finishes with rvalid
+  //    before second phase in EX gets grant, we block on obi_data_req_q
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
