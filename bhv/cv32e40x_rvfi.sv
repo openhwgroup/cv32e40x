@@ -59,7 +59,6 @@ module cv32e40x_rvfi
 
    input logic [31:0]                         lsu_addr_ex_i,
    input logic [31:0]                         lsu_wdata_ex_i,
-   input logic                                lsu_misaligned_ex_i,
 
    //// WB probes ////
    input logic [31:0]                         pc_wb_i,
@@ -517,8 +516,7 @@ module cv32e40x_rvfi
       //// EX Stage ////
       if (ex_valid_i && wb_ready_i) begin
         pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :  // todo: could IF stage's branch_addr_n be used here? (the current design is clean in that it only uses EX stage signals; the proposal covers more of the RTL)
-                               !lsu_misaligned_ex_i ? pc_wdata[STAGE_ID] :
-                               pc_wdata[STAGE_EX];
+                               pc_wdata[STAGE_ID];
         debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
         debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
         rs1_addr   [STAGE_EX] <= rs1_addr   [STAGE_ID];
@@ -528,9 +526,8 @@ module cv32e40x_rvfi
         mem_rmask  [STAGE_EX] <= mem_rmask  [STAGE_ID];
         mem_wmask  [STAGE_EX] <= mem_wmask  [STAGE_ID];
 
-        // Keep values when misaligned // todo: explain why
-        ex_mem_addr         <= (lsu_misaligned_ex_i) ? ex_mem_addr  : rvfi_mem_addr_d;
-        ex_mem_wdata        <= (lsu_misaligned_ex_i) ? ex_mem_wdata : rvfi_mem_wdata_d;
+        ex_mem_addr         <= rvfi_mem_addr_d;
+        ex_mem_wdata        <= rvfi_mem_wdata_d;
 
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;
