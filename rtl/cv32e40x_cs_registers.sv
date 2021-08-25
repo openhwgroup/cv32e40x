@@ -178,7 +178,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic illegal_csr_write; // Current CSR cannot be written
 
   // Local instr_valid for write portion (WB)
-  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb;// && !ctrl_fsm_i.halt_wb; todo:ok: Not SEC equivalent
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
   // CSR access. Read in EX, write in WB
   // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
