@@ -464,7 +464,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.lsu_type               <= 2'b0;
       id_ex_pipe_o.lsu_sign_ext           <= 1'b0;
       id_ex_pipe_o.lsu_reg_offset         <= 2'b0;
-      id_ex_pipe_o.lsu_misaligned         <= 1'b0;
       id_ex_pipe_o.lsu_atop               <= 5'b0;
       id_ex_pipe_o.lsu_prepost_useincr    <= 1'b1;
 
@@ -486,99 +485,80 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     end else begin
       // normal pipeline unstall case
-
       if (id_valid && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
-
-        if (ctrl_byp_i.misaligned_stall) begin
-          // misaligned data access case
-          // if we are using post increments, then we have to use the
-          // original value of the register for the second memory access
-          // => keep it stalled
-          if (id_ex_pipe_o.lsu_prepost_useincr)
-          begin
-            id_ex_pipe_o.alu_operand_a        <= operand_a_fw;
-          end
-
-          id_ex_pipe_o.alu_operand_b          <= 32'h4;
-          id_ex_pipe_o.lsu_prepost_useincr    <= 1'b1;
-          id_ex_pipe_o.lsu_misaligned         <= 1'b1;
-        end else begin // !ctrl_byp_i.misaligned_stall
-          id_ex_pipe_o.alu_en                 <= alu_en;
-          if (alu_en)
-          begin
-            id_ex_pipe_o.operand_c            <= operand_c;
-          end
-
-          if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
-            id_ex_pipe_o.alu_operator         <= alu_operator;
-            id_ex_pipe_o.alu_operand_a        <= operand_a;
-            id_ex_pipe_o.alu_operand_b        <= operand_b;
-          end
-
-          id_ex_pipe_o.div_en                 <= div_en;
-          if (div_en) begin
-            id_ex_pipe_o.div_operator         <= div_operator; // todo: consider letting div/rem use mul_operands
-          end
-          
-          id_ex_pipe_o.mul_en                 <= mul_en;
-          if (mul_en) begin
-            id_ex_pipe_o.mul_operator         <= mul_operator;
-            id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
-            id_ex_pipe_o.mul_operand_a        <= operand_a;
-            id_ex_pipe_o.mul_operand_b        <= operand_b;
-          end
-
-          id_ex_pipe_o.rf_we                  <= rf_we;
-          if (rf_we) begin
-            id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
-          end
-
-          id_ex_pipe_o.csr_en                 <= csr_en;
-          id_ex_pipe_o.csr_op                 <= csr_op;
-
-          id_ex_pipe_o.lsu_en                 <= lsu_en;
-          if (lsu_en) begin
-            id_ex_pipe_o.lsu_we               <= lsu_we;
-            id_ex_pipe_o.lsu_type             <= lsu_type;
-            id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
-            id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
-            id_ex_pipe_o.lsu_atop             <= lsu_atop;
-            id_ex_pipe_o.lsu_prepost_useincr  <= lsu_prepost_useincr;
-          end
-
-          // Only applicable when misalignes_stall_i == 1'b1 (handled above).
-          // For all other cases it will be 1'b0
-          id_ex_pipe_o.lsu_misaligned         <= 1'b0;
-
-          id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
-
-          // Propagate signals needed for exception handling in WB
-          // TODO:OK:low Clock gating of pc if no existing exceptions
-          //          and LSU it not in use
-          id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
-
-          if (if_id_pipe_i.is_compressed) begin
-            // Overwrite instruction word in case of compressed instruction
-            id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
-            id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
-            id_ex_pipe_o.instr.mpu_status     <= if_id_pipe_i.instr.mpu_status;
-          end
-          else begin
-            id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
-          end
-
-          // Exceptions and special instructions
-          id_ex_pipe_o.illegal_insn           <= illegal_insn;
-          id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
-          id_ex_pipe_o.wfi_insn               <= wfi_insn;
-          id_ex_pipe_o.ecall_insn             <= ecall_insn;
-          id_ex_pipe_o.fencei_insn            <= fencei_insn;
-          id_ex_pipe_o.mret_insn              <= mret_insn;
-          id_ex_pipe_o.dret_insn              <= dret_insn;
-
-          id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
+        
+        id_ex_pipe_o.alu_en                 <= alu_en;
+        if (alu_en)
+        begin
+          id_ex_pipe_o.operand_c            <= operand_c;
         end
+
+        // todo: alu_en is still set for LSU, could change to not setting alu_en and include lsu_en in if() below
+        if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
+          id_ex_pipe_o.alu_operator         <= alu_operator;
+          id_ex_pipe_o.alu_operand_a        <= operand_a;
+          id_ex_pipe_o.alu_operand_b        <= operand_b;
+        end
+
+        id_ex_pipe_o.div_en                 <= div_en;
+        if (div_en) begin
+          id_ex_pipe_o.div_operator         <= div_operator; // todo: consider letting div/rem use mul_operands
+        end
+        
+        id_ex_pipe_o.mul_en                 <= mul_en;
+        if (mul_en) begin
+          id_ex_pipe_o.mul_operator         <= mul_operator;
+          id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
+          id_ex_pipe_o.mul_operand_a        <= operand_a;
+          id_ex_pipe_o.mul_operand_b        <= operand_b;
+        end
+
+        id_ex_pipe_o.rf_we                  <= rf_we;
+        if (rf_we) begin
+          id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
+        end
+
+        id_ex_pipe_o.csr_en                 <= csr_en;
+        id_ex_pipe_o.csr_op                 <= csr_op;
+
+        id_ex_pipe_o.lsu_en                 <= lsu_en;
+        if (lsu_en) begin
+          id_ex_pipe_o.lsu_we               <= lsu_we;
+          id_ex_pipe_o.lsu_type             <= lsu_type;
+          id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
+          id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
+          id_ex_pipe_o.lsu_atop             <= lsu_atop;
+          id_ex_pipe_o.lsu_prepost_useincr  <= lsu_prepost_useincr;
+        end
+
+        id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
+
+        // Propagate signals needed for exception handling in WB
+        // TODO:OK:low Clock gating of pc if no existing exceptions
+        //          and LSU it not in use
+        id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
+
+        if (if_id_pipe_i.is_compressed) begin
+          // Overwrite instruction word in case of compressed instruction
+          id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
+          id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
+          id_ex_pipe_o.instr.mpu_status     <= if_id_pipe_i.instr.mpu_status;
+        end
+        else begin
+          id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
+        end
+
+        // Exceptions and special instructions
+        id_ex_pipe_o.illegal_insn           <= illegal_insn;
+        id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
+        id_ex_pipe_o.wfi_insn               <= wfi_insn;
+        id_ex_pipe_o.ecall_insn             <= ecall_insn;
+        id_ex_pipe_o.fencei_insn            <= fencei_insn;
+        id_ex_pipe_o.mret_insn              <= mret_insn;
+        id_ex_pipe_o.dret_insn              <= dret_insn;
+
+        id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
       end
@@ -589,23 +569,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign csr_op_o = csr_op;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
-  assign multi_cycle_id_stall = ctrl_byp_i.misaligned_stall;
+  assign multi_cycle_id_stall = 1'b0; //todo:ok Zce push/pop will use this
 
   // Stage ready/valid
   //
-  // Most stall conditions are factored into halt_id (and the will force both ready and valid to 0).
+  // Most stall conditions are factored into halt_id (and will force both ready and valid to 0).
   //
   // Multi-cycle instruction related stalls are different; in that case ready will be 0 (as ID already
-  // contains the instruction following the misaligned load/store, but the id_ex_pipe_o registers
-  // are updated for the second phase of the misaligned load/store first, so the following instruction
-  // is not handled yet), whereas valid will be 1 to update the id_ex_pipe_o registers with the
-  // second phase of the misaligned load/store. Note that the misaligned load/store instruction
-  // itself is only in ID for one cycle.
+  // contains the instruction following the multicycle instruction.
+  // todo: update when Zce is included. Currently, no multi cycle ID stalls are possible.
 
   assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
-  assign id_valid = instr_valid || multi_cycle_id_stall;
 
-  // todo:AB would want to use the following expression, but this is not SEC clean; need to investigate
-  // assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
+  // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
+  assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
 endmodule // cv32e40x_id_stage
