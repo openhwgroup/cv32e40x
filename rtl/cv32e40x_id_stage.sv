@@ -485,7 +485,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     end else begin
       // normal pipeline unstall case
-
       if (id_valid && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
@@ -495,6 +494,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.operand_c            <= operand_c;
         end
 
+        // todo: alu_en is still set for LSU, could change to not setting alu_en and include lsu_en in if() below
         if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
           id_ex_pipe_o.alu_operator         <= alu_operator;
           id_ex_pipe_o.alu_operand_a        <= operand_a;
@@ -569,26 +569,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign csr_op_o = csr_op;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
-  assign multi_cycle_id_stall = 1'b0;//todo:ok Zce push/pop will use this
+  assign multi_cycle_id_stall = 1'b0; //todo:ok Zce push/pop will use this
 
   // Stage ready/valid
   //
-  // Most stall conditions are factored into halt_id (and the will force both ready and valid to 0).
+  // Most stall conditions are factored into halt_id (and will force both ready and valid to 0).
   //
   // Multi-cycle instruction related stalls are different; in that case ready will be 0 (as ID already
-  // contains the instruction following the misaligned load/store, but the id_ex_pipe_o registers
-  // are updated for the second phase of the misaligned load/store first, so the following instruction
-  // is not handled yet), whereas valid will be 1 to update the id_ex_pipe_o registers with the
-  // second phase of the misaligned load/store. Note that the misaligned load/store instruction
-  // itself is only in ID for one cycle.
+  // contains the instruction following the multicycle instruction.
+  // todo: update when Zce is included. Currently, no multi cycle ID stalls are possible.
 
   assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
-  //assign id_valid = instr_valid || multi_cycle_id_stall;
 
-  // todo:AB would want to use the following expression, but this is not SEC clean; need to investigate
-  // misaligned LSU in EX causes multi_cycle_id_stall. id_valid is required to assert to update
-  // id_ex_pipe for the second half. At the same time, we may be halted due to load_stall or jr_stall.
-  // In the case of halt, it would deassert id_valid and not cause updates for the second half.
+  // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
   assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
 endmodule // cv32e40x_id_stage

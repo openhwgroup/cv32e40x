@@ -223,7 +223,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will now set valid_1_o only for second part of misaligned instructions.
   // We can always allow single step when checking for wb_valid_i in 'pending_single_step'
   // - no other instructions should be in the pipeline.
-  // todo:ok: Remove 'single_step_allowed'
   assign single_step_allowed = 1'b1;
                              
   // Single step are mutually exclusive from any other reason to enter debug
