@@ -60,14 +60,13 @@ Any rvfi operation (retired or trapped instruction) will set ``rvfi_valid`` high
 When ``rvfi_valid`` is low, all other rvfi outputs can be driven to arbitrary values.
 
 
-**Trap Signals**
+**Trap Signal**
 
-The two trap signals indicate that a synchronous trap has ocurred and side-effects can be expected. 
+The trap signal indicates that a synchronous trap has ocurred and side-effects can be expected.
 
 .. code-block:: verilog
 
    output [NRET - 1 : 0] rvfi_trap
-   output [NRET - 1 : 0] rvfi_dbg_trap
 
 
 The ``rvfi_trap`` signal is high if the instruction causes an exception or debug entry. CSR side effects and a jump to a trap/debug handler in the next cycle can be expected.
@@ -95,11 +94,11 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 
 **Interrupts**
 
-The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering a trap (both synchronous and asynchronous).
+The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt. The signal is not set for debug traps.
 
 **Program Counter**
 
-The ``pc_wdata`` signal shows the predicted next program counter. This prediction ignores traps that may have been encountered by the current instruction.
+The ``pc_wdata`` signal shows the predicted next program counter. This prediction ignores asynchronous traps (asynchronous debug requests and interrupts) that may have happened at the same time as the instruction.
 
 **CSR Signals**
 
@@ -139,7 +138,7 @@ Instead of:
 
 **Halt Signal**
 
-The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISCV compliant cores.
+The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISC-V compliant cores.
 
 
 Trace output file
