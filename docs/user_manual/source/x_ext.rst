@@ -399,7 +399,7 @@ they are initiated by |corev| itself or by a coprocessor via the memory request 
 
 * PMA checks
 * PMA attribution
-* Misaligned load/store handling (i.e. halfword or word accesses that cross a word boundary are split into two bus transactions)
+* Misaligned load/store handling (i.e. halfword or word accesses that cross a word boundary are split into two bus transactions internally to |corev|)
 * Write buffer usage
 
 As for non-offloaded load or store instructions it is assumed that execute permission is never required for offloaded load or store instructions. |corev| itself
@@ -409,8 +409,9 @@ by waiting for the commit interface to signal that the offloaded instruction is 
 A memory request transaction is defined as the combination of all ``x_mem_req_i`` signals during which ``x_mem_valid_i`` is 1 and the ``id`` remains unchanged. I.e. a new
 transaction can be started by just changing the ``id`` signal and keeping the valid signal asserted.
 
-The signals in ``x_mem_req_i`` are valid when ``x_mem_valid_i`` is 1. These signals remain stable during a memory request transaction. ``wdata`` is only required to remain
-stable during memory request transactions in which ``we`` is 1.
+The signals in ``x_mem_req_i`` are valid when ``x_mem_valid_i`` is 1.
+These signals remain stable during a memory request transaction until the actual handshake is performed with both ``x_mem_valid_i`` and ``x_mem_ready_o`` being 1.
+``wdata`` is only required to remain stable during memory request transactions in which ``we`` is 1.
 
 :numref:`Memory request type` describes the ``x_mem_resp_t`` type.
 
@@ -430,6 +431,11 @@ no corresponding transaction will be performed over the memory result (``x_mem_r
 in case of a PMP fault. A synchronous exception will lead to a trap in |corev| unless the corresponding instruction is killed.
 
 The signals in ``x_mem_resp_o`` are valid when ``x_mem_valid_i`` and  ``x_mem_ready_o`` are both 1. There are no stability requirements.
+
+In case the memory request transaction results in a misaligned load/store operation, |corev| will handle the splitting into two word-aligned bus accesses internally.
+The memory response and hence the request/response handshake may get delayed.
+If the first access results in a synchronous exception, the handshake can be performed immediately.
+Otherwise, the handshake is performed once its known whether the second access results in a synchronous exception or not.
 
 The memory (request/response) interface is optional. If it is included, then the memory result interface shall also be included.
 
@@ -562,6 +568,7 @@ The only rule related to valid and ready signals is that:
 Specifically note the following:
 
 * The valid signal is allowed to be retracted (e.g. in case that the related instruction is killed in the core's pipeline before the corresponding ready is signaled).
+  This does not hold for ``x_mem_valid_i``: once asserted it must remain asserted until the handshake with ``x_mem_ready_o`` has been performed.
 * A new transaction can be started by changing the ``id`` signal and keeping the valid signal asserted (thereby possibly terminating a previous transaction before it completed).
 * The ready signal is allowed to be 1 when the corresponding valid signal is not asserted.
 
