@@ -20,12 +20,15 @@
 
 module cv32e40x_load_store_unit_sva
   import uvm_pkg::*;
+  import cv32e40x_pkg::*;
   #(parameter DEPTH = 0)
   (input logic       clk,
    input logic       rst_n,
    input logic [1:0] cnt_q,
    input logic       count_up,
    input logic       count_down,
+   input ctrl_fsm_t  ctrl_fsm_i,
+   input logic       trans_valid,
    if_c_obi.monitor  m_c_obi_data_if);
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -65,6 +68,13 @@ module cv32e40x_load_store_unit_sva
   a_address_phase_signals_defined :
     assert property(p_address_phase_signals_defined)
       else `uvm_error("load_store_unit", "Assertion a_address_phase_signals_defined failed")
+
+  // No transaction allowd if EX is halted or killed
+  a_lsu_halt_kill:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex)
+                    |-> !trans_valid)
+      else `uvm_error("load_store_unit", "Transaction happened while WB is halted or killed")
 
 endmodule // cv32e40x_load_store_unit_sva
 

@@ -39,11 +39,11 @@ module cv32e40x_ex_stage_sva
   input ex_wb_pipe_t    ex_wb_pipe_o,
   input logic           lsu_misaligned_i
 );
-/* todo:medium uncomment and fix
+
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_i.halt_ex)
+                      (ctrl_fsm_i.halt_ex && !ctrl_fsm_i.kill_ex)
                       |-> (!ex_ready_o && !ex_valid_o))
       else `uvm_error("ex_stage", "Halt should imply not ready and not valid")
 
@@ -54,13 +54,7 @@ module cv32e40x_ex_stage_sva
                       |-> (ex_ready_o && !ex_valid_o))
       else `uvm_error("ex_stage", "Kill should imply ready and not valid")
 
-  // Never kill and halt at the same time (as they have conflicting requirements on ready)
-  a_kill_halt :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_i.kill_ex)
-                      |-> (!ctrl_fsm_i.halt_ex))
-      else `uvm_error("ex_stage", "Kill and halt should not both be asserted")
-*/
+
 
 // First access of misaligned LSU should have rf_we deasserted
 a_misaligned_rf_we:

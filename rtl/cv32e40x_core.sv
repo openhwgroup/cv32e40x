@@ -174,7 +174,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_ready_1;
 
   // Stage ready signals
-  logic        if_ready;
   logic        id_ready;
   logic        ex_ready;
   logic        wb_ready;
@@ -346,7 +345,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Pipeline handshakes
     .if_valid_o          ( if_valid                  ),
-    .if_ready_o          ( if_ready                  ),
     .id_ready_i          ( id_ready                  )
   );
 
@@ -643,7 +641,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
 
     .if_valid_i                     ( if_valid               ),
-    .if_ready_i                     ( if_ready               ),
 
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),

@@ -72,11 +72,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     // Pipeline handshakes
     output logic        if_valid_o,
-    output logic        if_ready_o,
     input  logic        id_ready_i
 );
 
-  logic              if_valid, if_ready;
+  logic              if_ready;
 
   // prefetch buffer related signals
   logic              prefetch_busy;
@@ -108,6 +107,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   obi_inst_req_t     bus_trans;
   obi_inst_req_t     core_trans;
 
+  // Local instr_valid
+  logic instr_valid;
 
   // exception PC selection mux
   always_comb
@@ -227,16 +228,18 @@ instruction_obi_i
   .m_c_obi_instr_if      ( m_c_obi_instr_if  )
 );
 
-  // if_stage ready if id_stage is ready
-  assign if_ready = id_ready_i && !ctrl_fsm_i.halt_if;
+  // Local instr_valid when we have valid output from prefetcher
+  // and IF is not halted or killed
+  assign instr_valid = prefetch_valid && !ctrl_fsm_i.kill_if && !ctrl_fsm_i.halt_if;
 
-  // if stage valid when prefetcher is valid and we are ready
-  assign if_valid = if_ready && prefetch_valid;
+  // if_stage ready when killed, otherwise when not halted.
+  assign if_ready = ctrl_fsm_i.kill_if || (id_ready_i && !ctrl_fsm_i.halt_if);
+
+  // if stage valid when local instr_valid is 1
+  assign if_valid_o = instr_valid;
 
   assign if_busy_o = prefetch_busy;
 
-  assign if_valid_o = if_valid;
-  assign if_ready_o = if_ready;
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
@@ -254,7 +257,7 @@ instruction_obi_i
     begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
-      if (if_valid) 
+      if (if_valid_o && id_ready_i)
       begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr            <= instr_decompressed;
