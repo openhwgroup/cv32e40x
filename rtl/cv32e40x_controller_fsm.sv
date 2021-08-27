@@ -81,9 +81,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // All controller FSM outputs
   output ctrl_fsm_t   ctrl_fsm_o,
 
-  // From IF stage
+  // Stage valid/ready signals
   input  logic        if_valid_i,       // IF stage has valid (non-bubble) data for next stage
-  input  logic        if_ready_i,       // IF stage is ready for new data
   input  logic        id_ready_i,       // ID stage is ready for new data
   input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
   input  logic        wb_ready_i,       // WB stage is ready for new data,
@@ -618,12 +617,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     // Detect first insn issue in single step after dret
     // Used to block further issuing
-    if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && if_ready_i)) begin
+    if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && id_ready_i)) begin
       single_step_halt_if_n = 1'b1;
     end
 
     // Clear jump/branch flag when new insn is emitted from IF
-    if(branch_taken_q && if_valid_i && if_ready_i) begin
+    if(branch_taken_q && if_valid_i && id_ready_i) begin
       branch_taken_n = 1'b0;
     end
   end

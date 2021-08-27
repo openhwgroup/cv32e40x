@@ -28,11 +28,18 @@ module cv32e40x_cs_registers_sva
   (
    input logic        clk,
    input logic        rst_n,
-
+   input ctrl_fsm_t   ctrl_fsm_i,
    input id_ex_pipe_t id_ex_pipe_i,
-   input logic [31:0] csr_rdata_o
+   input logic [31:0] csr_rdata_o,
+   input logic        csr_we_int
    );
 
 
+   // CSR file shall not be written when WB is halted or killed
+  a_csr_halt_kill:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_i.kill_wb || ctrl_fsm_i.halt_wb)
+                  |-> !csr_we_int)
+    else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
 endmodule // cv32e40x_cs_registers_sva
 

@@ -34,7 +34,8 @@ module cv32e40x_wb_stage_sva
   input logic           wb_valid,  
   input ctrl_fsm_t      ctrl_fsm_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
-  input mpu_status_e    lsu_mpu_status_i
+  input mpu_status_e    lsu_mpu_status_i,
+  input logic           rf_we_wb_o
 );
 
   // LSU instructions should not get killed once in WB (as they commit already in EX).
@@ -47,7 +48,7 @@ module cv32e40x_wb_stage_sva
   // Halt implies not ready and not valid
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_i.halt_wb)
+                      (ctrl_fsm_i.halt_wb && !ctrl_fsm_i.kill_wb)
                       |-> (!wb_ready_o && !wb_valid))
       else `uvm_error("wb_stage", "Halt should imply not ready and not valid")
 
@@ -58,12 +59,6 @@ module cv32e40x_wb_stage_sva
                       |-> (wb_ready_o && !wb_valid))
       else `uvm_error("wb_stage", "Kill should imply ready and not valid")
 
-  // Never kill and halt at the same time (as they have conflicting requirements on ready)
-  a_kill_halt :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_i.kill_wb)
-                      |-> (!ctrl_fsm_i.halt_wb))
-      else `uvm_error("wb_stage", "Kill and halt should not both be asserted")
 
   // MPU should never signal error on non-LSU instructions
   a_nonlsu_error:
@@ -72,4 +67,10 @@ module cv32e40x_wb_stage_sva
                       |-> (lsu_mpu_status_i == MPU_OK))
       else `uvm_error("wb_stage", "MPU error on non LSU instruction")
 
+  // Register file shall not be written when WB is halted or killed
+  a_rf_halt_kill:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_i.kill_wb || ctrl_fsm_i.halt_wb)
+                    |-> !rf_we_wb_o)
+      else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
 endmodule // cv32e40x_wb_stage_sva

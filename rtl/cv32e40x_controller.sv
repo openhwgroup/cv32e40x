@@ -38,7 +38,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        fetch_enable_i,             // Start the decoding
 
   input  logic        if_valid_i,
-  input  logic        if_ready_i,
   
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
@@ -110,7 +109,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_byp_i                  ( ctrl_byp_o               ),
 
     .if_valid_i                  ( if_valid_i               ),
-    .if_ready_i                  ( if_ready_i               ),
   
     // From ID stage
     .id_ready_i                  ( id_ready_i               ),
