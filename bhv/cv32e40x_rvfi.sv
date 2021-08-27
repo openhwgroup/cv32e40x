@@ -57,8 +57,9 @@ module cv32e40x_rvfi
 
    input logic [31:0]                         branch_target_ex_i,
 
-   input logic [31:0]                         lsu_addr_ex_i,
-   input logic [31:0]                         lsu_wdata_ex_i,
+   input logic [31:0]                         data_addr_ex_i,
+   input logic [31:0]                         data_wdata_ex_i,
+   input logic                                lsu_misaligned_q_ex_i,
 
    //// WB probes ////
    input logic [31:0]                         pc_wb_i,
@@ -371,7 +372,7 @@ module cv32e40x_rvfi
   logic [31:0][31:0] csr_mhpmcounter_we_l;
   logic [31:0][31:0] csr_mhpmcounter_we_h;
 
-  logic [63:0] lsu_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
+  logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         intr_d;
 
@@ -526,8 +527,12 @@ module cv32e40x_rvfi
         mem_rmask  [STAGE_EX] <= mem_rmask  [STAGE_ID];
         mem_wmask  [STAGE_EX] <= mem_wmask  [STAGE_ID];
 
-        ex_mem_addr         <= rvfi_mem_addr_d;
-        ex_mem_wdata        <= rvfi_mem_wdata_d;
+        if (!lsu_misaligned_q_ex_i) begin
+          // The second part of the misaligned acess is suppressed to keep
+          // the start address and data for the whole misaligned transfer
+          ex_mem_addr         <= rvfi_mem_addr_d;
+          ex_mem_wdata        <= rvfi_mem_wdata_d;
+        end
 
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;
@@ -598,11 +603,11 @@ module cv32e40x_rvfi
   end
 
   // Memory adddress
-  assign rvfi_mem_addr_d = lsu_addr_ex_i;
+  assign rvfi_mem_addr_d = data_addr_ex_i;
 
   // Align Memory write data
-  assign rvfi_mem_wdata_d  = lsu_wdata_ror[31:0];
-  assign lsu_wdata_ror     = {lsu_wdata_ex_i, lsu_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
+  assign rvfi_mem_wdata_d  = data_wdata_ror[31:0];
+  assign data_wdata_ror    = {data_wdata_ex_i, data_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
   assign rvfi_rd_addr_d  = (rd_we_wb_i)           ? rd_addr_wb_i  : '0;
