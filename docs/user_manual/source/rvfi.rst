@@ -94,11 +94,32 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 
 **Interrupts**
 
-The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt. The signal is not set for debug traps.
+The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
+The signal is not set for debug traps unless a debug entry happens in the fist instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
+
+.. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+  :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+
+  =============================================== =========  =========  =============  ==========  =================
+  Scenario                                        rvfi_trap  rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
+  =============================================== =========  =========  =============  ==========  =================
+  Synchronous trap                                X          1          0x0            0           X
+  Interrupt (includes NMAs from bus errors)       X          1          0x0            1           X
+  Debug entry due to EBREAK (from non-debug mode) X          0          0x1            X           0x1
+  Debug entry due to EBREAK (from debug mode)     X          0          0x1            X           X
+  Debug entry due to trigger match                X          0          0x2            X           0x2
+  Debug entry due to external debug request       X          X          0x3 or 0x5     X           0x3 or 0x5
+  Debug handler entry due to single step          X          X          0x4            X           0x4
+  =============================================== =========  =========  =============  ==========  =================
+
 
 **Program Counter**
 
-The ``pc_wdata`` signal shows the predicted next program counter. This prediction ignores asynchronous traps (asynchronous debug requests and interrupts) that may have happened at the same time as the instruction.
+The ``pc_wdata`` signal shows the predicted next program counter. This prediction ignores asynchronous traps (asynchronous debug requests and interrupts) and single step debug requests that may have happened at the same time as the instruction.
+
+**Memory Access**
+
+For cores that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
 
 **CSR Signals**
 
