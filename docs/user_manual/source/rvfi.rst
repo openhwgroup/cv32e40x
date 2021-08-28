@@ -1,11 +1,13 @@
 .. _rvfi:
 
+.. _rvfi_spec: https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md
+
 RISC-V Formal Interface
 =======================
 
 .. note::
 
-   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md for
+   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See rvfi_spec_ (https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md) for
    details on RVFI.
 
 The module ``cv32e40x_rvfi`` can be used to create a log of the executed instructions.
@@ -16,6 +18,149 @@ RVFI serves the following purposes:
 * It can be used for formal verification.
 * It can be used to produce an instruction trace during simulation.
 * It can be used as a monitor to ease interfacing with an external scoreboard that itself can be interfaced to an Instruction Set Simulator (ISS) for verification reasons.
+
+
+New Additions
+-------------
+
+**Debug Signals**
+
+.. code-block:: verilog
+
+   output [NRET * 3 - 1 : 0] rvfi_dbg
+   output [NRET     - 1 : 0] rvfi_dbg_mode
+
+For the first instruction after entering debug, the ``rvfi_dbg`` signal contains the debug cause (see table below). The signal is otherwise 0.
+The ``rvfi_dbg_mode signal`` is high if the instruction was executed in debug mode and low otherwise.
+
+.. table:: Debug Causes
+  :name: Debug Causes
+
+  =================  =====
+  Cause              Value
+  =================  =====
+  None                0x0
+  Ebreak              0x1
+  Trigger Match       0x2
+  External Request    0x3
+  Single Step         0x4
+  =================  =====
+
+
+
+Compatibility
+-------------
+
+This chapter specifies interpretations and compatibilities to the rvfi_spec_.
+
+**Interface Qualification**
+
+All rvfi output signals are qualified with the ``rvfi_valid`` signal.
+Any rvfi operation (retired or trapped instruction) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
+When ``rvfi_valid`` is low, all other rvfi outputs can be driven to arbitrary values.
+
+
+**Trap Signal**
+
+The trap signal indicates that a synchronous trap has ocurred and side-effects can be expected.
+
+.. code-block:: verilog
+
+   output [NRET - 1 : 0] rvfi_trap
+
+
+The ``rvfi_trap`` signal is high if the instruction causes an exception or debug entry. CSR side effects and a jump to a trap/debug handler in the next cycle can be expected.
+The different trap scenarios, their expected side-effects and trap signalling are listed in the table below:
+
+.. table:: Table of synchronous trap types
+  :name: Table of synchronous trap types
+
+  =============================== =========  =========  ================  ============================================================================================================
+  Trap type                       Trap Type  rvfi_trap  CSRs updated      Description
+  =============================== =========  =========  ================  ============================================================================================================
+  Instruction Access Fault        Exception     1       mcause, mepc      PMA detects instruction execution from non-executable memory
+  Illegal Instruction             Exception     1       mcause, mepc      Illegal instruction decode
+  Breakpoint                      Exception     1       mcause, mepc      EBREAK executed with dcsr.ebreakm == 0
+  Load Access Fault               Exception     1       mcause, mepc      Access fault during load
+  Store Access Fault              Exception     1       mcause, mepc      Access fault during store
+  ECALL                           Exception     1       mcause, mepc      ECALL executed
+  Instruction Bus Fault           Exception     1       mcause, mepc      OBI bus error on instruction fetch
+  Breakpoint to debug             Debug         1       dpc, dcsr         EBREAK from non-debug mode executed with  dcsr.ebreakm == 1
+  Breakpoint in debug             Debug         1       No CSRs updated   EBREAK in debug mode jumps to debug handler
+  Debug Trigger Match (timing==0) Debug         1       dpc, dcsr         Debug trigger address match, instruction is not executed. Timing parameter is forced to 0 for cv32e4* cores.
+  Debug Trigger Match (timing==1) Debug         1       dpc, dcsr         Debug trigger address match, instruction is executed. Timing==1 is not used for  cv32e4* cores.
+  =============================== =========  =========  ================  ============================================================================================================
+
+
+**Interrupts**
+
+The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
+The signal is not set for debug traps unless a debug entry happens in the fist instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
+
+.. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+  :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+
+  =============================================== =========  =========  =============  ==========  =================
+  Scenario                                        rvfi_trap  rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
+  =============================================== =========  =========  =============  ==========  =================
+  Synchronous trap                                X          1          0x0            0           X
+  Interrupt (includes NMAs from bus errors)       X          1          0x0            1           X
+  Debug entry due to EBREAK (from non-debug mode) X          0          0x1            X           0x1
+  Debug entry due to EBREAK (from debug mode)     X          0          0x1            X           X
+  Debug entry due to trigger match                X          0          0x2            X           0x2
+  Debug entry due to external debug request       X          X          0x3 or 0x5     X           0x3 or 0x5
+  Debug handler entry due to single step          X          X          0x4            X           0x4
+  =============================================== =========  =========  =============  ==========  =================
+
+
+**Program Counter**
+
+The ``pc_wdata`` signal shows the predicted next program counter. This prediction ignores asynchronous traps (asynchronous debug requests and interrupts) and single step debug requests that may have happened at the same time as the instruction.
+
+**Memory Access**
+
+For cores that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
+
+**CSR Signals**
+
+To reduce the number of signals in the RVFI interface, a vectorized CSR interface has been introduced for register ranges.
+
+.. code-block:: verilog
+
+   output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_rmask
+   output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_wmask
+   output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_rdata
+   output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_wdata
+
+
+Example:
+
+.. code-block:: verilog
+
+   output [31:0] [31:0] rvfi_csr_name_rmask
+   output [31:0] [31:0] rvfi_csr_name_wmask
+   output [31:0] [31:0] rvfi_csr_name_rdata
+   output [31:0] [31:0] rvfi_csr_name_wdata
+
+Instead of:
+
+.. code-block:: verilog
+
+   output [31:0] rvfi_csr_name0_rmask
+   output [31:0] rvfi_csr_name0_wmask
+   output [31:0] rvfi_csr_name0_rdata
+   output [31:0] rvfi_csr_name0_wdata
+   . . .
+   output [31:0] rvfi_csr_name31_rmask
+   output [31:0] rvfi_csr_name31_wmask
+   output [31:0] rvfi_csr_name31_rdata
+   output [31:0] rvfi_csr_name31_wdata
+
+
+**Halt Signal**
+
+The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISC-V compliant cores.
+
 
 Trace output file
 -----------------
@@ -46,10 +191,10 @@ The trace output is in tab-separated columns.
 
 .. code-block:: text
 
-PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata
-00001f9c  14c70793        0e   000096c8        0c   00000000       0f  00009814    00009814         0         0  00000000  00000000
-00001fa0  14f72423        0e   000096c8        0f   00009814       00  00000000    00009810         0         f  00000000  00009814
-00001fa4  0000bf6d        1f   00000000        1b   00000000       00  00000000    00001fa6         0         0  00000000  00000000
-00001f5e  000043d8        0f   00009814        04   00000000       0e  00000000    00009818         f         0  00000000  00000000
-00001f60  0000487d        00   00000000        1f   00000000       10  0000001f    0000001f         0         0  00000000  00000000
+   PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata
+   00001f9c  14c70793        0e   000096c8        0c   00000000       0f  00009814    00009814         0         0  00000000  00000000
+   00001fa0  14f72423        0e   000096c8        0f   00009814       00  00000000    00009810         0         f  00000000  00009814
+   00001fa4  0000bf6d        1f   00000000        1b   00000000       00  00000000    00001fa6         0         0  00000000  00000000
+   00001f5e  000043d8        0f   00009814        04   00000000       0e  00000000    00009818         f         0  00000000  00000000
+   00001f60  0000487d        00   00000000        1f   00000000       10  0000001f    0000001f         0         0  00000000  00000000
 
