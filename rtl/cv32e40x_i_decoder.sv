@@ -123,7 +123,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.lsu_we       = 1'b1;
         decoder_ctrl_o.rf_re[0]     = 1'b1;
         decoder_ctrl_o.rf_re[1]     = 1'b1;
-        decoder_ctrl_o.alu_operator = ALU_ADD;
+        decoder_ctrl_o.alu_en       = 1'b0;
         // pass write data through ALU operand c
         decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD;
 
@@ -144,7 +144,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_we             = 1'b1;
         decoder_ctrl_o.rf_re[0]          = 1'b1;
         // offset from immediate
-        decoder_ctrl_o.alu_operator      = ALU_ADD;
+        decoder_ctrl_o.alu_en            = 1'b0;
         decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
         decoder_ctrl_o.imm_b_mux_sel     = IMMB_I;
         

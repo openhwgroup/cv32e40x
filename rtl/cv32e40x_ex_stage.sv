@@ -328,11 +328,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && mul_ready && div_ready && lsu_ready_i && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && !id_ex_pipe_i.lsu_en && alu_valid) ||
-                       (id_ex_pipe_i.alu_en &&  id_ex_pipe_i.lsu_en && alu_valid && lsu_valid_i) ||
-                       (id_ex_pipe_i.mul_en && mul_valid) ||
-                       (id_ex_pipe_i.div_en && div_valid) ||
-                       (id_ex_pipe_i.csr_en && csr_valid) ||
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)   ||
+                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
+                       (id_ex_pipe_i.mul_en && mul_valid)   ||
+                       (id_ex_pipe_i.div_en && div_valid)   ||
+                       (id_ex_pipe_i.csr_en && csr_valid)   ||
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
 
