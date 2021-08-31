@@ -605,12 +605,12 @@ Reset Value: 0x0000_0000
 +=============+===========+==================================================================================+
 | 31          |   RW      | **Interrupt:** This bit is set when the exception was triggered by an interrupt. |
 +-------------+-----------+----------------------------------------------------------------------------------+
-| 30:5        |   RO (0)  | Always 0                                                                         |
+| 30:6        |   RO (0)  | Always 0                                                                         |
 +-------------+-----------+----------------------------------------------------------------------------------+
-| 4:0         |   RW      | **Exception Code**   (See note below)                                            |
+| 5:0         |   RW      | **Exception Code**   (See note below)                                            |
 +-------------+-----------+----------------------------------------------------------------------------------+
 
-**NOTE**: software accesses to `mcause[4:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
+**NOTE**: software accesses to `mcause[5:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
 when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
 

@@ -121,7 +121,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   // Events in WB
   logic exception_in_wb;
-  logic [4:0] exception_cause_wb;
+  logic [5:0] exception_cause_wb;
   logic wfi_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
@@ -192,7 +192,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
                               (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
                               (lsu_mpu_status_wb_i == MPU_RE_FAULT)         ? EXC_CAUSE_LOAD_FAULT      :
-                              'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
+                              6'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
@@ -362,7 +362,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.csr_save_ex         = 1'b0;
     ctrl_fsm_o.csr_save_wb         = 1'b0;
     ctrl_fsm_o.csr_save_cause      = 1'b0;
-    ctrl_fsm_o.csr_cause           = '0;
+    ctrl_fsm_o.csr_cause           = 7'h0;
 
     ctrl_fsm_o.exc_pc_mux          = EXC_PC_IRQ;
     exc_cause                      = 5'b0;
@@ -420,7 +420,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
-          ctrl_fsm_o.csr_cause       = {1'b1,irq_id_ctrl_i};
+          ctrl_fsm_o.csr_cause       = {2'b10,irq_id_ctrl_i};
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin

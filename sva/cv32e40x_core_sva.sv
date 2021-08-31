@@ -50,7 +50,7 @@ module cv32e40x_core_sva
    // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
-  input logic [5:0]  cs_registers_csr_cause_i,
+  input logic [6:0]  cs_registers_csr_cause_i,
   input              Mcause_t cs_registers_mcause_q,
   input              Status_t cs_registers_mstatus_q);
 

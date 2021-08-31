@@ -389,7 +389,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                               default: 'b0
                             };
     mstatus_we               = 1'b0;
-    mcause_n                 = {csr_wdata_int[31], 26'd0, csr_wdata_int[4:0]};
+    mcause_n                 = {csr_wdata_int[31], 25'd0, csr_wdata_int[5:0]};
     mcause_we                = 1'b0;
     exception_pc             = if_id_pipe_i.pc;
     priv_lvl_n               = priv_lvl_q;
@@ -486,7 +486,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mepc_n = exception_pc;
             mepc_we = 1'b1;
 
-            mcause_n       = {ctrl_fsm_i.csr_cause[5], 26'd0, ctrl_fsm_i.csr_cause[4:0]};
+            mcause_n       = {ctrl_fsm_i.csr_cause[6], 25'd0, ctrl_fsm_i.csr_cause[5:0]};
             mcause_we = 1'b1;
         end
       end //ctrl_fsm_i.csr_save_cause

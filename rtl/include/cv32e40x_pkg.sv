@@ -513,8 +513,8 @@ typedef struct packed{
 
 typedef struct packed {
   logic           interrupt;
-  logic [30:5]    zero0;
-  logic [4:0]     exception_code;
+  logic [30:6]    zero0;
+  logic [5:0]     exception_code;
 } Mcause_t;
 
 typedef struct packed {
@@ -774,13 +774,13 @@ typedef enum logic[1:0] {
 } exc_pc_mux_e;
 
 // Exception Cause
-parameter EXC_CAUSE_INSTR_FAULT     = 5'h01;
-parameter EXC_CAUSE_ILLEGAL_INSN    = 5'h02;
-parameter EXC_CAUSE_BREAKPOINT      = 5'h03;
-parameter EXC_CAUSE_LOAD_FAULT      = 5'h05;
-parameter EXC_CAUSE_STORE_FAULT     = 5'h07;
-parameter EXC_CAUSE_ECALL_MMODE     = 5'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'h30;
+parameter EXC_CAUSE_INSTR_FAULT     = 6'h01;
+parameter EXC_CAUSE_ILLEGAL_INSN    = 6'h02;
+parameter EXC_CAUSE_BREAKPOINT      = 6'h03;
+parameter EXC_CAUSE_LOAD_FAULT      = 6'h05;
+parameter EXC_CAUSE_STORE_FAULT     = 6'h07;
+parameter EXC_CAUSE_ECALL_MMODE     = 6'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 6'h30;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
@@ -1065,7 +1065,7 @@ typedef struct packed {
   logic        csr_save_id;         // Save PC from ID stage
   logic        csr_save_ex;         // Save PC from EX stage (currently unused)
   logic        csr_save_wb;         // Save PC from WB stage
-  logic [5:0]  csr_cause;           // CSR cause (saves to mcause CSR)
+  logic [6:0]  csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret; // Restore CSR due to mret
   logic        csr_restore_dret; // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
