@@ -780,7 +780,7 @@ parameter EXC_CAUSE_BREAKPOINT      = 5'h03;
 parameter EXC_CAUSE_LOAD_FAULT      = 5'h05;
 parameter EXC_CAUSE_STORE_FAULT     = 5'h07;
 parameter EXC_CAUSE_ECALL_MMODE     = 5'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'h18; // todo: 0x30
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 5'h30;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
