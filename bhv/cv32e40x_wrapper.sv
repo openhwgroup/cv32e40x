@@ -272,10 +272,10 @@ bind cv32e40x_sleep_unit:
          .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
          .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
 
-         .rs1_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[0]            ),
-         .rs2_addr_id_i            ( core_i.register_file_wrapper_i.register_file_i.raddr_i[1]            ),
-         .rs1_rdata_id_i           ( core_i.id_stage_i.operand_a_fw                                       ),
-         .rs2_rdata_id_i           ( core_i.id_stage_i.operand_b_fw                                       ),
+         .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
+         .rs2_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[1]                            ),
+         .rs1_rdata_id_i           ( core_i.register_file_wrapper_i.rdata_o[0]                            ),
+         .rs2_rdata_id_i           ( core_i.register_file_wrapper_i.rdata_o[1]                            ),
 
          .exception_in_wb_i        ( core_i.controller_i.controller_fsm_i.exception_in_wb                 ),
 
