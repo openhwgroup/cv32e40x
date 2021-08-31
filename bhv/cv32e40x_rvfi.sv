@@ -480,7 +480,7 @@ module cv32e40x_rvfi
         end
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
-        // The in trap signal is set for the first instruction of interrupt- and exception handlers
+        // The in trap signal is set for the first instruction of interrupt- and exception handlers (not debug handler)
         if (interrupt_in_if || exception_in_wb) begin
           in_trap_next <= 1'b1;
         end
@@ -490,7 +490,9 @@ module cv32e40x_rvfi
       if(id_valid_i && ex_ready_i) begin
 
         if (jump_in_id_i) begin
-          pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i; // todo: could IF stage's branch_addr_n be used in both cases? (the current design is clean in that it only uses ID stage signals; the proposal covers more of the RTL)
+          // Predicting mret/jump explicitly instead of using branch_addr_n to
+          // avoid including asynchronous traps and debug reqs in prediction
+          pc_wdata [STAGE_ID] <= mret_insn_id_i     ? csr_mepc_q_i : jump_target_id_i;
         end else begin
           pc_wdata [STAGE_ID] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end
@@ -500,8 +502,8 @@ module cv32e40x_rvfi
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
         rs1_addr   [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr   [STAGE_ID] <= rs2_addr_id_i;
-        rs1_rdata  [STAGE_ID] <= (rs1_addr_id_i != '0)         ? rs1_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
-        rs2_rdata  [STAGE_ID] <= (rs2_addr_id_i != '0)         ? rs2_rdata_id_i    : '0; // todo: I understand that 0 needs to be returned for 0 address, but doesn't rs1_rdata_id_i already do that?
+        rs1_rdata  [STAGE_ID] <= rs1_rdata_id_i;
+        rs2_rdata  [STAGE_ID] <= rs2_rdata_id_i;
         mem_rmask  [STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end
@@ -509,8 +511,8 @@ module cv32e40x_rvfi
 
       //// EX Stage ////
       if (ex_valid_i && wb_ready_i) begin
-        pc_wdata [STAGE_EX] <= branch_in_ex_i       ? branch_target_ex_i :  // todo: could IF stage's branch_addr_n be used here? (the current design is clean in that it only uses EX stage signals; the proposal covers more of the RTL)
-                               pc_wdata[STAGE_ID];
+        // Predicting branch target explicitly to avoid predicting asynchronous events
+        pc_wdata   [STAGE_EX] <= branch_in_ex_i ? branch_target_ex_i : pc_wdata[STAGE_ID];
         debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
         debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
         rs1_addr   [STAGE_EX] <= rs1_addr   [STAGE_ID];
@@ -540,7 +542,7 @@ module cv32e40x_rvfi
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        rvfi_trap       <= (debug_taken_if || exception_in_wb); // Trap set for instructions causing exceptions or debug entry.
+        rvfi_trap       <= (debug_taken_if || exception_in_wb); // Trap set for instructions causing exception or debug entry.
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
@@ -571,7 +573,7 @@ module cv32e40x_rvfi
       // Set expected next PC, half-word aligned
       // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
       rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exception_target_wb_i & ~32'b1 :
-                       (is_dret_wb) ? csr_dpc_q_i : // predict debug return
+                       (is_dret_wb) ? csr_dpc_q_i :
                        pc_wdata[STAGE_EX] & ~32'b1;
 
       // CSR special cases
