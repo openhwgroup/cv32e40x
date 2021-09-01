@@ -489,14 +489,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
         id_ex_pipe_o.alu_en                 <= alu_en;
-        if (alu_en)
+
+        // operand_c used by both ALU and LSU
+        if (alu_en || lsu_en)
         begin
           id_ex_pipe_o.operand_c            <= operand_c;
         end
 
         // todo: alu_en is still set for LSU, could change to not setting alu_en and include lsu_en in if() below
-        if (alu_en || div_en || csr_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en) again.
-          id_ex_pipe_o.alu_operator         <= alu_operator;
+        if (alu_en || div_en || csr_en || lsu_en) begin // todo: the addition of csr_en here is not SEC clean. However, csr_en should have been implied alu_en. Eventually this needs to become (alu_en || div_en || lsu_en) again.
+          id_ex_pipe_o.alu_operator         <= alu_operator; // todo: not needed for LSU. Could be moved to a separate block
           id_ex_pipe_o.alu_operand_a        <= operand_a;
           id_ex_pipe_o.alu_operand_b        <= operand_b;
         end
