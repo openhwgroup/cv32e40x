@@ -1065,7 +1065,7 @@ typedef struct packed {
   logic        csr_save_id;         // Save PC from ID stage
   logic        csr_save_ex;         // Save PC from EX stage (currently unused)
   logic        csr_save_wb;         // Save PC from WB stage
-  logic [6:0]  csr_cause;           // CSR cause (saves to mcause CSR)
+  Mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret; // Restore CSR due to mret
   logic        csr_restore_dret; // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
