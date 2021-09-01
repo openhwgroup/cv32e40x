@@ -43,9 +43,9 @@ module cv32e40x_rvfi
    input logic [1:0]                          lsu_type_id_i,
    // Register reads
    input logic [4:0]                          rs1_addr_id_i,
-   input logic [31:0]                         rs1_rdata_id_i,
    input logic [4:0]                          rs2_addr_id_i,
-   input logic [31:0]                         rs2_rdata_id_i,
+   input logic [31:0]                         operand_a_fw_id_i,
+   input logic [31:0]                         operand_b_fw_id_i,
 
    //// EX probes ////
    input logic                                branch_in_ex_i,
@@ -350,8 +350,11 @@ module cv32e40x_rvfi
   logic [31:0] rvfi_mem_addr_d;
 
 
-  logic [31:0] rvfi_rd_addr_d;
-  logic [31:0] rvfi_rd_wdata_d;
+  logic [31:0] rd_addr_wb;
+  logic [31:0] rd_wdata_wb;
+
+  logic [31:0] rs1_rdata_id;
+  logic [31:0] rs2_rdata_id;
 
   // CSR inputs in struct format
   rvfi_csr_map_t rvfi_csr_rdata_d;
@@ -502,8 +505,8 @@ module cv32e40x_rvfi
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
         rs1_addr   [STAGE_ID] <= rs1_addr_id_i;
         rs2_addr   [STAGE_ID] <= rs2_addr_id_i;
-        rs1_rdata  [STAGE_ID] <= rs1_rdata_id_i;
-        rs2_rdata  [STAGE_ID] <= rs2_rdata_id_i;
+        rs1_rdata  [STAGE_ID] <= rs1_rdata_id;
+        rs2_rdata  [STAGE_ID] <= rs2_rdata_id;
         mem_rmask  [STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_ID] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end
@@ -546,8 +549,8 @@ module cv32e40x_rvfi
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
-        rvfi_rd_addr    <= rvfi_rd_addr_d;
-        rvfi_rd_wdata   <= rvfi_rd_wdata_d;
+        rvfi_rd_addr    <= rd_addr_wb;
+        rvfi_rd_wdata   <= rd_wdata_wb;
 
         // Read/Write CSRs
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
@@ -608,8 +611,15 @@ module cv32e40x_rvfi
   assign data_wdata_ror    = {data_wdata_ex_i, data_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
-  assign rvfi_rd_addr_d  = (rd_we_wb_i)           ? rd_addr_wb_i  : '0;
-  assign rvfi_rd_wdata_d = (rvfi_rd_addr_d != '0) ? rd_wdata_wb_i : '0;
+  assign rd_addr_wb  = (rd_we_wb_i)       ? rd_addr_wb_i  : '0;
+  assign rd_wdata_wb = (rd_addr_wb != '0) ? rd_wdata_wb_i : '0;
+
+  // Source Register Read Data
+  // Setting register read data from operands, clearing if address is 0 as operands can contain
+  // data that is not read from the register file when address is 0 (e.g. for immediate instructions).
+  // Can't use register file rdata directly as forwarded data is needed for instructions using the same register back-to-back
+  assign rs1_rdata_id   = (rs1_addr_id_i != '0)   ? operand_a_fw_id_i :'0;
+  assign rs2_rdata_id   = (rs2_addr_id_i != '0)   ? operand_b_fw_id_i :'0;
 
   ////////////////////////////////
   //  CSRs                      //

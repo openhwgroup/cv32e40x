@@ -274,8 +274,8 @@ bind cv32e40x_sleep_unit:
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[1]                            ),
-         .rs1_rdata_id_i           ( core_i.register_file_wrapper_i.rdata_o[0]                            ),
-         .rs2_rdata_id_i           ( core_i.register_file_wrapper_i.rdata_o[1]                            ),
+         .operand_a_fw_id_i        ( core_i.id_stage_i.operand_a_fw                                       ),
+         .operand_b_fw_id_i        ( core_i.id_stage_i.operand_b_fw                                       ),
 
          .exception_in_wb_i        ( core_i.controller_i.controller_fsm_i.exception_in_wb                 ),
 
