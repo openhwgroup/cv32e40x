@@ -332,6 +332,7 @@ module cv32e40x_rvfi
   logic [2:0] [31:0] pc_wdata;
   logic [2:0]        debug_mode;
   logic [2:0] [2:0]  debug_cause;
+  logic [2:0]        in_trap;
   logic [2:0] [ 4:0] rs1_addr;
   logic [2:0] [ 4:0] rs2_addr;
   logic [2:0] [31:0] rs1_rdata;
@@ -374,11 +375,12 @@ module cv32e40x_rvfi
 
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic         intr_d;
-
+  logic         in_trap_next;
   logic [2:0]   debug_cause_if_next;
   logic         debug_taken_if;
   logic         is_dret_wb;
+  logic         exception_in_wb;
+  logic         interrupt_in_if;
 
   logic [6:0]   insn_opcode;
   logic [4:0]   insn_rd;
@@ -404,44 +406,26 @@ module cv32e40x_rvfi
   localparam STAGE_ID = 1;
   localparam STAGE_EX = 2;
 
-  rvfi_intr_t  instr_q;
 
+  assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) &&  (exc_pc_mux_i == EXC_PC_IRQ);
   assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
+  assign exception_in_wb   = (pc_mux_i == PC_EXCEPTION) && ((exc_pc_mux_i == EXC_PC_EXCEPTION) ||
+                                                            (exc_pc_mux_i == EXC_PC_DBE));
   assign is_dret_wb        = (pc_mux_i == PC_DRET);
 
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
-  assign rvfi_intr              = intr_d;
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      instr_q           <= '0;
-    end else begin
-      // Store last valid instructions
-      if(rvfi_valid) begin
-        instr_q.valid    <= rvfi_valid && !is_dret_wb; // todo: why is this ' && !is_dret_wb' done here?; looks a bit like a hack
-        instr_q.order    <= rvfi_order;
-        instr_q.pc_wdata <= rvfi_pc_wdata;
-      end else begin
-        instr_q          <= instr_q;
-      end
-    end
-  end // always_ff @
-
-  // Check if instruction is the first instruction in trap handler
-  assign intr_d = rvfi_valid                          && // Current instruction valid
-                  instr_q.valid                       && // Previous instruction valid
-                  ((rvfi_order - instr_q.order) == 1) && // Is latest instruction
-                  (rvfi_pc_rdata != instr_q.pc_wdata);   // Is first part of trap handler // todo: get definitive answer on whether intr signal should be 1 for debug entry as well?
 
   // Pipeline stage model //
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       debug_cause_if_next<= '0;
+      in_trap_next       <= 1'b0;
       pc_wdata           <= '0;
-      debug_mode         <= 1'b0;
+      in_trap            <= '0;
+      debug_mode         <= '0;
       debug_cause        <= '0;
       rs1_addr           <= '0;
       rs2_addr           <= '0;
@@ -460,6 +444,7 @@ module cv32e40x_rvfi
       rvfi_pc_rdata      <= '0;
       rvfi_pc_wdata      <= '0;
       rvfi_trap          <= 1'b0;
+      rvfi_intr          <= 1'b0;
       rvfi_rd_addr       <= '0;
       rvfi_rd_wdata      <= '0;
       rvfi_csr_rdata     <= '0;
@@ -477,9 +462,10 @@ module cv32e40x_rvfi
 
     end else begin
 
-      // todo: Could IF stage be used to propagate first ISR through the RVFI pipeline?
       //// IF Stage ////
       if (if_valid_i && id_ready_i) begin
+        in_trap[STAGE_IF] <= in_trap_next; // Set interrupt bit when entering trap handler
+        in_trap_next      <= 1'b0;
         debug_cause[STAGE_IF]<= debug_cause_if_next;
         debug_cause_if_next  <= '0;
         debug_mode[STAGE_IF] <= debug_mode_i; // Probing in IF to make sure any LSU instructions that are not killed can complete
@@ -492,6 +478,12 @@ module cv32e40x_rvfi
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
           debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
         end
+
+        // Picking up trap entry when IF is not valid to propagate for next valid instruction
+        // todo: Update condition to match new rvfi spec (include exception handlers and not debug)
+        if (interrupt_in_if || (debug_taken_if && !exception_in_wb_i)) begin
+          in_trap_next <= 1'b1;
+        end
       end
 
       //// ID Stage ////
@@ -503,6 +495,7 @@ module cv32e40x_rvfi
           pc_wdata [STAGE_ID] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end
 
+        in_trap    [STAGE_ID] <= in_trap    [STAGE_IF];
         debug_mode [STAGE_ID] <= debug_mode [STAGE_IF];
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
         rs1_addr   [STAGE_ID] <= rs1_addr_id_i;
@@ -526,6 +519,7 @@ module cv32e40x_rvfi
         rs2_rdata  [STAGE_EX] <= rs2_rdata  [STAGE_ID];
         mem_rmask  [STAGE_EX] <= mem_rmask  [STAGE_ID];
         mem_wmask  [STAGE_EX] <= mem_wmask  [STAGE_ID];
+        in_trap    [STAGE_EX] <= in_trap    [STAGE_ID];
 
         if (!lsu_misaligned_q_ex_i) begin
           // The second part of the misaligned acess is suppressed to keep
@@ -546,7 +540,8 @@ module cv32e40x_rvfi
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        rvfi_trap       <= exception_in_wb_i; // Set for all synchronous traps. TODO: Verify this is the intention of the spec
+        // todo: replace with (debug_taken_if || exception_in_wb);
+        rvfi_trap       <= exception_in_wb_i; // todo:Set for instructions causing exceptions or debug entry.
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
@@ -558,6 +553,7 @@ module cv32e40x_rvfi
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
         rvfi_csr_wmask  <= rvfi_csr_wmask_d;
 
+        rvfi_intr      <= in_trap  [STAGE_EX];
         rvfi_rs1_addr  <= rs1_addr [STAGE_EX];
         rvfi_rs2_addr  <= rs2_addr [STAGE_EX];
         rvfi_rs1_rdata <= rs1_rdata[STAGE_EX];
@@ -574,6 +570,7 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
+      //todo: replace with (debug_taken_if || exception_in_wb) // Predict synchronous exceptions and debug entry
       rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 : // todo: why is exception_in_wb_i handled here? Is a synchronous exception supposed to set rvfi_intr or not?
                        (is_dret_wb       ) ? csr_dpc_q_i :
                        pc_wdata[STAGE_EX] & ~32'b1;
