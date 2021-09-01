@@ -480,8 +480,8 @@ module cv32e40x_rvfi
         end
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
-        // todo: Update condition to match new rvfi spec (include exception handlers and not debug)
-        if (interrupt_in_if || (debug_taken_if && !exception_in_wb_i)) begin
+        // The in trap signal is set for the first instruction of interrupt- and exception handlers
+        if (interrupt_in_if || exception_in_wb) begin
           in_trap_next <= 1'b1;
         end
       end
@@ -540,8 +540,7 @@ module cv32e40x_rvfi
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        // todo: replace with (debug_taken_if || exception_in_wb);
-        rvfi_trap       <= exception_in_wb_i; // todo:Set for instructions causing exceptions or debug entry.
+        rvfi_trap       <= (debug_taken_if || exception_in_wb); // Trap set for instructions causing exceptions or debug entry.
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
@@ -570,9 +569,9 @@ module cv32e40x_rvfi
       end
 
       // Set expected next PC, half-word aligned
-      //todo: replace with (debug_taken_if || exception_in_wb) // Predict synchronous exceptions and debug entry
-      rvfi_pc_wdata <= (exception_in_wb_i) ? exception_target_wb_i & ~32'b1 : // todo: why is exception_in_wb_i handled here? Is a synchronous exception supposed to set rvfi_intr or not?
-                       (is_dret_wb       ) ? csr_dpc_q_i :
+      // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
+      rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exception_target_wb_i & ~32'b1 :
+                       (is_dret_wb) ? csr_dpc_q_i : // predict debug return
                        pc_wdata[STAGE_EX] & ~32'b1;
 
       // CSR special cases
