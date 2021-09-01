@@ -50,9 +50,9 @@ module cv32e40x_core_sva
    // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
-  input logic [6:0]  cs_registers_csr_cause_i,
-  input              Mcause_t cs_registers_mcause_q,
-  input              Status_t cs_registers_mstatus_q);
+  input Mcause_t     cs_registers_csr_cause_i, // From controller
+  input Mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
+  input Status_t     cs_registers_mstatus_q);
 
 
 
@@ -71,7 +71,7 @@ module cv32e40x_core_sva
   property p_irq_enabled_1;
     @(posedge clk) disable iff (!rst_ni)
       (ctrl_fsm.pc_set && (ctrl_fsm.pc_mux == PC_EXCEPTION) && (ctrl_fsm.exc_pc_mux == EXC_PC_IRQ)) |=>
-      (cs_registers_mcause_q[31] && cs_registers_mie_q[cs_registers_mcause_q[4:0]] && !cs_registers_mstatus_q.mie);
+      (cs_registers_mcause_q.interrupt && cs_registers_mie_q[cs_registers_mcause_q.exception_code[4:0]] && !cs_registers_mstatus_q.mie);
   endproperty
 
   a_irq_enabled_1 : assert property(p_irq_enabled_1) else `uvm_error("core", "Assertion a_irq_enabled_1 failed")
@@ -168,25 +168,28 @@ always_ff @(posedge clk , negedge rst_ni)
         actual_instr_mpuerr_mepc  <= 32'b0;
       end
       else begin
-        if (!first_cause_illegal_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ILLEGAL_INSN}) && ctrl_fsm.csr_save_cause) begin
-          first_cause_illegal_found <= 1'b1;
-          actual_illegal_mepc       <= cs_registers_mepc_n;
-        end
-        if (!first_cause_ecall_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_ECALL_MMODE}) && ctrl_fsm.csr_save_cause) begin
-          first_cause_ecall_found <= 1'b1;
-          actual_ecall_mepc       <= cs_registers_mepc_n;
-        end
-        if (!first_cause_ebrk_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_BREAKPOINT}) && ctrl_fsm.csr_save_cause) begin
-          first_cause_ebrk_found <= 1'b1;
-          actual_ebrk_mepc       <= cs_registers_mepc_n;
-        end
-        if (!first_cause_instr_err_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_BUS_FAULT}) && ctrl_fsm.csr_save_cause) begin
-          first_cause_instr_err_found <= 1'b1;
-          actual_instr_err_mepc       <= cs_registers_mepc_n;
-        end
-        if (!first_cause_instr_mpuerr_found && (cs_registers_csr_cause_i == {1'b0, EXC_CAUSE_INSTR_FAULT}) && ctrl_fsm.csr_save_cause) begin
-          first_cause_instr_mpuerr_found <= 1'b1;
-          actual_instr_mpuerr_mepc       <= cs_registers_mepc_n;
+        // Disregard saved CSR due to interrupts when chekcing exceptions
+        if(!cs_registers_csr_cause_i.interrupt) begin
+          if (!first_cause_illegal_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_ILLEGAL_INSN) && ctrl_fsm.csr_save_cause) begin
+            first_cause_illegal_found <= 1'b1;
+            actual_illegal_mepc       <= cs_registers_mepc_n;
+          end
+          if (!first_cause_ecall_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_ECALL_MMODE) && ctrl_fsm.csr_save_cause) begin
+            first_cause_ecall_found <= 1'b1;
+            actual_ecall_mepc       <= cs_registers_mepc_n;
+          end
+          if (!first_cause_ebrk_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_BREAKPOINT) && ctrl_fsm.csr_save_cause) begin
+            first_cause_ebrk_found <= 1'b1;
+            actual_ebrk_mepc       <= cs_registers_mepc_n;
+          end
+          if (!first_cause_instr_err_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_INSTR_BUS_FAULT) && ctrl_fsm.csr_save_cause) begin
+            first_cause_instr_err_found <= 1'b1;
+            actual_instr_err_mepc       <= cs_registers_mepc_n;
+          end
+          if (!first_cause_instr_mpuerr_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_INSTR_FAULT) && ctrl_fsm.csr_save_cause) begin
+            first_cause_instr_mpuerr_found <= 1'b1;
+            actual_instr_mpuerr_mepc       <= cs_registers_mepc_n;
+          end
         end
       end
     end
