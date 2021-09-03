@@ -616,8 +616,8 @@ module cv32e40x_rvfi
   assign rd_wdata_wb = (rf_we_wb_i) ? rf_wdata_wb_i : '0;
 
   // Source Register Read Data
-  // Setting register read data from operands, clearing if address is 0 as operands can contain
-  // data that is not read from the register file when address is 0 (e.g. for immediate instructions).
+  // Setting register read data from operands if there was a read and clearing if there was not as operands can contain
+  // data that is not read from the register file when not reading (e.g. for immediate instructions).
   // Can't use register file rdata directly as forwarded data is needed for instructions using the same register back-to-back
   assign rs1_rdata_id = (rf_re_id_i[0]) ? operand_a_fw_id_i :'0;
   assign rs2_rdata_id = (rf_re_id_i[1]) ? operand_b_fw_id_i :'0;
