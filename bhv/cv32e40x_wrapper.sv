@@ -308,9 +308,10 @@ bind cv32e40x_sleep_unit:
          .data_wdata_ex_i          ( core_i.data_wdata_o                                                  ),
          .lsu_misaligned_q_ex_i    ( core_i.load_store_unit_i.misaligned_q                                ),
 
-         .rd_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
-         .rd_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
-         .rd_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
+         .rf_re_id_i               ( core_i.id_stage_i.rf_re_o                                            ),
+         .rf_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
+         .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
+         .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
@@ -340,7 +341,7 @@ bind cv32e40x_sleep_unit:
          .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
          .csr_mhpmevent_q_i        ( core_i.cs_registers_i.mhpmevent_q                                    ),
          .csr_mhpmevent_n_i        ( core_i.cs_registers_i.mhpmevent_n                                    ),
-         .csr_mhpmevent_we_i       ( core_i.cs_registers_i.mhpmevent_we << // todo:ok: Add write enable for each register
+         .csr_mhpmevent_we_i       ( {31'h0, core_i.cs_registers_i.mhpmevent_we} << // todo:ok: Add write enable for each register
                                      core_i.cs_registers_i.csr_waddr[4:0] ),
          .csr_mscratch_q_i         ( core_i.cs_registers_i.mscratch_q                                     ),
          .csr_mscratch_n_i         ( core_i.cs_registers_i.mscratch_n                                     ),

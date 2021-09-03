@@ -33,6 +33,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_id_i,
    input logic                                id_valid_i,
    input logic                                id_ready_i,
+   input logic [ 1:0]                         rf_re_id_i,
    input logic                                mret_insn_id_i,
    input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
@@ -69,9 +70,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
-   input logic                                rd_we_wb_i,
-   input logic [4:0]                          rd_addr_wb_i,
-   input logic [31:0]                         rd_wdata_wb_i,
+   input logic                                rf_we_wb_i,
+   input logic [4:0]                          rf_addr_wb_i,
+   input logic [31:0]                         rf_wdata_wb_i,
    // LSU
    input logic                                lsu_en_wb_i,
    input logic                                lsu_rvalid_wb_i,
@@ -611,15 +612,15 @@ module cv32e40x_rvfi
   assign data_wdata_ror    = {data_wdata_ex_i, data_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
-  assign rd_addr_wb  = (rd_we_wb_i)       ? rd_addr_wb_i  : '0;
-  assign rd_wdata_wb = (rd_addr_wb != '0) ? rd_wdata_wb_i : '0;
+  assign rd_addr_wb  = (rf_we_wb_i) ? rf_addr_wb_i  : '0;
+  assign rd_wdata_wb = (rf_we_wb_i) ? rf_wdata_wb_i : '0;
 
   // Source Register Read Data
   // Setting register read data from operands, clearing if address is 0 as operands can contain
   // data that is not read from the register file when address is 0 (e.g. for immediate instructions).
   // Can't use register file rdata directly as forwarded data is needed for instructions using the same register back-to-back
-  assign rs1_rdata_id   = (rs1_addr_id_i != '0)   ? operand_a_fw_id_i :'0;
-  assign rs2_rdata_id   = (rs2_addr_id_i != '0)   ? operand_b_fw_id_i :'0;
+  assign rs1_rdata_id = (rf_re_id_i[0]) ? operand_a_fw_id_i :'0;
+  assign rs2_rdata_id = (rf_re_id_i[1]) ? operand_b_fw_id_i :'0;
 
   ////////////////////////////////
   //  CSRs                      //
