@@ -161,6 +161,10 @@ Instead of:
 
 The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISC-V compliant cores.
 
+**Mode Signal**
+
+The ``rvfi_mode`` signal shows which privilege level the instruction was executed with. For load and store instructions the privilege level will be set by mstatus.mpp when mstatus.mprv=1.
+
 
 Trace output file
 -----------------

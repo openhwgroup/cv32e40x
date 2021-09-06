@@ -599,7 +599,8 @@ module cv32e40x_rvfi
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
 
-        // Separate privelege level signal needed for LSU intructions, both valid in WB
+        // Separate privelege level signal needed for LSU intructions because their privilege level can
+        // be set to MPP when MPRV=1, both signals are valid in WB
         rvfi_mode      <= lsu_en_wb_i ? priv_lvl_lsu_i :  priv_lvl_i;
 
         rvfi_dbg       <= debug_cause[STAGE_EX];
