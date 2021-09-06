@@ -71,13 +71,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_hz;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_hz;
 
-  logic                              rf_wr_ex_match;
-  logic                              rf_wr_wb_match;
-  logic                              rf_wr_ex_hz;
-  logic                              rf_wr_wb_hz;
-
   // Detect CSR read in ID (implicit and explicit)
   logic csr_read_in_id;
+
   // Detect CSR write in EX or WB (implicit and explicit)
   logic csr_write_in_ex_wb;
 
@@ -155,16 +151,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // Does register file write address match write address in EX?
-  assign rf_wr_ex_match = (rf_waddr_ex == rf_waddr_i);
-
-  // Does register file write address match write address in WB?
-  assign rf_wr_wb_match = (rf_waddr_wb == rf_waddr_i);
-
-  // Load-write hazard (for non-load instruction following a load)
-  // TODO:OK: Shouldn't bee needed as we now have a single write port
-  assign rf_wr_ex_hz = rf_wr_ex_match && regfile_alu_we_id_i;
-  assign rf_wr_wb_hz = rf_wr_wb_match && regfile_alu_we_id_i;
 
   always_comb
   begin
@@ -183,9 +169,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Stall because of load operation
     if (
         (id_ex_pipe_i.lsu_en && rf_we_ex && |rf_rd_ex_hz) || // load-use hazard (EX)
-        (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz) || // load-use hazard (WB during wait-state)
-        (id_ex_pipe_i.lsu_en && rf_we_ex && !lsu_misaligned_ex_i && rf_wr_ex_hz) ||  // TODO: remove?
-        (!wb_ready_i         && rf_we_wb && !lsu_misaligned_ex_i && rf_wr_wb_hz)     // TODO: remove? Probably SEC fail
+        (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz)    // load-use hazard (WB during wait-state)
        )
     begin
       ctrl_byp_o.deassert_we = 1'b1;
