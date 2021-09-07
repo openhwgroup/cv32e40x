@@ -44,6 +44,7 @@ module cv32e40x_controller_fsm_sva
   input if_id_pipe_t    if_id_pipe_i,
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
+  input logic           wb_ready_i,
   input logic           rf_we_wb_i,
   input logic           csr_we_i,
   input logic           pending_single_step,
@@ -128,9 +129,11 @@ module cv32e40x_controller_fsm_sva
                     (ctrl_fsm_o.kill_id) |=> (id_ex_pipe_i.instr_valid == 1'b0) )
     else `uvm_error("controller", "id_ex_pipe.instr_valid not zero after kill_id")
 */
+  // EX-WB pipe registers won't be updated when !wb_ready_i.
+  // ex_wb_pipe_i.instr_valid will be cleared later since killing ex will always be accompanied by killing upstream stages
   a_kill_ex :
   assert property (@(posedge clk)
-                    (ctrl_fsm_o.kill_ex) |=> (ex_wb_pipe_i.instr_valid == 1'b0) )
+                    (ctrl_fsm_o.kill_ex && wb_ready_i) |=> (ex_wb_pipe_i.instr_valid == 1'b0) )
     else `uvm_error("controller", "ex_wb_pipe.instr_valid not zero after kill_ex")
 
   a_kill_wb_rf :
@@ -143,6 +146,21 @@ module cv32e40x_controller_fsm_sva
                     (ctrl_fsm_o.kill_wb) |-> (!csr_we_i) )
     else `uvm_error("controller", "csr written while kill_wb is asserted")
 
+  a_kill_wb_ex_id_if:
+    assert property (@(posedge clk)
+                     (ctrl_fsm_o.kill_wb) |-> ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_if )
+      else `uvm_error("controller", "Killing wb stage not accompanied by killing ex, id and if")
+    
+  a_kill_ex_id_if:
+    assert property (@(posedge clk)
+                     (ctrl_fsm_o.kill_ex) |-> ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_if )
+      else `uvm_error("controller", "Killing ex stage not accompanied by killing id and if")
+
+  a_kill_id_if:
+    assert property (@(posedge clk)
+                     (ctrl_fsm_o.kill_id) |-> ctrl_fsm_o.kill_if )
+      else `uvm_error("controller", "Killing id stage not accompanied by killing if")
+    
   // Check that no stages have valid instructions using RESET or BOOT_SET
   a_reset_if_csr :
     assert property (@(posedge clk)
