@@ -354,6 +354,8 @@ module cv32e40x_rvfi
   logic [31:0] rd_addr_wb;
   logic [31:0] rd_wdata_wb;
 
+  logic [31:0] rs1_addr_id;
+  logic [31:0] rs2_addr_id;
   logic [31:0] rs1_rdata_id;
   logic [31:0] rs2_rdata_id;
 
@@ -504,8 +506,8 @@ module cv32e40x_rvfi
         in_trap    [STAGE_ID] <= in_trap    [STAGE_IF];
         debug_mode [STAGE_ID] <= debug_mode [STAGE_IF];
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
-        rs1_addr   [STAGE_ID] <= rs1_addr_id_i;
-        rs2_addr   [STAGE_ID] <= rs2_addr_id_i;
+        rs1_addr   [STAGE_ID] <= rs1_addr_id;
+        rs2_addr   [STAGE_ID] <= rs2_addr_id;
         rs1_rdata  [STAGE_ID] <= rs1_rdata_id;
         rs2_rdata  [STAGE_ID] <= rs2_rdata_id;
         mem_rmask  [STAGE_ID] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
@@ -619,8 +621,11 @@ module cv32e40x_rvfi
   // Setting register read data from operands if there was a read and clearing if there was not as operands can contain
   // data that is not read from the register file when not reading (e.g. for immediate instructions).
   // Can't use register file rdata directly as forwarded data is needed for instructions using the same register back-to-back
-  assign rs1_rdata_id = (rf_re_id_i[0]) ? operand_a_fw_id_i :'0;
-  assign rs2_rdata_id = (rf_re_id_i[1]) ? operand_b_fw_id_i :'0;
+  assign rs1_rdata_id = (rf_re_id_i[0]) ? operand_a_fw_id_i : '0;
+  assign rs2_rdata_id = (rf_re_id_i[1]) ? operand_b_fw_id_i : '0;
+  // The rs* address signals can contain unused non-zero values when not reading
+  assign rs1_addr_id  = (rf_re_id_i[0]) ? rs1_addr_id_i     : '0;
+  assign rs2_addr_id  = (rf_re_id_i[1]) ? rs2_addr_id_i     : '0;
 
   ////////////////////////////////
   //  CSRs                      //
