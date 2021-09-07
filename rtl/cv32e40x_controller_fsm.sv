@@ -86,7 +86,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        id_ready_i,       // ID stage is ready for new data
   input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
   input  logic        wb_ready_i,       // WB stage is ready for new data,
-  input  logic        wb_valid_i        // WB stage ha valid (non-bubble) data
+  input  logic        wb_valid_i,       // WB stage ha valid (non-bubble) data
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i
 );
 
    // FSM state encoding
@@ -148,7 +152,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic [4:0] exc_cause; // id of taken interrupt
 
+  logic       fencei_ready;
+  logic       fencei_req_and_ack_q;
 
+  assign fencei_ready = 1'b1; // TODO: connect when write buffer is implemented
+      
   // Mux selector for vectored IRQ PC
   assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
   
@@ -377,6 +385,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Ensure jumps and branches are taken only once
     branch_taken_n                 = branch_taken_q;
 
+    // fencei external handshake request
+    fencei_flush_req_o             = 1'b0;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -467,14 +478,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
-            // Kill all instructions and set pc to wb.pc + 4
+
+            // Kill if,id and ex stages, halt wb stage
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.pc_set  = 1'b1;
-            ctrl_fsm_o.pc_mux  = PC_FENCEI;
+            ctrl_fsm_o.halt_wb = 1'b1;
 
-            //TODO:OK:low Drive fence.i interface
+            if(fencei_ready) begin
+              // Core is ready to initiate external fencei handshake
+              ctrl_fsm_ns = FENCEI_HANDSHAKE;
+            end
           end else if (dret_in_wb) begin
             // Dret takes jump from WB stage
             // Kill previous stages and jump to pc in dpc
@@ -531,10 +545,31 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Need to be after (in parallell with) exception/interrupt handling
           // to ensure mepc and if_pc set correctly for use in dpc,
           // and to ensure only one instruction can retire during single step
+        
         if (pending_single_step) begin
           if (single_step_allowed) begin
             ctrl_fsm_ns = DEBUG_TAKEN;
           end
+        end
+      end // case: FUNCTIONAL
+      FENCEI_HANDSHAKE: begin
+
+        // Set external handshake request
+        fencei_flush_req_o = 1'b1;
+        
+        // Stall the pipeline until the handshake is complete
+        ctrl_fsm_o.kill_if = 1'b1; // TODO: this should not be needed. IF is already killed and halt_wb should give backpressure
+        ctrl_fsm_o.halt_wb = 1'b1;
+        
+        if(fencei_req_and_ack_q) begin
+          // fencei req and ack were set in the same cycle, unhalt wb and jump to wb.pc + 4
+          ctrl_fsm_o.pc_set  = 1'b1;
+          ctrl_fsm_o.pc_mux  = PC_FENCEI;
+          ctrl_fsm_o.halt_wb = 1'b0;
+          ctrl_fsm_ns        = FUNCTIONAL;
+
+          // Clear fencei_flush_req_o
+          fencei_flush_req_o = 1'b0;
         end
       end
       SLEEP: begin
@@ -689,6 +724,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
+  // Flop fencei_flush_ack_i to break timing paths
+  // Qualify with fencei_flush_req_o, since fencei_flush_ack_i is only valid when fencei_flush_req_o is set
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      fencei_req_and_ack_q <= 1'b0;
+    end else begin
+      fencei_req_and_ack_q <= fencei_flush_req_o && fencei_flush_ack_i;
+    end
+  end
   
   /////////////////////
   // Debug state FSM //

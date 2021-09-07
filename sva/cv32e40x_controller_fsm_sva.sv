@@ -48,7 +48,17 @@ module cv32e40x_controller_fsm_sva
   input logic           rf_we_wb_i,
   input logic           csr_we_i,
   input logic           pending_single_step,
-  input logic           trigger_match_in_wb
+  input logic           trigger_match_in_wb,
+  input logic           fencei_in_wb,
+  input logic           fencei_flush_req_o,
+  input logic           fencei_flush_ack_i,
+  input logic           fencei_req_and_ack_q,
+  input logic           pending_debug,
+  input logic           debug_allowed,
+  input logic           pending_interrupt,
+  input logic           interrupt_allowed,
+  input logic           pending_nmi,
+  input logic           fencei_ready
 );
 
 
@@ -190,5 +200,47 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk)
             ctrl_fsm_o.debug_mode |-> !trigger_match_in_wb)
       else `uvm_error("controller", "Trigger match during debug mode")
+
+
+
+  // Check that fencei handshake is only exersiced when there's a fencei in the writeback stage
+  a_fencei_hndshk_fencei_wb :
+    assert property (@(posedge clk)
+           fencei_flush_req_o |-> fencei_in_wb)
+      else `uvm_error("controller", "Fencei request when no fencei in writeback")    
+
+  // Assert that the fencei request is set when fencei instruction enters WB (and there are no higher priority events)
+  a_fencei_hndshk_req_when_fencei_wb :
+    assert property (@(posedge clk)
+           $rose(fencei_in_wb) && !(pending_nmi || (pending_debug && debug_allowed) || (pending_interrupt && interrupt_allowed)) 
+                     |=> $rose(fencei_flush_req_o))
+      else `uvm_error("controller", "Fencei in WB did not result in fencei_flush_req_o")
+
+  // Only clear fencei request when acknowledged
+  //  ##1 is added to prevent $fell from triggering in cycle 1
+  a_fencei_hndshk_ack_b4_req_clear :
+    assert property (@(posedge clk)
+           ##1 $fell(fencei_flush_req_o) |-> $past(fencei_flush_ack_i))
+      else `uvm_error("controller", "Fencei request cleared before ack")
+
+  // assert that fencei_flush_req_o goes low the cycle after req&&ack
+  a_fencei_clear_req :
+    assert property (@(posedge clk)
+                     fencei_flush_req_o && fencei_flush_ack_i |=> !fencei_flush_req_o)
+      else `uvm_error("controller", "fencei_flush_req_o not cleared after req&&ack")
+
+  // assert no lingering fencei handshake when a fencei instruction enters WB.
+  a_fencei_lingering_req :
+    assert property (@(posedge clk)
+                     $rose(fencei_in_wb) |-> !(fencei_flush_req_o || fencei_req_and_ack_q))
+      else `uvm_error("controller", "Fencei handshake not idle when fencei instruction entered writeback")
+
+  // assert that the fencei_ready signal (i.e. write buffer empty) is always set when fencei handshake is active
+  a_fencei_ready :
+    assert property (@(posedge clk)
+                     fencei_flush_req_o |-> fencei_ready)
+      else `uvm_error("controller", "Fencei handshake active while fencei_ready = 0")
+  
+    
 endmodule // cv32e40x_controller_fsm_sva
 
