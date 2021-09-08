@@ -647,8 +647,10 @@ module cv32e40x_rvfi
   assign data_wdata_ror    = {data_wdata_ex_i, data_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
-  assign rd_addr_wb  = (rf_we_wb_i) ? rf_addr_wb_i  : '0;
-  assign rd_wdata_wb = (rf_we_wb_i) ? rf_wdata_wb_i : '0;
+  // The rd_addr signal in rtl can contain contain unused non-zero values when not reading
+  assign rd_addr_wb  = (rf_we_wb_i)      ? rf_addr_wb_i  : '0;
+  assign rd_wdata_wb = (rd_addr_wb != 0) ? rf_wdata_wb_i : '0; // Gating wdata for x0 as it is assigned to 0
+                                                               // in RTL regardless of wdata (which can be non-zero)
 
   // Source Register Read Data
   // Setting register read data from operands if there was a read and clearing if there was not as operands can contain
