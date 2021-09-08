@@ -315,10 +315,10 @@ bind cv32e40x_sleep_unit:
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
-         .exception_target_wb_i    ( core_i.if_stage_i.exc_pc                                             ), // todo: make names match
+         .exc_pc_i                 ( core_i.if_stage_i.exc_pc                                             ),
 
-         .mepc_target_wb_i         ( core_i.if_stage_i.mepc_i                                             ), // todo: make names match
-         .current_priv_lvl_i       ( core_i.current_priv_lvl                                              ),
+         .priv_lvl_i               ( core_i.cs_registers_i.priv_lvl_o                                     ),
+         .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .debug_mode_i             ( core_i.ctrl_fsm.debug_mode                                           ),
          .debug_cause_i            ( core_i.ctrl_fsm.debug_cause                                          ),
 
@@ -384,7 +384,21 @@ bind cv32e40x_sleep_unit:
          .csr_mhpmcounter_we_i     ( core_i.cs_registers_i.mhpmcounter_we                                 ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
-         .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      )
+         .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      ),
+
+         .csr_mcounteren_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mcounteren_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mcounteren_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpcfg_n_i           ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpcfg_q_i           ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpcfg_we_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpaddr_n_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpaddr_q_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpaddr_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpmseccfg_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpmseccfg_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpmseccfg_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+
 
 `ifdef RISCV_FORMAL
          ,`RVFI_CONN

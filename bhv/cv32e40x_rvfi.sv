@@ -81,10 +81,10 @@ module cv32e40x_rvfi
    input logic                                pc_set_i,
    input                                      pc_mux_e pc_mux_i,
    input                                      exc_pc_mux_e exc_pc_mux_i,
-   input logic [31:0]                         exception_target_wb_i,
-   input logic [31:0]                         mepc_target_wb_i,
+   input logic [31:0]                         exc_pc_i,
 
-   input                                      PrivLvl_t current_priv_lvl_i,
+   input                                      PrivLvl_t priv_lvl_i,
+   input                                      PrivLvl_t priv_lvl_lsu_i,
 
    input logic                                debug_mode_i,
    input logic [2:0]                          debug_cause_i,
@@ -154,6 +154,19 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_marchid_i,
    input logic [31:0]                         csr_mhartid_i,
 
+   input logic [31:0]                         csr_mcounteren_n_i,
+   input logic [31:0]                         csr_mcounteren_q_i,
+   input logic                                csr_mcounteren_we_i,
+
+   input logic [ 3:0] [31:0]                  csr_pmpcfg_n_i,
+   input logic [ 3:0] [31:0]                  csr_pmpcfg_q_i,
+   input logic [ 3:0]                         csr_pmpcfg_we_i,
+   input logic [15:0] [31:0]                  csr_pmpaddr_n_i,
+   input logic [15:0] [31:0]                  csr_pmpaddr_q_i,
+   input logic [15:0]                         csr_pmpaddr_we_i,
+   input logic [ 1:0] [31:0]                  csr_pmpmseccfg_n_i,
+   input logic [ 1:0] [31:0]                  csr_pmpmseccfg_q_i,
+   input logic [ 1:0]                         csr_pmpmseccfg_we_i,
 
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
@@ -326,7 +339,25 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mhartid_rmask,
    output logic [31:0]                        rvfi_csr_mhartid_wmask,
    output logic [31:0]                        rvfi_csr_mhartid_rdata,
-   output logic [31:0]                        rvfi_csr_mhartid_wdata
+   output logic [31:0]                        rvfi_csr_mhartid_wdata,
+
+   output logic [31:0]                        rvfi_csr_mcounteren_rmask,
+   output logic [31:0]                        rvfi_csr_mcounteren_wmask,
+   output logic [31:0]                        rvfi_csr_mcounteren_rdata,
+   output logic [31:0]                        rvfi_csr_mcounteren_wdata,
+
+   output logic [ 3:0] [31:0]                 rvfi_csr_pmpcfg_rmask,
+   output logic [ 3:0] [31:0]                 rvfi_csr_pmpcfg_wmask,
+   output logic [ 3:0] [31:0]                 rvfi_csr_pmpcfg_rdata,
+   output logic [ 3:0] [31:0]                 rvfi_csr_pmpcfg_wdata,
+   output logic [15:0] [31:0]                 rvfi_csr_pmpaddr_rmask,
+   output logic [15:0] [31:0]                 rvfi_csr_pmpaddr_wmask,
+   output logic [15:0] [31:0]                 rvfi_csr_pmpaddr_rdata,
+   output logic [15:0] [31:0]                 rvfi_csr_pmpaddr_wdata,
+   output logic [ 1:0] [31:0]                 rvfi_csr_pmpmseccfg_rmask,
+   output logic [ 1:0] [31:0]                 rvfi_csr_pmpmseccfg_wmask,
+   output logic [ 1:0] [31:0]                 rvfi_csr_pmpmseccfg_rdata,
+   output logic [ 1:0] [31:0]                 rvfi_csr_pmpmseccfg_wdata
 );
 
   // Propagating from ID stage
@@ -570,7 +601,9 @@ module cv32e40x_rvfi
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
 
-        rvfi_mode      <= current_priv_lvl_i; // todo: Verify / explain this when user mode is implemented
+        // Separate privelege level signal needed for LSU intructions because their privilege level can
+        // be set to MPP when MPRV=1, both signals are valid in WB
+        rvfi_mode      <= lsu_en_wb_i ? priv_lvl_lsu_i :  priv_lvl_i;
 
         rvfi_dbg       <= debug_cause[STAGE_EX];
         rvfi_dbg_mode  <= debug_mode [STAGE_EX];
@@ -578,7 +611,7 @@ module cv32e40x_rvfi
 
       // Set expected next PC, half-word aligned
       // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
-      rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exception_target_wb_i & ~32'b1 :
+      rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exc_pc_i & ~32'b1 :
                        (is_dret_wb) ? csr_dpc_q_i :
                        pc_wdata[STAGE_EX] & ~32'b1;
 
@@ -825,6 +858,29 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mhartid            = '0;
   assign rvfi_csr_rdata_d.mhartid            = csr_mhartid_i;
 
+  // User Mode
+  assign rvfi_csr_rdata_d.mcounteren         = csr_mcounteren_q_i;
+  assign rvfi_csr_wdata_d.mcounteren         = csr_mcounteren_n_i;
+  assign rvfi_csr_wmask_d.mcounteren         = csr_mcounteren_we_i ? '1 : '0;
+
+  // PMP
+  assign rvfi_csr_rdata_d.pmpcfg             = csr_pmpcfg_q_i;
+  assign rvfi_csr_wdata_d.pmpcfg             = csr_pmpcfg_n_i;
+  generate foreach (  csr_pmpcfg_we_i[i] )
+    assign rvfi_csr_wmask_d.pmpcfg[i]        = csr_pmpcfg_we_i[i] ? '1 : '0;
+  endgenerate
+
+  assign rvfi_csr_rdata_d.pmpaddr            = csr_pmpaddr_q_i;
+  assign rvfi_csr_wdata_d.pmpaddr            = csr_pmpaddr_n_i;
+  generate foreach (  csr_pmpaddr_we_i[i] )
+    assign rvfi_csr_wmask_d.pmpaddr[i]       = csr_pmpaddr_we_i[i] ? '1 : '0;
+  endgenerate
+
+  assign rvfi_csr_rdata_d.pmpmseccfg         = csr_pmpmseccfg_q_i;
+  assign rvfi_csr_wdata_d.pmpmseccfg         = csr_pmpmseccfg_n_i;
+  generate foreach (  csr_pmpmseccfg_we_i[i] )
+    assign rvfi_csr_wmask_d.pmpmseccfg[i]    = csr_pmpmseccfg_we_i[i] ? '1 : '0;
+  endgenerate
 
   // CSR outputs //
   assign rvfi_csr_mstatus_rdata           = rvfi_csr_rdata.mstatus;
@@ -973,6 +1029,22 @@ module cv32e40x_rvfi
   assign rvfi_csr_hpmcounterh_rmask[31:3] = '1;
   assign rvfi_csr_hpmcounterh_wdata       = rvfi_csr_wdata.hpmcounterh;
   assign rvfi_csr_hpmcounterh_wmask       = rvfi_csr_wmask.hpmcounterh;
+  assign rvfi_csr_mcounteren_rdata        = rvfi_csr_rdata.mcounteren;
+  assign rvfi_csr_mcounteren_rmask        = '1;
+  assign rvfi_csr_mcounteren_wdata        = rvfi_csr_wdata.mcounteren;
+  assign rvfi_csr_mcounteren_wmask        = rvfi_csr_wmask.mcounteren;
+  assign rvfi_csr_pmpcfg_rdata            = rvfi_csr_rdata.pmpcfg;
+  assign rvfi_csr_pmpcfg_rmask            = '1;
+  assign rvfi_csr_pmpcfg_wdata            = rvfi_csr_wmask.pmpcfg;
+  assign rvfi_csr_pmpcfg_wmask            = rvfi_csr_wdata.pmpcfg;
+  assign rvfi_csr_pmpaddr_rdata           = rvfi_csr_rdata.pmpaddr;
+  assign rvfi_csr_pmpaddr_rmask           = '1;
+  assign rvfi_csr_pmpaddr_wdata           = rvfi_csr_wdata.pmpaddr;
+  assign rvfi_csr_pmpaddr_wmask           = rvfi_csr_wmask.pmpaddr;
+  assign rvfi_csr_pmpmseccfg_rdata        = rvfi_csr_rdata.pmpmseccfg;
+  assign rvfi_csr_pmpmseccfg_rmask        = '1;
+  assign rvfi_csr_pmpmseccfg_wdata        = rvfi_csr_wdata.pmpmseccfg;
+  assign rvfi_csr_pmpmseccfg_wmask        = rvfi_csr_wmask.pmpmseccfg;
 
 endmodule // cv32e40x_rvfi
 
