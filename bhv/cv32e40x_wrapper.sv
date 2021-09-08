@@ -397,7 +397,7 @@ bind cv32e40x_sleep_unit:
          .csr_pmpaddr_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_pmpmseccfg_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_pmpmseccfg_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
-         .csr_pmpmseccfg_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_pmpmseccfg_we_i      ( '0                                    /* Not supported in cv32e40x*/ )
 
 
 `ifdef RISCV_FORMAL

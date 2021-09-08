@@ -866,19 +866,19 @@ module cv32e40x_rvfi
   // PMP
   assign rvfi_csr_rdata_d.pmpcfg             = csr_pmpcfg_q_i;
   assign rvfi_csr_wdata_d.pmpcfg             = csr_pmpcfg_n_i;
-  generate foreach (  csr_pmpcfg_we_i[i] )
+  generate for (genvar i = 0; i < $size(csr_pmpcfg_we_i); i++ )
     assign rvfi_csr_wmask_d.pmpcfg[i]        = csr_pmpcfg_we_i[i] ? '1 : '0;
   endgenerate
 
   assign rvfi_csr_rdata_d.pmpaddr            = csr_pmpaddr_q_i;
   assign rvfi_csr_wdata_d.pmpaddr            = csr_pmpaddr_n_i;
-  generate foreach (  csr_pmpaddr_we_i[i] )
+  generate for (genvar i = 0; i < $size(csr_pmpaddr_we_i); i++ )
     assign rvfi_csr_wmask_d.pmpaddr[i]       = csr_pmpaddr_we_i[i] ? '1 : '0;
   endgenerate
 
   assign rvfi_csr_rdata_d.pmpmseccfg         = csr_pmpmseccfg_q_i;
   assign rvfi_csr_wdata_d.pmpmseccfg         = csr_pmpmseccfg_n_i;
-  generate foreach (  csr_pmpmseccfg_we_i[i] )
+  generate for (genvar i = 0; i < $size(csr_pmpmseccfg_we_i); i++ )
     assign rvfi_csr_wmask_d.pmpmseccfg[i]    = csr_pmpmseccfg_we_i[i] ? '1 : '0;
   endgenerate
 
