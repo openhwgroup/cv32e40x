@@ -57,8 +57,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        obi_data_req_i,             // LSU OBI interface req
 
   // From WB stage
-  input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage
-  input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
+  input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
+  input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage //todo: only needed if MTVAL is implemented
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
@@ -98,6 +98,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Sticky version of debug_req_i
   logic debug_req_q;
 
+  // Sticky version of lsu_err_wb_i
+  logic nmi_pending_q;
+  logic nmi_is_store_q; // 1 for store, 0 for load
+
   // Debug mode
   logic debug_mode_n;
   logic debug_mode_q;
@@ -121,7 +125,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   // Events in WB
   logic exception_in_wb;
-  logic [5:0] exception_cause_wb;
+  logic [7:0] exception_cause_wb;
   logic wfi_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
@@ -175,7 +179,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Blocking on branch_taken_q, as a branch ha already been taken
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
 
-  // TODO:OK:low Add missing exception types when implemented
   // Exception in WB if the following evaluates to 1
   assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK) ||
                             ex_wb_pipe_i.instr.bus_resp.err           ||
@@ -192,7 +195,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
                               (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
                               (lsu_mpu_status_wb_i == MPU_RE_FAULT)         ? EXC_CAUSE_LOAD_FAULT      :
-                              6'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
+                              8'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
@@ -214,7 +217,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid);
 
   // Pending NMI
-  assign pending_nmi = 1'b0;
+  // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
+  // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
+  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_nmi = nmi_pending_q && !debug_mode_q;
 
   // Debug //
 
@@ -252,8 +258,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
-  
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q; // todo: explain why !debug_mode_q is used here (it does not seem logical to use that to qualify pending interrupts)
+  // interrupt may be pending from the int_controller even though we are in debug mode.
+  // Gating with !debug_mode_q, otherwise a pending interrupt during debug mode
+  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no data_req has been clocked from EX to environment.
@@ -261,7 +269,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
   assign interrupt_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !debug_mode_q;
-                               
+  assign nmi_allowed = interrupt_allowed;
+
   // Performance counter events
   assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;
   assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
@@ -344,7 +353,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
     ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
                          (pending_interrupt && !interrupt_allowed) ||
-                         (pending_debug && !debug_allowed);
+                         (pending_debug && !debug_allowed) ||
+                         (pending_nmi && !nmi_allowed);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
@@ -393,8 +403,33 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_ns = FUNCTIONAL;
       end
       FUNCTIONAL: begin
-        // NMI // TODO:OK:low Implement
-        if (pending_nmi) begin
+        // NMI
+        if (pending_nmi && nmi_allowed) begin
+          ctrl_fsm_o.kill_if = 1'b1;
+          ctrl_fsm_o.kill_id = 1'b1;
+          ctrl_fsm_o.kill_ex = 1'b1;
+          ctrl_fsm_o.kill_wb = 1'b1;
+
+          ctrl_fsm_o.pc_set     = 1'b1;
+          ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
+          ctrl_fsm_o.exc_pc_mux = EXC_PC_NMI;
+
+          ctrl_fsm_o.csr_save_cause  = 1'b1;
+          ctrl_fsm_o.csr_cause.interrupt = 1'b1;
+          ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
+
+          // Save pc from oldest valid instruction
+          if (ex_wb_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_wb = 1'b1;
+          end else if (id_ex_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_ex = 1'b1;
+          end else if (if_id_pipe_i.instr_valid) begin
+            ctrl_fsm_o.csr_save_id = 1'b1;
+          end else begin
+            // IF PC will always be valid as it points to the next
+            // instruction to be issued from IF to ID.
+            ctrl_fsm_o.csr_save_if = 1'b1;
+          end
         // Debug entry (except single step which is handled later)
         end else if (pending_debug && debug_allowed) begin
           // Halt the whole pipeline
@@ -421,7 +456,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.interrupt = 1'b1;
-          ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
+          ctrl_fsm_o.csr_cause.exception_code = {3'b000, irq_id_ctrl_i};
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
@@ -673,6 +708,25 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         debug_req_q <= 1'b1;
       end else if (debug_mode_q) begin
         debug_req_q <= 1'b0;
+      end
+    end
+  end
+
+  // Sticky version of lsu_err_wb_i
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      nmi_pending_q <= 1'b0;
+      nmi_is_store_q <= 1'b0;
+    end else begin
+      if (lsu_err_wb_i && !nmi_pending_q) begin
+        // Set whenever an error occurs in WB for the LSU, unless we already have an NMI pending.
+        // Later errors could overwrite the bit for load/store type, and with mtval the address would be overwritten.
+        // todo: if mtval is implemented, address must be sticky as well
+        nmi_pending_q <= 1'b1;
+        nmi_is_store_q <= ex_wb_pipe_i.rf_we;
+      // Clear when the controller takes the NMI
+      end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.exc_pc_mux == EXC_PC_NMI)) begin
+        nmi_pending_q <= 1'b0;
       end
     end
   end

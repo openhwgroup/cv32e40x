@@ -47,7 +47,8 @@ module cv32e40x_controller_fsm_sva
   input logic           rf_we_wb_i,
   input logic           csr_we_i,
   input logic           pending_single_step,
-  input logic           trigger_match_in_wb
+  input logic           trigger_match_in_wb,
+  input logic           lsu_err_wb_i
 );
 
 
@@ -172,5 +173,13 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk)
             ctrl_fsm_o.debug_mode |-> !trigger_match_in_wb)
       else `uvm_error("controller", "Trigger match during debug mode")
+
+  // Check that lsu_err_wb_i can only be active when an LSU instruction is valid in WB
+  // Not using wb_valid, as that is only active for the second half of misaligned.
+  // bus error may also be active on the first half, thus checking only for active LSU in WB.
+  a_lsu_err_wb :
+    assert property (@(posedge clk)
+            lsu_err_wb_i |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
+      else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
 endmodule // cv32e40x_controller_fsm_sva
 
