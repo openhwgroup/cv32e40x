@@ -70,8 +70,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Debug Signal
   input  logic         debug_req_i,
-  input  logic         debug_single_step_i,
-  input  logic         debug_ebreakm_i,
+  input  Dcsr_t        dcsr_i,
   input  logic         debug_trigger_match_id_i,
 
   // Regfile target
@@ -142,8 +141,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   
     // Debug Signal
     .debug_req_i                 ( debug_req_i              ),
-    .debug_single_step_i         ( debug_single_step_i      ),
-    .debug_ebreakm_i             ( debug_ebreakm_i          ),
+    .dcsr_i                      ( dcsr_i                   ),
     .debug_trigger_match_id_i    ( debug_trigger_match_id_i ),
 
     // Outputs
