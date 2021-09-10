@@ -194,8 +194,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // debug mode and dcsr configuration
   // From cs_registers
-  logic        debug_single_step;
-  logic        debug_ebreakm;
+  Dcsr_t       dcsr;
 
   // trigger match detected in cs_registers (using ID timing)
   logic        debug_trigger_match_id;
@@ -610,8 +609,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     
     // debug
     .dpc_o                      ( dpc                    ),
-    .debug_single_step_o        ( debug_single_step      ),
-    .debug_ebreakm_o            ( debug_ebreakm          ),
+    .dcsr_o                     ( dcsr                   ),
     .debug_trigger_match_o      ( debug_trigger_match_id ),
 
     .priv_lvl_o                 ( current_priv_lvl       ),
@@ -674,8 +672,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Debug signals
     .debug_req_i                    ( debug_req_i            ), 
-    .debug_single_step_i            ( debug_single_step      ),
-    .debug_ebreakm_i                ( debug_ebreakm          ),
+    .dcsr_i                         ( dcsr                   ),
     .debug_trigger_match_id_i       ( debug_trigger_match_id ),
     
     // Register File read, write back and forwards

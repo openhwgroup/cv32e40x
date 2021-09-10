@@ -77,15 +77,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // debug
   output logic [31:0]     dpc_o,
-  output logic            debug_single_step_o,
-  output logic            debug_ebreakm_o,
+  output Dcsr_t           dcsr_o,
   output logic            debug_trigger_match_o,
 
   output PrivLvl_t        priv_lvl_o,
 
   input  logic [31:0]     pc_if_i
 );
-
   
   localparam logic [31:0] MISA_VALUE =
   (32'(A_EXTENSION)                     <<  0)  // A - Atomic Instructions extension
@@ -679,10 +677,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_mode_o    = mtvec_q.mode;
   
   assign mepc_o          = mepc_q;
-  assign dpc_o          = dpc_q;
-
-  assign debug_single_step_o  = dcsr_q.step;
-  assign debug_ebreakm_o      = dcsr_q.ebreakm;
+  assign dpc_o           = dpc_q;
+  assign dcsr_o          = dcsr_q;
 
   assign priv_lvl_q   = PRIV_LVL_M;
 

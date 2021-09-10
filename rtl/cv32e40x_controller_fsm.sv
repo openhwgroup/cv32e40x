@@ -70,9 +70,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  PrivLvl_t    current_priv_lvl_i,         // Current running priviledge level
 
   // From cs_registers
-  input logic  [1:0]  mtvec_mode_i,           
-  input  logic        debug_single_step_i,        // dcsr.step from cs_registers
-  input  logic        debug_ebreakm_i,            // dcsr.ebreakm from cs_registers
+  input  logic  [1:0] mtvec_mode_i,
+  input  Dcsr_t       dcsr_i,
   input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
 
   // Toplevel input
@@ -220,7 +219,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
   // would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  assign pending_nmi = nmi_pending_q && !debug_mode_q;
+  // NMI shall be masked during single step if dcsr.stepie is 1'b0;
+    // Masking on pending_nmi instead of nmi_allowed, otherwise ID stage would be stalled as described above.
+  assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Debug //
 
@@ -231,7 +232,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign single_step_allowed = 1'b1;
                              
   // Single step are mutually exclusive from any other reason to enter debug
-  assign pending_single_step = (!debug_mode_q && debug_single_step_i && wb_valid_i) && !pending_debug;
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && wb_valid_i) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
@@ -243,8 +244,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
-                         ((debug_req_i || debug_req_q) && !debug_mode_q) ||    // External request
-                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
+                         ((debug_req_i || debug_req_q) && !debug_mode_q)   || // External request
+                         (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
                          (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
   // Determine cause of debug
@@ -252,7 +253,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
                          trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
-                         (ebreak_in_wb && debug_ebreakm_i && !debug_mode_q) ? DBG_CAUSE_EBREAK :
+                         (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
 
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
@@ -268,7 +269,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
+  // todo: Factor in stepie here instead of gating mie in cs_registers
   assign interrupt_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !debug_mode_q;
+
   assign nmi_allowed = interrupt_allowed;
 
   // Performance counter events
@@ -472,7 +475,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
 
           // Unstall IF in case of single stepping
-          if (debug_single_step_i) begin
+          if (dcsr_i.step) begin
             single_step_halt_if_n = 1'b0;
           end
         end else begin
@@ -633,7 +636,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
              // or trigger match, as timing=0 permits us from executing triggered insn before 
              // entering debug mode
-          if((ebreak_in_wb && debug_ebreakm_i) || trigger_match_in_wb) begin
+          // todo: parts of the code below is dead code. Check with lint and fix later
+          if((ebreak_in_wb && dcsr_i.ebreakm) || trigger_match_in_wb) begin
             ctrl_fsm_o.csr_save_wb = 1'b1;
           end else begin
             ctrl_fsm_o.csr_save_if = 1'b1;
@@ -653,7 +657,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     // Detect first insn issue in single step after dret
     // Used to block further issuing
-    if(!ctrl_fsm_o.debug_mode && debug_single_step_i && !single_step_halt_if_q && (if_valid_i && id_ready_i)) begin
+    if(!ctrl_fsm_o.debug_mode && dcsr_i.step && !single_step_halt_if_q && (if_valid_i && id_ready_i)) begin
       single_step_halt_if_n = 1'b1;
     end
 
@@ -665,7 +669,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Wakeup from sleep
   assign ctrl_fsm_o.wake_from_sleep    = irq_wu_ctrl_i || pending_debug || debug_mode_q;
-  assign ctrl_fsm_o.debug_wfi_no_sleep = debug_mode_q || debug_single_step_i || trigger_match_in_wb;
+  assign ctrl_fsm_o.debug_wfi_no_sleep = debug_mode_q || dcsr_i.step || trigger_match_in_wb;
 
   ////////////////////
   // Flops          //
