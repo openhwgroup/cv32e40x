@@ -392,7 +392,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     mcause_n                 = '{
                                   interrupt:      csr_wdata_int[31],
-                                  exception_code: csr_wdata_int[5:0],
+                                  exception_code: csr_wdata_int[7:0],
                                   default: 'b0
                                 };
     mcause_we                = 1'b0;

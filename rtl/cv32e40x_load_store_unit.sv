@@ -537,7 +537,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // TODO:OK:low If a store following a load with bus error has dependencies on the load result,
     // it may use use an unspecified address and should be avoided for security reasons.
     // The NMI should be taken before this store.
-  
+    // TODO: Add assertion to check that result of faulted load is not used before NMI is taken.
+  // TODO: If we will not implement MTVAL, then this code can be removed.
   // Following block is within the EX stage
   always_ff @(posedge clk, negedge rst_n) // todo:low conditions used here seems different than other WB registers (normally we would use if (ctrl_update))
   begin

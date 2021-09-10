@@ -40,6 +40,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic [31:0] boot_addr_i,
     input  logic [31:0] dm_exception_addr_i,
 
+    // NMI address
+    input  logic [31:0] nmi_addr_i,
+
     // Debug mode halt address
     input  logic [31:0] dm_halt_addr_i,
 
@@ -118,6 +121,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       EXC_PC_IRQ:                              exc_pc = { mtvec_addr, 1'b0, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b0 }; // interrupts are vectored
       EXC_PC_DBD:                              exc_pc = { dm_halt_addr_i[31:2], 2'b0 };
       EXC_PC_DBE:                              exc_pc = { dm_exception_addr_i[31:2], 2'b0 };
+      EXC_PC_NMI:                              exc_pc = { nmi_addr_i[31:2], 2'b00};
       default:                                 exc_pc = { mtvec_addr, 8'h0 };
     endcase
   end

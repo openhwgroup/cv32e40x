@@ -513,8 +513,8 @@ typedef struct packed{
 
 typedef struct packed {
   logic           interrupt;
-  logic [30:6]    zero0;
-  logic [5:0]     exception_code;
+  logic [30:8]    zero0;
+  logic [7:0]     exception_code;
 } Mcause_t;
 
 typedef struct packed {
@@ -769,21 +769,25 @@ typedef enum logic[2:0] {
 
 
 // Exception PC mux selector defines
-typedef enum logic[1:0] {
-  EXC_PC_EXCEPTION = 2'b00,
-  EXC_PC_IRQ       = 2'b01,
-  EXC_PC_DBD       = 2'b10,
-  EXC_PC_DBE       = 2'b11
+typedef enum logic[2:0] {
+  EXC_PC_EXCEPTION = 3'b000,
+  EXC_PC_IRQ       = 3'b001,
+  EXC_PC_DBD       = 3'b010,
+  EXC_PC_DBE       = 3'b011,
+  EXC_PC_NMI       = 3'b100
 } exc_pc_mux_e;
 
 // Exception Cause
-parameter EXC_CAUSE_INSTR_FAULT     = 6'h01;
-parameter EXC_CAUSE_ILLEGAL_INSN    = 6'h02;
-parameter EXC_CAUSE_BREAKPOINT      = 6'h03;
-parameter EXC_CAUSE_LOAD_FAULT      = 6'h05;
-parameter EXC_CAUSE_STORE_FAULT     = 6'h07;
-parameter EXC_CAUSE_ECALL_MMODE     = 6'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 6'h30;
+parameter EXC_CAUSE_INSTR_FAULT     = 8'h01;
+parameter EXC_CAUSE_ILLEGAL_INSN    = 8'h02;
+parameter EXC_CAUSE_BREAKPOINT      = 8'h03;
+parameter EXC_CAUSE_LOAD_FAULT      = 8'h05;
+parameter EXC_CAUSE_STORE_FAULT     = 8'h07;
+parameter EXC_CAUSE_ECALL_MMODE     = 8'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 8'h30;
+
+parameter INT_CAUSE_LSU_LOAD_FAULT  = 8'h80;
+parameter INT_CAUSE_LSU_STORE_FAULT = 8'h81;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;

@@ -313,6 +313,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .boot_addr_i         ( boot_addr_i[31:0]         ),
     .dm_exception_addr_i ( dm_exception_addr_i[31:0] ),
 
+    // NMI address
+    .nmi_addr_i          ( nmi_addr_i                ),
+
     // debug mode halt address
     .dm_halt_addr_i      ( dm_halt_addr_i[31:0]      ),
 
