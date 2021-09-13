@@ -103,7 +103,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
     // Find pma module's attributes among cfgs
     for (int i = 0; i < PMA_NUM_REGIONS; i++) begin
-      if (pma_cfg == PMA_CFG[i]) begin
+      if ((pma_cfg == PMA_CFG[i]) && (pma_cfg != PMA_R_DEFAULT)) begin
         is_pma_matched = 1;
         pma_match_num = i;
         break;
