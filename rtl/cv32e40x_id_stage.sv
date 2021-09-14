@@ -357,8 +357,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   decoder_i
   (
     // controller related signals
-    .deassert_we_i                   ( ctrl_byp_i.deassert_we         ),
-    .deassert_we_special_i           ( ctrl_byp_i.deassert_we_special ),
+    .deassert_we_i                   ( ctrl_byp_i.deassert_we ),
 
     .illegal_insn_o                  ( illegal_insn              ),
     .ebrk_insn_o                     ( ebrk_insn                 ),
