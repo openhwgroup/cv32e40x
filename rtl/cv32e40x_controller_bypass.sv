@@ -156,14 +156,13 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   begin
     ctrl_byp_o.load_stall          = 1'b0;
     ctrl_byp_o.deassert_we         = 1'b0;
-    ctrl_byp_o.deassert_we_special = 1'b0;
     ctrl_byp_o.csr_stall           = 1'b0;
     ctrl_byp_o.minstret_stall      = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
     if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || debug_trigger_match_id_i) begin
-      ctrl_byp_o.deassert_we_special = 1'b1;
+      ctrl_byp_o.deassert_we = 1'b1;
     end
 
     // Stall because of load operation
@@ -172,21 +171,18 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
         (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz)    // load-use hazard (WB during wait-state)
        )
     begin
-      ctrl_byp_o.deassert_we = 1'b1;
       ctrl_byp_o.load_stall  = 1'b1;
     end
 
     // Stall because of jr path
     // - Stall if a result is to be forwarded to the PC
     // except if result from WB is an ALU result
-    // we don't care about in which state the ctrl_fsm is as we deassert_we
-    // anyway when we are not in DECODE
+    // No need to deassert anything in ID,a s ID stage is stalled anyway
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
         ((rf_we_wb && rf_rd_wb_match[0] && lsu_en_wb) ||
          (rf_we_ex && rf_rd_ex_match[0])))
     begin
       ctrl_byp_o.jr_stall    = 1'b1;
-      ctrl_byp_o.deassert_we = 1'b1;
     end
     else
     begin
