@@ -8,24 +8,26 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-////////////////////////////////////////////////////////////////////////////////
-// Engineer:       Francesco Conti - f.conti@unibo.it                         //
-//                                                                            //
-// Additional contributions by:                                               //
-//                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
-//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
-//                                                                            //
-// Design Name:    RISC-V register file                                       //
-// Project Name:   RI5CY                                                      //
-// Language:       SystemVerilog                                              //
-//                                                                            //
-// Description:    Register file with 31x 32 bit wide registers. Register 0   //
-//                 is fixed to 0. This register file is based on flip-flops.  //
-//                                                                            //
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+// Engineer:       Francesco Conti - f.conti@unibo.it                          //
+//                                                                             //
+// Additional contributions by:                                                //
+//                 Michael Gautschi - gautschi@iis.ee.ethz.ch                  //
+//                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                  //
+//                 Halfdan Bechmann - halfdan.bechmann@silabs.com              //
+//                                                                             //
+// Design Name:    RISC-V register file                                        //
+// Project Name:   RI5CY                                                       //
+// Language:       SystemVerilog                                               //
+//                                                                             //
+// Description:    Register file with 31x registers. Register 0 is fixed to 0. //
+//                 This register file is based on flip-flops. The register     //
+//                 width is configurable to allow adding a parity bit or ECC.  //
+//                                                                             //
+/////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_register_file import cv32e40x_pkg::*;
-(
+  (
     // Clock and Reset
     input logic                           clk,
     input logic                           rst_n,
@@ -37,8 +39,8 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     // Write ports
     input rf_addr_t                       waddr_i [REGFILE_NUM_WRITE_PORTS],
     input logic [REGFILE_WORD_WIDTH-1:0]  wdata_i [REGFILE_NUM_WRITE_PORTS],
-    input logic                           we_i [REGFILE_NUM_WRITE_PORTS]
-);
+    input logic                           we_i    [REGFILE_NUM_WRITE_PORTS]
+   );
 
   // integer register file
   logic [REGFILE_WORD_WIDTH-1:0]          mem [REGFILE_NUM_WORDS];
@@ -80,10 +82,10 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
     always_ff @(posedge clk or negedge rst_n) begin
       if(~rst_n) begin
         // R0 is nil
-        mem[0] <= 32'b0;
+        mem[0] <= '0;
       end else begin
         // R0 is nil
-        mem[0] <= 32'b0;
+        mem[0] <= '0;
       end
     end
 
@@ -94,7 +96,7 @@ module cv32e40x_register_file import cv32e40x_pkg::*;
       always_ff @(posedge clk, negedge rst_n)
       begin : register_write_behavioral
         if (rst_n==1'b0) begin
-          mem[i] <= 32'b0;
+          mem[i] <= '0;
         end else begin
           // Highest indexed write port will have priority
           for(int j=0; j<REGFILE_NUM_WRITE_PORTS; j++) begin : rf_write_ports
