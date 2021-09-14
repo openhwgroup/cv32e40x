@@ -86,6 +86,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           lsu_en_gated;
   logic           previous_exception;
 
+  // div_en not affected by kill/halt
+  logic           div_en;
+
   // Divider signals
   logic           div_ready;
   logic           div_valid;
@@ -104,6 +107,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
+
+  assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
 
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
@@ -195,6 +200,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
     // Result
     .result_o           ( div_result                 ),
+
+    // divider enable, not affected by kill/halt
+    .div_en_i           ( div_en                     ),
 
     // Handshakes
     .valid_i            ( div_en_gated               ),
