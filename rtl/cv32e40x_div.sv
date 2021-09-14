@@ -50,6 +50,9 @@ module cv32e40x_div import cv32e40x_pkg::*;
     output logic [5:0]         alu_shift_amt_o,
     input logic [31:0]         alu_op_b_shifted_i,
  
+    // Divider enable
+    input logic                div_en_i,
+
     // Input handshake
     input logic                valid_i,
     output logic               ready_o,
@@ -135,12 +138,12 @@ module cv32e40x_div import cv32e40x_pkg::*;
     end
   endgenerate
 
-  assign alu_clz_en_o = valid_i;
+  assign alu_clz_en_o = div_en_i;
   
   // Deternmine initial shift of divisor
   assign op_b_is_neg = op_b_i[31] & div_signed;
   assign alu_shift_amt_o = alu_clz_result_i ;
-  assign alu_shift_en_o  = valid_i;
+  assign alu_shift_en_o  = div_en_i;
 
   // Check for op_b_i == 0
   assign op_b_is_zero = !(|op_b_i);
