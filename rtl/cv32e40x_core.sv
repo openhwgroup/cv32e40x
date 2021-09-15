@@ -157,7 +157,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   PrivLvl_t    current_priv_lvl;
 
   // LSU
-  logic        lsu_misaligned_ex;
+  logic        lsu_split_ex;
   mpu_status_e lsu_mpu_status_wb;
   logic [31:0] lsu_rdata_wb;
   logic        lsu_err_wb;
@@ -402,7 +402,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_en_o                     ( csr_en_id                 ),
     .csr_op_o                     ( csr_op_id                 ),
 
-    .ctrl_transfer_insn_o         ( ctrl_transfer_insn_id),
+    .ctrl_transfer_insn_o         ( ctrl_transfer_insn_id     ),
     .ctrl_transfer_insn_raw_o     ( ctrl_transfer_insn_raw_id ),
 
     .rf_re_o                      ( rf_re_id                  ),
@@ -456,7 +456,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_ready_o                ( lsu_ready_ex                 ),
     .lsu_valid_o                ( lsu_valid_ex                 ),
     .lsu_ready_i                ( lsu_ready_0                  ),
-    .lsu_misaligned_i           ( lsu_misaligned_ex            ),
+    .lsu_split_i                ( lsu_split_ex                 ),
 
     // Pipeline handshakes
     .ex_ready_o                 ( ex_ready                     ),
@@ -495,7 +495,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .busy_o                ( lsu_busy           ),
 
     // Stage 0 outputs (EX)
-    .lsu_misaligned_0_o    ( lsu_misaligned_ex  ),
+    .lsu_split_0_o         ( lsu_split_ex       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
 
     // Stage 1 outputs (WB)
@@ -651,7 +651,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_op_id_i                    ( csr_op_id              ),
                                                                  
     // LSU
-    .lsu_misaligned_ex_i            ( lsu_misaligned_ex      ),
+    .lsu_split_ex_i                 ( lsu_split_ex           ),
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),

@@ -59,9 +59,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // From WB
   input  logic        wb_ready_i,                 // WB stage is ready
 
-  // From LSU
-  input  logic        lsu_misaligned_ex_i,           // LSU detected a misaligned load/store instruction
-
   // Controller Bypass outputs
   output ctrl_byp_t     ctrl_byp_o
 );

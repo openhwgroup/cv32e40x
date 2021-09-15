@@ -37,7 +37,7 @@ module cv32e40x_ex_stage_sva
 
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_o,
-  input logic           lsu_misaligned_i
+  input logic           lsu_split_i
 );
 
   // Halt implies not ready and not valid
@@ -56,9 +56,9 @@ module cv32e40x_ex_stage_sva
 
 
 
-// First access of misaligned LSU should have rf_we deasserted
-a_misaligned_rf_we:
+// First access of split LSU instruction should have rf_we deasserted
+a_split_rf_we:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (ex_valid_o && wb_ready_i && id_ex_pipe_i.lsu_en && lsu_misaligned_i)
+                    (ex_valid_o && wb_ready_i && id_ex_pipe_i.lsu_en && lsu_split_i)
                     |=> !ex_wb_pipe_o.rf_we);
 endmodule // cv32e40x_ex_stage_sva

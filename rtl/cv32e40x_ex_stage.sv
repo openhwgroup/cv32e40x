@@ -59,7 +59,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        lsu_ready_o,
   output logic        lsu_valid_o,
   input  logic        lsu_ready_i,
-  input  logic        lsu_misaligned_i,       // LSU is performing first part of a misaligned instruction
+  input  logic        lsu_split_i,      // LSU is performing first part of a misaligned/split instruction
 
   // Stage ready/valid
   output logic        ex_ready_o,       // EX stage is ready for new data
@@ -272,9 +272,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
         // Deassert rf_we in case of illegal csr instruction or
-        // when the first half of a misaligned LSU goes to WB.
-        ex_wb_pipe_o.rf_we       <= (csr_illegal_i               ||
-                                    lsu_misaligned_i)             ? 1'b0 : id_ex_pipe_i.rf_we;
+        // when the first half of a misaligned/split LSU goes to WB.
+        ex_wb_pipe_o.rf_we       <= (csr_illegal_i     ||
+                                    lsu_split_i)       ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
           
         if (id_ex_pipe_i.rf_we) begin

@@ -306,7 +306,7 @@ bind cv32e40x_sleep_unit:
          .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
          .data_addr_ex_i           ( core_i.data_addr_o                                                   ),
          .data_wdata_ex_i          ( core_i.data_wdata_o                                                  ),
-         .lsu_misaligned_q_ex_i    ( core_i.load_store_unit_i.misaligned_q                                ),
+         .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
          .rf_re_id_i               ( core_i.id_stage_i.rf_re_o                                            ),
          .rf_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),

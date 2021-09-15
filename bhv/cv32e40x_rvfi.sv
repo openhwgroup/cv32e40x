@@ -60,7 +60,7 @@ module cv32e40x_rvfi
 
    input logic [31:0]                         data_addr_ex_i,
    input logic [31:0]                         data_wdata_ex_i,
-   input logic                                lsu_misaligned_q_ex_i,
+   input logic                                lsu_split_q_ex_i,
 
    //// WB probes ////
    input logic [31:0]                         pc_wb_i,
@@ -560,8 +560,8 @@ module cv32e40x_rvfi
         mem_wmask  [STAGE_EX] <= mem_wmask  [STAGE_ID];
         in_trap    [STAGE_EX] <= in_trap    [STAGE_ID];
 
-        if (!lsu_misaligned_q_ex_i) begin
-          // The second part of the misaligned acess is suppressed to keep
+        if (!lsu_split_q_ex_i) begin
+          // The second part of the split misaligned acess is suppressed to keep
           // the start address and data for the whole misaligned transfer
           ex_mem_addr         <= rvfi_mem_addr_d;
           ex_mem_wdata        <= rvfi_mem_wdata_d;

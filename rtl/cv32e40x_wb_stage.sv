@@ -88,7 +88,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Note that write back is not suppressed during bus errors (in order to prevent
   // a timing path from the late arriving data_err_i into the register file).
   //
-  // Note that the register file is only written for the last part of a misaligned load.
+  // Note that the register file is only written for the last part of a split misaligned load.
   // (rf_we suppressed in ex_stage for the first part, lsu aggregates data for second part)
   //
   // Note that the register file is written multiple times in case waited loads (in
@@ -125,7 +125,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // - Will be 0 for interrupted instruction and debug entry
   // - Will be 1 for synchronous exceptions (which is easier to deal with for RVFI); this implies that wb_valid
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
-  // - Will be 1 only for the second phase of a misaligned load/store that completes without MPU errors.
+  // - Will be 1 only for the second phase of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
 
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1)        ||     // Non-LSU instructions always have valid result in WB, also for exceptions.

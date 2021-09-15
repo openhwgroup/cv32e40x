@@ -45,7 +45,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        busy_o,
 
   // Stage 0 outputs (EX)
-  output logic        lsu_misaligned_0_o,       // Misaligned access was detected (to controller)
+  output logic        lsu_split_0_o,       // Misaligned access is split in two transactions (to controller)
 
   // Stage 1 outputs (WB)
   output logic [31:0] lsu_addr_1_o,
@@ -110,8 +110,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [3:0]   be;
   logic [31:0]  wdata;
 
-  logic         misaligned_q;           // high if we are currently performing the second address phase of a misaligned store
-  logic         misaligned_access;
+  logic         split_q;           // high if we are currently performing the second address phase of a split misaligned load/store
+  logic         misaligned_access; // Access is not naturally aligned
 
   logic [31:0]  rdata_q;
 
@@ -138,7 +138,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       end
       2'b01:
       begin // Writing a half word
-        if (misaligned_q == 1'b0)
+        if (split_q == 1'b0)
         begin // non-misaligned case
           case (addr_int[1:0])
             2'b00: be = 4'b0011;
@@ -154,7 +154,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       end
       default:
       begin // Writing a word
-        if (misaligned_q == 1'b0)
+        if (split_q == 1'b0)
         begin // non-misaligned case
           case (addr_int[1:0])
             2'b00: be = 4'b1111;
@@ -177,7 +177,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // prepare data to be written to the memory
-  // we handle misaligned accesses, half word and byte accesses and
+  // we handle misaligned (split) accesses, half word and byte accesses and
   // register offsets here
   assign wdata_offset = addr_int[1:0] - id_ex_pipe_i.lsu_reg_offset[1:0];
   always_comb
@@ -209,27 +209,27 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       lsu_sign_ext_q   <= id_ex_pipe_i.lsu_sign_ext;
       lsu_we_q         <= id_ex_pipe_i.lsu_we;
       rdata_offset_q   <= addr_int[1:0];
-      // If we currently signal misaligned from first stage (EX), WB stage will not see the last transfer for this update. 
-      // Otherwise we are on the last. For non-misaligned we always mark as last.
-      last_q           <= lsu_misaligned_0_o ? 1'b0 : 1'b1;
+      // If we currently signal split from first stage (EX), WB stage will not see the last transfer for this update.
+      // Otherwise we are on the last. For non-split accesses we always mark as last.
+      last_q           <= lsu_split_0_o ? 1'b0 : 1'b1;
     end
   end
 
-  // Tracking misaligned state
+  // Tracking split (misaligned) state
   // This signals has EX timing, and indicates that the second
-  // address phase of a misaligned transfer is taking place
+  // address phase of a split transfer is taking place
   // Reset/killed on !lsu_en_gated to ensure it is zero for the
   // first phase of the next instruction. Otherwise it could stick at 1 after a killed
-  // misaligned, causing next LSU instruction to calculate wrong _be.
+  // split, causing next LSU instruction to calculate wrong _be.
   // todo: add assertion that it is zero for the first phase (regardless of alignment)
   always_ff @(posedge clk, negedge rst_n) begin
     if(rst_n == 1'b0) begin
-      misaligned_q    <= 1'b0;
+      split_q    <= 1'b0;
     end else begin
       if(!lsu_en_gated) begin
-        misaligned_q <= 1'b0; // Reset misaligned_st when no valid instructions
-      end else if (ctrl_update) begin // EX done, update misaligned_q for next address phase
-        misaligned_q <= lsu_misaligned_0_o;
+        split_q <= 1'b0; // Reset split_st when no valid instructions
+      end else if (ctrl_update) begin // EX done, update split_q for next address phase
+        split_q <= lsu_split_0_o;
       end
     end
   end
@@ -245,11 +245,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic [31:0] rdata_ext;
 
-  logic [31:0] rdata_w_ext; // sign extension for words, actually only misaligned assembly
+  logic [31:0] rdata_w_ext; // sign extension for words, actually only split misaligned assembly
   logic [31:0] rdata_h_ext; // sign extension for half words
   logic [31:0] rdata_b_ext; // sign extension for bytes
 
-  // take care of misaligned words
+  // take care of misaligned/split words
   always_comb
   begin
     case (rdata_offset_q)
@@ -355,12 +355,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     begin
       if (resp_valid && !lsu_we_q)
       begin
-        // if we have detected a misaligned access, and we are
+        // if we have detected a split access, and we are
         // currently doing the first part of this access, then
         // store the data coming from memory in rdata_q.
         // In all other cases, rdata_q gets the value that we are
         // writing to the register file
-        if (misaligned_q || lsu_misaligned_0_o)
+        if (split_q || lsu_split_0_o)
           rdata_q <= resp_rdata;
         else
           rdata_q <= rdata_ext;
@@ -369,34 +369,35 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // output to register file
-  // Always rdata_ext regardless of aligned/misaligned
-  // Output will be valid (valid_1_o) only for the last phase of misaligned.
+  // Always rdata_ext regardless of split accesses
+  // Output will be valid (valid_1_o) only for the last phase of split access.
   assign lsu_rdata_1_o = rdata_ext;
 
   // misaligned_access is high for both transfers of a misaligned transfer
-  assign misaligned_access = misaligned_q || lsu_misaligned_0_o;
+  // todo: must detect non-naturally aligned half words (not split, but PMA needs to block it if access is to I/O region)
+  assign misaligned_access = split_q || lsu_split_0_o;
 
 
   // check for misaligned accesses that need a second memory access
-  // If one is detected, this is signaled with lsu_misaligned_0_o.
+  // If one is detected, this is signaled with lsu_split_0_o.
   // This is used to gate off ready_0_o to avoid instructions into
-  // the EX stage while the LSU is handling the second phase of the misaligned.
+  // the EX stage while the LSU is handling the second phase of the split access.
   always_comb
   begin
-    lsu_misaligned_0_o = 1'b0;
+    lsu_split_0_o = 1'b0;
 
-    if (lsu_en_gated && !misaligned_q)
+    if (lsu_en_gated && !split_q)
     begin
       case (id_ex_pipe_i.lsu_type)
         2'b10: // word
         begin
           if (addr_int[1:0] != 2'b00)
-            lsu_misaligned_0_o = 1'b1;
+            lsu_split_0_o = 1'b1;
         end
         2'b01: // half word
         begin
           if (addr_int[1:0] == 2'b11)
-            lsu_misaligned_0_o = 1'b1;
+            lsu_split_0_o = 1'b1;
         end
       endcase // case (id_ex_pipe_i.lsu_type)
     end
@@ -404,7 +405,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // generate address from operands
   // todo: operand_b is a 12 bit immediate. May be able to optimize this adder (look at SweRV refefence)
-  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (misaligned_q ? 'h4 : 'h0)) :
+  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (split_q ? 'h4 : 'h0)) :
                                                           id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
@@ -420,8 +421,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // - maximum number of outstanding transactions will not be exceeded (cnt_q < DEPTH)
   //////////////////////////////////////////////////////////////////////////////
 
-  // For last phase of misaligned transfer the address needs to be word aligned (as LSB of be will be set)
-  assign trans.addr  = misaligned_q ? {addr_int[31:2], 2'b00} : addr_int;
+  // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
+  assign trans.addr  = split_q ? {addr_int[31:2], 2'b00} : addr_int;
   assign trans.we    = id_ex_pipe_i.lsu_we;
   assign trans.be    = be;
   assign trans.wdata = wdata;
@@ -437,7 +438,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
 
-  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned
+  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
   assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
 
@@ -466,9 +467,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                           1'b1
                      ) && valid_0_i;
 
-  // External ready only when not handling multi cycle misaligned
-  // otherwise we may let a new instruction into EX, overwriting second phase of misaligned.
-  assign ready_0_o = done_0 && !lsu_misaligned_0_o;
+  // External (EX) ready only when not handling multi cycle split accesses
+  // otherwise we may let a new instruction into EX, overwriting second phase of split access..
+  assign ready_0_o = done_0 && !lsu_split_0_o;
 
   
 
