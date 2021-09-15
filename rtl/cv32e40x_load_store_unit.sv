@@ -110,8 +110,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [3:0]   be;
   logic [31:0]  wdata;
 
-  logic         split_q;           // high if we are currently performing the second address phase of a split misaligned load/store
-  logic         misaligned_access; // Access is not naturally aligned
+  logic         split_q;                 // high if we are currently performing the second address phase of a split misaligned load/store
+  logic         misaligned_halfword;     // high if a halfword is not naturally aligned but no split is needed
+  logic         misaligned_access;       // Access is not naturally aligned
 
   logic [31:0]  rdata_q;
 
@@ -374,18 +375,18 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_rdata_1_o = rdata_ext;
 
   // misaligned_access is high for both transfers of a misaligned transfer
-  // todo: must detect non-naturally aligned half words (not split, but PMA needs to block it if access is to I/O region)
-  assign misaligned_access = split_q || lsu_split_0_o;
+  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword;
 
 
   // check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
   // This is used to gate off ready_0_o to avoid instructions into
   // the EX stage while the LSU is handling the second phase of the split access.
+  // Also detecting misaligned halfwords that don't need a second transfer
   always_comb
   begin
     lsu_split_0_o = 1'b0;
-
+    misaligned_halfword = 1'b0;
     if (lsu_en_gated && !split_q)
     begin
       case (id_ex_pipe_i.lsu_type)
@@ -398,6 +399,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         begin
           if (addr_int[1:0] == 2'b11)
             lsu_split_0_o = 1'b1;
+          if (addr_int[0] != 1'b0)
+            misaligned_halfword = 1'b1;
         end
       endcase // case (id_ex_pipe_i.lsu_type)
     end
