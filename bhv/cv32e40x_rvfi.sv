@@ -158,15 +158,15 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mcounteren_q_i,
    input logic                                csr_mcounteren_we_i,
 
-   input logic [ 3:0] [31:0]                  csr_pmpcfg_n_i,
-   input logic [ 3:0] [31:0]                  csr_pmpcfg_q_i,
-   input logic [ 3:0]                         csr_pmpcfg_we_i,
-   input logic [15:0] [31:0]                  csr_pmpaddr_n_i,
-   input logic [15:0] [31:0]                  csr_pmpaddr_q_i,
+   input logic [ 7:0]                         csr_pmpcfg_n_i[16],
+   input logic [ 7:0]                         csr_pmpcfg_q_i[16],
+   input logic [15:0]                         csr_pmpcfg_we_i,
+   input logic [31:0]                         csr_pmpaddr_n_i, // PMP address input shared for all pmpaddr registers
+   input logic [31:0]                         csr_pmpaddr_q_i[16],
    input logic [15:0]                         csr_pmpaddr_we_i,
-   input logic [ 1:0] [31:0]                  csr_pmpmseccfg_n_i,
-   input logic [ 1:0] [31:0]                  csr_pmpmseccfg_q_i,
-   input logic [ 1:0]                         csr_pmpmseccfg_we_i,
+   input logic [31:0]                         csr_pmpmseccfg_n_i,
+   input logic [31:0]                         csr_pmpmseccfg_q_i,
+   input logic                                csr_pmpmseccfg_we_i,
 
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
@@ -866,23 +866,23 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mcounteren         = csr_mcounteren_we_i ? '1 : '0;
 
   // PMP
-  assign rvfi_csr_rdata_d.pmpcfg             = csr_pmpcfg_q_i;
-  assign rvfi_csr_wdata_d.pmpcfg             = csr_pmpcfg_n_i;
-  generate for (genvar i = 0; i < $size(csr_pmpcfg_we_i); i++ )
-    assign rvfi_csr_wmask_d.pmpcfg[i]        = csr_pmpcfg_we_i[i] ? '1 : '0;
+  // Special case for the PMP cfg registers because they are split by pmp region and not by register
+  generate
+    for (genvar i = 0; i < 16; i++ ) begin // Max 16 pmp regions
+      // 4 regions in each register
+      assign rvfi_csr_wdata_d.pmpcfg[i/4][i%4+:4] = csr_pmpcfg_n_i[i];
+      assign rvfi_csr_rdata_d.pmpcfg[i/4][i%4+:4] = csr_pmpcfg_q_i[i];
+      assign rvfi_csr_wmask_d.pmpcfg[i/4][i%4+:4] = csr_pmpcfg_we_i[i] ? '1 : '0;
+
+      assign rvfi_csr_wdata_d.pmpaddr[i]          = csr_pmpaddr_n_i; // input shared between all registers
+      assign rvfi_csr_rdata_d.pmpaddr[i]          = csr_pmpaddr_q_i[i];
+      assign rvfi_csr_wmask_d.pmpaddr[i]          = csr_pmpaddr_we_i[i] ? '1 : '0;
+    end
   endgenerate
 
-  assign rvfi_csr_rdata_d.pmpaddr            = csr_pmpaddr_q_i;
-  assign rvfi_csr_wdata_d.pmpaddr            = csr_pmpaddr_n_i;
-  generate for (genvar i = 0; i < $size(csr_pmpaddr_we_i); i++ )
-    assign rvfi_csr_wmask_d.pmpaddr[i]       = csr_pmpaddr_we_i[i] ? '1 : '0;
-  endgenerate
-
-  assign rvfi_csr_rdata_d.pmpmseccfg         = csr_pmpmseccfg_q_i;
-  assign rvfi_csr_wdata_d.pmpmseccfg         = csr_pmpmseccfg_n_i;
-  generate for (genvar i = 0; i < $size(csr_pmpmseccfg_we_i); i++ )
-    assign rvfi_csr_wmask_d.pmpmseccfg[i]    = csr_pmpmseccfg_we_i[i] ? '1 : '0;
-  endgenerate
+  assign rvfi_csr_wdata_d.pmpmseccfg[0]   = csr_pmpmseccfg_n_i;
+  assign rvfi_csr_rdata_d.pmpmseccfg[0]   = csr_pmpmseccfg_q_i;
+  assign rvfi_csr_wmask_d.pmpmseccfg[0]   = csr_pmpmseccfg_we_i ? '1 : '0;
 
   // CSR outputs //
   assign rvfi_csr_mstatus_rdata           = rvfi_csr_rdata.mstatus;
