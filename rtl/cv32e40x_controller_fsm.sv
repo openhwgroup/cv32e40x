@@ -254,6 +254,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //  - If first phase stays in EX for more than one cycle, obi_data_req_q will be 1 and block debug.
   //  - When first phase arrives in WB, we block debug. If first phase in WB finishes with rvalid
   //    before second phase in EX gets grant, we block on obi_data_req_q
+  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
   assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !fencei_ongoing;
 
   // Debug pending for any other reason than single step
@@ -282,6 +283,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // and no data_req has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
+  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
   // todo: Factor in stepie here instead of gating mie in cs_registers
