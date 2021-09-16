@@ -83,7 +83,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
-  input logic         fencei_flush_ack_i,       // TODO:OK:low use
+  input logic         fencei_flush_ack_i,
 
   // Debug Interface
   input  logic        debug_req_i,
@@ -243,8 +243,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
   assign m_c_obi_data_if.resp_payload.err    = data_err_i;
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
-
-  assign fencei_flush_req_o = 1'b0; // TODO:OK:low connect to controller when handshake is implemented
 
   assign debug_havereset_o = ctrl_fsm.debug_havereset;
   assign debug_halted_o    = ctrl_fsm.debug_halted;
@@ -682,7 +680,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Write targets from ID
     .regfile_alu_we_id_i            ( regfile_alu_we_id      ),
-
+    
+    // Fencei flush handshake
+    .fencei_flush_ack_i             ( fencei_flush_ack_i     ),
+    .fencei_flush_req_o             ( fencei_flush_req_o     ),
+   
     .id_ready_i                     ( id_ready               ),
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( wb_ready               ),

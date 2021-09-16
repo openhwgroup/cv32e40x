@@ -92,7 +92,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Outputs
   output ctrl_byp_t   ctrl_byp_o,
-  output ctrl_fsm_t   ctrl_fsm_o                // FSM outputs
+  output ctrl_fsm_t   ctrl_fsm_o,               // FSM outputs
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i
 );
 
   // Main FSM and debug FSM
@@ -144,6 +148,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .dcsr_i                      ( dcsr_i                   ),
     .debug_trigger_match_id_i    ( debug_trigger_match_id_i ),
 
+    // Fencei flush handshake
+    .fencei_flush_ack_i          ( fencei_flush_ack_i       ),
+    .fencei_flush_req_o          ( fencei_flush_req_o       ),
+   
     // Outputs
     .ctrl_fsm_o                  ( ctrl_fsm_o               )
   );

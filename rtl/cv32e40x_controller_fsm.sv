@@ -85,7 +85,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        id_ready_i,       // ID stage is ready for new data
   input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
   input  logic        wb_ready_i,       // WB stage is ready for new data,
-  input  logic        wb_valid_i        // WB stage ha valid (non-bubble) data
+  input  logic        wb_valid_i,       // WB stage ha valid (non-bubble) data
+
+  // Fencei flush handshake
+  output logic        fencei_flush_req_o,
+  input logic         fencei_flush_ack_i
 );
 
    // FSM state encoding
@@ -151,7 +155,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic [4:0] exc_cause; // id of taken interrupt
 
+  logic       fencei_ready;
+  logic       fencei_flush_req_set;
+  logic       fencei_req_and_ack_q;
+  logic       fencei_ongoing;    
 
+  assign fencei_ready = 1'b1; // TODO: connect when write buffer is implemented
+
+  // Once the fencei handshake is initiated, it must complete and the instruction must retire.
+  // The instruction retires when fencei_req_and_ack_q = 1
+  assign fencei_ongoing = fencei_flush_req_o || fencei_req_and_ack_q;
+  
   // Mux selector for vectored IRQ PC
   assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
   
@@ -240,7 +254,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //  - If first phase stays in EX for more than one cycle, obi_data_req_q will be 1 and block debug.
   //  - When first phase arrives in WB, we block debug. If first phase in WB finishes with rvalid
   //    before second phase in EX gets grant, we block on obi_data_req_q
-  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q;
+  assign debug_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !fencei_ongoing;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -269,8 +283,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
+
   // todo: Factor in stepie here instead of gating mie in cs_registers
-  assign interrupt_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !debug_mode_q;
+  assign interrupt_allowed = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid) && !obi_data_req_q && !debug_mode_q && !fencei_ongoing;
 
   assign nmi_allowed = interrupt_allowed;
 
@@ -390,6 +405,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Ensure jumps and branches are taken only once
     branch_taken_n                 = branch_taken_q;
 
+    fencei_flush_req_set           = 1'b0;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -505,14 +522,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
-            // Kill all instructions and set pc to wb.pc + 4
+
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.pc_set  = 1'b1;
-            ctrl_fsm_o.pc_mux  = PC_FENCEI;
+            ctrl_fsm_o.halt_wb = 1'b1;
 
-            //TODO:OK:low Drive fence.i interface
+            if(fencei_ready) begin
+              // Set fencei_flush_req_o in the next cycle
+              fencei_flush_req_set = 1'b1;
+            end
+            if(fencei_req_and_ack_q) begin
+              // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_FENCEI
+              // Unhalt wb and jump to wb.pc + 4
+              ctrl_fsm_o.pc_set    = 1'b1;
+              ctrl_fsm_o.pc_mux    = PC_FENCEI;
+              ctrl_fsm_o.halt_wb   = 1'b0;
+              fencei_flush_req_set = 1'b0;
+            end
           end else if (dret_in_wb) begin
             // Dret takes jump from WB stage
             // Kill previous stages and jump to pc in dpc
@@ -744,6 +771,27 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
+    end
+  end
+
+  // Flops for fencei handshake request
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      fencei_flush_req_o   <= 1'b0;
+      fencei_req_and_ack_q <= 1'b0;
+    end else begin
+
+      // Flop fencei_flush_ack_i to break timing paths
+      // fencei_flush_ack_i must be qualified with fencei_flush_req_o
+      fencei_req_and_ack_q <= fencei_flush_req_o && fencei_flush_ack_i;
+
+      // Set fencei_flush_req_o based on FSM output. Clear upon req&&ack.
+      if(fencei_flush_req_o && fencei_flush_ack_i) begin
+        fencei_flush_req_o <= 1'b0;
+      end
+      else if (fencei_flush_req_set) begin
+        fencei_flush_req_o <= 1'b1;
+      end
     end
   end
 
