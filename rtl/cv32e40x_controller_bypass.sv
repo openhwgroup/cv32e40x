@@ -120,8 +120,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign csr_read_in_id = (csr_en_id_i || mret_id_i) && if_id_pipe_i.instr_valid;
 
   // Detect when a CSR insn  in in EX or WB
-  assign csr_write_in_ex_wb = ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ||
-                              (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.mret_insn || ex_wb_pipe_i.dret_insn) &&
+  // mret and dret implicitly writes to CSR. (dret is killing IF/ID/EX once it
+  // is in WB and can be disregarded here.
+  assign csr_write_in_ex_wb = ((id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || id_ex_pipe_i.mret_insn)) ||
+                              (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.mret_insn) &&
                               ex_wb_pipe_i.instr_valid);
 
   // minstret/minstreh is read in EX
