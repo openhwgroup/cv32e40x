@@ -44,7 +44,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           resp_valid_i,
   input  inst_resp_t     resp_i,
 
-  
+
   // Interface to if_stage
   output logic           instr_valid_o,
   input  logic           instr_ready_i,
@@ -53,7 +53,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
 );
 
-    
+
   // FIFO_DEPTH set to 3 as the alignment_buffer will need 3 to function correctly
   localparam DEPTH                     = 3;
   localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(DEPTH);
@@ -61,14 +61,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Counter for number of instructions in the FIFO
   // FIFO_ADDR_DEPTH defines number of words
-  // We must count number of instructions, thus   
+  // We must count number of instructions, thus
   // using the value without subtracting
   logic [FIFO_ADDR_DEPTH:0] instr_cnt_n, instr_cnt_q;
 
   // Counter for number of outstanding transactions
   logic [FIFO_ADDR_DEPTH-1:0] outstanding_cnt_n, outstanding_cnt_q;
 
- 
+
   // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
 
@@ -86,7 +86,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Store number of responses to flush when get get a branch
   logic [1:0] n_flush_n, n_flush_q, n_flush_branch;
-  
+
   // Error propagation signals for bus and mpu
   logic bus_err_unaligned, bus_err;
   mpu_status_e mpu_status_unaligned, mpu_status;
@@ -98,7 +98,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // For any number > 0, subtract 1 if we also issue to if_stage
   // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
-  assign n_pushed_ins = (instr_valid_o & instr_ready_i) ? 
+  assign n_pushed_ins = (instr_valid_o & instr_ready_i) ?
                         (n_incoming_ins > 2'd0) ? n_incoming_ins - 2'd1 : 2'b11 :
                         n_incoming_ins;
 
@@ -108,7 +108,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                          ((instr_cnt_q == 'd0) ||
                          (instr_cnt_q == 'd1 && outstanding_cnt_q == 2'd0) ||
                          ctrl_fsm_i.pc_set);
-                                         
+
 
   // Busy if we expect any responses, or we have an active fetch_valid_o
   assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
@@ -138,11 +138,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign instr      = (valid_q[0]) ? resp_q[0].bus_resp.rdata : resp_i.bus_resp.rdata;
   assign bus_err    = (valid_q[0]) ? resp_q[0].bus_resp.err   : resp_i.bus_resp.err;
   assign mpu_status = (valid_q[0]) ? resp_q[0].mpu_status     : resp_i.mpu_status;
-  
+
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
   assign instr_unaligned = (valid_q[1]) ? {resp_q[1].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
 
-  
+
   // Unaligned uncompressed instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
   // All other cases are valid if we have data in q0 or we get a response
@@ -172,7 +172,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end else begin
         // Compressed, use only mpu_status from q0
         mpu_status_unaligned = resp_q[0].mpu_status;
-        
+
         // bus error from q0
         bus_err_unaligned    = resp_q[0].bus_resp.err;
       end
@@ -196,7 +196,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           bus_err_unaligned = resp_q[0].bus_resp.err;
         end
       end else begin
-        // There is no data in the buffer, use input 
+        // There is no data in the buffer, use input
         mpu_status_unaligned = resp_i.mpu_status;
         bus_err_unaligned    = resp_i.bus_resp.err;
       end
@@ -235,7 +235,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       instr_valid_o = valid;
     end
   end
-  
+
 
   //////////////////////////////////////////////////////////////////////////////
   // FIFO management
@@ -308,7 +308,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     end
   end
 
-  
+
   // Counting instructions in FIFO
   always_comb begin
     instr_cnt_n = instr_cnt_q;
@@ -481,7 +481,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     end
     else
     begin
-      
+
       // on a kill signal from outside we invalidate the content of the FIFO
       // completely and start from an empty state
       if (ctrl_fsm_i.kill_if) begin
@@ -493,7 +493,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
       // Update address on a requested branch
       if (ctrl_fsm_i.pc_set) begin
-        addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this. 
+        addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this.
       end else begin
         addr_q  <= addr_n;
       end

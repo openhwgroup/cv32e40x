@@ -363,14 +363,14 @@ module cv32e40x_rvfi
   // Propagating from ID stage
   logic [2:0] [31:0] pc_wdata;
   logic [2:0]        debug_mode;
-  logic [2:0] [2:0]  debug_cause;
+  logic [2:0] [ 2:0] debug_cause;
   logic [2:0]        in_trap;
   logic [2:0] [ 4:0] rs1_addr;
   logic [2:0] [ 4:0] rs2_addr;
   logic [2:0] [31:0] rs1_rdata;
   logic [2:0] [31:0] rs2_rdata;
-  logic [2:0] [31:0] mem_rmask;
-  logic [2:0] [31:0] mem_wmask;
+  logic [2:0] [ 3:0] mem_rmask;
+  logic [2:0] [ 3:0] mem_wmask;
 
   //Propagating from EX stage
   logic [31:0]       ex_mem_addr;
@@ -382,11 +382,11 @@ module cv32e40x_rvfi
   logic [31:0] rvfi_mem_addr_d;
 
 
-  logic [31:0] rd_addr_wb;
+  logic [ 4:0] rd_addr_wb;
   logic [31:0] rd_wdata_wb;
 
-  logic [31:0] rs1_addr_id;
-  logic [31:0] rs2_addr_id;
+  logic [ 4:0] rs1_addr_id;
+  logic [ 4:0] rs2_addr_id;
   logic [31:0] rs1_rdata_id;
   logic [31:0] rs2_rdata_id;
 
@@ -568,13 +568,13 @@ module cv32e40x_rvfi
         end
 
         // Read autonomuos CSRs from EX perspective
-        ex_csr_rdata        <= ex_csr_rdata_d;
+        ex_csr_rdata          <= ex_csr_rdata_d;
 
       end
 
 
       //// WB Stage ////
-      rvfi_valid      <= wb_valid_i;
+      rvfi_valid <= wb_valid_i;
       if (wb_valid_i) begin
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;

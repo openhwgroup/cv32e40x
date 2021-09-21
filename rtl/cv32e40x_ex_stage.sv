@@ -41,7 +41,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic [31:0] csr_rdata_i,
   input  logic        csr_illegal_i,
 
-  // EX/WB pipeline 
+  // EX/WB pipeline
   output ex_wb_pipe_t ex_wb_pipe_o,
 
   // From controller FSM
@@ -93,8 +93,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           div_ready;
   logic           div_valid;
   logic [31:0]    div_result;
-  
-  logic           div_clz_en;   
+
+  logic           div_clz_en;
   logic [31:0]    div_clz_data_rev;
   logic [5:0]     div_clz_result;
 
@@ -103,7 +103,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    div_op_b_shifted;
 
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
- 
+
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
@@ -144,18 +144,18 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // /_/   \_\_____\___/    //
   //                        //
   ////////////////////////////
-  
+
   cv32e40x_alu alu_i
   (
     .operator_i          ( id_ex_pipe_i.alu_operator  ),
     .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
     .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
-    
+
     // ALU CLZ interface
     .div_clz_en_i        ( div_clz_en                 ),
     .div_clz_data_rev_i  ( div_clz_data_rev           ),
     .div_clz_result_o    ( div_clz_result             ),
-                                                     
+
     // ALU shifter interface
     .div_shift_en_i      ( div_shift_en               ),
     .div_shift_amt_i     ( div_shift_amt              ),
@@ -176,7 +176,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////
 
   // TODO:low COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
-  
+
   cv32e40x_div div_i
   (
     .clk                ( clk                        ),
@@ -276,7 +276,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.rf_we       <= (csr_illegal_i     ||
                                     lsu_split_i)       ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
-          
+
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
           if (!id_ex_pipe_i.lsu_en) begin

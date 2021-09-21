@@ -82,7 +82,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // prefetch buffer related signals
   logic              prefetch_busy;
-  
+
   logic       [31:0] branch_addr_n;
 
   logic       [31:0] exc_pc;
@@ -101,7 +101,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_trans_ready;
   logic [31:0]       prefetch_trans_addr;
   inst_resp_t        prefetch_inst_resp;
-  logic              prefetch_one_txn_pend_n;  
+  logic              prefetch_one_txn_pend_n;
 
   logic              bus_resp_valid;
   obi_inst_resp_t    bus_resp;
@@ -154,7 +154,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .rst_n             ( rst_n                       ),
 
     .ctrl_fsm_i        ( ctrl_fsm_i                  ),
-    
+
     .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
 
     .prefetch_ready_i  ( if_ready                    ),
@@ -183,7 +183,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign core_trans.prot[0]   = 1'b0;  // Transfers from IF stage are instruction transfers
   assign core_trans.prot[2:1] = PRIV_LVL_M; // Machine mode
   assign core_trans.memtype   = 2'b00; // memtype is assigned in the MPU, tie off.
-  
+
   cv32e40x_mpu
     #(.IF_STAGE(1),
       .A_EXTENSION(A_EXTENSION),
@@ -199,14 +199,14 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
      .atomic_access_i      ( 1'b0  ), // No atomic transfers on instruction side
      .misaligned_access_i  ( 1'b0  ), // MPU on instruction side will not issue misaligned access fault
                                       // Misaligned access to main is allowed, and accesses outside main will result in instruction access fault (which will have priority over misaligned from I/O fault)
-     
+
      .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
      .core_trans_valid_i   ( prefetch_trans_valid    ),
      .core_trans_ready_o   ( prefetch_trans_ready    ),
      .core_trans_i         ( core_trans              ),
      .core_resp_valid_o    ( prefetch_resp_valid     ),
      .core_resp_o          ( prefetch_inst_resp      ),
-     
+
      .bus_trans_valid_o    ( bus_trans_valid ),
      .bus_trans_ready_i    ( bus_trans_ready ),
      .bus_trans_o          ( bus_trans       ),

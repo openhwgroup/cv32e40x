@@ -15,7 +15,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Description: this is a simple serial divider for signed integers (int32).
-//              Dividend = Quotient * Divisor + Remainder 
+//              Dividend = Quotient * Divisor + Remainder
 //
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -34,12 +34,12 @@ module cv32e40x_div import cv32e40x_pkg::*;
     // Control signals
     input                      div_opcode_e operator_i,
     input logic                data_ind_timing_i,
- 
+
     // Input operands
     input logic [31:0]         op_a_i,
     input logic [31:0]         op_b_i,
-    
-    
+
+
     // CLZ interface towards ALU
     output logic               alu_clz_en_o,
     output logic [31:0]        alu_clz_data_rev_o,
@@ -49,7 +49,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
     output logic               alu_shift_en_o,
     output logic [5:0]         alu_shift_amt_o,
     input logic [31:0]         alu_op_b_shifted_i,
- 
+
     // Divider enable
     input logic                div_en_i,
 
@@ -96,7 +96,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
   logic div_rem;
   logic op_b_is_neg;
   logic op_b_is_zero;
-  
+
   ///////////////////////////////////////////////////////////////////////////////
   // Operator decoding
   ///////////////////////////////////////////////////////////////////////////////
@@ -139,7 +139,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
   endgenerate
 
   assign alu_clz_en_o = div_en_i;
-  
+
   // Deternmine initial shift of divisor
   assign op_b_is_neg = op_b_i[31] & div_signed;
   assign alu_shift_amt_o = alu_clz_result_i ;
@@ -147,19 +147,19 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
   // Check for op_b_i == 0
   assign op_b_is_zero = !(|op_b_i);
-  
+
   ///////////////////////////////////////////////////////////////////////////////
   // Datapath
   ///////////////////////////////////////////////////////////////////////////////
 
   // Initialize remainder with negated op_a_i upon signed division with different signs on op_a and op_b
   assign init_remainder_pos = init_en && !(div_signed && (op_a_i[$high(op_a_i)] ^ op_b_is_neg));
-  
+
   // Divisor mux and shifter. Shift with sign extension in case of negative op_b
   assign divisor_mux = init_en ? alu_op_b_shifted_i : {comp_inv_q, (divisor_q[$high(divisor_q):1])};
 
   // Main comparator
-  assign comp_out = ((remainder_q == divisor_q) || ((remainder_q > divisor_q) ^ comp_inv_q)) && 
+  assign comp_out = ((remainder_q == divisor_q) || ((remainder_q > divisor_q) ^ comp_inv_q)) &&
                     ((|remainder_q) || op_b_is_zero);
 
   // Main adder and adder input muxes
@@ -170,13 +170,13 @@ module cv32e40x_div import cv32e40x_pkg::*;
   // Result mux, negate if necessary
   assign res_mux  = div_rem_q ? remainder_q : quotient_q;
   assign result_o = res_inv_q ? -$signed(res_mux) : res_mux;
-  
+
   ///////////////////////////////////////////////////////////////////////////////
   // Counter
   ///////////////////////////////////////////////////////////////////////////////
 
   assign cnt_d_dummy = 6'd32 - alu_shift_amt_o;
-  
+
   assign cnt_d = init_en        ? alu_shift_amt_o    :
                  init_dummy_cnt ? cnt_d_dummy - 6'd1 : /*-1 because one cycle is used to update the counter*/
                  !cnt_q_is_zero ? cnt_q       - 6'd1 :
@@ -204,7 +204,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
     quotient_en    = 1'b0;
 
     // Case statement assumes valid_i = 1; the valid_i = 0 scenario
-    // is handled after the case statement.    
+    // is handled after the case statement.
     case (state)
       DIV_IDLE: begin
         remainder_en = 1'b1;
@@ -237,7 +237,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
       end
 
       DIV_FINISH: begin
-        valid_o = 1'b1;        
+        valid_o = 1'b1;
         if (ready_i) begin
           ready_o    = 1'b1;
           next_state = DIV_IDLE;
@@ -256,20 +256,20 @@ module cv32e40x_div import cv32e40x_pkg::*;
     end
 
   end
-  
+
   ///////////////////////////////////////////////////////////////////////////////
   // Registers
   ///////////////////////////////////////////////////////////////////////////////
-  
+
   assign div_rem_d  = init_en ? div_rem : div_rem_q;
   assign comp_inv_d = init_en ? op_b_is_neg : comp_inv_q;
-  assign res_inv_d  = init_en ? (!op_b_is_zero || div_rem) && div_signed && (op_a_i[$high(op_a_i)] ^ op_b_is_neg) : 
+  assign res_inv_d  = init_en ? (!op_b_is_zero || div_rem) && div_signed && (op_a_i[$high(op_a_i)] ^ op_b_is_neg) :
                       res_inv_q;
 
   assign remainder_d = remainder_en ? add_out     : remainder_q;
   assign divisor_d   = divisor_en   ? divisor_mux : divisor_q;
   assign quotient_d  = init_en      ? '0                                            :
-                       quotient_en  ? {quotient_q[$high(quotient_q)-1:0], comp_out} : 
+                       quotient_en  ? {quotient_q[$high(quotient_q)-1:0], comp_out} :
                        quotient_q;
 
   always_ff @(posedge clk, negedge rst_n) begin : p_regs
@@ -293,6 +293,6 @@ module cv32e40x_div import cv32e40x_pkg::*;
        res_inv_q   <= res_inv_d;
     end
   end
-  
+
 endmodule : cv32e40x_div
 

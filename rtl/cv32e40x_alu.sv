@@ -86,7 +86,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // Adder is used for:
   //
   // - ALU_ADD, ALU_SUB
-  // 
+  //
   // Currently not used for ALU_B_SH1ADD, ALU_B_SH2ADD, ALU_B_SH3ADD
 
   logic [32:0] adder_in_a, adder_in_b;
@@ -117,7 +117,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //
   // - ALU_SLL, ALU_SRA, ALU_SRL
   // - ALU_B_ROL, ALU_B_ROR
-  // - ALU_B_BEXT, ALU_B_BSET, ALU_B_BCLR, ALU_B_BINV 
+  // - ALU_B_BEXT, ALU_B_BSET, ALU_B_BCLR, ALU_B_BINV
   //
   // - DIV_DIVU, DIV_DIVU, DIV_REM, DIV_REMU
 
@@ -189,7 +189,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // Shift and add
 
   logic [31:0] result_shnadd;
-  
+
   assign result_shnadd = (operand_a_i << ((operator_i == ALU_B_SH1ADD) ? 1 : (operator_i == ALU_B_SH2ADD) ? 2 : 3)) + operand_b_i; // todo: consider alternatives
 
   //////////////////////////////////////////////////////////////////
@@ -204,7 +204,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   // Comparator used for:
   //
   // - ALU_EQ, ALU_NE, ALU_GE, ALU_GEU, ALU_LT, ALU_LTU
-  // - ALU_SLT, ALU_SLTU   
+  // - ALU_SLT, ALU_SLTU
   // - ALU_B_MIN, ALU_B_MINU, ALU_B_MAX, ALU_B_MAXU
 
   logic is_equal;
@@ -231,7 +231,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   //////////////////////////////////////////////////////////////////
   // Min/max
-  
+
   logic [31:0] min_minu_result;
   logic [31:0] max_maxu_result;
 
@@ -264,7 +264,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   // Divider assumes CLZ returning 32 when there are no zeros (as per CLZ spec)
   assign div_clz_result_o = ff_no_one ? 6'd32 : ff1_result;
- 
+
   // CPOP
   cv32e40x_alu_b_cpop alu_b_cpop_i
     (.operand_i (operand_a_i),
@@ -349,7 +349,7 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_SH2ADD,
       ALU_B_SH3ADD : result_o = result_shnadd;
 
-      ALU_B_CLZ, 
+      ALU_B_CLZ,
       ALU_B_CTZ    : result_o = {26'h0, div_clz_result_o};
       ALU_B_CPOP   : result_o = {26'h0, cpop_result_o};
 

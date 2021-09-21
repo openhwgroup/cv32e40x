@@ -30,13 +30,13 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
   (
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
-    
+
    output             decoder_ctrl_t decoder_ctrl_o
    );
-  
+
   always_comb
   begin
-    
+
     decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
 
     unique case (instr_rdata_i[6:0])
@@ -90,7 +90,7 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
       end
     endcase
-    
+
   end
 
 
