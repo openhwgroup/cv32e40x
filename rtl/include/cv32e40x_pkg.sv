@@ -49,7 +49,7 @@ package cv32e40x_pkg;
                             OPCODE_LUI       = 7'h37,
                             OPCODE_AMO       = 7'h2F
                             } opcode_e;
-                                                                       
+
 //////////////////////////////////////////////////////////////////////////////
 //      _    _    _   _    ___                       _   _                  //
 //     / \  | |  | | | |  / _ \ _ __   ___ _ __ __ _| |_(_) ___  _ __  ___  //
@@ -528,7 +528,7 @@ parameter Dcsr_t DCSR_RESET_VAL = '{
   xdebugver : XDEBUGVER_STD,
   cause:      DBG_CAUSE_NONE,
   prv:        PRIV_LVL_M,
-  default:    '0}; 
+  default:    '0};
 
 parameter Mtvec_t MTVEC_RESET_VAL = '{
   addr: 'd0,
@@ -566,7 +566,7 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
   1'b0,                  // u       : match in u-mode
   1'b0,      // execute : match instruction address
   1'b0,                  // store   : not supported
-  1'b0};                 // load    : not supported 
+  1'b0};                 // load    : not supported
 
 
 ///////////////////////////////////////////////
@@ -640,7 +640,7 @@ typedef enum logic[1:0] {
                          IMMB_U      = 2'b10,
                          IMMB_PCINCR = 2'b11
                          } imm_b_mux_e;
-  
+
 // operand c selection
 typedef enum logic[1:0] {
                          OP_C_FWD         = 2'b00,
@@ -791,7 +791,7 @@ parameter INT_CAUSE_LSU_STORE_FAULT = 8'h81;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
-  
+
 
 ////////////////////////////
 //                        //
@@ -818,15 +818,15 @@ typedef struct packed {
 } pma_region_t;
 
 // Default attribution when PMA is not configured (PMA_NUM_REGIONS=0) (Address is don't care)
-parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0, 
+parameter pma_region_t NO_PMA_R_DEFAULT = '{word_addr_low   : 0,
                                             word_addr_high  : 0,
                                             main            : 1'b1,
                                             bufferable      : 1'b0,
                                             cacheable       : 1'b0,
                                             atomic          : 1'b1};
-  
+
 // Default attribution when PMA is configured (Address is don't care)
-parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0, 
+parameter pma_region_t PMA_R_DEFAULT = '{word_addr_low   : 0,
                                          word_addr_high  : 0,
                                          main            : 1'b0,
                                          bufferable      : 1'b0,
@@ -841,7 +841,7 @@ typedef enum logic [1:0] {
                           } mpu_status_e;
 
 typedef enum logic [2:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT} mpu_state_e;
-  
+
 // OBI bus and internal data types
 
 parameter INSTR_ADDR_WIDTH = 32;
@@ -898,7 +898,7 @@ typedef struct packed {
 parameter inst_resp_t INST_RESP_RESET_VAL = '{
   bus_resp    : '{rdata: 32'h0, err: 1'b0},
   mpu_status  : MPU_OK
-}; 
+};
 
 // Reset value for the obi_inst_req_t type
 parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
@@ -906,13 +906,13 @@ parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
   memtype : 'h0,
   prot    : {PRIV_LVL_M, 1'b0}
 };
-  
+
 // Data transfer bundeled with MPU status
 typedef struct packed {
   obi_data_resp_t             bus_resp;
   mpu_status_e                mpu_status;
 } data_resp_t;
-  
+
 // IF/ID pipeline
 typedef struct packed {
   logic        instr_valid;
@@ -943,7 +943,7 @@ typedef struct packed {
   // Divider control
   logic         div_en;
   div_opcode_e  div_operator;
-  
+
   // Register write control
   logic         rf_we;
   rf_addr_t     rf_waddr;
@@ -1050,7 +1050,7 @@ typedef struct packed {
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic        irq_ack;               // irq has been taken 
+  logic        irq_ack;               // irq has been taken
   logic [4:0]  irq_id;                // id of taken irq (to toplevel pins)
   logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
 

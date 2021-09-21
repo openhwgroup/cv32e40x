@@ -101,4 +101,4 @@ package cv32e40x_rvfi_pkg;
   } rvfi_intr_t;
 
 endpackage // cv32e40x_rvfi_pkg
-  
+

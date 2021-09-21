@@ -70,7 +70,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
             // c.sw -> sw rs2', imm(rs1')
             instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12], 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b010, instr[11:10], instr[6], 2'b00, OPCODE_STORE};
           end
-            
+
           3'b001,       // c.fld -> fld rd', imm(rs1')
           3'b011,       // c.flw -> flw rd', imm(rs1')
           3'b101,       // c.fsd -> fsd rs2', imm(rs1')
@@ -204,7 +204,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               illegal_instr_o = 1'b1;
             end else begin
               if ((instr[6:2] == 5'b0) || (instr[11:7] == 5'b0)) begin
-                // Hint -> slli rd, rd, shamt 
+                // Hint -> slli rd, rd, shamt
                 instr_o.bus_resp.rdata = {7'b0, instr[6:2], instr[11:7], 3'b001, instr[11:7], OPCODE_OPIMM};
               end else begin
                 // c.slli -> slli rd, rd, shamt

@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,7 +41,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
   localparam RV32B_ZBB = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
   localparam RV32B_ZBS = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
   localparam RV32B_ZBC = (B_EXT == ZBA_ZBB_ZBC_ZBS);
-  
+
   always_comb
   begin
 
@@ -295,7 +295,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
       end
 
     endcase // unique case (instr_rdata_i[6:0])
-    
+
   end // always_comb
 
 endmodule : cv32e40x_b_decoder

@@ -37,7 +37,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
    output decoder_ctrl_t decoder_ctrl_o
    );
-  
+
   always_comb
   begin
 
@@ -95,7 +95,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.op_c_mux_sel                 = OP_C_BCH;
         decoder_ctrl_o.rf_re[0]                     = 1'b1;
         decoder_ctrl_o.rf_re[1]                     = 1'b1;
-        
+
         unique case (instr_rdata_i[14:12])
           3'b000: decoder_ctrl_o.alu_operator = ALU_EQ;
           3'b001: decoder_ctrl_o.alu_operator = ALU_NE;
@@ -133,7 +133,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         // Data type encoded in instr_rdata_i[13:12]:
         // 2'b00: SB, 2'b01: SH, 2'10: SW
         decoder_ctrl_o.lsu_type = instr_rdata_i[13:12];
-        
+
         if ((instr_rdata_i[14] == 1'b1) || (instr_rdata_i[13:12] == 2'b11)) begin
           decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
         end
@@ -147,7 +147,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.alu_en            = 1'b0;
         decoder_ctrl_o.alu_op_b_mux_sel  = OP_B_IMM;
         decoder_ctrl_o.imm_b_mux_sel     = IMMB_I;
-        
+
         // sign/zero extension
         decoder_ctrl_o.lsu_sign_ext = !instr_rdata_i[14];
 
@@ -230,7 +230,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
           decoder_ctrl_o.rf_we    = 1'b1;
           decoder_ctrl_o.rf_re[0] = 1'b1;
-          
+
           if (~instr_rdata_i[28]) decoder_ctrl_o.rf_re[1] = 1'b1;
 
           unique case ({instr_rdata_i[30:25], instr_rdata_i[14:12]})
@@ -268,7 +268,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       OPCODE_FENCE: begin
 
         decoder_ctrl_o.alu_operator = ALU_SLTU;
-        
+
         unique case (instr_rdata_i[14:12])
           3'b000: begin // FENCE (FENCE.I instead, a bit more conservative)
             // flush pipeline
@@ -289,7 +289,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       OPCODE_SYSTEM: begin
 
         decoder_ctrl_o.alu_operator = ALU_SLTU;
-        
+
         if (instr_rdata_i[14:12] == 3'b000)
         begin
           // non CSR related SYSTEM instructions
@@ -354,7 +354,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           decoder_ctrl_o.imm_a_mux_sel    = IMMA_Z;
           decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;    // CSR address is encoded in I imm
           decoder_ctrl_o.alu_operator     = ALU_SLTU;
-          
+
           if (instr_rdata_i[14] == 1'b1) begin
             // rs1 field is used as immediate
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_IMM;
@@ -385,7 +385,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
       end
     endcase
-    
+
   end // always_comb
 
 endmodule : cv32e40x_i_decoder
