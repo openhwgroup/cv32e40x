@@ -67,6 +67,7 @@ module cv32e40x_rvfi
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
    input logic                                ebreak_in_wb_i,
+   input logic                                instr_valid_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
@@ -514,6 +515,10 @@ module cv32e40x_rvfi
           // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
           debug_cause_if_next <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
+
+          // If there is a trap in write-back when debug is taken, the trap will be supressed but the side-effects will not.
+          // The succeeding instruction therefore needs to set the intr bit in this case.
+          in_trap_next <= in_trap[STAGE_EX] && instr_valid_wb_i;
         end
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
