@@ -165,6 +165,7 @@ module cv32e40x_mult_sva
   logic [32:0] shift_result_ll_lh;
   logic [33:0] shift_result_ll_lh_hl;
   logic [32:0] shift_result_ll_lh_hl_shift;
+  logic unused;
 
   assign shift_result_ll = $signed({{16{mulh_al[16]}}, mulh_al[15:0]}) * $signed({{16{mulh_bl[16]}}, mulh_bl[15:0]});
   a_shift_result_ll : // Given MUL_H, first calculation is "al * bl"
@@ -201,7 +202,7 @@ module cv32e40x_mult_sva
                      (mulh_acc == shift_result_ll_shift))
       else `uvm_error("mult", "MUL_H accumulated 'al x bl' wrong")
 
-  assign shift_result_ll_lh = $signed(shift_result_ll_shift) + $signed(shift_result_lh);
+  assign {unused, shift_result_ll_lh} = $signed(shift_result_ll_shift) + $signed(shift_result_lh);
   a_shift_result_ll_lh : // In step 3, accumulate also result of "al * bh"
     assert property (@(posedge clk) disable iff (!rst_n)
                      (mulh_state == MUL_AHBL) && valid_i |->
