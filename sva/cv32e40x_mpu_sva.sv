@@ -97,12 +97,13 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   assign is_hibound_ok = pma_addr < {pma_cfg.word_addr_high, 2'b00};
 
   logic is_pma_matched;
-  int   pma_match_num;
-  int   pma_lowest_match;
+  int pma_match_num;
+  logic [$clog2(PMA_NUM_REGIONS)-1:0] pma_lowest_match;
+  //int pma_lowest_match;
   always_comb begin
     is_pma_matched = 0;
     pma_match_num = 999;
-    pma_lowest_match = 999;
+    pma_lowest_match = 0;
 
     // Find pma module's attributes among cfgs
     for (int i = 0; i < PMA_NUM_REGIONS; i++) begin
