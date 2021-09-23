@@ -47,6 +47,7 @@ module cv32e40x_core_log import cv32e40x_pkg::*;
   
 );
 
+`ifndef FORMAL
   // Log top level parameter values
   initial
   begin
@@ -61,5 +62,6 @@ module cv32e40x_core_log import cv32e40x_pkg::*;
       $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, hart_id_i[3:0], ex_wb_pipe_i.pc);
     end
   end
+`endif
 
 endmodule // cv32e40x_core_log

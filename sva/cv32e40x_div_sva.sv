@@ -40,10 +40,10 @@ module cv32e40x_div_sva
   always_ff @(posedge clk) begin
     if (valid_i && $past(ready_o)) begin
       // Division accpted, reset counter
-      cycle_count <= 0;
+      cycle_count <= '0;
     end
     else begin
-      cycle_count <= cycle_count + 1;
+      cycle_count <= cycle_count + 1'b1;
     end
   end
 

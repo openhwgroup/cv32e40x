@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   (
    input logic        clk,
    input logic        rst_n,
-   
+
    input logic        speculative_access,
    input logic        atomic_access_i,
    input logic        misaligned_access_i,
@@ -52,13 +52,13 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
    input logic        bus_trans_valid_o,
-  
+
    input logic        bus_resp_valid_i,
 
    // Interface towards core
    input logic        core_trans_valid_i,
    input logic        core_trans_ready_o,
-   
+
    input logic        core_resp_valid_o,
 
    input              mpu_status_e mpu_status,
@@ -77,12 +77,15 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   logic was_obi_waiting;
   logic was_obi_reqnognt;
-  logic [1:0] was_obi_memtype = 0;
+  logic [1:0] was_obi_memtype;
   assign was_obi_waiting = was_obi_reqnognt && !bus_trans_ready_i;
-  always @(posedge clk, negedge rst_n) begin
-    was_obi_reqnognt <= 0;
-    was_obi_memtype <= 0;
-    if (rst_n) begin
+
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      was_obi_reqnognt <= 0;
+      was_obi_memtype <= 0;
+    end
+    else begin
       was_obi_reqnognt <= obi_req && !obi_gnt;
       was_obi_memtype <= obi_memtype;
     end
@@ -127,21 +130,27 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   // Checks for illegal PMA region configuration
 
-  initial begin : p_mpu_assertions
+  always_comb begin
     if (PMA_NUM_REGIONS != 0) begin
-      assert (PMA_NUM_REGIONS == $size(PMA_CFG)) else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries")
-    end
-      
-    for(int i=0; i<PMA_NUM_REGIONS; i++) begin
-      if (PMA_CFG[i].main) begin
-        assert (PMA_CFG[i].atomic) else `uvm_error("mpu", "PMA regions configured as main must also support atomic operations")
-      end
-
-      if (!PMA_CFG[i].main) begin
-        assert (!PMA_CFG[i].cacheable) else `uvm_error("mpu", "PMA regions configured as I/O cannot be defined as cacheable")
-      end
+      a_pma_valid_config : assert (PMA_NUM_REGIONS == $size(PMA_CFG))
+        else `uvm_error("mpu", "PMA_CFG must contain PMA_NUM_REGION entries");
     end
   end
+
+  generate for (genvar i = 0; i < PMA_NUM_REGIONS; i++)
+    begin : a_pma_no_illegal_configs
+    always_comb begin
+        if (PMA_CFG[i].main == 1'b1) begin
+          a_main_atomic : assert (PMA_CFG[i].atomic == 1'b1)
+            else `uvm_error("mpu", "PMA regions configured as main must also support atomic operations");
+        end
+        if (PMA_CFG[i].main == 1'b0) begin
+          a_io_noncacheable : assert (PMA_CFG[i].cacheable == 1'b0)
+            else `uvm_error("mpu", "PMA regions configured as I/O cannot be defined as cacheable");
+        end
+      end
+    end
+  endgenerate
 
   a_pma_valid_num_regions :
     assert property (@(posedge clk) disable iff (!rst_n)
