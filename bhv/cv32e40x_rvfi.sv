@@ -506,10 +506,6 @@ module cv32e40x_rvfi
       if (if_valid_i && id_ready_i) begin
         in_trap            [STAGE_IF] <= 1'b0;
         debug_cause        [STAGE_IF] <= '0;
-        intr_mcause_we     [STAGE_IF] <= '0;
-        intr_mcause_wdata  [STAGE_IF] <= '0;
-        intr_mstatus_we    [STAGE_IF] <= '0;
-        intr_mstatus_wdata [STAGE_IF] <= '0;
 
         debug_mode         [STAGE_ID] <= debug_mode_i; // Probing in IF to make sure any LSU instructions that are not killed can complete
         in_trap            [STAGE_ID] <= in_trap            [STAGE_IF]; // Set interrupt bit when entering trap handler
@@ -528,9 +524,9 @@ module cv32e40x_rvfi
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
           debug_cause[STAGE_IF] <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
 
-          // If there is a trap in write-back when debug is taken, the trap will be supressed but the side-effects will not.
-          // The succeeding instruction therefore needs to set the intr bit in this case.
-          if (instr_valid_wb_i && in_trap[STAGE_WB]) begin
+          // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
+          // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
+          if (|in_trap && !rvfi_intr) begin
             in_trap[STAGE_IF]     <= 1'b1;
           end
         end
