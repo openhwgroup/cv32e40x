@@ -207,7 +207,11 @@
 .rvfi_csr_pmpaddr_wmask(),\
 .rvfi_csr_pmpaddr_rdata(),\
 .rvfi_csr_pmpaddr_wdata(),\
-.rvfi_csr_pmpmseccfg_rmask(),\
-.rvfi_csr_pmpmseccfg_wmask(),\
-.rvfi_csr_pmpmseccfg_rdata(),\
-.rvfi_csr_pmpmseccfg_wdata()
+.rvfi_csr_mseccfg_rmask(),\
+.rvfi_csr_mseccfg_wmask(),\
+.rvfi_csr_mseccfg_rdata(),\
+.rvfi_csr_mseccfg_wdata(),\
+.rvfi_csr_mseccfgh_rmask(),\
+.rvfi_csr_mseccfgh_wmask(),\
+.rvfi_csr_mseccfgh_rdata(),\
+.rvfi_csr_mseccfgh_wdata()
