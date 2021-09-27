@@ -372,11 +372,6 @@ module cv32e40x_rvfi
   logic [3:0] [ 3:0] mem_rmask;
   logic [3:0] [ 3:0] mem_wmask;
 
-  logic [3:0]        intr_mcause_we;
-  logic [3:0] [31:0] intr_mcause_wdata;
-  logic [3:0]        intr_mstatus_we;
-  logic [3:0] [31:0] intr_mstatus_wdata;
-
   //Propagating from EX stage
   logic [31:0]       ex_mem_addr;
   logic [31:0]       ex_mem_wdata;
@@ -503,16 +498,18 @@ module cv32e40x_rvfi
 
       //// IF Stage ////
       if (if_valid_i && id_ready_i) begin
-        in_trap            [STAGE_IF] <= 1'b0;
-        debug_cause        [STAGE_IF] <= '0;
+        debug_mode [STAGE_ID] <= debug_mode_i; // Probing in IF to ensure LSU instructions that are not killed can complete
 
-        debug_mode         [STAGE_ID] <= debug_mode_i; // Probing in IF to make sure any LSU instructions that are not killed can complete
-        in_trap            [STAGE_ID] <= in_trap            [STAGE_IF]; // Set interrupt bit when entering trap handler
-        debug_cause        [STAGE_ID] <= debug_cause        [STAGE_IF];
-        intr_mcause_we     [STAGE_ID] <= intr_mcause_we     [STAGE_IF];
-        intr_mcause_wdata  [STAGE_ID] <= intr_mcause_wdata  [STAGE_IF];
-        intr_mstatus_we    [STAGE_ID] <= intr_mstatus_we    [STAGE_IF];
-        intr_mstatus_wdata [STAGE_ID] <= intr_mstatus_wdata [STAGE_IF];
+        // Capturing events that happen when the IF stage is not valid and
+        // propagating them through the pipeline with the next valid instruction
+
+        // Capture events
+        in_trap    [STAGE_ID] <= in_trap    [STAGE_IF];
+        debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
+
+        // Clear captured events
+        in_trap    [STAGE_IF] <= 1'b0;
+        debug_cause[STAGE_IF] <= '0;
 
       end else begin
         // IF stage is killed and not valid during debug entry. If debug is taken,
@@ -526,7 +523,7 @@ module cv32e40x_rvfi
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
           if (|in_trap && !rvfi_intr) begin
-            in_trap[STAGE_IF]     <= 1'b1;
+            in_trap[STAGE_IF] <= 1'b1;
           end
         end
 
@@ -534,11 +531,6 @@ module cv32e40x_rvfi
         // The in trap signal is set for the first instruction of interrupt- and exception handlers (not debug handler)
         if (interrupt_in_if || exception_in_wb) begin
           in_trap[STAGE_IF] <= 1'b1;
-
-          intr_mcause_we      [STAGE_IF] <= csr_mcause_we_i;
-          intr_mcause_wdata   [STAGE_IF] <= csr_mcause_n_i;
-          intr_mstatus_we     [STAGE_IF] <= csr_mstatus_we_i;
-          intr_mstatus_wdata  [STAGE_IF] <= csr_mstatus_n_i;
         end
       end
 
@@ -553,39 +545,31 @@ module cv32e40x_rvfi
           pc_wdata [STAGE_EX] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end
 
-        in_trap            [STAGE_EX] <= in_trap    [STAGE_ID];
-        debug_mode         [STAGE_EX] <= debug_mode [STAGE_ID];
-        debug_cause        [STAGE_EX] <= debug_cause[STAGE_ID];
-        rs1_addr           [STAGE_EX] <= rs1_addr_id;
-        rs2_addr           [STAGE_EX] <= rs2_addr_id;
-        rs1_rdata          [STAGE_EX] <= rs1_rdata_id;
-        rs2_rdata          [STAGE_EX] <= rs2_rdata_id;
-        mem_rmask          [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
-        mem_wmask          [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
-        intr_mcause_we     [STAGE_EX] <= intr_mcause_we     [STAGE_ID];
-        intr_mcause_wdata  [STAGE_EX] <= intr_mcause_wdata  [STAGE_ID];
-        intr_mstatus_we    [STAGE_EX] <= intr_mstatus_we    [STAGE_ID];
-        intr_mstatus_wdata [STAGE_EX] <= intr_mstatus_wdata [STAGE_ID];
+        in_trap    [STAGE_EX] <= in_trap    [STAGE_ID];
+        debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
+        debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
+        rs1_addr   [STAGE_EX] <= rs1_addr_id;
+        rs2_addr   [STAGE_EX] <= rs2_addr_id;
+        rs1_rdata  [STAGE_EX] <= rs1_rdata_id;
+        rs2_rdata  [STAGE_EX] <= rs2_rdata_id;
+        mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+        mem_wmask  [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end
 
 
       //// EX Stage ////
       if (ex_valid_i && wb_ready_i) begin
         // Predicting branch target explicitly to avoid predicting asynchronous events
-        pc_wdata           [STAGE_WB] <= branch_in_ex_i ? branch_target_ex_i : pc_wdata[STAGE_EX];
-        debug_mode         [STAGE_WB] <= debug_mode         [STAGE_EX];
-        debug_cause        [STAGE_WB] <= debug_cause        [STAGE_EX];
-        rs1_addr           [STAGE_WB] <= rs1_addr           [STAGE_EX];
-        rs2_addr           [STAGE_WB] <= rs2_addr           [STAGE_EX];
-        rs1_rdata          [STAGE_WB] <= rs1_rdata          [STAGE_EX];
-        rs2_rdata          [STAGE_WB] <= rs2_rdata          [STAGE_EX];
-        mem_rmask          [STAGE_WB] <= mem_rmask          [STAGE_EX];
-        mem_wmask          [STAGE_WB] <= mem_wmask          [STAGE_EX];
-        in_trap            [STAGE_WB] <= in_trap            [STAGE_EX];
-        intr_mcause_we     [STAGE_WB] <= intr_mcause_we     [STAGE_EX];
-        intr_mcause_wdata  [STAGE_WB] <= intr_mcause_wdata  [STAGE_EX];
-        intr_mstatus_we    [STAGE_WB] <= intr_mstatus_we    [STAGE_EX];
-        intr_mstatus_wdata [STAGE_WB] <= intr_mstatus_wdata [STAGE_EX];
+        pc_wdata   [STAGE_WB] <= branch_in_ex_i ? branch_target_ex_i : pc_wdata[STAGE_EX];
+        debug_mode [STAGE_WB] <= debug_mode         [STAGE_EX];
+        debug_cause[STAGE_WB] <= debug_cause        [STAGE_EX];
+        rs1_addr   [STAGE_WB] <= rs1_addr           [STAGE_EX];
+        rs2_addr   [STAGE_WB] <= rs2_addr           [STAGE_EX];
+        rs1_rdata  [STAGE_WB] <= rs1_rdata          [STAGE_EX];
+        rs2_rdata  [STAGE_WB] <= rs2_rdata          [STAGE_EX];
+        mem_rmask  [STAGE_WB] <= mem_rmask          [STAGE_EX];
+        mem_wmask  [STAGE_WB] <= mem_wmask          [STAGE_EX];
+        in_trap    [STAGE_WB] <= in_trap            [STAGE_EX];
 
         if (!lsu_split_q_ex_i) begin
           // The second part of the split misaligned acess is suppressed to keep
@@ -636,19 +620,10 @@ module cv32e40x_rvfi
         rvfi_dbg       <= debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= debug_mode [STAGE_WB];
 
-        // CSR special cases
-        if (in_trap[STAGE_WB]) begin
-          // Mcause and Mstatus are written in IF for interrupts
-          rvfi_csr_wmask.mcause  <= (intr_mcause_we    [STAGE_WB]) ? '1 : '0;
-          rvfi_csr_wdata.mcause  <= intr_mcause_wdata  [STAGE_WB];
-          rvfi_csr_wmask.mstatus <= (intr_mstatus_we   [STAGE_WB]) ? '1 : '0;
-          rvfi_csr_wdata.mstatus <= intr_mstatus_wdata [STAGE_WB];
-      end
-
-      // Set expected next PC, half-word aligned
-      // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
-      rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exc_pc_i & ~32'b1 :
-                       (is_dret_wb) ? csr_dpc_q_i :
+        // Set expected next PC, half-word aligned
+        // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
+        rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exc_pc_i & ~32'b1 :
+                         (is_dret_wb) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
       end
 
