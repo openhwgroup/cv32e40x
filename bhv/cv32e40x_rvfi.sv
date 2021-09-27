@@ -67,7 +67,6 @@ module cv32e40x_rvfi
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
    input logic                                ebreak_in_wb_i,
-   input logic                                instr_valid_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
    input logic                                exception_in_wb_i,
    // Register writes
