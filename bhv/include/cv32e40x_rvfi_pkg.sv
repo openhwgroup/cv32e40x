@@ -71,7 +71,8 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mcounteren;
     logic [ 3:0] [31:0] pmpcfg;
     logic [15:0] [31:0] pmpaddr;
-    logic [ 1:0] [31:0] pmpmseccfg;
+    logic        [31:0] mseccfg;
+    logic        [31:0] mseccfgh;
 
   } rvfi_csr_map_t;
 
