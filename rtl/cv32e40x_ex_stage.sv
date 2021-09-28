@@ -33,7 +33,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 (
   input  logic        clk,
   input  logic        rst_n,
-
+  
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
 
