@@ -237,6 +237,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Masking on pending_nmi instead of nmi_allowed, otherwise ID stage would be stalled as described above.
   assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
+  // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
+  // This CSR bit shall not be gated by debug mode or step without stepie
+  assign ctrl_fsm_o.pending_nmi = nmi_pending_q;
+
   // Debug //
 
   // Single step will need to finish insn in WB, including LSU

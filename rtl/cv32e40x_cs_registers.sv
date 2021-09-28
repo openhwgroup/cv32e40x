@@ -111,13 +111,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mepc_rd_error;
 
   // Trigger
-  logic [31:0] tmatch_control_rdata;
-  logic [31:0] tmatch_value_rdata;
   logic [15:0] tinfo_types;
+  logic [31:0] tmatch_control_q, tmatch_control_n;
+  logic [31:0] tmatch_value_q, tmatch_value_n;
+  // Write enables
+  logic tmatch_control_we;
+  logic tmatch_value_we;
+  logic tmatch_control_rd_error;
+  logic tmatch_value_rd_error;
   // Debug
   Dcsr_t       dcsr_q, dcsr_n;
   logic dcsr_we;
   logic dcsr_rd_error;
+  logic [31:0] dcsr_rdata;
   logic [31:0] dpc_q, dpc_n;
   logic dpc_we;
   logic dpc_rd_error;
@@ -263,14 +269,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_SCONTEXT:
               csr_rdata_int = 'b0; // Always read 0
       CSR_TDATA1:
-              csr_rdata_int = tmatch_control_rdata;
+              csr_rdata_int = tmatch_control_q;
       CSR_TDATA2:
-              csr_rdata_int = tmatch_value_rdata;
+              csr_rdata_int = tmatch_value_q;
       CSR_TINFO:
               csr_rdata_int = tinfo_types;
 
       CSR_DCSR: begin
-              csr_rdata_int = dcsr_q;
+              csr_rdata_int = dcsr_rdata;
               illegal_csr_read = !ctrl_fsm_i.debug_mode;
       end
       CSR_DPC: begin
@@ -466,6 +472,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (ctrl_fsm_i.debug_csr_save) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
             // mpstatus
+            // dcsr.nmip is not a flop, but comes directly from the controller
             dcsr_n = '{
               xdebugver : dcsr_q.xdebugver,
               ebreakm   : dcsr_q.ebreakm,
@@ -684,7 +691,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign mie_o = mie_q;
   
-
+  // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
+  assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
 
  ////////////////////////////////////////////////////////////////////////
  //  ____       _                   _____     _                        //
@@ -696,15 +704,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
  ////////////////////////////////////////////////////////////////////////
 
   
-  // Register values
-  logic [31:0] tmatch_control_q, tmatch_control_n;
-  logic [31:0] tmatch_value_q, tmatch_value_n;
-  // Write enables
-  logic tmatch_control_we;
-  logic tmatch_value_we;
-  logic tmatch_control_rd_error;
-  logic tmatch_value_rd_error;
-
   // Write select
   assign tmatch_control_we = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA1);
   assign tmatch_value_we   = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA2);
@@ -761,10 +760,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o  (tmatch_value_q),
     .rd_error_o (tmatch_value_rd_error)
   );  
-  
-  assign tmatch_control_rdata = tmatch_control_q;
-  // TDATA1 - address match value only
-  assign tmatch_value_rdata = tmatch_value_q;
+
 
   // Breakpoint matching
   // We match against the next address, as the breakpoint must be taken before execution
