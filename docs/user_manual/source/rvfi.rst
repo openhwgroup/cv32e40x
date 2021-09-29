@@ -30,6 +30,8 @@ New Additions
    output [NRET * 3 - 1 : 0] rvfi_dbg
    output [NRET     - 1 : 0] rvfi_dbg_mode
 
+Debug entry is seen by rvfi as happening between instructions. This means that neither the last instruction before debug entry nor the first instruction of the debug handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g., the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the debug handler address etc.).
+
 For the first instruction after entering debug, the ``rvfi_dbg`` signal contains the debug cause (see table below). The signal is otherwise 0.
 The ``rvfi_dbg_mode signal`` is high if the instruction was executed in debug mode and low otherwise.
 
@@ -93,6 +95,9 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 
 
 **Interrupts**
+
+Interrupts are seen by rvfi as happening between instructions. This means that neither the last instruction before the interrupt nor the first instruction of the interrupt handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g., the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the interrupt handler address etc.).
+
 
 The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
 The signal is not set for debug traps unless a debug entry happens in the fist instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
