@@ -417,6 +417,17 @@ module cv32e40x_rvfi
   logic [31:0][31:0] csr_mhpmcounter_we_l;
   logic [31:0][31:0] csr_mhpmcounter_we_h;
 
+  // Signals for special handling of minstret
+  logic [31:0] minstret_rdata_q;
+  logic [31:0] minstreth_rdata_q;
+  logic [31:0] minstret_wdata_q;
+  logic [31:0] minstreth_wdata_q;
+  // Minstret was written during WB and possibly before wb_valid
+  logic        minstret_during_wb;
+  logic        minstreth_during_wb;
+
+
+
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         debug_taken_if;
@@ -637,7 +648,40 @@ module cv32e40x_rvfi
     end
   end // always_ff @
 
+  // Capture possible minstret writes during WB, before wb_valid
+  // If minstret happens before wb_valid (LSU stalled waiting for rvalid),
+  // we must keep _n and _q values to correctly set _rdata and _wdata when rvfi_valid is set.
+  // If wb_valid occurs in the same cycle as the write, the flags are zero and any
+  // stored values will not be used.
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      minstret_rdata_q <= '0;
+      minstreth_rdata_q <= '0;
+      minstret_wdata_q <= '0;
+      minstreth_wdata_q <= '0;
+      minstret_during_wb <= 1'b0;
+      minstreth_during_wb <= 1'b0;
+    end else begin
+      // Clear flags on wb_valid
+      if (wb_valid_i) begin
+        minstret_during_wb <= 1'b0;
+        minstreth_during_wb <= 1'b0;
+      end else begin
+        // Capture minstret writes.
+        if (csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF]) begin
+          minstret_during_wb <= 1'b1;
+          minstret_rdata_q <= csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
+          minstret_wdata_q <= csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF];
+        end
 
+        if (csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF]) begin
+          minstreth_during_wb <= 1'b1;
+          minstreth_rdata_q <= csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF];
+          minstreth_wdata_q <= csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF];
+        end
+      end
+    end
+  end
   //////////////////
 
 
@@ -796,9 +840,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mcycle             = csr_mhpmcounter_n_l [CSR_MCYCLE & 'hF];
   assign rvfi_csr_wmask_d.mcycle             = csr_mhpmcounter_we_l[CSR_MCYCLE & 'hF];
 
-  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wmask_d.minstret           = csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF];
+  // Used flopped values in case write happened before wb_valid
+  assign rvfi_csr_rdata_d.minstret           = !minstret_during_wb ? csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF] : minstret_rdata_q;
+  assign rvfi_csr_wdata_d.minstret           = !minstret_during_wb ? csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF] : minstret_wdata_q;
+  assign rvfi_csr_wmask_d.minstret           = !minstret_during_wb ? csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF] : '1;
 
   assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;
   assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = 'Z; // Does not exist
@@ -812,9 +857,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mcycleh            = csr_mhpmcounter_n_h [CSR_MCYCLEH & 'hF];
   assign rvfi_csr_wmask_d.mcycleh            = csr_mhpmcounter_we_h[CSR_MCYCLEH & 'hF];
 
-  assign rvfi_csr_rdata_d.minstreth          = csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF];
-  assign rvfi_csr_wdata_d.minstreth          = csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF];
-  assign rvfi_csr_wmask_d.minstreth          = csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF];
+  // Used flopped values in case write happened before wb_valid
+  assign rvfi_csr_rdata_d.minstreth          = !minstreth_during_wb ? csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF] : minstreth_rdata_q;
+  assign rvfi_csr_wdata_d.minstreth          = !minstreth_during_wb ? csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF] : minstreth_wdata_q;
+  assign rvfi_csr_wmask_d.minstreth          = !minstreth_during_wb ? csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF] : '1;
 
   assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = 'Z;
   assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = 'Z;  // Does not exist

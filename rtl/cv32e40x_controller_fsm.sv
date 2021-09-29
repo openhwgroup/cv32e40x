@@ -55,6 +55,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  id_ex_pipe_t id_ex_pipe_i,        
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
   input  logic        obi_data_req_i,             // LSU OBI interface req
+  input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
 
   // From WB stage
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
@@ -159,6 +160,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       fencei_flush_req_set;
   logic       fencei_req_and_ack_q;
   logic       fencei_ongoing;    
+
+  logic       wb_minstret_event;
 
   assign fencei_ready = 1'b1; // TODO: connect when write buffer is implemented
 
@@ -296,7 +299,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign nmi_allowed = interrupt_allowed;
 
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;
+  assign ctrl_fsm_o.mhpmevent.minstret = wb_minstret_event && !exception_in_wb && !trigger_match_in_wb && !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb;
   assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
@@ -797,6 +800,25 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       end
       else if (fencei_flush_req_set) begin
         fencei_flush_req_o <= 1'b1;
+      end
+    end
+  end
+
+  // minstret event
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      wb_minstret_event <= 1'b0;
+    end else begin
+      // Minstret event for first cycle of WB
+      // First half of misaligned split will not count
+      if(ex_valid_i && wb_ready_i && !lsu_split_ex_i) begin
+        wb_minstret_event <= 1'b1;
+      end else begin
+        // Clear event to make sure only first cycle of WB counts
+        // unless WB is halted (for fence.i for example), then we must wait until un-halt to clear event flag
+        if(!ctrl_fsm_o.halt_wb) begin
+          wb_minstret_event <= 1'b0;
+        end
       end
     end
   end
