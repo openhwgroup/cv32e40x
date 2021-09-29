@@ -78,6 +78,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // CSR raddr in ex
   input  csr_num_e     csr_raddr_ex_i,
+  input  logic         csr_counter_read_i,         // A performance counter is read in CSR (EX)
 
   input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
   input rf_addr_t     rf_raddr_i[REGFILE_NUM_READ_PORTS],
@@ -180,6 +181,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // From EX
     .csr_raddr_ex_i             ( csr_raddr_ex_i           ),
+    .csr_counter_read_i         ( csr_counter_read_i       ),
 
     // From WB
     .wb_ready_i                 ( wb_ready_i               ),

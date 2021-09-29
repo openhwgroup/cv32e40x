@@ -61,6 +61,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // To controller bypass logic
   output csr_num_e        csr_raddr_o,
+  output logic            csr_counter_read_o,
  
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
@@ -231,7 +232,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
     illegal_csr_read = 1'b0;
-
+    csr_counter_read_o = 1'b0;
     case (csr_raddr)
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = mstatus_q;
@@ -312,8 +313,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
       CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
       CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
-      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31:
+      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31: begin
         csr_rdata_int = mhpmcounter_q[csr_raddr[4:0]][31:0];
+        csr_counter_read_o = 1'b1;
+      end
 
       CSR_MCYCLEH,
       CSR_MINSTRETH,
@@ -334,8 +337,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
       CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
       CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
-      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H:
+      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H: begin
         csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_q[csr_raddr[4:0]][63:32] : '0;
+        csr_counter_read_o = 1'b1;
+      end
 
       CSR_MCOUNTINHIBIT: csr_rdata_int = mcountinhibit_q;
 

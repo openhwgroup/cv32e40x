@@ -153,6 +153,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [1:0]  mtvec_mode;
 
   logic [31:0] csr_rdata;
+  logic csr_counter_read;
 
   PrivLvl_t    current_priv_lvl;
 
@@ -598,6 +599,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Raddr from first stage (EX)
     .csr_raddr_o                ( csr_raddr_ex           ),
+    .csr_counter_read_o         ( csr_counter_read       ),
 
     // Interrupt related control signals
     .mie_o                      ( mie                    ),
@@ -635,6 +637,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ex_pipe_i                   ( id_ex_pipe             ),
 
     .csr_raddr_ex_i                 ( csr_raddr_ex           ),
+    .csr_counter_read_i             ( csr_counter_read       ),
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),

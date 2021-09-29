@@ -760,7 +760,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // Later errors could overwrite the bit for load/store type, and with mtval the address would be overwritten.
         // todo: if mtval is implemented, address must be sticky as well
         nmi_pending_q <= 1'b1;
-        nmi_is_store_q <= ~ex_wb_pipe_i.rf_we;
+        nmi_is_store_q <= !ex_wb_pipe_i.rf_we;
       // Clear when the controller takes the NMI
       end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.exc_pc_mux == EXC_PC_NMI)) begin
         nmi_pending_q <= 1'b0;
