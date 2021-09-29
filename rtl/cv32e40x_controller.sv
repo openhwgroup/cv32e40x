@@ -77,7 +77,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic         regfile_alu_we_id_i,        // currently decoded we enable
 
   // CSR raddr in ex
-  input  csr_num_e     csr_raddr_ex_i,
   input  logic         csr_counter_read_i,         // A performance counter is read in CSR (EX)
 
   input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
@@ -180,7 +179,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
 
     // From EX
-    .csr_raddr_ex_i             ( csr_raddr_ex_i           ),
     .csr_counter_read_i         ( csr_counter_read_i       ),
 
     // From WB

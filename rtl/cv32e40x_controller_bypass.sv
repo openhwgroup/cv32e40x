@@ -54,8 +54,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        debug_trigger_match_id_i,         // Trigger match in ID
 
   // From EX
-  input  csr_num_e    csr_raddr_ex_i,             // CSR read address (EX)
-  input  logic        csr_counter_read_i,         // CSR is reading a counter (EX)
+  input  logic        csr_counter_read_i,         // CSR is reading a counter (EX).
 
   // From WB
   input  logic        wb_ready_i,                 // WB stage is ready
@@ -188,6 +187,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
 
     // Stall (EX) due to performance counter read
+    // csr_counter_read_i is derived from csr_raddr, which is gated with id_ex_pipe.csr_en and id_ex_pipe.instr_valid
     if (csr_counter_read_i && ex_wb_pipe_i.instr_valid) begin
       ctrl_byp_o.minstret_stall = 1'b1;
     end

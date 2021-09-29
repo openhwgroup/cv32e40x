@@ -60,7 +60,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  ctrl_fsm_t       ctrl_fsm_i,
 
   // To controller bypass logic
-  output csr_num_e        csr_raddr_o,
   output logic            csr_counter_read_o,
  
   // Interface to registers (SRAM like)
@@ -188,7 +187,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // CSR access. Read in EX, write in WB
   // Setting csr_raddr to zero in case of unused csr to save power (alu_operand_b toggles a lot)
   assign csr_raddr = csr_num_e'((id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid) ? id_ex_pipe_i.alu_operand_b[11:0] : 12'b0);
-  assign csr_raddr_o = csr_raddr;
 
   // Not suppressing csr_waddr to zero when unused since its source are dedicated flipflops and would not save power as for raddr
   assign csr_waddr = csr_num_e'(ex_wb_pipe_i.csr_addr);
