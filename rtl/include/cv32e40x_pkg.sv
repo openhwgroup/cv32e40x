@@ -913,7 +913,8 @@ typedef struct packed {
   mpu_status_e                mpu_status;
 } data_resp_t;
 
-// Performance counter events
+// Instruction meta data
+// TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc
 typedef struct packed
 {
   logic        jump;
@@ -928,7 +929,6 @@ typedef struct packed {
   inst_resp_t  instr;
   instr_meta_t instr_meta;
   logic [31:0] pc;
-  logic        is_compressed;
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
 } if_id_pipe_t;

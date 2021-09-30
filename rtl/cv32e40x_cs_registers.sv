@@ -783,13 +783,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////////////
 
   // Flop certain events to ease timing
-  localparam bit [15:0] HPM_EVENT_FLOP = 16'b1011_1111_1000_0000;
+  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1011_1111_1000_0000;
+  localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
+  
   logic [15:0]          hpm_events_raw;
   logic                 all_counters_disabled;
-
-  // TODO:OE use this in mcountinhibit generate
-  localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
-
+  
   assign all_counters_disabled = &(mcountinhibit_n | ~MCOUNTINHIBIT_MASK);
 
   genvar                hpm_idx;
@@ -1023,8 +1022,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   genvar inh_gidx;
   generate
     for (inh_gidx = 0; inh_gidx < 32; inh_gidx++) begin : gen_mcountinhibit
-      if( (inh_gidx == 1) ||
-          (inh_gidx >= (NUM_MHPMCOUNTERS+3) ) )
+      if(!MCOUNTINHIBIT_MASK[inh_gidx])
         begin : gen_non_implemented
         assign mcountinhibit_q[inh_gidx] = 'b0;
       end

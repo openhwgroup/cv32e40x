@@ -294,7 +294,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       IMMB_I:      imm_b = imm_i_type;
       IMMB_S:      imm_b = imm_s_type;
       IMMB_U:      imm_b = imm_u_type;
-      IMMB_PCINCR: imm_b = if_id_pipe_i.is_compressed ? 32'h2 : 32'h4;
+      IMMB_PCINCR: imm_b = if_id_pipe_i.instr_meta.compressed ? 32'h2 : 32'h4;
       default:     imm_b = imm_i_type;
     endcase
   end
@@ -430,15 +430,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                                                                             //
   /////////////////////////////////////////////////////////////////////////////////
 
-  // TODO:OE clean. remove is_compressed
-  instr_meta_t instr_meta_n; 
+  // Populate instruction meta data
+  instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n        = if_id_pipe_i.instr_meta;
     instr_meta_n.jump  = (ctrl_transfer_insn_o == BRANCH_JAL) ||
                          (ctrl_transfer_insn_o == BRANCH_JALR);
-    instr_meta_n.branch = ctrl_transfer_insn_o == BRANCH_COND;                    
+    instr_meta_n.branch = ctrl_transfer_insn_o == BRANCH_COND;
   end
-  
+
   always_ff @(posedge clk, negedge rst_n)
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
@@ -549,7 +549,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
 
-        if (if_id_pipe_i.is_compressed) begin
+        if (if_id_pipe_i.instr_meta.compressed) begin
           // Overwrite instruction word in case of compressed instruction
           id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
           id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
@@ -560,7 +560,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.instr_meta             <= instr_meta_n;
-        
+
         // Exceptions and special instructions
         id_ex_pipe_o.illegal_insn           <= illegal_insn;
         id_ex_pipe_o.ebrk_insn              <= ebrk_insn;

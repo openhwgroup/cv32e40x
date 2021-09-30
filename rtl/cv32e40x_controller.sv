@@ -93,8 +93,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Data OBI interface monitor
   if_c_obi.monitor    m_c_obi_data_if,
-  input  logic        obi_data_req_i,           // OBI bus data request (EX) // todo: Should look at 'trans' (goal (please check if true) it to not break a multicycle LSU instruction or already committed load/store; that cannot be judged by only looking at the OBI signals)
-// todo:oe take obi_data_req_i from the monitor
+
   // Outputs
   output ctrl_byp_t   ctrl_byp_o,
   output ctrl_fsm_t   ctrl_fsm_o,               // FSM outputs
@@ -133,7 +132,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_ready_i                  ( ex_ready_i               ),
     .ex_valid_i                  ( ex_valid_i               ),
-    .obi_data_req_i              ( obi_data_req_i           ),
     .lsu_split_ex_i              ( lsu_split_ex_i           ),
 
     // From WB stage

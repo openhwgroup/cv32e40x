@@ -54,7 +54,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,        
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-  input  logic        obi_data_req_i,             // LSU OBI interface req
   input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
 
   // From WB stage
@@ -330,7 +329,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
   
-  // TODO: replace wb_valid_i with version without obi.rvalid in the fan-in (Øysteins work)
   assign ctrl_fsm_o.mhpmevent.minstret      = wb_counter_event_gated;
   assign ctrl_fsm_o.mhpmevent.compressed    = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.compressed;
   assign ctrl_fsm_o.mhpmevent.jump          = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.jump;
@@ -346,54 +344,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.jr_stall      = ctrl_byp_i.jr_stall   && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
   assign ctrl_fsm_o.mhpmevent.ld_stall      = ctrl_byp_i.load_stall && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = wb_lsu_stall_i;
- 
-  
-/* todo:low Below are the original events definitions; check which ones to keep. If needed the actual definition can be changed (there is no backward compatibility requirement).
-  // Performance Counter Events
-  //TODO:OK: Fix counters to reflect new controller behaviour
-  // Illegal/ebreak/ecall are never counted as retired instructions. Note that actually issued instructions
-  // are being counted; the manner in which CSR instructions access the performance counters guarantees
-  // that this count will correspond to the retired isntructions count.
-  assign minstret = id_valid && is_last && !(illegal_insn || ebrk_insn || ecall_insn);
-
-  always_ff @(posedge clk , negedge rst_n)
-  begin
-    if (rst_n == 1'b0)
-    begin
-      id_valid_q                 <= 1'b0;
-      mhpmevent_minstret_o       <= 1'b0;
-      mhpmevent_load_o           <= 1'b0;
-      mhpmevent_store_o          <= 1'b0;
-      mhpmevent_jump_o           <= 1'b0;
-      mhpmevent_branch_o         <= 1'b0;
-      mhpmevent_compressed_o     <= 1'b0;
-      mhpmevent_branch_taken_o   <= 1'b0;
-      mhpmevent_jr_stall_o       <= 1'b0;
-      mhpmevent_imiss_o          <= 1'b0;
-      mhpmevent_ld_stall_o       <= 1'b0;
-    end
-    else
-    begin
-      // Helper signal, id_valid may be 1'b1 to update EX for misaligned LSU, gate off to not count events in those cases
-      id_valid_q                 <= id_valid && is_last;
-      // ID stage counts
-      mhpmevent_minstret_o       <= minstret;
-      mhpmevent_load_o           <= minstret && lsu_en && !lsu_we;
-      mhpmevent_store_o          <= minstret && lsu_en && lsu_we;
-      mhpmevent_jump_o           <= minstret && ((ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR));
-      mhpmevent_branch_o         <= minstret && (ctrl_transfer_insn_o == BRANCH_COND);
-      mhpmevent_compressed_o     <= minstret && if_id_pipe_i.is_compressed;
-      // EX stage count
-      mhpmevent_branch_taken_o   <= mhpmevent_branch_o && branch_decision_i;
-      // IF stage count
-      mhpmevent_imiss_o          <= perf_imiss_i;
-      // Jump-register-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_jr_stall_o       <= ctrl_byp_i.jr_stall && !ctrl_fsm_i.halt_id && id_valid_q;
-      // Load-use-hazard; do not count stall on flushed instructions (id_valid_q used to only count first cycle)
-      mhpmevent_ld_stall_o       <= ctrl_byp_i.load_stall && !ctrl_fsm_i.halt_id && id_valid_q;
-    end
-  end
-*/
 
   //////////////
   // FSM comb //
@@ -765,11 +715,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_mode = debug_mode_q;
 
   // Detect when data_req has been clocked, and lsu insn is still in EX
+  // todo: Should look at 'trans' (goal (please check if true) it to not break a multicycle LSU instruction or already committed load/store; that cannot be judged by only looking at the OBI signals)
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       obi_data_req_q <= 1'b0;
     end else begin
-      if (obi_data_req_i && !(ex_valid_i && wb_ready_i)) begin
+      if (m_c_obi_data_if.s_req.req && !(ex_valid_i && wb_ready_i)) begin
         obi_data_req_q <= 1'b1;
       end else if (ex_valid_i && wb_ready_i) begin
         obi_data_req_q <= 1'b0;

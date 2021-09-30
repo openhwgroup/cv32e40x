@@ -693,7 +693,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .fencei_flush_req_o             ( fencei_flush_req_o     ),
 
     // Data OBI interface
-    .m_c_obi_data_if                ( m_c_obi_data_if        ),   
+    .m_c_obi_data_if                ( m_c_obi_data_if        ),
 
     .id_ready_i                     ( id_ready               ),
     .id_valid_i                     ( id_valid               ),
@@ -701,8 +701,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( wb_ready               ),
     .wb_valid_i                     ( wb_valid               ),
-
-    .obi_data_req_i                 ( data_req_o             ),
 
     .ctrl_byp_o                     ( ctrl_byp               ),
     .ctrl_fsm_o                     ( ctrl_fsm               )
