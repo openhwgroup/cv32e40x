@@ -55,6 +55,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  id_ex_pipe_t id_ex_pipe_i,        
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
   input  logic        obi_data_req_i,             // LSU OBI interface req
+  input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
 
   // From WB stage
   input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
@@ -159,6 +160,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       fencei_flush_req_set;
   logic       fencei_req_and_ack_q;
   logic       fencei_ongoing;    
+
+  // Flag for signalling that a new instruction arrived in WB.
+  // Used for performance counters. High for one cycle, unless WB is halted
+  // (for fence.i for example), then it will remain high until un-halted.
+  logic       wb_counter_event;
+
+  // Gated version of wb_counter_event
+  // Do not count if halted or killed
+  logic       wb_counter_event_gated;
 
   assign fencei_ready = 1'b1; // TODO: connect when write buffer is implemented
 
@@ -295,8 +305,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign nmi_allowed = interrupt_allowed;
 
+  // Do not count if we have an exception in WB, trigger match in WB (we do not execute the instruction at trigger address),
+  // or WB stage is killed or halted.
+  // When WB is halted, we do not know (yet) if the instruction will retire or get killed.
+  // Halted WB due to debug will result in WB getting killed
+  // Halted WB due to fence.i will result in fence.i retire after handshake is done and we count when WB is un-halted
+  assign wb_counter_event_gated = wb_counter_event && !exception_in_wb && !trigger_match_in_wb &&
+                                  !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb;
+
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = wb_valid_i && !exception_in_wb && !trigger_match_in_wb;
+  assign ctrl_fsm_o.mhpmevent.minstret = wb_counter_event_gated;
   assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
   assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
@@ -797,6 +815,28 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       end
       else if (fencei_flush_req_set) begin
         fencei_flush_req_o <= 1'b1;
+      end
+    end
+  end
+
+  // minstret event
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      wb_counter_event <= 1'b0;
+    end else begin
+      // When the last part of an instruction reaches WB we may increment counters,
+      // unless WB stage is halted. A halted instruction in WB may or may not be killed later,
+      // thus we cannot count it until we know for sure if it will retire.
+      // i.e halt_wb due to debug will result in killed WB, while for fence.i it will retire.
+      // Note that this event bit is further gated before sent to the actual counters in case
+      // other conditions prevent counting.
+      if(ex_valid_i && wb_ready_i && !lsu_split_ex_i) begin
+        wb_counter_event <= 1'b1;
+      end else begin
+        // Keep event flag high while WB is halted, as we don't know if it will retire yet
+        if(!ctrl_fsm_o.halt_wb) begin
+          wb_counter_event <= 1'b0;
+        end
       end
     end
   end

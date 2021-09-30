@@ -127,6 +127,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_valid_i                  ( ex_valid_i               ),
     .obi_data_req_i              ( obi_data_req_i           ),
+    .lsu_split_ex_i              ( lsu_split_ex_i           ),
 
     // From WB stage
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
