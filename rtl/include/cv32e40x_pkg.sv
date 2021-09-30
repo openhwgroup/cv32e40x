@@ -913,10 +913,20 @@ typedef struct packed {
   mpu_status_e                mpu_status;
 } data_resp_t;
 
+// Performance counter events
+typedef struct packed
+{
+  logic        jump;
+  logic        branch;
+  logic        branch_taken;
+  logic        compressed;
+} instr_meta_t;
+  
 // IF/ID pipeline
 typedef struct packed {
   logic        instr_valid;
   inst_resp_t  instr;
+  instr_meta_t instr_meta;
   logic [31:0] pc;
   logic        is_compressed;
   logic [15:0] compressed_instr;
@@ -970,6 +980,7 @@ typedef struct packed {
   // Signals for exception handling etc passed on for evaluation in WB stage
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
+  instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in EX is valid
   logic         illegal_insn;
   logic         ebrk_insn;
@@ -1001,6 +1012,7 @@ typedef struct packed {
   // Signals for exception handling etc
   logic [31:0]  pc;
   inst_resp_t   instr;            // Contains instruction word (may be compressed), bus error status and MPU status
+  instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
   logic         ebrk_insn;
@@ -1014,17 +1026,23 @@ typedef struct packed {
 // Performance counter events
 typedef struct packed {
   logic                              minstret;
-  logic                              load;
-  logic                              store;
+  logic                              compressed;
   logic                              jump;
   logic                              branch;
   logic                              branch_taken;
-  logic                              compressed;
-  logic                              jr_stall;
-  logic                              imiss;
+  logic                              intr_taken;
+  logic                              data_read;
+  logic                              data_write;
+  logic                              if_invalid;
+  logic                              id_invalid;
+  logic                              ex_invalid;
+  logic                              wb_invalid;
   logic                              ld_stall;
+  logic                              jr_stall;
+  logic                              wb_data_stall;
 } mhpmevent_t;
 
+  
 // Controller Bypass outputs
 typedef struct packed {
   op_fw_mux_e  operand_a_fw_mux_sel;  // Operand A forward mux sel

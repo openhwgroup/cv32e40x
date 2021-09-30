@@ -238,6 +238,23 @@ module cv32e40x_controller_fsm_sva
                      fencei_flush_req_o |-> fencei_ready)
       else `uvm_error("controller", "Fencei handshake active while fencei_ready = 0")
     
+  // Assert that intr_taken is always single cycle. I.e. no double counting
+  a_mhpevent_intr_taken_single_cycle:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ctrl_fsm_o.mhpmevent.intr_taken |=> !ctrl_fsm_o.mhpmevent.intr_taken)
+      else `uvm_error("controller", "mhpmevent.intr_taken not single cycle")
 
+  // Assert that jr_stall is always single cycle. I.e. no double counting
+  a_mhpevent_jr_stall_single_cycle:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ctrl_fsm_o.mhpmevent.jr_stall |=> !ctrl_fsm_o.mhpmevent.jr_stall)
+      else `uvm_error("controller", "mhpmevent.jr_stall not single cycle")
+
+  // Assert that ld_stall is always single cycle. I.e. no double counting
+  a_mhpevent_ld_stall_single_cycle:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ctrl_fsm_o.mhpmevent.ld_stall |=> !ctrl_fsm_o.mhpmevent.ld_stall)
+      else `uvm_error("controller", "mhpmevent.ld_stall not single cycle")
+    
 endmodule // cv32e40x_controller_fsm_sva
 

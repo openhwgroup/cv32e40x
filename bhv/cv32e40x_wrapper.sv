@@ -203,7 +203,7 @@ module cv32e40x_wrapper
                 .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
-                .id_stage_id_valid                (core_i.id_stage_i.id_valid),
+                .id_stage_id_valid                (core_i.id_stage_i.id_valid_o),
                 .*);
 
 bind cv32e40x_sleep_unit:
@@ -264,7 +264,7 @@ bind cv32e40x_sleep_unit:
          .rst_ni                   ( rst_ni                                                               ),
 
          .if_valid_i               ( core_i.if_stage_i.if_valid_o                                         ),
-         .id_valid_i               ( core_i.id_stage_i.id_valid                                           ),
+         .id_valid_i               ( core_i.id_stage_i.id_valid_o                                         ),
          .id_ready_i               ( core_i.id_stage_i.id_ready_o                                         ),
 
          .wb_valid_i               ( core_i.wb_stage_i.wb_valid_o                                         ),

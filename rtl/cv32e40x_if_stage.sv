@@ -244,7 +244,13 @@ instruction_obi_i
 
   assign if_busy_o = prefetch_busy;
 
-
+  // TODO:OE clean. remove is_compressed
+  instr_meta_t instr_meta_n; 
+  always_comb begin
+    instr_meta_n = '0;
+    instr_meta_n.compressed = instr_compressed_int;
+  end
+  
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
   begin : IF_ID_PIPE_REGISTERS
@@ -252,6 +258,7 @@ instruction_obi_i
     begin
       if_id_pipe_o.instr_valid      <= 1'b0;
       if_id_pipe_o.instr            <= INST_RESP_RESET_VAL;
+      if_id_pipe_o.instr_meta       <= '0;
       if_id_pipe_o.pc               <= '0;
       if_id_pipe_o.is_compressed    <= 1'b0;
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
@@ -265,6 +272,7 @@ instruction_obi_i
       begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr            <= instr_decompressed;
+        if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.is_compressed    <= instr_compressed_int;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;

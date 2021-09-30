@@ -63,6 +63,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
+  input  logic        wb_lsu_stall_i,             // WB stalled by LSU
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
@@ -84,13 +85,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Stage valid/ready signals
   input  logic        if_valid_i,       // IF stage has valid (non-bubble) data for next stage
   input  logic        id_ready_i,       // ID stage is ready for new data
+  input  logic        id_valid_i,       // ID stage has valid (non-bubble) data for next stage
+  input  logic        ex_ready_i,       // EX stage is ready for new data
   input  logic        ex_valid_i,       // EX stage has valid (non-bubble) data for next stage
   input  logic        wb_ready_i,       // WB stage is ready for new data,
   input  logic        wb_valid_i,       // WB stage ha valid (non-bubble) data
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
-  input logic         fencei_flush_ack_i
+  input logic         fencei_flush_ack_i,
+
+  // Data OBI interface monitor
+  if_c_obi.monitor     m_c_obi_data_if
 );
 
    // FSM state encoding
@@ -314,17 +320,34 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                                   !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb;
 
   // Performance counter events
-  assign ctrl_fsm_o.mhpmevent.minstret = wb_counter_event_gated;
-  assign ctrl_fsm_o.mhpmevent.load = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.store = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.jump = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.branch = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.branch_taken = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.compressed = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.jr_stall = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.imiss = 1'b0; // todo:low
-  assign ctrl_fsm_o.mhpmevent.ld_stall = 1'b0; // todo:low
-
+  logic       id_valid_q;
+  
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      id_valid_q <= 1'b0;
+    end else begin
+      id_valid_q <= id_valid_i;
+    end
+  end
+  
+  // TODO: replace wb_valid_i with version without obi.rvalid in the fan-in (Øysteins work)
+  assign ctrl_fsm_o.mhpmevent.minstret      = wb_counter_event_gated;
+  assign ctrl_fsm_o.mhpmevent.compressed    = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.compressed;
+  assign ctrl_fsm_o.mhpmevent.jump          = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.jump;
+  assign ctrl_fsm_o.mhpmevent.branch        = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.branch;
+  assign ctrl_fsm_o.mhpmevent.branch_taken  = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.branch && ex_wb_pipe_i.instr_meta.branch_taken;
+  assign ctrl_fsm_o.mhpmevent.intr_taken    = ctrl_fsm_o.irq_ack;
+  assign ctrl_fsm_o.mhpmevent.data_read     = m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt && !m_c_obi_data_if.req_payload.we;
+  assign ctrl_fsm_o.mhpmevent.data_write    = m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt && m_c_obi_data_if.req_payload.we;
+  assign ctrl_fsm_o.mhpmevent.if_invalid    = !if_valid_i && id_ready_i;
+  assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
+  assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
+  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
+  assign ctrl_fsm_o.mhpmevent.jr_stall      = ctrl_byp_i.jr_stall   && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
+  assign ctrl_fsm_o.mhpmevent.ld_stall      = ctrl_byp_i.load_stall && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
+  assign ctrl_fsm_o.mhpmevent.wb_data_stall = wb_lsu_stall_i;
+ 
+  
 /* todo:low Below are the original events definitions; check which ones to keep. If needed the actual definition can be changed (there is no backward compatibility requirement).
   // Performance Counter Events
   //TODO:OK: Fix counters to reflect new controller behaviour
