@@ -473,6 +473,11 @@ module cv32e40x_rvfi
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
+  logic         in_trap_clr;
+  // Clear in trap pipeline when it reaches rvfi_intr
+  // This is done to avoid reporting already signaled triggers as supressed during by debug
+  assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB];
+
   // Pipeline stage model //
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -532,6 +537,11 @@ module cv32e40x_rvfi
         debug_cause[STAGE_IF] <= '0;
 
       end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_ID] <= '0;
+        end
+
         // IF stage is killed and not valid during debug entry. If debug is taken,
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (debug_taken_if) begin
@@ -542,7 +552,7 @@ module cv32e40x_rvfi
 
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
-          if (|in_trap && !rvfi_intr) begin
+          if (|in_trap) begin
             in_trap[STAGE_IF] <= 1'b1;
           end
         end
@@ -574,6 +584,11 @@ module cv32e40x_rvfi
         rs2_rdata  [STAGE_EX] <= rs2_rdata_id;
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+      end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_EX] <= '0;
+        end
       end
 
 
@@ -601,6 +616,11 @@ module cv32e40x_rvfi
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;
 
+      end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_WB] <= '0;
+        end
       end
 
 
