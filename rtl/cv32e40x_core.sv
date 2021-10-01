@@ -174,7 +174,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
 
-  logic        wb_lsu_stall;
+  logic        data_stall_wb;
 
   // Stage ready signals
   logic        id_ready;
@@ -548,7 +548,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_o                ( lsu_valid_wb                 ),
     .lsu_ready_i                ( lsu_ready_1                  ),
 
-    .wb_lsu_stall_o             ( wb_lsu_stall                 ),
+    .data_stall_o               ( data_stall_wb                ),
 
     // Valid/ready
     .wb_ready_o                 ( wb_ready                     ),
@@ -657,7 +657,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // LSU
     .lsu_split_ex_i                 ( lsu_split_ex           ),
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
-    .wb_lsu_stall_i                 ( wb_lsu_stall           ),
+    .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
 

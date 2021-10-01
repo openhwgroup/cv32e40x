@@ -783,7 +783,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////////////
 
   // Flop certain events to ease timing
-  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1011_1111_1000_0000;
+  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1011_1111_1100_0000;
   localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
   
   logic [15:0]          hpm_events_raw;
@@ -828,8 +828,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign hpm_events_raw[10] = ctrl_fsm_i.mhpmevent.id_invalid;    // ID invalid (No valid output from ID when EX stage is ready)
   assign hpm_events_raw[11] = ctrl_fsm_i.mhpmevent.ex_invalid;    // EX invalid (No valid output from EX when WB stage is ready)
   assign hpm_events_raw[12] = ctrl_fsm_i.mhpmevent.wb_invalid;    // WB invalid (No valid output from WB)
-  assign hpm_events_raw[13] = ctrl_fsm_i.mhpmevent.ld_stall;      // Nr of load use hazards
-  assign hpm_events_raw[14] = ctrl_fsm_i.mhpmevent.jr_stall;      // Nr of jump register hazards
+  assign hpm_events_raw[13] = ctrl_fsm_i.mhpmevent.id_ld_stall;   // Nr of load use hazards
+  assign hpm_events_raw[14] = ctrl_fsm_i.mhpmevent.id_jr_stall;   // Nr of jump register hazards
   assign hpm_events_raw[15] = ctrl_fsm_i.mhpmevent.wb_data_stall; // Nr of stall cycles caused in the WB stage by loads/stores
 
   // ------------------------

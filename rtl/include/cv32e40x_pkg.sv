@@ -1037,8 +1037,8 @@ typedef struct packed {
   logic                              id_invalid;
   logic                              ex_invalid;
   logic                              wb_invalid;
-  logic                              ld_stall;
-  logic                              jr_stall;
+  logic                              id_ld_stall;
+  logic                              id_jr_stall;
   logic                              wb_data_stall;
 } mhpmevent_t;
 

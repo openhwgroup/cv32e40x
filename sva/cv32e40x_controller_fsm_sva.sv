@@ -244,17 +244,17 @@ module cv32e40x_controller_fsm_sva
                      ctrl_fsm_o.mhpmevent.intr_taken |=> !ctrl_fsm_o.mhpmevent.intr_taken)
       else `uvm_error("controller", "mhpmevent.intr_taken not single cycle")
 
-  // Assert that jr_stall is always single cycle. I.e. no double counting
-  a_mhpevent_jr_stall_single_cycle:
+  // Assert that id_jr_stall is always single cycle. I.e. no double counting
+  a_mhpevent_id_jr_stall_single_cycle:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     ctrl_fsm_o.mhpmevent.jr_stall |=> !ctrl_fsm_o.mhpmevent.jr_stall)
-      else `uvm_error("controller", "mhpmevent.jr_stall not single cycle")
+                     ctrl_fsm_o.mhpmevent.id_jr_stall |=> !ctrl_fsm_o.mhpmevent.id_jr_stall)
+      else `uvm_error("controller", "mhpmevent.id_jr_stall not single cycle")
 
-  // Assert that ld_stall is always single cycle. I.e. no double counting
-  a_mhpevent_ld_stall_single_cycle:
+  // Assert that id_ld_stall is always single cycle. I.e. no double counting
+  a_mhpevent_id_ld_stall_single_cycle:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     ctrl_fsm_o.mhpmevent.ld_stall |=> !ctrl_fsm_o.mhpmevent.ld_stall)
-      else `uvm_error("controller", "mhpmevent.ld_stall not single cycle")
+                     ctrl_fsm_o.mhpmevent.id_ld_stall |=> !ctrl_fsm_o.mhpmevent.id_ld_stall)
+      else `uvm_error("controller", "mhpmevent.id_ld_stall not single cycle")
     
 endmodule // cv32e40x_controller_fsm_sva
 

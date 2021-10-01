@@ -62,7 +62,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
-  input  logic        wb_lsu_stall_i,             // WB stalled by LSU
+  input  logic        data_stall_wb_i,            // WB stalled by LSU
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
@@ -341,9 +341,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
-  assign ctrl_fsm_o.mhpmevent.jr_stall      = ctrl_byp_i.jr_stall   && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
-  assign ctrl_fsm_o.mhpmevent.ld_stall      = ctrl_byp_i.load_stall && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
-  assign ctrl_fsm_o.mhpmevent.wb_data_stall = wb_lsu_stall_i;
+  assign ctrl_fsm_o.mhpmevent.id_jr_stall      = ctrl_byp_i.jr_stall   && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
+  assign ctrl_fsm_o.mhpmevent.id_ld_stall      = ctrl_byp_i.load_stall && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
+  assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
 
   //////////////
   // FSM comb //

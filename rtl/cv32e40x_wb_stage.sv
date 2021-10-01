@@ -60,7 +60,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input  logic          lsu_ready_i,
 
   // WB stalled by LSU
-  output logic          wb_lsu_stall_o,
+  output logic          data_stall_o,
 
   // Stage ready/valid
   output logic          wb_ready_o,
@@ -139,6 +139,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign wb_valid_o = wb_valid;
 
   // Export signal indicating WB stage stalled by load/store
-  assign wb_lsu_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && instr_valid;
+  assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && instr_valid;
   
 endmodule // cv32e40x_wb_stage
