@@ -62,6 +62,7 @@ module cv32e40x_alignment_buffer_sva
     end
   end
 
+  /* TODO: remove, as pointer based fifo will allow writes when write pointer is at index 2
   // Check FIFO overflow
   property p_fifo_overflow;
     @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[2] == 1'b0);
@@ -72,7 +73,7 @@ module cv32e40x_alignment_buffer_sva
       else
         `uvm_error("Alignment buffer SVA",
                   $sformatf("FIFO overflow"))
-
+  */
 
   // Check that FIFO is cleared the cycle after a branch
   property p_fifo_clear;
