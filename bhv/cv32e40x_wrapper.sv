@@ -29,6 +29,7 @@
   `include "cv32e40x_prefetcher_sva.sv"
   `include "cv32e40x_prefetch_unit_sva.sv"
   `include "cv32e40x_sleep_unit_sva.sv"
+  `include "cv32e40x_rvfi_sva.sv"
 `endif
 
 `include "cv32e40x_wrapper.vh"
@@ -89,8 +90,6 @@ module cv32e40x_wrapper
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
-  output logic        irq_ack_o,
-  output logic [4:0]  irq_id_o,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -204,6 +203,7 @@ module cv32e40x_wrapper
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid),
+                .irq_ack                          (core_i.irq_ack),
                 .*);
 
 bind cv32e40x_sleep_unit:
@@ -246,6 +246,16 @@ bind cv32e40x_sleep_unit:
              .obi_req    (core_i.data_req_o),
              .obi_gnt    (core_i.data_gnt_i),
              .*);
+
+  bind cv32e40x_rvfi:
+    rvfi_i
+    cv32e40x_rvfi_sva
+      rvfi_sva(.irq_ack(core_i.irq_ack),
+               .dbg_ack(core_i.dbg_ack),
+               .ctrl_fsm_debug_cause(core_i.ctrl_fsm.debug_cause),
+               .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
+               .*);
+  
 `endif //  `ifndef COREV_ASSERT_OFF
   
     cv32e40x_core_log

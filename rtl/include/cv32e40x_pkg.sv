@@ -1050,9 +1050,11 @@ typedef struct packed {
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic        irq_ack;               // irq has been taken
-  logic [4:0]  irq_id;                // id of taken irq (to toplevel pins)
   logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+
+  logic        irq_ack;               // irq has been taken
+  logic [4:0]  irq_id;                // id of taken irq
+  logic        dbg_ack;               // debug has been taken
 
   // Debug outputs
   logic        debug_mode;           // Flag signalling we are in debug mode

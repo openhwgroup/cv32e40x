@@ -24,6 +24,11 @@ package cv32e40x_rvfi_pkg;
   // RVFI only supports MHPMCOUNTER_WIDTH == 64
   parameter MHPMCOUNTER_WORDS  = MHPMCOUNTER_WIDTH/32;
 
+  parameter STAGE_IF = 0;
+  parameter STAGE_ID = 1;
+  parameter STAGE_EX = 2;
+  parameter STAGE_WB = 3;
+
   typedef struct packed { // Autonomously updated CSRs
     logic [31:0] mcycle;
     logic [31:0] mcycleh;

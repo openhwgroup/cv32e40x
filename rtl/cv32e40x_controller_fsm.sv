@@ -368,6 +368,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.irq_ack = 1'b0;
     ctrl_fsm_o.irq_id  = '0;
+    ctrl_fsm_o.dbg_ack = 1'b0;
 
     // IF stage is halted if an instruction has been issued during single step
     // to avoid more than one instructions passing down the pipe.
@@ -619,6 +620,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
       DEBUG_TAKEN: begin
+
+        // Indicate that debug is taken
+        ctrl_fsm_o.dbg_ack = 1'b1;
+
         // Clear flags for halting IF during single step
         single_step_halt_if_n = 1'b0;
 

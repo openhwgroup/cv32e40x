@@ -238,6 +238,11 @@ module cv32e40x_controller_fsm_sva
                      fencei_flush_req_o |-> fencei_ready)
       else `uvm_error("controller", "Fencei handshake active while fencei_ready = 0")
     
+  // assert that NMI's are not reported on irq_ack
+  a_irq_ack_no_nmi :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ctrl_fsm_o.irq_ack |-> !pending_nmi)
+      else `uvm_error("controller", "irq_ack set while there's a pending NMI")
 
 endmodule // cv32e40x_controller_fsm_sva
 
