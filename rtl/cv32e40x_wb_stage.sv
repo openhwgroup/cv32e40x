@@ -139,6 +139,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign wb_valid_o = wb_valid;
 
   // Export signal indicating WB stage stalled by load/store
-  assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && instr_valid;
+  assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid;
   
 endmodule // cv32e40x_wb_stage

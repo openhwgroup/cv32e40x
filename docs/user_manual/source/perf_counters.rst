@@ -57,9 +57,9 @@ The following events can be monitored using the performance counters of |corev|.
 +-------------+-----------------+----------------------------------------------------------------------------------------+
 | 12          | WB_INVALID      | Number of cycles that the WB stage causes register file write port underutilization    |
 +-------------+-----------------+----------------------------------------------------------------------------------------+
-| 13          | LD_STALL        | Number of load use hazards                                                             |
+| 13          | LD_STALL        | Number of stall cycles caused by load use hazards                                      |
 +-------------+-----------------+----------------------------------------------------------------------------------------+
-| 14          | JMP_STALL       | Number of jump register hazards                                                        |
+| 14          | JMP_STALL       | Number of stall cycles caused by jump register hazards                                 |
 +-------------+-----------------+----------------------------------------------------------------------------------------+
 | 15          | WB_DATA_STALL   | Number of stall cycles caused in the WB stage by loads/stores.                         |
 +-------------+-----------------+----------------------------------------------------------------------------------------+

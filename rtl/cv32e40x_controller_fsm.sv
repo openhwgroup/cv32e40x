@@ -319,16 +319,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                                   !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb;
 
   // Performance counter events
-  logic       id_valid_q;
-  
-  always_ff @(posedge clk, negedge rst_n) begin
-    if (rst_n == 1'b0) begin
-      id_valid_q <= 1'b0;
-    end else begin
-      id_valid_q <= id_valid_i;
-    end
-  end
-  
   assign ctrl_fsm_o.mhpmevent.minstret      = wb_counter_event_gated;
   assign ctrl_fsm_o.mhpmevent.compressed    = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.compressed;
   assign ctrl_fsm_o.mhpmevent.jump          = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.jump;
@@ -341,8 +331,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
-  assign ctrl_fsm_o.mhpmevent.id_jr_stall      = ctrl_byp_i.jr_stall   && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
-  assign ctrl_fsm_o.mhpmevent.id_ld_stall      = ctrl_byp_i.load_stall && !ctrl_fsm_o.kill_id && id_valid_q; // Qualify with id_valid_q to only count first cycle. Don't count stall on killed instructions
+  assign ctrl_fsm_o.mhpmevent.id_jr_stall   = ctrl_byp_i.jr_stall   && !id_valid_i && ex_ready_i;
+  assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
 
   //////////////
