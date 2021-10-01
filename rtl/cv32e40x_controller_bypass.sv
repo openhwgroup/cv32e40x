@@ -64,7 +64,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 );
 
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_match;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_jr_match;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_match;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_jr_match;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_hz;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_hz;
 
@@ -133,9 +135,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
       // Does register file read address match write address in EX (excluding R0)?
       assign rf_rd_ex_match[i] = (rf_waddr_ex == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+      assign rf_rd_ex_jr_match[i] = (rf_waddr_ex == rf_raddr_i[i]) && |rf_raddr_i[i] && 1'b1;
 
       // Does register file read address match write address in WB (excluding R0)?
       assign rf_rd_wb_match[i] = (rf_waddr_wb == rf_raddr_i[i]) && |rf_raddr_i[i] && rf_re_i[i];
+      assign rf_rd_wb_jr_match[i] = (rf_waddr_wb == rf_raddr_i[i]) && |rf_raddr_i[i] && 1'b1;
 
       // Load-read hazard (for any instruction following a load)
       assign rf_rd_ex_hz[i] = rf_rd_ex_match[i];
@@ -171,8 +175,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // except if result from WB is an ALU result
     // No need to deassert anything in ID,a s ID stage is stalled anyway
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        ((rf_we_wb && rf_rd_wb_match[0] && lsu_en_wb) ||
-         (rf_we_ex && rf_rd_ex_match[0])))
+        ((rf_we_wb && rf_rd_wb_jr_match[0] && lsu_en_wb) ||
+         (rf_we_ex && rf_rd_ex_jr_match[0])))
     begin
       ctrl_byp_o.jr_stall    = 1'b1;
     end
@@ -224,7 +228,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Forwarding WB->ID for the jump register path
     // Only allowed if WB is writing back an ALU result; no forwarding for load result because of timing reasons
     if (rf_we_wb) begin
-      if (rf_rd_wb_match[0] && !lsu_en_wb) begin
+      if (rf_rd_wb_jr_match[0] && !lsu_en_wb) begin
         ctrl_byp_o.jalr_fw_mux_sel = SELJ_FW_WB;
       end
     end
