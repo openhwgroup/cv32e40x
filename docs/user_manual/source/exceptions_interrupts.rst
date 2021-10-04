@@ -45,13 +45,6 @@ Interrupt Interface
   |                         |           | are a |corev| specific extension to the RISC-V   |
   |                         |           | Basic (a.k.a. CLINT) interrupt scheme.           |
   +-------------------------+-----------+--------------------------------------------------+
-  | ``irq_ack_o``           | output    | Interrupt acknowledge.  Set to 1 for one cycle   |
-  |                         |           | when the interrupt with ID ``irq_id_o[4:0]`` is  |
-  |                         |           | taken.                                           |
-  +-------------------------+-----------+--------------------------------------------------+
-  | ``irq_id_o[4:0]``       | output    | Interrupt index for taken interrupt. Only valid  |
-  |                         |           | when ``irq_ack_o`` = 1.                          |
-  +-------------------------+-----------+--------------------------------------------------+
 
 Interrupts
 ----------
@@ -77,10 +70,8 @@ ordered as follows:
 * ``irq_i[3]``
 * ``irq_i[7]``
 
-The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events. There are two supported mechanisms by which `irq_i[31:0]`` interrupts can be cleared at the external source.
-
-* A software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
-* A hardware-based mechanism in which the ``irq_ack_o`` and ``irq_id_o[4:0]`` signals are used to clear the interrupt sourcee, e.g. by an external interrupt controller. ``irq_ack_o`` is a 1 ``clk_i`` cycle pulse during which ``irq_id_o[4:0]`` reflects the index in ``irq_id[]`` of the taken interrupt.
+The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events.
+To clear the ``irq_i[31:0]`` interrupts at the external source, |corev| relies on a software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
 
 In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the content of the ``mie`` CSR.
 
