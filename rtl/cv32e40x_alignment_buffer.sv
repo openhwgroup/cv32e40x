@@ -72,6 +72,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
 
+  // Indicates that we consumed on instruction last cycle
+  logic pop_q;
+
   // Number of instructions pushed to fifo
   // special encoding 2'b11 means pop (-1 instruction)
   // Other values are unsigned
@@ -96,17 +99,18 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
 
-  // For any number > 0, subtract 1 if we also issue to if_stage
-  // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
-  assign n_pushed_ins = (instr_valid_o & instr_ready_i) ?
-                        (n_incoming_ins > 2'd0) ? n_incoming_ins - 2'd1 : 2'b11 :
-                        n_incoming_ins;
+  // Assume we always push all instructions to FIFO
+  // We may directly consume it, but accounting for that gives
+  // bad timing paths to instr_cnt_q
+  assign n_pushed_ins = n_incoming_ins;
 
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
+  // Adjust instruction count with 'pop_q', which tells if we consumed an instruction
+  // during the last cycle
   assign fetch_valid_o = ctrl_fsm_i.instr_req &&
                          (outstanding_cnt_q < 2) &&
-                         ((instr_cnt_q == 'd0) ||
-                         (instr_cnt_q == 'd1 && outstanding_cnt_q == 2'd0) ||
+                         (((instr_cnt_q - pop_q) == 'd0) ||
+                         ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == 2'd0) ||
                          ctrl_fsm_i.pc_set);
 
 
@@ -320,13 +324,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         n_flush_branch = outstanding_cnt_q - 2'd1;
       end
     end else begin
-      // Update number of instructions when we push or pop it
-      if(n_pushed_ins == 2'b11) begin
-        // We pop one
-        instr_cnt_n = instr_cnt_q - 1'b1;
-      end else begin
-        instr_cnt_n = instr_cnt_q + n_pushed_ins;
-      end
+      // Update number of instructions
+      // Subracting emitted instructions lags behind by 1 cycle
+      // to break timing paths from instr_ready_i to instr_cnt_q;
+      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? 'd1 : 'd0);
     end
   end
 
@@ -478,10 +479,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       outstanding_cnt_q <= 'd0;
       rptr      <= 'd0;
       wptr      <= 'd0;
+      pop_q     <= 1'b0;
     end
     else
     begin
-
       // on a kill signal from outside we invalidate the content of the FIFO
       // completely and start from an empty state
       if (ctrl_fsm_i.kill_if) begin
@@ -501,6 +502,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         wptr <= wptr_n;
         rptr <= rptr_n;
         addr_q  <= addr_n;
+      end
+
+      if(instr_valid_o && instr_ready_i) begin
+        pop_q <= 1'b1;
+      end else begin
+        pop_q <= 1'b0;
       end
 
       aligned_q <= aligned_n;
