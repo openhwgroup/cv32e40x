@@ -64,7 +64,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 );
 
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_match;
+  logic                              rf_rd_ex_jr_match;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_match;
+  logic                              rf_rd_wb_jr_match;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_hz;
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_wb_hz;
 
@@ -143,6 +145,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
   endgenerate
 
+  // JR will always read rs1, no need to check rf_re[0]
+  assign rf_rd_ex_jr_match = (rf_waddr_ex == rf_raddr_i[0]) && |rf_raddr_i[0];
+  assign rf_rd_wb_jr_match = (rf_waddr_wb == rf_raddr_i[0]) && |rf_raddr_i[0];
 
   always_comb
   begin
@@ -171,8 +176,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // except if result from WB is an ALU result
     // No need to deassert anything in ID,a s ID stage is stalled anyway
     if ((ctrl_transfer_insn_raw_i == BRANCH_JALR) &&
-        ((rf_we_wb && rf_rd_wb_match[0] && lsu_en_wb) ||
-         (rf_we_ex && rf_rd_ex_match[0])))
+        ((rf_we_wb && rf_rd_wb_jr_match && lsu_en_wb) ||
+         (rf_we_ex && rf_rd_ex_jr_match)))
     begin
       ctrl_byp_o.jr_stall    = 1'b1;
     end
@@ -224,7 +229,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Forwarding WB->ID for the jump register path
     // Only allowed if WB is writing back an ALU result; no forwarding for load result because of timing reasons
     if (rf_we_wb) begin
-      if (rf_rd_wb_match[0] && !lsu_en_wb) begin
+      if (rf_rd_wb_jr_match && !lsu_en_wb) begin
         ctrl_byp_o.jalr_fw_mux_sel = SELJ_FW_WB;
       end
     end

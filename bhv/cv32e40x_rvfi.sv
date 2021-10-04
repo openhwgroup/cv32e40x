@@ -417,6 +417,19 @@ module cv32e40x_rvfi
   logic [31:0][31:0] csr_mhpmcounter_we_l;
   logic [31:0][31:0] csr_mhpmcounter_we_h;
 
+  // Signals for special handling of performance counters
+  logic [31:0][31:0] mhpmcounter_l_rdata_q;
+  logic [31:0][31:0] mhpmcounter_l_wdata_q;
+  logic [31:0][31:0] mhpmcounter_h_rdata_q;
+  logic [31:0][31:0] mhpmcounter_h_wdata_q;
+
+  // Counter was written during WB and possibly before wb_valid
+  logic [31:0]       mhpmcounter_l_during_wb;
+  logic [31:0]       mhpmcounter_h_during_wb;
+
+
+
+
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         debug_taken_if;
@@ -453,6 +466,11 @@ module cv32e40x_rvfi
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
   assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
+
+  logic         in_trap_clr;
+  // Clear in trap pipeline when it reaches rvfi_intr
+  // This is done to avoid reporting already signaled triggers as supressed during by debug
+  assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB];
 
   // Pipeline stage model //
 
@@ -513,6 +531,11 @@ module cv32e40x_rvfi
         debug_cause[STAGE_IF] <= '0;
 
       end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_ID] <= '0;
+        end
+
         // IF stage is killed and not valid during debug entry. If debug is taken,
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (debug_taken_if) begin
@@ -523,7 +546,7 @@ module cv32e40x_rvfi
 
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
-          if (|in_trap && !rvfi_intr) begin
+          if (|in_trap) begin
             in_trap[STAGE_IF] <= 1'b1;
           end
         end
@@ -555,6 +578,11 @@ module cv32e40x_rvfi
         rs2_rdata  [STAGE_EX] <= rs2_rdata_id;
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+      end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_EX] <= '0;
+        end
       end
 
 
@@ -582,6 +610,11 @@ module cv32e40x_rvfi
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;
 
+      end else begin
+        if (in_trap_clr) begin
+          // Clear interrupt pipeline when it reaches rvfi_intr
+          in_trap    [STAGE_WB] <= '0;
+        end
       end
 
 
@@ -631,7 +664,42 @@ module cv32e40x_rvfi
     end
   end // always_ff @
 
+  // Capture possible performance counter writes during WB, before wb_valid
+  // If counter write happens before wb_valid (LSU stalled waiting for rvalid for example),
+  // we must keep _n and _q values to correctly set _rdata and _wdata when rvfi_valid is set.
+  // If wb_valid occurs in the same cycle as the write, the flags are zero and any
+  // stored values will not be used.
+  generate for (genvar i = 0; i < 32; i++)
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        mhpmcounter_l_rdata_q[i] <= '0;
+        mhpmcounter_h_rdata_q[i] <= '0;
+        mhpmcounter_l_wdata_q[i] <= '0;
+        mhpmcounter_h_wdata_q[i] <= '0;
+        mhpmcounter_l_during_wb[i] <= 1'b0;
+        mhpmcounter_h_during_wb[i] <= 1'b0;
+      end else begin
+        // Clear flags on wb_valid
+        if (wb_valid_i) begin
+          mhpmcounter_l_during_wb[i] <= 1'b0;
+          mhpmcounter_h_during_wb[i] <= 1'b0;
+        end else begin
+          // Capture counter writes.
+          if (csr_mhpmcounter_we_l[i]) begin
+            mhpmcounter_l_during_wb <= 1'b1;
+            mhpmcounter_l_rdata_q <= csr_mhpmcounter_q_l[i];
+            mhpmcounter_l_wdata_q <= csr_mhpmcounter_n_l[i];
+          end
 
+          if (csr_mhpmcounter_we_h[i]) begin
+            mhpmcounter_h_during_wb <= 1'b1;
+            mhpmcounter_h_rdata_q <= csr_mhpmcounter_q_h[i];
+            mhpmcounter_h_wdata_q <= csr_mhpmcounter_n_h[i];
+          end
+        end
+      end
+    end
+  endgenerate
   //////////////////
 
 
@@ -790,32 +858,46 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mcycle             = csr_mhpmcounter_n_l [CSR_MCYCLE & 'hF];
   assign rvfi_csr_wmask_d.mcycle             = csr_mhpmcounter_we_l[CSR_MCYCLE & 'hF];
 
-  assign rvfi_csr_rdata_d.minstret           = csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wdata_d.minstret           = csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF];
-  assign rvfi_csr_wmask_d.minstret           = csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF];
+  // Used flopped values in case write happened before wb_valid
+  assign rvfi_csr_rdata_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF] : mhpmcounter_l_rdata_q[CSR_MINSTRET & 'hF];
+  assign rvfi_csr_wdata_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF] : mhpmcounter_l_wdata_q[CSR_MINSTRET & 'hF];
+  assign rvfi_csr_wmask_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF] : '1;
 
   assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;
   assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = 'Z; // Does not exist
   assign rvfi_csr_wmask_d.mhpmcounter[ 2:0]  = '0;
-  assign rvfi_csr_rdata_d.mhpmcounter[31:3]  = csr_mhpmcounter_q_l [31:3];
-  assign rvfi_csr_wdata_d.mhpmcounter[31:3]  = csr_mhpmcounter_q_l [31:3];
-  assign rvfi_csr_wmask_d.mhpmcounter[31:3]  = csr_mhpmcounter_we_l[31:3];
+
+  // Used flopped values in case write happened before wb_valid
+  generate
+    for (genvar i = 3; i < 32; i++) begin
+      assign rvfi_csr_rdata_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_q_l [i] : mhpmcounter_l_rdata_q[i];
+      assign rvfi_csr_wdata_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_n_l [i] : mhpmcounter_l_wdata_q[i];
+      assign rvfi_csr_wmask_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_we_l[i] : '1;
+    end
+  endgenerate
 
   assign ex_csr_rdata_d.mcycleh              = csr_mhpmcounter_q_h [CSR_MCYCLEH & 'hF];
   assign rvfi_csr_rdata_d.mcycleh            = ex_csr_rdata.mcycleh;
   assign rvfi_csr_wdata_d.mcycleh            = csr_mhpmcounter_n_h [CSR_MCYCLEH & 'hF];
   assign rvfi_csr_wmask_d.mcycleh            = csr_mhpmcounter_we_h[CSR_MCYCLEH & 'hF];
 
-  assign rvfi_csr_rdata_d.minstreth          = csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF];
-  assign rvfi_csr_wdata_d.minstreth          = csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF];
-  assign rvfi_csr_wmask_d.minstreth          = csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF];
+  // Used flopped values in case write happened before wb_valid
+  assign rvfi_csr_rdata_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF] : mhpmcounter_h_rdata_q[CSR_MINSTRETH & 'hF];
+  assign rvfi_csr_wdata_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF] : mhpmcounter_h_wdata_q[CSR_MINSTRETH & 'hF];
+  assign rvfi_csr_wmask_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF] : '1;
 
   assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = 'Z;
   assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = 'Z;  // Does not exist
   assign rvfi_csr_wmask_d.mhpmcounterh[ 2:0] = '0;
-  assign rvfi_csr_rdata_d.mhpmcounterh[31:3] = csr_mhpmcounter_q_h [31:3];
-  assign rvfi_csr_wdata_d.mhpmcounterh[31:3] = csr_mhpmcounter_n_h [31:3];
-  assign rvfi_csr_wmask_d.mhpmcounterh[31:3] = csr_mhpmcounter_we_h[31:3];
+
+  // Used flopped values in case write happened before wb_valid
+  generate
+    for (genvar i = 3; i < 32; i++) begin
+      assign rvfi_csr_rdata_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_q_h [i] : mhpmcounter_h_rdata_q[i];
+      assign rvfi_csr_wdata_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_n_h [i] : mhpmcounter_h_wdata_q[i];
+      assign rvfi_csr_wmask_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_we_h[i] : '1;
+    end
+  endgenerate
 
   assign ex_csr_rdata_d.cycle                = csr_mhpmcounter_q_l [CSR_CYCLE & 'hF];
   assign rvfi_csr_rdata_d.cycle              = ex_csr_rdata.cycle;

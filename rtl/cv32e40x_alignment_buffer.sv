@@ -67,10 +67,15 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Counter for number of outstanding transactions
   logic [FIFO_ADDR_DEPTH-1:0] outstanding_cnt_n, outstanding_cnt_q;
+  logic outstanding_count_up;
+  logic outstanding_count_down;
 
 
   // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
+
+  // Indicates that we consumed one instruction last cycle
+  logic pop_q;
 
   // Number of instructions pushed to fifo
   // special encoding 2'b11 means pop (-1 instruction)
@@ -96,17 +101,18 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
 
-  // For any number > 0, subtract 1 if we also issue to if_stage
-  // If we don't have any incoming but issue to if_stage, signal 3 as negative 1 (pop)
-  assign n_pushed_ins = (instr_valid_o & instr_ready_i) ?
-                        (n_incoming_ins > 2'd0) ? n_incoming_ins - 2'd1 : 2'b11 :
-                        n_incoming_ins;
+  // Assume we always push all instructions to FIFO
+  // We may directly consume it, but accounting for that gives
+  // bad timing paths to instr_cnt_q
+  assign n_pushed_ins = n_incoming_ins;
 
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
+  // Adjust instruction count with 'pop_q', which tells if we consumed an instruction
+  // during the last cycle
   assign fetch_valid_o = ctrl_fsm_i.instr_req &&
                          (outstanding_cnt_q < 2) &&
-                         ((instr_cnt_q == 'd0) ||
-                         (instr_cnt_q == 'd1 && outstanding_cnt_q == 2'd0) ||
+                         (((instr_cnt_q - pop_q) == 'd0) ||
+                         ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == 2'd0) ||
                          ctrl_fsm_i.pc_set);
 
 
@@ -123,9 +129,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   //////////////////
   // FIFO signals //
   //////////////////
-  // index 0 is used for output
-  inst_resp_t [0:DEPTH-1]  resp_n,   resp_int,   resp_q;
+  inst_resp_t [0:DEPTH-1]  resp_q;
   logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
+  inst_resp_t resp_n;
+
+  // Read/write pointer for FIFO
+  logic [FIFO_ADDR_DEPTH-1:0] rptr, rptr_n;
+  logic [FIFO_ADDR_DEPTH-1:0] rptr2;
+  logic [FIFO_ADDR_DEPTH-1:0] wptr, wptr_n;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
@@ -135,19 +146,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Aligned instructions will either be fully in index 0 or incoming data
   // This also applies for the bus_error and mpu_status
-  assign instr      = (valid_q[0]) ? resp_q[0].bus_resp.rdata : resp_i.bus_resp.rdata;
-  assign bus_err    = (valid_q[0]) ? resp_q[0].bus_resp.err   : resp_i.bus_resp.err;
-  assign mpu_status = (valid_q[0]) ? resp_q[0].mpu_status     : resp_i.mpu_status;
+  assign instr      = (valid_q[rptr]) ? resp_q[rptr].bus_resp.rdata : resp_i.bus_resp.rdata;
+  assign bus_err    = (valid_q[rptr]) ? resp_q[rptr].bus_resp.err   : resp_i.bus_resp.err;
+  assign mpu_status = (valid_q[rptr]) ? resp_q[rptr].mpu_status     : resp_i.mpu_status;
 
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
-  assign instr_unaligned = (valid_q[1]) ? {resp_q[1].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
+  assign instr_unaligned = (valid_q[rptr2]) ? {resp_q[rptr2].bus_resp.rdata[15:0], instr[31:16]} : {resp_i.bus_resp.rdata[15:0], instr[31:16]};
 
 
   // Unaligned uncompressed instructions are valid if index 1 is valid (index 0 will always be valid if 1 is)
   // or if we have data in index 0 AND we get a new incoming instruction
   // All other cases are valid if we have data in q0 or we get a response
-  assign valid_unaligned_uncompressed = (valid_q[1] || (valid_q[0] && resp_valid_gated));
-  assign valid = valid_q[0] || resp_valid_gated;
+  assign valid_unaligned_uncompressed = (valid_q[rptr2] || (valid_q[rptr] && resp_valid_gated));
+  assign valid = valid_q[rptr] || resp_valid_gated;
 
   // unaligned_is_compressed and aligned_is_compressed are only defined when valid = 1 (which implies that instr_valid_o will be 1)
   assign unaligned_is_compressed = instr[17:16] != 2'b11;
@@ -159,41 +170,41 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     mpu_status_unaligned = MPU_OK;
     bus_err_unaligned = 1'b0;
     // There is valid data in q1 (valid q0 is implied)
-    if(valid_q[1]) begin
+    if(valid_q[rptr2]) begin
       // Not compressed, need two sources
       if(!unaligned_is_compressed) begin
         // If any entry is not ok, we have an instr_fault
-        if((resp_q[1].mpu_status != MPU_OK) || (resp_q[0].mpu_status != MPU_OK)) begin
+        if((resp_q[rptr2].mpu_status != MPU_OK) || (resp_q[rptr].mpu_status != MPU_OK)) begin
           mpu_status_unaligned = MPU_RE_FAULT;
         end
 
         // Bus error from either entry
-        bus_err_unaligned = (resp_q[1].bus_resp.err || resp_q[0].bus_resp.err);
+        bus_err_unaligned = (resp_q[rptr2].bus_resp.err || resp_q[rptr].bus_resp.err);
       end else begin
         // Compressed, use only mpu_status from q0
-        mpu_status_unaligned = resp_q[0].mpu_status;
+        mpu_status_unaligned = resp_q[rptr].mpu_status;
 
         // bus error from q0
-        bus_err_unaligned    = resp_q[0].bus_resp.err;
+        bus_err_unaligned    = resp_q[rptr].bus_resp.err;
       end
     end else begin
       // There is no data in q1, check q0
-      if(valid_q[0]) begin
+      if(valid_q[rptr]) begin
         if(!unaligned_is_compressed) begin
           // There is unaligned data in q0 and is it not compressed
           // use q0 and incoming data
-          if((resp_q[0].mpu_status != MPU_OK) || (resp_i.mpu_status != MPU_OK)) begin
+          if((resp_q[rptr].mpu_status != MPU_OK) || (resp_i.mpu_status != MPU_OK)) begin
             mpu_status_unaligned = MPU_RE_FAULT;
           end
 
           // Bus error from q0 and resp_i
-          bus_err_unaligned = (resp_q[0].bus_resp.err || resp_i.bus_resp.err);
+          bus_err_unaligned = (resp_q[rptr].bus_resp.err || resp_i.bus_resp.err);
         end else begin
           // There is unaligned data in q0 and it is compressed
-          mpu_status_unaligned = resp_q[0].mpu_status;
+          mpu_status_unaligned = resp_q[rptr].mpu_status;
 
           // Bus error from q0
-          bus_err_unaligned = resp_q[0].bus_resp.err;
+          bus_err_unaligned = resp_q[rptr].bus_resp.err;
         end
       end else begin
         // There is no data in the buffer, use input
@@ -243,71 +254,65 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   always_comb
   begin
-    resp_int   = resp_q;
-    valid_int   = valid_q;
-
-    // Loop through indices and store incoming data to first available slot
+    resp_n     = resp_q[wptr];
+    valid_int  = valid_q;
+    wptr_n     = wptr;
+    // Write response and update valid bit and write pointer
     if (resp_valid_gated) begin
-      for(int j = 0; j < DEPTH; j++) begin
-        if (!valid_q[j]) begin
-          resp_int[j] = resp_i;
-          valid_int[j] = 1'b1;
-
-          break;
-        end // valid_q[j]
-      end // for loop
+      // Increase write pointer, wrap to zero if at last entry
+      wptr_n   = wptr < (DEPTH-1) ? wptr + 'b1 : 'b0;
+      // Set fifo and valid write data
+      resp_n   = resp_i;
+      valid_int[wptr] = 1'b1;
     end // resp_valid_gated
   end // always_comb
 
   // Calculate address increment
   assign addr_incr = {addr_q[31:2], 2'b00} + 32'h4;
 
-  // move everything by one step
+  // Update address, read pointer and valid bits
   always_comb
   begin
     addr_n     = addr_q;
-    resp_n    = resp_int;
     valid_n    = valid_int;
-
-    // Valid instruction output
-    if (instr_ready_i && instr_valid_o) begin
-      if (addr_q[1]) begin
-        // unaligned case
-        // Set next address based on instr being compressed or not
-        if (unaligned_is_compressed) begin
-          addr_n = {addr_incr[31:2], 2'b00};
-        end else begin
-          addr_n = {addr_incr[31:2], 2'b10};
-        end
-
-        // Adcance FIFO one step
-        // Unaligned will always invalidate index 0
-        for (int i = 0; i < DEPTH - 1; i++)
-        begin
-          resp_n[i] = resp_int[i + 1];
-        end
-        valid_n = {valid_int[1:DEPTH-1], 1'b0};
+    rptr_n     = rptr;
+    // Next values for address, valid bits and read pointer
+    if (addr_q[1]) begin
+      // unaligned case
+      // Set next address based on instr being compressed or not
+      if (unaligned_is_compressed) begin
+        addr_n = {addr_incr[31:2], 2'b00};
       end else begin
-        // aligned case
-        if (aligned_is_compressed) begin
-          // just increase address, do not move to next entry in FIFO
-          addr_n = {addr_q[31:2], 2'b10};
-        end else begin
-          // move to next entry in FIFO
-          // Uncompressed instruction, use addr_incr without offset
-          addr_n = {addr_incr[31:2], 2'b00};
+        addr_n = {addr_incr[31:2], 2'b10};
+      end
 
-          // Advance FIFO one step
-          for (int i = 0; i < DEPTH - 1; i++)
-          begin
-            resp_n[i] = resp_int[i + 1];
-          end
-          valid_n = {valid_int[1:DEPTH-1], 1'b0};
-        end
+      // Advance FIFO one step, wrap if at last entry
+      rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
+    end else begin
+      // aligned case
+      if (aligned_is_compressed) begin
+        // just increase address, do not move to next entry in FIFO
+        addr_n = {addr_q[31:2], 2'b10};
+      end else begin
+        // move to next entry in FIFO
+        // Uncompressed instruction, use addr_incr without offset
+        addr_n = {addr_incr[31:2], 2'b00};
+
+        // Advance FIFO one step, wrap if at last entry
+        rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
+      end
+    end
+
+    // Only clear valid[rptr] if we actually emit an instruction
+    if (instr_valid_o && instr_ready_i) begin
+      if (addr_q[1] || (!addr_q[1] && (!aligned_is_compressed))) begin
+        valid_n[rptr] = 1'b0;
       end
     end
   end
 
+  // rptr2 will always be one higher than rptr
+  assign rptr2 = (rptr < (DEPTH-1)) ? rptr + 'b1 : 'b0;
 
   // Counting instructions in FIFO
   always_comb begin
@@ -322,13 +327,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         n_flush_branch = outstanding_cnt_q - 2'd1;
       end
     end else begin
-      // Update number of instructions when we push or pop it
-      if(n_pushed_ins == 2'b11) begin
-        // We pop one
-        instr_cnt_n = instr_cnt_q - 1'b1;
-      end else begin
-        instr_cnt_n = instr_cnt_q + n_pushed_ins;
-      end
+      // Update number of instructions
+      // Subracting emitted instructions lags behind by 1 cycle
+      // to break timing paths from instr_ready_i to instr_cnt_q;
+      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? 'd1 : 'd0);
     end
   end
 
@@ -478,25 +480,49 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       n_flush_q  <= 'd0;
       instr_cnt_q <= 'd0;
       outstanding_cnt_q <= 'd0;
+      rptr      <= 'd0;
+      wptr      <= 'd0;
+      pop_q     <= 1'b0;
     end
     else
     begin
-
       // on a kill signal from outside we invalidate the content of the FIFO
       // completely and start from an empty state
       if (ctrl_fsm_i.kill_if) begin
         valid_q <= '0;
       end else begin
-        resp_q <= resp_n;
-        valid_q <= valid_n;
+        // Update FIFO content on a valid response
+        if (resp_valid_gated) begin
+          resp_q[wptr] <= resp_n;
+        end
+
+        // Update valid bits on both bus resp and instruction output
+        if((instr_valid_o && instr_ready_i) || resp_valid_gated) begin
+          valid_q <= valid_n;
+        end
       end
 
-      // Update address on a requested branch
+      // Update address and read/write pointers on a requested branch
       if (ctrl_fsm_i.pc_set) begin
         addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this.
+        // Reset pointers on branch
+        wptr <= 'd0;
+        rptr <= 'd0;
       end else begin
-        addr_q  <= addr_n;
+        // Update write pointer on a valid response
+        if (resp_valid_gated) begin
+          wptr <= wptr_n;
+        end
+
+        // Update address and read pointer when we emit an instruction
+        if(instr_valid_o && instr_ready_i) begin
+          addr_q <= addr_n;
+          rptr   <= rptr_n;
+        end
       end
+
+      // Set pop-bit when instruction is emitted.
+      pop_q <= (instr_valid_o && instr_ready_i);
 
       aligned_q <= aligned_n;
       complete_q <= complete_n;
