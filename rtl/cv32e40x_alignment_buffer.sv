@@ -74,7 +74,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // number of complete instructions in resp_data
   logic [1:0] n_incoming_ins;
 
-  // Indicates that we consumed on instruction last cycle
+  // Indicates that we consumed one instruction last cycle
   logic pop_q;
 
   // Number of instructions pushed to fifo
@@ -129,15 +129,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   //////////////////
   // FIFO signals //
   //////////////////
-  // index 0 is used for output
   inst_resp_t [0:DEPTH-1]  resp_q;
   logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
   inst_resp_t resp_n;
 
   // Read/write pointer for FIFO
-  logic [$clog2(DEPTH)-1:0] rptr, rptr_n;
-  logic [$clog2(DEPTH)-1:0] rptr2;
-  logic [$clog2(DEPTH)-1:0] wptr, wptr_n;
+  logic [FIFO_ADDR_DEPTH-1:0] rptr, rptr_n;
+  logic [FIFO_ADDR_DEPTH-1:0] rptr2;
+  logic [FIFO_ADDR_DEPTH-1:0] wptr, wptr_n;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
@@ -492,7 +491,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       if (ctrl_fsm_i.kill_if) begin
         valid_q <= '0;
       end else begin
-        // Update FIFO contend on a valid response
+        // Update FIFO content on a valid response
         if (resp_valid_gated) begin
           resp_q[wptr] <= resp_n;
         end
