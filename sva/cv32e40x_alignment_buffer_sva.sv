@@ -37,7 +37,9 @@ module cv32e40x_alignment_buffer_sva
    input logic                     resp_valid_gated,
    input logic [1:0]               outstanding_cnt_q,
    input logic [1:0]               n_flush_q,
-   input inst_resp_t               resp_i
+   input inst_resp_t               resp_i,
+   input logic [1:0]               wptr,
+   input logic                     pop_q
    );
 
 
@@ -62,9 +64,10 @@ module cv32e40x_alignment_buffer_sva
     end
   end
 
+
   // Check FIFO overflow
   property p_fifo_overflow;
-    @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[2] == 1'b0);
+    @(posedge clk) disable iff (!rst_n) (resp_valid_i) |-> (valid_q[wptr] == 1'b0);
   endproperty
 
     a_fifo_overflow:
@@ -115,7 +118,7 @@ module cv32e40x_alignment_buffer_sva
   // Not including branches
   property p_trans_ok;
     @(posedge clk) disable iff (!rst_n)
-    ((instr_cnt_q > 'd1) || (instr_cnt_q == 'd0 && outstanding_cnt_q == 'd2)) &&
+    (((instr_cnt_q - pop_q) > 'd1) || ((instr_cnt_q - pop_q) == 'd0 && outstanding_cnt_q == 'd2)) &&
     !ctrl_fsm_i.pc_set
     |-> (fetch_valid_o == 1'b0);
   endproperty
