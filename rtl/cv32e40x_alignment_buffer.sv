@@ -67,6 +67,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Counter for number of outstanding transactions
   logic [FIFO_ADDR_DEPTH-1:0] outstanding_cnt_n, outstanding_cnt_q;
+  logic outstanding_count_up;
+  logic outstanding_count_down;
 
 
   // number of complete instructions in resp_data
@@ -130,7 +132,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // index 0 is used for output
   inst_resp_t [0:DEPTH-1]  resp_q;
   logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
-  inst_resp_t resp_n, resp_int;
+  inst_resp_t resp_n;
 
   // Read/write pointer for FIFO
   logic [$clog2(DEPTH)-1:0] rptr, rptr_n;
@@ -253,15 +255,15 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   always_comb
   begin
-    resp_int   = resp_q[wptr];
+    resp_n     = resp_q[wptr];
     valid_int  = valid_q;
     wptr_n     = wptr;
-    // Loop through indices and store incoming data to first available slot
+    // Write response and update valid bit and write pointer
     if (resp_valid_gated) begin
-      // Incrase write pointer, wrap to zero if at last entry
+      // Increase write pointer, wrap to zero if at last entry
       wptr_n   = wptr < (DEPTH-1) ? wptr + 'b1 : 'b0;
       // Set fifo and valid write data
-      resp_int        = resp_i;
+      resp_n   = resp_i;
       valid_int[wptr] = 1'b1;
     end // resp_valid_gated
   end // always_comb
@@ -269,41 +271,43 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Calculate address increment
   assign addr_incr = {addr_q[31:2], 2'b00} + 32'h4;
 
-  // move everything by one step
+  // Update address, read pointer and valid bits
   always_comb
   begin
     addr_n     = addr_q;
-    resp_n     = resp_int;
     valid_n    = valid_int;
     rptr_n     = rptr;
-    // Valid instruction output
-    if (instr_ready_i && instr_valid_o) begin
-      if (addr_q[1]) begin
-        // unaligned case
-        // Set next address based on instr being compressed or not
-        if (unaligned_is_compressed) begin
-          addr_n = {addr_incr[31:2], 2'b00};
-        end else begin
-          addr_n = {addr_incr[31:2], 2'b10};
-        end
+    // Next values for address, valid bits and read pointer
+    if (addr_q[1]) begin
+      // unaligned case
+      // Set next address based on instr being compressed or not
+      if (unaligned_is_compressed) begin
+        addr_n = {addr_incr[31:2], 2'b00};
+      end else begin
+        addr_n = {addr_incr[31:2], 2'b10};
+      end
+
+      // Advance FIFO one step, wrap if at last entry
+      rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
+    end else begin
+      // aligned case
+      if (aligned_is_compressed) begin
+        // just increase address, do not move to next entry in FIFO
+        addr_n = {addr_q[31:2], 2'b10};
+      end else begin
+        // move to next entry in FIFO
+        // Uncompressed instruction, use addr_incr without offset
+        addr_n = {addr_incr[31:2], 2'b00};
 
         // Advance FIFO one step, wrap if at last entry
         rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
-        valid_n[rptr] = 1'b0; // Invalidate rptr when done
-      end else begin
-        // aligned case
-        if (aligned_is_compressed) begin
-          // just increase address, do not move to next entry in FIFO
-          addr_n = {addr_q[31:2], 2'b10};
-        end else begin
-          // move to next entry in FIFO
-          // Uncompressed instruction, use addr_incr without offset
-          addr_n = {addr_incr[31:2], 2'b00};
+      end
+    end
 
-          // Advance FIFO one step, wrap if at last entry
-          rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
-          valid_n[rptr] = 1'b0; // Invalidate rptr when done
-        end
+    // Only clear valid[rptr] if we actually emit an instruction
+    if (instr_valid_o && instr_ready_i) begin
+      if (addr_q[1] || (!addr_q[1] && (!aligned_is_compressed))) begin
+        valid_n[rptr] = 1'b0;
       end
     end
   end
@@ -488,27 +492,38 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       if (ctrl_fsm_i.kill_if) begin
         valid_q <= '0;
       end else begin
-        resp_q[wptr] <= resp_n;
-        valid_q <= valid_n;
+        // Update FIFO contend on a valid response
+        if (resp_valid_gated) begin
+          resp_q[wptr] <= resp_n;
+        end
+
+        // Update valid bits on both bus resp and instruction output
+        if((instr_valid_o && instr_ready_i) || resp_valid_gated) begin
+          valid_q <= valid_n;
+        end
       end
 
-      // Update address on a requested branch
+      // Update address and read/write pointers on a requested branch
       if (ctrl_fsm_i.pc_set) begin
         addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this.
         // Reset pointers on branch
         wptr <= 'd0;
         rptr <= 'd0;
       end else begin
-        wptr <= wptr_n;
-        rptr <= rptr_n;
-        addr_q  <= addr_n;
+        // Update write pointer on a valid response
+        if (resp_valid_gated) begin
+          wptr <= wptr_n;
+        end
+
+        // Update address and read pointer when we emit an instruction
+        if(instr_valid_o && instr_ready_i) begin
+          addr_q <= addr_n;
+          rptr   <= rptr_n;
+        end
       end
 
-      if(instr_valid_o && instr_ready_i) begin
-        pop_q <= 1'b1;
-      end else begin
-        pop_q <= 1'b0;
-      end
+      // Set pop-bit when instruction is emitted.
+      pop_q <= (instr_valid_o && instr_ready_i);
 
       aligned_q <= aligned_n;
       complete_q <= complete_n;
