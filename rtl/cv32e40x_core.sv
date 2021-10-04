@@ -78,8 +78,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
-  output logic        irq_ack_o,
-  output logic [4:0]  irq_id_o,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -219,6 +217,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
 
+  // Used (only) by verification environment
+  logic        irq_ack;
+  logic [4:0]  irq_id;
+  logic        dbg_ack;
+  
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
   if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
@@ -251,8 +254,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign debug_halted_o    = ctrl_fsm.debug_halted;
   assign debug_running_o   = ctrl_fsm.debug_running;
 
-  assign irq_ack_o         = ctrl_fsm.irq_ack;
-  assign irq_id_o          = ctrl_fsm.irq_id;
+  // Used (only) by verification environment
+  assign irq_ack = ctrl_fsm.irq_ack;
+  assign irq_id  = ctrl_fsm.irq_id;
+  assign dbg_ack = ctrl_fsm.dbg_ack;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //

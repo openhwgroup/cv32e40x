@@ -457,12 +457,6 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  localparam STAGE_IF = 0;
-  localparam STAGE_ID = 1;
-  localparam STAGE_EX = 2;
-  localparam STAGE_WB = 3;
-
-
   assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) &&  (exc_pc_mux_i == EXC_PC_IRQ);
   assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
   assign exception_in_wb   = (pc_mux_i == PC_EXCEPTION) && ((exc_pc_mux_i == EXC_PC_EXCEPTION) ||

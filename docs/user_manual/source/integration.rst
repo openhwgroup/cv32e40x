@@ -67,8 +67,6 @@ Instantiation Template
 
        // Interrupt interface
       .irq_i                    (),
-      .irq_ack_o                (),
-      .irq_id_o                 (),
 
       // Fencei flush handshake
       .fencei_flush_req_o       (),

@@ -37,7 +37,7 @@ module cv32e40x_core_sva
   input              id_stage_multi_cycle_id_stall,
   input logic        id_stage_id_valid,
   input logic        ex_ready,
-  input logic        irq_ack_o, // irq ack output
+  input logic        irq_ack, // irq ack output
   input ex_wb_pipe_t ex_wb_pipe,
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
@@ -107,21 +107,21 @@ always_ff @(posedge clk , negedge rst_ni)
       // The code below checks for first occurence of each exception type in WB
       // Multiple exceptions may occur at the same time, so the following
       // code needs to check priority of what to expect
-      if (!first_illegal_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+      if (!first_illegal_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
         !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK)) &&
         !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           ex_wb_pipe.illegal_insn && !ctrl_debug_mode_n) begin
         first_illegal_found   <= 1'b1;
         expected_illegal_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ecall_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+      if (!first_ecall_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
         !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn) &&
         !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           ex_wb_pipe.ecall_insn && !ctrl_debug_mode_n) begin
         first_ecall_found   <= 1'b1;
         expected_ecall_mepc <= ex_wb_pipe.pc;
       end
-      if (!first_ebrk_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+      if (!first_ebrk_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
         !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn || ex_wb_pipe.ecall_insn) &&
         !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           ex_wb_pipe.ebrk_insn) begin
@@ -129,14 +129,14 @@ always_ff @(posedge clk , negedge rst_ni)
         expected_ebrk_mepc <= ex_wb_pipe.pc;
       end
       
-      if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+      if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
          !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           ex_wb_pipe.instr_valid && ex_wb_pipe.instr.bus_resp.err && !ctrl_debug_mode_n ) begin
         first_instr_err_found   <= 1'b1;
         expected_instr_err_mepc <= ex_wb_pipe.pc;
       end
       
-      if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack_o && !(ctrl_pending_debug && ctrl_debug_allowed) &&
+      if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
          !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           (ex_wb_pipe.instr.mpu_status != MPU_OK) && !ctrl_debug_mode_n) begin
         first_instr_mpuerr_found   <= 1'b1;
@@ -255,7 +255,7 @@ always_ff @(posedge clk , negedge rst_ni)
         interrupt_taken <= 1'b0;
       end
       else begin
-        if(irq_ack_o == 1'b1) begin
+        if(irq_ack == 1'b1) begin
           interrupt_taken <= 1'b1;
         end else if(ctrl_debug_mode_n) begin
           interrupt_taken <= 1'b0;
