@@ -782,26 +782,55 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //                                                             //
   /////////////////////////////////////////////////////////////////
 
-  // todo:low decide on whether events need to be registered first (to break critical timing paths)
+  // Flop certain events to ease timing
+  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1011_1111_1100_0000;
+  localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
+  
+  logic [15:0]          hpm_events_raw;
+  logic                 all_counters_disabled;
+  
+  assign all_counters_disabled = &(mcountinhibit_n | ~MCOUNTINHIBIT_MASK);
+
+  genvar                hpm_idx;
+  generate
+    for(hpm_idx=0; hpm_idx<16; hpm_idx++) begin
+      if(HPM_EVENT_FLOP[hpm_idx]) begin: hpm_event_flop
+
+        always_ff @(posedge clk, negedge rst_n) begin
+          if (rst_n == 1'b0) begin
+            hpm_events[hpm_idx] <= 1'b0;
+          end else begin
+            if(!all_counters_disabled) begin
+              hpm_events[hpm_idx] <= hpm_events_raw[hpm_idx];
+            end
+          end
+        end
+
+      end
+      else begin: hpm_even_no_flop
+        assign hpm_events[hpm_idx] = hpm_events_raw[hpm_idx];
+      end
+    end
+  endgenerate
 
   // ------------------------
   // Events to count
-  assign hpm_events[0]  = 1'b1;                                                 // Cycle counter
-  assign hpm_events[1]  = ctrl_fsm_i.mhpmevent.minstret;                        // Instruction counter
-  assign hpm_events[2]  = ctrl_fsm_i.mhpmevent.ld_stall;                        // Nr of load use hazards
-  assign hpm_events[3]  = ctrl_fsm_i.mhpmevent.jr_stall;                        // Nr of jump register hazards
-  assign hpm_events[4]  = ctrl_fsm_i.mhpmevent.imiss;                           // Cycles waiting for instruction fetches, excluding jumps and branches
-  assign hpm_events[5]  = ctrl_fsm_i.mhpmevent.load;                            // Nr of loads
-  assign hpm_events[6]  = ctrl_fsm_i.mhpmevent.store;                           // Nr of stores
-  assign hpm_events[7]  = ctrl_fsm_i.mhpmevent.jump;                            // Nr of jumps (unconditional)
-  assign hpm_events[8]  = ctrl_fsm_i.mhpmevent.branch;                          // Nr of branches (conditional)
-  assign hpm_events[9]  = ctrl_fsm_i.mhpmevent.branch_taken;                    // Nr of taken branches (conditional)
-  assign hpm_events[10] = ctrl_fsm_i.mhpmevent.compressed;                      // Compressed instruction counter
-  assign hpm_events[11] = 1'b0;
-  assign hpm_events[12] = 1'b0;
-  assign hpm_events[13] = 1'b0;
-  assign hpm_events[14] = 1'b0;
-  assign hpm_events[15] = 1'b0;
+  assign hpm_events_raw[0]  = 1'b1;                               // Cycle counter
+  assign hpm_events_raw[1]  = ctrl_fsm_i.mhpmevent.minstret;      // Instruction counter
+  assign hpm_events_raw[2]  = ctrl_fsm_i.mhpmevent.compressed;    // Compressed instruction counter
+  assign hpm_events_raw[3]  = ctrl_fsm_i.mhpmevent.jump;          // Nr of jumps (unconditional)
+  assign hpm_events_raw[4]  = ctrl_fsm_i.mhpmevent.branch;        // Nr of branches (conditional)
+  assign hpm_events_raw[5]  = ctrl_fsm_i.mhpmevent.branch_taken;  // Nr of taken branches (conditional)
+  assign hpm_events_raw[6]  = ctrl_fsm_i.mhpmevent.intr_taken;    // Nr of interrupts taken (excluding NMI)
+  assign hpm_events_raw[7]  = ctrl_fsm_i.mhpmevent.data_read;     // Data read. Nr of read transactions on the OBI data interface
+  assign hpm_events_raw[8]  = ctrl_fsm_i.mhpmevent.data_write;    // Data write. Nr of write transactions on the OBI data interface
+  assign hpm_events_raw[9]  = ctrl_fsm_i.mhpmevent.if_invalid;    // IF invalid (No valid output from IF when ID stage is ready)
+  assign hpm_events_raw[10] = ctrl_fsm_i.mhpmevent.id_invalid;    // ID invalid (No valid output from ID when EX stage is ready)
+  assign hpm_events_raw[11] = ctrl_fsm_i.mhpmevent.ex_invalid;    // EX invalid (No valid output from EX when WB stage is ready)
+  assign hpm_events_raw[12] = ctrl_fsm_i.mhpmevent.wb_invalid;    // WB invalid (No valid output from WB)
+  assign hpm_events_raw[13] = ctrl_fsm_i.mhpmevent.id_ld_stall;   // Nr of load use hazards
+  assign hpm_events_raw[14] = ctrl_fsm_i.mhpmevent.id_jr_stall;   // Nr of jump register hazards
+  assign hpm_events_raw[15] = ctrl_fsm_i.mhpmevent.wb_data_stall; // Nr of stall cycles caused in the WB stage by loads/stores
 
   // ------------------------
   // address decoder for performance counter registers
@@ -993,8 +1022,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   genvar inh_gidx;
   generate
     for (inh_gidx = 0; inh_gidx < 32; inh_gidx++) begin : gen_mcountinhibit
-      if( (inh_gidx == 1) ||
-          (inh_gidx >= (NUM_MHPMCOUNTERS+3) ) )
+      if(!MCOUNTINHIBIT_MASK[inh_gidx])
         begin : gen_non_implemented
         assign mcountinhibit_q[inh_gidx] = 'b0;
       end

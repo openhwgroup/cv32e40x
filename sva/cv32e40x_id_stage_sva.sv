@@ -47,7 +47,7 @@ module cv32e40x_id_stage_sva
   input if_id_pipe_t    if_id_pipe_i,
   input id_ex_pipe_t    id_ex_pipe_o,
   input logic           id_ready_o,
-  input logic           id_valid,
+  input logic           id_valid_o,
   input ctrl_fsm_t      ctrl_fsm_i
 );
 
@@ -117,14 +117,14 @@ module cv32e40x_id_stage_sva
   a_halt :
     assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.halt_id && !ctrl_fsm_i.kill_id)
-                      |-> (!id_ready_o && !id_valid))
+                      |-> (!id_ready_o && !id_valid_o))
       else `uvm_error("id_stage", "Halt should imply not ready and not valid")
 
   // Kill implies ready and not valid
   a_kill :
     assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.kill_id)
-                      |-> (id_ready_o && !id_valid))
+                      |-> (id_ready_o && !id_valid_o))
       else `uvm_error("id_stage", "Kill should imply ready and not valid")
 
 

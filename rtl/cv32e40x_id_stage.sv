@@ -88,6 +88,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Stage ready/valid
   output logic        id_ready_o,     // ID stage is ready for new data
+  output logic        id_valid_o,     // ID stage has valid (non-bubble) data for next stage
   input  logic        ex_ready_i      // EX stage is ready for new data
 );
 
@@ -164,8 +165,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] operand_a;
   logic [31:0] operand_b;
   logic [31:0] operand_c;
-
-  logic        id_valid;        // ID stage has valid (non-bubble) data for next stage
 
   // Branch target address
   logic [31:0] bch_target;
@@ -295,7 +294,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       IMMB_I:      imm_b = imm_i_type;
       IMMB_S:      imm_b = imm_s_type;
       IMMB_U:      imm_b = imm_u_type;
-      IMMB_PCINCR: imm_b = if_id_pipe_i.is_compressed ? 32'h2 : 32'h4;
+      IMMB_PCINCR: imm_b = if_id_pipe_i.instr_meta.compressed ? 32'h2 : 32'h4;
       default:     imm_b = imm_i_type;
     endcase
   end
@@ -431,6 +430,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                                                                             //
   /////////////////////////////////////////////////////////////////////////////////
 
+  // Populate instruction meta data
+  instr_meta_t instr_meta_n;
+  always_comb begin
+    instr_meta_n        = if_id_pipe_i.instr_meta;
+    instr_meta_n.jump  = (ctrl_transfer_insn_o == BRANCH_JAL) ||
+                         (ctrl_transfer_insn_o == BRANCH_JALR);
+    instr_meta_n.branch = ctrl_transfer_insn_o == BRANCH_COND;
+  end
+
   always_ff @(posedge clk, negedge rst_n)
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
@@ -474,6 +482,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       // Signals for exception handling
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
+      id_ex_pipe_o.instr_meta             <= '0;
       id_ex_pipe_o.illegal_insn           <= 1'b0;
       id_ex_pipe_o.ebrk_insn              <= 1'b0;
       id_ex_pipe_o.wfi_insn               <= 1'b0;
@@ -484,7 +493,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     end else begin
       // normal pipeline unstall case
-      if (id_valid && ex_ready_i) begin
+      if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
         id_ex_pipe_o.alu_en                 <= alu_en;
@@ -540,7 +549,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         //          and LSU it not in use
         id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
 
-        if (if_id_pipe_i.is_compressed) begin
+        if (if_id_pipe_i.instr_meta.compressed) begin
           // Overwrite instruction word in case of compressed instruction
           id_ex_pipe_o.instr.bus_resp.rdata <= {16'h0, if_id_pipe_i.compressed_instr};
           id_ex_pipe_o.instr.bus_resp.err   <= if_id_pipe_i.instr.bus_resp.err;
@@ -549,6 +558,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         else begin
           id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
         end
+
+        id_ex_pipe_o.instr_meta             <= instr_meta_n;
 
         // Exceptions and special instructions
         id_ex_pipe_o.illegal_insn           <= illegal_insn;
@@ -583,6 +594,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
 
   // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
-  assign id_valid = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
+  assign id_valid_o = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
 endmodule // cv32e40x_id_stage

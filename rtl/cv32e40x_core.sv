@@ -174,6 +174,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
 
+  logic        data_stall_wb;
+
   // Stage ready signals
   logic        id_ready;
   logic        ex_ready;
@@ -181,6 +183,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Stage valid signals
   logic        if_valid;
+  logic        id_valid;
   logic        ex_valid;
   logic        wb_valid;
 
@@ -412,6 +415,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Pipeline handshakes
     .id_ready_o                   ( id_ready                  ),
+    .id_valid_o                   ( id_valid                  ),
     .ex_ready_i                   ( ex_ready                  )
   );
 
@@ -544,6 +548,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_o                ( lsu_valid_wb                 ),
     .lsu_ready_i                ( lsu_ready_1                  ),
 
+    .data_stall_o               ( data_stall_wb                ),
+
     // Valid/ready
     .wb_ready_o                 ( wb_ready                     ),
     .wb_valid_o                 ( wb_valid                     )
@@ -651,6 +657,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // LSU
     .lsu_split_ex_i                 ( lsu_split_ex           ),
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
+    .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
 
@@ -684,13 +691,16 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Fencei flush handshake
     .fencei_flush_ack_i             ( fencei_flush_ack_i     ),
     .fencei_flush_req_o             ( fencei_flush_req_o     ),
-   
+
+    // Data OBI interface
+    .m_c_obi_data_if                ( m_c_obi_data_if        ),
+
     .id_ready_i                     ( id_ready               ),
+    .id_valid_i                     ( id_valid               ),
+    .ex_ready_i                     ( ex_ready               ),
     .ex_valid_i                     ( ex_valid               ),
     .wb_ready_i                     ( wb_ready               ),
     .wb_valid_i                     ( wb_valid               ),
-
-    .obi_data_req_i                 ( data_req_o             ),
 
     .ctrl_byp_o                     ( ctrl_byp               ),
     .ctrl_fsm_o                     ( ctrl_fsm               )
