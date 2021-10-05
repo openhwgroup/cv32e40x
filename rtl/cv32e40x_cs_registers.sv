@@ -783,7 +783,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////////////
 
   // Flop certain events to ease timing
-  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1011_1111_1100_0000;
+  localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;
   localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
   
   logic [15:0]          hpm_events_raw;
