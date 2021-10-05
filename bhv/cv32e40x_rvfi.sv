@@ -692,15 +692,15 @@ module cv32e40x_rvfi
         end else begin
           // Capture counter writes.
           if (csr_mhpmcounter_we_l[i]) begin
-            mhpmcounter_l_during_wb <= 1'b1;
-            mhpmcounter_l_rdata_q <= csr_mhpmcounter_q_l[i];
-            mhpmcounter_l_wdata_q <= csr_mhpmcounter_n_l[i];
+            mhpmcounter_l_during_wb[i] <= 1'b1;
+            mhpmcounter_l_rdata_q[i]   <= csr_mhpmcounter_q_l[i];
+            mhpmcounter_l_wdata_q[i]   <= csr_mhpmcounter_n_l[i];
           end
 
           if (csr_mhpmcounter_we_h[i]) begin
-            mhpmcounter_h_during_wb <= 1'b1;
-            mhpmcounter_h_rdata_q <= csr_mhpmcounter_q_h[i];
-            mhpmcounter_h_wdata_q <= csr_mhpmcounter_n_h[i];
+            mhpmcounter_h_during_wb[i] <= 1'b1;
+            mhpmcounter_h_rdata_q[i]   <= csr_mhpmcounter_q_h[i];
+            mhpmcounter_h_wdata_q[i]   <= csr_mhpmcounter_n_h[i];
           end
         end
       end
