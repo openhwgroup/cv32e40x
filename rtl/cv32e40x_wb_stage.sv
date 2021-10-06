@@ -23,6 +23,7 @@
 //                                                                            //
 // Additional contributions by:                                               //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+//                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 // Design Name:    Write Back stage                                           //
 // Project Name:   CV32E40X                                                   //
@@ -64,7 +65,10 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Stage ready/valid
   output logic          wb_ready_o,
-  output logic          wb_valid_o
+  output logic          wb_valid_o,
+
+  // eXtension interface
+  if_core_v_xif.cpu_result if_xif_result
 );
 
   logic                 instr_valid;
@@ -140,5 +144,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid;
+
+  // Drive eXtension interface outputs to 0 for now
+  assign if_xif_result.x_result_ready = '0;
   
 endmodule // cv32e40x_wb_stage

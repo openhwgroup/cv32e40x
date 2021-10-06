@@ -78,7 +78,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic        data_exokay_i,
 
   // eXtension interface
-  if_core_v_xif.cpu   if_xif,
+  if_core_v_xif.cpu_compressed if_xif_compressed,
+  if_core_v_xif.cpu_issue      if_xif_issue,
+  if_core_v_xif.cpu_commit     if_xif_commit,
+  if_core_v_xif.cpu_mem        if_xif_mem,
+  if_core_v_xif.cpu_mem_result if_xif_mem_result,
+  if_core_v_xif.cpu_result     if_xif_result,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
@@ -263,19 +268,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign irq_id  = ctrl_fsm.irq_id;
   assign dbg_ack = ctrl_fsm.dbg_ack;
 
-  // Drive all eXtension interface outputs to 0 for now
-  assign if_xif.x_compressed_valid = '0;
-  assign if_xif.x_compressed_req   = '0;
-  assign if_xif.x_issue_valid      = '0;
-  assign if_xif.x_issue_req        = '0;
-  assign if_xif.x_commit_valid     = '0;
-  assign if_xif.x_commit           = '0;
-  assign if_xif.x_mem_ready        = '0;
-  assign if_xif.x_mem_resp         = '0;
-  assign if_xif.x_mem_result_valid = '0;
-  assign if_xif.x_mem_result       = '0;
-  assign if_xif.x_result_ready     = '0;
-
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
   //  / ___| | ___   ___| | __ |  \/  | __ _ _ __   __ _  __ _  ___ _ __ ___   ___ _ __ | |_  //
@@ -370,7 +362,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Pipeline handshakes
     .if_valid_o          ( if_valid                  ),
-    .id_ready_i          ( id_ready                  )
+    .id_ready_i          ( id_ready                  ),
+
+    // eXtension interface
+    .if_xif_compressed   ( if_xif_compressed         )
   );
 
 
@@ -438,7 +433,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Pipeline handshakes
     .id_ready_o                   ( id_ready                  ),
     .id_valid_o                   ( id_valid                  ),
-    .ex_ready_i                   ( ex_ready                  )
+    .ex_ready_i                   ( ex_ready                  ),
+
+    // eXtension interface
+    .if_xif_issue                 ( if_xif_issue              ),
+    .if_xif_commit                ( if_xif_commit             )
   );
 
 
@@ -536,7 +535,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .valid_1_i             ( lsu_valid_wb       ), // Second LSU stage (WB)
     .ready_1_o             ( lsu_ready_1        ),
     .valid_1_o             ( lsu_valid_1        ),
-    .ready_1_i             ( lsu_ready_wb       )
+    .ready_1_i             ( lsu_ready_wb       ),
+
+    // eXtension interface
+    .if_xif_mem            ( if_xif_mem         ),
+    .if_xif_mem_result     ( if_xif_mem_result  )
   );
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -574,7 +577,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Valid/ready
     .wb_ready_o                 ( wb_ready                     ),
-    .wb_valid_o                 ( wb_valid                     )
+    .wb_valid_o                 ( wb_valid                     ),
+
+    // eXtension interface
+    .if_xif_result              ( if_xif_result                )
   );
 
   //////////////////////////////////////

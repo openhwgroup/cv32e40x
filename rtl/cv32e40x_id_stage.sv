@@ -19,6 +19,7 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+//                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
@@ -89,7 +90,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Stage ready/valid
   output logic        id_ready_o,     // ID stage is ready for new data
   output logic        id_valid_o,     // ID stage has valid (non-bubble) data for next stage
-  input  logic        ex_ready_i      // EX stage is ready for new data
+  input  logic        ex_ready_i,     // EX stage is ready for new data
+
+  // eXtension interface
+  if_core_v_xif.cpu_issue  if_xif_issue,
+  if_core_v_xif.cpu_commit if_xif_commit
 );
 
   // Source/Destination register instruction index
@@ -595,5 +600,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
   assign id_valid_o = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
+
+  // Drive eXtension interface outputs to 0 for now
+  assign if_xif_issue.x_issue_valid   = '0;
+  assign if_xif_issue.x_issue_req     = '0;
+  assign if_xif_commit.x_commit_valid = '0;
+  assign if_xif_commit.x_commit       = '0;
 
 endmodule // cv32e40x_id_stage

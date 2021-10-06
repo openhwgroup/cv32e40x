@@ -142,46 +142,66 @@ interface if_core_v_xif import cv32e40x_pkg::*;
 
 
   // Port directions for host CPU
-  modport cpu (
+  modport cpu_compressed (
     output x_compressed_valid,
     input  x_compressed_ready,
     output x_compressed_req,
-    input  x_compressed_resp,
+    input  x_compressed_resp
+  );
+  modport cpu_issue (
     output x_issue_valid,
     input  x_issue_ready,
     output x_issue_req,
-    input  x_issue_resp,
+    input  x_issue_resp
+  );
+  modport cpu_commit (
     output x_commit_valid,
-    output x_commit,
+    output x_commit
+  );
+  modport cpu_mem (
     input  x_mem_valid,
     output x_mem_ready,
     input  x_mem_req,
-    output x_mem_resp,
+    output x_mem_resp
+  );
+  modport cpu_mem_result (
     output x_mem_result_valid,
-    output x_mem_result,
+    output x_mem_result
+  );
+  modport cpu_result (
     input  x_result_valid,
     output x_result_ready,
     input  x_result
   );
 
   // Port directions for extension
-  modport coproc (
+  modport coproc_compressed (
     input  x_compressed_valid,
     output x_compressed_ready,
     input  x_compressed_req,
-    output x_compressed_resp,
+    output x_compressed_resp
+  );
+  modport coproc_issue (
     input  x_issue_valid,
     output x_issue_ready,
     input  x_issue_req,
-    output x_issue_resp,
+    output x_issue_resp
+  );
+  modport coproc_commit (
     input  x_commit_valid,
-    input  x_commit,
+    input  x_commit
+  );
+  modport coproc_mem (
     output x_mem_valid,
     input  x_mem_ready,
     output x_mem_req,
-    input  x_mem_resp,
+    input  x_mem_resp
+  );
+  modport coproc_mem_result (
     input  x_mem_result_valid,
-    input  x_mem_result,
+    input  x_mem_result
+  );
+  modport coproc_result (
     output x_result_valid,
     input  x_result_ready,
     output x_result
