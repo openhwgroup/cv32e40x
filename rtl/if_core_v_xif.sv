@@ -63,8 +63,8 @@ interface if_core_v_xif import cv32e40x_pkg::*;
   } x_issue_resp_t;
 
   typedef struct packed {
-    logic [X_ID_WIDTH-1:0] id;            // Identification of the offloaded instruction
-    logic                  x_commit_kill; // Shall an offloaded instruction be killed?
+    logic [X_ID_WIDTH-1:0] id;          // Identification of the offloaded instruction
+    logic                  commit_kill; // Shall an offloaded instruction be killed?
   } x_commit_t;
 
   typedef struct packed {
