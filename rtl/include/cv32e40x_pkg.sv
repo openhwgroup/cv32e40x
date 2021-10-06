@@ -1127,4 +1127,9 @@ typedef struct packed {
 
   // Enum used for configuration of B extension
   typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
+
+  // eXtension Interface constant parameters
+  localparam int X_DATAWIDTH = 32;  // Width of an integer register in bits. Must be equal to XLEN
+  localparam int X_NUM_FRS   = 2;   // Number of floating-point register file read ports that can be used by the eXtension interface
+  localparam int X_ID_WIDTH  = 3;   // Identification width for the eXtension interface
 endpackage
