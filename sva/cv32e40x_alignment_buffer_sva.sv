@@ -39,6 +39,8 @@ module cv32e40x_alignment_buffer_sva
    input logic [1:0]               n_flush_q,
    input inst_resp_t               resp_i,
    input logic [1:0]               wptr,
+   input logic [1:0]               rptr,
+   input logic [1:0]               rptr2,
    input logic                     pop_q
    );
 
@@ -214,7 +216,33 @@ module cv32e40x_alignment_buffer_sva
       `uvm_error("Alignment buffer SVA",
                 $sformatf("Illegal resp_i.mpu_status"))
 
+  // Check that read/write pointers never exceeds max size of FIFO.
+  property p_wptr_range;
+    @(posedge clk) disable iff (!rst_n) (wptr < 2'd3);
+  endproperty
 
+  a_wptr_range:
+    assert property(p_wptr_range)
+    else
+      `uvm_error("Alignment buffer SVA", "Write pointer illegal value")
+
+  property p_rptr_range;
+    @(posedge clk) disable iff (!rst_n) (rptr < 2'd3);
+  endproperty
+
+  a_rptr_range:
+    assert property(p_rptr_range)
+    else
+      `uvm_error("Alignment buffer SVA", "Read pointer illegal value")
+
+    property p_rptr2_range;
+      @(posedge clk) disable iff (!rst_n) (rptr2 < 2'd3);
+    endproperty
+
+    a_rptr2_range:
+      assert property(p_rptr2_range)
+      else
+        `uvm_error("Alignment buffer SVA", "Read pointer(2) illegal value")
 
 endmodule // cv32e40x_alignment_buffer_sva
 
