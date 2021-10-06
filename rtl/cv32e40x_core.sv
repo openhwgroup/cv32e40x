@@ -77,7 +77,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic        data_exokay_i,
 
   // eXtension interface
-  if_core_v_xif.host  xif,
+  if_core_v_xif.cpu   if_xif,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
@@ -263,17 +263,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign dbg_ack = ctrl_fsm.dbg_ack;
 
   // Drive all eXtension interface outputs to 0 for now
-  assign xif.x_compressed_valid = '0;
-  assign xif.x_compressed_req   = '0;
-  assign xif.x_issue_valid      = '0;
-  assign xif.x_issue_req        = '0;
-  assign xif.x_commit_valid     = '0;
-  assign xif.x_commit           = '0;
-  assign xif.x_mem_ready        = '0;
-  assign xif.x_mem_resp         = '0;
-  assign xif.x_mem_result_valid = '0;
-  assign xif.x_mem_result       = '0;
-  assign xif.x_result_ready     = '0;
+  assign if_xif.x_compressed_valid = '0;
+  assign if_xif.x_compressed_req   = '0;
+  assign if_xif.x_issue_valid      = '0;
+  assign if_xif.x_issue_req        = '0;
+  assign if_xif.x_commit_valid     = '0;
+  assign if_xif.x_commit           = '0;
+  assign if_xif.x_mem_ready        = '0;
+  assign if_xif.x_mem_resp         = '0;
+  assign if_xif.x_mem_result_valid = '0;
+  assign if_xif.x_mem_result       = '0;
+  assign if_xif.x_result_ready     = '0;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //

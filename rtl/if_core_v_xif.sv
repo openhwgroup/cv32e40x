@@ -132,8 +132,8 @@ interface if_core_v_xif import cv32e40x_pkg::*;
   x_result_t          x_result;
 
 
-  // Port directions for host
-  modport host (
+  // Port directions for host CPU
+  modport cpu (
     output x_compressed_valid,
     input  x_compressed_ready,
     output x_compressed_req,
@@ -156,7 +156,7 @@ interface if_core_v_xif import cv32e40x_pkg::*;
   );
 
   // Port directions for extension
-  modport ext (
+  modport coproc (
     input  x_compressed_valid,
     output x_compressed_ready,
     input  x_compressed_req,
