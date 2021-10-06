@@ -14,6 +14,7 @@
 // Additional contributions by:                                               //
 //                 Sven Stucki - svstucki@student.ethz.ch                     //
 //                 Arjan Bink - arjan.bink@silabs.com                         //
+//                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 //                                                                            //
 // Design Name:    RISC-V processor core                                      //

@@ -1,5 +1,5 @@
 /*
- Copyright 2021 Silicon Labs, Inc.
+ Copyright 2021 TU Wien
 
  This file, and derivatives thereof are licensed under the
  Solderpad License, Version 2.0 (the "License");
@@ -17,8 +17,17 @@
  limitations under the License.
  */
 
+////////////////////////////////////////////////////////////////////////////////
+// Engineer:       Michael Platzer - michael.platzer@tuwien.ac.at             //
+//                                                                            //
+// Design Name:    CORE-V XIF eXtension Interface                             //
+// Project Name:   RI5CY                                                      //
+// Language:       SystemVerilog                                              //
+//                                                                            //
+// Description:    Definition of the CORE-V XIF eXtension Interface.          //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
-// CORE-V-XIF eXtension Interface definitions
 interface if_core_v_xif import cv32e40x_pkg::*;
 #(
   parameter int          X_NUM_RS        =  2,  // Number of register file read ports that can be used by the eXtension interface
