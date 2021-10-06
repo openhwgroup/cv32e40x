@@ -14,6 +14,7 @@
 // Additional contributions by:                                               //
 //                 Sven Stucki - svstucki@student.ethz.ch                     //
 //                 Arjan Bink - arjan.bink@silabs.com                         //
+//                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 //                                                                            //
 // Design Name:    RISC-V processor core                                      //
@@ -1127,4 +1128,9 @@ typedef struct packed {
 
   // Enum used for configuration of B extension
   typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
+
+  // eXtension Interface constant parameters
+  parameter int X_DATAWIDTH = 32;  // Width of an integer register in bits. Must be equal to XLEN
+  parameter int X_NUM_FRS   = 2;   // Number of floating-point register file read ports that can be used by the eXtension interface
+  parameter int X_ID_WIDTH  = 3;   // Identification width for the eXtension interface
 endpackage
