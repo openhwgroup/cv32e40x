@@ -28,7 +28,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-interface if_core_v_xif import cv32e40x_pkg::*;
+interface if_xif import cv32e40x_pkg::*;
 #(
   parameter int          X_NUM_RS        =  2,  // Number of register file read ports that can be used by the eXtension interface
   parameter int          X_MEM_WIDTH     =  32, // Memory access width for loads/stores via the eXtension interface
@@ -207,4 +207,4 @@ interface if_core_v_xif import cv32e40x_pkg::*;
     output x_result
   );
 
-endinterface : if_core_v_xif
+endinterface : if_xif

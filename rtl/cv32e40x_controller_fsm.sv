@@ -98,7 +98,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   if_c_obi.monitor     m_c_obi_data_if,
 
   // eXtension interface
-  if_core_v_xif.cpu_commit if_xif_commit
+  if_xif.cpu_commit    xif_commit_if
 );
 
    // FSM state encoding
@@ -862,7 +862,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_halted    = debug_fsm_cs[HALTED_INDEX];
 
   // Drive eXtension interface outputs to 0 for now
-  assign if_xif_commit.x_commit_valid = '0;
-  assign if_xif_commit.x_commit       = '0;
+  assign xif_commit_if.x_commit_valid = '0;
+  assign xif_commit_if.x_commit       = '0;
 
 endmodule //cv32e40x_controller_fsm
