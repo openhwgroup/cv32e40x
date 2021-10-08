@@ -436,8 +436,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_ready_i                   ( ex_ready                  ),
 
     // eXtension interface
-    .if_xif_issue                 ( if_xif_issue              ),
-    .if_xif_commit                ( if_xif_commit             )
+    .if_xif_issue                 ( if_xif_issue              )
   );
 
 
@@ -731,7 +730,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .wb_valid_i                     ( wb_valid               ),
 
     .ctrl_byp_o                     ( ctrl_byp               ),
-    .ctrl_fsm_o                     ( ctrl_fsm               )
+    .ctrl_fsm_o                     ( ctrl_fsm               ),
+
+    // eXtension interface
+    .if_xif_commit                  ( if_xif_commit          )
  );
 
 ////////////////////////////////////////////////////////////////////////
