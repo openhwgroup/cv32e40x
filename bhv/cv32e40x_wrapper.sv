@@ -89,12 +89,12 @@ module cv32e40x_wrapper
   input  logic        data_exokay_i,
 
   // eXtension interface
-  if_core_v_xif.cpu_compressed if_xif_compressed,
-  if_core_v_xif.cpu_issue      if_xif_issue,
-  if_core_v_xif.cpu_commit     if_xif_commit,
-  if_core_v_xif.cpu_mem        if_xif_mem,
-  if_core_v_xif.cpu_mem_result if_xif_mem_result,
-  if_core_v_xif.cpu_result     if_xif_result,
+  if_xif.cpu_compressed xif_compressed_if,
+  if_xif.cpu_issue      xif_issue_if,
+  if_xif.cpu_commit     xif_commit_if,
+  if_xif.cpu_mem        xif_mem_if,
+  if_xif.cpu_mem_result xif_mem_result_if,
+  if_xif.cpu_result     xif_result_if,
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
