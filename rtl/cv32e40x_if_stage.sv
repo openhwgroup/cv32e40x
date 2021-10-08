@@ -79,7 +79,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        id_ready_i,
 
     // eXtension interface
-    if_core_v_xif.cpu_compressed if_xif_compressed
+    if_xif.cpu_compressed xif_compressed_if
 );
 
   logic              if_ready;
@@ -295,7 +295,7 @@ instruction_obi_i
   );
 
   // Drive eXtension interface outputs to 0 for now
-  assign if_xif_compressed.x_compressed_valid = '0;
-  assign if_xif_compressed.x_compressed_req   = '0;
+  assign xif_compressed_if.x_compressed_valid = '0;
+  assign xif_compressed_if.x_compressed_req   = '0;
 
 endmodule // cv32e40x_if_stage

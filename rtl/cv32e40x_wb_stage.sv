@@ -68,7 +68,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   output logic          wb_valid_o,
 
   // eXtension interface
-  if_core_v_xif.cpu_result if_xif_result
+  if_xif.cpu_result     xif_result_if
 );
 
   logic                 instr_valid;
@@ -146,6 +146,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid;
 
   // Drive eXtension interface outputs to 0 for now
-  assign if_xif_result.x_result_ready = '0;
+  assign xif_result_if.x_result_ready = '0;
   
 endmodule // cv32e40x_wb_stage

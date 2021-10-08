@@ -93,7 +93,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        ex_ready_i,     // EX stage is ready for new data
 
   // eXtension interface
-  if_core_v_xif.cpu_issue  if_xif_issue
+  if_xif.cpu_issue  xif_issue_if
 );
 
   // Source/Destination register instruction index
@@ -601,7 +601,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_valid_o = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
   // Drive eXtension interface outputs to 0 for now
-  assign if_xif_issue.x_issue_valid   = '0;
-  assign if_xif_issue.x_issue_req     = '0;
+  assign xif_issue_if.x_issue_valid   = '0;
+  assign xif_issue_if.x_issue_req     = '0;
 
 endmodule // cv32e40x_id_stage

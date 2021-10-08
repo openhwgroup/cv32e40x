@@ -66,8 +66,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   input  logic        ready_1_i,
 
   // eXtension interface
-  if_core_v_xif.cpu_mem        if_xif_mem,
-  if_core_v_xif.cpu_mem_result if_xif_mem_result
+  if_xif.cpu_mem        xif_mem_if,
+  if_xif.cpu_mem_result xif_mem_result_if
 );
 
   localparam DEPTH = 2;                 // Maximum number of outstanding transactions
@@ -625,9 +625,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   );
 
   // Drive eXtension interface outputs to 0 for now
-  assign if_xif_mem.x_mem_ready               = '0;
-  assign if_xif_mem.x_mem_resp                = '0;
-  assign if_xif_mem_result.x_mem_result_valid = '0;
-  assign if_xif_mem_result.x_mem_result       = '0;
+  assign xif_mem_if.x_mem_ready               = '0;
+  assign xif_mem_if.x_mem_resp                = '0;
+  assign xif_mem_result_if.x_mem_result_valid = '0;
+  assign xif_mem_result_if.x_mem_result       = '0;
 
 endmodule // cv32e40x_load_store_unit
