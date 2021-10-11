@@ -32,7 +32,7 @@ module cv32e40x_core_sva
   input ctrl_fsm_t   ctrl_fsm,
   input logic [4:0]  exc_cause,
   input logic [31:0] mie,
-  input Dcsr_t       dcsr,
+  input dcsr_t       dcsr,
   input              if_id_pipe_t if_id_pipe,
   input              id_stage_multi_cycle_id_stall,
   input logic        id_stage_id_valid,
@@ -50,9 +50,9 @@ module cv32e40x_core_sva
    // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
-  input Mcause_t     cs_registers_csr_cause_i, // From controller
-  input Mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
-  input Status_t     cs_registers_mstatus_q);
+  input mcause_t     cs_registers_csr_cause_i, // From controller
+  input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
+  input mstatus_t    cs_registers_mstatus_q);
 
 
 
