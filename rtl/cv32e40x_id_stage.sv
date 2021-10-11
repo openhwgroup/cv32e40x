@@ -57,7 +57,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  ctrl_byp_t   ctrl_byp_i,
   input  ctrl_fsm_t   ctrl_fsm_i,
 
-  input  PrivLvl_t    current_priv_lvl_i,
+  input  privlvl_t    current_priv_lvl_i,
 
   // Debug Signal
   input  logic        debug_trigger_match_id_i,

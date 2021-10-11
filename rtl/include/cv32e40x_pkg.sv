@@ -429,7 +429,7 @@ typedef enum logic[1:0] {
   PRIV_LVL_H = 2'b10,
   PRIV_LVL_S = 2'b01,
   PRIV_LVL_U = 2'b00
-} PrivLvl_t;
+} privlvl_t;
 
 // Machine Vendor ID - OpenHW JEDEC ID is '2 decimal (bank 13)'
 parameter MVENDORID_OFFSET = 7'h2;      // Final byte without parity bit
@@ -469,7 +469,7 @@ typedef struct packed {
   logic [2:1]   zero0; // Unimplemented, hardwired zero
   logic         uie; // Tie to zero when user mode is not enabled
 
-} Status_t;
+} mstatus_t;
 
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
@@ -509,34 +509,34 @@ typedef struct packed{
     logic         mprven;
     logic         nmip;
     logic         step;
-    PrivLvl_t     prv;
-} Dcsr_t;
+    privlvl_t     prv;
+} dcsr_t;
 
 typedef struct packed {
   logic           interrupt;
   logic [30:8]    zero0;
   logic [7:0]     exception_code;
-} Mcause_t;
+} mcause_t;
 
 typedef struct packed {
   logic [31:8] addr;
   logic [7:2]  zero0;
   logic [1:0]  mode;
-} Mtvec_t;
+} mtvec_t;
 
 
-parameter Dcsr_t DCSR_RESET_VAL = '{
+parameter dcsr_t DCSR_RESET_VAL = '{
   xdebugver : XDEBUGVER_STD,
   cause:      DBG_CAUSE_NONE,
   prv:        PRIV_LVL_M,
   default:    '0};
 
-parameter Mtvec_t MTVEC_RESET_VAL = '{
+parameter mtvec_t MTVEC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
   mode:  MTVEC_MODE};
 
-parameter Status_t MSTATUS_RESET_VAL = '{
+parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero4: 'b0, // Reserved, hardwired zero
   mprv: 1'b0, // hardwired zero
   zero3: 'b0, // Unimplemented, hardwired zero
@@ -1092,7 +1092,7 @@ typedef struct packed {
   logic        csr_save_id;         // Save PC from ID stage
   logic        csr_save_ex;         // Save PC from EX stage (currently unused)
   logic        csr_save_wb;         // Save PC from WB stage
-  Mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
+  mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
   logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs

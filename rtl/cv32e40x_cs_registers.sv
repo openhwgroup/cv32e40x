@@ -77,10 +77,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // debug
   output logic [31:0]     dpc_o,
-  output Dcsr_t           dcsr_o,
+  output dcsr_t           dcsr_o,
   output logic            debug_trigger_match_o,
 
-  output PrivLvl_t        priv_lvl_o,
+  output privlvl_t        priv_lvl_o,
 
   input  logic [31:0]     pc_if_i
 );
@@ -120,7 +120,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic tmatch_control_rd_error;
   logic tmatch_value_rd_error;
   // Debug
-  Dcsr_t       dcsr_q, dcsr_n;
+  dcsr_t       dcsr_q, dcsr_n;
   logic dcsr_we;
   logic dcsr_rd_error;
   logic [31:0] dcsr_rdata;
@@ -138,15 +138,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mscratch_rd_error;
 
   logic [31:0] exception_pc;
-  Status_t mstatus_q, mstatus_n;
+  mstatus_t mstatus_q, mstatus_n;
   logic mstatus_we;
   logic mstatus_rd_error;
 
-  Mcause_t mcause_q, mcause_n;
+  mcause_t mcause_q, mcause_n;
   logic mcause_we;
   logic mcause_rd_error;
 
-  Mtvec_t mtvec_n, mtvec_q;
+  mtvec_t mtvec_n, mtvec_q;
   logic mtvec_we;
   logic mtvec_rd_error;
 
@@ -155,7 +155,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mie_we;
   logic mie_rd_error;
 
-  PrivLvl_t priv_lvl_n, priv_lvl_q;
+  privlvl_t priv_lvl_n, priv_lvl_q;
 
   // Performance Counter Signals
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters

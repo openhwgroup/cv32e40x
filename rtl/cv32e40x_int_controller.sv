@@ -38,7 +38,7 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   input  logic [31:0] mie_i,             // MIE CSR (bypass)
   output logic [31:0] mip_o,                    // MIP CSR
   input  logic        m_ie_i,                   // Interrupt enable bit from CSR (M mode)
-  input  PrivLvl_t    current_priv_lvl_i
+  input  privlvl_t    current_priv_lvl_i
 );
 
   logic        global_irq_enable;

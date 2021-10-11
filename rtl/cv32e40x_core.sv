@@ -162,7 +162,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] csr_rdata;
   logic csr_counter_read;
 
-  PrivLvl_t    current_priv_lvl;
+  privlvl_t    current_priv_lvl;
 
   // LSU
   logic        lsu_split_ex;
@@ -205,7 +205,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // debug mode and dcsr configuration
   // From cs_registers
-  Dcsr_t       dcsr;
+  dcsr_t       dcsr;
 
   // trigger match detected in cs_registers (using ID timing)
   logic        debug_trigger_match_id;

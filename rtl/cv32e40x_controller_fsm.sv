@@ -68,11 +68,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        irq_req_ctrl_i,             // irq requst
   input  logic [4:0]  irq_id_ctrl_i,              // irq id
   input  logic        irq_wu_ctrl_i,              // irq wakeup control
-  input  PrivLvl_t    current_priv_lvl_i,         // Current running priviledge level
+  input  privlvl_t    current_priv_lvl_i,         // Current running priviledge level
 
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
-  input  Dcsr_t       dcsr_i,
+  input  dcsr_t       dcsr_i,
   input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
 
   // Toplevel input
