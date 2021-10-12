@@ -52,13 +52,13 @@ interface if_xif import cv32e40x_pkg::*;
   } x_compressed_resp_t;
 
   typedef struct packed {
-    logic [           31:0]               instr;     // Offloaded instruction
-    logic [            1:0]               mode;      // Privilege level
-    logic [X_ID_WIDTH -1:0]               id;        // Identification of the offloaded instruction
-    logic [X_RFR_WIDTH-1:0][X_NUM_RS-1:0] rs;        // Register file source operands for the offloaded instruction
-    logic [X_NUM_RS   -1:0]               rs_valid;  // Validity of the register file source operand(s)
-    logic [FLEN       -1:0][X_NUM_RS-1:0] frs;       // Floating-point register file source operands for the offloaded instruction
-    logic [X_NUM_FRS  -1:0]               frs_valid; // Validity of the floating-point register file source operand(s)
+    logic [           31:0]                  instr;     // Offloaded instruction
+    logic [            1:0]                  mode;      // Privilege level
+    logic [X_ID_WIDTH -1:0]                  id;        // Identification of the offloaded instruction
+    logic [X_NUM_RS   -1:0][X_RFR_WIDTH-1:0] rs;        // Register file source operands for the offloaded instruction
+    logic [X_NUM_RS   -1:0]                  rs_valid;  // Validity of the register file source operand(s)
+    logic [X_NUM_FRS  -1:0][FLEN       -1:0] frs;       // Floating-point register file source operands for the offloaded instruction
+    logic [X_NUM_FRS  -1:0]                  frs_valid; // Validity of the floating-point register file source operand(s)
   } x_issue_req_t;
 
   typedef struct packed {

@@ -18,6 +18,7 @@
 //                 Michael Gautschi - gautschi@iis.ee.ethz.ch                 //
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
+//                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 // Design Name:    Execute stage                                              //
 // Project Name:   RI5CY                                                      //
@@ -268,6 +269,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.fencei_insn    <= 1'b0;
       ex_wb_pipe_o.mret_insn      <= 1'b0;
       ex_wb_pipe_o.dret_insn      <= 1'b0;
+      ex_wb_pipe_o.xif_insn       <= 1'b0;
       ex_wb_pipe_o.lsu_en         <= 1'b0;
       ex_wb_pipe_o.csr_en         <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
@@ -317,6 +319,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
         ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
         ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
+        ex_wb_pipe_o.xif_insn       <= id_ex_pipe_i.xif_insn;
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
@@ -350,6 +353,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.mul_en && mul_valid)   ||
                        (id_ex_pipe_i.div_en && div_valid)   ||
                        (id_ex_pipe_i.csr_en && csr_valid)   ||
+                       id_ex_pipe_i.xif_insn                ||
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
 

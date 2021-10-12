@@ -75,6 +75,10 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   logic                 wb_valid;
   logic                 lsu_exception;
 
+  // eXtension interface signals
+  logic                 xif_waiting;
+  logic                 xif_exception;
+
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
   assign lsu_exception = (lsu_mpu_status_i != MPU_OK);
@@ -105,9 +109,9 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // In case of MPU/PMA error, the register file should not be written.
   // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
-  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && instr_valid;
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && instr_valid;
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
-  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : ex_wb_pipe_i.rf_wdata;
+  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : (ex_wb_pipe_i.xif_insn ? xif_result_if.x_result.data : ex_wb_pipe_i.rf_wdata);
 
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
@@ -121,7 +125,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
 
-  assign wb_ready_o = lsu_ready_i;
+  assign wb_ready_o = lsu_ready_i && !xif_waiting;
 
   // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
@@ -135,8 +139,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // - Will be 1 only for the second phase of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
 
-  assign wb_valid = ((!ex_wb_pipe_i.lsu_en && 1'b1)        ||     // Non-LSU instructions always have valid result in WB, also for exceptions.
-                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i) ||     // LSU instructions have valid result based on data_rvalid_i
+  assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
+                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i
                      ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
                     ) && instr_valid;
 
@@ -145,7 +149,22 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid;
 
-  // Drive eXtension interface outputs to 0 for now
-  assign xif_result_if.x_result_ready = '0;
-  
+
+  //---------------------------------------------------------------------------
+  // eXtension interface
+  //---------------------------------------------------------------------------
+
+  // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_waddr and xif_result_if.x_result.rd?
+  // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_we (based on xif_issue_if.x_issue_resp.writeback in ID) and xif_result_if.x_result.we?
+
+  // Need to wait for the result
+  assign xif_waiting = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn && !xif_result_if.x_result_valid;
+
+  // Coprocessor signals a synchronous exception
+  // TODO: Maybe do something when an exception occurs (other than just inhibiting writeback)
+  assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn && xif_result_if.x_result_valid && xif_result_if.x_result.exc;
+
+  // CV32E40X is ready to receive the result as soon as an offloaded instruction has reached WB
+  assign xif_result_if.x_result_ready = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn;
+
 endmodule // cv32e40x_wb_stage
