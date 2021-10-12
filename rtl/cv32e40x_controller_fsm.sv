@@ -267,8 +267,22 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // - no other instructions should be in the pipeline.
   assign single_step_allowed = 1'b1;
                              
-  // Single step are mutually exclusive from any other reason to enter debug
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && wb_valid_i) && !pending_debug;
+  /*
+  Debug spec 1.0.0 (unratified as of Aug 9th '21)
+  "If control is transferred to a trap handler while executing the instruction, then Debug Mode is
+  re-entered immediately after the PC is changed to the trap handler, and the appropriate tval and
+  cause registers are updated. In this case none of the trap handler is executed, and if the cause was
+  a pending interrupt no instructions might be executed at all."
+
+  Hence, a pending_single_step is asserted if we take an interrupt when we should be stepping.
+  For any interruptible instructions (non-LSU), at any stage, we would kill the instruction and jump
+  to debug mode without executing any instructions. Interrupt handler's first instruction will be in dpc.
+  
+  For LSU instructions that may not be killed (if they reach WB of stay in EX for >1 cycles),
+  we are not allowed to take interrupts, and we will re-enter debug mode after finishing the LSU.
+  Interrupt will then be taken when we enter the next step.
+  */
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || ctrl_fsm_o.irq_ack)) && !pending_debug;
 
   // Regular debug will kill insn in WB, do not allow for LSU in WB as insn must finish with rvalid
   // or for any case where a LSU in EX has asserted its obi data_req for at least one cycle.
@@ -482,10 +496,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_save_if = 1'b1;
           end
 
-          // Unstall IF in case of single stepping
-          if (dcsr_i.step) begin
-            single_step_halt_if_n = 1'b0;
-          end
         end else begin
           if (exception_in_wb) begin
             // TODO:OK:low Must check if we are allowed to take exceptions
