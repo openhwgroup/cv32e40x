@@ -629,7 +629,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   end
 
   // attempt to offload every valid instruction that is considered illegal by the decoder
-  assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn;
+  assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
 
   assign xif_issue_if.x_issue_req.instr     = instr;
   assign xif_issue_if.x_issue_req.mode      = '0; // TODO: use the actual mode
