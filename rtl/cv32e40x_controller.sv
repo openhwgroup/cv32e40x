@@ -72,7 +72,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Debug Signal
   input  logic         debug_req_i,
   input  dcsr_t        dcsr_i,
-  input  logic         debug_trigger_match_id_i,
 
   // Regfile target
   input  logic         regfile_alu_we_id_i,        // currently decoded we enable
@@ -156,7 +155,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // Debug Signal
     .debug_req_i                 ( debug_req_i              ),
     .dcsr_i                      ( dcsr_i                   ),
-    .debug_trigger_match_id_i    ( debug_trigger_match_id_i ),
 
     // Fencei flush handshake
     .fencei_flush_ack_i          ( fencei_flush_ack_i       ),
@@ -192,7 +190,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .dret_id_i                  ( dret_id_i                ),
     .csr_en_id_i                ( csr_en_id_i              ),
     .csr_op_id_i                ( csr_op_id_i              ),
-    .debug_trigger_match_id_i   ( debug_trigger_match_id_i ),
 
     // From EX
     .csr_counter_read_i         ( csr_counter_read_i       ),
