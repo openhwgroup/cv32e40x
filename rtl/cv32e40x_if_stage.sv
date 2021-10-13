@@ -65,6 +65,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     input  logic [31:0] dpc_i,                  // address used to restore PC when the debug is served
 
+    input  logic trigger_match_i,
+
     output logic        csr_mtvec_init_o,       // tell CS regfile to init mtvec
 
     // jump and branch target and decision
@@ -266,6 +268,7 @@ instruction_obi_i
       if_id_pipe_o.pc               <= '0;
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
       if_id_pipe_o.compressed_instr <= '0;
+      if_id_pipe_o.trigger_match    <= 1'b0;
     end
     else
     begin
@@ -279,6 +282,7 @@ instruction_obi_i
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
+        if_id_pipe_o.trigger_match    <= trigger_match_i;
       end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end

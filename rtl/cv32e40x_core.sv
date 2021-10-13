@@ -208,7 +208,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   dcsr_t       dcsr;
 
   // trigger match detected in cs_registers (using ID timing)
-  logic        debug_trigger_match_id;
+  logic        debug_trigger_match_if;
 
   // Controller <-> decoder
   logic       mret_insn_id;
@@ -350,6 +350,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .dpc_i               ( dpc                       ), // debug return address
 
+    .trigger_match_i     ( debug_trigger_match_if    ),
+
     .pc_if_o             ( pc_if                     ),
 
     .csr_mtvec_init_o    ( csr_mtvec_init_if         ),
@@ -406,9 +408,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR ID/EX
     .current_priv_lvl_i           ( current_priv_lvl          ),
-
-    // Debug Signals
-    .debug_trigger_match_id_i     ( debug_trigger_match_id    ),       // from cs_registers (ID timing)
 
     // Register file write back and forwards
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
@@ -641,7 +640,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // debug
     .dpc_o                      ( dpc                    ),
     .dcsr_o                     ( dcsr                   ),
-    .debug_trigger_match_o      ( debug_trigger_match_id ),
+    .debug_trigger_match_o      ( debug_trigger_match_if ),
 
     .priv_lvl_o                 ( current_priv_lvl       ),
 
@@ -705,7 +704,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Debug signals
     .debug_req_i                    ( debug_req_i            ),
     .dcsr_i                         ( dcsr                   ),
-    .debug_trigger_match_id_i       ( debug_trigger_match_id ),
 
     // Register File read, write back and forwards
     .rf_re_i                        ( rf_re_id               ),

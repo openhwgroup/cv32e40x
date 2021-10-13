@@ -770,7 +770,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Matching is disabled when ctrl_fsm_i.debug_mode == 1'b1
   // todo: Need to explain why this does not require hazard detection (ie csr write to tdata2 before the matched instruction)
   assign debug_trigger_match_o = tmatch_control_q[2] && !ctrl_fsm_i.debug_mode &&
-                                 (if_id_pipe_i.pc[31:0] == tmatch_value_q[31:0]);
+                                 (pc_if_i[31:0] == tmatch_value_q[31:0]);
 
 
   /////////////////////////////////////////////////////////////////
