@@ -616,15 +616,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
-  logic xif_accepted_q, xif_accepted_d;
-  logic xif_rejected_q, xif_rejected_d;
+  // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
+  logic xif_accepted_q, xif_rejected_q;
   always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
     if (rst_n == 1'b0) begin
       xif_accepted_q <= 1'b0;
       xif_rejected_q <= 1'b0;
     end else begin
-      xif_accepted_q <= xif_accepted_d;
-      xif_rejected_q <= xif_rejected_d;
+      xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
+      xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
     end
   end
 
@@ -660,9 +660,5 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
   assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
   assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
-
-  // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
-  assign xif_accepted_d = !(id_valid_o && ex_ready_i) && xif_insn_accept;
-  assign xif_rejected_d = !(id_valid_o && ex_ready_i) && xif_insn_reject;
 
 endmodule // cv32e40x_id_stage
