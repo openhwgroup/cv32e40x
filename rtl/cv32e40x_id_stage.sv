@@ -185,7 +185,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        wfi_insn;
   logic        ebrk_insn;
   logic        fencei_insn;
-  logic        xif_insn;
+  logic        xif_insn_accept;
+  logic        xif_insn_reject;
 
   // Local instruction valid qualifier
   logic        instr_valid;
@@ -575,14 +576,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.instr_meta             <= instr_meta_n;
 
         // Exceptions and special instructions
-        id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn;
+        id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
         id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
         id_ex_pipe_o.wfi_insn               <= wfi_insn;
         id_ex_pipe_o.ecall_insn             <= ecall_insn;
         id_ex_pipe_o.fencei_insn            <= fencei_insn;
         id_ex_pipe_o.mret_insn              <= mret_insn;
         id_ex_pipe_o.dret_insn              <= dret_insn;
-        id_ex_pipe_o.xif_insn               <= xif_insn;
+        id_ex_pipe_o.xif_insn               <= xif_insn_accept;
 
         id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
       end else if (ex_ready_i) begin
@@ -615,6 +616,18 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
+  logic xif_accepted_q, xif_accepted_d;
+  logic xif_rejected_q, xif_rejected_d;
+  always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
+    if (rst_n == 1'b0) begin
+      xif_accepted_q <= 1'b0;
+      xif_rejected_q <= 1'b0;
+    end else begin
+      xif_accepted_q <= xif_accepted_d;
+      xif_rejected_q <= xif_rejected_d;
+    end
+  end
+
   // attempt to offload every valid instruction that is considered illegal by the decoder
   assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn;
 
@@ -641,11 +654,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign xif_issue_if.x_issue_req.frs       = '{default: '0};
   assign xif_issue_if.x_issue_req.frs_valid = '0;
 
-  // need to wait if the coprocessor is not ready
-  assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready;
+  // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
+  assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready && !xif_accepted_q && !xif_rejected_q;
 
-  // an instruction was offloaded successfully if the coprocessor accepts it
-  // (note: the handshake feeds into id_valid_o, hence not required here)
-  assign xif_insn = xif_issue_if.x_issue_valid && xif_issue_if.x_issue_resp.accept;
+  // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
+  assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
+  assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
+
+  // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
+  assign xif_accepted_d = !(id_valid_o && ex_ready_i) && xif_insn_accept;
+  assign xif_rejected_d = !(id_valid_o && ex_ready_i) && xif_insn_reject;
 
 endmodule // cv32e40x_id_stage
