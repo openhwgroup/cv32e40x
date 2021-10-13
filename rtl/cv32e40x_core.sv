@@ -208,7 +208,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   dcsr_t       dcsr;
 
   // trigger match detected in cs_registers (using ID timing)
-  logic        debug_trigger_match_if;
+  logic        trigger_match_if;
 
   // Controller <-> decoder
   logic       mret_insn_id;
@@ -350,7 +350,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .dpc_i               ( dpc                       ), // debug return address
 
-    .trigger_match_i     ( debug_trigger_match_if    ),
+    .trigger_match_i     ( trigger_match_if          ),
 
     .pc_if_o             ( pc_if                     ),
 
@@ -640,7 +640,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // debug
     .dpc_o                      ( dpc                    ),
     .dcsr_o                     ( dcsr                   ),
-    .debug_trigger_match_o      ( debug_trigger_match_if ),
+    .trigger_match_o      ( trigger_match_if       ),
 
     .priv_lvl_o                 ( current_priv_lvl       ),
 
