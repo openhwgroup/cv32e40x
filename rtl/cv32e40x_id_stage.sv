@@ -619,6 +619,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //---------------------------------------------------------------------------
 
   // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
+  // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
   logic xif_accepted_q, xif_rejected_q;
   always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
     if (rst_n == 1'b0) begin
@@ -647,7 +648,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       xif_issue_if.x_issue_req.rs      [1] = operand_b_fw;
       xif_issue_if.x_issue_req.rs_valid[1] = 1'b1;
     end
-    // TODO: check if forwarding is needed for other operands than rs1 and rs2
+    // TODO: implement forwarding for other operands than rs1 and rs2
     for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
       xif_issue_if.x_issue_req.rs      [i] = regfile_rdata_i[i];
       xif_issue_if.x_issue_req.rs_valid[i] = 1'b1;

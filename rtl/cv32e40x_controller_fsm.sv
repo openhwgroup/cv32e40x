@@ -876,6 +876,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
+  // TODO: Add assertion to check the following:
+  // Every issue interface transaction (whether accepted or not) has an associated commit interface
+  // transaction and both interfaces use a matching transaction ordering.
+
+  // TODO: check if id_ex_pipe_i.xif_insn needs to be validated with instr_valid of the EX stage
+
   // commit an offloaded instruction in the cycle before it proceeds to the WB stage
   // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
   // which ensures that only one offloaded instruction is committed at a time and
