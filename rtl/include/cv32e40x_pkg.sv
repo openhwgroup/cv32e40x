@@ -932,6 +932,7 @@ typedef struct packed {
   logic [31:0] pc;
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
+  logic        trigger_match;
 } if_id_pipe_t;
 
 // ID/EX pipeline

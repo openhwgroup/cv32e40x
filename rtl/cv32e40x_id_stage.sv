@@ -59,9 +59,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   input  privlvl_t    current_priv_lvl_i,
 
-  // Debug Signal
-  input  logic        debug_trigger_match_id_i,
-
   // Register file write data from WB stage
   input  logic [31:0]    rf_wdata_wb_i,
 
@@ -584,10 +581,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.mret_insn              <= mret_insn;
         id_ex_pipe_o.dret_insn              <= dret_insn;
 
-        id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
-
         // eXtension interface
         id_ex_pipe_o.xif_en                 <= xif_insn_accept;
+
+        id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
+
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
       end

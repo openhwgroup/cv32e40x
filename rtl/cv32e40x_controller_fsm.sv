@@ -73,7 +73,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
   input  dcsr_t       dcsr_i,
-  input  logic        debug_trigger_match_id_i,   // Trigger match from cs_registers
 
   // Toplevel input
   input  logic        debug_req_i,                // External debug request
