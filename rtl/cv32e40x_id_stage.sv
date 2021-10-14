@@ -119,7 +119,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] imm_a;           // contains the immediate for operand b
   logic [31:0] imm_b;           // contains the immediate for operand b
 
-  // Register Write Control
+  // Register Read/Write Control
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic        rf_we;
   logic        rf_we_raw;
   
@@ -181,9 +182,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        wfi_insn;
   logic        ebrk_insn;
   logic        fencei_insn;
+  logic        xif_insn_accept;
+  logic        xif_insn_reject;
 
   // Local instruction valid qualifier
   logic        instr_valid;
+
+  // eXtension interface signals
+  logic        xif_waiting;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
@@ -391,7 +397,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .div_operator_o                  ( div_operator              ),
 
     // Register file control signals
-    .rf_re_o                         ( rf_re_o                   ),
+    .rf_re_o                         ( rf_re                     ),
     .rf_we_o                         ( rf_we                     ),
     .rf_we_raw_o                     ( rf_we_raw                 ),
 
@@ -418,6 +424,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .ctrl_transfer_insn_raw_o        ( ctrl_transfer_insn_raw_o  ),
     .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
   );
+
+  // Speculatively read all source registers for illegal instr, might be required by coprocessor
+  assign rf_re_o             = illegal_insn ? '1 : rf_re;
 
   assign regfile_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
@@ -491,6 +500,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.fencei_insn            <= 1'b0;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
+      id_ex_pipe_o.xif_en                 <= 1'b0;
 
     end else begin
       // normal pipeline unstall case
@@ -525,7 +535,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mul_operand_b        <= operand_b;
         end
 
-        id_ex_pipe_o.rf_we                  <= rf_we;
+        id_ex_pipe_o.rf_we                  <= rf_we || (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_resp.writeback);
         if (rf_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
         end
@@ -563,7 +573,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.instr_meta             <= instr_meta_n;
 
         // Exceptions and special instructions
-        id_ex_pipe_o.illegal_insn           <= illegal_insn;
+        id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
         id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
         id_ex_pipe_o.wfi_insn               <= wfi_insn;
         id_ex_pipe_o.ecall_insn             <= ecall_insn;
@@ -571,7 +581,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.mret_insn              <= mret_insn;
         id_ex_pipe_o.dret_insn              <= dret_insn;
 
+        // eXtension interface
+        id_ex_pipe_o.xif_en                 <= xif_insn_accept;
+
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
+
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
       end
@@ -592,13 +606,60 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // contains the instruction following the multicycle instruction.
   // todo: update when Zce is included. Currently, no multi cycle ID stalls are possible.
 
-  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id);
+  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id && !xif_waiting);
 
   // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
-  assign id_valid_o = instr_valid || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
+  assign id_valid_o = (instr_valid && !xif_waiting) || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
-  // Drive eXtension interface outputs to 0 for now
-  assign xif_issue_if.x_issue_valid   = '0;
-  assign xif_issue_if.x_issue_req     = '0;
+
+  //---------------------------------------------------------------------------
+  // eXtension interface
+  //---------------------------------------------------------------------------
+
+  // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
+  // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
+  logic xif_accepted_q, xif_rejected_q;
+  always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
+    if (rst_n == 1'b0) begin
+      xif_accepted_q <= 1'b0;
+      xif_rejected_q <= 1'b0;
+    end else begin
+      xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
+      xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+    end
+  end
+
+  // attempt to offload every valid instruction that is considered illegal by the decoder
+  assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
+
+  assign xif_issue_if.x_issue_req.instr     = instr;
+  assign xif_issue_if.x_issue_req.mode      = PRIV_LVL_M;
+  assign xif_issue_if.x_issue_req.id        = '0; // TODO: use an actual id instead of 0
+  always_comb begin
+    xif_issue_if.x_issue_req.rs       = '0;
+    xif_issue_if.x_issue_req.rs_valid = '0;
+    if (xif_issue_if.X_NUM_RS > 0) begin
+      xif_issue_if.x_issue_req.rs      [0] = operand_a_fw;
+      xif_issue_if.x_issue_req.rs_valid[0] = 1'b1;
+    end
+    if (xif_issue_if.X_NUM_RS > 1) begin
+      xif_issue_if.x_issue_req.rs      [1] = operand_b_fw;
+      xif_issue_if.x_issue_req.rs_valid[1] = 1'b1;
+    end
+    // TODO: implement forwarding for other operands than rs1 and rs2
+    for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
+      xif_issue_if.x_issue_req.rs      [i] = regfile_rdata_i[i];
+      xif_issue_if.x_issue_req.rs_valid[i] = 1'b1;
+    end
+  end
+  assign xif_issue_if.x_issue_req.frs       = '{default: '0};
+  assign xif_issue_if.x_issue_req.frs_valid = '0;
+
+  // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
+  assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready && !xif_accepted_q && !xif_rejected_q;
+
+  // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
+  assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
+  assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
 
 endmodule // cv32e40x_id_stage

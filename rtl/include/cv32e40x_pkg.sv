@@ -991,6 +991,9 @@ typedef struct packed {
   logic         fencei_insn;
   logic         mret_insn;
   logic         dret_insn;
+
+  // eXtension interface
+  logic         xif_en;           // Instruction has been offloaded via eXtension interface
 } id_ex_pipe_t;
 
 // EX/WB pipeline
@@ -1023,6 +1026,9 @@ typedef struct packed {
   logic         fencei_insn;
   logic         mret_insn;
   logic         dret_insn;
+
+  // eXtension interface
+  logic         xif_en;           // Instruction has been offloaded via eXtension interface
 } ex_wb_pipe_t;
 
 // Performance counter events
