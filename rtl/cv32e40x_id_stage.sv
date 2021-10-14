@@ -503,7 +503,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.fencei_insn            <= 1'b0;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
-      id_ex_pipe_o.xif_insn               <= 1'b0;
+      id_ex_pipe_o.xif_en                 <= 1'b0;
 
     end else begin
       // normal pipeline unstall case
@@ -583,9 +583,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.fencei_insn            <= fencei_insn;
         id_ex_pipe_o.mret_insn              <= mret_insn;
         id_ex_pipe_o.dret_insn              <= dret_insn;
-        id_ex_pipe_o.xif_insn               <= xif_insn_accept;
 
         id_ex_pipe_o.trigger_match          <= debug_trigger_match_id_i;
+
+        // eXtension interface
+        id_ex_pipe_o.xif_en                 <= xif_insn_accept;
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
       end

@@ -111,7 +111,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && instr_valid;
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
-  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : (ex_wb_pipe_i.xif_insn ? xif_result_if.x_result.data : ex_wb_pipe_i.rf_wdata);
+  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : (ex_wb_pipe_i.xif_en ? xif_result_if.x_result.data : ex_wb_pipe_i.rf_wdata);
 
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
@@ -158,13 +158,13 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_we (based on xif_issue_if.x_issue_resp.writeback in ID) and xif_result_if.x_result.we?
 
   // Need to wait for the result
-  assign xif_waiting = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn && !xif_result_if.x_result_valid;
+  assign xif_waiting = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && !xif_result_if.x_result_valid;
 
   // Coprocessor signals a synchronous exception
   // TODO: Maybe do something when an exception occurs (other than just inhibiting writeback)
-  assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn && xif_result_if.x_result_valid && xif_result_if.x_result.exc;
+  assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && xif_result_if.x_result_valid && xif_result_if.x_result.exc;
 
   // CV32E40X is ready to receive the result as soon as an offloaded instruction has reached WB
-  assign xif_result_if.x_result_ready = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_insn;
+  assign xif_result_if.x_result_ready = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en;
 
 endmodule // cv32e40x_wb_stage

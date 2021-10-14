@@ -103,6 +103,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [5:0]     div_shift_amt;
   logic [31:0]    div_op_b_shifted;
 
+  // eXtension interface signals
+  logic           xif_ready;
+  logic           xif_valid;
+
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
@@ -269,13 +273,13 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.fencei_insn    <= 1'b0;
       ex_wb_pipe_o.mret_insn      <= 1'b0;
       ex_wb_pipe_o.dret_insn      <= 1'b0;
-      ex_wb_pipe_o.xif_insn       <= 1'b0;
       ex_wb_pipe_o.lsu_en         <= 1'b0;
       ex_wb_pipe_o.csr_en         <= 1'b0;
       ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr       <= 12'h000;
       ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
       ex_wb_pipe_o.trigger_match  <= 1'b0;
+      ex_wb_pipe_o.xif_en         <= 1'b0;
     end
     else
     begin
@@ -319,8 +323,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
         ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
         ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
-        ex_wb_pipe_o.xif_insn       <= id_ex_pipe_i.xif_insn;
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
+
+        // eXtension interface
+        ex_wb_pipe_o.xif_en         <= id_ex_pipe_i.xif_en;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we introduce a bubble
@@ -345,7 +351,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // unless the stage is being halted. The late (data_rvalid_i based) downstream wb_ready_i signal
   // fans into the ready signals of all functional units.
 
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && mul_ready && div_ready && lsu_ready_i && !ctrl_fsm_i.halt_ex);
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
   assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)   ||
@@ -353,8 +359,17 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.mul_en && mul_valid)   ||
                        (id_ex_pipe_i.div_en && div_valid)   ||
                        (id_ex_pipe_i.csr_en && csr_valid)   ||
-                       id_ex_pipe_i.xif_insn                ||
+                       (id_ex_pipe_i.xif_en && xif_valid)   ||
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
+
+  //---------------------------------------------------------------------------
+  // eXtension interface
+  //---------------------------------------------------------------------------
+
+  // XIF is modeled as a functional unit that occupies EX for a single cycle no matter whether the
+  // result handshake is received in a single cycle or not.
+  assign xif_valid = 1'b1;
+  assign xif_ready = wb_ready_i;
 
 endmodule // cv32e40x_ex_stage
