@@ -634,7 +634,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
 
   assign xif_issue_if.x_issue_req.instr     = instr;
-  assign xif_issue_if.x_issue_req.mode      = '0; // TODO: use the actual mode
+  assign xif_issue_if.x_issue_req.mode      = PRIV_LVL_M;
   assign xif_issue_if.x_issue_req.id        = '0; // TODO: use an actual id instead of 0
   always_comb begin
     xif_issue_if.x_issue_req.rs       = '0;
