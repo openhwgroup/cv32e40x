@@ -30,6 +30,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
+#(
+  parameter int       X_EXT
+)
 (
   // Clocks and reset
   input  logic        clk,                        // Gated clock
@@ -875,18 +878,30 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
-  // TODO: Add assertion to check the following:
-  // Every issue interface transaction (whether accepted or not) has an associated commit interface
-  // transaction and both interfaces use a matching transaction ordering.
+  generate
+    if (X_EXT) begin : x_ext
 
-  // TODO: check if id_ex_pipe_i.xif_insn needs to be validated with instr_valid of the EX stage
+      // TODO: Add assertion to check the following:
+      // Every issue interface transaction (whether accepted or not) has an associated commit interface
+      // transaction and both interfaces use a matching transaction ordering.
+      
+      // TODO: check if id_ex_pipe_i.xif_insn needs to be validated with instr_valid of the EX stage
+      
+      // commit an offloaded instruction in the cycle before it proceeds to the WB stage
+      // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
+      // which ensures that only one offloaded instruction is committed at a time and
+      // thus the coprocessor is forced to return results in order)
+      assign xif_commit_if.x_commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
+      assign xif_commit_if.x_commit.id          = id_ex_pipe_i.xif_id;
+      assign xif_commit_if.x_commit.commit_kill = 1'b0; // TODO: when should the offloaded instr be killed?
 
-  // commit an offloaded instruction in the cycle before it proceeds to the WB stage
-  // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
-  // which ensures that only one offloaded instruction is committed at a time and
-  // thus the coprocessor is forced to return results in order)
-  assign xif_commit_if.x_commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
-  assign xif_commit_if.x_commit.id          = id_ex_pipe_i.xif_id;
-  assign xif_commit_if.x_commit.commit_kill = 1'b0; // TODO: when should the offloaded instr be killed?
+    end else begin : no_x_ext
+
+      assign xif_commit_if.x_commit_valid       = '0;
+      assign xif_commit_if.x_commit.id          = '0;
+      assign xif_commit_if.x_commit.commit_kill = '0;
+
+    end
+  endgenerate
 
 endmodule //cv32e40x_controller_fsm

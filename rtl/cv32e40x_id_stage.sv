@@ -625,7 +625,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //---------------------------------------------------------------------------
 
   generate
-    if (X_EXT) begin
+    if (X_EXT) begin : x_ext
 
       // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
       // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
@@ -675,7 +675,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       assign xif_we = xif_issue_if.x_issue_valid && xif_issue_if.x_issue_resp.writeback;
 
-    end else begin
+    end else begin : no_x_ext
 
       // Drive all eXtension interface signals and outputs low if X_EXT == 0
       assign xif_waiting                        = '0;

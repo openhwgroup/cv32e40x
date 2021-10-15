@@ -311,7 +311,7 @@ instruction_obi_i
   //---------------------------------------------------------------------------
 
   generate
-    if (X_EXT) begin
+    if (X_EXT) begin : x_ext
 
       // TODO: implement offloading of compressed instruction
       assign xif_compressed_if.x_compressed_valid = '0;
@@ -319,7 +319,7 @@ instruction_obi_i
 
       assign xif_id = id_offload_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
 
-    end else begin
+    end else begin : no_x_ext
 
       assign xif_compressed_if.x_compressed_valid = '0;
       assign xif_compressed_if.x_compressed_req   = '0;
