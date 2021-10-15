@@ -34,6 +34,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter A_EXTENSION             =  0,
   parameter b_ext_e B_EXT           =  NONE,
+  parameter bit     X_EXT           =  0,
   parameter DEBUG_TRIGGER_EN        =  1
 )
 (
@@ -616,50 +617,74 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
-  // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
-  // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
-  logic xif_accepted_q, xif_rejected_q;
-  always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
-    if (rst_n == 1'b0) begin
-      xif_accepted_q <= 1'b0;
-      xif_rejected_q <= 1'b0;
-    end else begin
-      xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
-      xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
-    end
-  end
+  generate
+    if (X_EXT) begin
 
-  // attempt to offload every valid instruction that is considered illegal by the decoder
-  assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
+      // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
+      // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
+      logic xif_accepted_q, xif_rejected_q;
+      always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
+        if (rst_n == 1'b0) begin
+          xif_accepted_q <= 1'b0;
+          xif_rejected_q <= 1'b0;
+        end else begin
+          xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
+          xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+        end
+      end
 
-  assign xif_issue_if.x_issue_req.instr     = instr;
-  assign xif_issue_if.x_issue_req.mode      = PRIV_LVL_M;
+      // attempt to offload every valid instruction that is considered illegal by the decoder
+      assign xif_issue_if.x_issue_valid         = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
+
+      assign xif_issue_if.x_issue_req.instr     = instr;
+      assign xif_issue_if.x_issue_req.mode      = PRIV_LVL_M;
+      always_comb begin
+        xif_issue_if.x_issue_req.rs       = '0;
+        xif_issue_if.x_issue_req.rs_valid = '0;
+        if (xif_issue_if.X_NUM_RS > 0) begin
+          xif_issue_if.x_issue_req.rs      [0] = operand_a_fw;
+          xif_issue_if.x_issue_req.rs_valid[0] = 1'b1;
+        end
+        if (xif_issue_if.X_NUM_RS > 1) begin
+          xif_issue_if.x_issue_req.rs      [1] = operand_b_fw;
+          xif_issue_if.x_issue_req.rs_valid[1] = 1'b1;
+        end
+        // TODO: implement forwarding for other operands than rs1 and rs2
+        for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
+          xif_issue_if.x_issue_req.rs      [i] = regfile_rdata_i[i];
+          xif_issue_if.x_issue_req.rs_valid[i] = 1'b1;
+        end
+      end
+      assign xif_issue_if.x_issue_req.frs       = '{default: '0};
+      assign xif_issue_if.x_issue_req.frs_valid = '0;
+
   assign xif_issue_if.x_issue_req.id        = '0; // TODO: use an actual id instead of 0
-  always_comb begin
-    xif_issue_if.x_issue_req.rs       = '0;
-    xif_issue_if.x_issue_req.rs_valid = '0;
-    if (xif_issue_if.X_NUM_RS > 0) begin
-      xif_issue_if.x_issue_req.rs      [0] = operand_a_fw;
-      xif_issue_if.x_issue_req.rs_valid[0] = 1'b1;
-    end
-    if (xif_issue_if.X_NUM_RS > 1) begin
-      xif_issue_if.x_issue_req.rs      [1] = operand_b_fw;
-      xif_issue_if.x_issue_req.rs_valid[1] = 1'b1;
-    end
-    // TODO: implement forwarding for other operands than rs1 and rs2
-    for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
-      xif_issue_if.x_issue_req.rs      [i] = regfile_rdata_i[i];
-      xif_issue_if.x_issue_req.rs_valid[i] = 1'b1;
-    end
-  end
-  assign xif_issue_if.x_issue_req.frs       = '{default: '0};
-  assign xif_issue_if.x_issue_req.frs_valid = '0;
+      // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
+      assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready && !xif_accepted_q && !xif_rejected_q;
 
-  // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
-  assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready && !xif_accepted_q && !xif_rejected_q;
+      // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
+      assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
+      assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
 
-  // an instruction was offloaded successfully if the coprocessor accepts it (or has accepted it)
-  assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
-  assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
+
+    end else begin
+
+      // Drive all eXtension interface signals and outputs low if X_EXT == 0
+      assign xif_waiting                        = '0;
+      assign xif_insn_accept                    = '0;
+      assign xif_insn_reject                    = '0;
+      assign xif_we                             = '0;
+
+      assign xif_issue_if.x_issue_valid         = '0;
+      assign xif_issue_if.x_issue_req.instr     = '0;
+      assign xif_issue_if.x_issue_req.mode      = '0;
+      assign xif_issue_if.x_issue_req.id        = '0;
+      assign xif_issue_if.x_issue_req.frs       = '0;
+      assign xif_issue_if.x_issue_req.rs        = '0;
+      assign xif_issue_if.x_issue_req.rs_valid  = '0;
+      assign xif_issue_if.x_issue_req.frs_valid = '0;
+
+    end
+  endgenerate
 
 endmodule // cv32e40x_id_stage

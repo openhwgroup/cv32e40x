@@ -28,6 +28,7 @@
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
   #(parameter bit          A_EXTENSION     = 0,
+    parameter bit          X_EXT           = 0,
     parameter int          PMA_NUM_REGIONS = 0,
     parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
 (
@@ -298,8 +299,24 @@ instruction_obi_i
     .illegal_instr_o ( illegal_c_insn          )
   );
 
-  // Drive eXtension interface outputs to 0 for now
-  assign xif_compressed_if.x_compressed_valid = '0;
-  assign xif_compressed_if.x_compressed_req   = '0;
+
+  //---------------------------------------------------------------------------
+  // eXtension interface
+  //---------------------------------------------------------------------------
+
+  generate
+    if (X_EXT) begin
+
+      // TODO: implement offloading of compressed instruction
+      assign xif_compressed_if.x_compressed_valid = '0;
+      assign xif_compressed_if.x_compressed_req   = '0;
+
+    end else begin
+
+      assign xif_compressed_if.x_compressed_valid = '0;
+      assign xif_compressed_if.x_compressed_req   = '0;
+
+    end
+  endgenerate
 
 endmodule // cv32e40x_if_stage
