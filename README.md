@@ -1,7 +1,7 @@
 # OpenHW Group CORE-V CV32E40X RISC-V IP
 
 CV32E40X is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage pipeline that implements
-the RV32IM[A]C[B][P]XZce_Zicount_Zicsr_Zifencei instruction set architecture. The CV32E40X core is aimed
+the RV32IM[A]C[X][Zba_Zbb_Zbs|Zba_Zbb_Zbc_Zbs]Zceb_Zcee_Zces_Zicount_Zicsr_Zifencei instruction set architecture. The CV32E40X core is aimed
 at compute intensive applications and offers a general purpose extension interface by which custom instructions
 can be added external to the core.
 

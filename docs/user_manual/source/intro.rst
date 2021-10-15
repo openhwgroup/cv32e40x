@@ -42,8 +42,17 @@ It follows these specifications:
 .. [RISC-V-DEBUG] RISC-V External Debug Support, version 0.13.2,
    https://content.riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf
 
-.. [RISC-V-ZCE] RISC-V Standard Extension for Enhanced Compressed Instructions, v0.29.1 (not ratified yet),
-   https://github.com/riscv/riscv-code-size-reduction/blob/master/ISA%20proposals/Huawei/Zce_spec.adoc
+.. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28:,
+   https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
+
+.. [RISC-V-ZCEB] RISC-V Standard Extension for the **Zceb** subset of **Zce**, v0.52 (not ratified yet),
+   https://github.com/riscv/riscv-code-size-reduction/blob/master/Zce-release-candidate/Zceb.pdf
+
+.. [RISC-V-ZCEE] RISC-V Standard Extension for the **Zcee** subset of **Zce**, v0.52 (not ratified yet),
+   https://github.com/riscv/riscv-code-size-reduction/blob/master/Zce-release-candidate/Zcee.pdf
+
+.. [RISC-V-ZCES] RISC-V Standard Extension for the **Zces** subset of **Zce**, v0.52 (not ratified yet),
+   https://github.com/riscv/riscv-code-size-reduction/blob/master/Zce-release-candidate/Zces.pdf
 
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.2,
    https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.2.pdf
@@ -51,13 +60,16 @@ It follows these specifications:
 .. [OPENHW-X] OpenHW eXtension Interface, version 0.1,
    https://github.com/openhwgroup/core-v-xif
 
+.. [SYMBIOTIC-RVFI] Symbiotic EDA RISC-V Formal Interface
+   https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md
+
 Many features in the RISC-V specification are optional, and |corev| can be parameterized to enable or disable some of them.
 
 |corev| supports the following base instruction set from [RISC-V-UNPRIV]_.
 
 * The RV32I Base Integer Instruction Set, version 2.1
 
-In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_ and [RISC-V-ZCE]_.
+In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_, [RISC-V-ZBA_ZBB_ZBC_ZBS]_, [RISC-V-ZCEB]_, [RISC-V-ZCEE]_ and [RISC-V-ZCES]_.
 
 .. list-table:: |corev| Standard Instruction Set Extensions
    :header-rows: 1
@@ -86,32 +98,36 @@ In addition, the following standard instruction set extensions are available fro
      - 2.0
      - always enabled
 
-   * - **Zce**: Standard Extension for Code-Size Reduction
-     - v0.41.6 (not ratified yet; version will change)
+   * - **Zceb**: Subset of the standard **Zce** Code-Size Reduction extension consisting of 16-bit encodings for byte or halfword based load and store instructions.
+     - v0.52 (not ratified yet; version will change)
+     - always enabled
+
+   * - **Zcee**: Subset of the standard **Zce** Code-Size Reduction extension consisting of 16-bit encodings for certain **RV32I** or **Zbb** instructions.
+     - v0.52 (not ratified yet; version will change)
+     - always enabled
+
+   * - **Zces**: Subset of the standard **Zce** Code-Size Reduction extension consisting of sequenced or more complex instructions.
+     - v0.52 (not ratified yet; version will change)
      - always enabled
 
    * - **A**: Atomic Instructions
      - 2.1
      - optionally enabled based on ``A_EXT`` parameter
 
-   * - **P**: Packed-SIMD Instructions
-     - 0.9.2-draft-20210202 (not ratified yet; version will change)
-     - optionally enabled based on ``P_EXT`` parameter
-
    * - **Zba**: Bit Manipulation Address calculation instructions
-     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbb**: Bit Manipulation Base instructions
-     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbc**: Bit Manipulation Carry-Less Multiply instructions
-     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbs**: Bit Manipulation Bit set, Bit clear, etc. instructions
-     - Version 1.0.0, 2021-06-12 (not ratified yet; version will change)
+     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
      - optionally enabled based on ``B_EXT`` parameter
 
 The following custom instruction set extensions are available.
