@@ -1,13 +1,11 @@
 .. _rvfi:
 
-.. _rvfi_spec: https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md
-
 RISC-V Formal Interface
 =======================
 
 .. note::
 
-   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See rvfi_spec_ (https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md) for
+   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See [SYMBIOTIC-RVFI]_ (https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md) for
    details on RVFI.
 
 The module ``cv32e40x_rvfi`` can be used to create a log of the executed instructions.
@@ -53,7 +51,7 @@ The ``rvfi_dbg_mode signal`` is high if the instruction was executed in debug mo
 Compatibility
 -------------
 
-This chapter specifies interpretations and compatibilities to the rvfi_spec_.
+This chapter specifies interpretations and compatibilities to the [SYMBIOTIC-RVFI]_.
 
 **Interface Qualification**
 
