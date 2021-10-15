@@ -72,6 +72,24 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   // PMA assertions helper signals
 
+  function logic bufferable_in_config;
+    bufferable_in_config = 0;
+    foreach (PMA_CFG[i]) begin
+      if (PMA_CFG[i].bufferable) begin
+        bufferable_in_config = 1;
+      end
+    end
+  endfunction
+
+  function logic cacheable_in_config;
+    cacheable_in_config = 0;
+    foreach (PMA_CFG[i]) begin
+      if (PMA_CFG[i].cacheable) begin
+        cacheable_in_config = 1;
+      end
+    end
+  endfunction
+
   logic is_addr_match;
   assign is_addr_match = obi_addr == pma_addr;
 
@@ -202,10 +220,17 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   logic obibuf_excuse;
   assign obibuf_expected = bus_trans_bufferable || (IS_INSTR_SIDE && was_obi_reqnognt && was_obi_memtype[0]);
   assign obibuf_excuse = IS_INSTR_SIDE && bus_trans_bufferable && (was_obi_reqnognt && !was_obi_memtype[0]);
-  a_pma_obi_bufon :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     obi_memtype[0] |-> obibuf_expected && !obibuf_excuse)
+
+  generate
+    if (bufferable_in_config()) begin: a_pma_obi_bufon_enabled
+      assert property    (@(posedge clk) disable iff (!rst_n) obi_memtype[0] |-> (obibuf_expected && !obibuf_excuse))
       else `uvm_error("mpu", "obi should have had bufferable flag")
+    end else begin: a_pma_obi_bufon_disabled
+      assert property     (@(posedge clk) disable iff (!rst_n) !obi_memtype[0])
+      else `uvm_error("mpu", "obi should not have had bufferable flag")
+    end
+  endgenerate
+
   a_pma_obi_bufoff :
     assert property (@(posedge clk) disable iff (!rst_n)
                      !obi_memtype[0] |-> !(obibuf_expected && !obibuf_excuse))
@@ -216,10 +241,17 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   logic obicache_excuse;
   assign obicache_expected = bus_trans_cacheable || (IS_INSTR_SIDE && was_obi_reqnognt && was_obi_memtype[1]);
   assign obicache_excuse = IS_INSTR_SIDE && bus_trans_cacheable && (was_obi_reqnognt && !was_obi_memtype[1]);
-  a_pma_obi_cacheon :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     obi_memtype[1] |-> obicache_expected && !obicache_excuse)
+
+  generate
+    if (cacheable_in_config()) begin: a_pma_obi_cacheon_enabled
+      assert property (@(posedge clk) disable iff (!rst_n) obi_memtype[1] |-> (obicache_expected && !obicache_excuse))
       else `uvm_error("mpu", "obi should have had cacheable flag")
+    end else begin: a_pma_obi_cacheon_disabled
+      assert property (@(posedge clk) disable iff (!rst_n) !obi_memtype[1])
+      else `uvm_error("mpu", "obi should not have had cacheable flag")
+    end
+  endgenerate
+
   a_pma_obi_cacheoff :
     assert property (@(posedge clk) disable iff (!rst_n)
                      !obi_memtype[1] |-> !(obicache_expected && !obicache_excuse))
