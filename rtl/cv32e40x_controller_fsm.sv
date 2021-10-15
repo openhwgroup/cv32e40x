@@ -31,7 +31,7 @@
 
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 #(
-  parameter int       X_EXT
+  parameter bit       X_EXT           = 0
 )
 (
   // Clocks and reset

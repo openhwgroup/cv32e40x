@@ -659,7 +659,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //   \____\___/|_| \_| |_| |_| \_\\___/|_____|_____|_____|_| \_\  //
   //                                                                //
   ////////////////////////////////////////////////////////////////////
-  cv32e40x_controller controller_i
+  cv32e40x_controller
+  #(
+    .X_EXT                          ( X_EXT                  )
+  )
+  controller_i
   (
     .clk                            ( clk                    ),         // Gated clock
     .clk_ungated_i                  ( clk_i                  ),         // Ungated clock

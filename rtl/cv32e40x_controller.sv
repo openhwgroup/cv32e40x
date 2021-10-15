@@ -30,6 +30,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller import cv32e40x_pkg::*;
+#(
+  parameter bit       X_EXT           = 0
+)
 (
   input  logic        clk,                        // Gated clock
   input  logic        clk_ungated_i,              // Ungated clock
@@ -106,7 +109,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 );
 
   // Main FSM and debug FSM
-  cv32e40x_controller_fsm controller_fsm_i
+  cv32e40x_controller_fsm
+  #(
+    .X_EXT                       ( X_EXT                    )
+  )
+  controller_fsm_i
   (
     // Clocks and reset
     .clk                         ( clk                      ),
