@@ -82,7 +82,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        id_ready_i,
 
     // eXtension interface
-    if_xif.cpu_compressed xif_compressed_if
+    if_xif.cpu_compressed xif_compressed_if,    // XIF compressed interface
+    input  logic          id_offload_i          // ID stage attempts to offload an instruction
 );
 
   logic              if_ready;
@@ -119,6 +120,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Local instr_valid
   logic instr_valid;
+
+  // eXtension interface signals
+  logic [X_ID_WIDTH-1:0] xif_id;
 
   // exception PC selection mux
   always_comb
@@ -270,6 +274,7 @@ instruction_obi_i
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
       if_id_pipe_o.compressed_instr <= '0;
       if_id_pipe_o.trigger_match    <= 1'b0;
+      if_id_pipe_o.xif_id           <= '0;
     end
     else
     begin
@@ -284,6 +289,7 @@ instruction_obi_i
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
         if_id_pipe_o.trigger_match    <= trigger_match_i;
+        if_id_pipe_o.xif_id           <= xif_id;
       end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
@@ -311,10 +317,14 @@ instruction_obi_i
       assign xif_compressed_if.x_compressed_valid = '0;
       assign xif_compressed_if.x_compressed_req   = '0;
 
+      assign xif_id = id_offload_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
+
     end else begin
 
       assign xif_compressed_if.x_compressed_valid = '0;
       assign xif_compressed_if.x_compressed_req   = '0;
+
+      assign xif_id                               = '0;
 
     end
   endgenerate

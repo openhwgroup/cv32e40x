@@ -369,7 +369,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_i          ( id_ready                  ),
 
     // eXtension interface
-    .xif_compressed_if   ( xif_compressed_if         )
+    .xif_compressed_if   ( xif_compressed_if         ),
+    .id_offload_i        ( xif_issue_if.x_issue_valid )
   );
 
 

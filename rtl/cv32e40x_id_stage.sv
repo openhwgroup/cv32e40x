@@ -502,6 +502,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
       id_ex_pipe_o.xif_en                 <= 1'b0;
+      id_ex_pipe_o.xif_id                 <= '0;
 
     end else begin
       // normal pipeline unstall case
@@ -584,6 +585,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         // eXtension interface
         id_ex_pipe_o.xif_en                 <= xif_insn_accept;
+        id_ex_pipe_o.xif_id                 <= if_id_pipe_i.xif_id;
 
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
@@ -638,6 +640,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       assign xif_issue_if.x_issue_req.instr     = instr;
       assign xif_issue_if.x_issue_req.mode      = PRIV_LVL_M;
+      assign xif_issue_if.x_issue_req.id        = if_id_pipe_i.xif_id;
       always_comb begin
         xif_issue_if.x_issue_req.rs       = '0;
         xif_issue_if.x_issue_req.rs_valid = '0;
@@ -658,7 +661,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_issue_if.x_issue_req.frs       = '{default: '0};
       assign xif_issue_if.x_issue_req.frs_valid = '0;
 
-  assign xif_issue_if.x_issue_req.id        = '0; // TODO: use an actual id instead of 0
       // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
       assign xif_waiting = xif_issue_if.x_issue_valid && !xif_issue_if.x_issue_ready && !xif_accepted_q && !xif_rejected_q;
 

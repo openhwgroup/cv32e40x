@@ -156,6 +156,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_waddr and xif_result_if.x_result.rd?
   // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_we (based on xif_issue_if.x_issue_resp.writeback in ID) and xif_result_if.x_result.we?
+  // TODO: Check whether result IDs match the instruction IDs propagated along the pipeline
 
   // Need to wait for the result
   assign xif_waiting = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && !xif_result_if.x_result_valid;

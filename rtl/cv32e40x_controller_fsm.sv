@@ -886,7 +886,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // which ensures that only one offloaded instruction is committed at a time and
   // thus the coprocessor is forced to return results in order)
   assign xif_commit_if.x_commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
-  assign xif_commit_if.x_commit.id          = '0;   // TODO: use an actual id
+  assign xif_commit_if.x_commit.id          = id_ex_pipe_i.xif_id;
   assign xif_commit_if.x_commit.commit_kill = 1'b0; // TODO: when should the offloaded instr be killed?
 
 endmodule //cv32e40x_controller_fsm
