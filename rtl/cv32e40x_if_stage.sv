@@ -83,7 +83,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     // eXtension interface
     if_xif.cpu_compressed xif_compressed_if,    // XIF compressed interface
-    input  logic          id_offload_i          // ID stage attempts to offload an instruction
+    input  logic          x_issue_valid_i       // ID stage attempts to offload an instruction
 );
 
   logic              if_ready;
@@ -317,7 +317,8 @@ instruction_obi_i
       assign xif_compressed_if.x_compressed_valid = '0;
       assign xif_compressed_if.x_compressed_req   = '0;
 
-      assign xif_id = id_offload_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
+      // TODO: assert that the oustanding IDs are unique
+      assign xif_id = x_issue_valid_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
 
     end else begin : no_x_ext
 
