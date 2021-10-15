@@ -34,6 +34,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter NUM_MHPMCOUNTERS             =  1,
   parameter LIB                          =  0,
   parameter b_ext_e B_EXT                =  NONE,
+  parameter bit     X_EXT                =  0,
   parameter int          PMA_NUM_REGIONS =  0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -316,6 +317,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //////////////////////////////////////////////////
   cv32e40x_if_stage
     #(.A_EXTENSION(A_EXTENSION),
+      .X_EXT      ( X_EXT ),
       .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
       .PMA_CFG(PMA_CFG))
   if_stage_i
@@ -367,7 +369,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ready_i          ( id_ready                  ),
 
     // eXtension interface
-    .xif_compressed_if   ( xif_compressed_if         )
+    .xif_compressed_if   ( xif_compressed_if         ),
+    .x_issue_valid_i     ( xif_issue_if.x_issue_valid )
   );
 
 
@@ -382,7 +385,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_id_stage
   #(
     .A_EXTENSION                  ( A_EXTENSION               ),
-    .B_EXT                        ( B_EXT                     )
+    .B_EXT                        ( B_EXT                     ),
+    .X_EXT                        ( X_EXT                     )
   )
   id_stage_i
   (

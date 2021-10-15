@@ -28,6 +28,7 @@
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
   #(parameter bit          A_EXTENSION     = 0,
+    parameter bit          X_EXT           = 0,
     parameter int          PMA_NUM_REGIONS = 0,
     parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
 (
@@ -81,7 +82,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     input  logic        id_ready_i,
 
     // eXtension interface
-    if_xif.cpu_compressed xif_compressed_if
+    if_xif.cpu_compressed xif_compressed_if,    // XIF compressed interface
+    input  logic          x_issue_valid_i       // ID stage attempts to offload an instruction
 );
 
   logic              if_ready;
@@ -118,6 +120,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Local instr_valid
   logic instr_valid;
+
+  // eXtension interface signals
+  logic [X_ID_WIDTH-1:0] xif_id;
 
   // exception PC selection mux
   always_comb
@@ -269,6 +274,7 @@ instruction_obi_i
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
       if_id_pipe_o.compressed_instr <= '0;
       if_id_pipe_o.trigger_match    <= 1'b0;
+      if_id_pipe_o.xif_id           <= '0;
     end
     else
     begin
@@ -283,6 +289,7 @@ instruction_obi_i
         if_id_pipe_o.pc               <= pc_if_o;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
         if_id_pipe_o.trigger_match    <= trigger_match_i;
+        if_id_pipe_o.xif_id           <= xif_id;
       end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end
@@ -298,8 +305,29 @@ instruction_obi_i
     .illegal_instr_o ( illegal_c_insn          )
   );
 
-  // Drive eXtension interface outputs to 0 for now
-  assign xif_compressed_if.x_compressed_valid = '0;
-  assign xif_compressed_if.x_compressed_req   = '0;
+
+  //---------------------------------------------------------------------------
+  // eXtension interface
+  //---------------------------------------------------------------------------
+
+  generate
+    if (X_EXT) begin : x_ext
+
+      // TODO: implement offloading of compressed instruction
+      assign xif_compressed_if.x_compressed_valid = '0;
+      assign xif_compressed_if.x_compressed_req   = '0;
+
+      // TODO: assert that the oustanding IDs are unique
+      assign xif_id = x_issue_valid_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
+
+    end else begin : no_x_ext
+
+      assign xif_compressed_if.x_compressed_valid = '0;
+      assign xif_compressed_if.x_compressed_req   = '0;
+
+      assign xif_id                               = '0;
+
+    end
+  endgenerate
 
 endmodule // cv32e40x_if_stage

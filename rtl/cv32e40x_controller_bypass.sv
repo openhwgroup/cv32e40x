@@ -159,10 +159,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
       ctrl_byp_o.deassert_we = 1'b1;
     end
 
-    // Stall because of load operation
+    // Stall because of load or XIF operation
     if (
-        (id_ex_pipe_i.lsu_en && rf_we_ex && |rf_rd_ex_hz) || // load-use hazard (EX)
-        (!wb_ready_i         && rf_we_wb && |rf_rd_wb_hz)    // load-use hazard (WB during wait-state)
+        ((id_ex_pipe_i.lsu_en || id_ex_pipe_i.xif_en) && rf_we_ex && |rf_rd_ex_hz) || // load-use hazard (EX)
+        (!wb_ready_i                                  && rf_we_wb && |rf_rd_wb_hz)    // load-use hazard (WB during wait-state)
        )
     begin
       ctrl_byp_o.load_stall  = 1'b1;
