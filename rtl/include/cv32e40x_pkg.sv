@@ -1123,6 +1123,9 @@ typedef struct packed {
   //                       //
   ///////////////////////////
 
+  // Write buffer FSM state encoding
+  typedef enum logic {WBUF_EMPTY, WBUF_FULL} write_buffer_state_e;
+
   // OBI interface FSM state encoding
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 

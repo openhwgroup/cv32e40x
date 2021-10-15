@@ -24,6 +24,7 @@
   `include "cv32e40x_ex_stage_sva.sv"
   `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
+  `include "cv32e40x_write_buffer_sva.sv"
   `include "cv32e40x_mpu_sva.sv"
   `include "cv32e40x_mult_sva.sv"
   `include "cv32e40x_prefetcher_sva.sv"
@@ -250,11 +251,18 @@ bind cv32e40x_sleep_unit:
         .IS_INSTR_SIDE(0))
   mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
              .pma_cfg (pma_i.pma_cfg),
-             .obi_memtype(core_i.data_memtype_o),
+              // todo: Update cache and bufferable assertions to account for write buffer
+             .obi_memtype(core_i.load_store_unit_i.buffer_trans.memtype), // temporarily connected to write buffer output instead of OBI
+              //
              .obi_addr   (core_i.data_addr_o),
              .obi_req    (core_i.data_req_o),
              .obi_gnt    (core_i.data_gnt_i),
              .*);
+
+  bind cv32e40x_write_buffer:
+    core_i.load_store_unit_i.write_buffer_i
+    cv32e40x_write_buffer_sva
+      write_buffer_sva (.*);
 
   bind cv32e40x_rvfi:
     rvfi_i
