@@ -123,6 +123,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register Read/Write Control
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
   logic        rf_we;
+  logic        rf_we_dec;
   logic        rf_we_raw;
   
   // ALU Control
@@ -183,14 +184,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        wfi_insn;
   logic        ebrk_insn;
   logic        fencei_insn;
-  logic        xif_insn_accept;
-  logic        xif_insn_reject;
 
   // Local instruction valid qualifier
   logic        instr_valid;
 
   // eXtension interface signals
   logic        xif_waiting;
+  logic        xif_insn_accept;
+  logic        xif_insn_reject;
+  logic        xif_we;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
@@ -399,7 +401,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // Register file control signals
     .rf_re_o                         ( rf_re                     ),
-    .rf_we_o                         ( rf_we                     ),
+    .rf_we_o                         ( rf_we_dec                 ),
     .rf_we_raw_o                     ( rf_we_raw                 ),
 
     // CSR interface
@@ -428,6 +430,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
   assign rf_re_o             = illegal_insn ? '1 : rf_re;
+
+  // Register writeback is enabled either by the decoder or by the XIF
+  assign rf_we               = rf_we_dec || xif_we;
 
   assign regfile_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
@@ -537,7 +542,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mul_operand_b        <= operand_b;
         end
 
-        id_ex_pipe_o.rf_we                  <= rf_we || (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_resp.writeback);
+        id_ex_pipe_o.rf_we                  <= rf_we;
         if (rf_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
         end
@@ -668,6 +673,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready &&  xif_issue_if.x_issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.x_issue_valid && xif_issue_if.x_issue_ready && !xif_issue_if.x_issue_resp.accept) || xif_rejected_q;
 
+      assign xif_we = xif_issue_if.x_issue_valid && xif_issue_if.x_issue_resp.writeback;
 
     end else begin
 
