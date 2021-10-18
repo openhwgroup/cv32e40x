@@ -104,7 +104,9 @@ module cv32e40x_write_buffer
   ///////////////////////////////////////////
   // Outputs
   ///////////////////////////////////////////
-  assign ready_o = (state == WBUF_FULL) ? (bufferable && ready_i) : (bufferable || ready_i);
+  assign ready_o = (state == WBUF_FULL) ?
+                   (bufferable && ready_i) : // A downstream ready will free up the buffer for a new bufferable transfer
+                   (bufferable || ready_i);  // Ready for bufferable transfer, accept any transfer if downstream is ready
   assign valid_o = (state == WBUF_FULL) || valid_i;
   assign trans_o = (state == WBUF_FULL) ? trans_q : trans_i;
 

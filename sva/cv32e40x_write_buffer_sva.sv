@@ -103,19 +103,17 @@ module cv32e40x_write_buffer_sva
   property p_data_q_value;
     @(posedge clk) disable iff (!rst_n)
       bufferable && (state === WBUF_EMPTY) && (valid_i && !ready_i) ||
-      bufferable && (state === WBUF_FULL)  && (valid_i &&  ready_i) |=> (trans_q === $past(trans_i));
+      bufferable && (state === WBUF_FULL)  && (valid_i &&  ready_i) |=> (trans_q === $past(trans_i)) && (state === WBUF_FULL);
   endproperty : p_data_q_value
 
   a_data_q_value: assert property (p_data_q_value)
     else `uvm_error("write_buffer", "trans_q is should have been same as trans_i from previous edge");
 
-  // When trans_q is changed, the state should transit from EMPTY to FULL or from FULL to FULL
+  // When trans_q is changed,
   property p_data_q_condition;
     @(posedge clk) disable iff (!rst_n)
-      // ##1 used to avoid first clock edge when past data_q value is unknown
-      ##1 (trans_q !== $past(trans_q)) |-> $past(bufferable) && (state === WBUF_FULL) && $past(valid_i) &&
-                                          (($past(state) === WBUF_EMPTY) && !$past(ready_i) ||
-                                           ($past(state) === WBUF_FULL)  &&  $past(ready_i) );
+      !(bufferable && (state === WBUF_EMPTY) && (valid_i && !ready_i) ||
+        bufferable && (state === WBUF_FULL)  && (valid_i &&  ready_i)) |=> $stable(trans_q);
       endproperty : p_data_q_condition
 
   a_data_q_condition: assert property (p_data_q_condition)
@@ -134,10 +132,10 @@ module cv32e40x_write_buffer_sva
   a_ready_o_one: assert property (p_ready_o_one)
     else `uvm_error("write_buffer", "When ready_o is 1, state should be EMPTY or OBI should be ready");
 
-  // ready_o should be 0 only when state is FULL if the transfer is bufferable
+  // If the transfer is bufferable ready_o should be 0 only when state is FULL and downstream is not ready
   property p_ready_o_zero;
     @(posedge clk) disable iff (!rst_n)
-      bufferable && !ready_o |-> (state === WBUF_FULL);
+      bufferable && !ready_o |-> (state === WBUF_FULL) && !ready_i;
   endproperty : p_ready_o_zero
 
   a_ready_o_zero: assert property (p_ready_o_zero)
