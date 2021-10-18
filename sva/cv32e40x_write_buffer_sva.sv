@@ -44,22 +44,45 @@ module cv32e40x_write_buffer_sva
 
 
   // Track pending transaction
-  logic               waited_addr_ph;
+  logic               input_waited_addr_ph;
+  logic               output_waited_addr_ph;
   always_ff @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
-      waited_addr_ph <= 1'b0;
+      input_waited_addr_ph  <= 1'b0;
+      output_waited_addr_ph <= 1'b0;
     end else begin
-      waited_addr_ph <= valid_o && !ready_i;
+      input_waited_addr_ph  <= valid_i && !ready_o;
+      output_waited_addr_ph <= valid_o && !ready_i;
     end
   end
 
   ///////////////////////////////////////////
   // Verify OBI protocol adherence
   ///////////////////////////////////////////
+  ////  Inputs  ////
+  // verify that valid_i is held during waited addr phase
+  property p_valid_i_held_during_waited_addr_ph;
+    @(posedge clk) disable iff (!rst_n)
+      input_waited_addr_ph |-> (valid_i === 1'b1);
+  endproperty : p_valid_i_held_during_waited_addr_ph
+
+  a_valid_i_held_during_waited_addr_ph: assert property (p_valid_i_held_during_waited_addr_ph)
+    else `uvm_error("write_buffer", "valid_i is retracted during waited address phase");
+
+  // verify that data_i remains stable during waited addr phase
+  property p_data_i_stable_during_waited_addr_ph;
+    @(posedge clk) disable iff (!rst_n)
+      input_waited_addr_ph |-> $stable(trans_i);
+  endproperty : p_data_i_stable_during_waited_addr_ph
+
+  a_data_i_stable_during_waited_addr_ph: assert property (p_data_i_stable_during_waited_addr_ph)
+    else `uvm_error("write_buffer", "trans_i is not stable during waited address phase");
+
+  ////  Outputs  ////
   // verify that valid_o is held during waited addr phase
   property p_valid_o_held_during_waited_addr_ph;
-    @(posedge clk)
-      waited_addr_ph |-> (valid_o === 1'b1);
+    @(posedge clk) disable iff (!rst_n)
+      output_waited_addr_ph |-> (valid_o === 1'b1);
   endproperty : p_valid_o_held_during_waited_addr_ph
 
   a_valid_o_held_during_waited_addr_ph: assert property (p_valid_o_held_during_waited_addr_ph)
@@ -67,29 +90,32 @@ module cv32e40x_write_buffer_sva
 
   // verify that data_o remains stable during waited addr phase
   property p_data_o_stable_during_waited_addr_ph;
-    @(posedge clk)
-      waited_addr_ph |-> $stable(trans_o);
+    @(posedge clk) disable iff (!rst_n)
+      output_waited_addr_ph |-> $stable(trans_o);
   endproperty : p_data_o_stable_during_waited_addr_ph
 
   a_data_o_stable_during_waited_addr_ph: assert property (p_data_o_stable_during_waited_addr_ph)
     else `uvm_error("write_buffer", "trans_o is not stable during waited address phase");
 
-
   ///////////////////////////////////////////////////
   // Verify that incoming data is buffered properly
   ///////////////////////////////////////////////////
   property p_data_q_value;
-    @(posedge clk)
-      bufferable && (state === WBUF_EMPTY) && (valid_i && !ready_i) |=> (trans_q === $past(trans_i));
+    @(posedge clk) disable iff (!rst_n)
+      bufferable && (state === WBUF_EMPTY) && (valid_i && !ready_i) ||
+      bufferable && (state === WBUF_FULL)  && (valid_i &&  ready_i) |=> (trans_q === $past(trans_i));
   endproperty : p_data_q_value
 
   a_data_q_value: assert property (p_data_q_value)
     else `uvm_error("write_buffer", "trans_q is should have been same as trans_i from previous edge");
 
-  // When trans_q is changed, the state should transit from EMPTY to FULL
+  // When trans_q is changed, the state should transit from EMPTY to FULL or from FULL to FULL
   property p_data_q_condition;
-    @(posedge clk)
-      ##1 (trans_q !== $past(trans_q)) |-> (state === WBUF_FULL) && ($past(bufferable) && ($past(state) === WBUF_EMPTY) && ($past(valid_i) && !$past(ready_i))); // ##1 used to avoid first clock edge when past data_q value is unknown
+    @(posedge clk) disable iff (!rst_n)
+      // ##1 used to avoid first clock edge when past data_q value is unknown
+      ##1 (trans_q !== $past(trans_q)) |-> $past(bufferable) && (state === WBUF_FULL) && $past(valid_i) &&
+                                          (($past(state) === WBUF_EMPTY) && !$past(ready_i) ||
+                                           ($past(state) === WBUF_FULL)  &&  $past(ready_i) );
       endproperty : p_data_q_condition
 
   a_data_q_condition: assert property (p_data_q_condition)
@@ -99,18 +125,18 @@ module cv32e40x_write_buffer_sva
   ///////////////////////////////////////////////////
   // verify output generation
   ///////////////////////////////////////////////////
-  // ready_o should be 1 only when state is EMPTY
+  // ready_o should be 1 only when state is EMPTY or OBI should be ready
   property p_ready_o_one;
-    @(posedge clk)
-      ready_o |-> (state === WBUF_EMPTY);
+    @(posedge clk) disable iff (!rst_n)
+      ready_o |-> (state === WBUF_EMPTY) || ((state === WBUF_FULL) && ready_i);
   endproperty : p_ready_o_one
 
   a_ready_o_one: assert property (p_ready_o_one)
-    else `uvm_error("write_buffer", "When ready_o is 1, state should be EMPTY");
+    else `uvm_error("write_buffer", "When ready_o is 1, state should be EMPTY or OBI should be ready");
 
   // ready_o should be 0 only when state is FULL if the transfer is bufferable
   property p_ready_o_zero;
-    @(posedge clk)
+    @(posedge clk) disable iff (!rst_n)
       bufferable && !ready_o |-> (state === WBUF_FULL);
   endproperty : p_ready_o_zero
 
@@ -119,7 +145,7 @@ module cv32e40x_write_buffer_sva
 
   // When state is FULL, data_o should come from trans_q
   property p_trans_o_full;
-    @(posedge clk)
+    @(posedge clk) disable iff (!rst_n)
       (state === WBUF_FULL) |-> (trans_o === trans_q);
   endproperty : p_trans_o_full
 
@@ -128,7 +154,7 @@ module cv32e40x_write_buffer_sva
 
   // When state is EMPTY, trans_o should come from trans_i
   property p_trans_o_empty;
-    @(posedge clk)
+    @(posedge clk) disable iff (!rst_n)
       (state === WBUF_EMPTY) |-> (trans_o === trans_i);
   endproperty : p_trans_o_empty
 

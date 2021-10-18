@@ -251,9 +251,7 @@ bind cv32e40x_sleep_unit:
         .IS_INSTR_SIDE(0))
   mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
              .pma_cfg (pma_i.pma_cfg),
-              // todo: Update cache and bufferable assertions to account for write buffer
-             .obi_memtype(core_i.load_store_unit_i.buffer_trans.memtype), // temporarily connected to write buffer output instead of OBI
-              //
+             .obi_memtype(core_i.data_memtype_o),
              .obi_addr   (core_i.data_addr_o),
              .obi_req    (core_i.data_req_o),
              .obi_gnt    (core_i.data_gnt_i),

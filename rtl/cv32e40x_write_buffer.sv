@@ -79,7 +79,12 @@ module cv32e40x_write_buffer
       end
       WBUF_FULL: begin // buffer is full
         if(ready_i) begin
-          next_state = WBUF_EMPTY;
+          if (bufferable && valid_i) begin
+            next_state = WBUF_FULL;
+            push       = 1'b1; // push incoming data into the buffer
+          end else begin
+            next_state = WBUF_EMPTY;
+          end
         end
       end
     endcase // case (state)
@@ -99,7 +104,7 @@ module cv32e40x_write_buffer
   ///////////////////////////////////////////
   // Outputs
   ///////////////////////////////////////////
-  assign ready_o = (state == WBUF_EMPTY) && (bufferable || ready_i);
+  assign ready_o = (state == WBUF_FULL) ? (bufferable && ready_i) : (bufferable || ready_i);
   assign valid_o = (state == WBUF_FULL) || valid_i;
   assign trans_o = (state == WBUF_FULL) ? trans_q : trans_i;
 
