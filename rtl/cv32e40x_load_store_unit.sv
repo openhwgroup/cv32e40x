@@ -625,9 +625,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   );
 
   // Drive eXtension interface outputs to 0 for now
-  assign xif_mem_if.x_mem_ready               = '0;
-  assign xif_mem_if.x_mem_resp                = '0;
-  assign xif_mem_result_if.x_mem_result_valid = '0;
-  assign xif_mem_result_if.x_mem_result       = '0;
+  assign xif_mem_if.mem_ready               = '0;
+  assign xif_mem_if.mem_resp                = '0;
+  assign xif_mem_result_if.mem_result_valid = '0;
+  assign xif_mem_result_if.mem_result       = '0;
 
 endmodule // cv32e40x_load_store_unit
