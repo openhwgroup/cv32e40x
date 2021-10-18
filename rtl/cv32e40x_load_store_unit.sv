@@ -83,7 +83,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         resp_err;               // Unused for now
   data_resp_t   resp;
   
-  // Transaction request (from cv32e40x_mpu to cv32e40x_data_obi_interface)
+  // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
+  logic          buffer_trans_valid;
+  logic          buffer_trans_ready;
+  obi_data_req_t buffer_trans;
+
+  // Transaction request (from cv32e40x_write_buffer to cv32e40x_data_obi_interface)
   logic          bus_trans_valid;
   logic          bus_trans_ready;
   obi_data_req_t bus_trans;
@@ -582,28 +587,47 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       .PMA_CFG         (PMA_CFG        ))
   mpu_i
     (
-     .clk                  ( clk               ),
-     .rst_n                ( rst_n             ),
-     .atomic_access_i      ( 1'b0              ), // TODO:OE update to support atomic PMA checks
-     .misaligned_access_i  ( misaligned_access ),
+     .clk                  ( clk                ),
+     .rst_n                ( rst_n              ),
+     .atomic_access_i      ( 1'b0               ), // TODO:OE update to support atomic PMA checks
+     .misaligned_access_i  ( misaligned_access  ),
 
-     .core_one_txn_pend_n  ( cnt_is_one_next   ),
-     .core_trans_valid_i   ( trans_valid       ),
-     .core_trans_ready_o   ( trans_ready       ),
-     .core_trans_i         ( trans             ),
-     .core_resp_valid_o    ( resp_valid        ),
-     .core_resp_o          ( resp              ),
+     .core_one_txn_pend_n  ( cnt_is_one_next    ),
+     .core_trans_valid_i   ( trans_valid        ),
+     .core_trans_ready_o   ( trans_ready        ),
+     .core_trans_i         ( trans              ),
+     .core_resp_valid_o    ( resp_valid         ),
+     .core_resp_o          ( resp               ),
 
-     .bus_trans_valid_o    ( bus_trans_valid   ),
-     .bus_trans_ready_i    ( bus_trans_ready   ),
-     .bus_trans_o          ( bus_trans         ),
-     .bus_resp_valid_i     ( bus_resp_valid    ),
-     .bus_resp_i           ( bus_resp          ));
+     .bus_trans_valid_o    ( buffer_trans_valid ),
+     .bus_trans_ready_i    ( buffer_trans_ready ),
+     .bus_trans_o          ( buffer_trans       ),
+     .bus_resp_valid_i     ( bus_resp_valid     ),
+     .bus_resp_i           ( bus_resp           ));
 
   // Extract rdata and err from response struct
   assign resp_rdata = resp.bus_resp.rdata;
   assign resp_err   = resp.bus_resp.err;
-  
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Write Buffer
+  //////////////////////////////////////////////////////////////////////////////
+
+  cv32e40x_write_buffer
+  write_buffer_i
+    (.clk          ( clk                ),
+     .rst_n        ( rst_n              ),
+
+     .valid_i      ( buffer_trans_valid ),
+     .ready_o      ( buffer_trans_ready ),
+     .trans_i      ( buffer_trans       ),
+
+     .valid_o      ( bus_trans_valid    ),
+     .ready_i      ( bus_trans_ready    ),
+     .trans_o      ( bus_trans          )
+     );
+
   //////////////////////////////////////////////////////////////////////////////
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////

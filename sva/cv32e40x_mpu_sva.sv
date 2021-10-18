@@ -197,6 +197,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     assert property (@(posedge clk) disable iff (!rst_n) pma_err == pma_expected_err)
       else `uvm_error("mpu", "expected different err flag")
 
+  /* todo: Update these assertions to account for write buffer
+
   // Bufferable
   logic obibuf_expected;
   logic obibuf_excuse;
@@ -225,6 +227,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      !obi_memtype[1] |-> !(obicache_expected && !obicache_excuse))
       else `uvm_error("mpu", "obi should not have had cacheable flag")
 
+
   // OBI req vs PMA err
   a_pma_obi_reqallowed :
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -239,6 +242,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      |-> !obi_req ^ (was_obi_waiting && $past(obi_req)))
       else `uvm_error("mpu", "pma error should forbid obi req")
 
+   */
 
   // Cover PMA signals
 

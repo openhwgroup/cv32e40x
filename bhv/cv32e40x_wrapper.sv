@@ -24,6 +24,7 @@
   `include "cv32e40x_ex_stage_sva.sv"
   `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
+  `include "cv32e40x_write_buffer_sva.sv"
   `include "cv32e40x_mpu_sva.sv"
   `include "cv32e40x_mult_sva.sv"
   `include "cv32e40x_prefetcher_sva.sv"
@@ -255,6 +256,11 @@ bind cv32e40x_sleep_unit:
              .obi_req    (core_i.data_req_o),
              .obi_gnt    (core_i.data_gnt_i),
              .*);
+
+  bind cv32e40x_write_buffer:
+    core_i.load_store_unit_i.write_buffer_i
+    cv32e40x_write_buffer_sva
+      write_buffer_sva (.*);
 
   bind cv32e40x_rvfi:
     rvfi_i
