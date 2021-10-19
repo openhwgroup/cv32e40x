@@ -31,10 +31,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        clk,
    input logic        rst_n,
 
-   input logic        speculative_access,
+   input logic        instr_fetch_access,
    input logic        atomic_access_i,
    input logic        misaligned_access_i,
-   input logic        execute_access,
    input logic        bus_trans_bufferable,
    input logic        bus_trans_cacheable,
 
@@ -181,8 +180,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       pma_expected_cfg = is_pma_matched ? PMA_CFG[pma_lowest_match] : PMA_R_DEFAULT;
     end
   end
-  assign pma_expected_err = ((execute_access || speculative_access) && !pma_expected_cfg.main) ||
-                            (misaligned_access_i && !pma_expected_cfg.main)                    ||
+  assign pma_expected_err = (instr_fetch_access && !pma_expected_cfg.main)  ||
+                            (misaligned_access_i && !pma_expected_cfg.main) ||
                             (atomic_access_i && !pma_expected_cfg.atomic);
   a_pma_expect_cfg :
     assert property (@(posedge clk) disable iff (!rst_n) pma_cfg == pma_expected_cfg)
@@ -248,7 +247,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
 
   covergroup cg_pma @(posedge clk);
     cp_err: coverpoint pma_err;
-    cp_exec: coverpoint execute_access;
+    cp_instr: coverpoint instr_fetch_access;
     cp_bufferable: coverpoint bus_trans_bufferable;
     cp_cacheable: coverpoint bus_trans_cacheable;
     cp_atomic: coverpoint atomic_access_i;
@@ -259,7 +258,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       illegal_bins il = default;
       }
 
-    x_err_exec: cross cp_err, cp_exec;
+    x_err_instr: cross cp_err, cp_instr;
     x_err_bufferable: cross cp_err, cp_bufferable;
     x_err_cacheable: cross cp_err, cp_cacheable;
     x_err_atomic: cross cp_err, cp_atomic;

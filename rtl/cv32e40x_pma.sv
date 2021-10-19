@@ -30,10 +30,10 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT})
   (
    input logic [31:0] trans_addr_i,
-   input logic        speculative_access_i, // Indicate that ongoing access is speculative
+   input logic        instr_fetch_access_i, // Indicate that ongoing access is an instruction fetch
    input logic        atomic_access_i,      // Indicate that ongoing access is atomic
-   input logic        execute_access_i,     // Indicate that ongoing access is intended for execution
    input logic        misaligned_access_i,  // Indicate that ongoing access is part of a misaligned access
+   input logic        load_access_i,        // Indicate that ongoing access is a load
    output logic       pma_err_o,
    output logic       pma_bufferable_o,
    output logic       pma_cacheable_o
@@ -95,13 +95,8 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       pma_err_o = 1'b1;
     end
 
-    // Speculative access only allowed in main memory
-    if (speculative_access_i && !pma_cfg.main) begin
-      pma_err_o   = 1'b1;
-    end
-
-    // Code execution only allowed from main memory
-    if (execute_access_i && !pma_cfg.main) begin
+    // Instruction fetches only allowed in main memory
+    if (instr_fetch_access_i && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
     end
 
@@ -112,7 +107,8 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   end
 
   // Set cacheable and bufferable based on PMA region attributes
-  assign pma_bufferable_o = pma_cfg.bufferable;
+  // Instruction fetches, atomic operations and loads are never classified as bufferable
+  assign pma_bufferable_o = pma_cfg.bufferable && !instr_fetch_access_i && !atomic_access_i && !load_access_i;
   assign pma_cacheable_o  = pma_cfg.cacheable;
   
 endmodule

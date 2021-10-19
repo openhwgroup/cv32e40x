@@ -69,8 +69,8 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   logic        bus_trans_cacheable;
   logic        bus_trans_bufferable;
   logic        core_trans_we;
-  logic        execute_access;
-  logic        speculative_access;
+  logic        instr_fetch_access;
+  logic        load_access;
   
   // FSM that will "consume" transfers failing PMA checks.
   // Upon failing checks, this FSM will prevent the transfer from going out on the bus
@@ -172,10 +172,10 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       .PMA_CFG(PMA_CFG))
   pma_i
     (.trans_addr_i(core_trans_i.addr),
-     .speculative_access_i(speculative_access),
+     .instr_fetch_access_i(instr_fetch_access),
      .atomic_access_i(atomic_access_i),
-     .execute_access_i(execute_access),
      .misaligned_access_i(misaligned_access_i),
+     .load_access_i(load_access),
      .pma_err_o(pma_err),
      .pma_bufferable_o(bus_trans_bufferable),
      .pma_cacheable_o(bus_trans_cacheable));
@@ -187,14 +187,14 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   // Tie to 1'b0 if this MPU is instantiatied in the IF stage
   generate
     if (IF_STAGE) begin: mpu_if
+      assign instr_fetch_access = 1'b1;
+      assign load_access        = 1'b0;
       assign core_trans_we      = 1'b0;
-      assign execute_access     = 1'b1;
-      assign speculative_access = 1'b1;
     end
     else begin: mpu_lsu
+      assign instr_fetch_access = 1'b0;
+      assign load_access        = !core_trans_i.we;
       assign core_trans_we      = core_trans_i.we;
-      assign execute_access     = 1'b0;
-      assign speculative_access = 1'b0;
     end
   endgenerate
 

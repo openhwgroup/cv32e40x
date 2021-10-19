@@ -36,7 +36,7 @@ load access fault (exception code 5). An attempt to perform a non-naturally alig
 
 Bufferable and Cacheable
 ~~~~~~~~~~~~~~~~~~~~~~~~
-Accesses to regions marked as bufferable (``bufferable=1``) will result in the OBI mem_type[0] bit being set.
+Accesses to regions marked as bufferable (``bufferable=1``) will result in the OBI mem_type[0] bit being set, except if the access was an instruction fetch, a load, or part of an atomic memory operation.
 Accesses to regions marked as cacheable (``cacheable=1``) will result in the OBI mem_type[1] bit being set.
 
 Atomic operations
