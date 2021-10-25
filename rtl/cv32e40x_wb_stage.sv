@@ -125,7 +125,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
 
-  assign wb_ready_o = lsu_ready_i && !xif_waiting;
+  assign wb_ready_o = lsu_ready_i && !xif_waiting && !ctrl_fsm_i.halt_wb;
 
   // todo: Above hould have similar structure as ex_ready_o
   // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC

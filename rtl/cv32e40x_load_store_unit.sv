@@ -449,7 +449,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
 
-  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
+  assign ready_1_o = (cnt_q == 2'b00) ? 1'b1 : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
