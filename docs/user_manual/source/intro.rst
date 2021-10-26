@@ -36,8 +36,8 @@ It follows these specifications:
 .. [RISC-V-UNPRIV] RISC-V Instruction Set Manual, Volume I: User-Level ISA, Document Version 20191213 (December 13, 2019),
    https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf
 
-.. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, document version 20190608-Base-Ratified (June 8, 2019),
-   https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf
+.. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20210915-Public-Review-draft (September 16, 2021),
+   https://github.com/riscv/riscv-isa-manual/releases/download/riscv-privileged-20210915-public-review/riscv-privileged-20210915-public-review.pdf
 
 .. [RISC-V-DEBUG] RISC-V External Debug Support, version 0.13.2,
    https://content.riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf
@@ -155,7 +155,7 @@ The following custom instruction set extensions are available.
    so for now we introduced our own name to refer to this functionality.
 
 Most content of the RISC-V privileged specification is optional.
-|corev| currently supports the following features according to the RISC-V Privileged Specification, version 1.11.
+|corev| currently supports the following features according to the RISC-V Privileged Specification [RISC-V-PRIV]_.
 
 * M-Mode
 * All CSRs listed in :ref:`cs-registers`
