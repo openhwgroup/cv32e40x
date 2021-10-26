@@ -385,7 +385,7 @@ Detailed:
 +-------------+------------+------------------------------------------------------------------------+
 | 16          | RO   (0x0) | **Q** (Quad-precision floating-point extension).                       |
 +-------------+------------+------------------------------------------------------------------------+
-| 15          | RO         | **P** (Packed-SIMD extension).                                         |
+| 15          | RO   (0x0) | **P** (Packed-SIMD extension).                                         |
 +-------------+------------+------------------------------------------------------------------------+
 | 14          | RO   (0x0) | **O** (Reserved).                                                      |
 +-------------+------------+------------------------------------------------------------------------+
@@ -414,7 +414,7 @@ Detailed:
 +-------------+------------+------------------------------------------------------------------------+
 | 2           | RO   (0x1) | **C** (Compressed extension).                                          |
 +-------------+------------+------------------------------------------------------------------------+
-| 1           | RO         | **B** (Bit-Manipulation extension).                                    |
+| 1           | RO   (0x0) | **B** (Reserved; does not depend on ``B_EXT``).                        |
 +-------------+------------+------------------------------------------------------------------------+
 | 0           | RO         | **A** (Atomic extension).                                              |
 +-------------+------------+------------------------------------------------------------------------+
@@ -422,13 +422,16 @@ Detailed:
 All bitfields in the ``misa`` CSR read as 0 except for the following:
 
 * **A** = 1 if ``A_EXT`` = 1
-* **B** = 1 if ``B_EXT`` = 1
 * **C** = 1
 * **I** = 1
 * **M** = 1
-* **P** = 1 if ``P_EXT`` = 1
 * **MXL** = 1 (i.e. XLEN = 32)
 * If ``X_EXT`` = 1, then the value of ``X_MISA`` is ORed into the ``misa`` CSR.
+
+.. note::
+
+   The ``RO (0x0)`` in above table is assuming `X_EXT`` = 0. If ``X_EXT`` = 1, then some of the ``misa`` bits
+   can read ``RO (0x1)`` depending on the value of ``X_MISA``.
 
 Machine Interrupt Enable Register (``mie``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -610,9 +613,10 @@ Reset Value: 0x0000_0000
 | 7:0         |   RW      | **Exception Code**   (See note below)                                            |
 +-------------+-----------+----------------------------------------------------------------------------------+
 
-**NOTE**: software accesses to `mcause[7:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
-when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
+.. note::
 
+   Software accesses to `mcause[7:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
+   when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
 Machine Trap Value (``mtval``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

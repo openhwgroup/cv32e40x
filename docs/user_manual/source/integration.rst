@@ -15,7 +15,6 @@ Instantiation Template
       .LIB                      (          0 ),
       .A_EXT                    (          0 ),
       .B_EXT                    (       NONE ),
-      .P_EXT                    (          0 ),
       .X_EXT                    (          0 ),
       .X_NUM_RS                 (          2 ),
       .X_ID_WIDTH               (          4 ),
@@ -96,12 +95,10 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation (B) support. ``B_EXT`` = NONE: no Bit      |
+| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation support. ``B_EXT`` = NONE: no Bit          |
 |                              |                |               | Manipulation instructions are supported, ``B_EXT`` = ZBA_ZBB_ZBS:  |
 |                              |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
 |                              |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``P_EXT``                    | bit            | 0             | Enable Packed-SIMD (P) support (**not implemented yet**)           |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_EXT``                    | bit            | 0             | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
