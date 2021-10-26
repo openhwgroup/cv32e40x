@@ -42,6 +42,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
 
+  // EX/WB pipeline
+  input  ex_wb_pipe_t ex_wb_pipe_i,
+
   // Control outputs
   output logic        busy_o,
 
@@ -108,6 +111,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic [31:0]  addr_int;
 
+  logic         resp_bufferable;
+  logic         trans_bufferable;
+  logic         trans_bufferable_accepted;
+
   // registers for data_rdata alignment and sign extension
   logic [1:0]   lsu_type_q;
   logic         lsu_sign_ext_q;
@@ -131,9 +138,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Internally gated lsu_en
   logic         instr_valid;
   logic         lsu_en_gated;    // LSU enabled gated with all disqualifiers
+  logic         non_lsu_insn_in_wb; // Instruction is not a valid LSU instruction
 
   assign instr_valid  = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
+
+  assign non_lsu_insn_in_wb = !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid);
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
@@ -448,12 +458,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
-
-  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : resp_valid && !ctrl_fsm_i.halt_wb && ready_1_i;
-
-  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
+  // Set ready early if transfer is bufferble
+  // Ready is set high for non-LSU instructions to not block pipeline
+  assign ready_1_o = (cnt_q == 2'b00) ? !ctrl_fsm_i.halt_wb : (((trans_bufferable && trans_ready ||
+                                                                !trans_bufferable && resp_valid) && ready_1_i) ||
+                                                               non_lsu_insn_in_wb) && !ctrl_fsm_i.halt_wb;
+  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received for non-bufferable transfers.
+  // For bufferable transfers, valid is set when the address phase is accepted (by write buffer or bus). For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
+  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : (trans_bufferable_accepted ||
+                                                !resp_bufferable && last_q && resp_valid) && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
+
+  assign trans_bufferable = buffer_trans.memtype[0];
+
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      trans_bufferable_accepted <= 1'b0;
+      resp_bufferable <= 1'b0;
+    end else begin
+      trans_bufferable_accepted <= trans_ready && trans_valid && trans_bufferable;
+
+      if (cnt_q == 0 || resp_valid) begin
+        // Set bufferable status of next expected response
+        resp_bufferable <= bus_trans.memtype[0];
+      end
+    end
+  end
 
   // LSU EX stage readyness requires two criteria to be met:
   // 
@@ -470,9 +500,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Internal signal used in ctrl_update.
   // Indicates that address phase in EX is complete
   assign done_0    = !lsu_en_gated    ? 1'b1 :
-                     (cnt_q == 2'b00) ? (              trans_valid && trans_ready && ready_0_i) :
-                     (cnt_q == 2'b01) ? (resp_valid && trans_valid && trans_ready && ready_0_i) :
-                                        (resp_valid                               && ready_0_i);
+                     (cnt_q == 2'b00) ? (                                    trans_valid && trans_ready && ready_0_i) :
+                     (cnt_q == 2'b01) ? ((resp_valid || trans_bufferable) && trans_valid && trans_ready && ready_0_i) :
+                                        ((resp_valid || trans_bufferable)                               && ready_0_i);
 
   assign valid_0_o = (!lsu_en_gated    ? 1'b0 :
                       (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
@@ -483,8 +513,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // External (EX) ready only when not handling multi cycle split accesses
   // otherwise we may let a new instruction into EX, overwriting second phase of split access..
   assign ready_0_o = done_0 && !lsu_split_0_o;
-
-  
 
   // Export mpu status to WB stage/controller
   assign lsu_mpu_status_1_o = resp.mpu_status;

@@ -510,6 +510,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // ID/EX pipeline
     .id_ex_pipe_i          ( id_ex_pipe         ),
 
+    // EX/WB pipeline
+    .ex_wb_pipe_i          ( ex_wb_pipe         ),
+
     // Controller
     .ctrl_fsm_i            ( ctrl_fsm           ),
 
