@@ -234,6 +234,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     case (csr_raddr)
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = mstatus_q;
+      // mstatush: All bits hardwired to 0
+      CSR_MSTATUSH: csr_rdata_int = 'b0;
       // misa: machine isa register
       CSR_MISA: csr_rdata_int = MISA_VALUE;
       // mie: machine interrupt enable
@@ -250,7 +252,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MIP: csr_rdata_int = mip;
       // mhartid: unique hardware thread id
       CSR_MHARTID: csr_rdata_int = hart_id_i;
-
+      // mconfigptr: Pointer to configuration data structure. Read only, hardwired to 0
+      CSR_MCONFIGPTR: csr_rdata_int = 'b0;
       // mvendorid: Machine Vendor ID
       CSR_MVENDORID: csr_rdata_int = {MVENDORID_BANK, MVENDORID_OFFSET};
 
@@ -419,6 +422,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
+        end
+        CSR_MSTATUSH: begin
+          // No bits implemented in MSTATUSH, do nothing
         end
         // mie: machine interrupt enable
         CSR_MIE: begin

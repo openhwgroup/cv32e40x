@@ -211,6 +211,7 @@ typedef enum logic[11:0] {
   CSR_MISA           = 12'h301,
   CSR_MIE            = 12'h304,
   CSR_MTVEC          = 12'h305,
+  CSR_MSTATUSH       = 12'h310,
 
   // Performance counters
   CSR_MCOUNTINHIBIT  = 12'h320,
@@ -401,7 +402,8 @@ typedef enum logic[11:0] {
   CSR_MVENDORID      = 12'hF11,
   CSR_MARCHID        = 12'hF12,
   CSR_MIMPID         = 12'hF13,
-  CSR_MHARTID        = 12'hF14
+  CSR_MHARTID        = 12'hF14,
+  CSR_MCONFIGPTR     = 12'hF15
 } csr_num_e;
 
 // CSR operations
