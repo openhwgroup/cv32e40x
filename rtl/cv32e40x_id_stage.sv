@@ -32,10 +32,10 @@
 
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
-  parameter A_EXTENSION             =  0,
-  parameter b_ext_e B_EXT           =  NONE,
-  parameter bit     X_EXT           =  0,
-  parameter DEBUG_TRIGGER_EN        =  1
+  parameter bit A_EXT        = 0,
+  parameter b_ext_e B_EXT    = NONE,
+  parameter bit     X_EXT    = 0,
+  parameter DEBUG_TRIGGER_EN = 1
 )
 (
   input  logic        clk,                    // Gated clock
@@ -359,14 +359,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   cv32e40x_decoder
   #(
-    .A_EXTENSION                     ( A_EXTENSION               ),
+    .A_EXT                           ( A_EXT                     ),
     .B_EXT                           ( B_EXT                     ),
     .DEBUG_TRIGGER_EN                ( DEBUG_TRIGGER_EN          )
   )
   decoder_i
   (
     // controller related signals
-    .deassert_we_i                   ( ctrl_byp_i.deassert_we ),
+    .deassert_we_i                   ( ctrl_byp_i.deassert_we    ),
 
     .illegal_insn_o                  ( illegal_insn              ),
     .ebrk_insn_o                     ( ebrk_insn                 ),

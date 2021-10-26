@@ -44,9 +44,11 @@
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS             =  1,
+  parameter NUM_MHPMCOUNTERS             = 1,
+  parameter bit          A_EXT           = 0,
   parameter b_ext_e      B_EXT           = NONE,
-  parameter int          PMA_NUM_REGIONS =  0,
+  parameter bit          X_EXT           = 0,
+  parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
@@ -440,7 +442,9 @@ bind cv32e40x_sleep_unit:
     cv32e40x_core
         #(
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
+          .X_EXT                 ( X_EXT                 ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (.*);

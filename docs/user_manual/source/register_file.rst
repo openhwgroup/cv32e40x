@@ -10,8 +10,8 @@ Register ``x0`` is statically bound to 0 and can only be read, it does not
 contain any sequential logic.
 
 The number of read ports and the number of write ports of the register file depends on the parameter settings of |corev|.
-The register file has two read ports and one write port unless at least one of the ``B_EXT``, ``P_EXT``, ``X_EXT`` parameters
-is set to 1, in which case three read ports and two write ports will be instantiated.  Register file reads are performed in the ID stage.
+The register file has two read ports and one write port for the default parameter settings. If ``X_EXT = 1``, then depending on the other
+eXtension interface parameters up to three read ports and two write ports can be instantiated. Register file reads are performed in the ID stage.
 Register file writes are performed in the WB stage.
 
 
