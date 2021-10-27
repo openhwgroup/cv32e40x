@@ -39,11 +39,9 @@
 set clock_period 5.0
 
 # Input delays for interrupts
-set in_delay_irq          [expr $clock_period * 0.50] 
-# Output delays for interrupt related signals
-set out_delay_irq         [expr $clock_period * 0.25] 
-
+set in_delay_irq          [expr $clock_period * 0.50]
 # Input delays for early signals
+
 set in_delay_early [expr $clock_period * 0.10] 
 
 # Input delay for fencei handshake
@@ -52,14 +50,14 @@ set in_delay_fencei       [expr $clock_period * 0.80]
 set out_delay_fencei      [expr $clock_period * 0.60]
 
 # OBI inputs delays
-set in_delay_instr_gnt    [expr $clock_period * 0.80]
+set in_delay_instr_gnt    [expr $clock_period * 0.70]
 set in_delay_instr_rvalid [expr $clock_period * 0.80]
 set in_delay_instr_rdata  [expr $clock_period * 0.80]
 set in_delay_instr_err    [expr $clock_period * 0.80]
 
-set in_delay_data_gnt     [expr $clock_period * 0.80]
+set in_delay_data_gnt     [expr $clock_period * 0.70]
 set in_delay_data_rvalid  [expr $clock_period * 0.80]
-set in_delay_data_rdata   [expr $clock_period * 0.80]
+set in_delay_data_rdata   [expr $clock_period * 0.70]
 set in_delay_data_err     [expr $clock_period * 0.80]
 set in_delay_data_exokay  [expr $clock_period * 0.80]
 
@@ -85,18 +83,38 @@ set out_delay_other      [expr $clock_period * 0.60]
 # core_sleep_o output delay
 set out_delay_core_sleep [expr $clock_period * 0.25]
 
+# X-interface input delay
+set in_delay_xif [expr $clock_period * 0.80]
+
+# X-interface result data input delay
+set in_delay_xif_result_data [expr $clock_period * 0.75]
+
+# X-interface output delay
+set out_delay_xif [expr $clock_period * 0.80]
+
+# X-interface late data output delay
+set out_delay_xif_data_late [expr $clock_period * 0.15]
+
+# X-interface late control output delay
+set out_delay_xif_control_late [expr $clock_period * 0.13]
+
+# X-interface mem_if input delay
+set in_delay_xif_mem_if [expr $clock_period * 0.30]
+
+# X-interface mem_result.rdata output delay
+set out_delay_xif_mem_result_rdata [expr $clock_period * 0.20]
+
+# X-interface mem_result.result_valid output delay
+set out_delay_xif_mem_result_valid [expr $clock_period * 0.15]
+
 # All clocks
 set clock_ports [list \
     clk_i \
 ]
 
 # IRQ Input ports
-set irq_input_ports [remove_from_collection [get_ports irq_i*] [get_ports irq_id_o*]]
-
-# IRQ Output ports
-set irq_output_ports [list \
-    irq_ack_o \
-    irq_id_o* \
+set irq_input_ports [list \
+    irq_i* \
 ]
 
 # Early Input ports (ideally from register)
@@ -154,6 +172,67 @@ set fencei_input_ports [list \
     fencei_flush_ack_i \
 ]
 
+# X-interface input ports
+set xif_input_ports [list \
+    xif_compressed_if_compressed_ready \
+    xif_compressed_if_compressed_resp* \
+    xif_issue_if_issue_ready \
+    xif_issue_if_issue_resp* \
+    xif_mem_if_mem_valid \
+    xif_mem_if_mem_req* \
+    xif_result_if_result* \
+]
+
+# X-interface output ports
+set xif_output_ports [list \
+    xif_compressed_if_compressed_valid \
+    xif_compressed_if_compressed_req* \
+    xif_issue_if_issue_req_instr* \
+    xif_issue_if_issue_req_mode* \
+    xif_issue_if_issue_req_id* \
+    xif_commit_if_commit* \
+    xif_mem_if_mem_ready \
+    xif_mem_if_mem_resp* \
+    xif_mem_result_if_mem_result_valid \
+    xif_mem_result_if_mem_result* \
+    xif_result_if_result_ready \
+]
+
+# X-interface late data outputs
+set xif_output_ports_data_late [list \
+    xif_issue_if_issue_req_rs* \
+    xif_issue_if_issue_req_frs* \
+]
+
+set xif_output_ports_control_late [list \
+    xif_issue_if_issue_req_rs_valid* \
+    xif_issue_if_issue_req_frs_valid* \
+    xif_issue_if_issue_valid \
+    xif_commit_if_commit_valid \
+]
+
+# X-interface result data inputs
+set xif_input_ports_result_data [list \
+    xif_result_if_result_data* \
+    xif_result_if_result_valid \
+]
+
+# X-interface mem_if input ports
+set xif_mem_if_input_ports [list \
+    xif_mem_if_mem_valid \
+    xif_mem_if_mem_req* \
+]
+
+# X-interface mem_result rdata output ports
+set xif_mem_result_if_rdata [list \
+    xif_mem_result_if_mem_result_rdata* \
+]
+
+# X-interface mem_result rdata output ports
+set xif_mem_result_if_valid [list \
+    xif_mem_result_if_mem_result_valid \
+]
+
 ############## Defining default clock definitions ##############
 
 create_clock \
@@ -166,12 +245,12 @@ create_clock \
 
 set all_clock_ports $clock_ports
 
-set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports $fencei_input_ports]]]
-set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $irq_output_ports $fencei_output_ports]]]
+set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
+
+set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
 
 # IRQs
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
-set_output_delay $out_delay_irq         [get_ports $irq_output_ports       ] -clock clk_i
 
 # OBI input/output delays
 set_input_delay  $in_delay_instr_gnt    [ get_ports instr_gnt_i            ] -clock clk_i
@@ -203,9 +282,22 @@ set_output_delay $out_delay_data_prot     [ get_ports data_prot_o*         ] -cl
 set_input_delay  $in_delay_fencei       [get_ports $fencei_input_ports     ] -clock clk_i
 set_output_delay $out_delay_fencei      [get_ports $fencei_output_ports    ] -clock clk_i
 
+# X-interface
+set_input_delay  $in_delay_xif                       [get_ports $xif_input_ports                ] -clock clk_i
+set_input_delay  $in_delay_xif_result_data           [get_ports $xif_input_ports_result_data    ] -clock clk_i
+set_input_delay  $in_delay_xif_mem_if                [get_ports $xif_mem_if_input_ports         ] -clock clk_i
+set_output_delay $out_delay_xif_mem_result_rdata     [get_ports $xif_mem_result_if_rdata        ] -clock clk_i
+set_output_delay $out_delay_xif_mem_result_valid     [get_ports $xif_mem_result_if_valid        ] -clock clk_i
+
+set_output_delay $out_delay_xif                [get_ports $xif_output_ports               ] -clock clk_i
+set_output_delay $out_delay_xif_data_late      [get_ports $xif_output_ports_data_late     ] -clock clk_i
+set_output_delay $out_delay_xif_control_late   [get_ports $xif_output_ports_control_late  ] -clock clk_i
+
+
 # Misc
 set_input_delay  $in_delay_early        [get_ports $early_input_ports      ] -clock clk_i
 set_input_delay  $in_delay_other        [get_ports $all_other_input_ports  ] -clock clk_i
 
 set_output_delay $out_delay_other       [get_ports $all_other_output_ports ] -clock clk_i
 set_output_delay $out_delay_core_sleep  [ get_ports core_sleep_o           ] -clock clk_i
+

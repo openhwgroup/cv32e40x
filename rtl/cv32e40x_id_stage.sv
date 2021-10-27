@@ -429,6 +429,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   );
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
+  // Todo: Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
+  //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
+  //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
+  //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
   assign rf_re_o             = illegal_insn ? '1 : rf_re;
 
   // Register writeback is enabled either by the decoder or by the XIF
