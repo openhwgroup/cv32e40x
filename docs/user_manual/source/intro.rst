@@ -57,8 +57,8 @@ It follows these specifications:
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.2,
    https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.2.pdf
 
-.. [OPENHW-X] OpenHW eXtension Interface, version 0.1,
-   https://github.com/openhwgroup/core-v-xif
+.. [OPENHW-XIF] OpenHW eXtension Interface, revision fa77b73e,
+   https://docs.openhwgroup.org/projects/openhw-group-core-v-xif/
 
 .. [SYMBIOTIC-RVFI] Symbiotic EDA RISC-V Formal Interface
    https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md
