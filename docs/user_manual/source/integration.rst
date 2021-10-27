@@ -64,6 +64,14 @@ Instantiation Template
       .data_err_i               (),
       .data_exokay_i            (),
 
+      // eXtension interface
+      .xif_compressed_if        (),
+      .xif_issue_if             (),
+      .xif_commit_if            (),
+      .xif_mem_if               (),
+      .xif_mem_result_if        (),
+      .xif_result_if            (),
+
        // Interrupt interface
       .irq_i                    (),
 
@@ -107,11 +115,12 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_ID_WIDTH``               | int (1..32)    | 4             | Identification width for the eXtension interface.                  |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_MEM_WIDTH``              | int (32)       | 32            | Memory access width for loads/stores via the eXtension interface.  |
+| ``X_MEM_WIDTH``              | int (32 64,    | 32            | Memory access width for loads/stores via the eXtension interface.  |
+|                              | 128, 256)      |               |                                                                    |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_RFR_WIDTH``              | int (32)       | 32            | Register file read access width for the eXtension interface.       |
+| ``X_RFR_WIDTH``              | int (32, 64)   | 32            | Register file read access width for the eXtension interface.       |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_RFW_WIDTH``              | int (32)       | 32            | Register file write access width for the eXtension interface.      |
+| ``X_RFW_WIDTH``              | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_MISA``                   | logic [31:0]   | 0x0000_0000   | MISA extensions implemented on the eXtension interface,            |
 |                              |                |               | see :ref:`csr-misa`.                                               |

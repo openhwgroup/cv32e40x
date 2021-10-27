@@ -572,7 +572,6 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
   1'b0};                 // load    : not supported
 
 // eXtension Interface constant parameters
-parameter int X_DATAWIDTH = 32;  // Width of an integer register in bits. Must be equal to XLEN
 parameter int X_NUM_FRS   = 2;   // Number of floating-point register file read ports that can be used by the eXtension interface
 parameter int X_ID_WIDTH  = 3;   // Identification width for the eXtension interface
 
