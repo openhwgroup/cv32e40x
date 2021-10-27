@@ -891,6 +891,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
       // which ensures that only one offloaded instruction is committed at a time and
       // thus the coprocessor is forced to return results in order)
+      // TODO: wb_ready is a late signal and causes timing issues on commit_valid
+      //       Perhaps not factor in wb_ready_i and uncoditionally signal commit_valid, preventing
+      //       to commit the same instruction multiple times
+      // TODO: data_gnt_i currently fans into commit_valid below. Can this be removed?
       assign xif_commit_if.commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
       assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_id;
       assign xif_commit_if.commit.commit_kill = 1'b0; // TODO: when should the offloaded instr be killed?
