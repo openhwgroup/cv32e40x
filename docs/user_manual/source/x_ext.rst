@@ -156,7 +156,7 @@ timing budgets shown in :numref:`xif-timing-budgets`.
 All eXtension interface signals not explicitly covered in :numref:`xif-timing-budgets` should follow the generic timing budget that is
 outlined - 20% for the processor, 20% for the interconnect and 60% for the coprocessor.
 
-The cv32e40x github repository contains a constraints file as seen from the processor: `cv32e40x_core.sdc <https://github.com/openhwgroup/cv32e40x/blob/master/constraints/cv32e40x_core.sdc>`_
+The |corev| github repository contains a constraints file as seen from the processor: `cv32e40x_core.sdc <https://github.com/openhwgroup/cv32e40x/blob/master/constraints/cv32e40x_core.sdc>`_
 
 .. figure:: ../images/xif_timing_budget.png
    :name: xif-timing-budgets
