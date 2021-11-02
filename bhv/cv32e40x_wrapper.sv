@@ -194,11 +194,13 @@ module cv32e40x_wrapper
 
   bind cv32e40x_prefetcher:
     core_i.if_stage_i.prefetch_unit_i.prefetcher_i
-      cv32e40x_prefetcher_sva  
+      cv32e40x_prefetcher_sva
         prefetcher_sva (.*);
 
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
+      #(.A_EXT(A_EXT),
+        .PMA_NUM_REGIONS(PMA_NUM_REGIONS))
       core_sva (// probed cs_registers signals
                 .cs_registers_mie_q               (core_i.cs_registers_i.mie_q),
                 .cs_registers_mepc_n              (core_i.cs_registers_i.mepc_n),
@@ -225,14 +227,14 @@ bind cv32e40x_sleep_unit:
                     .ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                     .*);
 
-  bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva 
-    decoder_sva(.clk(core_i.id_stage_i.clk), 
+  bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva
+    decoder_sva(.clk(core_i.id_stage_i.clk),
                 .rst_n(core_i.id_stage_i.rst_n),
                 .*);
 
   // MPU assertions
-  bind cv32e40x_mpu: 
-    core_i.if_stage_i.mpu_i 
+  bind cv32e40x_mpu:
+    core_i.if_stage_i.mpu_i
     cv32e40x_mpu_sva
       #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .PMA_CFG(PMA_CFG),
@@ -243,6 +245,10 @@ bind cv32e40x_sleep_unit:
              .obi_addr   (core_i.instr_addr_o),
              .obi_req    (core_i.instr_req_o),
              .obi_gnt    (core_i.instr_gnt_i),
+             .write_buffer_state(write_buffer_state_e'('0)),
+             .write_buffer_valid_o('0),
+             .write_buffer_txn_bufferable('0),
+             .write_buffer_txn_cacheable('0),
              .*);
 
   bind cv32e40x_mpu:
@@ -257,12 +263,18 @@ bind cv32e40x_sleep_unit:
              .obi_addr   (core_i.data_addr_o),
              .obi_req    (core_i.data_req_o),
              .obi_gnt    (core_i.data_gnt_i),
+             .write_buffer_state(core_i.load_store_unit_i.write_buffer_i.state),
+             .write_buffer_valid_o(core_i.load_store_unit_i.write_buffer_i.valid_o),
+             .write_buffer_txn_bufferable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
+             .write_buffer_txn_cacheable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
              .*);
 
   bind cv32e40x_write_buffer:
     core_i.load_store_unit_i.write_buffer_i
     cv32e40x_write_buffer_sva
-      write_buffer_sva (.*);
+             #(.PMA_NUM_REGIONS(core_i.PMA_NUM_REGIONS),
+               .PMA_CFG(core_i.PMA_CFG))
+      write_buffer_sva(.*);
 
   bind cv32e40x_rvfi:
     rvfi_i
@@ -272,9 +284,9 @@ bind cv32e40x_sleep_unit:
                .ctrl_fsm_debug_cause(core_i.ctrl_fsm.debug_cause),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .*);
-  
+
 `endif //  `ifndef COREV_ASSERT_OFF
-  
+
     cv32e40x_core_log
      #(
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
@@ -282,7 +294,7 @@ bind cv32e40x_sleep_unit:
           .clk_i              ( core_i.id_stage_i.clk              ),
           .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
           .hart_id_i          ( core_i.hart_id_i                   )
-          
+
       );
 
     cv32e40x_rvfi
