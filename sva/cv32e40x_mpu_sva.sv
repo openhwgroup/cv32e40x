@@ -224,7 +224,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   generate
     if (bufferable_in_config() && !IS_INSTR_SIDE) begin
     a_pma_expect_bufferable :
-      assert property (@(posedge clk) disable iff (!rst_n) bus_trans_bufferable |-> !load_access && pma_expected_cfg.bufferable)
+      assert property (@(posedge clk) disable iff (!rst_n) bus_trans_bufferable |-> !load_access && !atomic_access_i && pma_expected_cfg.bufferable)
         else `uvm_error("mpu", "expected different bufferable flag")
     end else begin
     a_pma_no_expect_bufferable :
