@@ -259,7 +259,7 @@ typedef enum logic[11:0] {
   CSR_TDATA3         = 12'h7A3,
   CSR_TINFO          = 12'h7A4,
   CSR_MCONTEXT       = 12'h7A8,
-  CSR_SCONTEXT       = 12'h7AA,
+  CSR_MSCONTEXT      = 12'h7AA,
 
   // Debug/trace
   CSR_DCSR           = 12'h7B0,

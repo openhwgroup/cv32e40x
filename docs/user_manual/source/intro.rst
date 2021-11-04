@@ -39,8 +39,8 @@ It follows these specifications:
 .. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20210915-Public-Review-draft (September 16, 2021),
    https://github.com/riscv/riscv-isa-manual/releases/download/riscv-privileged-20210915-public-review/riscv-privileged-20210915-public-review.pdf
 
-.. [RISC-V-DEBUG] RISC-V External Debug Support, version 0.13.2,
-   https://content.riscv.org/wp-content/uploads/2019/03/riscv-debug-release.pdf
+.. [RISC-V-DEBUG] RISC-V External Debug Support, version 1.0.0, 2021-10-07:,
+   https://github.com/riscv/riscv-debug-spec/blob/master/riscv-debug-stable.pdf
 
 .. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28:,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
