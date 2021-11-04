@@ -17,7 +17,7 @@ The following list shows the simplified overview of events that occur in the cor
 Debug Mode can be entered by one of the following conditions:
 
  - External debug event using the debug_req_i signal
- - Trigger Module match event
+ - Trigger Module match event with TDATA1.action set to 1
  - ebreak instruction when not in Debug Mode and when DCSR.EBREAKM == 1 (see :ref:`ebreak_behavior` below)
 
 A user wishing to perform an abstract access, whereby the user can observe or control a core’s GPR or CSR register from the hart, is done by invoking debug control code to move values to and from internal registers to an externally addressable Debug Module (DM). Using this execution-based debug allows for the reduction of the overall number of debug interface signals.
@@ -30,10 +30,12 @@ A user wishing to perform an abstract access, whereby the user can observe or co
    A supported open source implementation of these building blocks can be found in the `RISC-V Debug Support for PULP Cores IP block <https://github.com/pulp-platform/riscv-dbg/>`_.
 
 
-The |corev| also supports a Trigger Module to enable entry into Debug Mode on a trigger event with the following features:
+The |corev| also supports a Trigger Module to enable entry into Debug Mode, or cause a breakpoint exception on a trigger event with the following features:
 
- - Number of trigger register(s) : 1
- - Supported trigger types: instruction address match (Match Control)
+ - Number of trigger register(s) : Parametrizable 0-4 triggers using parameter ``DBG_NUM_TRIGGERS``.
+ - Supported trigger types: instruction address match (Match Control) and exception trigger.
+
+A trigger match will cause debug entry if TDATA1.action is 1, and breakpoint exception if TDATA1.action is 0.
 
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
 
@@ -79,10 +81,12 @@ Core Debug Registers
 
 |corev| implements four core debug registers, namely :ref:`csr-dcsr`, :ref:`csr-dpc`, and two debug scratch registers. Access to these registers in non Debug Mode results in an illegal instruction.
 
-Several trigger registers are required to adhere to specification. The following are the most relevant: :ref:`csr-tselect`, :ref:`csr-tdata1`,  :ref:`csr-tdata2` and :ref:`csr-tinfo`
+Several trigger registers are included if ``DBG_NUM_TRIGGERS`` is set to a value greater than 0.
+The following are the most relevant: :ref:`csr-tselect`, :ref:`csr-tdata1`,  :ref:`csr-tdata2` and :ref:`csr-tinfo`
+If ``DBG_NUM_TRIGGERS`` is zero, access to the trigger registers will result in an illegal instruction exception.
 
-The TDATA1.DMODE is hardwired to a value of 1. In non Debug Mode,
-writes to Trigger registers are ignored and reads reflect CSR values.
+The TDATA1.DMODE controls write access permission to the currently selected triggers tdata registers. A value of 0 permits both machine mode and debug mode to write to the selected trigger tdata registers.
+The value 1 permits **only** debug mode to write to the currently selected trigger tdata registers. Reset value is 0.
 
 Debug state
 -----------
