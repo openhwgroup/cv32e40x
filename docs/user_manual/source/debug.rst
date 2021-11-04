@@ -85,8 +85,8 @@ Several trigger registers are included if ``DBG_NUM_TRIGGERS`` is set to a value
 The following are the most relevant: :ref:`csr-tselect`, :ref:`csr-tdata1`,  :ref:`csr-tdata2` and :ref:`csr-tinfo`
 If ``DBG_NUM_TRIGGERS`` is zero, access to the trigger registers will result in an illegal instruction exception.
 
-The TDATA1.DMODE controls write access permission to the trigger registers. A value of 0 permits machine mode to write to the trigger registers.
-The value 1 permits **only** debug mode to write to the trigger registers. Reset value is 0.
+The TDATA1.DMODE controls write access permission to the currently selected triggers tdata registers. A value of 0 permits both machine mode and debug mode to write to the selected trigger tdata registers.
+The value 1 permits **only** debug mode to write to the currently selected trigger tdata registers. Reset value is 0.
 
 Debug state
 -----------

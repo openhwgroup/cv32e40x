@@ -718,7 +718,6 @@ CSR Address: 0x7A0
 
 Reset Value: 0x0000_0000
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
 If a value larger than the parameter ``DBG_NUM_TRIGGERS`` is written, the register will contain the value DBG_NUM_TRIGGERS - 1.
 
 +-------------+-----------+----------------------------------------------------------------------------------------+
@@ -735,7 +734,7 @@ Trigger Data 1 (``tdata1``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x0000_0000 TBD
+Reset Value: 0x6000_0000 (TBD)
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**. The contents of the **data** field depends on the current
 value of the **type** field. See [RISC-V-DEBUG]_ for details regarding all trigger related CSRs.
@@ -759,7 +758,7 @@ Match Control Type 6 (``mcontrol6``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x6000_1040 (TBD)
+Reset Value: 0x6000_0000 (TBD)
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
 
@@ -817,7 +816,7 @@ Exception Trigger (``etrigger``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x5800_0000 (TBD)
+Reset Value: 0x5000_0000 (TBD)
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
 
@@ -825,7 +824,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
 +-------+-----------+----------------------------------------------------------------+
 | Bit#  | Mode      | Description                                                    |
 +=======+===========+================================================================+
-| 31:28 | RW (0x5)  | **type:** 5 = Exception trigger.                               |
+| 31:28 | RW        | **type:** 5 = Exception trigger.                               |
 +-------+-----------+----------------------------------------------------------------+
 | 27    | RW        | **dmode:** 1 = Only debug mode can write tdata registers       |
 +-------+-----------+----------------------------------------------------------------+
@@ -903,7 +902,7 @@ Detailed:
 +-------+----------+------------------------------------------------------------------+
 | Bit#  | Mode     | Description                                                      |
 +=======+==========+==================================================================+
-| 31:16 | RO (0x0) | Always returen 0                                                 |
+| 31:16 | RO (0x0) | Always return 0                                                  |
 +-------+----------+------------------------------------------------------------------+
 | 15:0  | RO (0x60)| **info**. Type 5 and 6 is supported.                             |
 +-------+----------+------------------------------------------------------------------+
@@ -930,7 +929,7 @@ Detailed:
 | 31:0  | RO (0x0) | Always return 0                                                  |
 +-------+----------+------------------------------------------------------------------+
 
-|corev| does not support the features requiring whis registers. Writes are ignored and reads will always return zero.
+|corev| does not support the features requiring this register. Writes are ignored and reads will always return zero.
 
 Machine Context Register (``mcontext``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -986,7 +985,7 @@ Detailed:
 +----------+-----------+-------------------------------------------------------------------------------------------------+
 |   Bit #  |   Mode    |   Description                                                                                   |
 +==========+===========+=================================================================================================+
-| 31:28    | RO (0x4)  | **xdebugver:** returns 4 - External debug support exists as it is described in this document.   |
+| 31:28    | RO (0x4)  | **xdebugver:** returns 4 - External debug support exists as it is described in [RISC-V-DEBUG]_. |
 +----------+-----------+-------------------------------------------------------------------------------------------------+
 | 27:18    | RO (0x0)  | Reserved                                                                                        |
 +----------+-----------+-------------------------------------------------------------------------------------------------+

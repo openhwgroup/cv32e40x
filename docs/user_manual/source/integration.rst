@@ -129,7 +129,7 @@ Parameters
 | ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                              |                |               | :ref:`performance-counters`                                        |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``DBG_NUM_TRIGGERS``         | int (0..4 )    | 1             | Number of debug triggerss, see :ref:`debug-support`                |
+| ``DBG_NUM_TRIGGERS``         | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`                 |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``PMA_NUM_REGIONS``          | int (0..16)    | 0             | Number of PMA regions                                              |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
