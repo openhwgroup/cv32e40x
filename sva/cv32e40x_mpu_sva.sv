@@ -195,7 +195,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
           else `uvm_error("mpu", "PMA region match wasn't lowest")
       a_pma_match_index :
         assert property (@(posedge clk) disable iff (!rst_n)
-                         is_pma_matched |-> ((0 <= pma_match_num) && (pma_match_num <= 16)))
+                         is_pma_matched |-> ((0 <= pma_match_num) && (pma_match_num < 16)))
           else `uvm_error("mpu", "illegal cfg index")
     end else begin
       a_pma_match_unreachable :
