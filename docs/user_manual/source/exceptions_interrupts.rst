@@ -54,7 +54,6 @@ which reflects an intended custom extension in the RISC-V Basic (a.k.a. CLINT) i
 After reset, all interrupts, except for NMIs, are disabled.
 To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
 
-NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
 
 If multiple interrupts are pending, they are handled in the fixed priority order defined by the RISC-V Privileged Specification, version 1.11 (see Machine Interrupt Registers, Section 3.1.9).
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
@@ -97,6 +96,27 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the
 
    Load bus fault and store bus fault are handled as imprecise non-maskable interrupts
    (as opposed to precise exceptions).
+
+Non Maskable Interrupts
+-----------------------
+
+NMIs update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
+
+An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
+NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
+This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at most two instructions may retire before the NMI is taken.
+This is guaranteed, as the core will stop issuing new instructions when any interrupt, including NMI, is pending. This will eventually cause an interruptible time slot.
+
+If an NMI becomes pending while in debug mode as described above, the NMI will be taken in the first available cycle after debug mode has been exited.
+
+In case of bufferable stores, the NMI is allowed to become visible an arbitrary time after the instruction retirement. As for the case with debugging, this can cause several instructions to retire
+before the NMI becomes visible to the core.
+
+
+When a data bus fault occurs, the first detected fault will be latched and used for ``mcause`` when the NMI is taken. Any new bus faults occuring while an NMI is pending will be discarded.
+When the NMI handler is entered, new bus faults may be latched.
+
+While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
 
 Exceptions
 ----------
