@@ -26,6 +26,10 @@
 module cv32e40x_write_buffer_sva
   import cv32e40x_pkg::*;
   import uvm_pkg::*;
+  #(
+     parameter int PMA_NUM_REGIONS = 0,
+     parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  )
   (input logic          clk,
    input logic          rst_n,
 
@@ -106,8 +110,27 @@ module cv32e40x_write_buffer_sva
       bufferable && (state === WBUF_FULL)  && (valid_i &&  ready_i) |=> (trans_q === $past(trans_i)) && (state === WBUF_FULL);
   endproperty : p_data_q_value
 
-  a_data_q_value: assert property (p_data_q_value)
-    else `uvm_error("write_buffer", "trans_q is should have been same as trans_i from previous edge");
+  function logic bufferable_in_config;
+    bufferable_in_config = 0;
+    foreach (PMA_CFG[i]) begin
+      if (PMA_CFG[i].bufferable) begin
+        bufferable_in_config = 1;
+      end
+    end
+  endfunction
+
+  // Data should not be buffered unless the PMA is configured, generate prevents error on unreachable
+  generate
+    if (PMA_NUM_REGIONS && bufferable_in_config()) begin
+      a_data_q_value: assert property (p_data_q_value)
+        else `uvm_error("write_buffer", "trans_q is should have been same as trans_i from previous edge");
+    end else begin
+      a_data_q_value_unreachable: assert property (@(posedge clk) disable iff (!rst_n)
+                                                   !bufferable)
+        else `uvm_error("write_buffer", "write buffer should be disabled if PMA is deconfigured")
+    end
+  endgenerate
+
 
   // When trans_q is changed,
   property p_data_q_condition;
@@ -138,17 +161,23 @@ module cv32e40x_write_buffer_sva
       bufferable && !ready_o |-> (state === WBUF_FULL) && !ready_i;
   endproperty : p_ready_o_zero
 
-  a_ready_o_zero: assert property (p_ready_o_zero)
-    else `uvm_error("write_buffer", "For bufferable transfers, when ready_o is 0, state should be FULL");
-
   // When state is FULL, data_o should come from trans_q
   property p_trans_o_full;
     @(posedge clk) disable iff (!rst_n)
       (state === WBUF_FULL) |-> (trans_o === trans_q);
   endproperty : p_trans_o_full
 
-  a_trans_o_full: assert property (p_trans_o_full)
-    else `uvm_error("write_buffer", "When state is FULL, trans_o should come from trans_q");
+
+  // Precondition will never be met unless PMA is enabled (i.e. no bufferable transactions possible otherwise)
+  generate
+    if (PMA_NUM_REGIONS && bufferable_in_config()) begin
+      a_trans_o_full: assert property (p_trans_o_full)
+        else `uvm_error("write_buffer", "When state is FULL, trans_o should come from trans_q");
+
+      a_ready_o_zero: assert property (p_ready_o_zero)
+        else `uvm_error("write_buffer", "For bufferable transfers, when ready_o is 0, state should be FULL");
+    end
+  endgenerate
 
   // When state is EMPTY, trans_o should come from trans_i
   property p_trans_o_empty;

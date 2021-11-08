@@ -25,6 +25,10 @@
 module cv32e40x_core_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+  #(
+    parameter bit A_EXT = 0,
+    parameter int PMA_NUM_REGIONS = 0
+  )
   (
   input logic        clk,
   input logic        rst_ni,
@@ -41,7 +45,7 @@ module cv32e40x_core_sva
   input ex_wb_pipe_t ex_wb_pipe,
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
-  
+
   // probed OBI signals
   input logic [1:0]  instr_memtype_o,
   input logic [1:0]  data_memtype_o,
@@ -135,21 +139,21 @@ always_ff @(posedge clk , negedge rst_ni)
         first_ebrk_found   <= 1'b1;
         expected_ebrk_mepc <= ex_wb_pipe.pc;
       end
-      
+
       if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
          !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           ex_wb_pipe.instr_valid && ex_wb_pipe.instr.bus_resp.err && !ctrl_debug_mode_n ) begin
         first_instr_err_found   <= 1'b1;
         expected_instr_err_mepc <= ex_wb_pipe.pc;
       end
-      
+
       if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
          !(ctrl_fsm.exc_pc_mux == EXC_PC_NMI) &&
           (ex_wb_pipe.instr.mpu_status != MPU_OK) && !ctrl_debug_mode_n) begin
         first_instr_mpuerr_found   <= 1'b1;
         expected_instr_mpuerr_mepc <= ex_wb_pipe.pc;
       end
-      
+
     end
   end
 
@@ -228,7 +232,7 @@ always_ff @(posedge clk , negedge rst_ni)
       (first_ebrk_found && first_cause_ebrk_found) |=> (expected_ebrk_mepc == actual_ebrk_mepc);
   endproperty
 
-      
+
   // Check that mepc is updated with PC of instr_err instruction
   property p_instr_err_mepc;
     @(posedge clk) disable iff (!rst_ni)
@@ -243,16 +247,20 @@ always_ff @(posedge clk , negedge rst_ni)
       (first_instr_mpuerr_found && first_cause_instr_mpuerr_found) |=> (expected_instr_mpuerr_mepc == actual_instr_mpuerr_mepc);
   endproperty
 
-  a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
+  // No mpu errors will occur if the PMA is deconfigured
+  generate
+    if (PMA_NUM_REGIONS) begin
+      a_instr_mpuerr_mepc : assert property(p_instr_mpuerr_mepc) else `uvm_error("core", "Assertion a_instr_mpuerr_mepc failed")
+    end
+  endgenerate
 
-  
   // For checking single step, ID stage is used as it contains a 'multi_cycle_id_stall' signal.
   // This makes it easy to count misaligned LSU ins as one instruction instead of two.
   logic inst_taken;
   assign inst_taken = id_stage_id_valid && ex_ready && !id_stage_multi_cycle_id_stall;
 
   // Support for single step assertion
-  // In case of single step + taken interrupt, the first instruction 
+  // In case of single step + taken interrupt, the first instruction
   // of the interrupt handler must be fetched and passed down the pipeline.
   // In that case ID stage will issue two instructions in M-mode instead of one.
   logic interrupt_taken;
@@ -269,8 +277,8 @@ always_ff @(posedge clk , negedge rst_ni)
         end
       end
     end
-  
-  
+
+
   // Single step without interrupts
   // Should issue exactly one instruction from ID before entering debug_mode
   a_single_step_no_irq :
@@ -309,11 +317,22 @@ always_ff @(posedge clk , negedge rst_ni)
                      (data_req_o && !data_we_o |-> !data_memtype_o[0]))
       else `uvm_error("core", "Load instruction classified as bufferable")
 
-  // Check that atomic operations are always non-bufferable
-  a_atomic_non_bufferable :
-    assert property (@(posedge clk) disable iff (!rst_ni)
-                     (data_req_o && |data_atop_o |-> !data_memtype_o[0]))
-      else `uvm_error("core", "Atomic operation classified as bufferable")
-    
+
+  generate
+    if (!A_EXT) begin
+      a_atomic_disabled_never_atop :
+        assert property (@(posedge clk) disable iff (!rst_ni)
+                         (data_atop_o != 6'b0))
+          else `uvm_error("core", "Atomic operations should never occur without A-extension enabled")
+    end
+    else begin
+      // Check that atomic operations are always non-bufferable
+      a_atomic_non_bufferable :
+        assert property (@(posedge clk) disable iff (!rst_ni)
+                         (data_req_o && |data_atop_o |-> !data_memtype_o[0]))
+          else `uvm_error("core", "Atomic operation classified as bufferable")
+    end
+  endgenerate
+
 endmodule // cv32e40x_core_sva
 
