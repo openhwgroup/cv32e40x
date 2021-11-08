@@ -100,14 +100,14 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the
 Non Maskable Interrupts
 -----------------------
 
-NMI's update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted Load or Store.
+NMIs update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
 
-An NMI will occur when a Load or Store instruction experiences a bus fault. The NMI is imprecise, meaning that it will occur **after** the instruction that caused it retires.
+An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
 NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
-This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at max two instructions may retire before the NMI is taken.
+This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at most two instructions may retire before the NMI is taken.
 This is guaranteed, as the core will stop issuing new instructions when any interrupt, including NMI, is pending. This will eventually cause an interruptible time slot.
 
-If an NMI becomes pending while in debug mode as described above, the NMI will be taken in the first available cycle after debug mode has been exitted.
+If an NMI becomes pending while in debug mode as described above, the NMI will be taken in the first available cycle after debug mode has been exited.
 
 In case of bufferable stores, the NMI is allowed to become visible an arbitrary time after the instruction retirement. As for the case with debugging, this can cause several instructions to retire
 before the NMI becomes visible to the core.
