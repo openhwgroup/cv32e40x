@@ -288,13 +288,15 @@ always_ff @(posedge clk , negedge rst_ni)
                      |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_no_irq failed")
 
-  // Single step with interrupt taken may issue up to two instructions
-  // before entering debug mode
+  // Interrupt taken during single stepping.
+  // If this happens, no intstructions should retire until the core is in debug mode.
+  // irq_ack is asserted during FUNCTIONAL state. debug_mode_n will be set during
+  // DEBUG_TAKEN one cycle later
   a_single_step_with_irq :
     assert property (@(posedge clk) disable iff (!rst_ni)
-                      (inst_taken && dcsr.step && !ctrl_fsm.debug_mode && interrupt_taken) [*1:2]
-                      ##1 inst_taken [->1]
-                      |-> (ctrl_fsm.debug_mode && dcsr.step))
+                      (dcsr.step && !ctrl_fsm.debug_mode && irq_ack)
+                      |->
+                      !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")
 
   // Check that only a single instruction can retire during single step

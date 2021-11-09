@@ -168,6 +168,7 @@ module cv32e40x_controller_fsm_sva
     else `uvm_error("controller", "LSU instruction follows WFI")
 
   // Check that no instructions are valid in ID or EX when a single step is taken
+  // In case of interrupt during step, the instruction being stepped could be in any stage, and will get killed.
   // Exception if first phase of a misaligned LSU gets an MPU error, then 
   // the controller will kill the pipeline and jump to debug with dpc set to exception handler,
   // while id_ex_pipe may still contain the valid last phase of the misaligned LSU
@@ -176,7 +177,8 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
             (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN) &&
             (lsu_mpu_status_wb_i == MPU_OK))
-            |-> (!id_ex_pipe_i.instr_valid && !if_id_pipe_i.instr_valid))
+            |-> ((!id_ex_pipe_i.instr_valid && !if_id_pipe_i.instr_valid) ||
+                (ctrl_fsm_o.irq_ack && ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_wb)))
       else `uvm_error("controller", "ID and EX not empty when when single step is taken")
 
   // Check trigger match never happens during debug_mode
