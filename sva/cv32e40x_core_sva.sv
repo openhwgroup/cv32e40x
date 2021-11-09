@@ -324,7 +324,7 @@ always_ff @(posedge clk , negedge rst_ni)
     if (!A_EXT) begin
       a_atomic_disabled_never_atop :
         assert property (@(posedge clk) disable iff (!rst_ni)
-                         (data_atop_o != 6'b0))
+                         (data_atop_o == 6'b0))
           else `uvm_error("core", "Atomic operations should never occur without A-extension enabled")
     end
     else begin

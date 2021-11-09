@@ -245,7 +245,7 @@ bind cv32e40x_sleep_unit:
              .obi_addr   (core_i.instr_addr_o),
              .obi_req    (core_i.instr_req_o),
              .obi_gnt    (core_i.instr_gnt_i),
-             .write_buffer_state(write_buffer_state_e'('0)),
+             .write_buffer_state(cv32e40x_pkg::WBUF_EMPTY),
              .write_buffer_valid_o('0),
              .write_buffer_txn_bufferable('0),
              .write_buffer_txn_cacheable('0),
