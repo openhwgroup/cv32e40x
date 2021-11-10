@@ -436,6 +436,7 @@ module cv32e40x_rvfi
   logic         is_dret_wb;
   logic         exception_in_wb;
   logic         interrupt_in_if;
+  logic         nmi_in_if;
 
   logic [6:0]   insn_opcode;
   logic [4:0]   insn_rd;
@@ -457,7 +458,8 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) &&  (exc_pc_mux_i == EXC_PC_IRQ);
+  assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_IRQ);
+  assign nmi_in_if         = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_NMI);
   assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
   assign exception_in_wb   = (pc_mux_i == PC_EXCEPTION) && ((exc_pc_mux_i == EXC_PC_EXCEPTION) ||
                                                             (exc_pc_mux_i == EXC_PC_DBE));
@@ -553,7 +555,7 @@ module cv32e40x_rvfi
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
         // The in trap signal is set for the first instruction of interrupt- and exception handlers (not debug handler)
-        if (interrupt_in_if || exception_in_wb) begin
+        if (interrupt_in_if || nmi_in_if || exception_in_wb) begin
           in_trap[STAGE_IF] <= 1'b1;
         end
       end
@@ -825,7 +827,8 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.scontext           = '0;
 
   // Debug / Trace
-  assign rvfi_csr_rdata_d.dcsr               = csr_dcsr_q_i;
+  assign ex_csr_rdata_d.nmip                 = csr_dcsr_q_i[3]; // dcsr.nmip is autonomous. Propagate read value from EX stage
+  assign rvfi_csr_rdata_d.dcsr               = {csr_dcsr_q_i[31:4], ex_csr_rdata.nmip, csr_dcsr_q_i[2:0]};
   assign rvfi_csr_wdata_d.dcsr               = csr_dcsr_n_i;
   assign rvfi_csr_wmask_d.dcsr               = csr_dcsr_we_i ? '1 : '0;
 

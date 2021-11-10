@@ -405,7 +405,7 @@ bind cv32e40x_sleep_unit:
          .csr_tinfo_q_i            ( {16'h0, core_i.cs_registers_i.tinfo_types}                           ),
          .csr_tinfo_we_i           ( core_i.cs_registers_i.csr_we_int &&
                                      (core_i.cs_registers_i.csr_waddr == CSR_TINFO)                       ),
-         .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_q                                         ),
+         .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_rdata                                     ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
          .csr_debug_csr_save_i     ( core_i.cs_registers_i.ctrl_fsm_i.debug_csr_save                      ),
