@@ -31,6 +31,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_controller_bypass import cv32e40x_pkg::*;
+  #(
+      parameter int unsigned REGFILE_NUM_READ_PORTS = 2
+  )
   (
   // From decoder
   input  logic [1:0]  ctrl_transfer_insn_raw_i,          // decoded control transfer instruction. Not gated with deassert

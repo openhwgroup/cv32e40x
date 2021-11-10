@@ -27,9 +27,9 @@
 
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
-  parameter bit A_EXT        = 0,
-  parameter b_ext_e B_EXT    = NONE,
-  parameter DEBUG_TRIGGER_EN = 1
+  parameter bit          A_EXT                  = 0,
+  parameter b_ext_e      B_EXT                  = NONE,
+  parameter              DEBUG_TRIGGER_EN       = 1
 )
 (
   // singals running to/from controller
@@ -71,7 +71,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // Register file related signals
   output logic        rf_we_o,                  // Write enable for register file
   output logic        rf_we_raw_o,              // Write enable for register file without deassert
-  output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
+  output logic [1:0]  rf_re_o,
 
   // CSR
   output logic        csr_en_o,                 // enable access to CSR

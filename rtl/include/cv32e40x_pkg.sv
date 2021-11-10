@@ -585,7 +585,6 @@ parameter int X_ID_WIDTH  = 3;   // Identification width for the eXtension inter
 ///////////////////////////////////////////////
 
 // Register file read/write ports
-parameter REGFILE_NUM_READ_PORTS  = 2;
 parameter REGFILE_NUM_WRITE_PORTS = 1;
 
 // Address width of register file
@@ -698,7 +697,7 @@ typedef struct packed {
   logic [1:0]                        mul_signed_mode;
   logic                              div_en;
   div_opcode_e                       div_operator;
-  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
+  logic [1:0]                        rf_re; // Core internals will never use more than two read ports.
   logic                              rf_we;
   logic                              csr_en;
   csr_opcode_e                       csr_op;
