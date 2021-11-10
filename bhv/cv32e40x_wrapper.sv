@@ -272,8 +272,8 @@ bind cv32e40x_sleep_unit:
   bind cv32e40x_write_buffer:
     core_i.load_store_unit_i.write_buffer_i
     cv32e40x_write_buffer_sva
-             #(.PMA_NUM_REGIONS(core_i.PMA_NUM_REGIONS),
-               .PMA_CFG(core_i.PMA_CFG))
+             #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+               .PMA_CFG(PMA_CFG))
       write_buffer_sva(.*);
 
   bind cv32e40x_rvfi:
