@@ -98,7 +98,7 @@ Interrupts are seen by rvfi as happening between instructions. This means that n
 
 
 The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
-The signal is not set for debug traps unless a debug entry happens in the fist instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
+The signal is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
@@ -107,7 +107,7 @@ The signal is not set for debug traps unless a debug entry happens in the fist i
   Scenario                                        rvfi_trap  rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
   =============================================== =========  =========  =============  ==========  =================
   Synchronous trap                                X          1          0x0            0           X
-  Interrupt (includes NMAs from bus errors)       X          1          0x0            1           X
+  Interrupt (includes NMIs from bus errors)       X          1          0x0            1           X
   Debug entry due to EBREAK (from non-debug mode) X          0          0x1            X           0x1
   Debug entry due to EBREAK (from debug mode)     X          0          0x1            X           X
   Debug entry due to trigger match                X          0          0x2            X           0x2
