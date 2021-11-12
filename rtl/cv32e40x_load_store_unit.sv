@@ -52,7 +52,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Stage 1 outputs (WB)
   output logic [31:0] lsu_addr_1_o,
-  output logic        lsu_err_1_o,
+  output logic        lsu_err_1_o,           
   output logic [31:0] lsu_rdata_1_o,            // LSU read data
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
 
@@ -84,11 +84,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [31:0]  resp_rdata;
   logic         resp_err;               // Unused for now
   data_resp_t   resp;
-
+  
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
   logic          buffer_trans_valid;
   logic          buffer_trans_ready;
   obi_data_req_t buffer_trans;
+
+  logic          filter_trans_valid;
+  logic          filter_trans_ready;
+  obi_data_req_t filter_trans;
+  logic          filter_resp_valid;
 
   // Transaction request (from cv32e40x_write_buffer to cv32e40x_data_obi_interface)
   logic          bus_trans_valid;
@@ -98,7 +103,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction response (from cv32e40x_data_obi_interface to cv32e40x_mpu)
   logic           bus_resp_valid;
   obi_data_resp_t bus_resp;
-
+  
   // Counter to count maximum number of outstanding transactions
   logic [1:0]   cnt_q;                  // Transaction counter
   logic [1:0]   next_cnt;               // Next value for cnt_q
@@ -125,6 +130,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         split_q;                 // high if we are currently performing the second address phase of a split misaligned load/store
   logic         misaligned_halfword;     // high if a halfword is not naturally aligned but no split is needed
   logic         misaligned_access;       // Access is not naturally aligned
+
+  logic         resp_filter_busy;        // Response filter busy
 
   logic [31:0]  rdata_q;
 
@@ -424,7 +431,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                                           id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
-  assign busy_o = (cnt_q != 2'b00) || trans_valid;
+  assign busy_o = resp_filter_busy || trans_valid;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -458,14 +465,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
 
   // LSU EX stage readyness requires two criteria to be met:
-  //
+  // 
   // - A data request has been forwarded/accepted (trans_valid && trans_ready)
   // - The LSU WB stage is available such that EX and WB can be updated in lock step
   //
   // Default (if there is not even a data request) LSU EX is signaled to be ready, else
   // if there are no outstanding transactions the EX stage is ready again once the transaction
   // request is accepted (at which time this load/store will move to the WB stage), else
-  // in case there is already at least one outstanding transaction (so WB is full) the EX
+  // in case there is already at least one outstanding transaction (so WB is full) the EX 
   // and WB stage can only signal readiness in lock step (so resp_valid is used as well).
 
   // todo:AB lsu_en_gated should maybe be replaced by valid_0_i
@@ -486,8 +493,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // otherwise we may let a new instruction into EX, overwriting second phase of split access..
   assign ready_0_o = done_0 && !lsu_split_0_o;
 
-
-
+  
   // Export mpu status to WB stage/controller
   assign lsu_mpu_status_1_o = resp.mpu_status;
 
@@ -496,11 +502,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
 
   //////////////////////////////////////////////////////////////////////////////
-  // Counter (cnt_q, next_cnt) to count number of outstanding OBI transactions
+  // Counter (cnt_q, next_cnt) to count number of outstanding OBI transactions 
   // (maximum = DEPTH)
-  //
+  // 
   // Counter overflow is prevented by limiting the number of outstanding transactions
-  // to DEPTH. Counter underflow is prevented by the assumption that resp_valid = 1
+  // to DEPTH. Counter underflow is prevented by the assumption that resp_valid = 1 
    // will only occur in response to accepted transfer request (as per the OBI protocol).
   //////////////////////////////////////////////////////////////////////////////
 
@@ -547,7 +553,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Handle bus errors
   //////////////////////////////////////////////////////////////////////////////
 
-  // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
+  // Propagate last bus_trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to lsu_addr_1_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK:low If a store following a load with bus error has dependencies on the load result,
@@ -563,13 +569,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end else begin
       // Update for valid addresses if not blocked by controller
       if(!ctrl_fsm_i.block_data_addr && (trans_valid && trans_ready)) begin
-        lsu_addr_1_o <= trans.addr;
+        lsu_addr_1_o <= bus_trans.addr;
       end
     end
   end
 
-  // Validate bus_error on rvalid (WB stage)
-  assign lsu_err_1_o = resp_valid && resp_err; // todo:low this gating is a bit weird; all LSU WB stage outputs should only be used when resp_valid = 1
+  // Validate bus_error on rvalid from the bus (WB stage)
+  // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
+  assign lsu_err_1_o = bus_resp_valid && resp_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU
@@ -578,7 +585,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign trans.prot[0]   = 1'b1;  // Transfers from LSU are data transfers
   assign trans.prot[2:1] = PRIV_LVL_M; // Machine mode
   assign trans.memtype   = 2'b00; // memtype is assigned in the MPU, tie off.
-
+  
   cv32e40x_mpu
   #(
     .IF_STAGE           ( 0                    ),
@@ -603,10 +610,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_resp_valid_o    ( resp_valid         ),
     .core_resp_o          ( resp               ),
 
-    .bus_trans_valid_o    ( buffer_trans_valid ),
-    .bus_trans_ready_i    ( buffer_trans_ready ),
-    .bus_trans_o          ( buffer_trans       ),
-    .bus_resp_valid_i     ( bus_resp_valid     ),
+     .bus_trans_valid_o    ( filter_trans_valid ),
+     .bus_trans_ready_i    ( filter_trans_ready ),
+     .bus_trans_o          ( filter_trans       ),
+     .bus_resp_valid_i     ( filter_resp_valid  ),
     .bus_resp_i           ( bus_resp           )
   );
 
@@ -614,6 +621,26 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign resp_rdata = resp.bus_resp.rdata;
   assign resp_err   = resp.bus_resp.err;
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Response Filter
+  //////////////////////////////////////////////////////////////////////////////
+
+  cv32e40x_lsu_response_filter
+    response_filter_i
+      (.clk          ( clk                ),
+       .rst_n        ( rst_n              ),
+       .busy_o       ( resp_filter_busy   ),
+
+       .valid_i      ( filter_trans_valid ),
+       .ready_o      ( filter_trans_ready ),
+       .trans_i      ( filter_trans       ),
+       .resp_valid_o ( filter_resp_valid  ),
+
+       .valid_o      ( buffer_trans_valid ),
+       .ready_i      ( buffer_trans_ready ),
+       .trans_o      ( buffer_trans       ),
+       .resp_valid_i ( bus_resp_valid     )
+     );
 
   //////////////////////////////////////////////////////////////////////////////
   // Write Buffer

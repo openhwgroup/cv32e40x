@@ -58,6 +58,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        data_stall_wb_i,            // WB stalled by LSU
   input  logic        lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
+  input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -166,6 +167,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // Fencei flush handshake
     .fencei_flush_ack_i          ( fencei_flush_ack_i       ),
     .fencei_flush_req_o          ( fencei_flush_req_o       ),
+
+    .lsu_busy_i                  ( lsu_busy_i               ),
 
    // Data OBI interface monitor 
     .m_c_obi_data_if             ( m_c_obi_data_if          ),
