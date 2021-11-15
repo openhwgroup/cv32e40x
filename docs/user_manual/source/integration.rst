@@ -95,7 +95,8 @@ Parameters
 ----------
 
 .. note::
-   The non-default (i.e. non-zero) settings of ``FPU`` have not been verified yet.
+   All eXtension interface parameters (``X_EXT``, ``X_NUM_RS``, ``X_ID_WIDTH``, ``X_MEM_WIDTH``, ``X_RFR_WIDTH``, ``X_RFW_WIDTH`` and ``X_MISA``)
+   must be set with values matching the actual ``if_xif`` instance and the coprocessor/interconnect available outside of |corev|.
 
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | Name                         | Type/Range     | Default       | Description                                                        |
@@ -202,3 +203,15 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``core_sleep_o``        | 1                       | out | Core is sleeping, see :ref:`sleep_unit`.   |
 +-------------------------+-------------------------+-----+--------------------------------------------+
+| ``xif_compressed_if``   | eXtension compressed interface, see :ref:`x_compressed_if`                 |
++-------------------------+----------------------------------------------------------------------------+
+| ``xif_issue_if``        | eXtension issue interface, see :ref:`x_issue_if`                           |
++-------------------------+----------------------------------------------------------------------------+
+| ``xif_commit_if``       | eXtension commit interface, see :ref:`x_commit_if`                         |
++-------------------------+----------------------------------------------------------------------------+
+| ``xif_mem_if``          | eXtension memory interface, see :ref:`x_mem_if`                            |
++-------------------------+----------------------------------------------------------------------------+
+| ``xif_mem_result_if``   | eXtension memory result interface, see :ref:`x_mem_result_if`              |
++-------------------------+----------------------------------------------------------------------------+
+| ``xif_result_if``       | eXtension result interface, see :ref:`x_result_if`                         |
++-------------------------+----------------------------------------------------------------------------+

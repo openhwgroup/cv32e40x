@@ -32,6 +32,8 @@ The eXtension interface of complies to the [OPENHW-XIF]_ specification. The read
 interface protocol and semantics. Here we only list the top level interface pins to clarify the mapping of |corev|'s SystemVerilog interfaces
 to |corev| signals.
 
+.. _x_compressed_if:
+
 Compressed interface
 ~~~~~~~~~~~~~~~~~~~~
 :numref:`Compressed interface signals` describes the compressed interface signals.
@@ -51,6 +53,8 @@ Compressed interface
   +--------------------------------------------+---------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                           
   | ``xif_compressed_if.compressed_resp``      | x_compressed_resp_t | input           | Compressed response packet.                                                                                                  |                           
   +--------------------------------------------+---------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                           
+
+.. _x_issue_if:
 
 Issue interface
 ~~~~~~~~~~~~~~~
@@ -72,6 +76,8 @@ Issue interface
   | ``xif_issue_if.issue_resp``                | x_issue_resp_t  | input           | Issue response packet.                                                                                                       |                               
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
 
+.. _x_commit_if:
+
 Commit interface
 ~~~~~~~~~~~~~~~~
 :numref:`Commit interface signals` describes the commit interface signals.                                                                                                                                                       
@@ -89,6 +95,8 @@ Commit interface
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | ``xif_commit_if.commit``                   | x_commit_t      | output          | Commit packet.                                                                                                               |                               
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
+
+.. _x_mem_if:
 
 Memory (request/response) interface                                                                                                                                                                                              
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                                                                                                                                                              
@@ -111,6 +119,8 @@ Memory (request/response) interface
   | ``xif_mem_if.mem_resp``                    | x_mem_resp_t    | output          | Memory response packet. Response to memory request (e.g. PMA check response). Note that this is not the memory result.       |                               
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
 
+.. _x_mem_result_if:
+
 Memory result interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 :numref:`Memory result interface signals` describes the memory result interface signals.                                                                                                                                         
@@ -127,6 +137,8 @@ Memory result interface
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | ``xif_mem_result_if.mem_result``           | x_mem_result_t  | output          | Memory result packet.                                                                                                        |                               
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
+
+.. _x_result_if:
 
 Result interface
 ~~~~~~~~~~~~~~~~
@@ -146,6 +158,19 @@ Result interface
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | ``xif_result_if.result``                   | x_result_t      | input           | Result packet.                                                                                                               |                               
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
+
+Integration
+-----------
+
+When integrating the eXtension interface, all parameters used by both |corev|, the systemverilog interface and the coprocessor/interconnect must match.
+Parameters or localparams should be used at the hierarchy level above |corev| as shown in :numref:`xif-integration`.
+
+.. figure:: ../images/xif_integration.png
+   :name: xif-integration
+   :align: center
+   :alt:
+
+   eXtenstion interface integration
 
 Timing
 ------
