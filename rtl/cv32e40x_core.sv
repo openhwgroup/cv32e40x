@@ -328,6 +328,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .A_EXT               ( A_EXT                     ),
     .X_EXT               ( X_EXT                     ),
+    .X_ID_WIDTH          ( X_ID_WIDTH                ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS           ),
     .PMA_CFG             ( PMA_CFG                   )
   )

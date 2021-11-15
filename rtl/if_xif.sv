@@ -31,6 +31,8 @@
 interface if_xif import cv32e40x_pkg::*;
 #(
   parameter int          X_NUM_RS        =  2,  // Number of register file read ports that can be used by the eXtension interface
+  parameter int          X_NUM_FRS       =  2,  // Number of floating point register file read ports that can be used by the eXtension interface
+  parameter int          X_ID_WIDTH      =  4,  // Width of ID field.
   parameter int          X_MEM_WIDTH     =  32, // Memory access width for loads/stores via the eXtension interface
   parameter int          X_RFR_WIDTH     =  32, // Register file read access width for the eXtension interface
   parameter int          X_RFW_WIDTH     =  32, // Register file write access width for the eXtension interface

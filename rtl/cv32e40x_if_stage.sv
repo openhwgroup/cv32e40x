@@ -30,6 +30,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT           = 0,
   parameter bit          X_EXT           = 0,
+  parameter int          X_ID_WIDTH      = 4,
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
