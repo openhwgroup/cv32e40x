@@ -571,9 +571,6 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
   1'b0,                  // store   : not supported
   1'b0};                 // load    : not supported
 
-// eXtension Interface constant parameters
-parameter int X_NUM_FRS   = 2;   // Number of floating-point register file read ports that can be used by the eXtension interface
-parameter int X_ID_WIDTH  = 3;   // Identification width for the eXtension interface
 
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //
@@ -585,7 +582,6 @@ parameter int X_ID_WIDTH  = 3;   // Identification width for the eXtension inter
 ///////////////////////////////////////////////
 
 // Register file read/write ports
-parameter REGFILE_NUM_READ_PORTS  = 2;
 parameter REGFILE_NUM_WRITE_PORTS = 1;
 
 // Address width of register file
@@ -698,7 +694,7 @@ typedef struct packed {
   logic [1:0]                        mul_signed_mode;
   logic                              div_en;
   div_opcode_e                       div_operator;
-  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
+  logic [1:0]                        rf_re; // Core internals will never use more than two read ports.
   logic                              rf_we;
   logic                              csr_en;
   csr_opcode_e                       csr_op;
@@ -938,7 +934,7 @@ typedef struct packed {
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
   logic        trigger_match;
-  logic [X_ID_WIDTH-1:0] xif_id;  // ID of offloaded instruction
+  logic [31:0] xif_id;  // ID of offloaded instruction
 } if_id_pipe_t;
 
 // ID/EX pipeline
@@ -1000,7 +996,7 @@ typedef struct packed {
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
-  logic [X_ID_WIDTH-1:0] xif_id;  // ID of offloaded instruction
+  logic [31:0] xif_id;  // ID of offloaded instruction
 } id_ex_pipe_t;
 
 // EX/WB pipeline
@@ -1036,7 +1032,7 @@ typedef struct packed {
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
-  logic [X_ID_WIDTH-1:0] xif_id;  // ID of offloaded instruction
+  logic [31:0] xif_id;  // ID of offloaded instruction
 } ex_wb_pipe_t;
 
 // Performance counter events

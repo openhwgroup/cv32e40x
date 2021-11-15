@@ -25,6 +25,9 @@
 
 module cv32e40x_dbg_helper
   import cv32e40x_pkg::*;
+  #(
+    parameter int unsigned REGFILE_NUM_READ_PORTS = 2
+  )
   ( input logic [31:0]                       instr,
     input logic                              is_compressed,
     input logic [REGFILE_NUM_READ_PORTS-1:0] rf_re,

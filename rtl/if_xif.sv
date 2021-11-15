@@ -31,6 +31,7 @@
 interface if_xif import cv32e40x_pkg::*;
 #(
   parameter int          X_NUM_RS        =  2,  // Number of register file read ports that can be used by the eXtension interface
+  parameter int          X_ID_WIDTH      =  4,  // Width of ID field.
   parameter int          X_MEM_WIDTH     =  32, // Memory access width for loads/stores via the eXtension interface
   parameter int          X_RFR_WIDTH     =  32, // Register file read access width for the eXtension interface
   parameter int          X_RFW_WIDTH     =  32, // Register file write access width for the eXtension interface
@@ -57,8 +58,6 @@ interface if_xif import cv32e40x_pkg::*;
     logic [X_ID_WIDTH -1:0]                  id;        // Identification of the offloaded instruction
     logic [X_NUM_RS   -1:0][X_RFR_WIDTH-1:0] rs;        // Register file source operands for the offloaded instruction
     logic [X_NUM_RS   -1:0]                  rs_valid;  // Validity of the register file source operand(s)
-    logic [X_NUM_FRS  -1:0][FLEN       -1:0] frs;       // Floating-point register file source operands for the offloaded instruction
-    logic [X_NUM_FRS  -1:0]                  frs_valid; // Validity of the floating-point register file source operand(s)
   } x_issue_req_t;
 
   typedef struct packed {

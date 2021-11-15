@@ -48,6 +48,12 @@ module cv32e40x_wrapper
   parameter bit          A_EXT           = 0,
   parameter b_ext_e      B_EXT           = NONE,
   parameter bit          X_EXT           = 0,
+  parameter int          X_NUM_RS        =  2,
+  parameter int          X_ID_WIDTH      =  4,
+  parameter int          X_MEM_WIDTH     =  32,
+  parameter int          X_RFR_WIDTH     =  32,
+  parameter int          X_RFW_WIDTH     =  32,
+  parameter int          X_MISA          =  32'h00000000,
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -151,6 +157,7 @@ module cv32e40x_wrapper
     (
       .*
     );
+
 
   bind cv32e40x_id_stage:
     core_i.id_stage_i
@@ -457,6 +464,12 @@ bind cv32e40x_sleep_unit:
           .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
           .X_EXT                 ( X_EXT                 ),
+          .X_NUM_RS              ( X_NUM_RS              ),
+          .X_ID_WIDTH            ( X_ID_WIDTH            ),
+          .X_MEM_WIDTH           ( X_MEM_WIDTH           ),
+          .X_RFR_WIDTH           ( X_RFR_WIDTH           ),
+          .X_RFW_WIDTH           ( X_RFW_WIDTH           ),
+          .X_MISA                ( X_MISA                ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (.*);

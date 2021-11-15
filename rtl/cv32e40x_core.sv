@@ -32,10 +32,16 @@
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
-  parameter LIB                          =  0,
+  parameter         LIB                  =  0,
   parameter bit     A_EXT                =  0,
   parameter b_ext_e B_EXT                =  NONE,
   parameter bit     X_EXT                =  0,
+  parameter int     X_NUM_RS             =  2,
+  parameter int     X_ID_WIDTH           =  4,
+  parameter int     X_MEM_WIDTH          =  32,
+  parameter int     X_RFR_WIDTH          =  32,
+  parameter int     X_RFW_WIDTH          =  32,
+  parameter int     X_MISA               =  32'h00000000,
   parameter int          PMA_NUM_REGIONS =  0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -104,6 +110,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic        fetch_enable_i,
   output logic        core_sleep_o
 );
+
+  // Number of register file read ports
+  // Core will only use two, but X_EXT may mandate 2 or 3
+  localparam int unsigned REGFILE_NUM_READ_PORTS = X_EXT ? X_NUM_RS : 2;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
@@ -318,6 +328,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .A_EXT               ( A_EXT                     ),
     .X_EXT               ( X_EXT                     ),
+    .X_ID_WIDTH          ( X_ID_WIDTH                ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS           ),
     .PMA_CFG             ( PMA_CFG                   )
   )
@@ -387,7 +398,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .A_EXT                        ( A_EXT                     ),
     .B_EXT                        ( B_EXT                     ),
-    .X_EXT                        ( X_EXT                     )
+    .X_EXT                        ( X_EXT                     ),
+    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )
   id_stage_i
   (
@@ -664,7 +676,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////
   cv32e40x_controller
   #(
-    .X_EXT                          ( X_EXT                  )
+    .X_EXT                          ( X_EXT                  ),
+    .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS )
   )
   controller_i
   (
@@ -791,6 +804,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign regfile_wdata_wb[0] = rf_wdata_wb;
 
   cv32e40x_register_file_wrapper
+  #(
+    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
+  )
   register_file_wrapper_i
   (
     .clk                ( clk                ),

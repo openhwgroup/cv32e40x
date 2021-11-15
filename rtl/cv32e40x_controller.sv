@@ -31,7 +31,8 @@
 
 module cv32e40x_controller import cv32e40x_pkg::*;
 #(
-  parameter bit       X_EXT           = 0
+  parameter bit          X_EXT                  = 0,
+  parameter int unsigned REGFILE_NUM_READ_PORTS = 2
 )
 (
   input  logic        clk,                        // Gated clock
@@ -179,7 +180,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
 
   // Hazard/bypass/stall control instance
-  cv32e40x_controller_bypass bypass_i
+  cv32e40x_controller_bypass
+  #(
+    .REGFILE_NUM_READ_PORTS     ( REGFILE_NUM_READ_PORTS   )
+  )
+  bypass_i
   (
     // From controller_fsm
     .if_id_pipe_i               ( if_id_pipe_i             ),

@@ -32,10 +32,11 @@
 
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
-  parameter bit A_EXT        = 0,
-  parameter b_ext_e B_EXT    = NONE,
-  parameter bit     X_EXT    = 0,
-  parameter DEBUG_TRIGGER_EN = 1
+  parameter bit          A_EXT                  = 0,
+  parameter b_ext_e      B_EXT                  = NONE,
+  parameter bit          X_EXT                  = 0,
+  parameter              DEBUG_TRIGGER_EN       = 1,
+  parameter int unsigned REGFILE_NUM_READ_PORTS = 2
 )
 (
   input  logic        clk,                    // Gated clock
@@ -101,8 +102,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   localparam REG_S2_MSB = 24;
   localparam REG_S2_LSB = 20;
 
-  localparam REG_S4_MSB = 31;
-  localparam REG_S4_LSB = 27;
+  localparam REG_S3_MSB = 31;
+  localparam REG_S3_LSB = 27;
 
   localparam REG_D_MSB  = 11;
   localparam REG_D_LSB  = 7;
@@ -121,7 +122,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0] imm_b;           // contains the immediate for operand b
 
   // Register Read/Write Control
-  logic [REGFILE_NUM_READ_PORTS-1:0] rf_re;
+  logic [1:0]  rf_re;           // Decoder only supports rs1, rs2
   logic        rf_we;
   logic        rf_we_dec;
   logic        rf_we_raw;
@@ -208,7 +209,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign imm_u_type  = { instr[31:12], 12'b0 };
   assign imm_uj_type = { {12 {instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0 };
 
-  // immediate for CSR manipulatin (zero extended)
+  // immediate for CSR manipulation (zero extended)
   assign imm_z_type  = { 27'b0, instr[REG_S1_MSB:REG_S1_LSB] };
 
 
@@ -217,6 +218,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //---------------------------------------------------------------------------
   assign rf_raddr_o[0] = instr[REG_S1_MSB:REG_S1_LSB];
   assign rf_raddr_o[1] = instr[REG_S2_MSB:REG_S2_LSB];
+
+  // Assign rs3 address if Xif mandates three read ports
+  generate
+    if(REGFILE_NUM_READ_PORTS == 3) begin : gen_rs3_raddr
+      assign rf_raddr_o[2] = instr[REG_S3_MSB:REG_S3_LSB];
+    end
+  endgenerate
 
   //---------------------------------------------------------------------------
   // Destination register seclection
@@ -429,11 +437,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   );
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
+  // Non-offloaded instructions will use maximum two read ports (rf_re from decoder is two bits, rf_re_o may be two or three bits wide)
   // Todo: Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
   //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
   //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
   //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
-  assign rf_re_o             = illegal_insn ? '1 : rf_re;
+  assign rf_re_o             = illegal_insn ? '1 : REGFILE_NUM_READ_PORTS'(rf_re);
 
   // Register writeback is enabled either by the decoder or by the XIF
   assign rf_we               = rf_we_dec || xif_we;
@@ -670,8 +679,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
       end
 
-      assign xif_issue_if.issue_req.frs       = '{default: '0};
-      assign xif_issue_if.issue_req.frs_valid = '0;
 
       // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
       assign xif_waiting = xif_issue_if.issue_valid && !xif_issue_if.issue_ready && !xif_accepted_q && !xif_rejected_q;
@@ -694,10 +701,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_issue_if.issue_req.instr     = '0;
       assign xif_issue_if.issue_req.mode      = '0;
       assign xif_issue_if.issue_req.id        = '0;
-      assign xif_issue_if.issue_req.frs       = '0;
       assign xif_issue_if.issue_req.rs        = '0;
       assign xif_issue_if.issue_req.rs_valid  = '0;
-      assign xif_issue_if.issue_req.frs_valid = '0;
 
     end
   endgenerate
