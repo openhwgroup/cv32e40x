@@ -162,7 +162,7 @@ Result interface
 Integration
 -----------
 
-When integrating the eXtension interface, all parameters used by both |corev|, the systemverilog interface and the coprocessor/interconnect must match.
+When integrating the eXtension interface, all parameters used by both |corev|, the SystemVerilog interface and the coprocessor/interconnect must match.
 Parameters or localparams should be used at the hierarchy level above |corev| as shown in :numref:`xif-integration`.
 
 .. figure:: ../images/xif_integration.png

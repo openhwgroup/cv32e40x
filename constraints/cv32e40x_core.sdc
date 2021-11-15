@@ -201,12 +201,10 @@ set xif_output_ports [list \
 # X-interface late data outputs
 set xif_output_ports_data_late [list \
     xif_issue_if_issue_req_rs* \
-    xif_issue_if_issue_req_frs* \
 ]
 
 set xif_output_ports_control_late [list \
     xif_issue_if_issue_req_rs_valid* \
-    xif_issue_if_issue_req_frs_valid* \
     xif_issue_if_issue_valid \
     xif_commit_if_commit_valid \
 ]
