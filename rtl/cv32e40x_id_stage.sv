@@ -679,8 +679,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
       end
 
-      assign xif_issue_if.issue_req.frs       = '{default: '0};
-      assign xif_issue_if.issue_req.frs_valid = '0;
 
       // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
       assign xif_waiting = xif_issue_if.issue_valid && !xif_issue_if.issue_ready && !xif_accepted_q && !xif_rejected_q;
@@ -703,10 +701,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_issue_if.issue_req.instr     = '0;
       assign xif_issue_if.issue_req.mode      = '0;
       assign xif_issue_if.issue_req.id        = '0;
-      assign xif_issue_if.issue_req.frs       = '0;
       assign xif_issue_if.issue_req.rs        = '0;
       assign xif_issue_if.issue_req.rs_valid  = '0;
-      assign xif_issue_if.issue_req.frs_valid = '0;
 
     end
   endgenerate
