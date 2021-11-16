@@ -655,7 +655,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       end
 
       // attempt to offload every valid instruction that is considered illegal by the decoder
-      assign xif_issue_if.issue_valid     = instr_valid && illegal_insn && !xif_accepted_q && !xif_rejected_q;
+      // Also attempt to offload any CSR instruction. The validity of such instructions are only
+      // checked in the EX stage.
+      assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) && !xif_accepted_q && !xif_rejected_q;
 
       assign xif_issue_if.issue_req.instr = instr;
       assign xif_issue_if.issue_req.mode  = PRIV_LVL_M;

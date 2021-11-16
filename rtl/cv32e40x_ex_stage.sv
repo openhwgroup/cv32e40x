@@ -55,6 +55,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        branch_decision_o,
   output logic [31:0] branch_target_o,
 
+  // Output to controller
+  output logic        xif_csr_error_o,
+
   // LSU handshake interface
   input  logic        lsu_valid_i,
   output logic        lsu_ready_o,
@@ -114,6 +117,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
 
   assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
+
+  // If pipeline is handling a valid CSR AND the same instruction is accepted by the eXtension interface
+  // we need to convert the instruction to an illegal instruction.
+  assign xif_csr_error_o = id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
 
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
@@ -288,8 +295,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_valid <= 1'b1;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
+        // Also deassert if CSR was accepted both by eXtension if and pipeline
         ex_wb_pipe_o.rf_we       <= (csr_illegal_i     ||
-                                    lsu_split_i)       ? 1'b0 : id_ex_pipe_i.rf_we;
+                                    lsu_split_i        ||
+                                    xif_csr_error_o)      ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
 
         if (id_ex_pipe_i.rf_we) begin
@@ -316,7 +325,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_meta     <= instr_meta_n;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
-        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i;
+        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i || xif_csr_error_o;
 
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
@@ -327,7 +336,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface
-        ex_wb_pipe_o.xif_en         <= id_ex_pipe_i.xif_en;
+        ex_wb_pipe_o.xif_en         <= id_ex_pipe_i.xif_en && !xif_csr_error_o;
         ex_wb_pipe_o.xif_id         <= id_ex_pipe_i.xif_id;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
