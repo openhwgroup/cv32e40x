@@ -60,6 +60,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
+  input  logic        lsu_interruptible_i,        // LSU may be interrupted
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -154,6 +155,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wb_ready_i                  ( wb_ready_i               ),
     .wb_valid_i                  ( wb_valid_i               ),
 
+    .lsu_interruptible_i         ( lsu_interruptible_i      ),
     // Interrupt Controller Signals
     .irq_req_ctrl_i              ( irq_req_ctrl_i           ),
     .irq_id_ctrl_i               ( irq_id_ctrl_i            ),

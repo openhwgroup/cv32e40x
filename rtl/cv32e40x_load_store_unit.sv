@@ -46,6 +46,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Control outputs
   output logic        busy_o,
+  output logic        interruptible_o,
 
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,       // Misaligned access is split in two transactions (to controller)
@@ -141,6 +142,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Internally gated lsu_en
   logic         instr_valid;
   logic         lsu_en_gated;    // LSU enabled gated with all disqualifiers
+
+  logic         trans_valid_q;   // trans_valid got clocked without trans_ready
 
   assign instr_valid  = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
@@ -550,6 +553,25 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       cnt_q <= next_cnt;
     end
   end
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Check if LSU is interruptible
+  //////////////////////////////////////////////////////////////////////////////
+
+  always_ff @(posedge clk, negedge rst_n)
+  begin
+    if(rst_n == 1'b0) begin
+      trans_valid_q <= 1'b0;
+    end else begin
+      if(trans_valid && !ctrl_update) begin
+        trans_valid_q <= 1'b1;
+      end else if (ctrl_update) begin
+        trans_valid_q <= 1'b0;
+      end
+    end
+  end
+
+  assign interruptible_o = !trans_valid_q && (cnt_q == '0);
 
   //////////////////////////////////////////////////////////////////////////////
   // Handle bus errors
