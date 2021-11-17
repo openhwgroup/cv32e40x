@@ -25,6 +25,7 @@
   `include "cv32e40x_wb_stage_sva.sv"
   `include "cv32e40x_load_store_unit_sva.sv"
   `include "cv32e40x_write_buffer_sva.sv"
+  `include "cv32e40x_lsu_response_filter_sva.sv"
   `include "cv32e40x_mpu_sva.sv"
   `include "cv32e40x_mult_sva.sv"
   `include "cv32e40x_prefetcher_sva.sv"
@@ -268,6 +269,11 @@ bind cv32e40x_sleep_unit:
              .write_buffer_txn_bufferable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
              .write_buffer_txn_cacheable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
              .*);
+
+  bind cv32e40x_lsu_response_filter :
+    core_i.load_store_unit_i.response_filter_i
+    cv32e40x_lsu_response_filter_sva #(.DEPTH(DEPTH))
+      lsu_response_filter_sva (.*);
 
   bind cv32e40x_write_buffer:
     core_i.load_store_unit_i.write_buffer_i

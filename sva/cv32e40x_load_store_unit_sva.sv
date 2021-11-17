@@ -25,6 +25,7 @@ module cv32e40x_load_store_unit_sva
   (input logic       clk,
    input logic       rst_n,
    input logic [1:0] cnt_q,
+   input logic       busy_o,
    input logic       count_up,
    input logic       count_down,
    input ctrl_fsm_t  ctrl_fsm_i,
@@ -47,6 +48,11 @@ module cv32e40x_load_store_unit_sva
   a_no_transaction_count_overflow_1 :
     assert property(p_no_transaction_count_overflow_1)
       else `uvm_error("load_store_unit", "Assertion a_no_transaction_count_overflow_1 failed")
+
+  a_busy_when_lsu_outststanding :
+   assert property (@(posedge clk) disable iff (!rst_n)
+                    (cnt_q != 0) |-> busy_o )
+      else `uvm_error("load_store_unit", "Outstanding transfers but LSU busy signal not set")
 
     // Outstanding Transactions on OBI interface
 

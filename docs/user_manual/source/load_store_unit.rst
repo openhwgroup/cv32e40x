@@ -130,3 +130,17 @@ one ``data_rvalid_i`` will be signalled for each of them, in the order they were
   store access executed in USER MODE are first filtered by the PMP unit
   which can possibly generated exceptions. For the moment, the MPRV bit in
   MSTATUS as well as the LOCK mechanism in the PMP are not supported.
+
+
+Bufferable transfers
+--------------------
+
+ A bufferable transfer in |corev| is a write transfer originating from a store instruction where the write address is inside a bufferable region defined by the PMA.
+
+ The LSU has two submodules aimed at improving performance for bufferable transfers, the write buffer and response filter.
+
+ *Write Buffer*: The write buffer is a single entry buffer that can store the address phase signals of a bufferable transfer, return grant early and issue the transfer when the bus is ready. This improves performance when there are stalls on ``data_gnt_i``.
+
+ *Response Filter*: The response filter ensures that bufferable transfers receive rvalid early. This increases performance when there are stalls on ``data_rvalid_i``.
+
+
