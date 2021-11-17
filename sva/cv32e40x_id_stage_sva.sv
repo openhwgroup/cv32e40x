@@ -103,6 +103,7 @@ module cv32e40x_id_stage_sva
       endgenerate
 */
       // Check that illegal instruction has no other side effects
+      // TODO: Factor in that the eXtension interface may accept the instruction, and thus rf_we may still be 1
       property p_illegal_2;
         @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
                                                                          ecall_insn || wfi_insn || fencei_insn ||

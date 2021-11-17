@@ -286,12 +286,15 @@ module cv32e40x_controller_fsm_sva
   // flagged as killed on the eXtension interface
   a_duplicate_csr_kill:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i
+                  id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i && id_ex_pipe_i.instr_valid &&
+                  !ctrl_fsm_o.halt_ex
                   |-> xif_commit_kill)
     else `uvm_error("controller", "Duplicate CSR instruction not killed")
 
   // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline
   // causes an illegal instruction
+  // TODO: The checks for mpu_status and bus_resp.err below can be removed once the
+  //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
   a_duplicate_csr_illegal:
     assert property (@(posedge clk) disable iff (!rst_n)
                     ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&

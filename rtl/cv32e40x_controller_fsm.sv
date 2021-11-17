@@ -609,7 +609,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       SLEEP: begin
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-
+        // TODO: Check that below statement is true by checking SEC when halting all stages.
         ctrl_fsm_o.halt_wb   = 1'b1; // implicitly halts earlier stages
         if(ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;

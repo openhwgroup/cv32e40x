@@ -110,6 +110,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic           xif_ready;
   logic           xif_valid;
 
+  // Detect if we get an illegal CSR instruction
+  logic           csr_is_illegal;
+
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
@@ -119,9 +122,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
 
   // If pipeline is handling a valid CSR AND the same instruction is accepted by the eXtension interface
-  // we need to convert the instruction to an illegal instruction.
-  assign xif_csr_error_o = id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
+  // we need to convert the instruction to an illegal instruction and signal commit_kill to the eXtension interface.
+  // Using registered instr_valid, as gated instr_valid would not allow killing of offloaded instruction
+  // in case of halt_ex==1. We need to kill this duplicate regardless of halt state.
+  //  Currently, halt_ex is asserted in the cycle before debug entry, and if any performance counter is being read.
+  assign xif_csr_error_o = id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
 
+  // CSR instruction is illegal if core signals illegal and NOT offloaded, or if both core and xif accepted it.
+  assign csr_is_illegal = ((csr_illegal_i && !id_ex_pipe_i.xif_en) ||
+                           xif_csr_error_o) &&
+                           instr_valid;
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
   // signal needed for ex_valid to go high in such cases
@@ -296,9 +306,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
-        ex_wb_pipe_o.rf_we       <= (csr_illegal_i     ||
-                                    lsu_split_i        ||
-                                    xif_csr_error_o)      ? 1'b0 : id_ex_pipe_i.rf_we;
+        ex_wb_pipe_o.rf_we       <= (csr_is_illegal    ||
+                                    lsu_split_i)       ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
 
         if (id_ex_pipe_i.rf_we) begin
@@ -309,7 +318,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // Update signals for CSR access in WB
-        // deassert csr_en in case of illegal csr instruction
+        // deassert csr_en in case of an internal illegal csr instruction
+        // to avoid writing to CSRs inside the core.
         ex_wb_pipe_o.csr_en     <= csr_illegal_i ? 1'b0 : id_ex_pipe_i.csr_en;
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
@@ -325,7 +335,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_meta     <= instr_meta_n;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
-        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_illegal_i || xif_csr_error_o;
+        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
 
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
