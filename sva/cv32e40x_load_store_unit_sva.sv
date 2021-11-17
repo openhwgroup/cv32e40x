@@ -49,6 +49,11 @@ module cv32e40x_load_store_unit_sva
     assert property(p_no_transaction_count_overflow_1)
       else `uvm_error("load_store_unit", "Assertion a_no_transaction_count_overflow_1 failed")
 
+  a_no_cnt_underflow :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (cnt_q == 0) |=> (cnt_q == 0) || (cnt_q == 1))
+      else `uvm_error("load_store_unit", "Transfer counter underflow");
+
   a_busy_when_lsu_outststanding :
    assert property (@(posedge clk) disable iff (!rst_n)
                     (cnt_q != 0) |-> busy_o )
