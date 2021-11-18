@@ -132,15 +132,17 @@ one ``data_rvalid_i`` will be signalled for each of them, in the order they were
   MSTATUS as well as the LOCK mechanism in the PMP are not supported.
 
 
-Bufferable transfers
---------------------
+.. _write_buffer:
 
- A bufferable transfer in |corev| is a write transfer originating from a store instruction where the write address is inside a bufferable region defined by the PMA.
+Write buffer
+------------
 
- The LSU has two submodules aimed at improving performance for bufferable transfers, the write buffer and response filter.
+|corev| contains a a single entry write buffer that is used for bufferable transfers. A bufferable transfer is a write transfer originating from a store instruction, where the write address is inside a bufferable region defined by the PMA (:ref:`pma`).
 
- *Write Buffer*: The write buffer is a single entry buffer that can store the address phase signals of a bufferable transfer, return grant early and issue the transfer when the bus is ready. This improves performance when there are stalls on ``data_gnt_i``.
+The write buffer (when not full) allows |corev| to proceed executing instructions without having to wait for ``data_gnt_i`` = 1 and ``data_rvalid_i`` = 1 for these bufferable transers.
 
- *Response Filter*: The response filter ensures that bufferable transfers receive rvalid early. This increases performance when there are stalls on ``data_rvalid_i``.
+.. note::
 
-
+   On the OBI interface ``data_gnt_i`` = 1 and ``data_rvalid_i`` = 1 still need to be signaled for every transfer (as specified in [OPENHW-OBI]_), also for bufferable transfers.
+ 
+Bus transfers will occur in program order, no matter if transfers are bufferable and non-bufferable.

@@ -166,8 +166,7 @@ The ``rvfi_halt`` signal was meant for liveness properties of cores that can hal
 
 **Mode Signal**
 
-The ``rvfi_mode`` signal shows which privilege level the instruction was executed with. For load and store instructions the privilege level will be set by mstatus.mpp when mstatus.mprv=1.
-
+The ``rvfi_mode`` signal shows the *current* privilege mode as opposed to the *effective* privilege mode of the instruction. I.e. for load and store instructions the reported privilege level will therefore not depend on ``mstatus.mpp`` and ``mstatus.mprv``.
 
 Trace output file
 -----------------
