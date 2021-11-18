@@ -37,7 +37,8 @@ module cv32e40x_ex_stage_sva
 
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_o,
-  input logic           lsu_split_i
+  input logic           lsu_split_i,
+  input logic           csr_illegal_i
 );
 
   // Halt implies not ready and not valid
@@ -53,6 +54,42 @@ module cv32e40x_ex_stage_sva
                       (ctrl_fsm_i.kill_ex)
                       |-> (ex_ready_o && !ex_valid_o))
       else `uvm_error("ex_stage", "Kill should imply ready and not valid")
+
+  // csr_en suppressed for xif accepted and pipeline accepted CSR
+  // todo: Add similar check for rf_we
+  a_suppress_csr_xif_legal_pipeline_legal :
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i) &&
+                    (id_ex_pipe_i.instr_valid && ex_valid_o && wb_ready_i)
+                    |=> !ex_wb_pipe_o.csr_en)
+    else `uvm_error("ex_stage", "csr_en not suppressed after eXtension interface and pipeline accepted CSR")
+
+  // csr_en suppressed for xif accepted and pipeline rejected CSR
+  // todo: Add similar check for rf_we
+  a_suppress_csr_xif_legal_pipeline_illegal :
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && csr_illegal_i) &&
+                    (id_ex_pipe_i.instr_valid && ex_valid_o && wb_ready_i)
+                    |=> !ex_wb_pipe_o.csr_en)
+    else `uvm_error("ex_stage", "csr_en not suppressed after eXtension interface accepted and pipeline rejected CSR")
+
+  // csr_en suppressed for xif reject and pipeline reject CSR
+  // todo: Add similar check for rf_we
+  a_suppress_csr_xif_illegal_pipeline_illegal :
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (!id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && csr_illegal_i) &&
+                    (id_ex_pipe_i.instr_valid && ex_valid_o && wb_ready_i)
+                    |=> !ex_wb_pipe_o.csr_en)
+    else `uvm_error("ex_stage", "csr_en not suppressed after eXtension interface rejected and pipeline rejected CSR")
+
+    // csr_en not suppressed for xif reject and pipeline accept CSR
+    // todo: Add similar check for rf_we
+    a_suppress_csr_xif_illegal_pipeline_legal :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (!id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i) &&
+                      (id_ex_pipe_i.instr_valid && ex_valid_o && wb_ready_i)
+                      |=> ex_wb_pipe_o.csr_en)
+      else `uvm_error("ex_stage", "csr_en suppressed after eXtension interface rejected and pipeline accepted CSR")
 
 
 

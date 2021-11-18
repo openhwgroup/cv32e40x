@@ -126,7 +126,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Using registered instr_valid, as gated instr_valid would not allow killing of offloaded instruction
   // in case of halt_ex==1. We need to kill this duplicate regardless of halt state.
   //  Currently, halt_ex is asserted in the cycle before debug entry, and if any performance counter is being read.
-  assign xif_csr_error_o = id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
+  assign xif_csr_error_o = instr_valid && id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
 
   // CSR instruction is illegal if core signals illegal and NOT offloaded, or if both core and xif accepted it.
   assign csr_is_illegal = ((csr_illegal_i && !id_ex_pipe_i.xif_en) ||
@@ -320,7 +320,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // Update signals for CSR access in WB
         // deassert csr_en in case of an internal illegal csr instruction
         // to avoid writing to CSRs inside the core.
-        ex_wb_pipe_o.csr_en     <= csr_illegal_i ? 1'b0 : id_ex_pipe_i.csr_en;
+        ex_wb_pipe_o.csr_en     <= (csr_illegal_i || xif_csr_error_o) ? 1'b0 : id_ex_pipe_i.csr_en;
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;
