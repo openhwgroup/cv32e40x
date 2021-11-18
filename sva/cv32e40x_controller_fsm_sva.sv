@@ -190,10 +190,11 @@ module cv32e40x_controller_fsm_sva
   // Check that lsu_err_wb_i can only be active when an LSU instruction is valid in WB
   // Not using wb_valid, as that is only active for the second half of misaligned.
   // bus error may also be active on the first half, thus checking only for active LSU in WB.
-  a_lsu_err_wb :
-    assert property (@(posedge clk) disable iff (!rst_n)
-            lsu_err_wb_i |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
-      else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
+  // Todo: Modify to account for response filter (bufferable writes)
+  //a_lsu_err_wb :
+  //  assert property (@(posedge clk) disable iff (!rst_n)
+  //          lsu_err_wb_i |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
+  //    else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
 
   // Check that fencei handshake is only exersiced when there's a fencei in the writeback stage
   a_fencei_hndshk_fencei_wb :

@@ -710,6 +710,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
+    .lsu_busy_i                     ( lsu_busy               ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

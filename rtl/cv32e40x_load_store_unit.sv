@@ -82,22 +82,28 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction response interface (from cv32e40x_mpu)
   logic         resp_valid;
   logic [31:0]  resp_rdata;
-  logic         resp_err;               // Unused for now
+  logic         bus_resp_err;               // Unused for now
   data_resp_t   resp;
 
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
-  logic          buffer_trans_valid;
-  logic          buffer_trans_ready;
-  obi_data_req_t buffer_trans;
+  logic           buffer_trans_valid;
+  logic           buffer_trans_ready;
+  obi_data_req_t  buffer_trans;
+
+  logic           filter_trans_valid;
+  logic           filter_trans_ready;
+  obi_data_req_t  filter_trans;
+  logic           filter_resp_valid;
+  obi_data_resp_t filter_resp;
 
   // Transaction request (from cv32e40x_write_buffer to cv32e40x_data_obi_interface)
-  logic          bus_trans_valid;
-  logic          bus_trans_ready;
-  obi_data_req_t bus_trans;
+  logic           bus_trans_valid;
+  logic           bus_trans_ready;
+  obi_data_req_t  bus_trans;
 
   // Transaction response (from cv32e40x_data_obi_interface to cv32e40x_mpu)
-  logic           bus_resp_valid;
-  obi_data_resp_t bus_resp;
+  logic            bus_resp_valid;
+  obi_data_resp_t  bus_resp;
 
   // Counter to count maximum number of outstanding transactions
   logic [1:0]   cnt_q;                  // Transaction counter
@@ -125,6 +131,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic         split_q;                 // high if we are currently performing the second address phase of a split misaligned load/store
   logic         misaligned_halfword;     // high if a halfword is not naturally aligned but no split is needed
   logic         misaligned_access;       // Access is not naturally aligned
+
+  logic         filter_resp_busy;        // Response filter busy
 
   logic [31:0]  rdata_q;
 
@@ -424,7 +432,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                                                           id_ex_pipe_i.alu_operand_a;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
-  assign busy_o = (cnt_q != 2'b00) || trans_valid;
+  // In the case of mpu errors, the LSU control logic can have outstanding transfers not seen by the response filter.
+  assign busy_o = filter_resp_busy || (cnt_q > 0) || trans_valid;
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -487,7 +496,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign ready_0_o = done_0 && !lsu_split_0_o;
 
 
-
   // Export mpu status to WB stage/controller
   assign lsu_mpu_status_1_o = resp.mpu_status;
 
@@ -547,7 +555,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Handle bus errors
   //////////////////////////////////////////////////////////////////////////////
 
-  // Propagate last trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
+  // Propagate last bus_trans.addr to WB stage (in case of bus_errors in WB this is needed for mtval)
   // In case of a detected error, updates to lsu_addr_1_o will be
   // blocked by the controller until the NMI is taken.
   // TODO:OK:low If a store following a load with bus error has dependencies on the load result,
@@ -561,15 +569,18 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     if(rst_n == 1'b0) begin
       lsu_addr_1_o <= 32'h0;
     end else begin
-      // Update for valid addresses if not blocked by controller
-      if(!ctrl_fsm_i.block_data_addr && (trans_valid && trans_ready)) begin
-        lsu_addr_1_o <= trans.addr;
+      // Update for each valid address issued on the bus unless blocked by controller in the case of an NMI
+      if(!ctrl_fsm_i.block_data_addr && (bus_trans_valid && bus_trans_ready)) begin
+        lsu_addr_1_o <= bus_trans.addr; // Todo : This will store the address of the last issued transfer,
+                                        //        and not necessarily the one that had an error.
+                                        //        A different approach is needed here when implementing MTVAL
       end
     end
   end
 
-  // Validate bus_error on rvalid (WB stage)
-  assign lsu_err_1_o = resp_valid && resp_err; // todo:low this gating is a bit weird; all LSU WB stage outputs should only be used when resp_valid = 1
+  // Validate bus_error on rvalid from the bus (WB stage)
+  // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
+  assign lsu_err_1_o = bus_resp_valid && bus_resp_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU
@@ -603,17 +614,40 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_resp_valid_o    ( resp_valid         ),
     .core_resp_o          ( resp               ),
 
-    .bus_trans_valid_o    ( buffer_trans_valid ),
-    .bus_trans_ready_i    ( buffer_trans_ready ),
-    .bus_trans_o          ( buffer_trans       ),
-    .bus_resp_valid_i     ( bus_resp_valid     ),
-    .bus_resp_i           ( bus_resp           )
+    .bus_trans_valid_o    ( filter_trans_valid ),
+    .bus_trans_ready_i    ( filter_trans_ready ),
+    .bus_trans_o          ( filter_trans       ),
+    .bus_resp_valid_i     ( filter_resp_valid  ),
+    .bus_resp_i           ( filter_resp        )
   );
 
   // Extract rdata and err from response struct
   assign resp_rdata = resp.bus_resp.rdata;
-  assign resp_err   = resp.bus_resp.err;
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Response Filter
+  //////////////////////////////////////////////////////////////////////////////
+
+  cv32e40x_lsu_response_filter
+    response_filter_i
+      (.clk          ( clk                ),
+       .rst_n        ( rst_n              ),
+       .busy_o       ( filter_resp_busy   ),
+
+       .valid_i      ( filter_trans_valid ),
+       .ready_o      ( filter_trans_ready ),
+       .trans_i      ( filter_trans       ),
+       .resp_valid_o ( filter_resp_valid  ),
+
+       .valid_o      ( buffer_trans_valid ),
+       .ready_i      ( buffer_trans_ready ),
+       .trans_o      ( buffer_trans       ),
+       .resp_valid_i ( bus_resp_valid     )
+     );
+
+  assign filter_resp  = bus_resp; // Not used by write buffer
+  assign bus_resp_err = bus_resp.err;
 
   //////////////////////////////////////////////////////////////////////////////
   // Write Buffer

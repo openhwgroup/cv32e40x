@@ -67,6 +67,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
 
+  input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
+
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
   input  logic [4:0]  irq_id_ctrl_i,              // irq id
@@ -180,7 +182,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not count if halted or killed
   logic       wb_counter_event_gated;
 
-  assign fencei_ready = 1'b1; // TODO: connect when write buffer is implemented
+  assign fencei_ready = !lsu_busy_i;
 
   // Once the fencei handshake is initiated, it must complete and the instruction must retire.
   // The instruction retires when fencei_req_and_ack_q = 1
