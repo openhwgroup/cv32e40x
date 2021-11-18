@@ -478,6 +478,13 @@ bind cv32e40x_sleep_unit:
           .X_MISA                ( X_MISA                ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
-    core_i (.*);
+    core_i (
+            .xif_compressed_if(xif_compressed_if),
+            .xif_issue_if(xif_issue_if),
+            .xif_commit_if(xif_commit_if),
+            .xif_mem_if(xif_mem_if),
+            .xif_mem_result_if(xif_mem_result_if),
+            .xif_result_if(xif_result_if),
+            .*);
 
 endmodule
