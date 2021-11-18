@@ -316,7 +316,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
-  // and no data_req has been clocked from EX to environment.
+  // and no trans_valid has been clocked from EX to environment.
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.

@@ -30,6 +30,8 @@ module cv32e40x_load_store_unit_sva
    input logic       count_down,
    input ctrl_fsm_t  ctrl_fsm_i,
    input logic       trans_valid,
+   input logic       split_q,
+   input mpu_status_e lsu_mpu_status_1_o, // WB mpu status
    if_c_obi.monitor  m_c_obi_data_if);
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -111,6 +113,14 @@ module cv32e40x_load_store_unit_sva
                     (ctrl_fsm_i.kill_ex || ctrl_fsm_i.halt_ex)
                     |-> !trans_valid)
       else `uvm_error("load_store_unit", "Transaction happened while WB is halted or killed")
+
+  // Second half of a split transaction should never get killed while in EX
+  // Exception: Second half of a split transaction may be killed if the first half
+  //            gets blocked by the PMA.
+  a_lsu_no_kill_second_half_ex:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (split_q && (lsu_mpu_status_1_o == MPU_OK)) |-> !ctrl_fsm_i.kill_ex)
+    else `uvm_error("load_store_unit", "Second half of split transaction was killed")
 
 endmodule // cv32e40x_load_store_unit_sva
 
