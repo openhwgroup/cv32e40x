@@ -102,7 +102,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   if_c_obi.monitor     m_c_obi_data_if,
 
   // eXtension interface
-  if_xif.cpu_commit    xif_commit_if
+  if_xif.cpu_commit    xif_commit_if,
+  input                xif_csr_error_i
 );
 
    // FSM state encoding
@@ -610,7 +611,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       SLEEP: begin
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-
+        // TODO: Check that below statement is true by checking SEC when halting all stages.
         ctrl_fsm_o.halt_wb   = 1'b1; // implicitly halts earlier stages
         if(ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
@@ -897,9 +898,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       //       Perhaps not factor in wb_ready_i and uncoditionally signal commit_valid, preventing
       //       to commit the same instruction multiple times
       // TODO: data_gnt_i currently fans into commit_valid below. Can this be removed?
+      // TODO: Can only allow commit when older instructions are guaranteed to complete without exceptions
+      // TODO: If kill_ex is 1 (for taking exceptions from WB for intance), ex_valid_i will be 0 and we
+      //       cannot signal commit_kill properly
       assign xif_commit_if.commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
       assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_id;
-      assign xif_commit_if.commit.commit_kill = 1'b0; // TODO: when should the offloaded instr be killed?
+      assign xif_commit_if.commit.commit_kill = xif_csr_error_i; // TODO: when should the offloaded instr be killed?
 
     end else begin : no_x_ext
 

@@ -228,6 +228,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   csr_opcode_e csr_op_id;
   logic        csr_illegal;
 
+  // CSR illegal in EX due to offloading and pipeline accept
+  logic        xif_csr_error_ex;
+
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
   logic        irq_req_ctrl;
@@ -485,6 +488,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
     .branch_target_o            ( branch_target_ex             ),
+
+    .xif_csr_error_o            ( xif_csr_error_ex             ),
 
     // Register file forwarding
     .rf_wdata_o                 ( rf_wdata_ex                  ),
@@ -756,7 +761,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_fsm_o                     ( ctrl_fsm               ),
 
     // eXtension interface
-    .xif_commit_if                  ( xif_commit_if          )
+    .xif_commit_if                  ( xif_commit_if          ),
+    .xif_csr_error_i                ( xif_csr_error_ex       )
  );
 
 ////////////////////////////////////////////////////////////////////////

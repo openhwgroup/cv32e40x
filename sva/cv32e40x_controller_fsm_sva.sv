@@ -44,8 +44,13 @@ module cv32e40x_controller_fsm_sva
   input if_id_pipe_t    if_id_pipe_i,
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
+  input logic           ex_valid_i,
+  input logic           wb_ready_i,
+  input logic           exception_in_wb,
+  input logic [7:0]     exception_cause_wb,
   input logic           rf_we_wb_i,
   input logic           csr_we_i,
+  input logic           csr_illegal_i,
   input logic           pending_single_step,
   input logic           trigger_match_in_wb,
   input logic           lsu_err_wb_i,
@@ -59,7 +64,8 @@ module cv32e40x_controller_fsm_sva
   input logic           pending_interrupt,
   input logic           interrupt_allowed,
   input logic           pending_nmi,
-  input logic           fencei_ready
+  input logic           fencei_ready,
+  input logic           xif_commit_kill
 );
 
 
@@ -277,5 +283,26 @@ module cv32e40x_controller_fsm_sva
                      ctrl_fsm_o.mhpmevent.wb_data_stall |-> ctrl_fsm_o.mhpmevent.wb_invalid)
       else `uvm_error("controller", "mhpmevent.wb_data_stall not a subset of mhpmevent.wb_invalid")
     
+  // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline is
+  // flagged as killed on the eXtension interface
+  a_duplicate_csr_kill:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                  (id_ex_pipe_i.instr_valid && !ctrl_fsm_o.halt_ex && !ctrl_fsm_o.kill_ex)
+                  |-> xif_commit_kill)
+    else `uvm_error("controller", "Duplicate CSR instruction not killed")
+
+  // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline
+  // causes an illegal instruction
+  // TODO: The checks for mpu_status and bus_resp.err below can be removed once the
+  //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
+  a_duplicate_csr_illegal:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                    !((id_ex_pipe_i.instr.mpu_status != MPU_OK) || (id_ex_pipe_i.instr.bus_resp.err))
+                    |=> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
+      else `uvm_error("controller", "Duplicate CSR instruction not mardked as illegal")
+
+
 endmodule // cv32e40x_controller_fsm_sva
 

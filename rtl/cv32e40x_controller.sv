@@ -107,7 +107,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input logic         fencei_flush_ack_i,
 
   // eXtension interface
-  if_xif.cpu_commit   xif_commit_if
+  if_xif.cpu_commit   xif_commit_if,
+  input               xif_csr_error_i
 );
 
   // Main FSM and debug FSM
@@ -178,7 +179,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_fsm_o                  ( ctrl_fsm_o               ),
     
     // eXtension interface
-    .xif_commit_if               ( xif_commit_if            )
+    .xif_commit_if               ( xif_commit_if            ),
+    .xif_csr_error_i             ( xif_csr_error_i          )
   );
 
 
