@@ -66,30 +66,35 @@ The trap signal indicates that a synchronous trap has ocurred and side-effects c
 
 .. code-block:: verilog
 
-   output [NRET - 1 : 0] rvfi_trap
+   output [NRET * 12 - 1 : 0] rvfi_trap
 
-
-The ``rvfi_trap`` signal is high if the instruction causes an exception or debug entry. CSR side effects and a jump to a trap/debug handler in the next cycle can be expected.
+``rvfi_trap`` consists of 12 bits.
+``rvfi_trap[0]`` is asserted if an instruction causes an exception or debug entry.
+``rvfi_trap[2:1]`` indicate trap type. ``rvfi_trap[1]`` is set for synchronous traps that do not cause debug entry. ``rvfi_trap[2]`` is set for synchronous traps that do cause debug mode entry.
+``rvfi_trap[8:3]`` provide information about non-debug traps, while ``rvfi_trap[11:9]`` provide information about traps causing entry to debug mode.
+When an exception is caused by a single stepped instruction, both ``rvfi_trap[1]`` and ``rvfi_trap[2]`` will be set.
+When ``rvfi_trap`` signals a trap, CSR side effects and a jump to a trap/debug handler in the next cycle can be expected.
 The different trap scenarios, their expected side-effects and trap signalling are listed in the table below:
 
 .. table:: Table of synchronous trap types
   :name: Table of synchronous trap types
 
-  =============================== =========  =========  ================  ============================================================================================================
-  Trap type                       Trap Type  rvfi_trap  CSRs updated      Description
-  =============================== =========  =========  ================  ============================================================================================================
-  Instruction Access Fault        Exception     1       mcause, mepc      PMA detects instruction execution from non-executable memory
-  Illegal Instruction             Exception     1       mcause, mepc      Illegal instruction decode
-  Breakpoint                      Exception     1       mcause, mepc      EBREAK executed with dcsr.ebreakm == 0
-  Load Access Fault               Exception     1       mcause, mepc      Access fault during load
-  Store Access Fault              Exception     1       mcause, mepc      Access fault during store
-  ECALL                           Exception     1       mcause, mepc      ECALL executed
-  Instruction Bus Fault           Exception     1       mcause, mepc      OBI bus error on instruction fetch
-  Breakpoint to debug             Debug         1       dpc, dcsr         EBREAK from non-debug mode executed with  dcsr.ebreakm == 1
-  Breakpoint in debug             Debug         1       No CSRs updated   EBREAK in debug mode jumps to debug handler
-  Debug Trigger Match (timing==0) Debug         1       dpc, dcsr         Debug trigger address match, instruction is not executed. Timing parameter is forced to 0 for cv32e4* cores.
-  Debug Trigger Match (timing==1) Debug         1       dpc, dcsr         Debug trigger address match, instruction is executed. Timing==1 is not used for  cv32e4* cores.
-  =============================== =========  =========  ================  ============================================================================================================
+  =============================== =========  ==============  ============== =============== ================  ============================================================================================================
+  Trap type                       Trap Type  rvfi_trap[2:0]  rvfi_trap[8:3] rvfi_trap[11:9] CSRs updated      Description
+  =============================== =========  ==============  ============== =============== ================  ============================================================================================================
+  Instruction Access Fault        Exception  0bx11           0x1            X               mcause, mepc      PMA detects instruction execution from non-executable memory
+  Illegal Instruction             Exception  0bx11           0x2            X               mcause, mepc      Illegal instruction decode
+  Breakpoint                      Exception  0bx11           0x3            X               mcause, mepc      EBREAK executed with dcsr.ebreakm == 0
+  Load Access Fault               Exception  0bx11           0x5            X               mcause, mepc      Access fault during load
+  Store Access Fault              Exception  0bx11           0x7            X               mcause, mepc      Access fault during store
+  ECALL                           Exception  0bx11           0x8            X               mcause, mepc      ECALL executed from user mode
+  ECALL                           Exception  0bx11           0x11           X               mcause, mepc      ECALL executed from machine mode
+  Instruction Bus Fault           Exception  0bx11           0x48           X               mcause, mepc      OBI bus error on instruction fetch
+  Breakpoint to debug             Debug      0b101           0x0            0x1             dpc, dcsr         EBREAK from non-debug mode executed with  dcsr.ebreakm == 1
+  Breakpoint in debug             Debug      0b101           0x0            0x1             No CSRs updated   EBREAK in debug mode jumps to debug handler
+  Debug Trigger Match (timing==0) Debug      0b101           0x0            0x2             dpc, dcsr         Debug trigger address match, instruction is not executed. Timing parameter is forced to 0 for cv32e4* cores.
+  Single step                     Debug      0b1x1           X              0x4             dpc, dcsr         Single step
+  =============================== =========  ==============  ============== =============== ================  ============================================================================================================
 
 
 **Interrupts**

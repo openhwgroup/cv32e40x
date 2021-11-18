@@ -298,6 +298,8 @@ bind cv32e40x_sleep_unit:
                .dbg_ack(core_i.dbg_ack),
                .ctrl_fsm_debug_cause(core_i.ctrl_fsm.debug_cause),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
+               .nmi_addr_i(core_i.nmi_addr_i),
+               .instr_err_i(core_i.instr_err_i),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
@@ -373,9 +375,9 @@ bind cv32e40x_sleep_unit:
 
          .priv_lvl_i               ( core_i.cs_registers_i.priv_lvl_o                                     ),
          .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
-         .debug_mode_i             ( core_i.ctrl_fsm.debug_mode                                           ),
-         .debug_cause_i            ( core_i.ctrl_fsm.debug_cause                                          ),
-
+         .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
+         .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
+         .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
