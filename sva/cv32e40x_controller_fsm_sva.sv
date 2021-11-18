@@ -282,6 +282,13 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      ctrl_fsm_o.mhpmevent.wb_data_stall |-> ctrl_fsm_o.mhpmevent.wb_invalid)
       else `uvm_error("controller", "mhpmevent.wb_data_stall not a subset of mhpmevent.wb_invalid")
+
+  // Assert that interrupts are not allowed when WB stage has an LSU
+  // instruction (cnt_q != 0)
+  a_block_interrupts:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !interrupt_allowed)
+      else `uvm_error("controller", "interrupt_allowed high while LSU is in WB")
     
   // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline is
   // flagged as killed on the eXtension interface
@@ -304,5 +311,11 @@ module cv32e40x_controller_fsm_sva
       else `uvm_error("controller", "Duplicate CSR instruction not mardked as illegal")
 
 
+  // Assert that debug is not allowed when WB stage has an LSU
+  // instruction (cnt_q != 0)
+  a_block_debug:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
+      else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 endmodule // cv32e40x_controller_fsm_sva
 
