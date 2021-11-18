@@ -102,6 +102,12 @@ Non Maskable Interrupts
 
 NMIs update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
 
+.. note::
+
+   Specifically ``mstatus.mie`` will get cleared to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of 
+   ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
+   specified at a future date, then we will reconsider our implementation.
+
 An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
 NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
 This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at most two instructions may retire before the NMI is taken.
@@ -113,8 +119,8 @@ In case of bufferable stores, the NMI is allowed to become visible an arbitrary 
 before the NMI becomes visible to the core.
 
 
-When a data bus fault occurs, the first detected fault will be latched and used for ``mcause`` when the NMI is taken. Any new bus faults occuring while an NMI is pending will be discarded.
-When the NMI handler is entered, new bus faults may be latched.
+When a data bus fault occurs, the first detected fault will be latched and used for ``mcause`` when the NMI is taken. Any new data bus faults occuring while an NMI is pending will be discarded.
+When the NMI handler is entered, new data bus faults may be latched.
 
 While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
 
