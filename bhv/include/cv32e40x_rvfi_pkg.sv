@@ -83,7 +83,7 @@ package cv32e40x_rvfi_pkg;
   } rvfi_csr_map_t;
 
   typedef struct packed {
-    logic        rvfi_trap;
+    logic [11:0] rvfi_trap;
     logic        rvfi_halt;
     logic        rvfi_intr;
     logic        rvfi_dbg;

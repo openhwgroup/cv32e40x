@@ -78,16 +78,15 @@ module cv32e40x_rvfi
    input logic                                lsu_rvalid_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    // PC //
-   input logic                                pc_set_i,
-   input                                      pc_mux_e pc_mux_i,
-   input                                      exc_pc_mux_e exc_pc_mux_i,
    input logic [31:0]                         exc_pc_i,
 
    input                                      privlvl_t priv_lvl_i,
    input                                      privlvl_t priv_lvl_lsu_i,
 
-   input logic                                debug_mode_i,
-   input logic [2:0]                          debug_cause_i,
+   // Controller FSM probe
+   input ctrl_fsm_t                           ctrl_fsm_i,
+   input logic                                pending_single_step_i,
+   input logic                                single_step_allowed_i,
 
    //// CSR Probes ////
    input                                      mstatus_t csr_mstatus_n_i,
@@ -132,7 +131,6 @@ module cv32e40x_rvfi
    input                                      dcsr_t csr_dcsr_n_i,
    input                                      dcsr_t csr_dcsr_q_i,
    input logic                                csr_dcsr_we_i,
-   input logic                                csr_debug_csr_save_i,
    input logic [31:0]                         csr_dpc_n_i,
    input logic [31:0]                         csr_dpc_q_i,
    input logic                                csr_dpc_we_i,
@@ -177,7 +175,7 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_valid,
    output logic [63:0]                        rvfi_order,
    output logic [31:0]                        rvfi_insn,
-   output logic [ 0:0]                        rvfi_trap,
+   output logic [11:0]                        rvfi_trap,
    output logic [ 0:0]                        rvfi_halt,
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
@@ -458,12 +456,12 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_IRQ);
-  assign nmi_in_if         = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_NMI);
-  assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
-  assign exception_in_wb   = (pc_mux_i == PC_EXCEPTION) && ((exc_pc_mux_i == EXC_PC_EXCEPTION) ||
-                                                            (exc_pc_mux_i == EXC_PC_DBE));
-  assign is_dret_wb        = (pc_mux_i == PC_DRET);
+  assign interrupt_in_if   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_IRQ);
+  assign nmi_in_if         = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_NMI);
+  assign debug_taken_if    = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBD);
+  assign exception_in_wb   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && ((ctrl_fsm_i.exc_pc_mux == EXC_PC_EXCEPTION) ||
+                                                                     (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBE));
+  assign is_dret_wb        = (ctrl_fsm_i.pc_mux == PC_DRET);
 
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
@@ -473,6 +471,33 @@ module cv32e40x_rvfi
   // Clear in trap pipeline when it reaches rvfi_intr
   // This is done to avoid reporting already signaled triggers as supressed during by debug
   assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB];
+
+
+  // Set rvfi_trap for instructions causing exception or debug entry.
+  logic [11:0]  rvfi_trap_next;
+
+  always_comb begin
+    rvfi_trap_next = '0;
+
+    if (debug_taken_if) begin
+      // Indicate that the trap is a synchronous trap into debug mode
+      rvfi_trap_next[2:0]  = 3'b101;
+      // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
+      rvfi_trap_next[11:9] = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
+    end
+    if (exception_in_wb) begin
+      // Indicate synchronous (non-debug entry) trap
+      rvfi_trap_next[2:0] = 3'b011;
+      rvfi_trap_next[8:3] = ctrl_fsm_i.csr_cause.exception_code;
+    end
+    if(exception_in_wb && (pending_single_step_i && single_step_allowed_i)) begin
+      // Special case, exception in WB and pending single step.
+      // Indicate both non-debug trap and trap into debug mode
+      rvfi_trap_next[2:0]  = 3'b111;
+      rvfi_trap_next[8:3]  = ctrl_fsm_i.csr_cause.exception_code;
+      rvfi_trap_next[11:9] = DBG_CAUSE_STEP;
+    end
+  end
 
   // Pipeline stage model //
 
@@ -498,7 +523,7 @@ module cv32e40x_rvfi
       rvfi_insn          <= '0;
       rvfi_pc_rdata      <= '0;
       rvfi_pc_wdata      <= '0;
-      rvfi_trap          <= 1'b0;
+      rvfi_trap          <= '0;
       rvfi_intr          <= 1'b0;
       rvfi_rd_addr       <= '0;
       rvfi_rd_wdata      <= '0;
@@ -519,7 +544,7 @@ module cv32e40x_rvfi
 
       //// IF Stage ////
       if (if_valid_i && id_ready_i) begin
-        debug_mode [STAGE_ID] <= debug_mode_i; // Probing in IF to ensure LSU instructions that are not killed can complete
+        debug_mode [STAGE_ID] <= ctrl_fsm_i.debug_mode; // Probing in IF to ensure LSU instructions that are not killed can complete
 
         // Capturing events that happen when the IF stage is not valid and
         // propagating them through the pipeline with the next valid instruction
@@ -542,9 +567,9 @@ module cv32e40x_rvfi
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (debug_taken_if) begin
           // Debug cause input only valid during debug taken
-          // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
+          // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
-          debug_cause[STAGE_IF] <=  ebreak_in_wb_i ? 3'h1 : debug_cause_i;
+          debug_cause[STAGE_IF] <=  ebreak_in_wb_i ? 3'h1 : ctrl_fsm_i.debug_cause;
 
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
@@ -626,7 +651,8 @@ module cv32e40x_rvfi
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
         rvfi_insn       <= instr_rdata_wb_i;
-        rvfi_trap       <= (debug_taken_if || exception_in_wb); // Trap set for instructions causing exception or debug entry.
+
+        rvfi_trap       <= rvfi_trap_next;
 
         rvfi_mem_rdata  <= lsu_rdata_wb_i;
 
