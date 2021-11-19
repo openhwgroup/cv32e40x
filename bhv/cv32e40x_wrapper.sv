@@ -296,7 +296,6 @@ bind cv32e40x_sleep_unit:
     cv32e40x_rvfi_sva
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
-               .ctrl_fsm_debug_cause(core_i.ctrl_fsm.debug_cause),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .nmi_addr_i(core_i.nmi_addr_i),
                .*);
@@ -341,10 +340,6 @@ bind cv32e40x_sleep_unit:
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
          .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
-
-         .pc_set_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_set                                  ),
-         .pc_mux_i                 ( core_i.if_stage_i.ctrl_fsm_i.pc_mux                                  ),
-         .exc_pc_mux_i             ( core_i.if_stage_i.ctrl_fsm_i.exc_pc_mux                              ),
 
          .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
          .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
@@ -424,7 +419,6 @@ bind cv32e40x_sleep_unit:
          .csr_dcsr_q_i             ( core_i.cs_registers_i.dcsr_rdata                                     ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
          .csr_dcsr_we_i            ( core_i.cs_registers_i.dcsr_we                                        ),
-         .csr_debug_csr_save_i     ( core_i.cs_registers_i.ctrl_fsm_i.debug_csr_save                      ),
          .csr_dpc_q_i              ( core_i.cs_registers_i.dpc_q                                          ),
          .csr_dpc_n_i              ( core_i.cs_registers_i.dpc_n                                          ),
          .csr_dpc_we_i             ( core_i.cs_registers_i.dpc_we                                         ),

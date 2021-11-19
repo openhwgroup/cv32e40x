@@ -78,9 +78,6 @@ module cv32e40x_rvfi
    input logic                                lsu_rvalid_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    // PC //
-   input logic                                pc_set_i,
-   input                                      pc_mux_e pc_mux_i,
-   input                                      exc_pc_mux_e exc_pc_mux_i,
    input logic [31:0]                         exc_pc_i,
 
    input                                      privlvl_t priv_lvl_i,
@@ -134,7 +131,6 @@ module cv32e40x_rvfi
    input                                      dcsr_t csr_dcsr_n_i,
    input                                      dcsr_t csr_dcsr_q_i,
    input logic                                csr_dcsr_we_i,
-   input logic                                csr_debug_csr_save_i,
    input logic [31:0]                         csr_dpc_n_i,
    input logic [31:0]                         csr_dpc_q_i,
    input logic                                csr_dpc_we_i,
@@ -460,12 +456,12 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  assign interrupt_in_if   = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_IRQ);
-  assign nmi_in_if         = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_NMI);
-  assign debug_taken_if    = (pc_mux_i == PC_EXCEPTION) && (exc_pc_mux_i == EXC_PC_DBD);
-  assign exception_in_wb   = (pc_mux_i == PC_EXCEPTION) && ((exc_pc_mux_i == EXC_PC_EXCEPTION) ||
-                                                            (exc_pc_mux_i == EXC_PC_DBE));
-  assign is_dret_wb        = (pc_mux_i == PC_DRET);
+  assign interrupt_in_if   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_IRQ);
+  assign nmi_in_if         = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_NMI);
+  assign debug_taken_if    = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBD);
+  assign exception_in_wb   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && ((ctrl_fsm_i.exc_pc_mux == EXC_PC_EXCEPTION) ||
+                                                                     (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBE));
+  assign is_dret_wb        = (ctrl_fsm_i.pc_mux == PC_DRET);
 
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
