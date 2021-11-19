@@ -41,7 +41,6 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      rvfi_csr_mcause_rdata,
    input logic [31:0]      rvfi_pc_rdata,
    input logic [31:0]      nmi_addr_i,
-   input logic             instr_err_i,
    
    input logic             irq_ack,
    input logic             dbg_ack,
@@ -130,10 +129,11 @@ module cv32e40x_rvfi_sva
       else `uvm_error("rvfi", "rvfi_trap[2] not followed by rvfi_dbg")
 
   // Exception code in rvfi_trap[8:3] should align with mcause exception cause in the following retired instruction
-  // This is exempt if we have an instruction bus error or NMI. Also, in debug mode, mcause is not updated.
+  // This is exempt if we have an NMI, because NMI will result in mcause being updated in between retired instructions.
+  // Also, in debug mode, mcause is not updated.
   a_rvfi_trap_mcause_align:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                    (no_debug && !instr_err_i && !ctrl_fsm_i.pending_nmi) throughout s_goto_next_rvfi_valid(|rvfi_trap) |->
+                    (no_debug && !ctrl_fsm_i.pending_nmi) throughout s_goto_next_rvfi_valid(|rvfi_trap) |->
                      rvfi_intr && (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap[8:3])))
       else `uvm_error("rvfi", "rvfi_trap[8:3] not consistent with mcause[5:0] in following retired instruction")
 
@@ -147,7 +147,7 @@ module cv32e40x_rvfi_sva
   // Check that rvfi_trap always indicate single step if rvfi_trap[2:1] == 2'b11
   a_rvfi_single_step_trap:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     rvfi_trap[1] && rvfi_trap[2] |-> rvfi_trap[11:9] == 3'h4)
+                     rvfi_trap[1] && rvfi_trap[2] |-> rvfi_trap[11:9] == DBG_CAUSE_STEP)
      else `uvm_error("rvfi", "rvfi_trap[2:1] == 2'b11, but debug cause bits do not indicate single stepping")
 
   // Check that dcsr.cause and mcause exception align with rvfi_trap when rvfi_trap[2:1] == 2'b11
@@ -155,7 +155,7 @@ module cv32e40x_rvfi_sva
   a_rvfi_trap_step_exception:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      s_goto_next_rvfi_valid(rvfi_trap[1] && rvfi_trap[2]) |->
-                     (rvfi_dbg == 3'h4) && (rvfi_csr_dcsr_rdata[8:6] == 3'h4) &&
+                     (rvfi_dbg == DBG_CAUSE_STEP) && (rvfi_csr_dcsr_rdata[8:6] == DBG_CAUSE_STEP) &&
                      (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap[8:3])) &&
                      rvfi_intr)
      else `uvm_error("rvfi", "dcsr.cause, mcause and rvfi_intr not as expected following an exception during single step")
@@ -165,7 +165,9 @@ module cv32e40x_rvfi_sva
   a_rvfi_nmip_nmi_handler:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      (no_debug && $stable(nmi_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
-                     rvfi_intr && (rvfi_pc_rdata == {nmi_addr_i[31:2], 2'b00}))
+                     rvfi_intr &&
+                     (rvfi_pc_rdata == {nmi_addr_i[31:2], 2'b00}) &&
+                     ((rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")
 
 endmodule : cv32e40x_rvfi_sva

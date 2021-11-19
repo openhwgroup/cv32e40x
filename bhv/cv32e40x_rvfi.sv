@@ -487,7 +487,7 @@ module cv32e40x_rvfi
       // Indicate that the trap is a synchronous trap into debug mode
       rvfi_trap_next[2:0]  = 3'b101;
       // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
-      rvfi_trap_next[11:9] = ebreak_in_wb_i ? 3'h1 : ctrl_fsm_i.debug_cause;
+      rvfi_trap_next[11:9] = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
     end
     if (exception_in_wb) begin
       // Indicate synchronous (non-debug entry) trap

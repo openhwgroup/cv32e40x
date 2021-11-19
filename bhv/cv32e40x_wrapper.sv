@@ -299,7 +299,6 @@ bind cv32e40x_sleep_unit:
                .ctrl_fsm_debug_cause(core_i.ctrl_fsm.debug_cause),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .nmi_addr_i(core_i.nmi_addr_i),
-               .instr_err_i(core_i.instr_err_i),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
