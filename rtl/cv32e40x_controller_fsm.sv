@@ -150,10 +150,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic dret_in_wb;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
+  logic xif_in_wb;
+
   logic pending_nmi;
   logic pending_debug;
   logic pending_single_step;
   logic pending_interrupt;
+
 
   // Flags for allowing interrupt and debug
   // TODO:OK:low Add flag for exception_allowed
@@ -250,6 +253,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
   assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid);
 
+  // An offloaded instruction is in WB
+  assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
+
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
@@ -287,11 +293,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   */
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || ctrl_fsm_o.irq_ack)) && !pending_debug;
 
-  // Regular debug will kill insn in WB, do not allow if LSU is not interruptible or a fence.i handshake is taking place.
+  // Regular debug will kill insn in WB, do not allow if LSU is not interruptible, a fence.i handshake is taking place
+  // or if an offloaded instruction is in WB.
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing;
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -317,13 +324,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no trans_valid has been clocked from EX to environment.
+  // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
   // todo: Factor in stepie here instead of gating mie in cs_registers
-  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing;
+  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing && !xif_in_wb;
 
   assign nmi_allowed = interrupt_allowed;
 

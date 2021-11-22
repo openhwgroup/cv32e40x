@@ -317,5 +317,11 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
+
+  // Never kill offloaded instructions in WB (received commit_kill=0 in EX)
+  a_offload_kill_wb:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en) |-> !ctrl_fsm_o.kill_wb)
+      else `uvm_error("controller", "Offloaded instruction killed in WB")
 endmodule // cv32e40x_controller_fsm_sva
 

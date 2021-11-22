@@ -649,15 +649,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           xif_accepted_q <= 1'b0;
           xif_rejected_q <= 1'b0;
         end else begin
-          xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
-          xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+          if ( ctrl_fsm_i.kill_id ) begin
+            xif_accepted_q <= 1'b0;
+            xif_accepted_q <= 1'b0;
+          end else begin
+            xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
+            xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+          end
         end
       end
 
       // attempt to offload every valid instruction that is considered illegal by the decoder
       // Also attempt to offload any CSR instruction. The validity of such instructions are only
       // checked in the EX stage.
-      assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) && !xif_accepted_q && !xif_rejected_q;
+      // Instructions with instruction bus error, mpu error or trigger match will not be offloaded
+      assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) &&
+                                            !(xif_accepted_q || xif_rejected_q || if_id_pipe_i.instr.bus_resp.err ||
+                                             (if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.trigger_match);
 
       assign xif_issue_if.issue_req.instr = instr;
       assign xif_issue_if.issue_req.mode  = PRIV_LVL_M;

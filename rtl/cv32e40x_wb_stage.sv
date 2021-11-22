@@ -120,7 +120,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Ok, as controller will never kill ongoing LSU instructions, and thus
   // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
   assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid; // todo: move to LSU?
-  assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
+  assign lsu_ready_o = !xif_waiting; // signal ready to LSU only if there is no waiting offloaded instruction
 
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
