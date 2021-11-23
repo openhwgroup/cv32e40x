@@ -387,7 +387,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                          (pending_debug && !debug_allowed) ||
                          (pending_nmi && !nmi_allowed);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
-    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
+    // Also halting EX if an offloaded instruction in WB may cause an exception
+    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
 
     // By default no stages are killed
@@ -872,27 +873,35 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   generate
     if (X_EXT) begin : x_ext
-
+      logic commit_valid_q;
       // TODO: Add assertion to check the following:
       // Every issue interface transaction (whether accepted or not) has an associated commit interface
       // transaction and both interfaces use a matching transaction ordering.
       
-      // TODO: check if id_ex_pipe_i.xif_insn needs to be validated with instr_valid of the EX stage
-      
-      // commit an offloaded instruction in the cycle before it proceeds to the WB stage
-      // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
-      // which ensures that only one offloaded instruction is committed at a time and
-      // thus the coprocessor is forced to return results in order)
-      // TODO: wb_ready is a late signal and causes timing issues on commit_valid
-      //       Perhaps not factor in wb_ready_i and uncoditionally signal commit_valid, preventing
-      //       to commit the same instruction multiple times
-      // TODO: data_gnt_i currently fans into commit_valid below. Can this be removed?
-      // TODO: Can only allow commit when older instructions are guaranteed to complete without exceptions
-      // TODO: If kill_ex is 1 (for taking exceptions from WB for intance), ex_valid_i will be 0 and we
-      //       cannot signal commit_kill properly
-      assign xif_commit_if.commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
-      assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_id;
-      assign xif_commit_if.commit.commit_kill = xif_csr_error_i; // TODO: when should the offloaded instr be killed?
+      // Commit an offloaded instruction in the first cycle where EX is not halted, or EX is killed.
+      //       Only commit when there is an actual valid offloaded instruction in EX, and we have not
+      //       previously signalled commit for the same instruction.
+      // Can only allow commit when older instructions are guaranteed to complete without exceptions
+      //       - EX is halted is offloaded in WB can cause an exception, causing below to evaluate to 0.
+      assign xif_commit_if.commit_valid       = (!ctrl_fsm_o.halt_ex || ctrl_fsm_o.kill_ex) &&
+                                                 (id_ex_pipe_i.xif_en && id_ex_pipe_i.instr_valid) &&
+                                                 !commit_valid_q; // Make sure we signal only once per instruction
+
+      assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_meta.id;
+      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex; // TODO: when should the offloaded instr be killed?
+
+      // Flag used to make sure we only signal commit_valid once for each instruction
+      always_ff @(posedge clk, negedge rst_n) begin : commit_valid_ctrl
+        if (rst_n == 1'b0) begin
+          commit_valid_q <= 1'b0;
+        end else begin
+          if (xif_commit_if.commit_valid && !wb_ready_i) begin
+            commit_valid_q <= 1'b1;
+          end else if (ex_valid_i && wb_ready_i) begin
+            commit_valid_q <= 1'b0;
+          end
+        end
+      end
 
     end else begin : no_x_ext
 

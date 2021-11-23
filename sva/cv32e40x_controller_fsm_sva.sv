@@ -65,7 +65,8 @@ module cv32e40x_controller_fsm_sva
   input logic           interrupt_allowed,
   input logic           pending_nmi,
   input logic           fencei_ready,
-  input logic           xif_commit_kill
+  input logic           xif_commit_kill,
+  input logic           xif_commit_valid
 );
 
 
@@ -323,5 +324,24 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                       (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en) |-> !ctrl_fsm_o.kill_wb)
       else `uvm_error("controller", "Offloaded instruction killed in WB")
+
+  // xif_commit_if.commit_valid one cycle per offloaded instruction
+  a_single_commit_valid:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (xif_commit_valid && ex_valid_i && !wb_ready_i) |=> !xif_commit_valid until_with (ex_valid_i && wb_ready_i))
+      else `uvm_error("controller", "Multiple xif.commit_valid for one instruction")
+
+  // Do not kill commited offloaded instructions if they stay in EX for multiple cycles
+  a_nokill_commited_xif:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (xif_commit_valid && ex_valid_i && !wb_ready_i) |=> !ctrl_fsm_o.kill_ex until_with (ex_valid_i && wb_ready_i))
+      else `uvm_error("controller", "Committed xif instruction was killed in EX")
+
+  // EX shall be halted if offloaded instruction in WB can cause an exception
+  a_halt_ex_xif_exception:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && ex_wb_pipe_i.xif_meta.exception)
+                    |-> ctrl_fsm_o.halt_ex)
+      else `uvm_error("controller", "EX not halted while offloaded instruction in WB can cause an exception")
 endmodule // cv32e40x_controller_fsm_sva
 

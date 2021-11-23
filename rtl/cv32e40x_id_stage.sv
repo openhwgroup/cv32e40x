@@ -194,6 +194,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        xif_insn_accept;
   logic        xif_insn_reject;
   logic        xif_we;
+  logic        xif_exception;
+  logic        xif_dualwrite;
+  logic        xif_loadstore;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
@@ -520,7 +523,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
       id_ex_pipe_o.xif_en                 <= 1'b0;
-      id_ex_pipe_o.xif_id                 <= '0;
+      id_ex_pipe_o.xif_meta               <= '0;
 
     end else begin
       // normal pipeline unstall case
@@ -603,7 +606,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         // eXtension interface
         id_ex_pipe_o.xif_en                 <= xif_insn_accept;
-        id_ex_pipe_o.xif_id                 <= if_id_pipe_i.xif_id;
+        id_ex_pipe_o.xif_meta.id            <= if_id_pipe_i.xif_id;
+        id_ex_pipe_o.xif_meta.exception     <= xif_exception;
+        id_ex_pipe_o.xif_meta.loadstore     <= xif_loadstore;
+        id_ex_pipe_o.xif_meta.dualwrite     <= xif_dualwrite;
 
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
@@ -697,7 +703,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
-      assign xif_we = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
+      assign xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
+      assign xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
+      assign xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;
+      assign xif_loadstore = xif_issue_if.issue_valid && xif_issue_if.issue_resp.loadstore;
 
     end else begin : no_x_ext
 
@@ -706,6 +715,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept                    = '0;
       assign xif_insn_reject                    = '0;
       assign xif_we                             = '0;
+      assign xif_exception                      = '0;
+      assign xif_dualwrite                      = '0;
+      assign xif_loadstore                      = '0;
 
       assign xif_issue_if.issue_valid         = '0;
       assign xif_issue_if.issue_req.instr     = '0;
