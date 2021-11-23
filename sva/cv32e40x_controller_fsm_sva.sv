@@ -343,5 +343,32 @@ module cv32e40x_controller_fsm_sva
                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && ex_wb_pipe_i.xif_meta.exception)
                     |-> ctrl_fsm_o.halt_ex)
       else `uvm_error("controller", "EX not halted while offloaded instruction in WB can cause an exception")
+
+  // Helper logic to check that all offloaded instructions recive commit_valid
+  logic commit_valid_flag;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      commit_valid_flag <= 1'b0;
+    end else begin
+      // Clear flag if EX is killed or instruction goes to WB
+      if(ctrl_fsm_o.kill_ex || (ex_valid_i && wb_ready_i)) begin
+        commit_valid_flag <= 1'b0;
+      end else if(xif_commit_valid) begin
+        commit_valid_flag <= 1'b1;
+      end
+    end
+  end
+
+  // When WB is ready, and EX contains an offloaded instructon,
+  // commit_valid must be 1, or must have been one while the instruction
+  // was in the EX stage.
+  a_offload_commit_valid:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    // Xif instruction is in EX, and it either gets killed or goes to WB
+                    ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && !ctrl_fsm_o.halt_ex) &&
+                     (ctrl_fsm_o.kill_ex || wb_ready_i))
+                    // Must receive commit_valid, or commit_valid has already been recieved
+                    |-> (xif_commit_valid || commit_valid_flag))
+      else `uvm_error("controller", "Offloaded instruction did not receive commit_valid")
 endmodule // cv32e40x_controller_fsm_sva
 

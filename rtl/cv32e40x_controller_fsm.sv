@@ -888,16 +888,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                                                  !commit_valid_q; // Make sure we signal only once per instruction
 
       assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_meta.id;
-      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex; // TODO: when should the offloaded instr be killed?
+      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex;
 
       // Flag used to make sure we only signal commit_valid once for each instruction
       always_ff @(posedge clk, negedge rst_n) begin : commit_valid_ctrl
         if (rst_n == 1'b0) begin
           commit_valid_q <= 1'b0;
         end else begin
+          // Set flag if we commit while WB is not ready
           if (xif_commit_if.commit_valid && !wb_ready_i) begin
             commit_valid_q <= 1'b1;
-          end else if (ex_valid_i && wb_ready_i) begin
+          // Clear flag once instruction goes to WB or instruction gets killed
+          end else if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex) begin
             commit_valid_q <= 1'b0;
           end
         end
