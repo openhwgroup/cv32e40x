@@ -109,8 +109,11 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // In case of MPU/PMA error, the register file should not be written.
   // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
+  // TODO: Could use result interface.we into account if out of order completion is allowed.
   assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && instr_valid;
+  // TODO: Could use result interface.rd into account if out of order completion is allowed.
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
+  // TODO: Could use result interface.rd into account if out of order completion is allowed.
   assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : (ex_wb_pipe_i.xif_en ? xif_result_if.result.data : ex_wb_pipe_i.rf_wdata);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -120,7 +123,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Ok, as controller will never kill ongoing LSU instructions, and thus
   // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
   assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid; // todo: move to LSU?
-  assign lsu_ready_o = !xif_waiting; // signal ready to LSU only if there is no waiting offloaded instruction
+  assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
 
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid

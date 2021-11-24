@@ -93,6 +93,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign rf_waddr_ex = id_ex_pipe_i.rf_waddr;
 
   // WB rf_waddr
+  // TODO: If XIF OoO is allowed, we need to look at WB stage outputs instead
   rf_addr_t  rf_waddr_wb;
   assign rf_waddr_wb = ex_wb_pipe_i.rf_waddr;
 

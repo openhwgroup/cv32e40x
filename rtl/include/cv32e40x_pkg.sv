@@ -932,6 +932,7 @@ typedef struct packed
   logic        loadstore; // Is offloaded ins a load or store?
   logic        dualwrite; // Will oflfoaded ins cause a dual writeback?
   logic [31:0] id;        // ID of offloaded ins
+  logic        accepted;  // Was the offloaded instruction accepted or not?
 } xif_meta_t;
   
 // IF/ID pipeline
@@ -1134,6 +1135,9 @@ typedef struct packed {
   logic        kill_id; // Kill ID stage
   logic        kill_ex; // Kill EX stage
   logic        kill_wb; // Kill WB stage
+
+  // Kill signal for xif_commit_if
+  logic        kill_xif; // Kill (attempted) offloaded instruction
 } ctrl_fsm_t;
 
   ///////////////////////////

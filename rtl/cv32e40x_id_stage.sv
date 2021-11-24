@@ -605,11 +605,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.dret_insn              <= dret_insn;
 
         // eXtension interface
-        id_ex_pipe_o.xif_en                 <= xif_insn_accept;
+        id_ex_pipe_o.xif_en                 <= xif_insn_accept || xif_insn_reject;
         id_ex_pipe_o.xif_meta.id            <= if_id_pipe_i.xif_id;
         id_ex_pipe_o.xif_meta.exception     <= xif_exception;
         id_ex_pipe_o.xif_meta.loadstore     <= xif_loadstore;
         id_ex_pipe_o.xif_meta.dualwrite     <= xif_dualwrite;
+        id_ex_pipe_o.xif_meta.accepted      <= xif_insn_accept;
 
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
@@ -655,12 +656,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           xif_accepted_q <= 1'b0;
           xif_rejected_q <= 1'b0;
         end else begin
-          if ( ctrl_fsm_i.kill_id ) begin
+          if ( (id_valid_o && ex_ready_i) || ctrl_fsm_i.kill_id ) begin
             xif_accepted_q <= 1'b0;
-            xif_accepted_q <= 1'b0;
+            xif_rejected_q <= 1'b0;
           end else begin
-            xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
-            xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+            xif_accepted_q <= xif_insn_accept;
+            xif_rejected_q <= xif_insn_reject;
           end
         end
       end
@@ -668,10 +669,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // attempt to offload every valid instruction that is considered illegal by the decoder
       // Also attempt to offload any CSR instruction. The validity of such instructions are only
       // checked in the EX stage.
-      // Instructions with instruction bus error, mpu error or trigger match will not be offloaded
+      // Instructions with deassert_we set to 1 from the controller bypass logic will not be attempted offloaded.
       assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) &&
-                                            !(xif_accepted_q || xif_rejected_q || if_id_pipe_i.instr.bus_resp.err ||
-                                             (if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.trigger_match);
+                                            !(xif_accepted_q || xif_rejected_q || ctrl_byp_i.deassert_we);
 
       assign xif_issue_if.issue_req.instr = instr;
       assign xif_issue_if.issue_req.mode  = PRIV_LVL_M;

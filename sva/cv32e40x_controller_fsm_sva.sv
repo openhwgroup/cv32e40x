@@ -295,7 +295,7 @@ module cv32e40x_controller_fsm_sva
   // flagged as killed on the eXtension interface
   a_duplicate_csr_kill:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                  (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.csr_en && !csr_illegal_i &&
                   (id_ex_pipe_i.instr_valid && !ctrl_fsm_o.halt_ex && !ctrl_fsm_o.kill_ex)
                   |-> xif_commit_kill)
     else `uvm_error("controller", "Duplicate CSR instruction not killed")
@@ -306,7 +306,7 @@ module cv32e40x_controller_fsm_sva
   //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
   a_duplicate_csr_illegal:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                    ex_valid_i && wb_ready_i && (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.csr_en && !csr_illegal_i &&
                     !((id_ex_pipe_i.instr.mpu_status != MPU_OK) || (id_ex_pipe_i.instr.bus_resp.err))
                     |=> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
       else `uvm_error("controller", "Duplicate CSR instruction not mardked as illegal")
@@ -346,15 +346,20 @@ module cv32e40x_controller_fsm_sva
 
   // Helper logic to check that all offloaded instructions recive commit_valid
   logic commit_valid_flag;
+  logic commit_kill_flag;
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       commit_valid_flag <= 1'b0;
+      commit_kill_flag  <= 1'b0;
     end else begin
       // Clear flag if EX is killed or instruction goes to WB
       if(ctrl_fsm_o.kill_ex || (ex_valid_i && wb_ready_i)) begin
         commit_valid_flag <= 1'b0;
+        commit_kill_flag  <= 1'b0;
+      // Set flag when commit_valid goes high
       end else if(xif_commit_valid) begin
         commit_valid_flag <= 1'b1;
+        commit_kill_flag  <= xif_commit_kill;
       end
     end
   end
@@ -370,5 +375,26 @@ module cv32e40x_controller_fsm_sva
                     // Must receive commit_valid, or commit_valid has already been recieved
                     |-> (xif_commit_valid || commit_valid_flag))
       else `uvm_error("controller", "Offloaded instruction did not receive commit_valid")
+
+  // When WB is ready, and EX contains an offloaded instructon that was rejected,
+  // commit_kill must be 1, or must have been one while the instruction
+  // was in the EX stage.
+  a_offload_commit_kill_rejected:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    // Rejected Xif instruction is in EX, must be killed
+                    ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted && !ctrl_fsm_o.halt_ex) &&
+                      (ctrl_fsm_o.kill_ex || wb_ready_i))
+                    // Must receive commit_kill, or commit_kill has already been recieved
+                    |-> (xif_commit_kill || commit_kill_flag))
+      else `uvm_error("controller", "Rejected offloaded instruction did not receive commit_kill")
+
+  // Any offloaded instruction that reaches WB must have been accepted by the eXtension interface
+  a_offload_in_wb_was_accepted:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en)
+                    |-> ex_wb_pipe_i.xif_meta.accepted)
+      else `uvm_error("controller", "Offloaded instruction in WB was not preciously accepted by the eXtension interface")
+
+
 endmodule // cv32e40x_controller_fsm_sva
 

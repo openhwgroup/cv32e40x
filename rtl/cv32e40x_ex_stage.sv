@@ -126,10 +126,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Using registered instr_valid, as gated instr_valid would not allow killing of offloaded instruction
   // in case of halt_ex==1. We need to kill this duplicate regardless of halt state.
   //  Currently, halt_ex is asserted in the cycle before debug entry, and if any performance counter is being read.
-  assign xif_csr_error_o = instr_valid && id_ex_pipe_i.xif_en && (id_ex_pipe_i.csr_en && !csr_illegal_i);
+  assign xif_csr_error_o = instr_valid && (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && (id_ex_pipe_i.csr_en && !csr_illegal_i);
 
   // CSR instruction is illegal if core signals illegal and NOT offloaded, or if both core and xif accepted it.
-  assign csr_is_illegal = ((csr_illegal_i && !id_ex_pipe_i.xif_en) ||
+  assign csr_is_illegal = ((csr_illegal_i && (id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted)) ||
                            xif_csr_error_o) &&
                            instr_valid;
 
@@ -346,7 +346,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface
-        ex_wb_pipe_o.xif_en         <= id_ex_pipe_i.xif_en && !xif_csr_error_o;
+        ex_wb_pipe_o.xif_en         <= ctrl_fsm_i.kill_xif ? 1'b0 : id_ex_pipe_i.xif_en;
         ex_wb_pipe_o.xif_meta       <= id_ex_pipe_i.xif_meta;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,

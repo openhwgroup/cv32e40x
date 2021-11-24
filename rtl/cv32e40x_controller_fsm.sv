@@ -387,7 +387,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                          (pending_debug && !debug_allowed) ||
                          (pending_nmi && !nmi_allowed);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
-    // Also halting EX if an offloaded instruction in WB may cause an exception
+    // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
+    // instruction can correctly receive commit_kill.
     ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
 
@@ -873,34 +874,45 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   generate
     if (X_EXT) begin : x_ext
-      logic commit_valid_q;
+      logic commit_valid_q; // Sticky bit for commit_valid
+      logic commit_kill_q;  // Sticky bit for commit_kill
+      logic kill_rejected;  // Signal used to kill rejected xif instructions
+
       // TODO: Add assertion to check the following:
       // Every issue interface transaction (whether accepted or not) has an associated commit interface
       // transaction and both interfaces use a matching transaction ordering.
       
       // Commit an offloaded instruction in the first cycle where EX is not halted, or EX is killed.
-      //       Only commit when there is an actual valid offloaded instruction in EX, and we have not
-      //       previously signalled commit for the same instruction.
+      //       Only commit when there is an offloaded instruction in EX (accepted or not), and we have not
+      //       previously signalled commit for the same instruction. Rejected xif instructions gets killed
+      //       with commit_kill=1 (pipeline is not killed as we need to handle the illegal instruction in WB)
       // Can only allow commit when older instructions are guaranteed to complete without exceptions
-      //       - EX is halted is offloaded in WB can cause an exception, causing below to evaluate to 0.
+      //       - EX is halted if offloaded in WB can cause an exception, causing below to evaluate to 0.
       assign xif_commit_if.commit_valid       = (!ctrl_fsm_o.halt_ex || ctrl_fsm_o.kill_ex) &&
                                                  (id_ex_pipe_i.xif_en && id_ex_pipe_i.instr_valid) &&
                                                  !commit_valid_q; // Make sure we signal only once per instruction
 
       assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_meta.id;
-      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex;
+      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex || kill_rejected;
+
+      // Signal commit_kill=1 to all instructions rejected by the eXtension interface
+      assign kill_rejected = (id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.instr_valid;
+
+      // Signal (to EX stage), that an (attempted) offloaded instructions is killed (clears ex_wb_pipe.xif_en)
+      assign ctrl_fsm_o.kill_xif = xif_commit_if.commit.commit_kill || commit_kill_q;
 
       // Flag used to make sure we only signal commit_valid once for each instruction
       always_ff @(posedge clk, negedge rst_n) begin : commit_valid_ctrl
         if (rst_n == 1'b0) begin
           commit_valid_q <= 1'b0;
+          commit_kill_q  <= 1'b0;
         end else begin
-          // Set flag if we commit while WB is not ready
-          if (xif_commit_if.commit_valid && !wb_ready_i) begin
-            commit_valid_q <= 1'b1;
-          // Clear flag once instruction goes to WB or instruction gets killed
-          end else if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex) begin
+          if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex) begin
             commit_valid_q <= 1'b0;
+            commit_kill_q  <= 1'b0;
+          end else begin
+            commit_valid_q <= (xif_commit_if.commit_valid || commit_valid_q);
+            commit_kill_q  <= (xif_commit_if.commit.commit_kill || commit_kill_q);
           end
         end
       end
@@ -910,6 +922,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       assign xif_commit_if.commit_valid       = '0;
       assign xif_commit_if.commit.id          = '0;
       assign xif_commit_if.commit.commit_kill = '0;
+      assign ctrl_fsm_o.kill_xif              = 1'b0;
 
     end
   endgenerate
