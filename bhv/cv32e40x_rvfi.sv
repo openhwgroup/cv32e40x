@@ -482,8 +482,8 @@ module cv32e40x_rvfi
     rvfi_trap_next = '0;
 
     if (pc_mux_debug) begin
-      // All debug entries will set pc_mux_debug but only synchronous debug rentries will set wb_valid (and in turn rvfi_valid)
-      // as asynchronous entries will kill the WB stage whereas syncronous entries will not.
+      // All debug entries will set pc_mux_debug but only synchronous debug entries will set wb_valid (and in turn rvfi_valid)
+      // as asynchronous entries will kill the WB stage whereas synchronous entries will not.
       // Indicate that the trap is a synchronous trap into debug mode
       rvfi_trap_next[2:0]  = 3'b101;
       // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
