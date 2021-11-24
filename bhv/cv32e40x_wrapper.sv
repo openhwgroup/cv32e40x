@@ -148,7 +148,7 @@ module cv32e40x_wrapper
 
 
   bind cv32e40x_ex_stage:
-    core_i.ex_stage_i cv32e40x_ex_stage_sva ex_stage_sva
+    core_i.ex_stage_i cv32e40x_ex_stage_sva #(.X_EXT(X_EXT)) ex_stage_sva
     (
       .*
     );
@@ -176,6 +176,7 @@ module cv32e40x_wrapper
   bind cv32e40x_controller_fsm:
     core_i.controller_i.controller_fsm_i
       cv32e40x_controller_fsm_sva
+        #(.X_EXT(X_EXT))
         controller_fsm_sva   (
                               .lsu_outstanding_cnt (core_i.load_store_unit_i.cnt_q),
                               .rf_we_wb_i          (core_i.wb_stage_i.rf_we_wb_o  ),

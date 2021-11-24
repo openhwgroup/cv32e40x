@@ -31,6 +31,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_ex_stage import cv32e40x_pkg::*;
+  #( parameter bit X_EXT = 1'b0
+  )
 (
   input  logic        clk,
   input  logic        rst_n,
