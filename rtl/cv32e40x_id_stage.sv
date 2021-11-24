@@ -703,6 +703,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
+      // TODO: These may be missed if issue_valid retracts before ID goes to EX. Need to check for sticky accept as well
       assign xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
       assign xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
       assign xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;
