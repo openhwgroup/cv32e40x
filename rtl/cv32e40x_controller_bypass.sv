@@ -93,6 +93,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign rf_waddr_ex = id_ex_pipe_i.rf_waddr;
 
   // WB rf_waddr
+  // TODO: If XIF OoO is allowed, we need to look at WB stage outputs instead
   rf_addr_t  rf_waddr_wb;
   assign rf_waddr_wb = ex_wb_pipe_i.rf_waddr;
 
@@ -235,5 +236,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     end
 
   end
+
+  // Stall EX if offloaded instruction in WB may trigger an exception
+  assign ctrl_byp_o.xif_exception_stall = ex_wb_pipe_i.xif_en && ex_wb_pipe_i.xif_meta.exception && ex_wb_pipe_i.instr_valid;
+
 
 endmodule // cv32e40x_controller_bypass

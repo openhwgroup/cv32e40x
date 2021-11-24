@@ -194,6 +194,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        xif_insn_accept;
   logic        xif_insn_reject;
   logic        xif_we;
+  logic        xif_exception;
+  logic        xif_dualwrite;
+  logic        xif_loadstore;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
@@ -520,7 +523,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.mret_insn              <= 1'b0;
       id_ex_pipe_o.dret_insn              <= 1'b0;
       id_ex_pipe_o.xif_en                 <= 1'b0;
-      id_ex_pipe_o.xif_id                 <= '0;
+      id_ex_pipe_o.xif_meta               <= '0;
 
     end else begin
       // normal pipeline unstall case
@@ -602,8 +605,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.dret_insn              <= dret_insn;
 
         // eXtension interface
-        id_ex_pipe_o.xif_en                 <= xif_insn_accept;
-        id_ex_pipe_o.xif_id                 <= if_id_pipe_i.xif_id;
+        id_ex_pipe_o.xif_en                 <= xif_insn_accept || xif_insn_reject;
+        id_ex_pipe_o.xif_meta.id            <= if_id_pipe_i.xif_id;
+        id_ex_pipe_o.xif_meta.exception     <= xif_exception;
+        id_ex_pipe_o.xif_meta.loadstore     <= xif_loadstore;
+        id_ex_pipe_o.xif_meta.dualwrite     <= xif_dualwrite;
+        id_ex_pipe_o.xif_meta.accepted      <= xif_insn_accept;
 
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
@@ -649,15 +656,22 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           xif_accepted_q <= 1'b0;
           xif_rejected_q <= 1'b0;
         end else begin
-          xif_accepted_q <= !(id_valid_o && ex_ready_i) && xif_insn_accept;
-          xif_rejected_q <= !(id_valid_o && ex_ready_i) && xif_insn_reject;
+          if ( (id_valid_o && ex_ready_i) || ctrl_fsm_i.kill_id ) begin
+            xif_accepted_q <= 1'b0;
+            xif_rejected_q <= 1'b0;
+          end else begin
+            xif_accepted_q <= xif_insn_accept;
+            xif_rejected_q <= xif_insn_reject;
+          end
         end
       end
 
       // attempt to offload every valid instruction that is considered illegal by the decoder
       // Also attempt to offload any CSR instruction. The validity of such instructions are only
       // checked in the EX stage.
-      assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) && !xif_accepted_q && !xif_rejected_q;
+      // Instructions with deassert_we set to 1 from the controller bypass logic will not be attempted offloaded.
+      assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) &&
+                                            !(xif_accepted_q || xif_rejected_q || ctrl_byp_i.deassert_we);
 
       assign xif_issue_if.issue_req.instr = instr;
       assign xif_issue_if.issue_req.mode  = PRIV_LVL_M;
@@ -689,7 +703,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
-      assign xif_we = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
+      // TODO: These may be missed if issue_valid retracts before ID goes to EX. Need to check for sticky accept as well
+      assign xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
+      assign xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
+      assign xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;
+      assign xif_loadstore = xif_issue_if.issue_valid && xif_issue_if.issue_resp.loadstore;
 
     end else begin : no_x_ext
 
@@ -698,6 +716,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept                    = '0;
       assign xif_insn_reject                    = '0;
       assign xif_we                             = '0;
+      assign xif_exception                      = '0;
+      assign xif_dualwrite                      = '0;
+      assign xif_loadstore                      = '0;
 
       assign xif_issue_if.issue_valid         = '0;
       assign xif_issue_if.issue_req.instr     = '0;

@@ -48,7 +48,8 @@ module cv32e40x_id_stage_sva
   input id_ex_pipe_t    id_ex_pipe_o,
   input logic           id_ready_o,
   input logic           id_valid_o,
-  input ctrl_fsm_t      ctrl_fsm_i
+  input ctrl_fsm_t      ctrl_fsm_i,
+  input logic           xif_insn_accept
 );
 
 
@@ -103,12 +104,12 @@ module cv32e40x_id_stage_sva
       endgenerate
 */
       // Check that illegal instruction has no other side effects
-      // TODO: Factor in that the eXtension interface may accept the instruction, and thus rf_we may still be 1
+      // If xif accepts instruction, rf_we may still be 1
       property p_illegal_2;
         @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
                                                                          ecall_insn || wfi_insn || fencei_insn ||
                                                                          alu_en || mul_en ||
-                                                                         rf_we ||
+                                                                         (rf_we && !xif_insn_accept) ||
                                                                          csr_op != CSR_OP_READ || lsu_en);
       endproperty
 

@@ -150,10 +150,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic dret_in_wb;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
+  logic xif_in_wb;
+
   logic pending_nmi;
   logic pending_debug;
   logic pending_single_step;
   logic pending_interrupt;
+
 
   // Flags for allowing interrupt and debug
   // TODO:OK:low Add flag for exception_allowed
@@ -250,6 +253,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
   assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid);
 
+  // An offloaded instruction is in WB
+  assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
+
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
@@ -287,11 +293,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   */
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || ctrl_fsm_o.irq_ack)) && !pending_debug;
 
-  // Regular debug will kill insn in WB, do not allow if LSU is not interruptible or a fence.i handshake is taking place.
+  // Regular debug will kill insn in WB, do not allow if LSU is not interruptible, a fence.i handshake is taking place
+  // or if an offloaded instruction is in WB.
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing;
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -317,13 +324,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no trans_valid has been clocked from EX to environment.
+  // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were convered to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
   // todo: Factor in stepie here instead of gating mie in cs_registers
-  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing;
+  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing && !xif_in_wb;
 
   assign nmi_allowed = interrupt_allowed;
 
@@ -379,7 +387,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                          (pending_debug && !debug_allowed) ||
                          (pending_nmi && !nmi_allowed);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
-    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall;
+    // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
+    // instruction can correctly receive commit_kill.
+    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
     ctrl_fsm_o.halt_wb = 1'b0;
 
     // By default no stages are killed
@@ -864,33 +874,55 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   generate
     if (X_EXT) begin : x_ext
+      logic commit_valid_q; // Sticky bit for commit_valid
+      logic commit_kill_q;  // Sticky bit for commit_kill
+      logic kill_rejected;  // Signal used to kill rejected xif instructions
 
       // TODO: Add assertion to check the following:
       // Every issue interface transaction (whether accepted or not) has an associated commit interface
       // transaction and both interfaces use a matching transaction ordering.
       
-      // TODO: check if id_ex_pipe_i.xif_insn needs to be validated with instr_valid of the EX stage
-      
-      // commit an offloaded instruction in the cycle before it proceeds to the WB stage
-      // (i.e., as soon as the instruction has progressed to the EX stage and WB is ready,
-      // which ensures that only one offloaded instruction is committed at a time and
-      // thus the coprocessor is forced to return results in order)
-      // TODO: wb_ready is a late signal and causes timing issues on commit_valid
-      //       Perhaps not factor in wb_ready_i and uncoditionally signal commit_valid, preventing
-      //       to commit the same instruction multiple times
-      // TODO: data_gnt_i currently fans into commit_valid below. Can this be removed?
-      // TODO: Can only allow commit when older instructions are guaranteed to complete without exceptions
-      // TODO: If kill_ex is 1 (for taking exceptions from WB for intance), ex_valid_i will be 0 and we
-      //       cannot signal commit_kill properly
-      assign xif_commit_if.commit_valid       = ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en;
-      assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_id;
-      assign xif_commit_if.commit.commit_kill = xif_csr_error_i; // TODO: when should the offloaded instr be killed?
+      // Commit an offloaded instruction in the first cycle where EX is not halted, or EX is killed.
+      //       Only commit when there is an offloaded instruction in EX (accepted or not), and we have not
+      //       previously signalled commit for the same instruction. Rejected xif instructions gets killed
+      //       with commit_kill=1 (pipeline is not killed as we need to handle the illegal instruction in WB)
+      // Can only allow commit when older instructions are guaranteed to complete without exceptions
+      //       - EX is halted if offloaded in WB can cause an exception, causing below to evaluate to 0.
+      assign xif_commit_if.commit_valid       = (!ctrl_fsm_o.halt_ex || ctrl_fsm_o.kill_ex) &&
+                                                 (id_ex_pipe_i.xif_en && id_ex_pipe_i.instr_valid) &&
+                                                 !commit_valid_q; // Make sure we signal only once per instruction
+
+      assign xif_commit_if.commit.id          = id_ex_pipe_i.xif_meta.id;
+      assign xif_commit_if.commit.commit_kill = xif_csr_error_i || ctrl_fsm_o.kill_ex || kill_rejected;
+
+      // Signal commit_kill=1 to all instructions rejected by the eXtension interface
+      assign kill_rejected = (id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.instr_valid;
+
+      // Signal (to EX stage), that an (attempted) offloaded instructions is killed (clears ex_wb_pipe.xif_en)
+      assign ctrl_fsm_o.kill_xif = xif_commit_if.commit.commit_kill || commit_kill_q;
+
+      // Flag used to make sure we only signal commit_valid once for each instruction
+      always_ff @(posedge clk, negedge rst_n) begin : commit_valid_ctrl
+        if (rst_n == 1'b0) begin
+          commit_valid_q <= 1'b0;
+          commit_kill_q  <= 1'b0;
+        end else begin
+          if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex) begin
+            commit_valid_q <= 1'b0;
+            commit_kill_q  <= 1'b0;
+          end else begin
+            commit_valid_q <= (xif_commit_if.commit_valid || commit_valid_q);
+            commit_kill_q  <= (xif_commit_if.commit.commit_kill || commit_kill_q);
+          end
+        end
+      end
 
     end else begin : no_x_ext
 
       assign xif_commit_if.commit_valid       = '0;
       assign xif_commit_if.commit.id          = '0;
       assign xif_commit_if.commit.commit_kill = '0;
+      assign ctrl_fsm_o.kill_xif              = 1'b0;
 
     end
   endgenerate

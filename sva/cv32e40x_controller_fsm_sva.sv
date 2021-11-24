@@ -28,6 +28,7 @@
 module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+  #(  parameter bit X_EXT     = 1'b0)
 (
   input logic           clk,
   input logic           rst_n,
@@ -65,7 +66,8 @@ module cv32e40x_controller_fsm_sva
   input logic           interrupt_allowed,
   input logic           pending_nmi,
   input logic           fencei_ready,
-  input logic           xif_commit_kill
+  input logic           xif_commit_kill,
+  input logic           xif_commit_valid
 );
 
 
@@ -289,27 +291,109 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !interrupt_allowed)
       else `uvm_error("controller", "interrupt_allowed high while LSU is in WB")
-    
-  // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline is
-  // flagged as killed on the eXtension interface
-  a_duplicate_csr_kill:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
-                  (id_ex_pipe_i.instr_valid && !ctrl_fsm_o.halt_ex && !ctrl_fsm_o.kill_ex)
-                  |-> xif_commit_kill)
-    else `uvm_error("controller", "Duplicate CSR instruction not killed")
 
-  // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline
-  // causes an illegal instruction
-  // TODO: The checks for mpu_status and bus_resp.err below can be removed once the
-  //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
-  a_duplicate_csr_illegal:
+// Only include following assertions if X_EXT=1
+generate;
+  if(X_EXT) begin
+
+    // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline is
+    // flagged as killed on the eXtension interface
+    a_duplicate_csr_kill:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    ex_valid_i && wb_ready_i && id_ex_pipe_i.xif_en && id_ex_pipe_i.csr_en && !csr_illegal_i &&
-                    !((id_ex_pipe_i.instr.mpu_status != MPU_OK) || (id_ex_pipe_i.instr.bus_resp.err))
-                    |=> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
-      else `uvm_error("controller", "Duplicate CSR instruction not mardked as illegal")
+                    (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                    (id_ex_pipe_i.instr_valid && !ctrl_fsm_o.halt_ex && !ctrl_fsm_o.kill_ex)
+                    |-> xif_commit_kill)
+      else `uvm_error("controller", "Duplicate CSR instruction not killed")
 
+    // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline
+    // causes an illegal instruction
+    // TODO: The checks for mpu_status and bus_resp.err below can be removed once the
+    //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
+    a_duplicate_csr_illegal:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      ex_valid_i && wb_ready_i && (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.csr_en && !csr_illegal_i &&
+                      !((id_ex_pipe_i.instr.mpu_status != MPU_OK) || (id_ex_pipe_i.instr.bus_resp.err))
+                      |=> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
+        else `uvm_error("controller", "Duplicate CSR instruction not mardked as illegal")
+
+    // Never kill offloaded instructions in WB (received commit_kill=0 in EX)
+    a_offload_kill_wb:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                        (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en) |-> !ctrl_fsm_o.kill_wb)
+        else `uvm_error("controller", "Offloaded instruction killed in WB")
+
+    // xif_commit_if.commit_valid one cycle per offloaded instruction
+    a_single_commit_valid:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (xif_commit_valid && ex_valid_i && !wb_ready_i) |=> !xif_commit_valid until_with (ex_valid_i && wb_ready_i))
+        else `uvm_error("controller", "Multiple xif.commit_valid for one instruction")
+
+    // Do not kill commited offloaded instructions if they stay in EX for multiple cycles
+    a_nokill_commited_xif:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (xif_commit_valid && ex_valid_i && !wb_ready_i) |=> !ctrl_fsm_o.kill_ex until_with (ex_valid_i && wb_ready_i))
+        else `uvm_error("controller", "Committed xif instruction was killed in EX")
+
+    // EX shall be halted if offloaded instruction in WB can cause an exception
+    a_halt_ex_xif_exception:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && ex_wb_pipe_i.xif_meta.exception)
+                      |-> ctrl_fsm_o.halt_ex)
+        else `uvm_error("controller", "EX not halted while offloaded instruction in WB can cause an exception")
+
+    // Helper logic to check that all offloaded instructions recive commit_valid
+    logic commit_valid_flag;
+    logic commit_kill_flag;
+    always_ff @(posedge clk, negedge rst_n) begin
+      if (rst_n == 1'b0) begin
+        commit_valid_flag <= 1'b0;
+        commit_kill_flag  <= 1'b0;
+      end else begin
+        // Clear flag if EX is killed or instruction goes to WB
+        if(ctrl_fsm_o.kill_ex || (ex_valid_i && wb_ready_i)) begin
+          commit_valid_flag <= 1'b0;
+          commit_kill_flag  <= 1'b0;
+        // Set flag when commit_valid goes high
+        end else if(xif_commit_valid) begin
+          commit_valid_flag <= 1'b1;
+          commit_kill_flag  <= xif_commit_kill;
+        end
+      end
+    end
+
+    // When WB is ready, and EX contains an offloaded instructon,
+    // commit_valid must be 1, or must have been one while the instruction
+    // was in the EX stage.
+    a_offload_commit_valid:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      // Xif instruction is in EX, and it either gets killed or goes to WB
+                      ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && !ctrl_fsm_o.halt_ex) &&
+                        (ctrl_fsm_o.kill_ex || wb_ready_i))
+                      // Must receive commit_valid, or commit_valid has already been recieved
+                      |-> (xif_commit_valid || commit_valid_flag))
+        else `uvm_error("controller", "Offloaded instruction did not receive commit_valid")
+
+    // When WB is ready, and EX contains an offloaded instructon that was rejected,
+    // commit_kill must be 1, or must have been one while the instruction
+    // was in the EX stage.
+    a_offload_commit_kill_rejected:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      // Rejected Xif instruction is in EX, must be killed
+                      ((id_ex_pipe_i.instr_valid && id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted && !ctrl_fsm_o.halt_ex) &&
+                        (ctrl_fsm_o.kill_ex || wb_ready_i))
+                      // Must receive commit_kill, or commit_kill has already been recieved
+                      |-> (xif_commit_kill || commit_kill_flag))
+        else `uvm_error("controller", "Rejected offloaded instruction did not receive commit_kill")
+
+    // Any offloaded instruction that reaches WB must have been accepted by the eXtension interface
+    a_offload_in_wb_was_accepted:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en)
+                      |-> ex_wb_pipe_i.xif_meta.accepted)
+        else `uvm_error("controller", "Offloaded instruction in WB was not preciously accepted by the eXtension interface")
+
+  end
+endgenerate
 
   // Assert that debug is not allowed when WB stage has an LSU
   // instruction (cnt_q != 0)
@@ -317,5 +401,7 @@ module cv32e40x_controller_fsm_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
+
+
 endmodule // cv32e40x_controller_fsm_sva
 

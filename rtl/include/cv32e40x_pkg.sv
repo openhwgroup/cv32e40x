@@ -924,6 +924,16 @@ typedef struct packed
   logic        branch_taken;
   logic        compressed;
 } instr_meta_t;
+
+// Struct for carrying eXtension interface information
+typedef struct packed
+{
+  logic        exception;       // Can offloaded ins cause an exception?
+  logic        loadstore; // Is offloaded ins a load or store?
+  logic        dualwrite; // Will oflfoaded ins cause a dual writeback?
+  logic [31:0] id;        // ID of offloaded ins
+  logic        accepted;  // Was the offloaded instruction accepted or not?
+} xif_meta_t;
   
 // IF/ID pipeline
 typedef struct packed {
@@ -996,7 +1006,8 @@ typedef struct packed {
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
-  logic [31:0] xif_id;  // ID of offloaded instruction
+  xif_meta_t    xif_meta;         // xif meta struct
+
 } id_ex_pipe_t;
 
 // EX/WB pipeline
@@ -1032,7 +1043,7 @@ typedef struct packed {
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
-  logic [31:0] xif_id;  // ID of offloaded instruction
+  xif_meta_t    xif_meta;         // xif meta struct
 } ex_wb_pipe_t;
 
 // Performance counter events
@@ -1065,7 +1076,8 @@ typedef struct packed {
   logic        csr_stall;
   logic        wfi_stall;
   logic        minstret_stall;        // Stall due to minstret/h read in EX
-  logic        deassert_we;   // Deassert write enable and special insn bits
+  logic        deassert_we;           // Deassert write enable and special insn bits
+  logic        xif_exception_stall;   // Stall (EX) if xif insn in WB can cause an exception
 } ctrl_byp_t;
 
 // Controller FSM outputs
@@ -1123,6 +1135,9 @@ typedef struct packed {
   logic        kill_id; // Kill ID stage
   logic        kill_ex; // Kill EX stage
   logic        kill_wb; // Kill WB stage
+
+  // Kill signal for xif_commit_if
+  logic        kill_xif; // Kill (attempted) offloaded instruction
 } ctrl_fsm_t;
 
   ///////////////////////////
