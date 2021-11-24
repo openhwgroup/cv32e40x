@@ -68,7 +68,6 @@ module cv32e40x_rvfi
    input logic                                wb_valid_i,
    input logic                                ebreak_in_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
-   input logic                                exception_in_wb_i,
    // Register writes
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
@@ -430,11 +429,11 @@ module cv32e40x_rvfi
 
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic         debug_taken_if;
-  logic         is_dret_wb;
-  logic         exception_in_wb;
-  logic         interrupt_in_if;
-  logic         nmi_in_if;
+  logic         pc_mux_debug;
+  logic         pc_mux_dret;
+  logic         pc_mux_exception;
+  logic         pc_mux_interrupt;
+  logic         pc_mux_nmi;
 
   logic [6:0]   insn_opcode;
   logic [4:0]   insn_rd;
@@ -456,12 +455,15 @@ module cv32e40x_rvfi
   `include "cv32e40x_rvfi_trace.svh"
 `endif
 
-  assign interrupt_in_if   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_IRQ);
-  assign nmi_in_if         = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_NMI);
-  assign debug_taken_if    = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBD);
-  assign exception_in_wb   = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && ((ctrl_fsm_i.exc_pc_mux == EXC_PC_EXCEPTION) ||
-                                                                     (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBE));
-  assign is_dret_wb        = (ctrl_fsm_i.pc_mux == PC_DRET);
+  // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
+  // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
+  // in the IF stage to see the reason for executing the instruction (e.g. rvfi_intr).
+  assign pc_mux_interrupt = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_IRQ);
+  assign pc_mux_nmi       = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_NMI);
+  assign pc_mux_debug     = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBD);
+  assign pc_mux_exception = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && ((ctrl_fsm_i.exc_pc_mux == EXC_PC_EXCEPTION) ||
+                                                                    (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBE));
+  assign pc_mux_dret      = (ctrl_fsm_i.pc_mux == PC_DRET);
 
   // Assign rvfi channels
   assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
@@ -479,18 +481,20 @@ module cv32e40x_rvfi
   always_comb begin
     rvfi_trap_next = '0;
 
-    if (debug_taken_if) begin
+    if (pc_mux_debug) begin
+      // All debug entries will set pc_mux_debug but only synchronous debug entries will set wb_valid (and in turn rvfi_valid)
+      // as asynchronous entries will kill the WB stage whereas synchronous entries will not.
       // Indicate that the trap is a synchronous trap into debug mode
       rvfi_trap_next[2:0]  = 3'b101;
       // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
       rvfi_trap_next[11:9] = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
     end
-    if (exception_in_wb) begin
+    if (pc_mux_exception) begin
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next[2:0] = 3'b011;
       rvfi_trap_next[8:3] = ctrl_fsm_i.csr_cause.exception_code;
     end
-    if(exception_in_wb && (pending_single_step_i && single_step_allowed_i)) begin
+    if(pc_mux_exception && (pending_single_step_i && single_step_allowed_i)) begin
       // Special case, exception in WB and pending single step.
       // Indicate both non-debug trap and trap into debug mode
       rvfi_trap_next[2:0]  = 3'b111;
@@ -565,7 +569,7 @@ module cv32e40x_rvfi
 
         // IF stage is killed and not valid during debug entry. If debug is taken,
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
-        if (debug_taken_if) begin
+        if (pc_mux_debug) begin
           // Debug cause input only valid during debug taken
           // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
@@ -580,7 +584,7 @@ module cv32e40x_rvfi
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
         // The in trap signal is set for the first instruction of interrupt- and exception handlers (not debug handler)
-        if (interrupt_in_if || nmi_in_if || exception_in_wb) begin
+        if (pc_mux_interrupt || pc_mux_nmi || pc_mux_exception) begin
           in_trap[STAGE_IF] <= 1'b1;
         end
       end
@@ -684,8 +688,8 @@ module cv32e40x_rvfi
 
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
-        rvfi_pc_wdata <= (debug_taken_if || exception_in_wb) ? exc_pc_i & ~32'b1 :
-                         (is_dret_wb) ? csr_dpc_q_i :
+        rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? exc_pc_i & ~32'b1 :
+                         (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
       end
 
