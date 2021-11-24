@@ -108,17 +108,17 @@ The signal is not set for debug traps unless a debug entry happens in the first 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
 
-  =============================================== =========  =========  =============  ==========  =================
-  Scenario                                        rvfi_trap  rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
-  =============================================== =========  =========  =============  ==========  =================
-  Synchronous trap                                X          1          0x0            0           X
-  Interrupt (includes NMIs from bus errors)       X          1          0x0            1           X
-  Debug entry due to EBREAK (from non-debug mode) X          0          0x1            X           0x1
-  Debug entry due to EBREAK (from debug mode)     X          0          0x1            X           X
-  Debug entry due to trigger match                X          0          0x2            X           0x2
-  Debug entry due to external debug request       X          X          0x3 or 0x5     X           0x3 or 0x5
-  Debug handler entry due to single step          X          X          0x4            X           0x4
-  =============================================== =========  =========  =============  ==========  =================
+  ===============================================  =========  =============  ==========  =================
+  Scenario                                         rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
+  ===============================================  =========  =============  ==========  =================
+  Synchronous trap                                 1          0x0            0           X
+  Interrupt (includes NMIs from bus errors)        1          0x0            1           X
+  Debug entry due to EBREAK (from non-debug mode)  0          0x1            X           0x1
+  Debug entry due to EBREAK (from debug mode)      0          0x1            X           X
+  Debug entry due to trigger match                 0          0x2            X           0x2
+  Debug entry due to external debug request        X          0x3 or 0x5     X           0x3 or 0x5
+  Debug handler entry due to single step           X          0x4            X           0x4
+  ===============================================  =========  =============  ==========  =================
 
 
 **Program Counter**
