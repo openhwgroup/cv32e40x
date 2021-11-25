@@ -127,6 +127,8 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_SEXT_B = 6'b110000, // (funct3 = 001)
  ALU_B_SEXT_H = 6'b111000, // (funct3 = 001)
 
+ ALU_B_ZEXT_H = 6'b110011, // (funct3 = 100)
+
  ALU_B_REV8   = 6'b110100, // (funct3 = 101)
  ALU_B_ORC_B  = 6'b110010, // (funct3 = 101)
 
@@ -134,6 +136,13 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_CLMUL  = 6'b100111, // (funct3 = 001)
  ALU_B_CLMULH = 6'b101011, // funct3 = 011
  ALU_B_CLMULR = 6'b101010  // funct3 = 010
+
+ // Free encodings with bit 5 set (for B_EXT):
+ // 6'b101101
+ // 6'b110110
+ // 6'b111010
+ // 6'b111011
+ // 6'b111111
 
 } alu_opcode_e;
 
