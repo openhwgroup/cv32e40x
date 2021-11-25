@@ -167,7 +167,7 @@ Instead of:
 
 **Machine Counter/Timers**
 
-In contrast to [SYMBIOTIC-RVFI]_, the **mcycle** and **minstret** registers are not modelled as happening "between instruction" but rather as a side-effect of the instruction.
+In contrast to [SYMBIOTIC-RVFI]_, the **mcycle[h]** and **minstret[h]** registers are not modelled as happening "between instructions" but rather as a side-effect of the instruction.
 This means that an instruction that causes an increment (or decrement) of these counters will set the ``rvfi_csr_mcycle_wmask``, and that ``rvfi_csr_mcycle_rdata`` is not necessarily equal to ``rvfi_csr_mcycle_wdata``.
 
 
