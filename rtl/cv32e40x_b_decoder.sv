@@ -139,6 +139,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
             end
           end
           {7'b0000100, 3'b100}: begin // Zero extend halfword (zext.h)
+            // NB: zext.h is a subset of the proposed pack instruction in Zbkb
             if (RV32B_ZBB) begin
               decoder_ctrl_o.illegal_insn               = 1'b0;
               decoder_ctrl_o.rf_re[1]                   = 1'b0; // rs2 is not read, but field is hardcoded to x0
