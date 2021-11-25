@@ -144,6 +144,9 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.illegal_insn               = 1'b0;
               decoder_ctrl_o.rf_re[1]                   = 1'b0; // rs2 is not read, but field is hardcoded to x0
               decoder_ctrl_o.alu_operator               = ALU_B_ZEXT_H;
+              if (instr_rdata_i[24:20] != 5'b00000) begin
+                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+              end
             end
           end
 
