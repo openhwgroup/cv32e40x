@@ -138,6 +138,13 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator               = ALU_B_ROR;
             end
           end
+          {7'b0000100, 3'b100}: begin // Zero extend halfword (zext.h)
+            if (RV32B_ZBB) begin
+              decoder_ctrl_o.illegal_insn               = 1'b0;
+              decoder_ctrl_o.rf_re[1]                   = 1'b0; // rs2 is not read, but field is hardcoded to x0
+              decoder_ctrl_o.alu_operator               = ALU_B_ZEXT_H;
+            end
+          end
 
           // RVB Zbc
           {7'b0000101, 3'b001}: begin // Carry-less Multiply (clmul)
@@ -238,7 +245,7 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.alu_operator = ALU_B_SEXT_B;
             end
           end
-          {7'b110_0000, 5'b0_0101, 3'b001}: begin
+          {7'b011_0000, 5'b0_0101, 3'b001}: begin
             if (RV32B_ZBB) begin
               decoder_ctrl_o.illegal_insn = 1'b0;
               decoder_ctrl_o.alu_operator = ALU_B_SEXT_H;
