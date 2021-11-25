@@ -165,9 +165,17 @@ Instead of:
    output [31:0] rvfi_csr_name31_wdata
 
 
+**Machine Counter/Timers**
+
+In contrast to [SYMBIOTIC-RVFI]_, the **mcycle** and **minstret** registers are not modelled as happening "between instruction" but rather as a side-effect of the instruction.
+This means that an instruction that causes an increment (or decrement) of these counters will set the ``rvfi_csr_mcycle_wmask``, and that ``rvfi_csr_mcycle_rdata`` is not necessarily equal to ``rvfi_csr_mcycle_wdata``.
+
+
+
 **Halt Signal**
 
 The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISC-V compliant cores.
+
 
 **Mode Signal**
 
