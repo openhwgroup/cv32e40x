@@ -86,7 +86,11 @@ In addition, the following standard instruction set extensions are available fro
      - 2.0
      - always enabled
 
-   * - **Zicount**: Performance Counters (as described in the Counters chapter of the RISC-V unprivileged specification)
+   * - **Zicntr**: Standard Extension for Base Counters and Timers
+     - 2.0
+     - always enabled
+
+   * - **Zihpm**: Standard Extension for Hardware Performance Counters
      - 2.0
      - always enabled
 

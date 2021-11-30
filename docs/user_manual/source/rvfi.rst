@@ -5,7 +5,7 @@ RISC-V Formal Interface
 
 .. note::
 
-   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See [SYMBIOTIC-RVFI]_ (https://github.com/SymbioticEDA/riscv-formal/blob/master/docs/rvfi.md) for
+   A bindable RISC-V Formal Interface (RVFI) interface will be provided for |corev|. See [SYMBIOTIC-RVFI]_ for
    details on RVFI.
 
 The module ``cv32e40x_rvfi`` can be used to create a log of the executed instructions.
@@ -28,10 +28,10 @@ New Additions
    output [NRET * 3 - 1 : 0] rvfi_dbg
    output [NRET     - 1 : 0] rvfi_dbg_mode
 
-Debug entry is seen by rvfi as happening between instructions. This means that neither the last instruction before debug entry nor the first instruction of the debug handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g., the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the debug handler address etc.).
+Debug entry is seen by RVFI as happening between instructions. This means that neither the last instruction before debug entry nor the first instruction of the debug handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g. the CSR ``rmask``/``rdata`` signals will show the updated values, ``pc_rdata`` will be at the debug handler address, etc.).
 
 For the first instruction after entering debug, the ``rvfi_dbg`` signal contains the debug cause (see table below). The signal is otherwise 0.
-The ``rvfi_dbg_mode signal`` is high if the instruction was executed in debug mode and low otherwise.
+The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mode and low otherwise.
 
 .. table:: Debug Causes
   :name: Debug Causes
@@ -55,9 +55,9 @@ This chapter specifies interpretations and compatibilities to the [SYMBIOTIC-RVF
 
 **Interface Qualification**
 
-All rvfi output signals are qualified with the ``rvfi_valid`` signal.
-Any rvfi operation (retired or trapped instruction) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
-When ``rvfi_valid`` is low, all other rvfi outputs can be driven to arbitrary values.
+All RVFI output signals are qualified with the ``rvfi_valid`` signal.
+Any RVFI operation (retired or trapped instruction) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
+When ``rvfi_valid`` is low, all other RVFI outputs can be driven to arbitrary values.
 
 
 **Trap Signal**
@@ -99,11 +99,11 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 
 **Interrupts**
 
-Interrupts are seen by rvfi as happening between instructions. This means that neither the last instruction before the interrupt nor the first instruction of the interrupt handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g., the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the interrupt handler address etc.).
+Interrupts are seen by RVFI as happening between instructions. This means that neither the last instruction before the interrupt nor the first instruction of the interrupt handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g. the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the interrupt handler address etc.).
 
 
 The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
-The signal is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see rvfi_intr == X in the table below). In this case CSR side-effects (to mepc) can be expected.
+The signal is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see ``rvfi_intr`` == X in the table below). In this case CSR side-effects (to ``mepc``) can be expected.
 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
@@ -127,7 +127,7 @@ The ``pc_wdata`` signal shows the predicted next program counter. This predictio
 
 **Memory Access**
 
-For cores that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
+For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
 
 **CSR Signals**
 
@@ -167,7 +167,7 @@ Instead of:
 
 **Halt Signal**
 
-The ``rvfi_halt`` signal was meant for liveness properties of cores that can halt execution. Only needed for cores that can lock up. Can be tied to 0 for RISC-V compliant cores.
+The ``rvfi_halt`` signal is meant for liveness properties of cores that can halt execution. It is only needed for cores that can lock up. Tied to 0 for RISC-V compliant cores.
 
 **Mode Signal**
 
@@ -194,10 +194,10 @@ The trace output is in tab-separated columns.
 7.  **rd_addr**  Register write port 1 destination address, 0x0 if not used by instruction
 8.  **rd_data**  Register write port 1 write data, 0x0 if not used by instruction
 9.  **mem_addr** Memory address for instructions accessing memory
-10. **rvfi_mem_rmask** Bitmask specifying which bytes in rvfi_mem_rdata contain valid read data
-11. **rvfi_mem_wmask** Bitmask specifying which bytes in rvfi_mem_wdata contain valid write data
-12. **rvfi_mem_rdata** The data read from memory address specified in mem_addr
-13. **rvfi_mem_wdata** The data written to memory address specified in mem_addr
+10. **rvfi_mem_rmask** Bitmask specifying which bytes in ``rvfi_mem_rdata`` contain valid read data
+11. **rvfi_mem_wmask** Bitmask specifying which bytes in ``rvfi_mem_wdata`` contain valid write data
+12. **rvfi_mem_rdata** The data read from memory address specified in ``mem_addr``
+13. **rvfi_mem_wdata** The data written to memory address specified in ``mem_addr``
 
 
 .. code-block:: text
