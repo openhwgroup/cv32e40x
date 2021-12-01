@@ -115,7 +115,7 @@ Parameters
 | ``X_NUM_RS``                 | int (2..3)     | 2             | Number of register file read ports that can be used by the         |
 |                              |                |               | eXtension interface.                                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_ID_WIDTH``               | int (1..32)    | 4             | Identification width for the eXtension interface.                  |
+| ``X_ID_WIDTH``               | int (3..32)    | 4             | Identification width for the eXtension interface.                  |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_MEM_WIDTH``              | int (32 64,    | 32            | Memory access width for loads/stores via the eXtension interface.  |
 |                              | 128, 256)      |               |                                                                    |
