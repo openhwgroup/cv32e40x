@@ -907,7 +907,9 @@ typedef struct packed {
 
 // Reset value for the inst_resp_t type
 parameter inst_resp_t INST_RESP_RESET_VAL = '{
-  bus_resp    : '{rdata: 32'h0, err: 1'b0},
+  // Setting rdata[1:0] to 2'b11 to easily assert that all
+  // instructions in ID are uncompressed
+  bus_resp    : '{rdata: 32'h3, err: 1'b0},
   mpu_status  : MPU_OK
 };
 
