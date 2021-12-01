@@ -131,7 +131,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign xif_csr_error_o = instr_valid && (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && (id_ex_pipe_i.csr_en && !csr_illegal_i);
 
   // CSR instruction is illegal if core signals illegal and NOT offloaded, or if both core and xif accepted it.
-  assign csr_is_illegal = ((csr_illegal_i && (id_ex_pipe_i.xif_en && !id_ex_pipe_i.xif_meta.accepted)) ||
+  assign csr_is_illegal = ((csr_illegal_i && !(id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted)) ||
                            xif_csr_error_o) &&
                            instr_valid;
 
