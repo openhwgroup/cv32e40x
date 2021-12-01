@@ -85,7 +85,8 @@ rst_epilog = """
 """
 
 # Tags for conditional text
-tags.add('ZICOUNT')
+tags.add('ZICNTR')
+tags.add('ZIHPM')
 
 # -- Options for HTML output -------------------------------------------------
 

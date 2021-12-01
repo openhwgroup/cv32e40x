@@ -127,29 +127,40 @@ instruction exception.
   | 0xF15         | ``mconfigptr``    | MRO       |                          | Machine Configuration Pointer                           |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
 
-.. only:: ZICOUNT
+.. only:: ZICNTR
 
-  .. table:: Control and Status Register Map (additional CSRs for Zicount)
-    :name: Control and Status Register Map (additional CSRs for Zicount)
+  .. table:: Control and Status Register Map (additional CSRs for Zicntr)
+    :name: Control and Status Register Map (additional CSRs for Zicntr)
 
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     |  CSR Address  |   Name            | Privilege | Parameter           |  Description                                            |
     +===============+===================+===========+=====================+=========================================================+
     | User CSRs                                                                                                                     |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
-    | 0xC00         | ``cycle``         | URO       |                     | (HPM) Cycle Counter                                     |
+    | 0xC00         | ``cycle``         | URO       |                     | Cycle Counter                                           |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
-    | 0xC02         | ``instret``       | URO       |                     | (HPM) Instructions-Retired Counter                      |
+    | 0xC02         | ``instret``       | URO       |                     | Instructions-Retired Counter                            |
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+    | 0xC80         | ``cycleh``        | URO       |                     | Upper 32 Cycle Counter                                  |
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+    | 0xC82         | ``instreth``      | URO       |                     | Upper 32 Instructions-Retired Counter                   |
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+
+.. only:: ZIHPM
+
+  .. table:: Control and Status Register Map (additional CSRs for Zihpm)
+    :name: Control and Status Register Map (additional CSRs for Zihpm)
+
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+    |  CSR Address  |   Name            | Privilege | Parameter           |  Description                                            |
+    +===============+===================+===========+=====================+=========================================================+
+    | User CSRs                                                                                                                     |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC03         | ``hpmcounter3``   | URO       |                     | (HPM) Performance-Monitoring Counter 3                  |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | .               .                   .           .                     .                                                       |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC1F         | ``hpmcounter31``  | URO       |                     | (HPM) Performance-Monitoring Counter 31                 |
-    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
-    | 0xC80         | ``cycleh``        | URO       |                     | (HPM) Upper 32 Cycle Counter                            |
-    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
-    | 0xC82         | ``instreth``      | URO       |                     | (HPM) Upper 32 Instructions-Retired Counter             |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC83         | ``hpmcounterh3``  | URO       |                     | (HPM) Upper 32 Performance-Monitoring Counter 3         |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
@@ -1270,7 +1281,7 @@ Detailed:
   If the PMP is enabled, these sixteen registers contain the addresses of
   the PMP as specified by the official privileged spec 1.10.
 
-.. only:: ZICOUNT
+.. only:: ZICNTR
 
   Cycle Counter (``cycle``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1306,6 +1317,8 @@ Detailed:
 
   Read-only unprivileged shadow of the lower 32 bits of the 64 bit machine mode instruction retired counter.
 
+.. only:: ZIHPM
+
   Performance Monitoring Counter (``hpmcounter3 .. hpmcounter31``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1323,6 +1336,8 @@ Detailed:
 
   Read-only unprivileged shadow of the lower 32 bits of the 64 bit machine mode
   performance counter. Non implemented counters always return a read value of 0.
+
+.. only:: ZICNTR
 
   Upper 32 Cycle Counter (``cycleh``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1357,6 +1372,8 @@ Detailed:
   +-------+------+------------------------------------------------------------------+
 
   Read-only unprivileged shadow of the upper 32 bits of the 64 bit machine mode instruction retired counter.
+
+.. only:: ZIHPM
 
   Upper 32 Performance Monitoring Counter (``hpmcounter3h .. hpmcounter31h``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
