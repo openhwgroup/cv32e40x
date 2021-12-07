@@ -365,7 +365,7 @@ bind cv32e40x_sleep_unit:
          .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
-         .exc_pc_i                 ( core_i.if_stage_i.exc_pc                                             ),
+         .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
          .priv_lvl_i               ( core_i.cs_registers_i.priv_lvl_o                                     ),
          .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),

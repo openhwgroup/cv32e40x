@@ -370,7 +370,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.instr_req = 1'b1;
 
     ctrl_fsm_o.pc_mux    = PC_BOOT;
-    ctrl_fsm_o.pc_set = 1'b0;
+    ctrl_fsm_o.pc_set    = 1'b0;
 
     ctrl_fsm_o.irq_ack = 1'b0;
     ctrl_fsm_o.irq_id  = '0;
@@ -407,7 +407,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.csr_save_cause      = 1'b0;
     ctrl_fsm_o.csr_cause           = 32'h0;
 
-    ctrl_fsm_o.exc_pc_mux          = EXC_PC_IRQ;
     exc_cause                      = 5'b0;
 
     debug_mode_n                   = debug_mode_q;
@@ -445,9 +444,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b1;
           ctrl_fsm_o.kill_wb = 1'b1;
 
-          ctrl_fsm_o.pc_set     = 1'b1;
-          ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
-          ctrl_fsm_o.exc_pc_mux = EXC_PC_NMI;
+          ctrl_fsm_o.pc_set = 1'b1;
+          ctrl_fsm_o.pc_mux = PC_TRAP_NMI;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.interrupt = 1'b1;
@@ -481,10 +479,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b1;
           ctrl_fsm_o.kill_wb = 1'b1;
 
-          ctrl_fsm_o.pc_set     = 1'b1;
-          ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
-          ctrl_fsm_o.exc_pc_mux = EXC_PC_IRQ;
-          exc_cause  = irq_id_ctrl_i;
+          ctrl_fsm_o.pc_set = 1'b1;
+          ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
+          exc_cause = irq_id_ctrl_i;
 
           ctrl_fsm_o.irq_ack = 1'b1;
           ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
@@ -517,13 +514,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_wb = 1'b0; // All write enables are suppressed, no need to kill WB.
 
             // Set pc to exception handler
-            ctrl_fsm_o.pc_set       = 1'b1;
-            ctrl_fsm_o.pc_mux       = PC_EXCEPTION;
-            ctrl_fsm_o.exc_pc_mux   = debug_mode_q ? EXC_PC_DBE : EXC_PC_EXCEPTION;
+            ctrl_fsm_o.pc_set = 1'b1;
+            ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_TRAP_EXC;
 
             // Save CSR from WB
-            ctrl_fsm_o.csr_save_wb     = 1'b1;
-            ctrl_fsm_o.csr_save_cause  = !debug_mode_q; // Do not update CSRs if in debug mode
+            ctrl_fsm_o.csr_save_wb = 1'b1;
+            ctrl_fsm_o.csr_save_cause = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
           // Special insn
           end else if (wfi_in_wb) begin
@@ -583,9 +579,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
             // Jumps in ID (JAL, JALR, mret, uret, dret)
             if (mret_id_i) begin
-              ctrl_fsm_o.pc_mux     = debug_mode_q ? PC_EXCEPTION : PC_MRET;
-              ctrl_fsm_o.pc_set     = 1'b1;
-              ctrl_fsm_o.exc_pc_mux = EXC_PC_DBE; // Only used in debug mode
+              ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_MRET;
+              ctrl_fsm_o.pc_set = 1'b1;
             end else begin
               ctrl_fsm_o.pc_mux = PC_JUMP;
               ctrl_fsm_o.pc_set = 1'b1;
@@ -632,9 +627,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         single_step_halt_if_n = 1'b0;
 
         // Set pc
-        ctrl_fsm_o.pc_set     = 1'b1;
-        ctrl_fsm_o.pc_mux     = PC_EXCEPTION;
-        ctrl_fsm_o.exc_pc_mux = EXC_PC_DBD;
+        ctrl_fsm_o.pc_set = 1'b1;
+        ctrl_fsm_o.pc_mux = PC_TRAP_DBD;
 
         // Save CSRs
         ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
@@ -758,7 +752,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         nmi_pending_q <= 1'b1;
         nmi_is_store_q <= !ex_wb_pipe_i.rf_we;
       // Clear when the controller takes the NMI
-      end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.exc_pc_mux == EXC_PC_NMI)) begin
+      end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI)) begin
         nmi_pending_q <= 1'b0;
       end
     end

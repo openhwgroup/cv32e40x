@@ -77,7 +77,7 @@ module cv32e40x_rvfi
    input logic                                lsu_rvalid_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    // PC //
-   input logic [31:0]                         exc_pc_i,
+   input logic [31:0]                         branch_addr_n_i,
 
    input                                      privlvl_t priv_lvl_i,
    input                                      privlvl_t priv_lvl_lsu_i,
@@ -458,16 +458,15 @@ module cv32e40x_rvfi
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
   // in the IF stage to see the reason for executing the instruction (e.g. rvfi_intr).
-  assign pc_mux_interrupt = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_IRQ);
-  assign pc_mux_nmi       = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_NMI);
-  assign pc_mux_debug     = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBD);
-  assign pc_mux_exception = (ctrl_fsm_i.pc_mux == PC_EXCEPTION) && ((ctrl_fsm_i.exc_pc_mux == EXC_PC_EXCEPTION) ||
-                                                                    (ctrl_fsm_i.exc_pc_mux == EXC_PC_DBE));
+  assign pc_mux_interrupt = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ);
+  assign pc_mux_nmi       = (ctrl_fsm_i.pc_mux == PC_TRAP_NMI);
+  assign pc_mux_debug     = (ctrl_fsm_i.pc_mux == PC_TRAP_DBD);
+  assign pc_mux_exception = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || (ctrl_fsm_i.pc_mux == PC_TRAP_DBE);
   assign pc_mux_dret      = (ctrl_fsm_i.pc_mux == PC_DRET);
 
   // Assign rvfi channels
-  assign rvfi_halt              = 1'b0; // No intruction causing halt in cv32e40x
-  assign rvfi_ixl               = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
+  assign rvfi_halt = 1'b0; // No intruction causing halt in cv32e40x
+  assign rvfi_ixl = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
   logic         in_trap_clr;
   // Clear in trap pipeline when it reaches rvfi_intr
@@ -688,7 +687,7 @@ module cv32e40x_rvfi
 
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
-        rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? exc_pc_i & ~32'b1 :
+        rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? branch_addr_n_i & ~32'b1 :
                          (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
       end

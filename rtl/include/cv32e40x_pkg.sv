@@ -767,26 +767,20 @@ typedef struct packed {
 ///////////////////////////////////////////////
 
 // PC mux selector defines
-typedef enum logic[2:0] {
-  PC_BOOT      = 3'b000,
-  PC_JUMP      = 3'b010,
-  PC_BRANCH    = 3'b011,
-  PC_EXCEPTION = 3'b100,
-  PC_FENCEI    = 3'b001,
-  PC_MRET      = 3'b101,
-  PC_URET      = 3'b110,
-  PC_DRET      = 3'b111
+typedef enum logic[3:0] {
+  PC_BOOT     = 4'b0000,
+  PC_MRET     = 4'b0001,
+  PC_URET     = 4'b0010,
+  PC_DRET     = 4'b0011,
+  PC_JUMP     = 4'b0100,
+  PC_BRANCH   = 4'b0101,
+  PC_FENCEI   = 4'b0110,
+  PC_TRAP_EXC = 4'b1000,
+  PC_TRAP_IRQ = 4'b1001,
+  PC_TRAP_DBD = 4'b1010,
+  PC_TRAP_DBE = 4'b1011,
+  PC_TRAP_NMI = 4'b1100
 } pc_mux_e;
-
-
-// Exception PC mux selector defines
-typedef enum logic[2:0] {
-  EXC_PC_EXCEPTION = 3'b000,
-  EXC_PC_IRQ       = 3'b001,
-  EXC_PC_DBD       = 3'b010,
-  EXC_PC_DBE       = 3'b011,
-  EXC_PC_NMI       = 3'b100
-} exc_pc_mux_e;
 
 // Exception Cause
 parameter EXC_CAUSE_INSTR_FAULT     = 8'h01;
@@ -802,7 +796,6 @@ parameter INT_CAUSE_LSU_STORE_FAULT = 8'h81;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
-
 
 ////////////////////////////
 //                        //
@@ -1099,7 +1092,6 @@ typedef struct packed {
   logic        instr_req;             // Start fetching instructions
   logic        pc_set;                // jump to address set by pc_mux
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
-  exc_pc_mux_e exc_pc_mux;            // Selects target PC for exception
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
