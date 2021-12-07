@@ -77,8 +77,8 @@ module cv32e40x_id_stage_sva
       // MIE is excluded from the check because it has a bypass.
       property p_irq_csr;
         @(posedge clk) disable iff (!rst_n)
-          (pc_set_o && (pc_mux_o == PC_EXCEPTION) &&
-           ((exc_pc_mux_o == EXC_PC_EXCEPTION) || (exc_pc_mux_o == EXC_PC_IRQ)) &&
+          (pc_set_o &&
+           ((pc_mux_o == PC_TRAP_EXC) || (pc_mux_o == PC_TRAP_IRQ)) &&
            id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)) |->
                                   ((id_ex_pipe_o.alu_operand_b[11:0] != CSR_MSTATUS) &&
                                    (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MEPC) &&
