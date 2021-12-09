@@ -134,6 +134,14 @@ In addition, the following standard instruction set extensions are available fro
      - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
      - optionally enabled based on ``B_EXT`` parameter
 
+   * - **Zkt**: Data Independent Execution Latency
+     - Version v1.0.0-rc2 (not ratified yet; version will change)
+     - always enabled
+
+   * - **Zbkc**: Constant time Carry-Less Multiply
+     - Version v1.0.0-rc2 (not ratified yet; version will change)
+     - optionally enabled based on ``B_EXT`` parameter
+
 The following custom instruction set extensions are available.
 
 .. list-table:: |corev| Custom Instruction Set Extensions
