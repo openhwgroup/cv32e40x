@@ -207,7 +207,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .rst_n              ( rst_n                      ),
 
     // Input IF
-    .data_ind_timing_i  ( 1'b0                       ), // TODO:OE:low connect to CSR
+    .data_ind_timing_i  ( 1'b0                       ), // CV32E40X does not support data independent timing
     .operator_i         ( id_ex_pipe_i.div_operator  ),
     .op_a_i             ( id_ex_pipe_i.alu_operand_a ),
     .op_b_i             ( id_ex_pipe_i.alu_operand_b ),
