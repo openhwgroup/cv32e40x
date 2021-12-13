@@ -402,6 +402,16 @@ endgenerate
                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 
+  // Ensure bubbles in EX and WB while in SLEEP mode
+  a_wfi_bubbles:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_cs == SLEEP) |-> !(ex_wb_pipe_i.instr_valid || id_ex_pipe_i.instr_valid))
+      else `uvm_error("controller", "EX and WB stages not empty while in SLEEP state")
 
+  // Assert correct exception cause for mpu load faults (checks default of cause mux)
+  a_mpu_re_cause_mux:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (lsu_mpu_status_wb_i == MPU_RE_FAULT) |-> (exception_cause_wb == EXC_CAUSE_LOAD_FAULT))
+      else `uvm_error("controller", "Wrong exception cause for MPU read fault")
 endmodule // cv32e40x_controller_fsm_sva
 
