@@ -159,7 +159,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
 
   // Flags for allowing interrupt and debug
-  // TODO:OK:low Add flag for exception_allowed
+  logic exception_allowed;
   logic interrupt_allowed;
   logic debug_allowed;
   logic single_step_allowed;
@@ -231,8 +231,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ecall_insn                       ? EXC_CAUSE_ECALL_MMODE     :
                               ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
                               (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
-                              (lsu_mpu_status_wb_i == MPU_RE_FAULT)         ? EXC_CAUSE_LOAD_FAULT      :
-                              8'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
+                              EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
+
+  // For now we are always allowed to take exceptions once they arrive in WB.
+  // For a misaligned load/store with MPU error on the first half, the second half
+  // will arrive in EX when the first half (with error) arrives in WB. The exception will
+  // be taken and the bus transaction of the second half will be suppressed by the ctrl_fsm_o.kill_ex signal.
+  // The only higher priority events are  NMI, debug and interrupts, and none of them are allowed if there is
+  // a load/store in WB.
+  assign exception_allowed = 1'b1;
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
@@ -504,9 +511,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
 
         end else begin
-          if (exception_in_wb) begin
-            // TODO:OK:low Must check if we are allowed to take exceptions
-            //          Applies to PMA on misaligned
+          if (exception_in_wb && exception_allowed) begin
             // Kill all stages
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
@@ -525,7 +530,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end else if (wfi_in_wb) begin
             // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
             ctrl_fsm_o.halt_if = 1'b1;
-            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1; // Ensures second bubble after WFI (EX is empty while in SLEEP)
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
@@ -609,10 +614,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
       SLEEP: begin
+        // There should be a bubble in EX and WB in this state (checked by assertion)
+        // We are avoiding that a load/store starts its bus transaction
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-        // TODO: Check that below statement is true by checking SEC when halting all stages.
-        ctrl_fsm_o.halt_wb   = 1'b1; // implicitly halts earlier stages
+        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring following instructions
         if(ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
@@ -668,16 +674,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b0;
           ctrl_fsm_o.kill_wb = 1'b0;
 
-          // Should use pc from IF (next insn, as if is halted after first issue)
-          // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
-             // or trigger match, as timing=0 permits us from executing triggered insn before 
-             // entering debug mode
-          // todo: parts of the code below is dead code. Check with lint and fix later
-          if((ebreak_in_wb && dcsr_i.ebreakm) || trigger_match_in_wb) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else begin
-            ctrl_fsm_o.csr_save_if = 1'b1;
-          end
+          // Should use pc from IF (next insn, as IF is halted after first issue)
+          ctrl_fsm_o.csr_save_if = 1'b1;
         end
 
         // Enter debug mode next cycle
