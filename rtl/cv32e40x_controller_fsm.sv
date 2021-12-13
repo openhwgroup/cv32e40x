@@ -618,7 +618,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // We are avoiding that a load/store starts its bus transaction
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-        ctrl_fsm_o.halt_wb   = 1'b1; // Put backbressure on pipeline to avoid retiring following instructions
+        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring following instructions
         if(ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
@@ -674,7 +674,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b0;
           ctrl_fsm_o.kill_wb = 1'b0;
 
-          // Should use pc from IF (next insn, as if is halted after first issue)
+          // Should use pc from IF (next insn, as IF is halted after first issue)
           ctrl_fsm_o.csr_save_if = 1'b1;
         end
 
