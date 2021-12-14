@@ -58,7 +58,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] hart_id_i,
   input  logic [31:0] dm_exception_addr_i,
-  input  logic [31:0] nmi_addr_i,               // TODO:OK:low use
+  input  logic [31:0] nmi_addr_i,
 
   // Instruction memory interface
   output logic        instr_req_o,
@@ -733,7 +733,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
-    .current_priv_lvl_i             ( current_priv_lvl       ), // TODO:OK:low Needs bypass for 40S?
+    .current_priv_lvl_i             ( current_priv_lvl       ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
