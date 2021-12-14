@@ -258,11 +258,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
-  // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
-  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  // NMI shall be masked during single step if dcsr.stepie is 1'b0;
-    // Masking on pending_nmi instead of nmi_allowed, otherwise ID stage would be stalled as described above.
-  assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending NMI during debug mode
+  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_nmi = nmi_pending_q && !debug_mode_q  && !(dcsr_i.step && !dcsr_i.stepie);
 
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
@@ -318,9 +316,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
   // interrupt may be pending from the int_controller even though we are in debug mode.
-  // Gating with !debug_mode_q, otherwise a pending interrupt during debug mode
-  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
+  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending interrupt during debug mode
+  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no trans_valid has been clocked from EX to environment.
@@ -330,8 +328,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
-  // todo: Factor in stepie here instead of gating mie in cs_registers
-  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing && !xif_in_wb;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
+
 
   assign nmi_allowed = interrupt_allowed;
 
