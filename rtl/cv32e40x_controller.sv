@@ -57,7 +57,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        lsu_split_ex_i,             // LSU is splitting misaligned
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB stage)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
-  input  logic        lsu_err_wb_i,               // LSU bus error in WB stage
+  input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted

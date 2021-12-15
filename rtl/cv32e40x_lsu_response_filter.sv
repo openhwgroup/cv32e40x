@@ -35,23 +35,27 @@ module cv32e40x_lsu_response_filter
   #(parameter DEPTH = 2)
   (
    // clock and reset
-   input logic           clk,
-   input logic           rst_n,
+   input logic            clk,
+   input logic            rst_n,
 
    // inputs
-   input  logic          valid_i,
-   input  obi_data_req_t trans_i,
-   input  logic          ready_i,
+   input  logic           valid_i,
+   input  obi_data_req_t  trans_i,
+   input  logic           ready_i,
 
-   input  logic          resp_valid_i,
+   input  logic           resp_valid_i,
+   input  obi_data_resp_t resp_i,
 
    // outputs
-   output logic          valid_o,
-   output obi_data_req_t trans_o,
-   output logic          ready_o,
+   output logic           valid_o,
+   output obi_data_req_t  trans_o,
+   output logic           ready_o,
 
-   output logic          busy_o,
-   output logic          resp_valid_o
+   output logic           busy_o,
+   output logic           resp_valid_o,
+   output obi_data_resp_t resp_o,
+
+   output logic [1:0]     bus_error_o  // bit0: flag for error, bit1: type (1 for store, 0 for load)
    );
 
   localparam CNT_WIDTH = $clog2(DEPTH+1);
@@ -75,8 +79,8 @@ module cv32e40x_lsu_response_filter
   logic                  core_resp_is_bufferable;
 
   // Shift register containing bufferable cofiguration of outstanding transfers
-  logic [DEPTH:0]        outstanding_bufferable_q; // Using bits 1-DEPTH for outstanding xfers, bit 0 is tied low
-  logic [DEPTH:0]        outstanding_bufferable_next;
+  resp_type_t [DEPTH:0]        outstanding_bufferable_q; // Using bits 1-DEPTH for outstanding xfers, index 0 is tied low
+  resp_type_t [DEPTH:0]        outstanding_bufferable_next;
 
   assign busy_o              = ( bus_cnt_q != '0) || valid_i;
 
@@ -85,18 +89,19 @@ module cv32e40x_lsu_response_filter
   assign bus_trans_accepted  = ready_i && valid_o; // Transfer accepted on the bus side of the response filter
 
   // Bufferable configuration of the oldest outstanding transfer
-  assign bus_resp_is_bufferable = outstanding_bufferable_q[bus_cnt_q];
+  assign bus_resp_is_bufferable = outstanding_bufferable_q[bus_cnt_q].bufferable;
 
   // Bufferable configuration of the oldest outstanding transfer seen from the LSU control logic
-  assign core_resp_is_bufferable = outstanding_bufferable_q[core_cnt_q];
+  assign core_resp_is_bufferable = outstanding_bufferable_q[core_cnt_q].bufferable;
 
   always_comb begin
     outstanding_bufferable_next = outstanding_bufferable_q;
 
     if (bus_trans_accepted) begin
       // Shift in bufferable bit of accepted transfer
-      outstanding_bufferable_next    = outstanding_bufferable_next << 1;
-      outstanding_bufferable_next[1] = trans_i.memtype[0];
+      //outstanding_bufferable_next[DEPTH:1]    = outstanding_bufferable_q[DEPTH-1:0];
+      outstanding_bufferable_next = outstanding_bufferable_next << 1;
+      outstanding_bufferable_next[1] = resp_type_t'{bufferable: trans_i.memtype[0], store: trans_i.we};
     end
 
   end
@@ -158,7 +163,12 @@ module cv32e40x_lsu_response_filter
   // response valid will be signalled if the oldest outstanding transaction on the core side is bufferable.
   // If the oldest outstanding transfer is non-bufferable the valid response from the bus will be passed through.
   assign resp_valid_o = (bus_resp_is_bufferable) ? core_resp_is_bufferable : resp_valid_i;
-
   assign trans_o      = trans_i;
+
+  assign bus_error_o[0] = resp_valid_i && resp_i.err;
+  assign bus_error_o[1] = outstanding_bufferable_q[bus_cnt_q].store;
+
+  // bus_resp goes straight through
+  assign resp_o = resp_i;
 
 endmodule : cv32e40x_lsu_response_filter

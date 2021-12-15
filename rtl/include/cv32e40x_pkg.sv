@@ -918,6 +918,12 @@ typedef struct packed {
   mpu_status_e                mpu_status;
 } data_resp_t;
 
+// Response type for tracking bufferable and load/store in lsu response filter
+typedef struct packed {
+  logic bufferable;
+  logic store;
+} resp_type_t;
+
 // Instruction meta data
 // TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc
 typedef struct packed
