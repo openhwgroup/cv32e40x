@@ -128,7 +128,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
                               );
 
   // Stall ID when WFI is active in EX.
-  // Used to create an interruptible bubble after WFI // todo:low only needed for load/store following WFI; should actually halt EX when WFI in WB
+  // Prevent load/store following a WFI in the pipeline
   assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.wfi_insn && id_ex_pipe_i.instr_valid);
 
   genvar i;

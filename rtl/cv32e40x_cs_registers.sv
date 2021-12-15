@@ -667,8 +667,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign csr_rdata_o = csr_rdata_int;
 
-  // directly output some registers
-  assign m_irq_enable_o  = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
+  // IRQ enable
+  assign m_irq_enable_o  = mstatus_q.mie;
   
   assign mtvec_addr_o    = mtvec_q.addr;
   assign mtvec_mode_o    = mtvec_q.mode;

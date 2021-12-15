@@ -770,8 +770,7 @@ typedef struct packed {
 typedef enum logic[3:0] {
   PC_BOOT     = 4'b0000,
   PC_MRET     = 4'b0001,
-  PC_URET     = 4'b0010,
-  PC_DRET     = 4'b0011,
+  PC_DRET     = 4'b0010,
   PC_JUMP     = 4'b0100,
   PC_BRANCH   = 4'b0101,
   PC_FENCEI   = 4'b0110,

@@ -158,7 +158,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
 
   // Flags for allowing interrupt and debug
-  // TODO:OK:low Add flag for exception_allowed
+  logic exception_allowed;
   logic interrupt_allowed;
   logic debug_allowed;
   logic single_step_allowed;
@@ -230,8 +230,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               ex_wb_pipe_i.ecall_insn                       ? EXC_CAUSE_ECALL_MMODE     :
                               ex_wb_pipe_i.ebrk_insn                        ? EXC_CAUSE_BREAKPOINT      :
                               (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
-                              (lsu_mpu_status_wb_i == MPU_RE_FAULT)         ? EXC_CAUSE_LOAD_FAULT      :
-                              8'h0; // todo:ok: could default to EXC_CAUSE_LOAD_FAULT instead
+                              EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
+
+  // For now we are always allowed to take exceptions once they arrive in WB.
+  // For a misaligned load/store with MPU error on the first half, the second half
+  // will arrive in EX when the first half (with error) arrives in WB. The exception will
+  // be taken and the bus transaction of the second half will be suppressed by the ctrl_fsm_o.kill_ex signal.
+  // The only higher priority events are  NMI, debug and interrupts, and none of them are allowed if there is
+  // a load/store in WB.
+  assign exception_allowed = 1'b1;
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid;
@@ -257,11 +264,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
-  // Gating with !debug_mode_q, otherwise a pending NMI during debug mode
-  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  // NMI shall be masked during single step if dcsr.stepie is 1'b0;
-    // Masking on pending_nmi instead of nmi_allowed, otherwise ID stage would be stalled as described above.
-  assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending NMI during debug mode
+  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_nmi = nmi_pending_q && !debug_mode_q  && !(dcsr_i.step && !dcsr_i.stepie);
 
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
@@ -317,9 +322,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
   // interrupt may be pending from the int_controller even though we are in debug mode.
-  // Gating with !debug_mode_q, otherwise a pending interrupt during debug mode
-  // would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q;
+  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending interrupt during debug mode
+  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
+  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Allow interrupts to be taken only if there is no data request in WB, 
   // and no trans_valid has been clocked from EX to environment.
@@ -329,8 +334,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
-  // todo: Factor in stepie here instead of gating mie in cs_registers
-  assign interrupt_allowed = lsu_interruptible_i && !debug_mode_q && !fencei_ongoing && !xif_in_wb;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
+
 
   assign nmi_allowed = interrupt_allowed;
 
@@ -502,9 +507,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
 
         end else begin
-          if (exception_in_wb) begin
-            // TODO:OK:low Must check if we are allowed to take exceptions
-            //          Applies to PMA on misaligned
+          if (exception_in_wb && exception_allowed) begin
             // Kill all stages
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
@@ -523,7 +526,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end else if (wfi_in_wb) begin
             // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
             ctrl_fsm_o.halt_if = 1'b1;
-            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1; // Ensures second bubble after WFI (EX is empty while in SLEEP)
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
@@ -605,10 +608,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
       SLEEP: begin
+        // There should be a bubble in EX and WB in this state (checked by assertion)
+        // We are avoiding that a load/store starts its bus transaction
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-        // TODO: Check that below statement is true by checking SEC when halting all stages.
-        ctrl_fsm_o.halt_wb   = 1'b1; // implicitly halts earlier stages
+        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring following instructions
         if(ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
@@ -664,16 +668,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b0;
           ctrl_fsm_o.kill_wb = 1'b0;
 
-          // Should use pc from IF (next insn, as if is halted after first issue)
-          // Exception for single step + ebreak, as addr of ebreak (in WB) shall be stored
-             // or trigger match, as timing=0 permits us from executing triggered insn before 
-             // entering debug mode
-          // todo: parts of the code below is dead code. Check with lint and fix later
-          if((ebreak_in_wb && dcsr_i.ebreakm) || trigger_match_in_wb) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
-          end else begin
-            ctrl_fsm_o.csr_save_if = 1'b1;
-          end
+          // Should use pc from IF (next insn, as IF is halted after first issue)
+          ctrl_fsm_o.csr_save_if = 1'b1;
         end
 
         // Enter debug mode next cycle
