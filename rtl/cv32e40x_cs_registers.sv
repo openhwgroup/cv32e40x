@@ -80,8 +80,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output dcsr_t           dcsr_o,
   output logic            trigger_match_o,
 
-  output privlvl_t        priv_lvl_o,
-
   input  logic [31:0]     pc_if_i
 );
   
@@ -148,8 +146,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
   logic mie_we;
   logic mie_rd_error;
-
-  privlvl_t priv_lvl_n, priv_lvl_q;
 
   // Performance Counter Signals
   logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters
@@ -401,7 +397,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                 };
     mcause_we                = 1'b0;
     exception_pc             = if_id_pipe_i.pc;
-    priv_lvl_n               = priv_lvl_q;
 
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
     mtvec_n.zero0            = mtvec_q.zero0;
@@ -490,7 +485,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             dpc_n       = exception_pc;
             dpc_we = 1'b1;
         end else begin
-            priv_lvl_n     = PRIV_LVL_M;
             mstatus_n.mpie = mstatus_q.mie;
             mstatus_n.mie  = 1'b0;
             mstatus_n.mpp  = PRIV_LVL_M;
@@ -506,16 +500,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       ctrl_fsm_i.csr_restore_mret: begin //MRET
         mstatus_n.mie  = mstatus_q.mpie;
-        priv_lvl_n     = PRIV_LVL_M;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_M;
         mstatus_we = 1'b1;
       end //ctrl_fsm_i.csr_restore_mret
-
-      ctrl_fsm_i.csr_restore_dret: begin //DRET
-          // Restore to the recorded privilege level
-          priv_lvl_n = dcsr_q.prv;
-      end //ctrl_fsm_i.csr_restore_dret
 
       default:;
     endcase
@@ -679,9 +667,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign csr_rdata_o = csr_rdata_int;
 
-  // directly output some registers
+  // IRQ enable
   assign m_irq_enable_o  = mstatus_q.mie;
-  assign priv_lvl_o      = priv_lvl_q;
   
   assign mtvec_addr_o    = mtvec_q.addr;
   assign mtvec_mode_o    = mtvec_q.mode;
@@ -689,8 +676,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mepc_o          = mepc_q;
   assign dpc_o           = dpc_q;
   assign dcsr_o          = dcsr_q;
-
-  assign priv_lvl_q   = PRIV_LVL_M;
 
   assign mie_o = mie_q;
   

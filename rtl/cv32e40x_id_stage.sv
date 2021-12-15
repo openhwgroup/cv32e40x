@@ -59,8 +59,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  ctrl_byp_t   ctrl_byp_i,
   input  ctrl_fsm_t   ctrl_fsm_i,
 
-  input  privlvl_t    current_priv_lvl_i,
-
   // Register file write data from WB stage
   input  logic [31:0]    rf_wdata_wb_i,
 
@@ -418,7 +416,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // CSR interface
     .csr_en_o                        ( csr_en                    ),
     .csr_op_o                        ( csr_op                    ),
-    .current_priv_lvl_i              ( current_priv_lvl_i        ),
 
     // LSU interface
     .lsu_en_o                        ( lsu_en                    ),

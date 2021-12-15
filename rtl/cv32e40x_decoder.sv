@@ -76,7 +76,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // CSR
   output logic        csr_en_o,                 // enable access to CSR
   output csr_opcode_e csr_op_o,                 // operation to perform on CSR
-  input  privlvl_t    current_priv_lvl_i,       // The current privilege level // todo:AB:low proper name
 
   // LSU
   output logic        lsu_en_o,                 // start transaction to data memory
