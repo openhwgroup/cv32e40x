@@ -54,7 +54,7 @@ module cv32e40x_controller_fsm_sva
   input logic           csr_illegal_i,
   input logic           pending_single_step,
   input logic           trigger_match_in_wb,
-  input logic           lsu_err_wb_i,
+  input logic [1:0]     lsu_err_wb_i,
   input logic           wb_valid_i,
   input logic           fencei_in_wb,
   input logic           fencei_flush_req_o,
@@ -202,7 +202,7 @@ module cv32e40x_controller_fsm_sva
   // Todo: Modify to account for response filter (bufferable writes)
   //a_lsu_err_wb :
   //  assert property (@(posedge clk) disable iff (!rst_n)
-  //          lsu_err_wb_i |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
+  //          lsu_err_wb_i[0] |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
   //    else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
 
   // Check that fencei handshake is only exersiced when there's a fencei in the writeback stage

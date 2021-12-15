@@ -79,7 +79,7 @@ module cv32e40x_lsu_response_filter
   logic                  core_resp_is_bufferable;
 
   // Shift register containing bufferable cofiguration of outstanding transfers
-  resp_type_t [DEPTH:0]        outstanding_bufferable_q; // Using bits 1-DEPTH for outstanding xfers, index 0 is tied low
+  resp_type_t [DEPTH:0]        outstanding_bufferable_q; // Using 1-DEPTH entries for outstanding xfers, index 0 is tied low
   resp_type_t [DEPTH:0]        outstanding_bufferable_next;
 
   assign busy_o              = ( bus_cnt_q != '0) || valid_i;
@@ -98,9 +98,8 @@ module cv32e40x_lsu_response_filter
     outstanding_bufferable_next = outstanding_bufferable_q;
 
     if (bus_trans_accepted) begin
-      // Shift in bufferable bit of accepted transfer
-      //outstanding_bufferable_next[DEPTH:1]    = outstanding_bufferable_q[DEPTH-1:0];
-      outstanding_bufferable_next = outstanding_bufferable_next << 1;
+      // Shift in bufferable bit and type of accepted transfer
+      outstanding_bufferable_next[DEPTH:1]    = outstanding_bufferable_q[DEPTH-1:0];
       outstanding_bufferable_next[1] = resp_type_t'{bufferable: trans_i.memtype[0], store: trans_i.we};
     end
 
