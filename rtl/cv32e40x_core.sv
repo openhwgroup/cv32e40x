@@ -171,8 +171,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] csr_rdata;
   logic csr_counter_read;
 
-  privlvl_t    current_priv_lvl;
-
   // LSU
   logic        lsu_split_ex;
   mpu_status_e lsu_mpu_status_wb;
@@ -427,9 +425,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_byp_i                   ( ctrl_byp                  ),
     .ctrl_fsm_i                   ( ctrl_fsm                  ),
 
-    // CSR ID/EX
-    .current_priv_lvl_i           ( current_priv_lvl          ),
-
     // Register file write back and forwards
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
@@ -670,9 +665,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // debug
     .dpc_o                      ( dpc                    ),
     .dcsr_o                     ( dcsr                   ),
-    .trigger_match_o      ( trigger_match_if       ),
-
-    .priv_lvl_o                 ( current_priv_lvl       ),
+    .trigger_match_o            ( trigger_match_if       ),
 
     .pc_if_i                    ( pc_if                  )
   );
@@ -733,7 +726,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
-    .current_priv_lvl_i             ( current_priv_lvl       ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
@@ -799,8 +791,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // To/from with cv32e40x_cs_registers
     .mie_i                ( mie                ),
     .mip_o                ( mip                ),
-    .m_ie_i               ( m_irq_enable       ),
-    .current_priv_lvl_i   ( current_priv_lvl   )
+    .m_ie_i               ( m_irq_enable       )
   );
 
     /////////////////////////////////////////////////////////
