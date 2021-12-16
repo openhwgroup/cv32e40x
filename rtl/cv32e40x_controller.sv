@@ -79,7 +79,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  dcsr_t        dcsr_i,
 
   // Regfile target
-  input  logic         regfile_alu_we_id_i,        // currently decoded we enable
+  input  logic         rf_alu_we_id_i,             // currently decoded we enable
 
   // CSR raddr in ex
   input  logic         csr_counter_read_i,         // A performance counter is read in CSR (EX)
@@ -202,7 +202,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .rf_waddr_i                 ( rf_waddr_i               ),
 
     // From id_stage
-    .regfile_alu_we_id_i        ( regfile_alu_we_id_i      ),
+    .rf_alu_we_id_i             ( rf_alu_we_id_i           ),
     .mret_id_i                  ( mret_id_i                ),
     .dret_id_i                  ( dret_id_i                ),
     .csr_en_id_i                ( csr_en_id_i              ),

@@ -47,7 +47,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input ex_wb_pipe_t  ex_wb_pipe_i,
 
   // From id_stage
-  input  logic        regfile_alu_we_id_i,        // RF we in ID is due to an ALU ins, not LSU
+  input  logic        rf_alu_we_id_i,             // RF we in ID is due to an ALU ins, not LSU
   input  logic        mret_id_i,                  // mret in ID
   input  logic        dret_id_i,                  // dret in ID
   input  logic        csr_en_id_i,                // CSR in ID

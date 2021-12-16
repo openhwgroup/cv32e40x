@@ -79,10 +79,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
   output rf_addr_t    rf_waddr_o,
 
-  output logic        regfile_alu_we_id_o,
+  output logic        rf_alu_we_id_o,
 
   // Register file
-  input  rf_data_t    regfile_rdata_i[REGFILE_NUM_READ_PORTS],
+  input  rf_data_t    rf_rdata_i[REGFILE_NUM_READ_PORTS],
 
   // Stage ready/valid
   output logic        id_ready_o,     // ID stage is ready for new data
@@ -285,16 +285,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (ctrl_byp_i.operand_a_fw_mux_sel)
       SEL_FW_EX:    operand_a_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_a_fw = rf_wdata_wb_i;
-      SEL_REGFILE:  operand_a_fw = regfile_rdata_i[0];
-      default:      operand_a_fw = regfile_rdata_i[0];
+      SEL_REGFILE:  operand_a_fw = rf_rdata_i[0];
+      default:      operand_a_fw = rf_rdata_i[0];
     endcase;
   end
 
   always_comb begin: jalr_fw_mux
     case (ctrl_byp_i.jalr_fw_mux_sel)
       SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;
-      SELJ_REGFILE: jalr_fw = regfile_rdata_i[0];
-      default:      jalr_fw = regfile_rdata_i[0];
+      SELJ_REGFILE: jalr_fw = rf_rdata_i[0];
+      default:      jalr_fw = rf_rdata_i[0];
     endcase
   end
 
@@ -332,8 +332,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (ctrl_byp_i.operand_b_fw_mux_sel)
       SEL_FW_EX:    operand_b_fw = rf_wdata_ex_i;
       SEL_FW_WB:    operand_b_fw = rf_wdata_wb_i;
-      SEL_REGFILE:  operand_b_fw = regfile_rdata_i[1];
-      default:      operand_b_fw = regfile_rdata_i[1];
+      SEL_REGFILE:  operand_b_fw = rf_rdata_i[1];
+      default:      operand_b_fw = rf_rdata_i[1];
     endcase;
   end
 
@@ -447,7 +447,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register writeback is enabled either by the decoder or by the XIF
   assign rf_we               = rf_we_dec || xif_we;
 
-  assign regfile_alu_we_id_o = rf_we_raw && !lsu_en_raw;
+  assign rf_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
   
   /////////////////////////////////////////////////////////////////////////////////
@@ -687,7 +687,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
         // TODO: implement forwarding for other operands than rs1 and rs2
         for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
-          xif_issue_if.issue_req.rs      [i] = regfile_rdata_i[i];
+          xif_issue_if.issue_req.rs      [i] = rf_rdata_i[i];
           xif_issue_if.issue_req.rs_valid[i] = 1'b1;
         end
       end

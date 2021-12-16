@@ -154,15 +154,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_addr_t    rf_waddr_id;
 
   // Register file read data
-  rf_data_t    regfile_rdata_id[REGFILE_NUM_READ_PORTS];
+  rf_data_t    rf_rdata_id[REGFILE_NUM_READ_PORTS];
 
   // Register file write interface
-  rf_addr_t    regfile_waddr_wb[REGFILE_NUM_WRITE_PORTS];
-  rf_data_t    regfile_wdata_wb[REGFILE_NUM_WRITE_PORTS];
-  logic        regfile_we_wb   [REGFILE_NUM_WRITE_PORTS];
+  rf_addr_t    rf_waddr[REGFILE_NUM_WRITE_PORTS];
+  rf_data_t    rf_wdata[REGFILE_NUM_WRITE_PORTS];
+  logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
   // Register file write enable for ALU insn in ID
-  logic regfile_alu_we_id;
+  logic rf_alu_we_id;
 
     // CSR control
   logic [23:0] mtvec_addr;
@@ -442,8 +442,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_raddr_o                   ( rf_raddr_id               ),
     .rf_waddr_o                   ( rf_waddr_id               ),
 
-    .regfile_alu_we_id_o          ( regfile_alu_we_id         ),
-    .regfile_rdata_i              ( regfile_rdata_id          ),
+    .rf_alu_we_id_o               ( rf_alu_we_id              ),
+    .rf_rdata_i                   ( rf_rdata_id               ),
 
     // Pipeline handshakes
     .id_ready_o                   ( id_ready                  ),
@@ -740,7 +740,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_waddr_i                     ( rf_waddr_id            ),
 
     // Write targets from ID
-    .regfile_alu_we_id_i            ( regfile_alu_we_id      ),
+    .rf_alu_we_id_i                 ( rf_alu_we_id           ),
     
     // Fencei flush handshake
     .fencei_flush_ack_i             ( fencei_flush_ack_i     ),
@@ -804,9 +804,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////////
 
   // Connect register file write port(s) to regfile inputs
-  assign regfile_we_wb[0]    = rf_we_wb;
-  assign regfile_waddr_wb[0] = rf_waddr_wb;
-  assign regfile_wdata_wb[0] = rf_wdata_wb;
+  assign rf_we[0]    = rf_we_wb;
+  assign rf_waddr[0] = rf_waddr_wb;
+  assign rf_wdata[0] = rf_wdata_wb;
 
   cv32e40x_register_file_wrapper
   #(
@@ -814,17 +814,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
   )
   register_file_wrapper_i
   (
-    .clk                ( clk                ),
-    .rst_n              ( rst_ni             ),
+    .clk                ( clk         ),
+    .rst_n              ( rst_ni      ),
 
     // Read ports
-    .raddr_i            ( rf_raddr_id        ),
-    .rdata_o            ( regfile_rdata_id   ), // todo:AB get consistent naming
+    .raddr_i            ( rf_raddr_id ),
+    .rdata_o            ( rf_rdata_id ),
 
     // Write ports
-    .waddr_i            ( regfile_waddr_wb      ),
-    .wdata_i            ( regfile_wdata_wb      ),
-    .we_i               ( regfile_we_wb         )
+    .waddr_i            ( rf_waddr    ),
+    .wdata_i            ( rf_wdata    ),
+    .we_i               ( rf_we       )
   );
 
 endmodule
