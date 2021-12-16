@@ -367,7 +367,7 @@ bind cv32e40x_sleep_unit:
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
-         .priv_lvl_i               ( core_i.cs_registers_i.priv_lvl_o                                     ),
+         .priv_lvl_i               ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
