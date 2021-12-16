@@ -922,7 +922,7 @@ typedef struct packed {
 typedef struct packed {
   logic bufferable;
   logic store;
-} resp_type_t;
+} outstanding_t;
 
 // Instruction meta data
 // TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc

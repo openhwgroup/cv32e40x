@@ -53,9 +53,11 @@ module cv32e40x_lsu_response_filter
 
    output logic           busy_o,
    output logic           resp_valid_o,
-   output obi_data_resp_t resp_o,
+   output obi_data_resp_t resp_o, // Todo: This also carries the obi error field. Could replace by data_resp_t
 
-   output logic [1:0]     bus_error_o  // bit0: flag for error, bit1: type (1 for store, 0 for load)
+   // Todo: This error signal could be merged with mpu_status_e, and be signaled via the resp_o above (if replaced by data_resp_t).
+   //       This would make the error flow all the way through the MPU and not bypass the MPU as it does now.
+   output logic [1:0]     err_o  // bit0: flag for error, bit1: type (1 for store, 0 for load)
    );
 
   localparam CNT_WIDTH = $clog2(DEPTH+1);
@@ -79,8 +81,8 @@ module cv32e40x_lsu_response_filter
   logic                  core_resp_is_bufferable;
 
   // Shift register containing bufferable cofiguration of outstanding transfers
-  resp_type_t [DEPTH:0]        outstanding_bufferable_q; // Using 1-DEPTH entries for outstanding xfers, index 0 is tied low
-  resp_type_t [DEPTH:0]        outstanding_bufferable_next;
+  outstanding_t [DEPTH:0]        outstanding_q; // Using 1-DEPTH entries for outstanding xfers, index 0 is tied low
+  outstanding_t [DEPTH:0]        outstanding_next;
 
   assign busy_o              = ( bus_cnt_q != '0) || valid_i;
 
@@ -89,18 +91,19 @@ module cv32e40x_lsu_response_filter
   assign bus_trans_accepted  = ready_i && valid_o; // Transfer accepted on the bus side of the response filter
 
   // Bufferable configuration of the oldest outstanding transfer
-  assign bus_resp_is_bufferable = outstanding_bufferable_q[bus_cnt_q].bufferable;
+  assign bus_resp_is_bufferable = outstanding_q[bus_cnt_q].bufferable;
 
   // Bufferable configuration of the oldest outstanding transfer seen from the LSU control logic
-  assign core_resp_is_bufferable = outstanding_bufferable_q[core_cnt_q].bufferable;
+  assign core_resp_is_bufferable = outstanding_q[core_cnt_q].bufferable;
 
   always_comb begin
-    outstanding_bufferable_next = outstanding_bufferable_q;
+    outstanding_next = outstanding_q;
 
     if (bus_trans_accepted) begin
       // Shift in bufferable bit and type of accepted transfer
-      outstanding_bufferable_next[DEPTH:1]    = outstanding_bufferable_q[DEPTH-1:0];
-      outstanding_bufferable_next[1] = resp_type_t'{bufferable: trans_i.memtype[0], store: trans_i.we};
+      outstanding_next[DEPTH:1]    = outstanding_q[DEPTH-1:0];
+      outstanding_next[1]          = outstanding_t'{bufferable: trans_i.memtype[0], store: trans_i.we};
+      outstanding_next[0]          = '0; // Tie off unused index
     end
 
   end
@@ -141,11 +144,11 @@ module cv32e40x_lsu_response_filter
     if(rst_n == 1'b0)  begin
       bus_cnt_q                <= '0;
       core_cnt_q               <= '0;
-      outstanding_bufferable_q <= '0;
+      outstanding_q <= '0;
     end else begin
       bus_cnt_q                <= bus_next_cnt;
       core_cnt_q               <= core_next_cnt;
-      outstanding_bufferable_q <= outstanding_bufferable_next;
+      outstanding_q <= outstanding_next;
     end
   end
 
@@ -164,8 +167,8 @@ module cv32e40x_lsu_response_filter
   assign resp_valid_o = (bus_resp_is_bufferable) ? core_resp_is_bufferable : resp_valid_i;
   assign trans_o      = trans_i;
 
-  assign bus_error_o[0] = resp_valid_i && resp_i.err;
-  assign bus_error_o[1] = outstanding_bufferable_q[bus_cnt_q].store;
+  assign err_o[0] = resp_valid_i && resp_i.err;
+  assign err_o[1] = outstanding_q[bus_cnt_q].store;
 
   // bus_resp goes straight through
   assign resp_o = resp_i;

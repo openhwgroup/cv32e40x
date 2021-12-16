@@ -68,7 +68,8 @@ module cv32e40x_controller_fsm_sva
   input logic           fencei_ready,
   input logic           xif_commit_kill,
   input logic           xif_commit_valid,
-  input logic           nmi_is_store_q
+  input logic           nmi_is_store_q,
+  input logic           nmi_pending_q
 );
 
 
@@ -417,6 +418,7 @@ endgenerate
 
 
   // Helper logic to track first occuring bus error
+  // Note: Supports max two outstanding transactions
   logic [1:0] outstanding_type;
   logic [1:0] outstanding_count;
   logic bus_error_is_write;
@@ -475,7 +477,8 @@ endgenerate
   a_latched_bus_error:
     assert property (@(posedge clk) disable iff (!rst_n)
                       (m_c_obi_data_if.s_rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched)
-                      |=> (nmi_is_store_q == bus_error_is_write))
+                      |=> (nmi_is_store_q == bus_error_is_write) &&
+                          (nmi_pending_q == bus_error_latched) && bus_error_latched)
       else `uvm_error("controller", "Wrong type for LSU bus error")
 endmodule // cv32e40x_controller_fsm_sva
 
