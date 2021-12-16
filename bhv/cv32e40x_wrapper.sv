@@ -372,6 +372,8 @@ bind cv32e40x_sleep_unit:
          .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
+         .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
+         .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          // CSRs
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),

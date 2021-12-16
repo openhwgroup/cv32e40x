@@ -86,6 +86,8 @@ module cv32e40x_rvfi
    input ctrl_fsm_t                           ctrl_fsm_i,
    input logic                                pending_single_step_i,
    input logic                                single_step_allowed_i,
+   input logic                                nmi_pending_i,
+   input logic                                nmi_is_store_i,
 
    //// CSR Probes ////
    input                                      mstatus_t csr_mstatus_n_i,
@@ -179,6 +181,7 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
    output logic [ 1:0]                        rvfi_ixl,
+   output logic [ 1:0]                        rvfi_nmip,
 
    output logic [ 2:0]                        rvfi_dbg,
    output logic [ 0:0]                        rvfi_dbg_mode,
@@ -694,6 +697,8 @@ module cv32e40x_rvfi
 
     end
   end // always_ff @
+
+  assign rvfi_nmip = {nmi_is_store_i, nmi_pending_i};
 
   // Capture possible performance counter writes during WB, before wb_valid
   // If counter write happens before wb_valid (LSU stalled waiting for rvalid for example),
