@@ -46,7 +46,13 @@ The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mo
   Single Step         0x4
   =================  =====
 
+**NMI signals**
 
+.. code-block:: verilog
+
+   output [1:0] rvfi_nmip
+
+Whenever |corev| has a pending NMI, the ``rvfi_nmip`` will signal this. ``rvfi_nmip[0]`` will be 1 whenever an NMI is pending, while ``rvfi_nmip[1]`` will be 0 for loads and 1 for stores.
 
 Compatibility
 -------------
