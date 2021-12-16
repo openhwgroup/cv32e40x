@@ -54,7 +54,7 @@ module cv32e40x_controller_fsm_sva
   input logic           csr_illegal_i,
   input logic           pending_single_step,
   input logic           trigger_match_in_wb,
-  input logic           lsu_err_wb_i,
+  input logic [1:0]     lsu_err_wb_i,
   input logic           wb_valid_i,
   input logic           fencei_in_wb,
   input logic           fencei_flush_req_o,
@@ -67,7 +67,9 @@ module cv32e40x_controller_fsm_sva
   input logic           pending_nmi,
   input logic           fencei_ready,
   input logic           xif_commit_kill,
-  input logic           xif_commit_valid
+  input logic           xif_commit_valid,
+  input logic           nmi_is_store_q,
+  input logic           nmi_pending_q
 );
 
 
@@ -201,7 +203,7 @@ module cv32e40x_controller_fsm_sva
   // Todo: Modify to account for response filter (bufferable writes)
   //a_lsu_err_wb :
   //  assert property (@(posedge clk) disable iff (!rst_n)
-  //          lsu_err_wb_i |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
+  //          lsu_err_wb_i[0] |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
   //    else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
 
   // Check that fencei handshake is only exersiced when there's a fencei in the writeback stage
@@ -413,5 +415,70 @@ endgenerate
     assert property (@(posedge clk) disable iff (!rst_n)
                       (lsu_mpu_status_wb_i == MPU_RE_FAULT) |-> (exception_cause_wb == EXC_CAUSE_LOAD_FAULT))
       else `uvm_error("controller", "Wrong exception cause for MPU read fault")
+
+
+  // Helper logic to track first occuring bus error
+  // Note: Supports max two outstanding transactions
+  logic [1:0] outstanding_type;
+  logic [1:0] outstanding_count;
+  logic bus_error_is_write;
+  logic bus_error_latched;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      outstanding_type <= 2'b00;
+      outstanding_count <= 2'b00;
+      bus_error_latched <= 1'b0;
+      bus_error_is_write <= 1'b0;
+    end else begin
+      // Req, no rvalid
+      if( (m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && !m_c_obi_data_if.s_rvalid) begin
+        // Increase outstanding counter
+        outstanding_count <= outstanding_count + 2'b01;
+
+        if(outstanding_count == 2'b00) begin
+          // No outstanding, assign first entry
+          outstanding_type[0] <= m_c_obi_data_if.req_payload.we;
+        end else begin
+          // One outstanding, shift and assign first entry
+          outstanding_type[1] <= outstanding_type[0];
+          outstanding_type[0] <= m_c_obi_data_if.req_payload.we;
+        end
+
+      // rvalid, no req
+      end else if (!(m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && m_c_obi_data_if.s_rvalid) begin
+        // Decrease outstanding counter
+        outstanding_count <= outstanding_count - 2'b01;
+
+      // req and rvalid
+      end else if ((m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && m_c_obi_data_if.s_rvalid) begin
+        if (outstanding_count == 2'b10) begin
+          // Two outstanding, shift and replace index 0
+          outstanding_type[1] <= outstanding_type[0];
+          outstanding_type[0] <= m_c_obi_data_if.req_payload.we;
+        end else begin
+          // One outstanding, replate index 0
+          outstanding_type[0] <= m_c_obi_data_if.req_payload.we;
+        end
+      end
+
+
+      if(m_c_obi_data_if.s_rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched) begin
+        bus_error_is_write <= outstanding_count == 2'b01 ? outstanding_type[0] : outstanding_type[1];
+        bus_error_latched <= 1'b1;
+      end else begin
+        if (ctrl_fsm_o.pc_set && ctrl_fsm_o.pc_mux == PC_TRAP_NMI) begin
+          bus_error_latched <= 1'b0;
+        end
+      end
+    end
+  end
+
+  // Check that controller latches correct type for bus error
+  a_latched_bus_error:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (m_c_obi_data_if.s_rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched)
+                      |=> (nmi_is_store_q == bus_error_is_write) &&
+                          (nmi_pending_q == bus_error_latched) && bus_error_latched)
+      else `uvm_error("controller", "Wrong type for LSU bus error")
 endmodule // cv32e40x_controller_fsm_sva
 

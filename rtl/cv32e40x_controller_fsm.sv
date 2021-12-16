@@ -60,7 +60,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
 
   // From WB stage
-  input  logic        lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
+  input  logic [1:0]  lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
   input  logic [31:0] lsu_addr_wb_i,              // LSU address in WB stage //todo: only needed if MTVAL is implemented
 
   // From LSU (WB)
@@ -737,12 +737,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       nmi_pending_q <= 1'b0;
       nmi_is_store_q <= 1'b0;
     end else begin
-      if (lsu_err_wb_i && !nmi_pending_q) begin
+      if (lsu_err_wb_i[0] && !nmi_pending_q) begin
         // Set whenever an error occurs in WB for the LSU, unless we already have an NMI pending.
         // Later errors could overwrite the bit for load/store type, and with mtval the address would be overwritten.
         // todo: if mtval is implemented, address must be sticky as well
         nmi_pending_q <= 1'b1;
-        nmi_is_store_q <= !ex_wb_pipe_i.rf_we;
+        nmi_is_store_q <= lsu_err_wb_i[1];
       // Clear when the controller takes the NMI
       end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI)) begin
         nmi_pending_q <= 1'b0;

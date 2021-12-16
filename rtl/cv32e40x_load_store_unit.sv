@@ -53,7 +53,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Stage 1 outputs (WB)
   output logic [31:0] lsu_addr_1_o,
-  output logic        lsu_err_1_o,
+  output logic [1:0]  lsu_err_1_o,
   output logic [31:0] lsu_rdata_1_o,            // LSU read data
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
 
@@ -83,7 +83,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction response interface (from cv32e40x_mpu)
   logic         resp_valid;
   logic [31:0]  resp_rdata;
-  logic         bus_resp_err;               // Unused for now
   data_resp_t   resp;
 
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
@@ -96,6 +95,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   obi_data_req_t  filter_trans;
   logic           filter_resp_valid;
   obi_data_resp_t filter_resp;
+  logic [1:0]     filter_err;
 
   // Transaction request (from cv32e40x_write_buffer to cv32e40x_data_obi_interface)
   logic           bus_trans_valid;
@@ -620,7 +620,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Validate bus_error on rvalid from the bus (WB stage)
   // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
-  assign lsu_err_1_o = bus_resp_valid && bus_resp_err;
+  // Todo: This bypasses the MPU, could be merged with mpu_status_e and passed through the MPU instead
+  assign lsu_err_1_o = filter_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU
@@ -679,15 +680,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
        .ready_o      ( filter_trans_ready ),
        .trans_i      ( filter_trans       ),
        .resp_valid_o ( filter_resp_valid  ),
+       .resp_o       ( filter_resp        ),
+       .err_o        ( filter_err         ),
 
        .valid_o      ( buffer_trans_valid ),
        .ready_i      ( buffer_trans_ready ),
        .trans_o      ( buffer_trans       ),
-       .resp_valid_i ( bus_resp_valid     )
+       .resp_valid_i ( bus_resp_valid     ),
+       .resp_i       ( bus_resp           )
+
      );
 
-  assign filter_resp  = bus_resp; // Not used by write buffer
-  assign bus_resp_err = bus_resp.err;
 
   //////////////////////////////////////////////////////////////////////////////
   // Write Buffer
