@@ -83,15 +83,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   assign lsu_exception = (lsu_mpu_status_i != MPU_OK);
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Controller interface todo: move/remove this block of comment?
-  //
-  // LSU enabled computed as in EX stage, however once a load/store transaction
-  // is this far in the pipeline it should not longer get killed (as its
-  // data_req_o/data_ack_i handshake has already occurred. This is checked
-  // with the a_lsu_no_kill assertion.
-
-
 
   //////////////////////////////////////////////////////////////////////////////
   // Register file interface
