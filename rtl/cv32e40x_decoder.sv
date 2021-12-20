@@ -204,7 +204,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign mul_en_o             = deassert_we_i ? 1'b0        : mul_en;
   assign div_en_o             = deassert_we_i ? 1'b0        : div_en;
   assign lsu_en_o             = deassert_we_i ? 1'b0        : lsu_en;
-  assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op;
+  assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
   assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
   assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
 
