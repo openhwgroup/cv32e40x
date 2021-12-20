@@ -83,15 +83,6 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   assign lsu_exception = (lsu_mpu_status_i != MPU_OK);
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Controller interface todo: move/remove this block of comment?
-  //
-  // LSU enabled computed as in EX stage, however once a load/store transaction
-  // is this far in the pipeline it should not longer get killed (as its
-  // data_req_o/data_ack_i handshake has already occurred. This is checked
-  // with the a_lsu_no_kill assertion.
-
-
 
   //////////////////////////////////////////////////////////////////////////////
   // Register file interface
@@ -122,17 +113,13 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Does not depend on local instr_valid (ie kept high for stalls and kills)
   // Ok, as controller will never kill ongoing LSU instructions, and thus
   // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
-  assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid; // todo: move to LSU?
+  assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
   assign lsu_ready_o = 1'b1; // Always ready (there is no downstream stage)
 
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
 
-  assign wb_ready_o = lsu_ready_i && !xif_waiting;
-
-  // todo: Above hould have similar structure as ex_ready_o
-  // todo: Want the following expression, but currently not SEC clean; might just be caused by fact that OBI assumes are not loaded during SEC
-  //  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !ctrl_fsm_i.halt_wb);
+  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !xif_waiting && !ctrl_fsm_i.halt_wb);
 
   // wb_valid
   //

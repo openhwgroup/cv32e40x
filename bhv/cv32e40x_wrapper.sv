@@ -191,6 +191,7 @@ module cv32e40x_wrapper
     core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (
       // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
       .m_c_obi_data_if(core_i.m_c_obi_data_if),
+      .ex_wb_pipe_i   (core_i.ex_wb_pipe),
       .*);
 
   bind cv32e40x_prefetch_unit:

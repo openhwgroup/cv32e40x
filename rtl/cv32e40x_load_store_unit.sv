@@ -467,7 +467,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
-  assign valid_1_o = (cnt_q == 2'b00) ? 1'b0 : last_q && resp_valid && valid_1_i; // todo:AB (cnt_q == 2'b00) should be same as !WB.lsu_en
+  assign valid_1_o = last_q && resp_valid && valid_1_i;
 
   // LSU EX stage readyness requires two criteria to be met:
   //
