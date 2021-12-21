@@ -44,6 +44,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From bypass logic
   input  ctrl_byp_t   ctrl_byp_i,
 
+  // From IF stage
+  input logic [31:0]   pc_if_i,
+
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        sys_mret_id_i,              // mret in ID stage
@@ -172,6 +175,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       fencei_flush_req_set;
   logic       fencei_req_and_ack_q;
   logic       fencei_ongoing;    
+
+  // Pipeline PC mux control
+  pipe_pc_mux_e pipe_pc_mux_ctrl;
 
   // Flag for signalling that a new instruction arrived in WB.
   // Used for performance counters. High for one cycle, unless WB is halted
@@ -372,6 +378,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
 
+  // Mux used to select PC from the different pipeline stages
+  always_comb begin
+
+    ctrl_fsm_o.pipe_pc = PC_WB;
+
+    unique case (pipe_pc_mux_ctrl)
+      PC_WB: ctrl_fsm_o.pipe_pc = ex_wb_pipe_i.pc;
+      PC_EX: ctrl_fsm_o.pipe_pc = id_ex_pipe_i.pc;
+      PC_ID: ctrl_fsm_o.pipe_pc = if_id_pipe_i.pc;
+      PC_IF: ctrl_fsm_o.pipe_pc = pc_if_i;
+      default:;
+    endcase
+  end
+
   //////////////
   // FSM comb //
   //////////////
@@ -411,12 +431,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.kill_wb = 1'b0;
 
     ctrl_fsm_o.csr_restore_mret    = 1'b0;
-    ctrl_fsm_o.csr_save_if         = 1'b0; // todo: can we send the correct pc to the CSR module instead of the separate save_* signals? (Keep the save signals local to this file, but move the pc mux from CSR to here)
-    ctrl_fsm_o.csr_save_id         = 1'b0;
-    ctrl_fsm_o.csr_save_ex         = 1'b0;
-    ctrl_fsm_o.csr_save_wb         = 1'b0;
     ctrl_fsm_o.csr_save_cause      = 1'b0;
     ctrl_fsm_o.csr_cause           = 32'h0;
+
+    pipe_pc_mux_ctrl               = PC_WB;
 
     exc_cause                      = 5'b0;
 
@@ -464,16 +482,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
+            pipe_pc_mux_ctrl = PC_WB;
           end else if (id_ex_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_ex = 1'b1;
+            pipe_pc_mux_ctrl = PC_EX;
           end else if (if_id_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_id = 1'b1;
+            pipe_pc_mux_ctrl = PC_ID;
           end else begin
             // IF PC will always be valid as it points to the next
             // instruction to be issued from IF to ID.
-            ctrl_fsm_o.csr_save_if = 1'b1;
+            pipe_pc_mux_ctrl = PC_IF;
           end
+
         // Debug entry (except single step which is handled later)
         end else if (pending_debug && debug_allowed) begin
           // Halt the whole pipeline
@@ -503,15 +522,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
+            pipe_pc_mux_ctrl = PC_WB;
           end else if (id_ex_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_ex = 1'b1;
+            pipe_pc_mux_ctrl = PC_EX;
           end else if (if_id_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_id = 1'b1;
+            pipe_pc_mux_ctrl = PC_ID;
           end else begin
             // IF PC will always be valid as it points to the next
             // instruction to be issued from IF to ID.
-            ctrl_fsm_o.csr_save_if = 1'b1;
+            pipe_pc_mux_ctrl = PC_IF;
           end
 
         end else begin
@@ -527,7 +546,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_TRAP_EXC;
 
             // Save CSR from WB
-            ctrl_fsm_o.csr_save_wb = 1'b1;
+            pipe_pc_mux_ctrl = PC_WB;
             ctrl_fsm_o.csr_save_cause = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
           // Special insn
@@ -659,13 +678,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_wb = 1'b1;
+            pipe_pc_mux_ctrl = PC_WB;
           end else if (id_ex_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_ex = 1'b1;
+            pipe_pc_mux_ctrl = PC_EX;
           end else if (if_id_pipe_i.instr_valid) begin
-            ctrl_fsm_o.csr_save_id = 1'b1;
+            pipe_pc_mux_ctrl = PC_ID;
           end else begin
-            ctrl_fsm_o.csr_save_if = 1'b1;
+            pipe_pc_mux_ctrl = PC_IF;
           end
         end else begin
           // Single step
@@ -677,7 +696,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_wb = 1'b0;
 
           // Should use pc from IF (next insn, as IF is halted after first issue)
-          ctrl_fsm_o.csr_save_if = 1'b1;
+          pipe_pc_mux_ctrl = PC_IF;
         end
 
         // Enter debug mode next cycle

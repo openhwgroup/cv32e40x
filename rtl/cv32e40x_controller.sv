@@ -43,6 +43,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  logic        if_valid_i,
 
+  // From IF stage
+  input logic [31:0]  pc_if_i,
+
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        sys_mret_id_i,
@@ -126,6 +129,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_byp_i                  ( ctrl_byp_o               ),
 
     .if_valid_i                  ( if_valid_i               ),
+    .pc_if_i                     ( pc_if_i                  ),
 
     // From ID stage
     .id_ready_i                  ( id_ready_i               ),

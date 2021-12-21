@@ -1125,10 +1125,7 @@ typedef struct packed {
   logic        wake_from_sleep;       // Wakeup (due to irq or debug)
 
   // CSR signals
-  logic        csr_save_if;         // Save PC from IF stage
-  logic        csr_save_id;         // Save PC from ID stage
-  logic        csr_save_ex;         // Save PC from EX stage (currently unused)
-  logic        csr_save_wb;         // Save PC from WB stage
+  logic [31:0] pipe_pc;             // PC from pipeline
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
   logic        csr_save_cause;      // Update CSRs
@@ -1170,5 +1167,13 @@ typedef struct packed {
 
   // Enum used for configuration of B extension
   typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
+
+  // Pipe PC mux selector defines. Used to control PC mux in control FSM
+  typedef enum logic[1:0] {
+    PC_IF,
+    PC_ID,
+    PC_EX,
+    PC_WB
+  } pipe_pc_mux_e;
 
 endpackage

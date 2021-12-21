@@ -677,7 +677,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
 
     .if_valid_i                     ( if_valid               ),
-
+    .pc_if_i                        ( pc_if                  ),
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
