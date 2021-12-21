@@ -113,11 +113,11 @@ The different trap scenarios, their expected side-effects and trap signalling ar
   +------------------------------+-----------+-----+-----+-----+-------+--------+---------+-----------------+-----------------------------------------------------------------------+
   | Instruction Bus Fault        | Exception | 1   | 1   | X   | 0x30  | X      | 0x0     | mcause, mepc    | OBI bus error on instruction fetch                                    |
   +------------------------------+-----------+-----+-----+-----+-------+--------+---------+-----------------+-----------------------------------------------------------------------+
-  | Breakpoint to debug          | Debug     | 1   | X   | 1   | 0x0   | 0x1    | 0x0     | dpc, dcsr       | EBREAK from non-debug mode executed with  dcsr.ebreakm == 1           |
+  | Breakpoint to debug          | Debug     | 1   | X   | 1   | X     | 0x1    | 0x0     | dpc, dcsr       | EBREAK from non-debug mode executed with  dcsr.ebreakm == 1           |
   +------------------------------+-----------+-----+-----+-----+-------+--------+---------+-----------------+-----------------------------------------------------------------------+
-  | Breakpoint in debug          | Debug     | 1   | X   | 1   | 0x0   | 0x1    | 0x0     | No CSRs updated | EBREAK in debug mode jumps to debug handler                           |
+  | Breakpoint in debug          | Debug     | 1   | X   | 1   | X     | 0x1    | 0x0     | No CSRs updated | EBREAK in debug mode jumps to debug handler                           |
   +------------------------------+-----------+-----+-----+-----+-------+--------+---------+-----------------+-----------------------------------------------------------------------+
-  | Debug Trigger Match          | Debug     | 1   | X   | 1   | 0x0   | 0x2    | 0x0     | dpc, dcsr       | Debug trigger address match, instruction is not executed.             |
+  | Debug Trigger Match          | Debug     | 1   | X   | 1   | X     | 0x2    | 0x0     | dpc, dcsr       | Debug trigger address match, instruction is not executed.             |
   | (timing=0)                   |           |     |     |     |       |        |         |                 | Timing parameter is forced to 0 for cv32e4* cores.                    |
   +------------------------------+-----------+-----+-----+-----+-------+--------+---------+-----------------+-----------------------------------------------------------------------+
   | Single step                  | Debug     | 1   | X   | 1   | X     | 0x4    | 0x0     | dpc, dcsr       | Single step                                                           |
