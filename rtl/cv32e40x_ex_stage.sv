@@ -330,8 +330,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // Propagate signals needed for exception handling in WB
-        // TODO:OK:low Clock gating of pc if no existing exceptions
-        //          and LSU it not in use
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
         ex_wb_pipe_o.instr_meta     <= instr_meta_n;
