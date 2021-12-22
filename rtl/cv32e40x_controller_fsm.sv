@@ -558,9 +558,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
 
-            ctrl_fsm_o.kill_if = 1'b1;
-            ctrl_fsm_o.kill_id = 1'b1;
-            ctrl_fsm_o.kill_ex = 1'b1;
+            // Halt the pipeline
+            ctrl_fsm_o.halt_if = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
             if(fencei_ready) begin
@@ -569,10 +570,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
             if(fencei_req_and_ack_q) begin
               // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_FENCEI
-              // Unhalt wb and jump to wb.pc + 4
+
+              // Unhalt wb, kill if,id,ex
+              ctrl_fsm_o.kill_if   = 1'b1;
+              ctrl_fsm_o.kill_id   = 1'b1;
+              ctrl_fsm_o.kill_ex   = 1'b1;
+              ctrl_fsm_o.halt_wb   = 1'b0;
+
+              // Jump to wb.pc + 4
               ctrl_fsm_o.pc_set    = 1'b1;
               ctrl_fsm_o.pc_mux    = PC_FENCEI;
-              ctrl_fsm_o.halt_wb   = 1'b0;
+
               fencei_flush_req_set = 1'b0;
             end
           end else if (dret_in_wb) begin
