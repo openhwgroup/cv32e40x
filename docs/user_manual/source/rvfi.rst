@@ -72,9 +72,9 @@ The trap signal indicates that a synchronous trap has ocurred and side-effects c
 
 .. code-block:: verilog
 
-   output [NRET * 12 - 1 : 0] rvfi_trap
+   output [NRET * 14 - 1 : 0] rvfi_trap
 
-``rvfi_trap`` consists of 12 bits.
+``rvfi_trap`` consists of 14 bits.
 ``rvfi_trap[0]`` is asserted if an instruction causes an exception or debug entry.
 ``rvfi_trap[2:1]`` indicate trap type. ``rvfi_trap[1]`` is set for synchronous traps that do not cause debug entry. ``rvfi_trap[2]`` is set for synchronous traps that do cause debug mode entry.
 ``rvfi_trap[8:3]`` provide information about non-debug traps, while ``rvfi_trap[11:9]`` provide information about traps causing entry to debug mode.
