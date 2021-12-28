@@ -349,6 +349,11 @@ bind cv32e40x_sleep_unit:
          .branch_in_ex_i           ( core_i.controller_i.controller_fsm_i.branch_in_ex                    ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
 
+         .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
+         .lsu_pmp_err_ex_i         ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
+         .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma
+                                    !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
+
          .ex_ready_i               ( core_i.ex_stage_i.ex_ready_o                                         ),
          .ex_valid_i               ( core_i.ex_stage_i.ex_valid_o                                         ),
 
