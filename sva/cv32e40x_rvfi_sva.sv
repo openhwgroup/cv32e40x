@@ -149,6 +149,12 @@ module cv32e40x_rvfi_sva
                      rvfi_trap[1] && rvfi_trap[2] |-> rvfi_trap[11:9] == DBG_CAUSE_STEP)
      else `uvm_error("rvfi", "rvfi_trap[2:1] == 2'b11, but debug cause bits do not indicate single stepping")
 
+  // Check that the trap is always signalled on the instruction before single step debug entry (unless killed by interrupt)
+  a_rvfi_single_step_no_trap_no_dbg_entry:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     s_goto_next_rvfi_valid(rvfi_trap[11:9] != DBG_CAUSE_STEP) |-> ((rvfi_dbg != DBG_CAUSE_STEP) || rvfi_intr))
+     else `uvm_error("rvfi", "Single step debug entry without correct rvfi_trap first")
+
   // Check that dcsr.cause and mcause exception align with rvfi_trap when rvfi_trap[2:1] == 2'b11
   // rvfi_intr should also always be set in this case
   a_rvfi_trap_step_exception:
