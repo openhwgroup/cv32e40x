@@ -872,7 +872,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       
       // Inhibit Control
       if(mcountinhibit_we)
-        mcountinhibit_n = csr_wdata_int;
+        mcountinhibit_n = csr_wdata_int & MCOUNTINHIBIT_MASK;
 
       // Event Control
       if(mhpmevent_we)
@@ -1004,21 +1004,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   //  Inhibit Regsiter: mcountinhibit_q
   //  Note: implemented counters are disabled out of reset to save power
-  genvar inh_gidx;
-  generate
-    for (inh_gidx = 0; inh_gidx < 32; inh_gidx++) begin : gen_mcountinhibit
-      if(!MCOUNTINHIBIT_MASK[inh_gidx])
-        begin : gen_non_implemented
-        assign mcountinhibit_q[inh_gidx] = 'b0;
-      end
-      else begin : gen_implemented
-        always_ff @(posedge clk, negedge rst_n)
-          if (!rst_n)
-            mcountinhibit_q[inh_gidx] <= 'b1; // default disable
-          else
-            mcountinhibit_q[inh_gidx] <= mcountinhibit_n[inh_gidx];
-      end
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      mcountinhibit_q <= MCOUNTINHIBIT_MASK; // default disable
+    end else begin
+      mcountinhibit_q <= mcountinhibit_n;
     end
-  endgenerate
+  end
 
 endmodule // cv32e40x_cs_registers
