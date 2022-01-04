@@ -463,7 +463,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n        = if_id_pipe_i.instr_meta;
-    instr_meta_n.jum p  = (ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR);
+    instr_meta_n.jump   = (ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR);
     instr_meta_n.branch = (ctrl_transfer_insn_o == BRANCH_COND);
   end
 
