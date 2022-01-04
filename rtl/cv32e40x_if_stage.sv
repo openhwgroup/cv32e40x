@@ -260,8 +260,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   always_ff @(posedge clk, negedge rst_n)
   begin : IF_ID_PIPE_REGISTERS
-    if (rst_n == 1'b0)
-    begin
+    if (rst_n == 1'b0) begin
       if_id_pipe_o.instr_valid      <= 1'b0;
       if_id_pipe_o.instr            <= INST_RESP_RESET_VAL;
       if_id_pipe_o.instr_meta       <= '0;
@@ -270,13 +269,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.compressed_instr <= '0;
       if_id_pipe_o.trigger_match    <= 1'b0;
       if_id_pipe_o.xif_id           <= '0;
-    end
-    else
-    begin
+    end else begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
-      if (if_valid_o && id_ready_i)
-      begin
+      if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr            <= instr_decompressed;
         if_id_pipe_o.instr_meta       <= instr_meta_n;

@@ -22,7 +22,7 @@
 // Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
 //                                                                            //
 // Additional contributions by:                                               //
-//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+//                 Øystein Knauserud - oystein.knauserud@silabs.com          //
 //                 Michael Platzer - michael.platzer@tuwien.ac.at             //
 //                                                                            //
 // Design Name:    Write Back stage                                           //
@@ -110,7 +110,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
 
-  // Does not depend on local instr_valid (ie kept high for stalls and kills)
+  // Does not depend on local instr_valid (i.e. kept high for stalls and kills)
   // Ok, as controller will never kill ongoing LSU instructions, and thus
   // the lsu valid_1_o which lsu_valid_o factors into should not be affected.
   assign lsu_valid_o = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
