@@ -442,10 +442,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
   //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
   //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
-  assign rf_re_o             = illegal_insn ? '1 : REGFILE_NUM_READ_PORTS'(rf_re);
+  assign rf_re_o        = illegal_insn ? '1 : REGFILE_NUM_READ_PORTS'(rf_re);
 
   // Register writeback is enabled either by the decoder or by the XIF
-  assign rf_we               = rf_we_dec || xif_we;
+  assign rf_we          = rf_we_dec || xif_we;
 
   assign rf_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
@@ -463,9 +463,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n        = if_id_pipe_i.instr_meta;
-    instr_meta_n.jump  = (ctrl_transfer_insn_o == BRANCH_JAL) ||
-                         (ctrl_transfer_insn_o == BRANCH_JALR);
-    instr_meta_n.branch = ctrl_transfer_insn_o == BRANCH_COND;
+    instr_meta_n.jump   = (ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR);
+    instr_meta_n.branch = (ctrl_transfer_insn_o == BRANCH_COND);
   end
 
   always_ff @(posedge clk, negedge rst_n)

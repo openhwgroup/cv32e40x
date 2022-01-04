@@ -49,7 +49,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        interruptible_o,
 
   // Stage 0 outputs (EX)
-  output logic        lsu_split_0_o,       // Misaligned access is split in two transactions (to controller)
+  output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
 
   // Stage 1 outputs (WB)
   output logic [31:0] lsu_addr_1_o,
@@ -58,13 +58,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
 
   // Handshakes
-  input  logic        valid_0_i,        // Handshakes for first LSU stage (EX)
-  output logic        ready_0_o,        // LSU ready for new data in EX stage
+  input  logic        valid_0_i,                // Handshakes for first LSU stage (EX)
+  output logic        ready_0_o,                // LSU ready for new data in EX stage
   output logic        valid_0_o,
   input  logic        ready_0_i,
 
-  input  logic        valid_1_i,        // Handshakes for second LSU stage (WB)
-  output logic        ready_1_o,        // LSU ready for new data in WB stage
+  input  logic        valid_1_i,                // Handshakes for second LSU stage (WB)
+  output logic        ready_1_o,                // LSU ready for new data in WB stage
   output logic        valid_1_o,
   input  logic        ready_1_i,
 
@@ -73,7 +73,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   if_xif.cpu_mem_result xif_mem_result_if
 );
 
-  localparam DEPTH = 2;                 // Maximum number of outstanding transactions
+  localparam DEPTH = 2;                         // Maximum number of outstanding transactions
 
   // Transaction request (to cv32e40x_mpu)
   logic          trans_valid;
@@ -115,35 +115,33 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic         ctrl_update;            // Update load/store control info in WB stage
 
-  logic [31:0]  addr_int;
-
   // registers for data_rdata alignment and sign extension
   logic [1:0]   lsu_type_q;
   logic         lsu_sign_ext_q;
   logic         lsu_we_q;
   logic [1:0]   rdata_offset_q;
-  logic         last_q;
+  logic         last_q;                 // Last transfer of load/store (only 0 for first part of split transfer)
 
-  logic [1:0]   wdata_offset;           // mux control for data to be written to memory
-
-  logic [3:0]   be;
+  logic [31:0]  addr_int;
+  logic [1:0]   wdata_offset;           // Mux control for data to be written to memory
+  logic [3:0]   be;                     // Byte enables
   logic [31:0]  wdata;
 
-  logic         split_q;                 // high if we are currently performing the second address phase of a split misaligned load/store
-  logic         misaligned_halfword;     // high if a halfword is not naturally aligned but no split is needed
-  logic         misaligned_access;       // Access is not naturally aligned
+  logic         split_q;                // Currently performing the second address phase of a split misaligned load/store
+  logic         misaligned_halfword;    // Halfword is not naturally aligned, but no split is needed
+  logic         misaligned_access;      // Access is not naturally aligned
 
-  logic         filter_resp_busy;        // Response filter busy
+  logic         filter_resp_busy;       // Response filter busy
 
   logic [31:0]  rdata_q;
 
-  logic done_0;      // First stage (EX) is done
+  logic         done_0;                 // First stage (EX) is done
 
   // Internally gated lsu_en
   logic         instr_valid;
-  logic         lsu_en_gated;    // LSU enabled gated with all disqualifiers
+  logic         lsu_en_gated;           // LSU enabled gated with all disqualifiers
 
-  logic         trans_valid_q;   // trans_valid got clocked without trans_ready
+  logic         trans_valid_q;          // trans_valid got clocked without trans_ready
 
   assign instr_valid  = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid;
@@ -200,10 +198,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     endcase; // case (id_ex_pipe_i.lsu_type)
   end
 
-  // prepare data to be written to the memory
-  // we handle misaligned (split) accesses, half word and byte accesses and
-  // register offsets here
+  // Prepare data to be written to the memory. We handle misaligned (split) accesses,
+  // half word and byte accesses and register offsets here.
+
   assign wdata_offset = addr_int[1:0] - id_ex_pipe_i.lsu_reg_offset[1:0];
+
   always_comb
   begin
     case (wdata_offset)
@@ -214,21 +213,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     endcase; // case (wdata_offset)
   end
 
-
   // FF for rdata alignment and sign-extension
   // Signals used in WB stage
   always_ff @(posedge clk, negedge rst_n)
   begin
-    if(rst_n == 1'b0)
-    begin
-      lsu_type_q       <= '0;
+    if (rst_n == 1'b0) begin
+      lsu_type_q       <= 2'b0;
       lsu_sign_ext_q   <= 1'b0;
       lsu_we_q         <= 1'b0;
-      rdata_offset_q   <= '0;
+      rdata_offset_q   <= 2'b0;
       last_q           <= 1'b0;
-    end
-    else if (ctrl_update) // request was granted, we wait for rvalid and can continue to WB
-    begin
+    end else if (ctrl_update) begin     // request was granted, we wait for rvalid and can continue to WB
       lsu_type_q       <= id_ex_pipe_i.lsu_type;
       lsu_sign_ext_q   <= id_ex_pipe_i.lsu_sign_ext;
       lsu_we_q         <= id_ex_pipe_i.lsu_we;
@@ -247,12 +242,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // split, causing next LSU instruction to calculate wrong _be.
   // todo: add assertion that it is zero for the first phase (regardless of alignment)
   always_ff @(posedge clk, negedge rst_n) begin
-    if(rst_n == 1'b0) begin
+    if (rst_n == 1'b0) begin
       split_q    <= 1'b0;
     end else begin
-      if(!lsu_en_gated) begin
-        split_q <= 1'b0; // Reset split_st when no valid instructions
-      end else if (ctrl_update) begin // EX done, update split_q for next address phase
+      if (!lsu_en_gated) begin
+        split_q <= 1'b0;                // Reset split_q when no valid instructions
+      end else if (ctrl_update) begin   // EX done, update split_q for next address phase
         split_q <= lsu_split_0_o;
       end
     end
@@ -371,23 +366,18 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   always_ff @(posedge clk, negedge rst_n)
   begin
-    if (rst_n == 1'b0)
-    begin
+    if (rst_n == 1'b0) begin
       rdata_q <= '0;
-    end
-    else
-    begin
-      if (resp_valid && !lsu_we_q)
-      begin
-        // if we have detected a split access, and we are
-        // currently doing the first part of this access, then
-        // store the data coming from memory in rdata_q.
-        // In all other cases, rdata_q gets the value that we are
-        // writing to the register file
-        if (split_q || lsu_split_0_o)
-          rdata_q <= resp_rdata;
-        else
-          rdata_q <= rdata_ext;
+    end else if (resp_valid && !lsu_we_q) begin
+      // if we have detected a split access, and we are
+      // currently doing the first part of this access, then
+      // store the data coming from memory in rdata_q.
+      // In all other cases, rdata_q gets the value that we are
+      // writing to the register file
+      if (split_q || lsu_split_0_o) begin
+        rdata_q <= resp_rdata;
+      end else begin
+        rdata_q <= rdata_ext;
       end
     end
   end
@@ -512,7 +502,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //
   // Counter overflow is prevented by limiting the number of outstanding transactions
   // to DEPTH. Counter underflow is prevented by the assumption that resp_valid = 1
-   // will only occur in response to accepted transfer request (as per the OBI protocol).
+  // will only occur in response to accepted transfer request (as per the OBI protocol).
   //////////////////////////////////////////////////////////////////////////////
 
   assign count_up = trans_valid && trans_ready;         // Increment upon accepted transfer request
@@ -520,16 +510,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   always_comb begin
     unique case ({count_up, count_down})
-      2'b00  : begin
+      2'b00 : begin
         next_cnt = cnt_q;
       end
-      2'b01  : begin
-          next_cnt = cnt_q - 1'b1;
+      2'b01 : begin
+        next_cnt = cnt_q - 1'b1;
       end
-      2'b10  : begin
-          next_cnt = cnt_q + 1'b1;
+      2'b10 : begin
+        next_cnt = cnt_q + 1'b1;
       end
-      2'b11  : begin
+      2'b11 : begin
         next_cnt = cnt_q;
       end
     endcase
@@ -539,17 +529,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign cnt_is_one_next = next_cnt == 2'h1;
 
   //////////////////////////////////////////////////////////////////////////////
-  // Registers
+  // Counter (cnt_q) to count number of outstanding OBI transactions
   //////////////////////////////////////////////////////////////////////////////
 
   always_ff @(posedge clk, negedge rst_n)
   begin
-    if(rst_n == 1'b0)
-    begin
+    if (rst_n == 1'b0) begin
       cnt_q <= '0;
-    end
-    else
-    begin
+    end else begin
       cnt_q <= next_cnt;
     end
   end
@@ -576,12 +563,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // in WB before the second half gets grant, trans_valid_q will again be
   // 1 and block interrupts, and cnt_q will block the last half while it is in
   // WB.
+
   always_ff @(posedge clk, negedge rst_n)
   begin
-    if(rst_n == 1'b0) begin
+    if (rst_n == 1'b0) begin
       trans_valid_q <= 1'b0;
     end else begin
-      if(trans_valid && !ctrl_update) begin
+      if (trans_valid && !ctrl_update) begin
         trans_valid_q <= 1'b1;
       end else if (ctrl_update) begin
         trans_valid_q <= 1'b0;
@@ -604,13 +592,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     // TODO: Add assertion to check that result of faulted load is not used before NMI is taken.
   // TODO: If we will not implement MTVAL, then this code can be removed.
   // Following block is within the EX stage
+
   always_ff @(posedge clk, negedge rst_n) // todo:low conditions used here seems different than other WB registers (normally we would use if (ctrl_update))
   begin
-    if(rst_n == 1'b0) begin
+    if (rst_n == 1'b0) begin
       lsu_addr_1_o <= 32'h0;
     end else begin
       // Update for each valid address issued on the bus unless blocked by controller in the case of an NMI
-      if(!ctrl_fsm_i.block_data_addr && (bus_trans_valid && bus_trans_ready)) begin
+      if (!ctrl_fsm_i.block_data_addr && (bus_trans_valid && bus_trans_ready)) begin
         lsu_addr_1_o <= bus_trans.addr; // Todo : This will store the address of the last issued transfer,
                                         //        and not necessarily the one that had an error.
                                         //        A different approach is needed here when implementing MTVAL
@@ -698,8 +687,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   cv32e40x_write_buffer
   #(
-    .PMA_NUM_REGIONS    ( PMA_NUM_REGIONS      ),
-    .PMA_CFG            ( PMA_CFG              )
+    .PMA_NUM_REGIONS    ( PMA_NUM_REGIONS    ),
+    .PMA_CFG            ( PMA_CFG            )
   )
   write_buffer_i
   (
