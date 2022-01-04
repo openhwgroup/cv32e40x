@@ -33,7 +33,7 @@ module cv32e40x_rvfi_sva
 
    input logic             rvfi_valid,
    input logic             rvfi_intr,
-   input logic [11:0]      rvfi_trap,
+   input logic [13:0]      rvfi_trap,
    input logic [2:0]       rvfi_dbg,
 
    input                   ctrl_fsm_t ctrl_fsm_i,
@@ -158,7 +158,7 @@ module cv32e40x_rvfi_sva
                      (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap[8:3])) &&
                      rvfi_intr)
      else `uvm_error("rvfi", "dcsr.cause, mcause and rvfi_intr not as expected following an exception during single step")
-    
+
   // When dcsr.nmip is set, the next retired instruction should be the NMI handler (except in debug mode).
   // rvfi_intr should also be set.
   a_rvfi_nmip_nmi_handler:

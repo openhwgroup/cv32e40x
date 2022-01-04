@@ -28,6 +28,7 @@ module cv32e40x_rvfi
    //// IF Probes ////
    input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
+   input logic                                instr_pmp_err_if_i,
 
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
@@ -52,6 +53,8 @@ module cv32e40x_rvfi
    input logic                                branch_in_ex_i,
    // LSU
    input logic                                lsu_en_ex_i,
+   input logic                                lsu_pmp_err_ex_i,
+   input logic                                lsu_pma_err_atomic_ex_i,
 
    input logic                                ex_ready_i,
    input logic                                ex_valid_i,
@@ -176,7 +179,7 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_valid,
    output logic [63:0]                        rvfi_order,
    output logic [31:0]                        rvfi_insn,
-   output logic [11:0]                        rvfi_trap,
+   output logic [13:0]                        rvfi_trap,
    output logic [ 0:0]                        rvfi_halt,
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
@@ -371,6 +374,7 @@ module cv32e40x_rvfi
   logic [3:0] [31:0] pc_wdata;
   logic [3:0]        debug_mode;
   logic [3:0] [ 2:0] debug_cause;
+  logic [3:0]        instr_pmp_err;
   logic [3:0]        in_trap;
   logic [3:0] [ 4:0] rs1_addr;
   logic [3:0] [ 4:0] rs2_addr;
@@ -382,6 +386,7 @@ module cv32e40x_rvfi
   //Propagating from EX stage
   logic [31:0]       ex_mem_addr;
   logic [31:0]       ex_mem_wdata;
+  mem_err_t [3:0]    mem_err;
 
   logic [ 3:0] rvfi_mem_mask_int;
   logic [31:0] rvfi_mem_rdata_d;
@@ -478,7 +483,7 @@ module cv32e40x_rvfi
 
 
   // Set rvfi_trap for instructions causing exception or debug entry.
-  logic [11:0]  rvfi_trap_next;
+  logic [13:0]  rvfi_trap_next;
 
   always_comb begin
     rvfi_trap_next = '0;
@@ -495,6 +500,26 @@ module cv32e40x_rvfi
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next[2:0] = 3'b011;
       rvfi_trap_next[8:3] = ctrl_fsm_i.csr_cause.exception_code;
+
+      // Separate exception causes with the same ecseption cause code
+      case (ctrl_fsm_i.csr_cause.exception_code)
+        EXC_CAUSE_INSTR_FAULT : begin
+          rvfi_trap_next[13:12] = instr_pmp_err[STAGE_WB] ? 2'h1 : 2'h0;
+        end
+        EXC_CAUSE_BREAKPOINT : begin
+          // Todo: Add support for trigger match exceptions when implemented in rtl
+        end
+        EXC_CAUSE_LOAD_FAULT : begin
+          rvfi_trap_next[13:12] = mem_err[STAGE_WB];
+        end
+        EXC_CAUSE_STORE_FAULT : begin
+          rvfi_trap_next[13:12] = mem_err[STAGE_WB];
+        end
+        default : begin
+          // rvfi_trap_next[13:12] are only set for exception codes that can have multiple causes
+        end
+      endcase // case (ctrl_fsm_i.csr_cause.exception_code)
+
     end
     if(pc_mux_exception && (pending_single_step_i && single_step_allowed_i)) begin
       // Special case, exception in WB and pending single step.
@@ -513,6 +538,7 @@ module cv32e40x_rvfi
       in_trap            <= '0;
       debug_mode         <= '0;
       debug_cause        <= '0;
+      instr_pmp_err      <= '0;
       rs1_addr           <= '0;
       rs2_addr           <= '0;
       rs1_rdata          <= '0;
@@ -521,6 +547,7 @@ module cv32e40x_rvfi
       mem_wmask          <= '0;
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
+      mem_err            <= '0;
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
       rvfi_dbg_mode      <= '0;
@@ -551,6 +578,7 @@ module cv32e40x_rvfi
       //// IF Stage ////
       if (if_valid_i && id_ready_i) begin
         debug_mode [STAGE_ID] <= ctrl_fsm_i.debug_mode; // Probing in IF to ensure LSU instructions that are not killed can complete
+        instr_pmp_err[STAGE_ID] <= instr_pmp_err_if_i;    // Instruction fetch pmp error probed to separate pmp- from pma-errors
 
         // Capturing events that happen when the IF stage is not valid and
         // propagating them through the pipeline with the next valid instruction
@@ -605,6 +633,7 @@ module cv32e40x_rvfi
         in_trap    [STAGE_EX] <= in_trap    [STAGE_ID];
         debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
         debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
+        instr_pmp_err[STAGE_EX] <= instr_pmp_err[STAGE_ID];
         rs1_addr   [STAGE_EX] <= rs1_addr_id;
         rs2_addr   [STAGE_EX] <= rs2_addr_id;
         rs1_rdata  [STAGE_EX] <= rs1_rdata_id;
@@ -625,6 +654,7 @@ module cv32e40x_rvfi
         pc_wdata   [STAGE_WB] <= branch_in_ex_i ? branch_target_ex_i : pc_wdata[STAGE_EX];
         debug_mode [STAGE_WB] <= debug_mode         [STAGE_EX];
         debug_cause[STAGE_WB] <= debug_cause        [STAGE_EX];
+        instr_pmp_err[STAGE_WB] <= instr_pmp_err    [STAGE_EX];
         rs1_addr   [STAGE_WB] <= rs1_addr           [STAGE_EX];
         rs2_addr   [STAGE_WB] <= rs2_addr           [STAGE_EX];
         rs1_rdata  [STAGE_WB] <= rs1_rdata          [STAGE_EX];
@@ -639,6 +669,10 @@ module cv32e40x_rvfi
           ex_mem_addr         <= rvfi_mem_addr_d;
           ex_mem_wdata        <= rvfi_mem_wdata_d;
         end
+
+        mem_err   [STAGE_WB]  <= lsu_pmp_err_ex_i        ? MEM_ERR_PMP :
+                                 lsu_pma_err_atomic_ex_i ? MEM_ERR_ATOMIC :
+                                                           MEM_ERR_IO_ALIGN;
 
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;

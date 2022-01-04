@@ -29,6 +29,12 @@ package cv32e40x_rvfi_pkg;
   parameter STAGE_EX = 2;
   parameter STAGE_WB = 3;
 
+  typedef enum logic [1:0] { // Memory error types
+    MEM_ERR_PMP      = 2'h2,
+    MEM_ERR_ATOMIC   = 2'h1,
+    MEM_ERR_IO_ALIGN = 2'h0
+  } mem_err_t;
+
   typedef struct packed { // Autonomously updated CSRs
     logic [31:0] mcycle;
     logic [31:0] mcycleh;
