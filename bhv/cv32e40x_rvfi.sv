@@ -496,6 +496,7 @@ module cv32e40x_rvfi
       // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
       rvfi_trap_next[11:9] = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
     end
+
     if (pc_mux_exception) begin
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next[2:0] = 3'b011;
@@ -521,12 +522,16 @@ module cv32e40x_rvfi
       endcase // case (ctrl_fsm_i.csr_cause.exception_code)
 
     end
-    if(pc_mux_exception && (pending_single_step_i && single_step_allowed_i)) begin
-      // Special case, exception in WB and pending single step.
-      // Indicate both non-debug trap and trap into debug mode
-      rvfi_trap_next[2:0]  = 3'b111;
-      rvfi_trap_next[8:3]  = ctrl_fsm_i.csr_cause.exception_code;
+
+    if(pending_single_step_i && single_step_allowed_i) begin
+      // The timing of the single step debug entry does not allow using pc_mux for detection
+      rvfi_trap_next[2:0]  = 3'b101;
       rvfi_trap_next[11:9] = DBG_CAUSE_STEP;
+      if (pc_mux_exception) begin
+        // Special case, exception in WB and pending single step.
+        // Indicate both non-debug trap and trap into debug mode
+        rvfi_trap_next[2:0]  = 3'b111;
+      end
     end
   end
 
