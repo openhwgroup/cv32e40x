@@ -579,8 +579,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
 
         // Propagate signals needed for exception handling in WB
-        // TODO:OK:low Clock gating of pc if no existing exceptions
-        //          and LSU it not in use
         id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
 
         if (if_id_pipe_i.instr_meta.compressed) begin
