@@ -188,6 +188,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        instr_valid;
 
   // eXtension interface signals
+  logic        xif_en;
   logic        xif_waiting;
   logic        xif_insn_accept;
   logic        xif_insn_reject;
@@ -604,7 +605,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
         // eXtension interface
-        id_ex_pipe_o.xif_en                 <= xif_insn_accept || xif_insn_reject;
+        id_ex_pipe_o.xif_en                 <= xif_en;
         id_ex_pipe_o.xif_meta.id            <= if_id_pipe_i.xif_id;
         id_ex_pipe_o.xif_meta.exception     <= xif_exception;
         id_ex_pipe_o.xif_meta.loadstore     <= xif_loadstore;
@@ -647,6 +648,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
       // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
       logic xif_accepted_q, xif_rejected_q;
+
+      assign xif_en = xif_insn_accept || xif_insn_reject;
 
       always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
         if (rst_n == 1'b0) begin
@@ -709,20 +712,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end else begin : no_x_ext
 
       // Drive all eXtension interface signals and outputs low if X_EXT == 0
-      assign xif_waiting                        = '0;
-      assign xif_insn_accept                    = '0;
-      assign xif_insn_reject                    = '0;
-      assign xif_we                             = '0;
-      assign xif_exception                      = '0;
-      assign xif_dualwrite                      = '0;
-      assign xif_loadstore                      = '0;
+      assign xif_en                          = 1'b0;
+      assign xif_waiting                     = 1'b0;
+      assign xif_insn_accept                 = 1'b0;
+      assign xif_insn_reject                 = 1'b0;
+      assign xif_we                          = 1'b0;
+      assign xif_exception                   = 1'b0;
+      assign xif_dualwrite                   = 1'b0;
+      assign xif_loadstore                   = 1'b0;
 
-      assign xif_issue_if.issue_valid         = '0;
-      assign xif_issue_if.issue_req.instr     = '0;
-      assign xif_issue_if.issue_req.mode      = '0;
-      assign xif_issue_if.issue_req.id        = '0;
-      assign xif_issue_if.issue_req.rs        = '0;
-      assign xif_issue_if.issue_req.rs_valid  = '0;
+      assign xif_issue_if.issue_valid        = 1'b0;
+      assign xif_issue_if.issue_req.instr    = '0;
+      assign xif_issue_if.issue_req.mode     = '0;
+      assign xif_issue_if.issue_req.id       = '0;
+      assign xif_issue_if.issue_req.rs       = '0;
+      assign xif_issue_if.issue_req.rs_valid = '0;
 
     end
   endgenerate

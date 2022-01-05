@@ -22,7 +22,6 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-
 module cv32e40x_id_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
@@ -38,6 +37,7 @@ module cv32e40x_id_stage_sva
   input logic           csr_en,
   input logic           sys_en,
   input logic           lsu_en,
+  input logic           xif_en,
   input logic           wfi_insn,
   input logic           ebrk_insn,
   input logic           mret_insn,
@@ -54,7 +54,6 @@ module cv32e40x_id_stage_sva
   input ctrl_fsm_t      ctrl_fsm_i,
   input logic           xif_insn_accept
 );
-
 
     // the instruction delivered to the ID stage should always be valid
     a_valid_instr :
@@ -135,7 +134,7 @@ module cv32e40x_id_stage_sva
   // Ensure that functional unit enables are one-hot (ALU and DIV both use the ALU though)
   a_functional_unit_enable_onehot :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en}))
+                     $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en, xif_en}))
       else `uvm_error("id_stage", "Multiple functional units enabled")
 
 endmodule // cv32e40x_id_stage_sva
