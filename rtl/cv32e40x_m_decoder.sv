@@ -36,73 +36,70 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
   always_comb
   begin
 
-    // Default assignment
+    // Default assignments
     decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-
-    // Common signals for all MUL/DIV 
-    decoder_ctrl_o.rf_we    = 1'b1;
-    decoder_ctrl_o.rf_re[0] = 1'b1;
-    decoder_ctrl_o.rf_re[1] = 1'b1;
+    decoder_ctrl_o.illegal_insn = 1'b0;
 
     unique case (instr_rdata_i[6:0])
      
       OPCODE_OP: begin
 
+        // Common signals for all MUL/DIV 
+        decoder_ctrl_o.rf_we    = 1'b1;
+        decoder_ctrl_o.rf_re[0] = 1'b1;
+        decoder_ctrl_o.rf_re[1] = 1'b1;
+
         unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
 
           // supported RV32M instructions
           {7'b000_0001, 3'b000}: begin // mul
-            decoder_ctrl_o.illegal_insn  = 1'b0;
             decoder_ctrl_o.mul_en        = 1'b1;
             decoder_ctrl_o.mul_operator  = MUL_M32;
           end
           {7'b000_0001, 3'b001}: begin // mulh
-            decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mul_signed_mode  = 2'b11;
             decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_signed_mode  = 2'b11;
             decoder_ctrl_o.mul_operator     = MUL_H;
+
+            // todo: make explicit: decoder_ctrl_o.alu_op_a_mux_sel =
+            // todo: make explicit: decoder_ctrl_o.alu_op_b_mux_sel =
+
           end
           {7'b000_0001, 3'b010}: begin // mulhsu
-            decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mul_signed_mode  = 2'b01;
             decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_signed_mode  = 2'b01;
             decoder_ctrl_o.mul_operator     = MUL_H;
           end
           {7'b000_0001, 3'b011}: begin // mulhu
-            decoder_ctrl_o.illegal_insn     = 1'b0;
-            decoder_ctrl_o.mul_signed_mode  = 2'b00;
             decoder_ctrl_o.mul_en           = 1'b1;
+            decoder_ctrl_o.mul_signed_mode  = 2'b00;
             decoder_ctrl_o.mul_operator     = MUL_H;
           end
           {7'b000_0001, 3'b100}: begin // div
-            decoder_ctrl_o.illegal_insn     = 1'b0;
+            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
-            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_DIV;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b101}: begin // divu
-            decoder_ctrl_o.illegal_insn     = 1'b0;
+            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
-            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_DIVU;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b110}: begin // rem
-            decoder_ctrl_o.illegal_insn     = 1'b0;
+            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
-            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_REM;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b111}: begin // remu
-            decoder_ctrl_o.illegal_insn     = 1'b0;
+            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
             decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
-            decoder_ctrl_o.div_en           = 1'b1;
             decoder_ctrl_o.div_operator     = DIV_REMU;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
