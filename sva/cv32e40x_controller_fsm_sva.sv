@@ -69,7 +69,8 @@ module cv32e40x_controller_fsm_sva
   input logic           xif_commit_kill,
   input logic           xif_commit_valid,
   input logic           nmi_is_store_q,
-  input logic           nmi_pending_q
+  input logic           nmi_pending_q,
+  input dcsr_t          dcsr_i
 );
 
 
@@ -480,5 +481,30 @@ endgenerate
                       |=> (nmi_is_store_q == bus_error_is_write) &&
                           (nmi_pending_q == bus_error_latched) && bus_error_latched)
       else `uvm_error("controller", "Wrong type for LSU bus error")
+
+
+
+  // Helper logic. Counting number of retired instructions while an NMI is pending outside of debug mode or single stepping.
+  logic [1:0] valid_cnt;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      valid_cnt <= '0;
+    end else begin
+      if(bus_error_latched) begin
+        if(wb_valid_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
+          valid_cnt <= valid_cnt + 1;
+        end
+      end else begin
+        valid_cnt <= '0;
+      end
+    end
+  end
+
+  // valid_cnt will start counting one cycle after the faulted LSU instruction has been retired, allowing for one more retirement before
+  // NMI is taken.
+  a_nmi_handler_max_retire:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (valid_cnt < 2'b10)) // 0 or 1 instructions are allowed to retire, thus the counter must always be less than 2.
+    else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 endmodule // cv32e40x_controller_fsm_sva
 
