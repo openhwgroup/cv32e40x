@@ -176,7 +176,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   mpu_status_e lsu_mpu_status_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
-  logic [31:0] lsu_addr_wb;
 
   logic        lsu_valid_0;             // Handshake with EX
   logic        lsu_ready_ex;
@@ -545,7 +544,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
 
     // Stage 1 outputs (WB)
-    .lsu_addr_1_o          ( lsu_addr_wb        ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
 
@@ -712,7 +710,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_split_ex_i                 ( lsu_split_ex           ),
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
     .data_stall_wb_i                ( data_stall_wb          ),
-    .lsu_addr_wb_i                  ( lsu_addr_wb            ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
