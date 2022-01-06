@@ -32,16 +32,16 @@
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter NUM_MHPMCOUNTERS             =  1,
-  parameter         LIB                  =  0,
-  parameter bit     A_EXT                =  0,
-  parameter b_ext_e B_EXT                =  NONE,
-  parameter bit     X_EXT                =  0,
-  parameter int     X_NUM_RS             =  2,
-  parameter int     X_ID_WIDTH           =  4,
-  parameter int     X_MEM_WIDTH          =  32,
-  parameter int     X_RFR_WIDTH          =  32,
-  parameter int     X_RFW_WIDTH          =  32,
-  parameter int     X_MISA               =  32'h00000000,
+  parameter              LIB             =  0,
+  parameter bit          A_EXT           =  0,
+  parameter b_ext_e      B_EXT           =  NONE,
+  parameter bit          X_EXT           =  0,
+  parameter int          X_NUM_RS        =  2,
+  parameter int          X_ID_WIDTH      =  4,
+  parameter int          X_MEM_WIDTH     =  32,
+  parameter int          X_RFR_WIDTH     =  32,
+  parameter int          X_RFW_WIDTH     =  32,
+  parameter int          X_MISA          =  32'h00000000,
   parameter int          PMA_NUM_REGIONS =  0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
