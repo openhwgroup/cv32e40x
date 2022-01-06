@@ -37,25 +37,24 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
   always_comb
   begin
 
+    // Default assignments
     decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+    decoder_ctrl_o.illegal_insn = 1'b0;
 
     unique case (instr_rdata_i[6:0])
 
       OPCODE_AMO: begin
         if (instr_rdata_i[14:12] == 3'b010) begin // RV32A Extension (word)
 
-          decoder_ctrl_o.illegal_insn     = 1'b0;
+          decoder_ctrl_o.lsu_en           = 1'b1;
           decoder_ctrl_o.rf_re[0]         = 1'b1;
           decoder_ctrl_o.rf_re[1]         = 1'b1;
           decoder_ctrl_o.rf_we            = 1'b1;
+          decoder_ctrl_o.alu_en           = 1'b1; // todo: this is a bug; fixing later to remain SEC compliant on current PR
           decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-          decoder_ctrl_o.alu_en           = 1'b1;
-          decoder_ctrl_o.alu_operator     = ALU_SLTU;
-          decoder_ctrl_o.lsu_en           = 1'b1;
           decoder_ctrl_o.lsu_type         = 2'b00;
           decoder_ctrl_o.lsu_sign_ext     = 1'b1;
           decoder_ctrl_o.lsu_atop         = {1'b1, instr_rdata_i[31:27]};
-          decoder_ctrl_o.lsu_prepost_useincr = 1'b0; // only use alu_operand_a as address (not a+b)
 
           unique case (instr_rdata_i[31:27])
             AMO_LR: begin
@@ -72,7 +71,7 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
               AMO_MINU,
               AMO_MAXU: begin
                 decoder_ctrl_o.lsu_we = 1'b1;
-                decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // pass write data through ALU operand c
+                decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // Used for write data
               end
             default : begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;

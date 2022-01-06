@@ -73,44 +73,42 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        wb_ready_i        // WB stage is ready for new data
 );
 
-  logic [31:0]    alu_result;
-  logic           alu_cmp_result;
-  logic [31:0]    mul_result;
-
+  // Ready and valid signals
+  logic           instr_valid;
   logic           alu_ready;
   logic           alu_valid;
   logic           csr_ready;
   logic           csr_valid;
+  logic           sys_ready;
+  logic           sys_valid;
   logic           mul_ready;
   logic           mul_valid;
+  logic           div_ready;
+  logic           div_valid;
+  logic           xif_ready;
+  logic           xif_valid;
 
-  logic           instr_valid;
+  // Result signals
+  logic [31:0]    alu_result;
+  logic           alu_cmp_result;
+  logic [31:0]    mul_result;
+  logic [31:0]    div_result;
 
-  // Local signals after evaluating with instr_valid
+  // Gated enable signals factoring in instr_valid)
   logic           mul_en_gated;
   logic           div_en_gated;
   logic           lsu_en_gated;
-  logic           previous_exception;
-
-  // div_en not affected by kill/halt
-  logic           div_en;
 
   // Divider signals
-  logic           div_ready;
-  logic           div_valid;
-  logic [31:0]    div_result;
-
+  logic           div_en;               // Not affected by instr_valid (kill/halt)
   logic           div_clz_en;
   logic [31:0]    div_clz_data_rev;
   logic [5:0]     div_clz_result;
-
   logic           div_shift_en;
   logic [5:0]     div_shift_amt;
   logic [31:0]    div_op_b_shifted;
 
-  // eXtension interface signals
-  logic           xif_ready;
-  logic           xif_valid;
+  logic           previous_exception;
 
   // Detect if we get an illegal CSR instruction
   logic           csr_is_illegal;
@@ -151,7 +149,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     unique case (1'b1)
       id_ex_pipe_i.mul_en : rf_wdata_o = mul_result;
       id_ex_pipe_i.div_en : rf_wdata_o = div_result;
-      id_ex_pipe_i.csr_en : rf_wdata_o = csr_rdata_i;                           // alu_en = 1 here as well
+      id_ex_pipe_i.csr_en : rf_wdata_o = csr_rdata_i;                           // alu_en = 1 here as well; todo: not true?
       default             : rf_wdata_o = alu_result;                            // Default on purpose
     endcase
   end
@@ -326,7 +324,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         if (id_ex_pipe_i.csr_en) begin
           ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;
-          ex_wb_pipe_o.csr_op     <= id_ex_pipe_i.csr_op;
+          ex_wb_pipe_o.csr_op    <= id_ex_pipe_i.csr_op;
         end
 
         // Propagate signals needed for exception handling in WB
@@ -336,7 +334,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-
         ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
         ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
         ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;
@@ -368,18 +365,24 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign csr_valid = 1'b1;
   assign csr_ready = wb_ready_i;
 
+  // SYS instructions (ebreak, wfi, etc.) are single-cycle (and have no result output) (no handshake to optimize timing)
+  assign sys_valid = 1'b1;
+  assign sys_ready = wb_ready_i;
+
   // EX stage is ready immediately when killed and otherwise when its functional units are ready,
   // unless the stage is being halted. The late (data_rvalid_i based) downstream wb_ready_i signal
   // fans into the ready signals of all functional units.
 
-  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
+  assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && sys_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
+  // todo: Following code assumes that enable signals are onehot, which is not the case for Atomics; add assertion after atomic fix
   assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)   ||
-                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
+                       (id_ex_pipe_i.csr_en && csr_valid)   ||
+                       (id_ex_pipe_i.sys_en && sys_valid)   ||
                        (id_ex_pipe_i.mul_en && mul_valid)   ||
                        (id_ex_pipe_i.div_en && div_valid)   ||
-                       (id_ex_pipe_i.csr_en && csr_valid)   ||
+                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
                        (id_ex_pipe_i.xif_en && xif_valid)   ||
                        previous_exception // todo:ab:remove
                       ) && instr_valid;

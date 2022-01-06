@@ -414,10 +414,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   end
 
-  // generate address from operands
-  // todo: operand_b is a 12 bit immediate. May be able to optimize this adder (look at SweRV refefence)
-  assign addr_int = (id_ex_pipe_i.lsu_prepost_useincr) ? (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (split_q ? 'h4 : 'h0)) :
-                                                          id_ex_pipe_i.alu_operand_a;
+  // Generate address from operands (atomic memory transactions do not use an address offset computation)
+  assign addr_int = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (split_q ? 'h4 : 'h0));
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   // In the case of mpu errors, the LSU control logic can have outstanding transfers not seen by the response filter.

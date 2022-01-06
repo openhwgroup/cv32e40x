@@ -33,7 +33,10 @@ module cv32e40x_id_stage_sva
   input logic [31:0]    instr,
   input logic           rf_we,
   input logic           alu_en,
+  input logic           div_en,
   input logic           mul_en,
+  input logic           csr_en,
+  input logic           sys_en,
   input logic           lsu_en,
   input logic           wfi_insn,
   input logic           ebrk_insn,
@@ -129,6 +132,11 @@ module cv32e40x_id_stage_sva
                       |-> (id_ready_o && !id_valid_o))
       else `uvm_error("id_stage", "Kill should imply ready and not valid")
 
+  // Ensure that functional unit enables are one-hot (ALU and DIV both use the ALU though)
+  a_functional_unit_enable_onehot :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en}))
+      else `uvm_error("id_stage", "Multiple functional units enabled")
 
 endmodule // cv32e40x_id_stage_sva
 

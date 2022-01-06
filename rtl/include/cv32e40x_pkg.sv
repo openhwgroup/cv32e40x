@@ -623,28 +623,30 @@ typedef enum logic {
                          SELJ_FW_WB   = 1'b1
                          } jalr_fw_mux_e;
 
-// operand a selection
+// Operand a selection
 typedef enum logic[1:0] {
                          OP_A_REGA_OR_FWD = 2'b00,
                          OP_A_CURRPC      = 2'b01,
-                         OP_A_IMM         = 2'b10
+                         OP_A_IMM         = 2'b10,
+                         OP_A_NONE        = 2'b11
                          } alu_op_a_mux_e;
 
 
-// immediate a selection
+// Immediate a selection
 typedef enum logic {
                     IMMA_Z      = 1'b0,
                     IMMA_ZERO   = 1'b1
                     } imm_a_mux_e;
 
 
-// operand b selection
-typedef enum logic {
-                    OP_B_REGB_OR_FWD = 1'b0,
-                    OP_B_IMM         = 1'b1
+// Operand b selection
+typedef enum logic[1:0] {
+                    OP_B_REGB_OR_FWD = 2'b00,
+                    OP_B_IMM         = 2'b01,
+                    OP_B_NONE        = 2'b10
                     } alu_op_b_mux_e;
 
-// immediate b selection
+// Immediate b selection
 typedef enum logic[1:0] {
                          IMMB_I      = 2'b00,
                          IMMB_S      = 2'b01,
@@ -652,11 +654,12 @@ typedef enum logic[1:0] {
                          IMMB_PCINCR = 2'b11
                          } imm_b_mux_e;
 
-// operand c selection
+// Operand c selection
 typedef enum logic[1:0] {
                          OP_C_FWD         = 2'b00,
                          OP_C_REGB_OR_FWD = 2'b01,
-                         OP_C_BCH         = 2'b10
+                         OP_C_BCH         = 2'b10,
+                         OP_C_NONE        = 2'b11
                          } op_c_mux_e;
 
 // branch types
@@ -713,7 +716,7 @@ typedef struct packed {
   logic                              lsu_sign_ext;
   logic [1:0]                        lsu_reg_offset;
   logic [5:0]                        lsu_atop;
-  logic                              lsu_prepost_useincr;
+  logic                              sys_en;
   logic                              mret_insn;
   logic                              dret_insn;
   logic                              illegal_insn;
@@ -747,7 +750,7 @@ typedef struct packed {
                                                           lsu_sign_ext                 : 1'b0,
                                                           lsu_reg_offset               : 2'b00,
                                                           lsu_atop                     : 6'b000000,
-                                                          lsu_prepost_useincr          : 1'b1,
+                                                          sys_en                       : 1'b0,
                                                           mret_insn                    : 1'b0,
                                                           dret_insn                    : 1'b0,
                                                           illegal_insn                 : 1'b1,
@@ -992,7 +995,16 @@ typedef struct packed {
   logic         lsu_sign_ext;
   logic [1:0]   lsu_reg_offset;
   logic [5:0]   lsu_atop;
-  logic         lsu_prepost_useincr;
+
+  // SYS
+  logic         sys_en;
+  logic         illegal_insn;
+  logic         ebrk_insn;
+  logic         wfi_insn;
+  logic         ecall_insn;
+  logic         fencei_insn;
+  logic         mret_insn;
+  logic         dret_insn;
 
   // Branch target
   logic         branch_in_ex;
@@ -1005,13 +1017,6 @@ typedef struct packed {
   inst_resp_t   instr;            // Contains instruction word (may be compressed),bus error status and MPU status
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in EX is valid
-  logic         illegal_insn;
-  logic         ebrk_insn;
-  logic         wfi_insn;
-  logic         ecall_insn;
-  logic         fencei_insn;
-  logic         mret_insn;
-  logic         dret_insn;
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
