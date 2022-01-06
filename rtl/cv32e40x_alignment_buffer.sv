@@ -260,7 +260,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Write response and update valid bit and write pointer
     if (resp_valid_gated) begin
       // Increase write pointer, wrap to zero if at last entry
-      wptr_n   = wptr < (DEPTH-1) ? wptr + 'b1 : 'b0;
+      wptr_n   = wptr < (DEPTH-1) ? wptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
       // Set fifo and valid write data
       resp_n   = resp_i;
       valid_int[wptr] = 1'b1;
@@ -287,7 +287,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
 
       // Advance FIFO one step, wrap if at last entry
-      rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
+      rptr_n = rptr < (DEPTH-1) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
     end else begin
       // aligned case
       if (aligned_is_compressed) begin
@@ -299,7 +299,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         addr_n = {addr_incr[31:2], 2'b00};
 
         // Advance FIFO one step, wrap if at last entry
-        rptr_n = rptr < (DEPTH-1) ? rptr + 'b1 : 'b0;
+        rptr_n = rptr < (DEPTH-1) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
       end
     end
 
@@ -312,7 +312,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   end
 
   // rptr2 will always be one higher than rptr
-  assign rptr2 = (rptr < (DEPTH-1)) ? rptr + 'b1 : 'b0;
+  assign rptr2 = (rptr < (DEPTH-1)) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
 
   // Counting instructions in FIFO
   always_comb begin
@@ -330,7 +330,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       // Update number of instructions
       // Subracting emitted instructions lags behind by 1 cycle
       // to break timing paths from instr_ready_i to instr_cnt_q;
-      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? 'd1 : 'd0);
+      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0));
     end
   end
 
