@@ -128,14 +128,14 @@ always_ff @(posedge clk , negedge rst_ni)
       if (!first_ecall_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
         !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn) &&
         !(ctrl_fsm.pc_mux == PC_TRAP_NMI) &&
-          ex_wb_pipe.ecall_insn && !ctrl_debug_mode_n) begin
+          ex_wb_pipe.sys_ecall_insn && !ctrl_debug_mode_n) begin
         first_ecall_found   <= 1'b1;
         expected_ecall_mepc <= ex_wb_pipe.pc;
       end
       if (!first_ebrk_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
-        !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn || ex_wb_pipe.ecall_insn) &&
+        !(ex_wb_pipe.instr.bus_resp.err || (ex_wb_pipe.instr.mpu_status != MPU_OK) || ex_wb_pipe.illegal_insn || ex_wb_pipe.sys_ecall_insn) &&
         !(ctrl_fsm.pc_mux == PC_TRAP_NMI) &&
-          ex_wb_pipe.ebrk_insn) begin
+          ex_wb_pipe.sys_ebrk_insn) begin
         first_ebrk_found   <= 1'b1;
         expected_ebrk_mepc <= ex_wb_pipe.pc;
       end

@@ -65,8 +65,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register file write data from EX stage
   input  logic [31:0]    rf_wdata_ex_i,
 
-  output logic        mret_insn_o,
-  output logic        dret_insn_o,
+  output logic        sys_mret_insn_o,
   // Decoder to controller
   output logic        csr_en_o,
   output csr_opcode_e csr_op_o,
@@ -177,12 +176,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic        illegal_insn;
   // SYS
   logic        sys_en;
-  logic        fencei_insn;
-  logic        ecall_insn;
-  logic        ebrk_insn;
-  logic        mret_insn;
-  logic        dret_insn;
-  logic        wfi_insn;
+  logic        sys_fencei_insn;
+  logic        sys_ecall_insn;
+  logic        sys_ebrk_insn;
+  logic        sys_mret_insn;
+  logic        sys_dret_insn;
+  logic        sys_wfi_insn;
 
   // Local instruction valid qualifier
   logic        instr_valid;
@@ -199,8 +198,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
-  assign mret_insn_o = mret_insn;
-  assign dret_insn_o = dret_insn;
+  assign sys_mret_insn_o = sys_mret_insn;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
@@ -352,8 +350,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     case (op_c_mux_sel)
       OP_C_REGB_OR_FWD:  operand_c = operand_b_fw;
       OP_C_BCH:          operand_c = bch_target;
-      OP_C_FWD:          operand_c = 32'h0; // todo: really needed?
-      default:           operand_c = 32'h0; // todo: really needed?
+      default:           operand_c = operand_b_fw;
     endcase // case (op_c_mux_sel)
   end
 
@@ -381,12 +378,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // SYS signals
     .sys_en_o                        ( sys_en                    ),
     .illegal_insn_o                  ( illegal_insn              ),
-    .ebrk_insn_o                     ( ebrk_insn                 ),
-    .mret_insn_o                     ( mret_insn                 ),
-    .dret_insn_o                     ( dret_insn                 ),
-    .ecall_insn_o                    ( ecall_insn                ),
-    .wfi_insn_o                      ( wfi_insn                  ),
-    .fencei_insn_o                   ( fencei_insn               ),
+    .sys_ebrk_insn_o                 ( sys_ebrk_insn             ),
+    .sys_mret_insn_o                 ( sys_mret_insn             ),
+    .sys_dret_insn_o                 ( sys_dret_insn             ),
+    .sys_ecall_insn_o                ( sys_ecall_insn            ),
+    .sys_wfi_insn_o                  ( sys_wfi_insn              ),
+    .sys_fencei_insn_o               ( sys_fencei_insn           ),
     
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr                     ),
@@ -507,19 +504,21 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       id_ex_pipe_o.branch_in_ex           <= 1'b0;
 
-      id_ex_pipe_o.trigger_match          <= 1'b0;
-
       // Signals for exception handling
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.instr_meta             <= '0;
+
       id_ex_pipe_o.illegal_insn           <= 1'b0;
-      id_ex_pipe_o.sys_en                 <= 1'b0;
-      id_ex_pipe_o.ebrk_insn              <= 1'b0;
-      id_ex_pipe_o.wfi_insn               <= 1'b0;
-      id_ex_pipe_o.ecall_insn             <= 1'b0;
-      id_ex_pipe_o.fencei_insn            <= 1'b0;
-      id_ex_pipe_o.mret_insn              <= 1'b0;
-      id_ex_pipe_o.dret_insn              <= 1'b0;
+      id_ex_pipe_o.trigger_match          <= 1'b0;
+
+      id_ex_pipe_o.sys_en                <= 1'b0;
+      id_ex_pipe_o.sys_dret_insn         <= 1'b0;
+      id_ex_pipe_o.sys_ebrk_insn         <= 1'b0;
+      id_ex_pipe_o.sys_ecall_insn        <= 1'b0;
+      id_ex_pipe_o.sys_fencei_insn       <= 1'b0;
+      id_ex_pipe_o.sys_mret_insn         <= 1'b0;
+      id_ex_pipe_o.sys_wfi_insn          <= 1'b0;
+
       id_ex_pipe_o.xif_en                 <= 1'b0;
       id_ex_pipe_o.xif_meta               <= '0;
 
@@ -528,22 +527,24 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
-        id_ex_pipe_o.alu_en                 <= alu_en;
-
-        // ALU, DIV, CSR and LSU use operand_a and operand_b
+        // Operands (used by most ALU, DIV, CSR and LSU instructions)
         if (alu_en || div_en || csr_en || lsu_en) begin
+        // todo: intended code: if (alu_op_a_mux_sel != OP_A_NONE) begin
           id_ex_pipe_o.alu_operand_a        <= operand_a;
+        end
+        if (alu_en || div_en || csr_en || lsu_en) begin
+        // todo: intended code:  if (alu_op_b_mux_sel != OP_B_NONE) begin
           id_ex_pipe_o.alu_operand_b        <= operand_b;
         end
-
         // ALU and LSU stores use operand_c
         if (alu_en || lsu_en)
+        // todo: intended code: if (op_c_mux_sel != OP_C_NONE)
         begin
           id_ex_pipe_o.operand_c            <= operand_c;
         end
 
-        // ALU and DIV use alu_operator (DIV uses the shifter in the ALU)
-        if (alu_en || div_en) begin
+        id_ex_pipe_o.alu_en                 <= alu_en;
+        if (alu_en || div_en) begin                                     // ALU and DIV use alu_operator (DIV uses the shifter in the ALU)
           id_ex_pipe_o.alu_operator         <= alu_operator;
         end
 
@@ -556,8 +557,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         if (mul_en) begin
           id_ex_pipe_o.mul_operator         <= mul_operator;
           id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
-          id_ex_pipe_o.mul_operand_a        <= operand_a; // todo:ab:operand_a_fw?
-          id_ex_pipe_o.mul_operand_b        <= operand_b; // todo:ab:operand_b_fw?
+          id_ex_pipe_o.mul_operand_a        <= operand_a_fw;            // Only register file operand (or forward) is required
+          id_ex_pipe_o.mul_operand_b        <= operand_b_fw;            // Only register file operand (or forward) is required
         end
 
         id_ex_pipe_o.rf_we                  <= rf_we;
@@ -596,12 +597,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         // Exceptions and special instructions
         id_ex_pipe_o.sys_en                 <= sys_en;
         id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
-        id_ex_pipe_o.ebrk_insn              <= ebrk_insn;
-        id_ex_pipe_o.wfi_insn               <= wfi_insn;
-        id_ex_pipe_o.ecall_insn             <= ecall_insn;
-        id_ex_pipe_o.fencei_insn            <= fencei_insn;
-        id_ex_pipe_o.mret_insn              <= mret_insn;
-        id_ex_pipe_o.dret_insn              <= dret_insn;
+        id_ex_pipe_o.sys_dret_insn          <= sys_dret_insn;
+        id_ex_pipe_o.sys_ebrk_insn          <= sys_ebrk_insn;
+        id_ex_pipe_o.sys_ecall_insn         <= sys_ecall_insn;
+        id_ex_pipe_o.sys_fencei_insn        <= sys_fencei_insn;
+        id_ex_pipe_o.sys_mret_insn          <= sys_mret_insn;
+        id_ex_pipe_o.sys_wfi_insn           <= sys_wfi_insn;
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
         // eXtension interface

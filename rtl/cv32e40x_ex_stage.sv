@@ -31,8 +31,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_ex_stage import cv32e40x_pkg::*;
-  #( parameter bit X_EXT = 1'b0
-  )
+#( 
+  parameter bit X_EXT = 1'b0
+)
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -283,21 +284,26 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.pc             <= 32'h0;
       ex_wb_pipe_o.instr          <= INST_RESP_RESET_VAL;
       ex_wb_pipe_o.instr_meta     <= '0;
+
       ex_wb_pipe_o.illegal_insn   <= 1'b0;
-      ex_wb_pipe_o.ebrk_insn      <= 1'b0;
-      ex_wb_pipe_o.wfi_insn       <= 1'b0;
-      ex_wb_pipe_o.ecall_insn     <= 1'b0;
-      ex_wb_pipe_o.fencei_insn    <= 1'b0;
-      ex_wb_pipe_o.mret_insn      <= 1'b0;
-      ex_wb_pipe_o.dret_insn      <= 1'b0;
-      ex_wb_pipe_o.lsu_en         <= 1'b0;
-      ex_wb_pipe_o.csr_en         <= 1'b0;
-      ex_wb_pipe_o.csr_op         <= CSR_OP_READ;
-      ex_wb_pipe_o.csr_addr       <= 12'h000;
-      ex_wb_pipe_o.csr_wdata      <= 32'h00000000;
-      ex_wb_pipe_o.trigger_match  <= 1'b0;
-      ex_wb_pipe_o.xif_en         <= 1'b0;
-      ex_wb_pipe_o.xif_meta       <= '0;
+
+      ex_wb_pipe_o.sys_en          <= 1'b0;
+      ex_wb_pipe_o.sys_dret_insn   <= 1'b0;
+      ex_wb_pipe_o.sys_ebrk_insn   <= 1'b0;
+      ex_wb_pipe_o.sys_ecall_insn  <= 1'b0;
+      ex_wb_pipe_o.sys_fencei_insn <= 1'b0;
+      ex_wb_pipe_o.sys_mret_insn   <= 1'b0;
+      ex_wb_pipe_o.sys_wfi_insn    <= 1'b0;
+
+      ex_wb_pipe_o.trigger_match   <= 1'b0;
+
+      ex_wb_pipe_o.lsu_en          <= 1'b0;
+      ex_wb_pipe_o.csr_en          <= 1'b0;
+      ex_wb_pipe_o.csr_op          <= CSR_OP_READ;
+      ex_wb_pipe_o.csr_addr        <= 12'h000;
+      ex_wb_pipe_o.csr_wdata       <= 32'h00000000;
+      ex_wb_pipe_o.xif_en          <= 1'b0;
+      ex_wb_pipe_o.xif_meta        <= '0;
     end
     else
     begin
@@ -333,13 +339,16 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_meta     <= instr_meta_n;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
-        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-        ex_wb_pipe_o.ebrk_insn      <= id_ex_pipe_i.ebrk_insn;
-        ex_wb_pipe_o.wfi_insn       <= id_ex_pipe_i.wfi_insn;
-        ex_wb_pipe_o.ecall_insn     <= id_ex_pipe_i.ecall_insn;
-        ex_wb_pipe_o.fencei_insn    <= id_ex_pipe_i.fencei_insn;
-        ex_wb_pipe_o.mret_insn      <= id_ex_pipe_i.mret_insn;
-        ex_wb_pipe_o.dret_insn      <= id_ex_pipe_i.dret_insn;
+        ex_wb_pipe_o.illegal_insn    <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
+
+        ex_wb_pipe_o.sys_en          <= id_ex_pipe_i.sys_en;
+        ex_wb_pipe_o.sys_dret_insn   <= id_ex_pipe_i.sys_dret_insn;
+        ex_wb_pipe_o.sys_ebrk_insn   <= id_ex_pipe_i.sys_ebrk_insn;
+        ex_wb_pipe_o.sys_ecall_insn  <= id_ex_pipe_i.sys_ecall_insn;
+        ex_wb_pipe_o.sys_fencei_insn <= id_ex_pipe_i.sys_fencei_insn;
+        ex_wb_pipe_o.sys_mret_insn   <= id_ex_pipe_i.sys_mret_insn;
+        ex_wb_pipe_o.sys_wfi_insn    <= id_ex_pipe_i.sys_wfi_insn;
+
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface

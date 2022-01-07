@@ -217,8 +217,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        trigger_match_if;
 
   // Controller <-> decoder
-  logic       mret_insn_id;
-  logic       dret_insn_id;
+  logic       sys_mret_insn_id;
   logic [1:0] ctrl_transfer_insn_id;
   logic [1:0] ctrl_transfer_insn_raw_id;
 
@@ -428,8 +427,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
-    .mret_insn_o                  ( mret_insn_id              ),
-    .dret_insn_o                  ( dret_insn_id              ),
+    .sys_mret_insn_o              ( sys_mret_insn_id          ),
 
     .csr_en_o                     ( csr_en_id                 ),
     .csr_op_o                     ( csr_op_id                 ),
@@ -701,8 +699,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
-    .mret_id_i                      ( mret_insn_id           ),
-    .dret_id_i                      ( dret_insn_id           ),
+    .sys_mret_id_i                  ( sys_mret_insn_id       ),
     .csr_en_id_i                    ( csr_en_id              ),
     .csr_op_id_i                    ( csr_op_id              ),
 

@@ -175,7 +175,7 @@ module cv32e40x_controller_fsm_sva
   // Check that no LSU insn can be in EX when there is a WFI in WB
   a_wfi_lsu_csr :
   assert property (@(posedge clk) disable iff (!rst_n)
-          (ex_wb_pipe_i.wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
+          (ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
     else `uvm_error("controller", "LSU instruction follows WFI")
 
   // Check that no instructions are valid in ID or EX when a single step is taken

@@ -45,8 +45,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
-  input  logic        mret_id_i,
-  input  logic        dret_id_i,
+  input  logic        sys_mret_id_i,
   input  logic        csr_en_id_i,
   input  csr_opcode_e csr_op_id_i,
 
@@ -71,17 +70,17 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic [4:0]  irq_id_ctrl_i,
   input  logic        irq_wu_ctrl_i,
 
-  input logic  [1:0]     mtvec_mode_i,
+  input logic  [1:0]  mtvec_mode_i,
 
   // Debug Signal
-  input  logic         debug_req_i,
-  input  dcsr_t        dcsr_i,
+  input  logic        debug_req_i,
+  input  dcsr_t       dcsr_i,
 
   // Regfile target
-  input  logic         rf_alu_we_id_i,             // currently decoded we enable
+  input  logic        rf_alu_we_id_i,             // currently decoded we enable
 
   // CSR raddr in ex
-  input  logic         csr_counter_read_i,         // A performance counter is read in CSR (EX)
+  input  logic        csr_counter_read_i,         // A performance counter is read in CSR (EX)
 
   input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
   input rf_addr_t     rf_raddr_i[REGFILE_NUM_READ_PORTS],
@@ -132,8 +131,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .id_ready_i                  ( id_ready_i               ),
     .id_valid_i                  ( id_valid_i               ),
     .if_id_pipe_i                ( if_id_pipe_i             ),
-    .mret_id_i                   ( mret_id_i                ),
-    .dret_id_i                   ( dret_id_i                ),
+    .sys_mret_id_i               ( sys_mret_id_i            ),
     .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
@@ -201,8 +199,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // From id_stage
     .rf_alu_we_id_i             ( rf_alu_we_id_i           ),
-    .mret_id_i                  ( mret_id_i                ),
-    .dret_id_i                  ( dret_id_i                ),
+    .sys_mret_id_i              ( sys_mret_id_i            ),
     .csr_en_id_i                ( csr_en_id_i              ),
     .csr_op_id_i                ( csr_op_id_i              ),
 
