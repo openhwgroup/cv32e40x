@@ -37,15 +37,12 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   output logic        sys_en_o,                 // System enable
   output logic        illegal_insn_o,           // Illegal instruction encountered
-  output logic        ebrk_insn_o,              // Trap instruction encountered
-
-  output logic        mret_insn_o,              // Return from exception instruction encountered (M)
-  output logic        dret_insn_o,              // Return from debug (M)
-
-  output logic        ecall_insn_o,             // Environment call (syscall) instruction encountered
-  output logic        wfi_insn_o,               // Pipeline flush is requested
-
-  output logic        fencei_insn_o,            // fence.i instruction
+  output logic        sys_ebrk_insn_o,          // Trap instruction encountered
+  output logic        sys_mret_insn_o,          // Return from exception instruction encountered (M)
+  output logic        sys_dret_insn_o,          // Return from debug (M)
+  output logic        sys_ecall_insn_o,         // Environment call (syscall) instruction encountered
+  output logic        sys_wfi_insn_o,           // Pipeline flush is requested
+  output logic        sys_fencei_insn_o,        // fence.i instruction
 
   // from IF/ID pipeline
   input  logic [31:0] instr_rdata_i,            // Instruction
@@ -114,39 +111,48 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   decoder_ctrl_t decoder_ctrl_mux;
 
   // RV32I Base instruction set decoder
-  cv32e40x_i_decoder #(.DEBUG_TRIGGER_EN(DEBUG_TRIGGER_EN))
-    i_decoder_i
-      (.instr_rdata_i(instr_rdata_i),
-       .ctrl_fsm_i (ctrl_fsm_i),
-       .decoder_ctrl_o(decoder_i_ctrl));
+  cv32e40x_i_decoder
+  #(
+    .DEBUG_TRIGGER_EN (DEBUG_TRIGGER_EN)
+  )
+  i_decoder_i
+  (
+    .instr_rdata_i  ( instr_rdata_i  ),
+    .ctrl_fsm_i     ( ctrl_fsm_i     ),
+    .decoder_ctrl_o ( decoder_i_ctrl )
+  );
   
   // RV32M extension decoder
-  cv32e40x_m_decoder
-    m_decoder_i
-      (.instr_rdata_i(instr_rdata_i),
-       .decoder_ctrl_o(decoder_m_ctrl));
+  cv32e40x_m_decoder m_decoder_i
+  (
+    .instr_rdata_i  ( instr_rdata_i  ),
+    .decoder_ctrl_o ( decoder_m_ctrl )
+  );
 
   generate
     if (A_EXT) begin: a_decoder
       // RV32A extension decoder
-      cv32e40x_a_decoder
-        a_decoder_i
-          (.instr_rdata_i(instr_rdata_i),
-           .decoder_ctrl_o(decoder_a_ctrl));
-    end
-    else begin: no_a_decoder
+      cv32e40x_a_decoder a_decoder_i
+      (
+        .instr_rdata_i  ( instr_rdata_i  ),
+        .decoder_ctrl_o ( decoder_a_ctrl )
+      );
+    end else begin: no_a_decoder
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
     if (B_EXT != NONE) begin: b_decoder
       // RV32B extension decoder
       cv32e40x_b_decoder
-        #(.B_EXT(B_EXT))
+      #(
+        .B_EXT (B_EXT)
+      )
       b_decoder_i
-        (.instr_rdata_i(instr_rdata_i),
-         .decoder_ctrl_o(decoder_b_ctrl));
-    end
-    else begin: no_b_decoder
+      (
+        .instr_rdata_i  ( instr_rdata_i  ),
+        .decoder_ctrl_o ( decoder_b_ctrl )
+      );
+    end else begin: no_b_decoder
       assign decoder_b_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
     
@@ -211,14 +217,13 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
 
   // Suppress special instruction/illegal instruction bits
-  assign mret_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.mret_insn;
-  assign dret_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.dret_insn;
-  assign ebrk_insn_o          = deassert_we_i ? 1'b0 : decoder_ctrl_mux.ebrk_insn;
-  assign ecall_insn_o         = deassert_we_i ? 1'b0 : decoder_ctrl_mux.ecall_insn;
-  assign wfi_insn_o           = deassert_we_i ? 1'b0 : decoder_ctrl_mux.wfi_insn;
-  assign fencei_insn_o        = deassert_we_i ? 1'b0 : decoder_ctrl_mux.fencei_insn;
+  assign sys_mret_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_mret_insn;
+  assign sys_dret_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_dret_insn;
+  assign sys_ebrk_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_ebrk_insn;
+  assign sys_ecall_insn_o     = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_ecall_insn;
+  assign sys_wfi_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_wfi_insn;
+  assign sys_fencei_insn_o    = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_fencei_insn;
   assign illegal_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
-
 
   assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
   assign rf_we_raw_o              = rf_we;

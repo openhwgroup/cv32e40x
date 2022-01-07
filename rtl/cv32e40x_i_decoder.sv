@@ -125,8 +125,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_re[0]         = 1'b1;
         decoder_ctrl_o.rf_re[1]         = 1'b1;
         decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
-        decoder_ctrl_o.op_c_mux_sel     = OP_C_REGB_OR_FWD; // Used for write data
+        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;             // Offset from immediate
+        decoder_ctrl_o.op_c_mux_sel     = OP_C_REGB_OR_FWD;     // Used for write data
         decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
 
         // Data type encoded in instr_rdata_i[13:12]:
@@ -143,7 +143,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_we            = 1'b1;
         decoder_ctrl_o.rf_re[0]         = 1'b1;
         decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM; // Offset from immediate
+        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;             // Offset from immediate
+        decoder_ctrl_o.op_c_mux_sel     = OP_C_NONE;
         decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;
 
         // Sign/zero extension
@@ -270,12 +271,12 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         unique case (instr_rdata_i[14:12])
           3'b000: begin // FENCE (FENCE.I instead, a bit more conservative)
             // Flush pipeline
-            decoder_ctrl_o.fencei_insn = 1'b1;
+            decoder_ctrl_o.sys_fencei_insn = 1'b1;
           end
 
           3'b001: begin // FENCE.I
             // Flush prefetch buffer, flush pipeline
-            decoder_ctrl_o.fencei_insn = 1'b1;
+            decoder_ctrl_o.sys_fencei_insn = 1'b1;
           end
 
           default: begin
@@ -292,29 +293,29 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             unique case (instr_rdata_i[31:20])
               12'h000: begin // ecall
                 // Environment (system) call
-                decoder_ctrl_o.ecall_insn  = 1'b1;
+                decoder_ctrl_o.sys_ecall_insn  = 1'b1;
               end
 
               12'h001: begin // ebreak
                 // Debugger trap
-                decoder_ctrl_o.ebrk_insn = 1'b1;
+                decoder_ctrl_o.sys_ebrk_insn = 1'b1;
               end
 
               12'h302: begin // mret
-                decoder_ctrl_o.mret_insn = 1'b1;
+                decoder_ctrl_o.sys_mret_insn = 1'b1;
               end
 
               12'h7b2: begin // dret
                 if (ctrl_fsm_i.debug_mode) begin
-                  decoder_ctrl_o.dret_insn    =  1'b1;
+                  decoder_ctrl_o.sys_dret_insn    =  1'b1;
                 end else begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end
               end
 
               12'h105: begin // wfi
-                // Suppressing wfi_insn bit in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
-                decoder_ctrl_o.wfi_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
+                // Suppressing WFI in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
+                decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
               end
 
               default: begin

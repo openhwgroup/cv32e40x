@@ -49,8 +49,13 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_re[0] = 1'b1;
         decoder_ctrl_o.rf_re[1] = 1'b1;
 
-        unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
+        // Multiplier has its own operand registers.
+        // Settings will be overruled for div(u) and rem(u) which rely on ALU.
+        decoder_ctrl_o.alu_op_a_mux_sel = OP_A_NONE;
+        decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
+        decoder_ctrl_o.op_c_mux_sel     = OP_C_NONE;
 
+        unique case ({instr_rdata_i[31:25], instr_rdata_i[14:12]})
           // supported RV32M instructions
           {7'b000_0001, 3'b000}: begin // mul
             decoder_ctrl_o.mul_en        = 1'b1;
@@ -60,10 +65,6 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.mul_en           = 1'b1;
             decoder_ctrl_o.mul_signed_mode  = 2'b11;
             decoder_ctrl_o.mul_operator     = MUL_H;
-
-            // todo: make explicit: decoder_ctrl_o.alu_op_a_mux_sel =
-            // todo: make explicit: decoder_ctrl_o.alu_op_b_mux_sel =
-
           end
           {7'b000_0001, 3'b010}: begin // mulhsu
             decoder_ctrl_o.mul_en           = 1'b1;

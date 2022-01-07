@@ -38,12 +38,12 @@ module cv32e40x_id_stage_sva
   input logic           sys_en,
   input logic           lsu_en,
   input logic           xif_en,
-  input logic           wfi_insn,
-  input logic           ebrk_insn,
-  input logic           mret_insn,
-  input logic           dret_insn,
-  input logic           ecall_insn,
-  input logic           fencei_insn,
+  input logic           sys_dret_insn,
+  input logic           sys_ebrk_insn,
+  input logic           sys_ecall_insn,
+  input logic           sys_fencei_insn,
+  input logic           sys_mret_insn,
+  input logic           sys_wfi_insn,
   input logic           ex_ready_i,
   input logic           illegal_insn,
   input csr_opcode_e    csr_op,
@@ -108,8 +108,8 @@ module cv32e40x_id_stage_sva
       // Check that illegal instruction has no other side effects
       // If xif accepts instruction, rf_we may still be 1
       property p_illegal_2;
-        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(ebrk_insn || mret_insn || dret_insn ||
-                                                                         ecall_insn || wfi_insn || fencei_insn ||
+        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(sys_ebrk_insn || sys_mret_insn || sys_dret_insn ||
+                                                                         sys_ecall_insn || sys_wfi_insn || sys_fencei_insn ||
                                                                          alu_en || mul_en ||
                                                                          (rf_we && !xif_insn_accept) ||
                                                                          csr_op != CSR_OP_READ || lsu_en);

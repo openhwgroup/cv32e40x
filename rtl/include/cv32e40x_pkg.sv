@@ -656,10 +656,9 @@ typedef enum logic[1:0] {
 
 // Operand c selection
 typedef enum logic[1:0] {
-                         OP_C_FWD         = 2'b00,
-                         OP_C_REGB_OR_FWD = 2'b01,
-                         OP_C_BCH         = 2'b10,
-                         OP_C_NONE        = 2'b11
+                         OP_C_REGB_OR_FWD = 2'b00,
+                         OP_C_BCH         = 2'b01,
+                         OP_C_NONE        = 2'b10
                          } op_c_mux_e;
 
 // branch types
@@ -717,22 +716,22 @@ typedef struct packed {
   logic [1:0]                        lsu_reg_offset;
   logic [5:0]                        lsu_atop;
   logic                              sys_en;
-  logic                              mret_insn;
-  logic                              dret_insn;
   logic                              illegal_insn;
-  logic                              ebrk_insn;
-  logic                              ecall_insn;
-  logic                              wfi_insn;
-  logic                              fencei_insn;
+  logic                              sys_dret_insn;
+  logic                              sys_ebrk_insn;
+  logic                              sys_ecall_insn;
+  logic                              sys_fencei_insn;
+  logic                              sys_mret_insn;
+  logic                              sys_wfi_insn;
 } decoder_ctrl_t;
 
   parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{ctrl_transfer_insn           : BRANCH_NONE,
                                                           ctrl_transfer_target_mux_sel : JT_JAL,
                                                           alu_en                       : 1'b0,
                                                           alu_operator                 : ALU_SLTU,
-                                                          alu_op_a_mux_sel             : OP_A_REGA_OR_FWD,
-                                                          alu_op_b_mux_sel             : OP_B_REGB_OR_FWD,
-                                                          op_c_mux_sel                 : OP_C_FWD,
+                                                          alu_op_a_mux_sel             : OP_A_NONE,
+                                                          alu_op_b_mux_sel             : OP_B_NONE,
+                                                          op_c_mux_sel                 : OP_C_NONE,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
                                                           mul_en                       : 1'b0,
@@ -751,13 +750,13 @@ typedef struct packed {
                                                           lsu_reg_offset               : 2'b00,
                                                           lsu_atop                     : 6'b000000,
                                                           sys_en                       : 1'b0,
-                                                          mret_insn                    : 1'b0,
-                                                          dret_insn                    : 1'b0,
                                                           illegal_insn                 : 1'b1,
-                                                          ebrk_insn                    : 1'b0,
-                                                          ecall_insn                   : 1'b0,
-                                                          wfi_insn                     : 1'b0,
-                                                          fencei_insn                  : 1'b0
+                                                          sys_dret_insn                : 1'b0,
+                                                          sys_ebrk_insn                : 1'b0,
+                                                          sys_ecall_insn               : 1'b0,
+                                                          sys_fencei_insn              : 1'b0,
+                                                          sys_mret_insn                : 1'b0,
+                                                          sys_wfi_insn                 : 1'b0
                                                           };
 
 ///////////////////////////////////////////////
@@ -999,12 +998,12 @@ typedef struct packed {
   // SYS
   logic         sys_en;
   logic         illegal_insn;
-  logic         ebrk_insn;
-  logic         wfi_insn;
-  logic         ecall_insn;
-  logic         fencei_insn;
-  logic         mret_insn;
-  logic         dret_insn;
+  logic         sys_dret_insn;
+  logic         sys_ebrk_insn;
+  logic         sys_ecall_insn;
+  logic         sys_fencei_insn;
+  logic         sys_mret_insn;
+  logic         sys_wfi_insn;
 
   // Branch target
   logic         branch_in_ex;
@@ -1048,12 +1047,14 @@ typedef struct packed {
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
-  logic         ebrk_insn;
-  logic         wfi_insn;
-  logic         ecall_insn;
-  logic         fencei_insn;
-  logic         mret_insn;
-  logic         dret_insn;
+
+  logic         sys_en;
+  logic         sys_dret_insn;
+  logic         sys_ebrk_insn;
+  logic         sys_ecall_insn;
+  logic         sys_fencei_insn;
+  logic         sys_mret_insn;
+  logic         sys_wfi_insn;
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
