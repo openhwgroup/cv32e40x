@@ -537,8 +537,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.alu_operand_b        <= operand_b;
         end
         // ALU and LSU stores use operand_c
-        if (alu_en || lsu_en)
-        // todo: intended code: if (op_c_mux_sel != OP_C_NONE)
+        if (op_c_mux_sel != OP_C_NONE)
         begin
           id_ex_pipe_o.operand_c            <= operand_c;
         end
