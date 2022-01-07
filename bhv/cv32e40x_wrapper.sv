@@ -163,12 +163,12 @@ module cv32e40x_wrapper
   bind cv32e40x_id_stage:
     core_i.id_stage_i
     cv32e40x_dbg_helper
-      dbg_help_i(.is_compressed(if_id_pipe_i.instr_meta.compressed),
-                 .rf_re    (core_i.rf_re_id               ),
-                 .rf_raddr (core_i.rf_raddr_id            ),
-                 .rf_we    (core_i.id_stage_i.rf_we       ),
-                 .rf_waddr (core_i.rf_waddr_id            ),
-                 .illegal_insn (core_i.id_stage_i.illegal_insn       ),
+      dbg_help_i(.is_compressed (if_id_pipe_i.instr_meta.compressed),
+                 .rf_re         (core_i.rf_re_id                   ),
+                 .rf_raddr      (core_i.rf_raddr_id                ),
+                 .rf_we         (core_i.id_stage_i.rf_we           ),
+                 .rf_waddr      (core_i.rf_waddr_id                ),
+                 .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
 
   bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
@@ -337,7 +337,7 @@ bind cv32e40x_sleep_unit:
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .mret_insn_id_i           ( core_i.id_stage_i.mret_insn_o                                        ),
+         .sys_mret_insn_id_i       ( core_i.id_stage_i.sys_mret_insn_o                                    ),
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
          .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
