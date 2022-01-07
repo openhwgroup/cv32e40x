@@ -478,12 +478,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       id_ex_pipe_o.mul_en                 <= 1'b0;
       id_ex_pipe_o.mul_operator           <= MUL_M32;
-      id_ex_pipe_o.mul_operand_a          <= 32'b0;
-      id_ex_pipe_o.mul_operand_b          <= 32'b0;
       id_ex_pipe_o.mul_signed_mode        <= 2'b0;
 
       id_ex_pipe_o.div_en                 <= 1'b0;
       id_ex_pipe_o.div_operator           <= DIV_DIVU;
+
+      id_ex_pipe_o.muldiv_operand_a       <= 32'b0;
+      id_ex_pipe_o.muldiv_operand_b       <= 32'b0;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
       id_ex_pipe_o.rf_waddr               <= '0;
@@ -545,15 +546,18 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.div_en                 <= div_en;
         if (div_en) begin
-          id_ex_pipe_o.div_operator         <= div_operator; // todo: consider letting div/rem use mul_operands
+          id_ex_pipe_o.div_operator         <= div_operator;
         end
         
         id_ex_pipe_o.mul_en                 <= mul_en;
         if (mul_en) begin
           id_ex_pipe_o.mul_operator         <= mul_operator;
           id_ex_pipe_o.mul_signed_mode      <= mul_signed_mode;
-          id_ex_pipe_o.mul_operand_a        <= operand_a_fw;            // Only register file operand (or forward) is required
-          id_ex_pipe_o.mul_operand_b        <= operand_b_fw;            // Only register file operand (or forward) is required
+        end
+
+        if (mul_en || div_en) begin
+          id_ex_pipe_o.muldiv_operand_a     <= operand_a_fw;            // Only register file operand (or forward) is required
+          id_ex_pipe_o.muldiv_operand_b     <= operand_b_fw;            // Only register file operand (or forward) is required
         end
 
         id_ex_pipe_o.rf_we                  <= rf_we;

@@ -49,7 +49,7 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_re[0] = 1'b1;
         decoder_ctrl_o.rf_re[1] = 1'b1;
 
-        // Multiplier has its own operand registers.
+        // Multiplier and divider has its own operand registers.
         // Settings will be overruled for div(u) and rem(u) which rely on ALU.
         decoder_ctrl_o.alu_op_a_mux_sel = OP_A_NONE;
         decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
@@ -78,29 +78,21 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
           end
           {7'b000_0001, 3'b100}: begin // div
             decoder_ctrl_o.div_en           = 1'b1;
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
             decoder_ctrl_o.div_operator     = DIV_DIV;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b101}: begin // divu
             decoder_ctrl_o.div_en           = 1'b1;
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
             decoder_ctrl_o.div_operator     = DIV_DIVU;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b110}: begin // rem
             decoder_ctrl_o.div_en           = 1'b1;
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
             decoder_ctrl_o.div_operator     = DIV_REM;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
           {7'b000_0001, 3'b111}: begin // remu
             decoder_ctrl_o.div_en           = 1'b1;
-            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
-            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_REGB_OR_FWD;
             decoder_ctrl_o.div_operator     = DIV_REMU;
             decoder_ctrl_o.alu_operator     = ALU_SLL;
           end
