@@ -316,7 +316,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_fsm_i                 ( ctrl_fsm             )
   );
 
-
   //////////////////////////////////////////////////
   //   ___ _____   ____ _____  _    ____ _____    //
   //  |_ _|  ___| / ___|_   _|/ \  / ___| ____|   //
@@ -327,65 +326,47 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //////////////////////////////////////////////////
   cv32e40x_if_stage
   #(
-    .A_EXT               ( A_EXT                     ),
-    .X_EXT               ( X_EXT                     ),
-    .X_ID_WIDTH          ( X_ID_WIDTH                ),
-    .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS           ),
-    .PMA_CFG             ( PMA_CFG                   )
+    .A_EXT               ( A_EXT                    ),
+    .X_EXT               ( X_EXT                    ),
+    .X_ID_WIDTH          ( X_ID_WIDTH               ),
+    .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
+    .PMA_CFG             ( PMA_CFG                  )
   )
   if_stage_i
   (
-    .clk                 ( clk                       ),
-    .rst_n               ( rst_ni                    ),
+    .clk                 ( clk                      ),
+    .rst_n               ( rst_ni                   ),
 
-    // boot address
-    .boot_addr_i         ( boot_addr_i[31:0]         ),
-    .dm_exception_addr_i ( dm_exception_addr_i[31:0] ),
+    .boot_addr_i         ( boot_addr_i              ), // Boot address
+    .branch_target_ex_i  ( branch_target_ex         ), // Branch target address
+    .dm_exception_addr_i ( dm_exception_addr_i      ), // Debug mode exception address
+    .dm_halt_addr_i      ( dm_halt_addr_i           ), // Debug mode halt address
+    .dpc_i               ( dpc                      ), // Debug PC (restore upon return from debug)
+    .jump_target_id_i    ( jump_target_id           ), // Jump target address
+    .mepc_i              ( mepc                     ), // Exception PC (restore upon return from exception/interrupt)
+    .mtvec_addr_i        ( mtvec_addr               ), // Exception/interrupt address (MSBs only)
+    .nmi_addr_i          ( nmi_addr_i               ), // NMI address
 
-    // NMI address
-    .nmi_addr_i          ( nmi_addr_i                ),
+    .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
 
-    // debug mode halt address
-    .dm_halt_addr_i      ( dm_halt_addr_i[31:0]      ),
+    .if_id_pipe_o        ( if_id_pipe               ),
+    .ex_wb_pipe_i        ( ex_wb_pipe               ),
 
-    // trap vector location
-    .mtvec_addr          ( mtvec_addr                ),
+    .ctrl_fsm_i          ( ctrl_fsm                 ),
+    .trigger_match_i     ( trigger_match_if         ),
 
-    // instruction cache interface
-    .m_c_obi_instr_if    ( m_c_obi_instr_if          ),
-
-    // IF/ID pipeline
-    .if_id_pipe_o        ( if_id_pipe                ),
-
-    .ex_wb_pipe_i        ( ex_wb_pipe                ),
-
-    .ctrl_fsm_i          ( ctrl_fsm                  ),
-
-    .mepc_i              ( mepc                      ), // exception return address
-
-    .dpc_i               ( dpc                       ), // debug return address
-
-    .trigger_match_i     ( trigger_match_if          ),
-
-    .pc_if_o             ( pc_if                     ),
-
-    .csr_mtvec_init_o    ( csr_mtvec_init_if         ),
-
-    // Jump targets
-    .jump_target_id_i    ( jump_target_id            ),
-    .branch_target_ex_i  ( branch_target_ex          ),
-
-    .if_busy_o           ( if_busy                   ),
+    .pc_if_o             ( pc_if                    ),
+    .csr_mtvec_init_o    ( csr_mtvec_init_if        ),
+    .if_busy_o           ( if_busy                  ),
 
     // Pipeline handshakes
-    .if_valid_o          ( if_valid                  ),
-    .id_ready_i          ( id_ready                  ),
+    .if_valid_o          ( if_valid                 ),
+    .id_ready_i          ( id_ready                 ),
 
     // eXtension interface
-    .xif_compressed_if   ( xif_compressed_if         ),
-    .xif_issue_valid_i   ( xif_issue_if.issue_valid  )
+    .xif_compressed_if   ( xif_compressed_if        ),
+    .xif_issue_valid_i   ( xif_issue_if.issue_valid )
   );
-
 
   /////////////////////////////////////////////////
   //   ___ ____    ____ _____  _    ____ _____   //

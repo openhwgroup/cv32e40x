@@ -35,58 +35,39 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
-    input  logic        clk,
-    input  logic        rst_n,
+  input  logic          clk,
+  input  logic          rst_n,
 
-    // Used to calculate the exception offsets
-    input  logic [23:0] mtvec_addr,
+  // Target addresses
+  input  logic [31:0]   boot_addr_i,            // Boot address
+  input  logic [31:0]   branch_target_ex_i,     // Branch target address
+  input  logic [31:0]   dm_exception_addr_i,    // Debug mode exception address
+  input  logic [31:0]   dm_halt_addr_i,         // Debug mode halt address
+  input  logic [31:0]   dpc_i,                  // Debug PC (restore upon return from debug)
+  input  logic [31:0]   jump_target_id_i,       // Jump target address
+  input  logic [31:0]   mepc_i,                 // Exception PC (restore upon return from exception/interrupt)
+  input  logic [23:0]   mtvec_addr_i,           // Exception/interrupt address (MSBs)
+  input  logic [31:0]   nmi_addr_i,             // NMI address
 
-    // Boot address
-    input  logic [31:0] boot_addr_i,
-    input  logic [31:0] dm_exception_addr_i,
+  input  ex_wb_pipe_t   ex_wb_pipe_i,           // EX/WB pipeline stage
+  input ctrl_fsm_t      ctrl_fsm_i,
+  input  logic          trigger_match_i,
 
-    // NMI address
-    input  logic [31:0] nmi_addr_i,
+  // Instruction bus interface
+  if_c_obi.master       m_c_obi_instr_if,
 
-    // Debug mode halt address
-    input  logic [31:0] dm_halt_addr_i,
+  output if_id_pipe_t   if_id_pipe_o,           // IF/ID pipeline stage
+  output logic [31:0]   pc_if_o,                // Program counter
+  output logic          csr_mtvec_init_o,       // Tell CS regfile to init mtvec
+  output logic          if_busy_o,              // Is the IF stage busy fetching instructions?
 
-    // instruction cache interface
-    if_c_obi.master     m_c_obi_instr_if,
+  // Stage ready/valid
+  output logic          if_valid_o,
+  input  logic          id_ready_i,
 
-    // Output of IF Pipeline stage
-    output if_id_pipe_t       if_id_pipe_o,
-
-    // EX_WB pipe
-    input  ex_wb_pipe_t       ex_wb_pipe_i,
-
-    input ctrl_fsm_t    ctrl_fsm_i,
-
-    output logic       [31:0] pc_if_o,
-
-    // Forwarding ports - control signals
-    input  logic [31:0] mepc_i,                 // address used to restore PC when the interrupt/exception is served
-
-    input  logic [31:0] dpc_i,                  // address used to restore PC when the debug is served
-
-    input  logic trigger_match_i,
-
-    output logic        csr_mtvec_init_o,       // tell CS regfile to init mtvec
-
-    // jump and branch target and decision
-    input  logic [31:0] jump_target_id_i,       // jump target address
-    input  logic [31:0] branch_target_ex_i,     // jump target address
-
-    // misc signals
-    output logic        if_busy_o,             // Is the IF stage busy fetching instructions?
-
-    // Pipeline handshakes
-    output logic        if_valid_o,
-    input  logic        id_ready_i,
-
-    // eXtension interface
-    if_xif.cpu_compressed xif_compressed_if,    // XIF compressed interface
-    input  logic          xif_issue_valid_i     // ID stage attempts to offload an instruction
+  // eXtension interface
+  if_xif.cpu_compressed xif_compressed_if,      // XIF compressed interface
+  input  logic          xif_issue_valid_i       // ID stage attempts to offload an instruction
 );
 
   logic              if_ready;
@@ -138,8 +119,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_MRET:     branch_addr_n = mepc_i;                                                      // PC is restored when returning from IRQ/exception
       PC_DRET:     branch_addr_n = dpc_i;
       PC_FENCEI:   branch_addr_n = ex_wb_pipe_i.pc + 4;                                         // Jump to next instruction forces prefetch buffer reload // TODO:OK:low Can avoid adder, PC should already be in pipeline
-      PC_TRAP_EXC: branch_addr_n = {mtvec_addr, 8'h0 };                                         // All the exceptions go to base address
-      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr, 1'b0, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b0};       // interrupts are vectored
+      PC_TRAP_EXC: branch_addr_n = {mtvec_addr_i, 8'h0 };                                       // All the exceptions go to base address
+      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, 1'b0, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b0};     // interrupts are vectored
       PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI: branch_addr_n = {nmi_addr_i[31:2], 2'b00};
