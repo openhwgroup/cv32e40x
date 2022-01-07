@@ -577,7 +577,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.kill_ex   = 1'b1;
               ctrl_fsm_o.halt_wb   = 1'b0;
 
-              // Jump to wb.pc + 4
+              // Jump to PC from oldest valid instruction, excluding WB stage
+              if (id_ex_pipe_i.instr_valid) begin
+                pipe_pc_mux_ctrl = PC_EX;
+              end else if (if_id_pipe_i.instr_valid) begin
+                pipe_pc_mux_ctrl = PC_ID;
+              end else begin
+                pipe_pc_mux_ctrl = PC_IF;
+              end
+
               ctrl_fsm_o.pc_set    = 1'b1;
               ctrl_fsm_o.pc_mux    = PC_FENCEI;
 

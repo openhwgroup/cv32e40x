@@ -118,7 +118,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_BRANCH:   branch_addr_n = branch_target_ex_i;
       PC_MRET:     branch_addr_n = mepc_i;                                                      // PC is restored when returning from IRQ/exception
       PC_DRET:     branch_addr_n = dpc_i;
-      PC_FENCEI:   branch_addr_n = ex_wb_pipe_i.pc + 4;                                         // Jump to next instruction forces prefetch buffer reload // TODO:OK:low Can avoid adder, PC should already be in pipeline
+      PC_FENCEI:   branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
       PC_TRAP_EXC: branch_addr_n = {mtvec_addr_i, 8'h0 };                                       // All the exceptions go to base address
       PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, 1'b0, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b0};     // interrupts are vectored
       PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
