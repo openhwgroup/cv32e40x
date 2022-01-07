@@ -528,8 +528,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
         // Operands (used by most ALU, DIV, CSR and LSU instructions)
-        if (alu_en || div_en || csr_en || lsu_en) begin
-        // todo: intended code: if (alu_op_a_mux_sel != OP_A_NONE) begin
+        if (alu_op_a_mux_sel != OP_A_NONE) begin
           id_ex_pipe_o.alu_operand_a        <= operand_a;
         end
         if (alu_en || div_en || csr_en || lsu_en) begin
