@@ -163,8 +163,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   jt_mux_e              ctrl_transfer_target_mux_sel;
 
   // Immediates
-  logic [31:0]          imm_a;                  // Immediate for operand b
-  logic [31:0]          imm_b;                  // Immediate for operand b
+  logic [31:0]          imm_a;                  // Immediate for operand A
+  logic [31:0]          imm_b;                  // Immediate for operand B
   logic [31:0]          imm_i_type;
   logic [31:0]          imm_s_type;
   logic [31:0]          imm_sb_type;
