@@ -263,13 +263,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     .valid_o         ( mul_valid                     ),
     .ready_i         ( wb_ready_i                    )
   );
-
-  // Populate instruction meta data
-  instr_meta_t instr_meta_n; 
-  always_comb begin
-    instr_meta_n              = id_ex_pipe_i.instr_meta;
-    instr_meta_n.branch_taken = branch_decision_o;
-  end
   
   ///////////////////////////////////////
   // EX/WB Pipeline Register           //
@@ -278,33 +271,37 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   begin : EX_WB_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
-      ex_wb_pipe_o.instr_valid    <= 1'b0;
-      ex_wb_pipe_o.rf_we          <= 1'b0;
-      ex_wb_pipe_o.rf_waddr       <= '0;
-      ex_wb_pipe_o.rf_wdata       <= 32'b0;
-      ex_wb_pipe_o.pc             <= 32'h0;
-      ex_wb_pipe_o.instr          <= INST_RESP_RESET_VAL;
-      ex_wb_pipe_o.instr_meta     <= '0;
+      ex_wb_pipe_o.instr_valid        <= 1'b0;
+      ex_wb_pipe_o.rf_we              <= 1'b0;
+      ex_wb_pipe_o.rf_waddr           <= '0;
+      ex_wb_pipe_o.rf_wdata           <= 32'b0;
+      ex_wb_pipe_o.pc                 <= 32'h0;
+      ex_wb_pipe_o.instr              <= INST_RESP_RESET_VAL;
+      ex_wb_pipe_o.instr_meta         <= '0;
 
-      ex_wb_pipe_o.illegal_insn   <= 1'b0;
+      ex_wb_pipe_o.illegal_insn       <= 1'b0;
 
-      ex_wb_pipe_o.sys_en          <= 1'b0;
-      ex_wb_pipe_o.sys_dret_insn   <= 1'b0;
-      ex_wb_pipe_o.sys_ebrk_insn   <= 1'b0;
-      ex_wb_pipe_o.sys_ecall_insn  <= 1'b0;
-      ex_wb_pipe_o.sys_fencei_insn <= 1'b0;
-      ex_wb_pipe_o.sys_mret_insn   <= 1'b0;
-      ex_wb_pipe_o.sys_wfi_insn    <= 1'b0;
+      ex_wb_pipe_o.alu_jmp_qual       <= 1'b0;
+      ex_wb_pipe_o.alu_bch_qual       <= 1'b0;
+      ex_wb_pipe_o.alu_bch_taken_qual <= 1'b0;
 
-      ex_wb_pipe_o.trigger_match   <= 1'b0;
+      ex_wb_pipe_o.sys_en             <= 1'b0;
+      ex_wb_pipe_o.sys_dret_insn      <= 1'b0;
+      ex_wb_pipe_o.sys_ebrk_insn      <= 1'b0;
+      ex_wb_pipe_o.sys_ecall_insn     <= 1'b0;
+      ex_wb_pipe_o.sys_fencei_insn    <= 1'b0;
+      ex_wb_pipe_o.sys_mret_insn      <= 1'b0;
+      ex_wb_pipe_o.sys_wfi_insn       <= 1'b0;
 
-      ex_wb_pipe_o.lsu_en          <= 1'b0;
-      ex_wb_pipe_o.csr_en          <= 1'b0;
-      ex_wb_pipe_o.csr_op          <= CSR_OP_READ;
-      ex_wb_pipe_o.csr_addr        <= 12'h000;
-      ex_wb_pipe_o.csr_wdata       <= 32'h00000000;
-      ex_wb_pipe_o.xif_en          <= 1'b0;
-      ex_wb_pipe_o.xif_meta        <= '0;
+      ex_wb_pipe_o.trigger_match      <= 1'b0;
+
+      ex_wb_pipe_o.lsu_en             <= 1'b0;
+      ex_wb_pipe_o.csr_en             <= 1'b0;
+      ex_wb_pipe_o.csr_op             <= CSR_OP_READ;
+      ex_wb_pipe_o.csr_addr           <= 12'h000;
+      ex_wb_pipe_o.csr_wdata          <= 32'h00000000;
+      ex_wb_pipe_o.xif_en             <= 1'b0;
+      ex_wb_pipe_o.xif_meta           <= '0;
     end
     else
     begin
@@ -323,6 +320,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
           end
         end
 
+        ex_wb_pipe_o.alu_jmp_qual       <= id_ex_pipe_i.alu_jmp && id_ex_pipe_i.alu_en;
+        ex_wb_pipe_o.alu_bch_qual       <= id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en;
+        ex_wb_pipe_o.alu_bch_taken_qual <= id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en && branch_decision_o;
+
         // Update signals for CSR access in WB
         // deassert csr_en in case of an internal illegal csr instruction
         // to avoid writing to CSRs inside the core.
@@ -336,7 +337,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // Propagate signals needed for exception handling in WB
         ex_wb_pipe_o.pc             <= id_ex_pipe_i.pc;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
-        ex_wb_pipe_o.instr_meta     <= instr_meta_n;
+        ex_wb_pipe_o.instr_meta     <= id_ex_pipe_i.instr_meta;
 
         ex_wb_pipe_o.sys_en            <= id_ex_pipe_i.sys_en;
         if (id_ex_pipe_i.sys_en) begin
@@ -349,7 +350,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         end
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
-        ex_wb_pipe_o.illegal_insn    <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
+        ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface
@@ -386,7 +387,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && sys_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  // todo: Following code assumes that enable signals are onehot, which is not the case for Atomics; add assertion after atomic fix
   assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)   ||
                        (id_ex_pipe_i.csr_en && csr_valid)   ||
                        (id_ex_pipe_i.sys_en && sys_valid)   ||

@@ -57,45 +57,45 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       //////////////////////////////////////
 
       OPCODE_JAL: begin // Jump and Link
-        decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JAL;
-        decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JAL;
-        // Calculate and store PC+4
-        decoder_ctrl_o.alu_en                       = 1'b1;
+        decoder_ctrl_o.alu_en                       = 1'b1;             // ALU computes link address (PC+2/4)
+        decoder_ctrl_o.alu_jmp                      = 1'b1;
         decoder_ctrl_o.alu_op_a_mux_sel             = OP_A_CURRPC;
-        decoder_ctrl_o.alu_op_b_mux_sel             = OP_B_IMM;
+        decoder_ctrl_o.alu_op_b_mux_sel             = OP_B_IMM;         // PC increment (2 or 4) for link address
         decoder_ctrl_o.imm_b_mux_sel                = IMMB_PCINCR;
         decoder_ctrl_o.alu_operator                 = ALU_ADD;
-        decoder_ctrl_o.rf_we                        = 1'b1;
-        // Calculate jump target (= PC + UJ imm)
+        decoder_ctrl_o.rf_we                        = 1'b1;             // Write LR
+        decoder_ctrl_o.rf_re[0]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
+        decoder_ctrl_o.rf_re[1]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
+        decoder_ctrl_o.bch_jmp_mux_sel              = CT_JAL;
       end
 
       OPCODE_JALR: begin // Jump and Link Register
         if (instr_rdata_i[14:12] != 3'b0) begin
           decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
         end else begin
-          decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_JALR;
-          decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_JALR;
-          // Calculate and store PC+4
-          decoder_ctrl_o.alu_en                       = 1'b1;
-          decoder_ctrl_o.alu_op_a_mux_sel             = OP_A_CURRPC;
-          decoder_ctrl_o.alu_op_b_mux_sel             = OP_B_IMM;
-          decoder_ctrl_o.imm_b_mux_sel                = IMMB_PCINCR;
-          decoder_ctrl_o.alu_operator                 = ALU_ADD;
-          decoder_ctrl_o.rf_we                        = 1'b1;
-          // Calculate jump target (= RS1 + I imm)
-          decoder_ctrl_o.rf_re[0]                     = 1'b1;
+          decoder_ctrl_o.alu_en                     = 1'b1;             // ALU computes link address (PC+2/4)
+          decoder_ctrl_o.alu_jmp                    = 1'b1;
+          decoder_ctrl_o.alu_op_a_mux_sel           = OP_A_CURRPC;
+          decoder_ctrl_o.alu_op_b_mux_sel           = OP_B_IMM;         // PC increment (2 or 4) for link address
+          decoder_ctrl_o.imm_b_mux_sel              = IMMB_PCINCR;
+          decoder_ctrl_o.alu_operator               = ALU_ADD;
+          decoder_ctrl_o.rf_we                      = 1'b1;             // Write LR
+          decoder_ctrl_o.rf_re[0]                   = 1'b1;             // Calculate jump target (= RS1 + I imm)
+          decoder_ctrl_o.rf_re[1]                   = 1'b0;             // Calculate jump target (= RS1 + I imm)
+          decoder_ctrl_o.bch_jmp_mux_sel            = CT_JALR;
         end
       end
 
       OPCODE_BRANCH: begin // Branch
-        decoder_ctrl_o.ctrl_transfer_target_mux_sel = JT_COND;
-        decoder_ctrl_o.ctrl_transfer_insn           = BRANCH_COND;
         decoder_ctrl_o.alu_en                       = 1'b1;
+        decoder_ctrl_o.alu_bch                      = 1'b1;
         decoder_ctrl_o.alu_op_a_mux_sel             = OP_A_REGA_OR_FWD;
         decoder_ctrl_o.alu_op_b_mux_sel             = OP_B_REGB_OR_FWD;
         decoder_ctrl_o.op_c_mux_sel                 = OP_C_BCH;
+        decoder_ctrl_o.rf_we                        = 1'b0;             // No result write
         decoder_ctrl_o.rf_re[0]                     = 1'b1;
         decoder_ctrl_o.rf_re[1]                     = 1'b1;
+        decoder_ctrl_o.bch_jmp_mux_sel              = CT_BCH;
 
         unique case (instr_rdata_i[14:12])
           3'b000: decoder_ctrl_o.alu_operator = ALU_EQ;

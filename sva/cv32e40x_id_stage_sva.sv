@@ -25,6 +25,9 @@
 module cv32e40x_id_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+#(  
+  parameter bit A_EXT     = 1'b0
+)
 (
   input logic           clk,
   input logic           rst_n,
@@ -95,38 +98,31 @@ module cv32e40x_id_stage_sva
       a_irq_csr : assert property(p_irq_csr) else `uvm_error("id_stage", "Assertion p_irq_csr failed")
 */
 
-/* todo: fix
-      generate
-        if (!A_EXTENSION) begin : gen_no_a_extension_assertions
+  generate
+    if (!A_EXT) begin : gen_no_a_extension_assertions
 
-          // Check that A extension opcodes are decoded as illegal when A extension not enabled
-          property p_illegal_0;
-          @(posedge clk) disable iff (!rst_n) (instr[6:0] == OPCODE_AMO) |-> (illegal_insn == 'b1);
-        endproperty
+      // Check that A extension opcodes are decoded as illegal when A extension not enabled
+      a_illegal_0 :
+        assert property (@(posedge clk) disable iff (!rst_n)
+          (instr[6:0] == OPCODE_AMO) |-> (illegal_insn == 'b1))
+        else `uvm_error("id_stage", "AMO instruction should not be illegal")
+    end
+  endgenerate
 
-          a_illegal_0 : assert property(p_illegal_0) else `uvm_error("id_stage", "Assertion p_illegal_0 failed")
+  // Check that illegal instruction has no other side effects
+  // If XIF accepts instruction, rf_we may still be 1
+  a_illegal_1 :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      (illegal_insn == 1'b1) |-> !(alu_en || csr_en || sys_en || mul_en || div_en || lsu_en))
+    else `uvm_error("id_stage", "No functional units (except for XIF) should be enabled for illegal instructions")
 
-        end
-      endgenerate
-*/
-      // Check that illegal instruction has no other side effects
-      // If xif accepts instruction, rf_we may still be 1
-      property p_illegal_2;
-        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !((sys_en && sys_ebrk_insn) ||
-                                                                         (sys_en && sys_mret_insn) ||
-                                                                         (sys_en && sys_dret_insn) ||
-                                                                         (sys_en && sys_ecall_insn) ||
-                                                                         (sys_en && sys_wfi_insn) ||
-                                                                         (sys_en && sys_fencei_insn) ||
-                                                                         alu_en ||
-                                                                         mul_en ||
-                                                                         div_en ||
-                                                                         (rf_we && !xif_insn_accept) ||
-                                                                         (csr_op != CSR_OP_READ) ||
-                                                                        lsu_en);
-      endproperty
-
-      a_illegal_2 : assert property(p_illegal_2) else `uvm_error("id_stage", "Assertion p_illegal_2 failed")
+  a_illegal_2 :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      (illegal_insn == 1'b1) |-> (
+      (csr_op == CSR_OP_READ) &&
+      (alu_op_a_mux_sel == OP_A_NONE) && (alu_op_b_mux_sel == OP_B_NONE) || (op_c_mux_sel == OP_C_NONE) &&
+      !(rf_we && !xif_insn_accept)))
+    else `uvm_error("id_stage", "Illegal instructions should not have side effects")
 
   // Halt implies not ready and not valid
   a_halt :

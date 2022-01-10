@@ -112,12 +112,6 @@ module cv32e40x_controller_fsm_sva
 
   a_xret_csr : assert property(p_xret_csr) else `uvm_error("controller", "Assertion a_xret_csr failed")
 
-  // make sure that branch decision is valid when jumping
-  a_br_decision :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                     (id_ex_pipe_i.branch_in_ex) |-> (branch_decision_ex_i !== 1'bx) )
-      else begin `uvm_error("controller", $sformatf("%t, Branch decision is X in module %m", $time)); end
-
   // Ensure that debug state outputs are one-hot
   a_debug_state_onehot :
     assert property (@(posedge clk) disable iff (!rst_n)
@@ -270,11 +264,11 @@ module cv32e40x_controller_fsm_sva
                      ctrl_fsm_o.mhpmevent.id_ld_stall |=> !ctrl_fsm_o.mhpmevent.id_ld_stall)
       else `uvm_error("controller", "mhpmevent.id_ld_stall not single cycle")
 
-  // Assert that id_jr_stall is a subset of id_invalid
-  a_mhpevent_id_jr_stall_subset:
+  // Assert that id_jalr_stall is a subset of id_invalid
+  a_mhpevent_id_jalr_stall_subset:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     ctrl_fsm_o.mhpmevent.id_jr_stall |-> ctrl_fsm_o.mhpmevent.id_invalid)
-      else `uvm_error("controller", "mhpmevent.id_jr_stall not a subset of mhpmevent.id_invalid")
+                     ctrl_fsm_o.mhpmevent.id_jalr_stall |-> ctrl_fsm_o.mhpmevent.id_invalid)
+      else `uvm_error("controller", "mhpmevent.id_jalr_stall not a subset of mhpmevent.id_invalid")
     
   // Assert that id_ld_stall is a subset of id_invalid
   a_mhpevent_id_ld_stall_subset:

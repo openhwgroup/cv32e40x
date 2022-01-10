@@ -65,18 +65,18 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register file write data from EX stage
   input  logic [31:0] rf_wdata_ex_i,
 
+  output logic        alu_en_raw_o,
+  output logic        alu_jmp_o,
+
   output logic        sys_en_o,
   output logic        sys_mret_insn_o,
+
   output logic        csr_en_o,
   output csr_opcode_e csr_op_o,
-
-  output logic [1:0]  ctrl_transfer_insn_o,
-  output logic [1:0]  ctrl_transfer_insn_raw_o,
 
   // RF interface -> controller
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
   output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
-  output rf_addr_t    rf_waddr_o,
 
   output logic        rf_alu_we_id_o,
 
@@ -112,9 +112,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 rf_we;
   logic                 rf_we_dec;
   logic                 rf_we_raw;
+  rf_addr_t             rf_waddr;
   
   // ALU Control
   logic                 alu_en;
+  logic                 alu_en_raw;
+  logic                 alu_bch;
+  logic                 alu_jmp;
   alu_opcode_e          alu_operator;
 
   // Multiplier Control
@@ -160,7 +164,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   op_c_mux_e            op_c_mux_sel;
   imm_a_mux_e           imm_a_mux_sel;
   imm_b_mux_e           imm_b_mux_sel;
-  jt_mux_e              ctrl_transfer_target_mux_sel;
+  bch_jmp_mux_e         bch_jmp_mux_sel;
 
   // Immediates
   logic [31:0]          imm_a;                  // Immediate for operand A
@@ -171,7 +175,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0]          imm_u_type;
   logic [31:0]          imm_uj_type;
   logic [31:0]          imm_z_type;
-
 
   // Branch target address
   logic [31:0]          bch_target;
@@ -227,7 +230,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //---------------------------------------------------------------------------
   // Destination register seclection
   //---------------------------------------------------------------------------
-  assign rf_waddr_o = instr[REG_D_MSB:REG_D_LSB];
+  assign rf_waddr = instr[REG_D_MSB:REG_D_LSB];
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -240,15 +243,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   cv32e40x_pc_target cv32e40x_pc_target_i
   (
-    .ctrl_transfer_target_mux_sel_i ( ctrl_transfer_target_mux_sel),
-    .pc_id_i                        ( if_id_pipe_i.pc             ),
-    .imm_uj_type_i                  ( imm_uj_type                 ),
-    .imm_sb_type_i                  ( imm_sb_type                 ),
-    .imm_i_type_i                   ( imm_i_type                  ),
-    .jalr_fw_i                      ( jalr_fw                     ),
-    .bch_target_o                   ( bch_target                  ),
-    .jmp_target_o                   ( jmp_target_o                )
-               
+    .bch_jmp_mux_sel_i ( bch_jmp_mux_sel ),
+    .pc_id_i           ( if_id_pipe_i.pc ),
+    .imm_uj_type_i     ( imm_uj_type     ),
+    .imm_sb_type_i     ( imm_sb_type     ),
+    .imm_i_type_i      ( imm_i_type      ),
+    .jalr_fw_i         ( jalr_fw         ),
+    .bch_target_o      ( bch_target      ),
+    .jmp_target_o      ( jmp_target_o    )
   );
 
   ////////////////////////////////////////////////////////
@@ -387,35 +389,29 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .instr_rdata_i                   ( instr                     ),
     .illegal_c_insn_i                ( if_id_pipe_i.illegal_c_insn ),
 
-    // ALU signals
+    // ALU
     .alu_en_o                        ( alu_en                    ),
+    .alu_en_raw_o                    ( alu_en_raw                ),
+    .alu_bch_o                       ( alu_bch                   ),
+    .alu_jmp_o                       ( alu_jmp                   ),
     .alu_operator_o                  ( alu_operator              ),
     .alu_op_a_mux_sel_o              ( alu_op_a_mux_sel          ),
     .alu_op_b_mux_sel_o              ( alu_op_b_mux_sel          ),
-    .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
-    .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
 
-    .op_c_mux_sel_o                  ( op_c_mux_sel              ),
-
-    // MUL signals
+    // MUL
     .mul_en_o                        ( mul_en                    ),
     .mul_operator_o                  ( mul_operator              ),
     .mul_signed_mode_o               ( mul_signed_mode           ),
 
-    // DIV signals
+    // DIV
     .div_en_o                        ( div_en                    ),
     .div_operator_o                  ( div_operator              ),
 
-    // Register file control signals
-    .rf_re_o                         ( rf_re                     ),
-    .rf_we_o                         ( rf_we_dec                 ),
-    .rf_we_raw_o                     ( rf_we_raw                 ),
-
-    // CSR interface
+    // CSR
     .csr_en_o                        ( csr_en                    ),
     .csr_op_o                        ( csr_op                    ),
 
-    // LSU interface
+    // LSU
     .lsu_en_o                        ( lsu_en                    ),
     .lsu_en_raw_o                    ( lsu_en_raw                ),
     .lsu_we_o                        ( lsu_we                    ),
@@ -424,13 +420,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .lsu_reg_offset_o                ( lsu_reg_offset            ),
     .lsu_atop_o                      ( lsu_atop                  ),
 
-    // From controller fsm
-    .ctrl_fsm_i                      ( ctrl_fsm_i                ),
+    // Register file control signals
+    .rf_re_o                         ( rf_re                     ),
+    .rf_we_o                         ( rf_we_dec                 ),
+    .rf_we_raw_o                     ( rf_we_raw                 ),
 
-    // jump/branches
-    .ctrl_transfer_insn_o            ( ctrl_transfer_insn_o      ),
-    .ctrl_transfer_insn_raw_o        ( ctrl_transfer_insn_raw_o  ),
-    .ctrl_transfer_target_mux_sel_o  ( ctrl_transfer_target_mux_sel )
+    // Mux selects
+    .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
+    .imm_b_mux_sel_o                 ( imm_b_mux_sel             ),
+    .op_c_mux_sel_o                  ( op_c_mux_sel              ),
+    .bch_jmp_mux_sel_o               ( bch_jmp_mux_sel           ),
+
+    // From controller fsm
+    .ctrl_fsm_i                      ( ctrl_fsm_i                )
   );
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
@@ -456,20 +458,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                                                                             //
   /////////////////////////////////////////////////////////////////////////////////
 
-  // Populate instruction meta data
-  instr_meta_t instr_meta_n;
-  always_comb begin
-    instr_meta_n        = if_id_pipe_i.instr_meta;
-    instr_meta_n.jump   = (ctrl_transfer_insn_o == BRANCH_JAL) || (ctrl_transfer_insn_o == BRANCH_JALR);
-    instr_meta_n.branch = (ctrl_transfer_insn_o == BRANCH_COND);
-  end
-
   always_ff @(posedge clk, negedge rst_n)
   begin : ID_EX_PIPE_REGISTERS
     if (rst_n == 1'b0)
     begin
       id_ex_pipe_o.instr_valid            <= 1'b0;
-      id_ex_pipe_o.alu_en                 <= '0;
+      id_ex_pipe_o.alu_en                 <= 1'b0;
+      id_ex_pipe_o.alu_bch                <= 1'b0;
+      id_ex_pipe_o.alu_jmp                <= 1'b0;
       id_ex_pipe_o.alu_operator           <= ALU_SLTU;
       id_ex_pipe_o.alu_operand_a          <= 32'b0; // todo: path from data_rdata_i through WB to id_ex_pipe_o_reg_alu_operand_a seems longer than needed (too many gates in ID)
       id_ex_pipe_o.alu_operand_b          <= 32'b0;
@@ -485,9 +481,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.div_en                 <= 1'b0;
       id_ex_pipe_o.div_operator           <= DIV_DIVU;
 
-      id_ex_pipe_o.rf_we                  <= 1'b0;
-      id_ex_pipe_o.rf_waddr               <= '0;
-
       id_ex_pipe_o.csr_en                 <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
@@ -497,17 +490,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.lsu_sign_ext           <= 1'b0;
       id_ex_pipe_o.lsu_reg_offset         <= 2'b0;
       id_ex_pipe_o.lsu_atop               <= 6'b0;
-
-      id_ex_pipe_o.pc                     <= 32'b0;
-
-      id_ex_pipe_o.branch_in_ex           <= 1'b0;
-
-      // Signals for exception handling
-      id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
-      id_ex_pipe_o.instr_meta             <= '0;
-
-      id_ex_pipe_o.illegal_insn           <= 1'b0;
-      id_ex_pipe_o.trigger_match          <= 1'b0;
 
       id_ex_pipe_o.sys_en                <= 1'b0;
       id_ex_pipe_o.sys_dret_insn         <= 1'b0;
@@ -520,6 +502,16 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.xif_en                 <= 1'b0;
       id_ex_pipe_o.xif_meta               <= '0;
 
+      id_ex_pipe_o.illegal_insn           <= 1'b0;
+
+      id_ex_pipe_o.rf_we                  <= 1'b0;
+      id_ex_pipe_o.rf_waddr               <= '0;
+
+        // Exceptions and debug
+      id_ex_pipe_o.pc                     <= 32'b0;
+      id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
+      id_ex_pipe_o.instr_meta             <= '0;
+      id_ex_pipe_o.trigger_match          <= 1'b0;
     end else begin
       // normal pipeline unstall case
       if (id_valid_o && ex_ready_i) begin
@@ -539,6 +531,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.alu_en                 <= alu_en;
+        if (alu_en) begin                                               // Branch comparison and jump link computation are done in ALU
+          id_ex_pipe_o.alu_bch              <= alu_bch;
+          id_ex_pipe_o.alu_jmp              <= alu_jmp;
+        end
         if (alu_en || div_en) begin                                     // ALU and DIV use alu_operator (DIV uses the shifter in the ALU)
           id_ex_pipe_o.alu_operator         <= alu_operator;
         end
@@ -556,11 +552,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.mul_operand_b        <= operand_b_fw;            // Only register file operand (or forward) is required
         end
 
-        id_ex_pipe_o.rf_we                  <= rf_we;
-        if (rf_we) begin
-          id_ex_pipe_o.rf_waddr             <= rf_waddr_o;
-        end
-
         id_ex_pipe_o.csr_en                 <= csr_en;
         id_ex_pipe_o.csr_op                 <= csr_op;
 
@@ -573,10 +564,27 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.lsu_atop             <= lsu_atop;
         end
 
-        id_ex_pipe_o.branch_in_ex           <= ctrl_transfer_insn_o == BRANCH_COND;
+        // Special instructions
+        id_ex_pipe_o.sys_en                 <= sys_en;
+        if (sys_en) begin
+          id_ex_pipe_o.sys_dret_insn        <= sys_dret_insn;
+          id_ex_pipe_o.sys_ebrk_insn        <= sys_ebrk_insn;
+          id_ex_pipe_o.sys_ecall_insn       <= sys_ecall_insn;
+          id_ex_pipe_o.sys_fencei_insn      <= sys_fencei_insn;
+          id_ex_pipe_o.sys_mret_insn        <= sys_mret_insn;
+          id_ex_pipe_o.sys_wfi_insn         <= sys_wfi_insn;
+        end
 
-        // Propagate signals needed for exception handling in WB
+        id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
+
+        id_ex_pipe_o.rf_we                  <= rf_we;
+        if (rf_we) begin
+          id_ex_pipe_o.rf_waddr             <= rf_waddr;
+        end
+
+        // Exceptions and debug
         id_ex_pipe_o.pc                     <= if_id_pipe_i.pc;
+        id_ex_pipe_o.instr_meta             <= if_id_pipe_i.instr_meta;
 
         if (if_id_pipe_i.instr_meta.compressed) begin
           // Overwrite instruction word in case of compressed instruction
@@ -587,19 +595,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
         end
 
-        id_ex_pipe_o.instr_meta             <= instr_meta_n;
-
-        // Exceptions and special instructions
-        id_ex_pipe_o.sys_en                 <= sys_en;
-        if (sys_en) begin
-          id_ex_pipe_o.sys_dret_insn        <= sys_dret_insn;
-          id_ex_pipe_o.sys_ebrk_insn        <= sys_ebrk_insn;
-          id_ex_pipe_o.sys_ecall_insn       <= sys_ecall_insn;
-          id_ex_pipe_o.sys_fencei_insn      <= sys_fencei_insn;
-          id_ex_pipe_o.sys_mret_insn        <= sys_mret_insn;
-          id_ex_pipe_o.sys_wfi_insn         <= sys_wfi_insn;
-        end
-        id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
         // eXtension interface
@@ -615,6 +610,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       end
     end
   end
+
+  assign alu_en_raw_o = alu_en_raw;
+  assign alu_jmp_o    = alu_jmp;
 
   assign csr_en_o = csr_en;
   assign csr_op_o = csr_op;

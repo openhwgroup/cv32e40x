@@ -151,7 +151,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Register file signals from ID/decoder to controller
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_id;
   rf_addr_t    rf_raddr_id[REGFILE_NUM_READ_PORTS];
-  rf_addr_t    rf_waddr_id;
 
   // Register file read data
   rf_data_t    rf_rdata_id[REGFILE_NUM_READ_PORTS];
@@ -217,11 +216,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        trigger_match_if;
 
   // Controller <-> decoder
+  logic        alu_en_raw_id;
+  logic        alu_jmp_id;
   logic        sys_en_id;
   logic        sys_mret_insn_id;
-  logic [1:0]  ctrl_transfer_insn_id;
-  logic [1:0]  ctrl_transfer_insn_raw_id;
-
   logic        csr_en_id;
   csr_opcode_e csr_op_id;
   logic        csr_illegal;
@@ -408,19 +406,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
+    .alu_en_raw_o                 ( alu_en_raw_id             ),
+    .alu_jmp_o                    ( alu_jmp_id                ),
     .sys_en_o                     ( sys_en_id                 ),
     .sys_mret_insn_o              ( sys_mret_insn_id          ),
-
     .csr_en_o                     ( csr_en_id                 ),
     .csr_op_o                     ( csr_op_id                 ),
 
-    .ctrl_transfer_insn_o         ( ctrl_transfer_insn_id     ),
-    .ctrl_transfer_insn_raw_o     ( ctrl_transfer_insn_raw_id ),
-
     .rf_re_o                      ( rf_re_id                  ),
     .rf_raddr_o                   ( rf_raddr_id               ),
-    .rf_waddr_o                   ( rf_waddr_id               ),
-
     .rf_alu_we_id_o               ( rf_alu_we_id              ),
     .rf_rdata_i                   ( rf_rdata_id               ),
 
@@ -678,6 +672,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .pc_if_i                        ( pc_if                  ),
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
+
+    .alu_en_raw_id_i                ( alu_en_raw_id          ),
+    .alu_jmp_id_i                   ( alu_jmp_id             ),
     .sys_en_id_i                    ( sys_en_id              ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
     .csr_en_id_i                    ( csr_en_id              ),
@@ -693,8 +690,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
-    .ctrl_transfer_insn_i           ( ctrl_transfer_insn_id  ),
-    .ctrl_transfer_insn_raw_i       ( ctrl_transfer_insn_raw_id ),
 
     // Interrupt signals
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
@@ -709,9 +704,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .dcsr_i                         ( dcsr                   ),
 
     // Register File read, write back and forwards
-    .rf_re_i                        ( rf_re_id               ),
-    .rf_raddr_i                     ( rf_raddr_id            ),
-    .rf_waddr_i                     ( rf_waddr_id            ),
+    .rf_re_id_i                     ( rf_re_id               ),
+    .rf_raddr_id_i                  ( rf_raddr_id            ),
 
     // Write targets from ID
     .rf_alu_we_id_i                 ( rf_alu_we_id           ),
