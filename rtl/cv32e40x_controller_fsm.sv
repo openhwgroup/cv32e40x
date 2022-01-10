@@ -46,6 +46,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
+  input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,              // mret in ID stage
   input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
   input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
@@ -200,7 +201,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
   // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
   assign jump_in_id = ((((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL)) && !ctrl_byp_i.jr_stall) ||
-                         (sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
+                         (sys_en_id_i && sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
                          if_id_pipe_i.instr_valid;
 
   // Blocking on branch_taken_q, as a jump has already been taken
@@ -215,20 +216,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
 
   // Exception in WB if the following evaluates to 1
-  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK) ||
-                            ex_wb_pipe_i.instr.bus_resp.err           ||
-                            ex_wb_pipe_i.illegal_insn                 ||
-                            ex_wb_pipe_i.sys_ecall_insn               ||
-                            ex_wb_pipe_i.sys_ebrk_insn                ||
-                            (lsu_mpu_status_wb_i != MPU_OK))          && ex_wb_pipe_i.instr_valid;
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)            ||
+                            ex_wb_pipe_i.instr.bus_resp.err                      ||
+                            ex_wb_pipe_i.illegal_insn                            ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn) ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)  ||
+                            (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
-  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK       ? EXC_CAUSE_INSTR_FAULT     :
-                              ex_wb_pipe_i.instr.bus_resp.err               ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              ex_wb_pipe_i.illegal_insn                     ? EXC_CAUSE_ILLEGAL_INSN    :
-                              ex_wb_pipe_i.sys_ecall_insn                   ? EXC_CAUSE_ECALL_MMODE     :
-                              ex_wb_pipe_i.sys_ebrk_insn                    ? EXC_CAUSE_BREAKPOINT      :
-                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)         ? EXC_CAUSE_STORE_FAULT     :
+  assign exception_cause_wb = ex_wb_pipe_i.instr.mpu_status != MPU_OK              ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err                      ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn                            ? EXC_CAUSE_ILLEGAL_INSN    :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn) ? EXC_CAUSE_ECALL_MMODE     :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)  ? EXC_CAUSE_BREAKPOINT      :
+                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)                ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
 
   // For now we are always allowed to take exceptions once they arrive in WB.
@@ -240,19 +241,19 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign exception_allowed = 1'b1;
 
   // wfi in wb
-  assign wfi_in_wb = ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid;
+  assign wfi_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid;
 
   // fencei in wb
-  assign fencei_in_wb = ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
+  assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
 
   // mret in wb
-  assign mret_in_wb = ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid;
+  assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid;
 
   // dret in wb
-  assign dret_in_wb = ex_wb_pipe_i.sys_dret_insn && ex_wb_pipe_i.instr_valid;
+  assign dret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_dret_insn && ex_wb_pipe_i.instr_valid;
 
   // ebreak in wb
-  assign ebreak_in_wb = ex_wb_pipe_i.sys_ebrk_insn && ex_wb_pipe_i.instr_valid;
+  assign ebreak_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && ex_wb_pipe_i.instr_valid;
 
   // Trigger match in wb
   // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
@@ -584,8 +585,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // kill_if
             ctrl_fsm_o.kill_if = 1'b1;
 
-            // Jumps in ID (JAL, JALR, mret, uret, dret)
-            if (sys_mret_id_i) begin
+            // Jumps in ID (JAL, JALR, mret, dret)
+            if (sys_en_id_i && sys_mret_id_i) begin
               ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_MRET;
               ctrl_fsm_o.pc_set = 1'b1;
             end else begin

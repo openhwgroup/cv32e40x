@@ -60,13 +60,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   // Register file write data from WB stage
-  input  logic [31:0]    rf_wdata_wb_i,
+  input  logic [31:0] rf_wdata_wb_i,
 
   // Register file write data from EX stage
-  input  logic [31:0]    rf_wdata_ex_i,
+  input  logic [31:0] rf_wdata_ex_i,
 
+  output logic        sys_en_o,
   output logic        sys_mret_insn_o,
-  // Decoder to controller
   output logic        csr_en_o,
   output csr_opcode_e csr_op_o,
 
@@ -107,111 +107,109 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   logic [31:0] instr;
 
-  // Immediate decoding and sign extension
-  logic [31:0] imm_i_type;
-  logic [31:0] imm_s_type;
-  logic [31:0] imm_sb_type;
-  logic [31:0] imm_u_type;
-  logic [31:0] imm_uj_type;
-  logic [31:0] imm_z_type;
-
-  logic [31:0] imm_a;           // contains the immediate for operand b
-  logic [31:0] imm_b;           // contains the immediate for operand b
-
   // Register Read/Write Control
-  logic [1:0]  rf_re;           // Decoder only supports rs1, rs2
-  logic        rf_we;
-  logic        rf_we_dec;
-  logic        rf_we_raw;
+  logic [1:0]           rf_re;                  // Decoder only supports rs1, rs2
+  logic                 rf_we;
+  logic                 rf_we_dec;
+  logic                 rf_we_raw;
   
   // ALU Control
-  logic        alu_en;
-  alu_opcode_e alu_operator;
-  alu_op_a_mux_e alu_op_a_mux_sel;
-  alu_op_b_mux_e alu_op_b_mux_sel;
-
-  op_c_mux_e     op_c_mux_sel;
-
-  imm_a_mux_e  imm_a_mux_sel;
-  imm_b_mux_e  imm_b_mux_sel;
-  jt_mux_e     ctrl_transfer_target_mux_sel;
+  logic                 alu_en;
+  alu_opcode_e          alu_operator;
 
   // Multiplier Control
-  mul_opcode_e mul_operator;    // multiplication operation selection
-  logic        mul_en;          // multiplication is used instead of ALU
-  logic [1:0]  mul_signed_mode; // Signed mode multiplication at the output of the controller, and before the pipe registers
+  logic                 mul_en;                 // Multiplication is used instead of ALU
+  mul_opcode_e          mul_operator;           // Multiplication operation selection
+  logic [1:0]           mul_signed_mode;        // Signed mode multiplication at the output of the controller, and before the pipe registers
 
   // Divider control
-  logic         div_en;
-  div_opcode_e  div_operator;
+  logic                 div_en;
+  div_opcode_e          div_operator;
   
   // LSU
-  logic        lsu_en;
-  logic        lsu_we;
-  logic [1:0]  lsu_type;
-  logic        lsu_sign_ext;
-  logic [1:0]  lsu_reg_offset;
-  logic        lsu_en_raw;
-  logic [5:0]  lsu_atop;                // Atomic memory instruction
+  logic                 lsu_en;
+  logic                 lsu_we;
+  logic [1:0]           lsu_type;
+  logic                 lsu_sign_ext;
+  logic [1:0]           lsu_reg_offset;
+  logic                 lsu_en_raw;
+  logic [5:0]           lsu_atop;               // Atomic memory instruction
 
   // CSR
-  logic        csr_en;
-  csr_opcode_e csr_op;
+  logic                 csr_en;
+  csr_opcode_e          csr_op;
 
-  logic [31:0] operand_a_fw;
-  logic [31:0] operand_b_fw;
+  // SYS
+  logic                 sys_en;
+  logic                 sys_fencei_insn;
+  logic                 sys_ecall_insn;
+  logic                 sys_ebrk_insn;
+  logic                 sys_mret_insn;
+  logic                 sys_dret_insn;
+  logic                 sys_wfi_insn;
 
-  logic [31:0] jalr_fw;
+  // Operands and forwarding
+  logic [31:0]          operand_a;
+  logic [31:0]          operand_b;
+  logic [31:0]          operand_c;
+  logic [31:0]          operand_a_fw;
+  logic [31:0]          operand_b_fw;
+  logic [31:0]          jalr_fw;
+  alu_op_a_mux_e        alu_op_a_mux_sel;
+  alu_op_b_mux_e        alu_op_b_mux_sel;
+  op_c_mux_e            op_c_mux_sel;
+  imm_a_mux_e           imm_a_mux_sel;
+  imm_b_mux_e           imm_b_mux_sel;
+  jt_mux_e              ctrl_transfer_target_mux_sel;
 
-  logic [31:0] operand_a;
-  logic [31:0] operand_b;
-  logic [31:0] operand_c;
+  // Immediates
+  logic [31:0]          imm_a;                  // Immediate for operand b
+  logic [31:0]          imm_b;                  // Immediate for operand b
+  logic [31:0]          imm_i_type;
+  logic [31:0]          imm_s_type;
+  logic [31:0]          imm_sb_type;
+  logic [31:0]          imm_u_type;
+  logic [31:0]          imm_uj_type;
+  logic [31:0]          imm_z_type;
+
 
   // Branch target address
-  logic [31:0] bch_target;
+  logic [31:0]          bch_target;
 
   // Stall for multicycle ID instructions
-  logic multi_cycle_id_stall;
+  logic                 multi_cycle_id_stall;
 
-  logic        illegal_insn;
-  // SYS
-  logic        sys_en;
-  logic        sys_fencei_insn;
-  logic        sys_ecall_insn;
-  logic        sys_ebrk_insn;
-  logic        sys_mret_insn;
-  logic        sys_dret_insn;
-  logic        sys_wfi_insn;
+  logic                 illegal_insn;
 
   // Local instruction valid qualifier
-  logic        instr_valid;
+  logic                 instr_valid;
 
   // eXtension interface signals
-  logic        xif_en;
-  logic        xif_waiting;
-  logic        xif_insn_accept;
-  logic        xif_insn_reject;
-  logic        xif_we;
-  logic        xif_exception;
-  logic        xif_dualwrite;
-  logic        xif_loadstore;
+  logic                 xif_en;
+  logic                 xif_waiting;
+  logic                 xif_insn_accept;
+  logic                 xif_insn_reject;
+  logic                 xif_we;
+  logic                 xif_exception;
+  logic                 xif_dualwrite;
+  logic                 xif_loadstore;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
+  assign sys_en_o = sys_en;
   assign sys_mret_insn_o = sys_mret_insn;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
 
-  // immediate extraction and sign extension
+  // Immediate extraction and sign extension
   assign imm_i_type  = { {20 {instr[31]}}, instr[31:20] };
   assign imm_s_type  = { {20 {instr[31]}}, instr[31:25], instr[11:7] };
   assign imm_sb_type = { {19 {instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0 };
   assign imm_u_type  = { instr[31:12], 12'b0 };
   assign imm_uj_type = { {12 {instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0 };
 
-  // immediate for CSR manipulation (zero extended)
+  // Immediate for CSR manipulation (zero extended)
   assign imm_z_type  = { 27'b0, instr[REG_S1_MSB:REG_S1_LSB] };
-
 
   //---------------------------------------------------------------------------
   // Source register selection
@@ -527,17 +525,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
         
-        // Operands (used by most ALU, DIV, CSR and LSU instructions)
+        // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin
-          id_ex_pipe_o.alu_operand_a        <= operand_a;
+          id_ex_pipe_o.alu_operand_a        <= operand_a;               // Used by most ALU, CSR and LSU instructions
         end
         if (alu_op_b_mux_sel != OP_B_NONE) begin
-          id_ex_pipe_o.alu_operand_b        <= operand_b;
+          id_ex_pipe_o.alu_operand_b        <= operand_b;               // Used by most ALU, CSR and LSU instructions
         end
-        // ALU and LSU stores use operand_c
+        
         if (op_c_mux_sel != OP_C_NONE)
         begin
-          id_ex_pipe_o.operand_c            <= operand_c;
+          id_ex_pipe_o.operand_c            <= operand_c;               // Used by LSU stores and some ALU instructions
         end
 
         id_ex_pipe_o.alu_en                 <= alu_en;
@@ -593,13 +591,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         // Exceptions and special instructions
         id_ex_pipe_o.sys_en                 <= sys_en;
+        if (sys_en) begin
+          id_ex_pipe_o.sys_dret_insn        <= sys_dret_insn;
+          id_ex_pipe_o.sys_ebrk_insn        <= sys_ebrk_insn;
+          id_ex_pipe_o.sys_ecall_insn       <= sys_ecall_insn;
+          id_ex_pipe_o.sys_fencei_insn      <= sys_fencei_insn;
+          id_ex_pipe_o.sys_mret_insn        <= sys_mret_insn;
+          id_ex_pipe_o.sys_wfi_insn         <= sys_wfi_insn;
+        end
         id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
-        id_ex_pipe_o.sys_dret_insn          <= sys_dret_insn;
-        id_ex_pipe_o.sys_ebrk_insn          <= sys_ebrk_insn;
-        id_ex_pipe_o.sys_ecall_insn         <= sys_ecall_insn;
-        id_ex_pipe_o.sys_fencei_insn        <= sys_fencei_insn;
-        id_ex_pipe_o.sys_mret_insn          <= sys_mret_insn;
-        id_ex_pipe_o.sys_wfi_insn           <= sys_wfi_insn;
         id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
 
         // eXtension interface

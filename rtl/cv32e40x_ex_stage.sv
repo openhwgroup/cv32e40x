@@ -148,10 +148,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     // There is no need to use gated versions of alu_en, mul_en, etc. as rf_wdata_o will be ignored
     // for invalid instructions (as the register file write enable will be suppressed).
     unique case (1'b1)
+      id_ex_pipe_i.alu_en : rf_wdata_o = alu_result;
       id_ex_pipe_i.mul_en : rf_wdata_o = mul_result;
       id_ex_pipe_i.div_en : rf_wdata_o = div_result;
-      id_ex_pipe_i.csr_en : rf_wdata_o = csr_rdata_i;                           // alu_en = 1 here as well; todo: not true?
-      default             : rf_wdata_o = alu_result;                            // Default on purpose
+      id_ex_pipe_i.csr_en : rf_wdata_o = csr_rdata_i;
+      default             : rf_wdata_o = alu_result;
     endcase
   end
 
@@ -312,8 +313,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
-        ex_wb_pipe_o.rf_we       <= (csr_is_illegal    ||
-                                    lsu_split_i)       ? 1'b0 : id_ex_pipe_i.rf_we;
+        ex_wb_pipe_o.rf_we       <= (csr_is_illegal || lsu_split_i) ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
 
         if (id_ex_pipe_i.rf_we) begin
@@ -338,17 +338,18 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr          <= id_ex_pipe_i.instr;
         ex_wb_pipe_o.instr_meta     <= instr_meta_n;
 
+        ex_wb_pipe_o.sys_en            <= id_ex_pipe_i.sys_en;
+        if (id_ex_pipe_i.sys_en) begin
+          ex_wb_pipe_o.sys_dret_insn   <= id_ex_pipe_i.sys_dret_insn;
+          ex_wb_pipe_o.sys_ebrk_insn   <= id_ex_pipe_i.sys_ebrk_insn;
+          ex_wb_pipe_o.sys_ecall_insn  <= id_ex_pipe_i.sys_ecall_insn;
+          ex_wb_pipe_o.sys_fencei_insn <= id_ex_pipe_i.sys_fencei_insn;
+          ex_wb_pipe_o.sys_mret_insn   <= id_ex_pipe_i.sys_mret_insn;
+          ex_wb_pipe_o.sys_wfi_insn    <= id_ex_pipe_i.sys_wfi_insn;
+        end
+
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn    <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-
-        ex_wb_pipe_o.sys_en          <= id_ex_pipe_i.sys_en;
-        ex_wb_pipe_o.sys_dret_insn   <= id_ex_pipe_i.sys_dret_insn;
-        ex_wb_pipe_o.sys_ebrk_insn   <= id_ex_pipe_i.sys_ebrk_insn;
-        ex_wb_pipe_o.sys_ecall_insn  <= id_ex_pipe_i.sys_ecall_insn;
-        ex_wb_pipe_o.sys_fencei_insn <= id_ex_pipe_i.sys_fencei_insn;
-        ex_wb_pipe_o.sys_mret_insn   <= id_ex_pipe_i.sys_mret_insn;
-        ex_wb_pipe_o.sys_wfi_insn    <= id_ex_pipe_i.sys_wfi_insn;
-
         ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface

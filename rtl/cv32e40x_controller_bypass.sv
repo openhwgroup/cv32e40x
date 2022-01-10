@@ -48,6 +48,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // From id_stage
   input  logic        rf_alu_we_id_i,             // RF we in ID is due to an ALU ins, not LSU
+  input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,              // mret in ID
   input  logic        csr_en_id_i,                // CSR in ID
   input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID) // todo: Not used (is this on purpose or should it be used here?)
@@ -59,7 +60,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input  logic        wb_ready_i,                 // WB stage is ready
 
   // Controller Bypass outputs
-  output ctrl_byp_t     ctrl_byp_o
+  output ctrl_byp_t   ctrl_byp_o
 );
 
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_rd_ex_match;
@@ -116,19 +117,18 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // todo:low:Above loop reasoning only applies to halt_id; for other pipeline stages a local instr_valid signal can maybe be used.
 
-  assign csr_read_in_id = (csr_en_id_i || sys_mret_id_i) && if_id_pipe_i.instr_valid;
+  assign csr_read_in_id = (csr_en_id_i || (sys_en_id_i && sys_mret_id_i)) && if_id_pipe_i.instr_valid;
 
   // Detect when a CSR insn  in in EX or WB
-  // mret and dret implicitly writes to CSR. (dret is killing IF/ID/EX once it
-  // is in WB and can be disregarded here.
+  // mret and dret implicitly writes to CSR. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.
   assign csr_write_in_ex_wb = (
-                              (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || id_ex_pipe_i.sys_mret_insn)) ||
-                              (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || ex_wb_pipe_i.sys_mret_insn))
+                              (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn))) ||
+                              (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)))
                               );
 
   // Stall ID when WFI is active in EX.
   // Prevent load/store following a WFI in the pipeline
-  assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.sys_wfi_insn && id_ex_pipe_i.instr_valid);
+  assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_wfi_insn && id_ex_pipe_i.instr_valid);
 
   genvar i;
   generate

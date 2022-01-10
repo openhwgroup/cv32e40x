@@ -72,7 +72,7 @@ cleared low a few (unspecified) cycles after ``rst_ni`` has been deasserted **an
 
 ``dm_halt_addr_i`` is the address where the PC jumps to for a debug entry event. When in Debug Mode, an ebreak instruction will also cause the PC to jump back to this address without affecting status registers. (see :ref:`ebreak_behavior` below)
 
-``dm_exception_addr_i`` is the address where the PC jumps to when an exception occurs during Debug Mode. When in Debug Mode, the mret or uret instruction will also cause the PC to jump back to this address without affecting status registers.
+``dm_exception_addr_i`` is the address where the PC jumps to when an exception occurs during Debug Mode. When in Debug Mode, the mret instruction will also cause the PC to jump back to this address without affecting status registers.
 
 Both ``dm_halt_addr_i`` and ``dm_exception_addr_i`` must be word aligned.
 
