@@ -349,7 +349,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
 
     .if_id_pipe_o        ( if_id_pipe               ),
-    .ex_wb_pipe_i        ( ex_wb_pipe               ),
 
     .ctrl_fsm_i          ( ctrl_fsm                 ),
     .trigger_match_i     ( trigger_match_if         ),
@@ -613,9 +612,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init_if      ),
 
-    // IF/ID pipeline
-    .if_id_pipe_i               ( if_id_pipe             ),
-
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe             ),
 
@@ -677,7 +673,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
 
     .if_valid_i                     ( if_valid               ),
-
+    .pc_if_i                        ( pc_if                  ),
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),

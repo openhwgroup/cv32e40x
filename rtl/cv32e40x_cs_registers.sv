@@ -47,9 +47,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
 
-  // IF/ID pipeline
-  input if_id_pipe_t      if_id_pipe_i,
-
   // ID/EX pipeline 
   input id_ex_pipe_t      id_ex_pipe_i,
 
@@ -129,7 +126,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mscratch_we;
   logic mscratch_rd_error;
 
-  logic [31:0] exception_pc;
   mstatus_t mstatus_q, mstatus_n;
   logic mstatus_we;
   logic mstatus_rd_error;
@@ -396,7 +392,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   default: 'b0
                                 };
     mcause_we                = 1'b0;
-    exception_pc             = if_id_pipe_i.pc;
 
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
     mtvec_n.zero0            = mtvec_q.zero0;
@@ -455,17 +450,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     unique case (1'b1)
 
       ctrl_fsm_i.csr_save_cause: begin
-        unique case (1'b1)
-          ctrl_fsm_i.csr_save_if:
-            exception_pc = pc_if_i;
-          ctrl_fsm_i.csr_save_id:
-            exception_pc = if_id_pipe_i.pc;
-          ctrl_fsm_i.csr_save_ex:
-            exception_pc = id_ex_pipe_i.pc;
-          ctrl_fsm_i.csr_save_wb:
-            exception_pc = ex_wb_pipe_i.pc;
-          default:;
-        endcase
 
         if (ctrl_fsm_i.debug_csr_save) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
@@ -482,7 +466,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             };
             dcsr_we = 1'b1;
 
-            dpc_n       = exception_pc;
+            dpc_n  = ctrl_fsm_i.pipe_pc;
             dpc_we = 1'b1;
         end else begin
             mstatus_n.mpie = mstatus_q.mie;
@@ -490,10 +474,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mstatus_n.mpp  = PRIV_LVL_M;
             mstatus_we = 1'b1;
 
-            mepc_n = exception_pc;
+            mepc_n  = ctrl_fsm_i.pipe_pc;
             mepc_we = 1'b1;
 
-            mcause_n       = ctrl_fsm_i.csr_cause;
+            mcause_n  = ctrl_fsm_i.csr_cause;
             mcause_we = 1'b1;
         end
       end //ctrl_fsm_i.csr_save_cause
