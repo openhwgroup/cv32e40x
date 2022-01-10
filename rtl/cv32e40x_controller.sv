@@ -48,6 +48,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
+  input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,
   input  logic        csr_en_id_i,
   input  csr_opcode_e csr_op_id_i,
@@ -132,11 +133,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .pc_if_i                     ( pc_if_i                  ),
 
     // From ID stage
+    .if_id_pipe_i                ( if_id_pipe_i             ),
     .id_ready_i                  ( id_ready_i               ),
     .id_valid_i                  ( id_valid_i               ),
-    .if_id_pipe_i                ( if_id_pipe_i             ),
+    .sys_en_id_i                 ( sys_en_id_i              ),
     .sys_mret_id_i               ( sys_mret_id_i            ),
-    .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
     .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
     .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
@@ -148,6 +149,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .lsu_split_ex_i              ( lsu_split_ex_i           ),
 
     // From WB stage
+    .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
     .lsu_mpu_status_wb_i         ( lsu_mpu_status_wb_i      ),
     .data_stall_wb_i             ( data_stall_wb_i          ),
@@ -203,6 +205,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     // From id_stage
     .rf_alu_we_id_i             ( rf_alu_we_id_i           ),
+    .sys_en_id_i                ( sys_en_id_i              ),
     .sys_mret_id_i              ( sys_mret_id_i            ),
     .csr_en_id_i                ( csr_en_id_i              ),
     .csr_op_id_i                ( csr_op_id_i              ),

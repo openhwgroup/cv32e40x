@@ -38,6 +38,10 @@ module cv32e40x_id_stage_sva
   input logic           sys_en,
   input logic           lsu_en,
   input logic           xif_en,
+  input alu_op_a_mux_e  alu_op_a_mux_sel,
+  input alu_op_b_mux_e  alu_op_b_mux_sel,
+  input logic           lsu_we,
+  input op_c_mux_e      op_c_mux_sel,
   input logic           sys_dret_insn,
   input logic           sys_ebrk_insn,
   input logic           sys_ecall_insn,
@@ -108,11 +112,18 @@ module cv32e40x_id_stage_sva
       // Check that illegal instruction has no other side effects
       // If xif accepts instruction, rf_we may still be 1
       property p_illegal_2;
-        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !(sys_ebrk_insn || sys_mret_insn || sys_dret_insn ||
-                                                                         sys_ecall_insn || sys_wfi_insn || sys_fencei_insn ||
-                                                                         alu_en || mul_en ||
+        @(posedge clk) disable iff (!rst_n) (illegal_insn == 1'b1) |-> !((sys_en && sys_ebrk_insn) ||
+                                                                         (sys_en && sys_mret_insn) ||
+                                                                         (sys_en && sys_dret_insn) ||
+                                                                         (sys_en && sys_ecall_insn) ||
+                                                                         (sys_en && sys_wfi_insn) ||
+                                                                         (sys_en && sys_fencei_insn) ||
+                                                                         alu_en ||
+                                                                         mul_en ||
+                                                                         div_en ||
                                                                          (rf_we && !xif_insn_accept) ||
-                                                                         csr_op != CSR_OP_READ || lsu_en);
+                                                                         (csr_op != CSR_OP_READ) ||
+                                                                        lsu_en);
       endproperty
 
       a_illegal_2 : assert property(p_illegal_2) else `uvm_error("id_stage", "Assertion p_illegal_2 failed")
@@ -136,6 +147,29 @@ module cv32e40x_id_stage_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en, xif_en}))
       else `uvm_error("id_stage", "Multiple functional units enabled")
+
+/* todo:ab:insert once sys* transformation is complete
+  // Ensure that the A operand is only used for certain functional units
+  a_alu_op_a_mux_sel :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (alu_op_a_mux_sel != OP_A_NONE)
+                      |-> ((alu_en || div_en || csr_en || lsu_en) && !(mul_en || sys_en || xif_en)))
+      else `uvm_error("id_stage", "Unexpected A operand usage")
+
+  // Ensure that the B operand is only used for certain functional units
+  a_alu_op_b_mux_sel :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (alu_op_b_mux_sel != OP_B_NONE)
+                      |-> ((alu_en || div_en || csr_en || lsu_en) && !(mul_en || sys_en || xif_en)))
+      else `uvm_error("id_stage", "Unexpected A operand usage")
+
+  // Ensure that the C operand is only used for certain functional units
+  a_op_c_mux_sel :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (op_c_mux_sel != OP_C_NONE)
+                      |-> ((alu_en || (lsu_en && lsu_we))))
+      else `uvm_error("id_stage", "Unexpected A operand usage")
+*/
 
 endmodule // cv32e40x_id_stage_sva
 

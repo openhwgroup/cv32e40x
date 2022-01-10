@@ -189,8 +189,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign op_c_mux_sel_o                 = decoder_ctrl_mux.op_c_mux_sel;
   assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel;                 
   assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel;                 
-  assign mul_operator_o                 = decoder_ctrl_mux.mul_operator;               
   assign mul_en                         = decoder_ctrl_mux.mul_en;
+  assign mul_operator_o                 = decoder_ctrl_mux.mul_operator;               
   assign mul_signed_mode_o              = decoder_ctrl_mux.mul_signed_mode;
   assign div_en                         = decoder_ctrl_mux.div_en;
   assign div_operator_o                 = decoder_ctrl_mux.div_operator;
@@ -205,6 +205,12 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign lsu_reg_offset_o               = decoder_ctrl_mux.lsu_reg_offset;               
   assign lsu_atop_o                     = decoder_ctrl_mux.lsu_atop;                     
   assign sys_en                         = decoder_ctrl_mux.sys_en;
+  assign sys_mret_insn_o                = decoder_ctrl_mux.sys_mret_insn;
+  assign sys_dret_insn_o                = decoder_ctrl_mux.sys_dret_insn;
+  assign sys_ebrk_insn_o                = decoder_ctrl_mux.sys_ebrk_insn;
+  assign sys_ecall_insn_o               = decoder_ctrl_mux.sys_ecall_insn;
+  assign sys_wfi_insn_o                 = decoder_ctrl_mux.sys_wfi_insn;
+  assign sys_fencei_insn_o              = decoder_ctrl_mux.sys_fencei_insn;
 
   // Suppress control signals
   assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;
@@ -217,12 +223,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign ctrl_transfer_insn_o = deassert_we_i ? BRANCH_NONE : ctrl_transfer_insn;
 
   // Suppress special instruction/illegal instruction bits
-  assign sys_mret_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_mret_insn;
-  assign sys_dret_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_dret_insn;
-  assign sys_ebrk_insn_o      = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_ebrk_insn;
-  assign sys_ecall_insn_o     = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_ecall_insn;
-  assign sys_wfi_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_wfi_insn;
-  assign sys_fencei_insn_o    = deassert_we_i ? 1'b0 : decoder_ctrl_mux.sys_fencei_insn;
   assign illegal_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
   assign ctrl_transfer_insn_raw_o = ctrl_transfer_insn;
