@@ -971,13 +971,15 @@ typedef struct packed {
   // Multiplier control
   logic         mul_en;
   mul_opcode_e  mul_operator;
-  logic [31:0]  mul_operand_a;
-  logic [31:0]  mul_operand_b;
   logic [ 1:0]  mul_signed_mode;
 
   // Divider control
   logic         div_en;
   div_opcode_e  div_operator;
+
+  // Operands for multiplier and divider
+  logic [31:0]  muldiv_operand_a;
+  logic [31:0]  muldiv_operand_b;
 
   // Register write control
   logic         rf_we;
