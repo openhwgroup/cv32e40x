@@ -677,8 +677,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   
   // Write select
-  assign tmatch_control_we = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA1);
-  assign tmatch_value_we   = csr_we_int & ctrl_fsm_i.debug_mode & (csr_waddr == CSR_TDATA2);
+  assign tmatch_control_we = csr_we_int && ctrl_fsm_i.debug_mode && (csr_waddr == CSR_TDATA1);
+  assign tmatch_value_we   = csr_we_int && ctrl_fsm_i.debug_mode && (csr_waddr == CSR_TDATA2);
 
   // All supported trigger types
   assign tinfo_types = 1 << TTYPE_MCONTROL;
@@ -737,7 +737,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Breakpoint matching
   // We match against the next address, as the breakpoint must be taken before execution
   // Matching is disabled when ctrl_fsm_i.debug_mode == 1'b1
-  // todo: Need to explain why this does not require hazard detection (ie csr write to tdata2 before the matched instruction)
+  // Trigger CSRs can only be written from debug mode, writes from any other privilege level are ignored.
+  //   Thus we do not have an issue where a write to the tdata2 CSR immediately before the matched instruction
+  //   could be missed since we must write in debug mode, then dret to machine mode (kills pipeline) before
+  //   returning to dpc.
   assign trigger_match_o = tmatch_control_q[2] && !ctrl_fsm_i.debug_mode &&
                            (pc_if_i[31:0] == tmatch_value_q[31:0]);
 
