@@ -49,7 +49,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic [23:0]   mtvec_addr_i,           // Exception/interrupt address (MSBs)
   input  logic [31:0]   nmi_addr_i,             // NMI address
 
-  input  ex_wb_pipe_t   ex_wb_pipe_i,           // EX/WB pipeline stage
   input ctrl_fsm_t      ctrl_fsm_i,
   input  logic          trigger_match_i,
 

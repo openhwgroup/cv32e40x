@@ -47,9 +47,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
 
-  // IF/ID pipeline
-  input if_id_pipe_t      if_id_pipe_i,
-
   // ID/EX pipeline 
   input id_ex_pipe_t      id_ex_pipe_i,
 
