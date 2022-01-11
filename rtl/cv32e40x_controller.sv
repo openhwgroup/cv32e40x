@@ -48,6 +48,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
+  input  logic        alu_en_raw_id_i,
+  input  logic        alu_jmp_id_i,
   input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,
   input  logic        csr_en_id_i,
@@ -66,8 +68,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
-  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,
@@ -86,9 +86,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // CSR raddr in ex
   input  logic        csr_counter_read_i,         // A performance counter is read in CSR (EX)
 
-  input logic [REGFILE_NUM_READ_PORTS-1:0]         rf_re_i,
-  input rf_addr_t     rf_raddr_i[REGFILE_NUM_READ_PORTS],
-  input rf_addr_t     rf_waddr_i,
+  input logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_id_i,
+  input rf_addr_t     rf_raddr_id_i[REGFILE_NUM_READ_PORTS],
 
   input  logic        id_ready_i,               // ID stage is ready
   input  logic        id_valid_i,               // ID stage is done
@@ -136,10 +135,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .if_id_pipe_i                ( if_id_pipe_i             ),
     .id_ready_i                  ( id_ready_i               ),
     .id_valid_i                  ( id_valid_i               ),
+    .alu_en_raw_id_i             ( alu_en_raw_id_i          ),
+    .alu_jmp_id_i                ( alu_jmp_id_i             ),
     .sys_en_id_i                 ( sys_en_id_i              ),
     .sys_mret_id_i               ( sys_mret_id_i            ),
-    .ctrl_transfer_insn_i        ( ctrl_transfer_insn_i     ),
-    .ctrl_transfer_insn_raw_i    ( ctrl_transfer_insn_raw_i ),
 
     // From EX stage
     .id_ex_pipe_i                ( id_ex_pipe_i             ),
@@ -197,14 +196,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .if_id_pipe_i               ( if_id_pipe_i             ),
     .id_ex_pipe_i               ( id_ex_pipe_i             ),
     .ex_wb_pipe_i               ( ex_wb_pipe_i             ),
-    // From decoder
-    .ctrl_transfer_insn_raw_i   ( ctrl_transfer_insn_raw_i ),
-    .rf_re_i                    ( rf_re_i                  ),
-    .rf_raddr_i                 ( rf_raddr_i               ),
-    .rf_waddr_i                 ( rf_waddr_i               ),
 
-    // From id_stage
+    // From ID
+    .rf_re_id_i                 ( rf_re_id_i               ),
+    .rf_raddr_id_i              ( rf_raddr_id_i            ),
     .rf_alu_we_id_i             ( rf_alu_we_id_i           ),
+    .alu_en_raw_id_i            ( alu_en_raw_id_i          ),
+    .alu_jmp_id_i               ( alu_jmp_id_i             ),
     .sys_en_id_i                ( sys_en_id_i              ),
     .sys_mret_id_i              ( sys_mret_id_i            ),
     .csr_en_id_i                ( csr_en_id_i              ),

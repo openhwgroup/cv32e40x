@@ -661,19 +661,12 @@ typedef enum logic[1:0] {
                          OP_C_NONE        = 2'b10
                          } op_c_mux_e;
 
-// branch types
-parameter BRANCH_NONE = 2'b00;
-parameter BRANCH_JAL  = 2'b01;
-parameter BRANCH_JALR = 2'b10;
-parameter BRANCH_COND = 2'b11; // conditional branches
-
-// jump target mux
+// Control transfer (branch/jump) target mux
 typedef enum logic[1:0] {
-                         JT_JAL  = 2'b01,
-                         JT_JALR = 2'b10,
-                         JT_COND = 2'b11
-                         } jt_mux_e;
-
+                         CT_JAL  = 2'b01,
+                         CT_JALR = 2'b10,
+                         CT_BCH  = 2'b11
+                         } bch_jmp_mux_e;
 
 // Atomic operations
 parameter AMO_LR   = 5'b00010;
@@ -688,18 +681,18 @@ parameter AMO_MAX  = 5'b10100;
 parameter AMO_MINU = 5'b11000;
 parameter AMO_MAXU = 5'b11100;
 
-
 // Decoder control signals
 typedef struct packed {
-  logic [1:0]                        ctrl_transfer_insn;
-  jt_mux_e                           ctrl_transfer_target_mux_sel;
   logic                              alu_en;
+  logic                              alu_bch;
+  logic                              alu_jmp;
   alu_opcode_e                       alu_operator;
   alu_op_a_mux_e                     alu_op_a_mux_sel;
   alu_op_b_mux_e                     alu_op_b_mux_sel;
   op_c_mux_e                         op_c_mux_sel;
   imm_a_mux_e                        imm_a_mux_sel;
   imm_b_mux_e                        imm_b_mux_sel;
+  bch_jmp_mux_e                      bch_jmp_mux_sel;
   logic                              mul_en;
   mul_opcode_e                       mul_operator;
   logic [1:0]                        mul_signed_mode;
@@ -725,15 +718,17 @@ typedef struct packed {
   logic                              sys_wfi_insn;
 } decoder_ctrl_t;
 
-  parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{ctrl_transfer_insn           : BRANCH_NONE,
-                                                          ctrl_transfer_target_mux_sel : JT_JAL,
+  parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{
                                                           alu_en                       : 1'b0,
+                                                          alu_bch                      : 1'b0,
+                                                          alu_jmp                      : 1'b0,
                                                           alu_operator                 : ALU_SLTU,
                                                           alu_op_a_mux_sel             : OP_A_NONE,
                                                           alu_op_b_mux_sel             : OP_B_NONE,
                                                           op_c_mux_sel                 : OP_C_NONE,
                                                           imm_a_mux_sel                : IMMA_ZERO,
                                                           imm_b_mux_sel                : IMMB_I,
+                                                          bch_jmp_mux_sel              : CT_JAL,
                                                           mul_en                       : 1'b0,
                                                           mul_operator                 : MUL_M32,
                                                           mul_signed_mode              : 2'b00,
@@ -927,12 +922,9 @@ typedef struct packed {
 } outstanding_t;
 
 // Instruction meta data
-// TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc
+// TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc (but don't move stuff here that is specific to one functional unit)
 typedef struct packed
 {
-  logic        jump;
-  logic        branch;
-  logic        branch_taken;
   logic        compressed;
 } instr_meta_t;
 
@@ -961,30 +953,28 @@ typedef struct packed {
 // ID/EX pipeline
 typedef struct packed {
 
-  // ALU Control
+  // ALU
   logic         alu_en;
+  logic         alu_bch;
+  logic         alu_jmp;
   alu_opcode_e  alu_operator;
   logic [31:0]  alu_operand_a;
   logic [31:0]  alu_operand_b;
-  logic [31:0]  operand_c; // Gated with alu_en but not used by ALU
+  logic [31:0]  operand_c;
 
-  // Multiplier control
+  // Multiplier
   logic         mul_en;
   mul_opcode_e  mul_operator;
   logic [ 1:0]  mul_signed_mode;
 
-  // Divider control
+  // Divider
   logic         div_en;
   div_opcode_e  div_operator;
 
   // Operands for multiplier and divider
   logic [31:0]  muldiv_operand_a;
   logic [31:0]  muldiv_operand_b;
-
-  // Register write control
-  logic         rf_we;
-  rf_addr_t     rf_waddr;
-
+  
   // CSR
   logic         csr_en;
   csr_opcode_e  csr_op;
@@ -999,7 +989,6 @@ typedef struct packed {
 
   // SYS
   logic         sys_en;
-  logic         illegal_insn;
   logic         sys_dret_insn;
   logic         sys_ebrk_insn;
   logic         sys_ecall_insn;
@@ -1007,11 +996,14 @@ typedef struct packed {
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
 
-  // Branch target
-  logic         branch_in_ex;
+  logic         illegal_insn;
 
   // Trigger match on insn
   logic         trigger_match;
+
+  // Register write control
+  logic         rf_we;
+  rf_addr_t     rf_waddr;
 
   // Signals for exception handling etc passed on for evaluation in WB stage
   logic [31:0]  pc;
@@ -1030,6 +1022,11 @@ typedef struct packed {
   logic         rf_we;
   rf_addr_t     rf_waddr;
   logic [31:0]  rf_wdata;
+
+  // ALU
+  logic         alu_jmp_qual;           // Qualified with alu_en
+  logic         alu_bch_qual;           // Qualified with alu_en
+  logic         alu_bch_taken_qual;     // Qualified with alu_en
 
   // CSR
   logic         csr_en;
@@ -1078,23 +1075,23 @@ typedef struct packed {
   logic                              ex_invalid;
   logic                              wb_invalid;
   logic                              id_ld_stall;
-  logic                              id_jr_stall;
+  logic                              id_jalr_stall;
   logic                              wb_data_stall;
 } mhpmevent_t;
 
   
 // Controller Bypass outputs
 typedef struct packed {
-  op_fw_mux_e  operand_a_fw_mux_sel;  // Operand A forward mux sel
-  op_fw_mux_e  operand_b_fw_mux_sel;  // Operand B forward mux sel
-  jalr_fw_mux_e jalr_fw_mux_sel;      // Jump target forward mux sel
-  logic        jr_stall;              // Stall due to JR hazard (JR used result from EX or LSU result in WB)
-  logic        load_stall;            // Stall due to load operation
-  logic        csr_stall;
-  logic        wfi_stall;
-  logic        minstret_stall;        // Stall due to minstret/h read in EX
-  logic        deassert_we;           // Deassert write enable and special insn bits
-  logic        xif_exception_stall;   // Stall (EX) if xif insn in WB can cause an exception
+  op_fw_mux_e   operand_a_fw_mux_sel;   // Operand A forward mux sel
+  op_fw_mux_e   operand_b_fw_mux_sel;   // Operand B forward mux sel
+  jalr_fw_mux_e jalr_fw_mux_sel;        // Jump target forward mux sel
+  logic         jalr_stall;             // Stall due to JALR hazard (JALR used result from EX or LSU result in WB)
+  logic         load_stall;             // Stall due to load operation
+  logic         csr_stall;
+  logic         wfi_stall;
+  logic         minstret_stall;         // Stall due to minstret/h read in EX
+  logic         deassert_we;            // Deassert write enable and special insn bits
+  logic         xif_exception_stall;    // Stall (EX) if xif insn in WB can cause an exception
 } ctrl_byp_t;
 
 // Controller FSM outputs

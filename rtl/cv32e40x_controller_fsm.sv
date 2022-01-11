@@ -49,13 +49,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
+  input  logic        alu_en_raw_id_i,            // ALU enable (not gated with deassert)
+  input  logic        alu_jmp_id_i,               // ALU jump
   input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,              // mret in ID stage
-  input  logic [1:0]  ctrl_transfer_insn_i,       // jump is being calculated in ALU
-  input  logic [1:0]  ctrl_transfer_insn_raw_i,   // jump is being calculated in ALU
-
-  // From WB stage
-  input  ex_wb_pipe_t ex_wb_pipe_i,
 
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,        
@@ -63,6 +60,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
 
   // From WB stage
+  input  ex_wb_pipe_t ex_wb_pipe_i,
   input  logic [1:0]  lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
 
   // From LSU (WB)
@@ -206,8 +204,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
   // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
-  assign jump_in_id = ((((ctrl_transfer_insn_raw_i == BRANCH_JALR) || (ctrl_transfer_insn_raw_i == BRANCH_JAL)) && !ctrl_byp_i.jr_stall) ||
-                         (sys_en_id_i && sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
+  assign jump_in_id = ((alu_jmp_id_i && alu_en_raw_id_i && !ctrl_byp_i.jalr_stall) ||
+                       (sys_en_id_i && sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
                          if_id_pipe_i.instr_valid;
 
   // Blocking on branch_taken_q, as a jump has already been taken
@@ -216,7 +214,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // EX stage 
   // Branch taken for valid branch instructions in EX with valid decision
   
-  assign branch_in_ex = id_ex_pipe_i.branch_in_ex && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
+  assign branch_in_ex = id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
 
   // Blocking on branch_taken_q, as a branch ha already been taken
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
@@ -365,9 +363,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Performance counter events
   assign ctrl_fsm_o.mhpmevent.minstret      = wb_counter_event_gated;
   assign ctrl_fsm_o.mhpmevent.compressed    = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.compressed;
-  assign ctrl_fsm_o.mhpmevent.jump          = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.jump;
-  assign ctrl_fsm_o.mhpmevent.branch        = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.branch;
-  assign ctrl_fsm_o.mhpmevent.branch_taken  = wb_counter_event_gated && ex_wb_pipe_i.instr_meta.branch && ex_wb_pipe_i.instr_meta.branch_taken;
+  assign ctrl_fsm_o.mhpmevent.jump          = wb_counter_event_gated && ex_wb_pipe_i.alu_jmp_qual;
+  assign ctrl_fsm_o.mhpmevent.branch        = wb_counter_event_gated && ex_wb_pipe_i.alu_bch_qual;
+  assign ctrl_fsm_o.mhpmevent.branch_taken  = wb_counter_event_gated && ex_wb_pipe_i.alu_bch_taken_qual;
   assign ctrl_fsm_o.mhpmevent.intr_taken    = ctrl_fsm_o.irq_ack;
   assign ctrl_fsm_o.mhpmevent.data_read     = m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt && !m_c_obi_data_if.req_payload.we;
   assign ctrl_fsm_o.mhpmevent.data_write    = m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt && m_c_obi_data_if.req_payload.we;
@@ -375,7 +373,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
-  assign ctrl_fsm_o.mhpmevent.id_jr_stall   = ctrl_byp_i.jr_stall   && !id_valid_i && ex_ready_i;
+  assign ctrl_fsm_o.mhpmevent.id_jalr_stall = ctrl_byp_i.jalr_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
 
@@ -415,7 +413,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
     // currently in ID is not ready to be issued yet). Also halted if interrupt or debug pending
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
-    ctrl_fsm_o.halt_id = ctrl_byp_i.jr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
+    ctrl_fsm_o.halt_id = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
                          (pending_interrupt && !interrupt_allowed) ||
                          (pending_debug && !debug_allowed) ||
                          (pending_nmi_early && !nmi_allowed);

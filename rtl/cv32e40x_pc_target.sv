@@ -25,14 +25,14 @@
 
 module cv32e40x_pc_target import cv32e40x_pkg::*;
   (
-   input jt_mux_e      ctrl_transfer_target_mux_sel_i,
-   input logic [31:0]  pc_id_i,
-   input logic [31:0]  imm_uj_type_i,
-   input logic [31:0]  imm_sb_type_i,
-   input logic [31:0]  imm_i_type_i,
-   input logic [31:0]  jalr_fw_i,
-   output logic [31:0] bch_target_o,
-   output logic [31:0] jmp_target_o
+   input  bch_jmp_mux_e bch_jmp_mux_sel_i,
+   input  logic [31:0]  pc_id_i,
+   input  logic [31:0]  imm_uj_type_i,
+   input  logic [31:0]  imm_sb_type_i,
+   input  logic [31:0]  imm_i_type_i,
+   input  logic [31:0]  jalr_fw_i,
+   output logic [31:0]  bch_target_o,
+   output logic [31:0]  jmp_target_o
   );
 
   logic [31:0] pc_target;
@@ -41,10 +41,10 @@ module cv32e40x_pc_target import cv32e40x_pkg::*;
   assign jmp_target_o = pc_target;
 
   always_comb begin : pc_target_mux
-    unique case (ctrl_transfer_target_mux_sel_i)
-      JT_JAL:  pc_target = pc_id_i   + imm_uj_type_i;
-      JT_COND: pc_target = pc_id_i   + imm_sb_type_i;
-      JT_JALR: pc_target = jalr_fw_i + imm_i_type_i;             // JALR: Allowing forward iff WB result comes from ALU/EX stage (NOT from LSU)
+    unique case (bch_jmp_mux_sel_i)
+      CT_JAL:  pc_target = pc_id_i   + imm_uj_type_i;
+      CT_BCH:  pc_target = pc_id_i   + imm_sb_type_i;
+      CT_JALR: pc_target = jalr_fw_i + imm_i_type_i;    // Forward from WB, but only of ALU result
       default: pc_target = jalr_fw_i + imm_i_type_i;
     endcase
   end

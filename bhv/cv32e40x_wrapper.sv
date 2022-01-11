@@ -139,13 +139,11 @@ module cv32e40x_wrapper
       .*
     );
 
-
   bind cv32e40x_id_stage:
     core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
     (
       .*
     );
-
 
   bind cv32e40x_ex_stage:
     core_i.ex_stage_i cv32e40x_ex_stage_sva #(.X_EXT(X_EXT)) ex_stage_sva
@@ -159,7 +157,6 @@ module cv32e40x_wrapper
       .*
     );
 
-
   bind cv32e40x_id_stage:
     core_i.id_stage_i
     cv32e40x_dbg_helper
@@ -167,7 +164,7 @@ module cv32e40x_wrapper
                  .rf_re         (core_i.rf_re_id                   ),
                  .rf_raddr      (core_i.rf_raddr_id                ),
                  .rf_we         (core_i.id_stage_i.rf_we           ),
-                 .rf_waddr      (core_i.rf_waddr_id                ),
+                 .rf_waddr      (core_i.id_stage_i.rf_waddr        ),
                  .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
 
@@ -233,35 +230,35 @@ module cv32e40x_wrapper
                 .irq_ack                          (core_i.irq_ack),
                 .*);
 
-bind cv32e40x_sleep_unit:
-  core_i.sleep_unit_i cv32e40x_sleep_unit_sva
-    sleep_unit_sva (// probed id_stage_i.controller_i signals
-                    .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
-                    .ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-                    .*);
+  bind cv32e40x_sleep_unit:
+    core_i.sleep_unit_i cv32e40x_sleep_unit_sva
+      sleep_unit_sva (// probed id_stage_i.controller_i signals
+                      .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
+                      .ctrl_fsm_ns (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                      .*);
 
-  bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva
-    decoder_sva(.clk(core_i.id_stage_i.clk),
-                .rst_n(core_i.id_stage_i.rst_n),
+  bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva #(.A_EXT(A_EXT))
+    decoder_sva(.clk   (core_i.id_stage_i.clk),
+                .rst_n (core_i.id_stage_i.rst_n),
                 .*);
 
   // MPU assertions
   bind cv32e40x_mpu:
     core_i.if_stage_i.mpu_i
     cv32e40x_mpu_sva
-      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-        .PMA_CFG(PMA_CFG),
-        .IS_INSTR_SIDE(1))
-  mpu_if_sva(.pma_addr(pma_i.trans_addr_i),
-             .pma_cfg (pma_i.pma_cfg),
-             .obi_memtype(core_i.instr_memtype_o),
-             .obi_addr   (core_i.instr_addr_o),
-             .obi_req    (core_i.instr_req_o),
-             .obi_gnt    (core_i.instr_gnt_i),
-             .write_buffer_state(cv32e40x_pkg::WBUF_EMPTY),
-             .write_buffer_valid_o('0),
-             .write_buffer_txn_bufferable('0),
-             .write_buffer_txn_cacheable('0),
+      #(.PMA_NUM_REGIONS                        (PMA_NUM_REGIONS),
+        .PMA_CFG                                (PMA_CFG),
+        .IS_INSTR_SIDE                          (1))
+  mpu_if_sva(.pma_addr                          (pma_i.trans_addr_i),
+             .pma_cfg                           (pma_i.pma_cfg),
+             .obi_memtype                       (core_i.instr_memtype_o),
+             .obi_addr                          (core_i.instr_addr_o),
+             .obi_req                           (core_i.instr_req_o),
+             .obi_gnt                           (core_i.instr_gnt_i),
+             .write_buffer_state                (cv32e40x_pkg::WBUF_EMPTY),
+             .write_buffer_valid_o              ('0),
+             .write_buffer_txn_bufferable       ('0),
+             .write_buffer_txn_cacheable        ('0),
              .*);
 
   bind cv32e40x_mpu:
