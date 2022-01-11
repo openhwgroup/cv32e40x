@@ -164,7 +164,7 @@ module cv32e40x_wrapper
                  .rf_re         (core_i.rf_re_id                   ),
                  .rf_raddr      (core_i.rf_raddr_id                ),
                  .rf_we         (core_i.id_stage_i.rf_we           ),
-                 .rf_waddr      (core_i.rf_waddr_id                ),
+                 .rf_waddr      (core_i.id_stage_i.rf_waddr        ),
                  .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
 
