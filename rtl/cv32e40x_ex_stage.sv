@@ -171,23 +171,24 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   cv32e40x_alu alu_i
   (
-    .operator_i          ( id_ex_pipe_i.alu_operator  ),
-    .operand_a_i         ( id_ex_pipe_i.alu_operand_a ),
-    .operand_b_i         ( id_ex_pipe_i.alu_operand_b ),
+    .operator_i          ( id_ex_pipe_i.alu_operator     ),
+    .operand_a_i         ( id_ex_pipe_i.alu_operand_a    ),
+    .operand_b_i         ( id_ex_pipe_i.alu_operand_b    ),
+    .muldiv_operand_b_i  ( id_ex_pipe_i.muldiv_operand_b ),
 
     // ALU CLZ interface
-    .div_clz_en_i        ( div_clz_en                 ),
-    .div_clz_data_rev_i  ( div_clz_data_rev           ),
-    .div_clz_result_o    ( div_clz_result             ),
+    .div_clz_en_i        ( div_clz_en                    ),
+    .div_clz_data_rev_i  ( div_clz_data_rev              ),
+    .div_clz_result_o    ( div_clz_result                ),
 
     // ALU shifter interface
-    .div_shift_en_i      ( div_shift_en               ),
-    .div_shift_amt_i     ( div_shift_amt              ),
-    .div_op_b_shifted_o  ( div_op_b_shifted           ),
+    .div_shift_en_i      ( div_shift_en                  ),
+    .div_shift_amt_i     ( div_shift_amt                 ),
+    .div_op_b_shifted_o  ( div_op_b_shifted              ),
 
     // Result(s)
-    .result_o            ( alu_result                 ),
-    .cmp_result_o        ( alu_cmp_result             )
+    .result_o            ( alu_result                    ),
+    .cmp_result_o        ( alu_cmp_result                )
   );
 
   ////////////////////////////////////////////////////
@@ -203,36 +204,36 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   cv32e40x_div div_i
   (
-    .clk                ( clk                        ),
-    .rst_n              ( rst_n                      ),
+    .clk                ( clk                           ),
+    .rst_n              ( rst_n                         ),
 
     // Input IF
-    .data_ind_timing_i  ( 1'b0                       ), // CV32E40X does not support data independent timing
-    .operator_i         ( id_ex_pipe_i.div_operator  ),
-    .op_a_i             ( id_ex_pipe_i.alu_operand_a ),
-    .op_b_i             ( id_ex_pipe_i.alu_operand_b ),
+    .data_ind_timing_i  ( 1'b0                          ), // CV32E40X does not support data independent timing
+    .operator_i         ( id_ex_pipe_i.div_operator     ),
+    .op_a_i             ( id_ex_pipe_i.muldiv_operand_a ),
+    .op_b_i             ( id_ex_pipe_i.muldiv_operand_b ),
 
     // ALU CLZ interface
-    .alu_clz_result_i   ( div_clz_result             ),
-    .alu_clz_en_o       ( div_clz_en                 ),
-    .alu_clz_data_rev_o ( div_clz_data_rev           ),
+    .alu_clz_result_i   ( div_clz_result                ),
+    .alu_clz_en_o       ( div_clz_en                    ),
+    .alu_clz_data_rev_o ( div_clz_data_rev              ),
 
     // ALU shifter interface
-    .alu_op_b_shifted_i ( div_op_b_shifted           ),
-    .alu_shift_en_o     ( div_shift_en               ),
-    .alu_shift_amt_o    ( div_shift_amt              ),
+    .alu_op_b_shifted_i ( div_op_b_shifted              ),
+    .alu_shift_en_o     ( div_shift_en                  ),
+    .alu_shift_amt_o    ( div_shift_amt                 ),
 
     // Result
-    .result_o           ( div_result                 ),
+    .result_o           ( div_result                    ),
 
     // divider enable, not affected by kill/halt
-    .div_en_i           ( div_en                     ),
+    .div_en_i           ( div_en                        ),
 
     // Handshakes
-    .valid_i            ( div_en_gated               ),
-    .ready_o            ( div_ready                  ),
-    .valid_o            ( div_valid                  ),
-    .ready_i            ( wb_ready_i                 )
+    .valid_i            ( div_en_gated                  ),
+    .ready_o            ( div_ready                     ),
+    .valid_o            ( div_valid                     ),
+    .ready_i            ( wb_ready_i                    )
   );
 
   ////////////////////////////////////////////////////////////////
@@ -251,8 +252,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
     .operator_i      ( id_ex_pipe_i.mul_operator     ),
     .signed_mode_i   ( id_ex_pipe_i.mul_signed_mode  ),
-    .op_a_i          ( id_ex_pipe_i.mul_operand_a    ),
-    .op_b_i          ( id_ex_pipe_i.mul_operand_b    ),
+    .op_a_i          ( id_ex_pipe_i.muldiv_operand_a ),
+    .op_b_i          ( id_ex_pipe_i.muldiv_operand_b ),
 
     // Result
     .result_o        ( mul_result                    ),
