@@ -180,53 +180,53 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     end
   end
 
-  assign alu_en                         = decoder_ctrl_mux.alu_en;
-  assign alu_bch_o                      = decoder_ctrl_mux.alu_bch;
-  assign alu_jmp_o                      = decoder_ctrl_mux.alu_jmp;
-  assign alu_operator_o                 = decoder_ctrl_mux.alu_operator;                  
-  assign alu_op_a_mux_sel_o             = decoder_ctrl_mux.alu_op_a_mux_sel;              
-  assign alu_op_b_mux_sel_o             = decoder_ctrl_mux.alu_op_b_mux_sel;              
-  assign op_c_mux_sel_o                 = decoder_ctrl_mux.op_c_mux_sel;
-  assign imm_a_mux_sel_o                = decoder_ctrl_mux.imm_a_mux_sel;                 
-  assign imm_b_mux_sel_o                = decoder_ctrl_mux.imm_b_mux_sel;                 
-  assign bch_jmp_mux_sel_o              = decoder_ctrl_mux.bch_jmp_mux_sel;
-  assign mul_en                         = decoder_ctrl_mux.mul_en;
-  assign mul_operator_o                 = decoder_ctrl_mux.mul_operator;               
-  assign mul_signed_mode_o              = decoder_ctrl_mux.mul_signed_mode;
-  assign div_en                         = decoder_ctrl_mux.div_en;
-  assign div_operator_o                 = decoder_ctrl_mux.div_operator;
-  assign rf_re_o                        = decoder_ctrl_mux.rf_re;                         
-  assign rf_we                          = decoder_ctrl_mux.rf_we;                           
-  assign csr_en_o                       = decoder_ctrl_mux.csr_en;
-  assign csr_op                         = decoder_ctrl_mux.csr_op;                          
-  assign lsu_en                         = decoder_ctrl_mux.lsu_en;                        
-  assign lsu_we_o                       = decoder_ctrl_mux.lsu_we;                       
-  assign lsu_type_o                     = decoder_ctrl_mux.lsu_type;                     
-  assign lsu_sign_ext_o                 = decoder_ctrl_mux.lsu_sign_ext;
-  assign lsu_reg_offset_o               = decoder_ctrl_mux.lsu_reg_offset;               
-  assign lsu_atop_o                     = decoder_ctrl_mux.lsu_atop;                     
-  assign sys_en                         = decoder_ctrl_mux.sys_en;
-  assign sys_mret_insn_o                = decoder_ctrl_mux.sys_mret_insn;
-  assign sys_dret_insn_o                = decoder_ctrl_mux.sys_dret_insn;
-  assign sys_ebrk_insn_o                = decoder_ctrl_mux.sys_ebrk_insn;
-  assign sys_ecall_insn_o               = decoder_ctrl_mux.sys_ecall_insn;
-  assign sys_wfi_insn_o                 = decoder_ctrl_mux.sys_wfi_insn;
-  assign sys_fencei_insn_o              = decoder_ctrl_mux.sys_fencei_insn;
+  assign alu_en             = decoder_ctrl_mux.alu_en;
+  assign alu_bch_o          = decoder_ctrl_mux.alu_bch;
+  assign alu_jmp_o          = decoder_ctrl_mux.alu_jmp;
+  assign alu_operator_o     = decoder_ctrl_mux.alu_operator;                  
+  assign alu_op_a_mux_sel_o = decoder_ctrl_mux.alu_op_a_mux_sel;              
+  assign alu_op_b_mux_sel_o = decoder_ctrl_mux.alu_op_b_mux_sel;              
+  assign op_c_mux_sel_o     = decoder_ctrl_mux.op_c_mux_sel;
+  assign imm_a_mux_sel_o    = decoder_ctrl_mux.imm_a_mux_sel;                 
+  assign imm_b_mux_sel_o    = decoder_ctrl_mux.imm_b_mux_sel;                 
+  assign bch_jmp_mux_sel_o  = decoder_ctrl_mux.bch_jmp_mux_sel;
+  assign mul_en             = decoder_ctrl_mux.mul_en;
+  assign mul_operator_o     = decoder_ctrl_mux.mul_operator;               
+  assign mul_signed_mode_o  = decoder_ctrl_mux.mul_signed_mode;
+  assign div_en             = decoder_ctrl_mux.div_en;
+  assign div_operator_o     = decoder_ctrl_mux.div_operator;
+  assign rf_re_o            = decoder_ctrl_mux.rf_re;                         
+  assign rf_we              = decoder_ctrl_mux.rf_we;                           
+  assign csr_en_o           = decoder_ctrl_mux.csr_en;
+  assign csr_op             = decoder_ctrl_mux.csr_op;                          
+  assign lsu_en             = decoder_ctrl_mux.lsu_en;                        
+  assign lsu_we_o           = decoder_ctrl_mux.lsu_we;                       
+  assign lsu_type_o         = decoder_ctrl_mux.lsu_type;                     
+  assign lsu_sign_ext_o     = decoder_ctrl_mux.lsu_sign_ext;
+  assign lsu_reg_offset_o   = decoder_ctrl_mux.lsu_reg_offset;               
+  assign lsu_atop_o         = decoder_ctrl_mux.lsu_atop;                     
+  assign sys_en             = decoder_ctrl_mux.sys_en;
+  assign sys_mret_insn_o    = decoder_ctrl_mux.sys_mret_insn;
+  assign sys_dret_insn_o    = decoder_ctrl_mux.sys_dret_insn;
+  assign sys_ebrk_insn_o    = decoder_ctrl_mux.sys_ebrk_insn;
+  assign sys_ecall_insn_o   = decoder_ctrl_mux.sys_ecall_insn;
+  assign sys_wfi_insn_o     = decoder_ctrl_mux.sys_wfi_insn;
+  assign sys_fencei_insn_o  = decoder_ctrl_mux.sys_fencei_insn;
 
   // Suppress control signals
-  assign alu_en_o             = deassert_we_i ? 1'b0        : alu_en;
-  assign sys_en_o             = deassert_we_i ? 1'b0        : sys_en;
-  assign mul_en_o             = deassert_we_i ? 1'b0        : mul_en;
-  assign div_en_o             = deassert_we_i ? 1'b0        : div_en;
-  assign lsu_en_o             = deassert_we_i ? 1'b0        : lsu_en;
-  assign csr_op_o             = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
-  assign rf_we_o              = deassert_we_i ? 1'b0        : rf_we;
+  assign alu_en_o = deassert_we_i ? 1'b0        : alu_en;
+  assign sys_en_o = deassert_we_i ? 1'b0        : sys_en;
+  assign mul_en_o = deassert_we_i ? 1'b0        : mul_en;
+  assign div_en_o = deassert_we_i ? 1'b0        : div_en;
+  assign lsu_en_o = deassert_we_i ? 1'b0        : lsu_en;
+  assign csr_op_o = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
+  assign rf_we_o  = deassert_we_i ? 1'b0        : rf_we;
 
   // Suppress special instruction/illegal instruction bits
-  assign illegal_insn_o       = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
+  assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
-  assign alu_en_raw_o         = alu_en;
-  assign lsu_en_raw_o         = lsu_en;
-  assign rf_we_raw_o          = rf_we;
+  assign alu_en_raw_o = alu_en;
+  assign lsu_en_raw_o = lsu_en;
+  assign rf_we_raw_o  = rf_we;
   
 endmodule // cv32e40x_decoder

@@ -25,9 +25,6 @@
 module cv32e40x_id_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-#(  
-  parameter bit A_EXT     = 1'b0
-)
 (
   input logic           clk,
   input logic           rst_n,
@@ -98,17 +95,6 @@ module cv32e40x_id_stage_sva
       a_irq_csr : assert property(p_irq_csr) else `uvm_error("id_stage", "Assertion p_irq_csr failed")
 */
 
-  generate
-    if (!A_EXT) begin : gen_no_a_extension_assertions
-
-      // Check that A extension opcodes are decoded as illegal when A extension not enabled
-      a_illegal_0 :
-        assert property (@(posedge clk) disable iff (!rst_n)
-          (instr[6:0] == OPCODE_AMO) |-> (illegal_insn == 'b1))
-        else `uvm_error("id_stage", "AMO instruction should not be illegal")
-    end
-  endgenerate
-
   // Check that illegal instruction has no other side effects
   // If XIF accepts instruction, rf_we may still be 1
   a_illegal_1 :
@@ -143,29 +129,6 @@ module cv32e40x_id_stage_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en, xif_en}))
       else `uvm_error("id_stage", "Multiple functional units enabled")
-
-/* todo:ab:insert once sys* transformation is complete
-  // Ensure that the A operand is only used for certain functional units
-  a_alu_op_a_mux_sel :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (alu_op_a_mux_sel != OP_A_NONE)
-                      |-> ((alu_en || div_en || csr_en || lsu_en) && !(mul_en || sys_en || xif_en)))
-      else `uvm_error("id_stage", "Unexpected A operand usage")
-
-  // Ensure that the B operand is only used for certain functional units
-  a_alu_op_b_mux_sel :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (alu_op_b_mux_sel != OP_B_NONE)
-                      |-> ((alu_en || div_en || csr_en || lsu_en) && !(mul_en || sys_en || xif_en)))
-      else `uvm_error("id_stage", "Unexpected A operand usage")
-
-  // Ensure that the C operand is only used for certain functional units
-  a_op_c_mux_sel :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (op_c_mux_sel != OP_C_NONE)
-                      |-> ((alu_en || (lsu_en && lsu_we))))
-      else `uvm_error("id_stage", "Unexpected A operand usage")
-*/
 
 endmodule // cv32e40x_id_stage_sva
 
