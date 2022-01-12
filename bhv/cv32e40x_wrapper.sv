@@ -269,14 +269,14 @@ module cv32e40x_wrapper
         .IS_INSTR_SIDE(0))
   mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
              .pma_cfg (pma_i.pma_cfg),
-             .obi_memtype(core_i.data_memtype_o),
-             .obi_addr   (core_i.data_addr_o),
-             .obi_req    (core_i.data_req_o),
-             .obi_gnt    (core_i.data_gnt_i),
-             .write_buffer_state(core_i.load_store_unit_i.write_buffer_i.state),
-             .write_buffer_valid_o(core_i.load_store_unit_i.write_buffer_i.valid_o),
-             .write_buffer_txn_bufferable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
-             .write_buffer_txn_cacheable(core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
+             .obi_memtype                       (core_i.data_memtype_o),
+             .obi_addr                          (core_i.data_addr_o),
+             .obi_req                           (core_i.data_req_o),
+             .obi_gnt                           (core_i.data_gnt_i),
+             .write_buffer_state                (core_i.load_store_unit_i.write_buffer_i.state),
+             .write_buffer_valid_o              (core_i.load_store_unit_i.write_buffer_i.valid_o),
+             .write_buffer_txn_bufferable       (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
+             .write_buffer_txn_cacheable        (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
              .*);
 
   bind cv32e40x_lsu_response_filter :
@@ -341,7 +341,7 @@ module cv32e40x_wrapper
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
 
          .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
-         .lsu_type_id_i            ( core_i.id_stage_i.lsu_type                                           ),
+         .lsu_size_id_i            ( core_i.id_stage_i.lsu_size                                           ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
          .branch_in_ex_i           ( core_i.controller_i.controller_fsm_i.branch_in_ex                    ),

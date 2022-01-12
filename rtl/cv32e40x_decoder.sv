@@ -74,9 +74,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          lsu_en_o,               // Start transaction to data memory
   output logic          lsu_en_raw_o,
   output logic          lsu_we_o,               // Data memory write enable
-  output logic [1:0]    lsu_type_o,             // Data type on data memory: byte, half word or word
-  output logic          lsu_sign_ext_o,         // Sign extension on read data from data memory
-  output logic [1:0]    lsu_reg_offset_o,       // Offset in byte inside register for stores
+  output logic [1:0]    lsu_size_o,             // Data size (byte, half word or word)
+  output logic          lsu_sext_o,             // Sign extension on read data from data memory
   output logic [5:0]    lsu_atop_o,             // Atomic memory access
 
   // Register file related signals
@@ -201,9 +200,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign csr_op             = decoder_ctrl_mux.csr_op;                          
   assign lsu_en             = decoder_ctrl_mux.lsu_en;                        
   assign lsu_we_o           = decoder_ctrl_mux.lsu_we;                       
-  assign lsu_type_o         = decoder_ctrl_mux.lsu_type;                     
-  assign lsu_sign_ext_o     = decoder_ctrl_mux.lsu_sign_ext;
-  assign lsu_reg_offset_o   = decoder_ctrl_mux.lsu_reg_offset;               
+  assign lsu_size_o         = decoder_ctrl_mux.lsu_size;                     
+  assign lsu_sext_o         = decoder_ctrl_mux.lsu_sext;
   assign lsu_atop_o         = decoder_ctrl_mux.lsu_atop;                     
   assign sys_en             = decoder_ctrl_mux.sys_en;
   assign sys_mret_insn_o    = decoder_ctrl_mux.sys_mret_insn;

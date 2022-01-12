@@ -74,15 +74,18 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   localparam DEPTH = 2;                         // Maximum number of outstanding transactions
 
-  // Transaction request (to cv32e40x_mpu)
-  logic          trans_valid;
-  logic          trans_ready;
-  obi_data_req_t trans;
+  // Transaction request (before aligner)
+  trans_req_t     trans;
+
+  // Aligned transaction request (to cv32e40x_mpu)
+  logic           trans_valid; // todo: consider renaming to align_trans_valid, align_trans_ready (if so, do we need trans_valid, trans_ready as well?)
+  logic           trans_ready;
+  obi_data_req_t  align_trans;
 
   // Transaction response interface (from cv32e40x_mpu)
-  logic         resp_valid;
-  logic [31:0]  resp_rdata;
-  data_resp_t   resp;
+  logic           resp_valid;
+  logic [31:0]    resp_rdata;
+  data_resp_t     resp;
 
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
   logic           buffer_trans_valid;
@@ -102,66 +105,73 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   obi_data_req_t  bus_trans;
 
   // Transaction response (from cv32e40x_data_obi_interface to cv32e40x_mpu)
-  logic            bus_resp_valid;
-  obi_data_resp_t  bus_resp;
+  logic           bus_resp_valid;
+  obi_data_resp_t bus_resp;
 
   // Counter to count maximum number of outstanding transactions
-  logic [1:0]   cnt_q;                  // Transaction counter
-  logic [1:0]   next_cnt;               // Next value for cnt_q
-  logic         count_up;               // Increment outstanding transaction count by 1 (can happen at same time as count_down)
-  logic         count_down;             // Decrement outstanding transaction count by 1 (can happen at same time as count_up)
-  logic         cnt_is_one_next;
+  logic [1:0]     cnt_q;                // Transaction counter
+  logic [1:0]     next_cnt;             // Next value for cnt_q
+  logic           count_up;             // Increment outstanding transaction count by 1 (can happen at same time as count_down)
+  logic           count_down;           // Decrement outstanding transaction count by 1 (can happen at same time as count_up)
+  logic           cnt_is_one_next;
 
-  logic         ctrl_update;            // Update load/store control info in WB stage
+  logic           ctrl_update;          // Update load/store control info in WB stage
 
   // registers for data_rdata alignment and sign extension
-  logic [1:0]   lsu_type_q;
-  logic         lsu_sign_ext_q;
-  logic         lsu_we_q;
-  logic [1:0]   rdata_offset_q;
-  logic         last_q;                 // Last transfer of load/store (only 0 for first part of split transfer)
+  logic [1:0]     lsu_size_q;
+  logic           lsu_sext_q;
+  logic           lsu_we_q;
+  logic [1:0]     rdata_offset_q;
+  logic           last_q;               // Last transfer of load/store (only 0 for first part of split transfer)
 
-  logic [31:0]  addr_int;
-  logic [1:0]   wdata_offset;           // Mux control for data to be written to memory
-  logic [3:0]   be;                     // Byte enables
-  logic [31:0]  wdata;
+  logic [3:0]     be;                   // Byte enables
+  logic [31:0]    wdata;
 
-  logic         split_q;                // Currently performing the second address phase of a split misaligned load/store
-  logic         misaligned_halfword;    // Halfword is not naturally aligned, but no split is needed
-  logic         misaligned_access;      // Access is not naturally aligned
+  logic           split_q;              // Currently performing the second address phase of a split misaligned load/store
+  logic           misaligned_halfword;  // Halfword is not naturally aligned, but no split is needed
+  logic           misaligned_access;    // Access is not naturally aligned
 
-  logic         filter_resp_busy;       // Response filter busy
+  logic           filter_resp_busy;     // Response filter busy
 
-  logic [31:0]  rdata_q;
+  logic [31:0]    rdata_q;
 
-  logic         done_0;                 // First stage (EX) is done
+  logic           done_0;               // First stage (EX) is done
 
-  // The internally gated lsu_en is replaced by valid_0_i from the EX stage
+  logic           trans_valid_q;        // trans_valid got clocked without trans_ready
 
-  logic         trans_valid_q; // trans_valid got clocked without trans_ready
+  // Transaction (before aligner)
+  // Generate address from operands (atomic memory transactions do not use an address offset computation)
+  assign trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
+  assign trans.we    = id_ex_pipe_i.lsu_we;
+  assign trans.size  = id_ex_pipe_i.lsu_size;
+  assign trans.wdata = id_ex_pipe_i.operand_c;
+  assign trans.mode  = PRIV_LVL_M; // Machine mode
+
+  assign trans.atop  = id_ex_pipe_i.lsu_atop;
+  assign trans.sext  = id_ex_pipe_i.lsu_sext;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
   begin
-    case (id_ex_pipe_i.lsu_type) // Data type 00 byte, 01 halfword, 10 word
+    case (trans.size) // Data type 00 byte, 01 halfword, 10 word
       2'b00: begin // Writing a byte
-        case (addr_int[1:0])
+        case (trans.addr[1:0])
           2'b00: be = 4'b0001;
           2'b01: be = 4'b0010;
           2'b10: be = 4'b0100;
           2'b11: be = 4'b1000;
-        endcase; // case (addr_int[1:0])
+        endcase; // case (trans.addr[1:0])
       end
       2'b01:
       begin // Writing a half word
         if (split_q == 1'b0)
         begin // non-misaligned case
-          case (addr_int[1:0])
+          case (trans.addr[1:0])
             2'b00: be = 4'b0011;
             2'b01: be = 4'b0110;
             2'b10: be = 4'b1100;
             2'b11: be = 4'b1000;
-          endcase; // case (addr_int[1:0])
+          endcase; // case (trans.addr[1:0])
         end
         else
         begin // misaligned case
@@ -172,39 +182,37 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       begin // Writing a word
         if (split_q == 1'b0)
         begin // non-misaligned case
-          case (addr_int[1:0])
+          case (trans.addr[1:0])
             2'b00: be = 4'b1111;
             2'b01: be = 4'b1110;
             2'b10: be = 4'b1100;
             2'b11: be = 4'b1000;
-          endcase; // case (addr_int[1:0])
+          endcase; // case (trans.addr[1:0])
         end
         else
         begin // misaligned case
-          case (addr_int[1:0])
+          case (trans.addr[1:0])
             2'b00: be = 4'b0000; // this is not used, but included for completeness
             2'b01: be = 4'b0001;
             2'b10: be = 4'b0011;
             2'b11: be = 4'b0111;
-          endcase; // case (addr_int[1:0])
+          endcase; // case (trans.addr[1:0])
         end
       end
-    endcase; // case (id_ex_pipe_i.lsu_type)
+    endcase; // case (trans.size)
   end
 
   // Prepare data to be written to the memory. We handle misaligned (split) accesses,
   // half word and byte accesses and register offsets here.
 
-  assign wdata_offset = addr_int[1:0] - id_ex_pipe_i.lsu_reg_offset[1:0];
-
   always_comb
   begin
-    case (wdata_offset)
-      2'b00: wdata = id_ex_pipe_i.operand_c[31:0];
-      2'b01: wdata = {id_ex_pipe_i.operand_c[23:0], id_ex_pipe_i.operand_c[31:24]};
-      2'b10: wdata = {id_ex_pipe_i.operand_c[15:0], id_ex_pipe_i.operand_c[31:16]};
-      2'b11: wdata = {id_ex_pipe_i.operand_c[ 7:0], id_ex_pipe_i.operand_c[31: 8]};
-    endcase; // case (wdata_offset)
+    case (trans.addr[1:0])
+      2'b00: wdata = trans.wdata[31:0];
+      2'b01: wdata = {trans.wdata[23:0], trans.wdata[31:24]};
+      2'b10: wdata = {trans.wdata[15:0], trans.wdata[31:16]};
+      2'b11: wdata = {trans.wdata[ 7:0], trans.wdata[31: 8]};
+    endcase; // case (trans.addr[1:0])
   end
 
   // FF for rdata alignment and sign-extension
@@ -212,16 +220,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   always_ff @(posedge clk, negedge rst_n)
   begin
     if (rst_n == 1'b0) begin
-      lsu_type_q       <= 2'b0;
-      lsu_sign_ext_q   <= 1'b0;
+      lsu_size_q       <= 2'b0;
+      lsu_sext_q       <= 1'b0;
       lsu_we_q         <= 1'b0;
       rdata_offset_q   <= 2'b0;
       last_q           <= 1'b0;
     end else if (ctrl_update) begin     // request was granted, we wait for rvalid and can continue to WB
-      lsu_type_q       <= id_ex_pipe_i.lsu_type;
-      lsu_sign_ext_q   <= id_ex_pipe_i.lsu_sign_ext;
-      lsu_we_q         <= id_ex_pipe_i.lsu_we;
-      rdata_offset_q   <= addr_int[1:0];
+      lsu_size_q       <= trans.size;
+      lsu_sext_q       <= trans.sext;
+      lsu_we_q         <= trans.we;
+      rdata_offset_q   <= trans.addr[1:0];
       // If we currently signal split from first stage (EX), WB stage will not see the last transfer for this update.
       // Otherwise we are on the last. For non-split accesses we always mark as last.
       last_q           <= lsu_split_0_o ? 1'b0 : 1'b1;
@@ -279,7 +287,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[15:0]};
         else
           rdata_h_ext = {{16{resp_rdata[15]}}, resp_rdata[15:0]};
@@ -287,7 +295,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b01:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[23:8]};
         else
           rdata_h_ext = {{16{resp_rdata[23]}}, resp_rdata[23:8]};
@@ -295,7 +303,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b10:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[31:16]};
         else
           rdata_h_ext = {{16{resp_rdata[31]}}, resp_rdata[31:16]};
@@ -303,7 +311,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b11:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_h_ext = {16'h0000, resp_rdata[7:0], rdata_q[31:24]};
         else
           rdata_h_ext = {{16{resp_rdata[7]}}, resp_rdata[7:0], rdata_q[31:24]};
@@ -317,14 +325,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     case (rdata_offset_q)
       2'b00:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[7:0]};
         else
           rdata_b_ext = {{24{resp_rdata[7]}}, resp_rdata[7:0]};
       end
 
       2'b01: begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[15:8]};
         else
           rdata_b_ext = {{24{resp_rdata[15]}}, resp_rdata[15:8]};
@@ -332,7 +340,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b10:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[23:16]};
         else
           rdata_b_ext = {{24{resp_rdata[23]}}, resp_rdata[23:16]};
@@ -340,7 +348,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       2'b11:
       begin
-        if (lsu_sign_ext_q == 1'b0)
+        if (lsu_sext_q == 1'b0)
           rdata_b_ext = {24'h00_0000, resp_rdata[31:24]};
         else
           rdata_b_ext = {{24{resp_rdata[31]}}, resp_rdata[31:24]};
@@ -351,7 +359,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // select word, half word or byte sign extended version
   always_comb
   begin
-    case (lsu_type_q)
+    case (lsu_size_q)
       2'b00:   rdata_ext = rdata_b_ext;
       2'b01:   rdata_ext = rdata_h_ext;
       default: rdata_ext = rdata_w_ext;
@@ -384,8 +392,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // misaligned_access is high for both transfers of a misaligned transfer
   assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword;
 
-
-  // check for misaligned accesses that need a second memory access
+  // Check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
   // This is used to gate off ready_0_o to avoid instructions into
   // the EX stage while the LSU is handling the second phase of the split access.
@@ -396,30 +403,26 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     misaligned_halfword = 1'b0;
     if (valid_0_i && !split_q)
     begin
-      case (id_ex_pipe_i.lsu_type)
+      case (trans.size)
         2'b10: // word
         begin
-          if (addr_int[1:0] != 2'b00)
+          if (trans.addr[1:0] != 2'b00)
             lsu_split_0_o = 1'b1;
         end
         2'b01: // half word
         begin
-          if (addr_int[1:0] == 2'b11)
+          if (trans.addr[1:0] == 2'b11)
             lsu_split_0_o = 1'b1;
-          if (addr_int[0] != 1'b0)
+          if (trans.addr[0] != 1'b0)
             misaligned_halfword = 1'b1;
         end
-      endcase // case (id_ex_pipe_i.lsu_type)
+      endcase // case (trans.size)
     end
   end
-
-  // Generate address from operands (atomic memory transactions do not use an address offset computation)
-  assign addr_int = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b + (split_q ? 'h4 : 'h0));
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   // In the case of mpu errors, the LSU control logic can have outstanding transfers not seen by the response filter.
   assign busy_o = filter_resp_busy || (cnt_q > 0) || trans_valid;
-
 
   //////////////////////////////////////////////////////////////////////////////
   // Transaction request generation
@@ -431,11 +434,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
-  assign trans.addr  = split_q ? {addr_int[31:2], 2'b00} : addr_int;
-  assign trans.we    = id_ex_pipe_i.lsu_we;
-  assign trans.be    = be;
-  assign trans.wdata = wdata;
-  assign trans.atop  = id_ex_pipe_i.lsu_atop;
+
+  // todo: As part of the fix for https://github.com/openhwgroup/cv32e40x/issues/388 the following should be used as well:
+  // assign align_trans.addr    = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
+
+  assign align_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
+  assign align_trans.we      = trans.we;
+  assign align_trans.be      = be;
+  assign align_trans.wdata   = wdata;
+  assign align_trans.atop    = trans.atop;
+  assign align_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
+  assign align_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
@@ -586,10 +595,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // MPU
   //////////////////////////////////////////////////////////////////////////////
 
-  assign trans.prot[0]   = 1'b1;  // Transfers from LSU are data transfers
-  assign trans.prot[2:1] = PRIV_LVL_M; // Machine mode
-  assign trans.memtype   = 2'b00; // memtype is assigned in the MPU, tie off.
-
   cv32e40x_mpu
   #(
     .IF_STAGE           ( 0                    ),
@@ -610,7 +615,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
     .core_trans_valid_i   ( trans_valid        ),
     .core_trans_ready_o   ( trans_ready        ),
-    .core_trans_i         ( trans              ),
+    .core_trans_i         ( align_trans        ),
     .core_resp_valid_o    ( resp_valid         ),
     .core_resp_o          ( resp               ),
 

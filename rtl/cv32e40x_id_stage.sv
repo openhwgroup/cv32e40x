@@ -133,9 +133,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // LSU
   logic                 lsu_en;
   logic                 lsu_we;
-  logic [1:0]           lsu_type;
-  logic                 lsu_sign_ext;
-  logic [1:0]           lsu_reg_offset;
+  logic [1:0]           lsu_size;
+  logic                 lsu_sext;
   logic                 lsu_en_raw;
   logic [5:0]           lsu_atop;               // Atomic memory instruction
 
@@ -415,9 +414,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .lsu_en_o                        ( lsu_en                    ),
     .lsu_en_raw_o                    ( lsu_en_raw                ),
     .lsu_we_o                        ( lsu_we                    ),
-    .lsu_type_o                      ( lsu_type                  ),
-    .lsu_sign_ext_o                  ( lsu_sign_ext              ),
-    .lsu_reg_offset_o                ( lsu_reg_offset            ),
+    .lsu_size_o                      ( lsu_size                  ),
+    .lsu_sext_o                      ( lsu_sext                  ),
     .lsu_atop_o                      ( lsu_atop                  ),
 
     // Register file control signals
@@ -487,9 +485,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       id_ex_pipe_o.lsu_en                 <= 1'b0;
       id_ex_pipe_o.lsu_we                 <= 1'b0;
-      id_ex_pipe_o.lsu_type               <= 2'b0;
-      id_ex_pipe_o.lsu_sign_ext           <= 1'b0;
-      id_ex_pipe_o.lsu_reg_offset         <= 2'b0;
+      id_ex_pipe_o.lsu_size               <= 2'b0;
+      id_ex_pipe_o.lsu_sext               <= 1'b0;
       id_ex_pipe_o.lsu_atop               <= 6'b0;
 
       id_ex_pipe_o.sys_en                <= 1'b0;
@@ -562,9 +559,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.lsu_en                 <= lsu_en;
         if (lsu_en) begin
           id_ex_pipe_o.lsu_we               <= lsu_we;
-          id_ex_pipe_o.lsu_type             <= lsu_type;
-          id_ex_pipe_o.lsu_sign_ext         <= lsu_sign_ext;
-          id_ex_pipe_o.lsu_reg_offset       <= lsu_reg_offset;
+          id_ex_pipe_o.lsu_size             <= lsu_size;
+          id_ex_pipe_o.lsu_sext             <= lsu_sext;
           id_ex_pipe_o.lsu_atop             <= lsu_atop;
         end
 

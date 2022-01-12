@@ -50,8 +50,8 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
           decoder_ctrl_o.rf_we            = 1'b1;
           decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
           decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
-          decoder_ctrl_o.lsu_type         = 2'b00;
-          decoder_ctrl_o.lsu_sign_ext     = 1'b1;
+          decoder_ctrl_o.lsu_size         = 2'b00;
+          decoder_ctrl_o.lsu_sext         = 1'b1;
           decoder_ctrl_o.lsu_atop         = {1'b1, instr_rdata_i[31:27]};
 
           unique case (instr_rdata_i[31:27])

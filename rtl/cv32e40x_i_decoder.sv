@@ -129,9 +129,9 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.op_c_mux_sel     = OP_C_REGB_OR_FWD;     // Used for write data
         decoder_ctrl_o.imm_b_mux_sel    = IMMB_S;
 
-        // Data type encoded in instr_rdata_i[13:12]:
+        // Data size encoded in instr_rdata_i[13:12]:
         // 2'b00: SB, 2'b01: SH, 2'10: SW
-        decoder_ctrl_o.lsu_type = instr_rdata_i[13:12];
+        decoder_ctrl_o.lsu_size = instr_rdata_i[13:12];
 
         if ((instr_rdata_i[14] == 1'b1) || (instr_rdata_i[13:12] == 2'b11)) begin
           decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
@@ -148,11 +148,11 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.imm_b_mux_sel    = IMMB_I;
 
         // Sign/zero extension
-        decoder_ctrl_o.lsu_sign_ext = !instr_rdata_i[14];
+        decoder_ctrl_o.lsu_sext = !instr_rdata_i[14];
 
-        // Data type encoded in instr_rdata_i[13:12]:
+        // Data size encoded in instr_rdata_i[13:12]:
         // 2'b00: LB, 2'b01: LH, 2'10: LW
-        decoder_ctrl_o.lsu_type = instr_rdata_i[13:12];
+        decoder_ctrl_o.lsu_size = instr_rdata_i[13:12];
 
         // Reserved or RV64
         if ((instr_rdata_i[14:12] == 3'b111) || (instr_rdata_i[14:12] == 3'b110) || (instr_rdata_i[14:12] == 3'b011)) begin
