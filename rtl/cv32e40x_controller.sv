@@ -49,7 +49,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        alu_en_raw_id_i,
-  input  logic        alu_jmp_id_i,
+  input  logic        alu_jmp_id_i,               // Jump (JAL, JALR)
+  input  logic        alu_jmpr_id_i,              // Jump register (JALR)
   input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,
   input  logic        csr_en_id_i,
@@ -79,9 +80,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Debug Signal
   input  logic        debug_req_i,
   input  dcsr_t       dcsr_i,
-
-  // Regfile target
-  input  logic        rf_alu_we_id_i,             // currently decoded we enable
 
   // CSR raddr in ex
   input  logic        csr_counter_read_i,         // A performance counter is read in CSR (EX)
@@ -200,9 +198,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From ID
     .rf_re_id_i                 ( rf_re_id_i               ),
     .rf_raddr_id_i              ( rf_raddr_id_i            ),
-    .rf_alu_we_id_i             ( rf_alu_we_id_i           ),
     .alu_en_raw_id_i            ( alu_en_raw_id_i          ),
-    .alu_jmp_id_i               ( alu_jmp_id_i             ),
+    .alu_jmpr_id_i              ( alu_jmpr_id_i            ),
     .sys_en_id_i                ( sys_en_id_i              ),
     .sys_mret_id_i              ( sys_mret_id_i            ),
     .csr_en_id_i                ( csr_en_id_i              ),

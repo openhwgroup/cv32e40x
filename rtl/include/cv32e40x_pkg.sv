@@ -686,6 +686,7 @@ typedef struct packed {
   logic                              alu_en;
   logic                              alu_bch;
   logic                              alu_jmp;
+  logic                              alu_jmpr;
   alu_opcode_e                       alu_operator;
   alu_op_a_mux_e                     alu_op_a_mux_sel;
   alu_op_b_mux_e                     alu_op_b_mux_sel;
@@ -722,6 +723,7 @@ typedef struct packed {
                                                           alu_en                       : 1'b0,
                                                           alu_bch                      : 1'b0,
                                                           alu_jmp                      : 1'b0,
+                                                          alu_jmpr                     : 1'b0,
                                                           alu_operator                 : ALU_SLTU,
                                                           alu_op_a_mux_sel             : OP_A_NONE,
                                                           alu_op_b_mux_sel             : OP_B_NONE,
