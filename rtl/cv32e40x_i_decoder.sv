@@ -59,6 +59,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
       OPCODE_JAL: begin // Jump and Link
         decoder_ctrl_o.alu_en                       = 1'b1;             // ALU computes link address (PC+2/4)
         decoder_ctrl_o.alu_jmp                      = 1'b1;
+        decoder_ctrl_o.alu_jmpr                     = 1'b0;             // No register used (rf_re[0] = 0) (used for hazard detection)
         decoder_ctrl_o.alu_op_a_mux_sel             = OP_A_CURRPC;
         decoder_ctrl_o.alu_op_b_mux_sel             = OP_B_IMM;         // PC increment (2 or 4) for link address
         decoder_ctrl_o.imm_b_mux_sel                = IMMB_PCINCR;
@@ -75,6 +76,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         end else begin
           decoder_ctrl_o.alu_en                     = 1'b1;             // ALU computes link address (PC+2/4)
           decoder_ctrl_o.alu_jmp                    = 1'b1;
+          decoder_ctrl_o.alu_jmpr                   = 1'b1;             // Register used (rf_re[0] = 1) (used for hazard detection)
           decoder_ctrl_o.alu_op_a_mux_sel           = OP_A_CURRPC;
           decoder_ctrl_o.alu_op_b_mux_sel           = OP_B_IMM;         // PC increment (2 or 4) for link address
           decoder_ctrl_o.imm_b_mux_sel              = IMMB_PCINCR;

@@ -204,7 +204,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
   // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
-  assign jump_in_id = ((alu_jmp_id_i && alu_en_raw_id_i && !ctrl_byp_i.jalr_stall) ||
+  assign jump_in_id = ((alu_jmp_id_i && alu_en_raw_id_i && !ctrl_byp_i.jalr_stall) || // todo: study area and functional impact of using alu_en_id_i instead
                        (sys_en_id_i && sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
                          if_id_pipe_i.instr_valid;
 
@@ -563,11 +563,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
-            if(fencei_ready) begin
+            if (fencei_ready) begin
               // Set fencei_flush_req_o in the next cycle
               fencei_flush_req_set = 1'b1;
             end
-            if(fencei_req_and_ack_q) begin
+            if (fencei_req_and_ack_q) begin
               // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_FENCEI
 
               // Unhalt wb, kill if,id,ex
@@ -618,7 +618,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // kill_if
             ctrl_fsm_o.kill_if = 1'b1;
 
-            // Jumps in ID (JAL, JALR, mret, dret)
+            // Jumps in ID (JAL, JALR, mret)
             if (sys_en_id_i && sys_mret_id_i) begin
               ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_MRET;
               ctrl_fsm_o.pc_set = 1'b1;
@@ -655,7 +655,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
         ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring following instructions
-        if(ctrl_fsm_o.wake_from_sleep) begin
+        if (ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
         end
@@ -727,12 +727,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     // Detect first insn issue in single step after dret
     // Used to block further issuing
-    if(!ctrl_fsm_o.debug_mode && dcsr_i.step && !single_step_halt_if_q && (if_valid_i && id_ready_i)) begin
+    if (!ctrl_fsm_o.debug_mode && dcsr_i.step && !single_step_halt_if_q && (if_valid_i && id_ready_i)) begin
       single_step_halt_if_n = 1'b1;
     end
 
     // Clear jump/branch flag when new insn is emitted from IF
-    if(branch_taken_q && if_valid_i && id_ready_i) begin
+    if (branch_taken_q && if_valid_i && id_ready_i) begin
       branch_taken_n = 1'b0;
     end
   end
@@ -816,7 +816,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       fencei_req_and_ack_q <= fencei_flush_req_o && fencei_flush_ack_i;
 
       // Set fencei_flush_req_o based on FSM output. Clear upon req&&ack.
-      if(fencei_flush_req_o && fencei_flush_ack_i) begin
+      if (fencei_flush_req_o && fencei_flush_ack_i) begin
         fencei_flush_req_o <= 1'b0;
       end
       else if (fencei_flush_req_set) begin
@@ -836,11 +836,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // i.e halt_wb due to debug will result in killed WB, while for fence.i it will retire.
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
-      if(ex_valid_i && wb_ready_i && !lsu_split_ex_i) begin
+      if (ex_valid_i && wb_ready_i && !lsu_split_ex_i) begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet
-        if(!ctrl_fsm_o.halt_wb) begin
+        if (!ctrl_fsm_o.halt_wb) begin
           wb_counter_event <= 1'b0;
         end
       end

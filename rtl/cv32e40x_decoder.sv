@@ -52,7 +52,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          alu_en_o,               // ALU enable
   output logic          alu_en_raw_o,           // ALU enable without deassert
   output logic          alu_bch_o,              // ALU branch (ALU used for comparison)
-  output logic          alu_jmp_o,              // ALU jump (ALU used to compute LR)
+  output logic          alu_jmp_o,              // ALU jump (JALR, JALR) (ALU used to compute LR)
+  output logic          alu_jmpr_o,             // ALU jump register (JALR) (ALU used to compute LR)
   output alu_opcode_e   alu_operator_o,         // ALU operation selection
   output alu_op_a_mux_e alu_op_a_mux_sel_o,     // Operand a selection: reg value, PC, immediate or zero
   output alu_op_b_mux_e alu_op_b_mux_sel_o,     // Operand b selection: reg value or immediate
@@ -72,7 +73,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // LSU
   output logic          lsu_en_o,               // Start transaction to data memory
-  output logic          lsu_en_raw_o,
   output logic          lsu_we_o,               // Data memory write enable
   output logic [1:0]    lsu_type_o,             // Data type on data memory: byte, half word or word
   output logic          lsu_sign_ext_o,         // Sign extension on read data from data memory
@@ -81,7 +81,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // Register file related signals
   output logic          rf_we_o,                // Write enable for register file
-  output logic          rf_we_raw_o,            // Write enable for register file without deassert
   output logic [1:0]    rf_re_o,
 
   // Mux selects
@@ -183,6 +182,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign alu_en             = decoder_ctrl_mux.alu_en;
   assign alu_bch_o          = decoder_ctrl_mux.alu_bch;
   assign alu_jmp_o          = decoder_ctrl_mux.alu_jmp;
+  assign alu_jmpr_o         = decoder_ctrl_mux.alu_jmpr;
   assign alu_operator_o     = decoder_ctrl_mux.alu_operator;                  
   assign alu_op_a_mux_sel_o = decoder_ctrl_mux.alu_op_a_mux_sel;              
   assign alu_op_b_mux_sel_o = decoder_ctrl_mux.alu_op_b_mux_sel;              
@@ -219,6 +219,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign mul_en_o = deassert_we_i ? 1'b0        : mul_en;
   assign div_en_o = deassert_we_i ? 1'b0        : div_en;
   assign lsu_en_o = deassert_we_i ? 1'b0        : lsu_en;
+
   assign csr_op_o = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
   assign rf_we_o  = deassert_we_i ? 1'b0        : rf_we;
 
@@ -226,7 +227,5 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
   assign alu_en_raw_o = alu_en;
-  assign lsu_en_raw_o = lsu_en;
-  assign rf_we_raw_o  = rf_we;
   
 endmodule // cv32e40x_decoder
