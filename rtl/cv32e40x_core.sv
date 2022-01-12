@@ -160,9 +160,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_data_t    rf_wdata[REGFILE_NUM_WRITE_PORTS];
   logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
-  // Register file write enable for ALU insn in ID
-  logic rf_alu_we_id;
-
     // CSR control
   logic [23:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
@@ -218,6 +215,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Controller <-> decoder
   logic        alu_en_raw_id;
   logic        alu_jmp_id;
+  logic        alu_jmpr_id;
   logic        sys_en_id;
   logic        sys_mret_insn_id;
   logic        csr_en_id;
@@ -408,6 +406,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .alu_en_raw_o                 ( alu_en_raw_id             ),
     .alu_jmp_o                    ( alu_jmp_id                ),
+    .alu_jmpr_o                   ( alu_jmpr_id               ),
     .sys_en_o                     ( sys_en_id                 ),
     .sys_mret_insn_o              ( sys_mret_insn_id          ),
     .csr_en_o                     ( csr_en_id                 ),
@@ -415,7 +414,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .rf_re_o                      ( rf_re_id                  ),
     .rf_raddr_o                   ( rf_raddr_id               ),
-    .rf_alu_we_id_o               ( rf_alu_we_id              ),
     .rf_rdata_i                   ( rf_rdata_id               ),
 
     // Pipeline handshakes
@@ -675,6 +673,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .alu_en_raw_id_i                ( alu_en_raw_id          ),
     .alu_jmp_id_i                   ( alu_jmp_id             ),
+    .alu_jmpr_id_i                  ( alu_jmpr_id            ),
     .sys_en_id_i                    ( sys_en_id              ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
     .csr_en_id_i                    ( csr_en_id              ),
@@ -706,9 +705,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Register File read, write back and forwards
     .rf_re_id_i                     ( rf_re_id               ),
     .rf_raddr_id_i                  ( rf_raddr_id            ),
-
-    // Write targets from ID
-    .rf_alu_we_id_i                 ( rf_alu_we_id           ),
     
     // Fencei flush handshake
     .fencei_flush_ack_i             ( fencei_flush_ack_i     ),

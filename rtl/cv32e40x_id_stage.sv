@@ -66,7 +66,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic [31:0] rf_wdata_ex_i,
 
   output logic        alu_en_raw_o,
-  output logic        alu_jmp_o,
+  output logic        alu_jmp_o,        // Jump (JAL, JALR)
+  output logic        alu_jmpr_o,       // Jump register (JALR)
 
   output logic        sys_en_o,
   output logic        sys_mret_insn_o,
@@ -77,8 +78,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // RF interface -> controller
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
   output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
-
-  output logic        rf_alu_we_id_o,
 
   // Register file
   input  rf_data_t    rf_rdata_i[REGFILE_NUM_READ_PORTS],
@@ -111,7 +110,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [1:0]           rf_re;                  // Decoder only supports rs1, rs2
   logic                 rf_we;
   logic                 rf_we_dec;
-  logic                 rf_we_raw;
   rf_addr_t             rf_waddr;
   
   // ALU Control
@@ -119,6 +117,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 alu_en_raw;
   logic                 alu_bch;
   logic                 alu_jmp;
+  logic                 alu_jmpr;
   alu_opcode_e          alu_operator;
 
   // Multiplier Control
@@ -135,7 +134,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 lsu_we;
   logic [1:0]           lsu_size;
   logic                 lsu_sext;
-  logic                 lsu_en_raw;
   logic [5:0]           lsu_atop;               // Atomic memory instruction
 
   // CSR
@@ -393,6 +391,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .alu_en_raw_o                    ( alu_en_raw                ),
     .alu_bch_o                       ( alu_bch                   ),
     .alu_jmp_o                       ( alu_jmp                   ),
+    .alu_jmpr_o                      ( alu_jmpr                  ),
     .alu_operator_o                  ( alu_operator              ),
     .alu_op_a_mux_sel_o              ( alu_op_a_mux_sel          ),
     .alu_op_b_mux_sel_o              ( alu_op_b_mux_sel          ),
@@ -412,7 +411,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // LSU
     .lsu_en_o                        ( lsu_en                    ),
-    .lsu_en_raw_o                    ( lsu_en_raw                ),
     .lsu_we_o                        ( lsu_we                    ),
     .lsu_size_o                      ( lsu_size                  ),
     .lsu_sext_o                      ( lsu_sext                  ),
@@ -421,7 +419,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Register file control signals
     .rf_re_o                         ( rf_re                     ),
     .rf_we_o                         ( rf_we_dec                 ),
-    .rf_we_raw_o                     ( rf_we_raw                 ),
 
     // Mux selects
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
@@ -443,8 +440,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Register writeback is enabled either by the decoder or by the XIF
   assign rf_we          = rf_we_dec || xif_we;
-
-  assign rf_alu_we_id_o = rf_we_raw && !lsu_en_raw;
 
   
   /////////////////////////////////////////////////////////////////////////////////
@@ -613,6 +608,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign alu_en_raw_o = alu_en_raw;
   assign alu_jmp_o    = alu_jmp;
+  assign alu_jmpr_o   = alu_jmpr;
 
   assign csr_en_o = csr_en;
   assign csr_op_o = csr_op;
