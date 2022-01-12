@@ -122,19 +122,19 @@ In addition, the following standard instruction set extensions are available fro
      - optionally enabled based on ``A_EXT`` parameter
 
    * - **Zba**: Bit Manipulation Address calculation instructions
-     - Version 0.93 in [RISC-V-ZBA_ZBB_ZBC_ZBS]_
+     - Version 1.0.0
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbb**: Bit Manipulation Base instructions
-     - Version 0.93
+     - Version 1.0.0
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbc**: Bit Manipulation Carry-Less Multiply instructions
-     - Version 0.93
+     - Version 1.0.0
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbs**: Bit Manipulation Bit set, Bit clear, etc. instructions
-     - Version 0.93
+     - Version 1.0.0
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zkt**: Data Independent Execution Latency
