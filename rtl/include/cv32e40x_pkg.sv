@@ -479,7 +479,6 @@ typedef struct packed {
   logic         mie;
   logic [2:1]   zero0; // Unimplemented, hardwired zero
   logic         uie; // Tie to zero when user mode is not enabled
-
 } mstatus_t;
 
 // Debug Cause
@@ -705,9 +704,8 @@ typedef struct packed {
   csr_opcode_e                       csr_op;
   logic                              lsu_en;
   logic                              lsu_we;
-  logic [1:0]                        lsu_type;
-  logic                              lsu_sign_ext;
-  logic [1:0]                        lsu_reg_offset;
+  logic [1:0]                        lsu_size;
+  logic                              lsu_sext;
   logic [5:0]                        lsu_atop;
   logic                              sys_en;
   logic                              illegal_insn;
@@ -742,9 +740,8 @@ typedef struct packed {
                                                           csr_op                       : CSR_OP_READ,
                                                           lsu_en                       : 1'b0,
                                                           lsu_we                       : 1'b0,
-                                                          lsu_type                     : 2'b00,
-                                                          lsu_sign_ext                 : 1'b0,
-                                                          lsu_reg_offset               : 2'b00,
+                                                          lsu_size                     : 2'b00,
+                                                          lsu_sext                     : 1'b0,
                                                           lsu_atop                     : 6'b000000,
                                                           sys_en                       : 1'b0,
                                                           illegal_insn                 : 1'b1,
@@ -917,6 +914,17 @@ typedef struct packed {
   mpu_status_e                mpu_status;
 } data_resp_t;
 
+// LSU transaction
+typedef struct packed {
+  logic [DATA_ADDR_WIDTH-1:0]     addr;
+  logic [1:0]                     size;
+  logic [5:0]                     atop;
+  logic                           we;
+  logic                           sext;
+  logic [DATA_DATA_WIDTH-1:0]     wdata;
+  logic [1:0]                     mode;
+} trans_req_t;
+
 // Response type for tracking bufferable and load/store in lsu response filter
 typedef struct packed {
   logic bufferable;
@@ -984,9 +992,8 @@ typedef struct packed {
   // LSU
   logic         lsu_en;
   logic         lsu_we;
-  logic [1:0]   lsu_type;
-  logic         lsu_sign_ext;
-  logic [1:0]   lsu_reg_offset;
+  logic [1:0]   lsu_size;
+  logic         lsu_sext;
   logic [5:0]   lsu_atop;
 
   // SYS

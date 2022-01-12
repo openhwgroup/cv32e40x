@@ -43,7 +43,7 @@ module cv32e40x_rvfi
    // LSU
    input logic                                lsu_en_id_i,
    input logic                                lsu_we_id_i,
-   input logic [1:0]                          lsu_type_id_i,
+   input logic [1:0]                          lsu_size_id_i,
    // Register reads
    input logic [4:0]                          rs1_addr_id_i,
    input logic [4:0]                          rs2_addr_id_i,
@@ -779,9 +779,9 @@ module cv32e40x_rvfi
   //////////////////
 
 
-  // Byte enable based on data type
+  // Byte enable based on data size
   always_comb begin
-    unique case (lsu_type_id_i)
+    unique case (lsu_size_id_i)
       2'b00:   rvfi_mem_mask_int = 4'b0001;
       2'b01:   rvfi_mem_mask_int = 4'b0011;
       2'b10:   rvfi_mem_mask_int = 4'b1111;
