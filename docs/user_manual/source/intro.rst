@@ -36,13 +36,13 @@ It follows these specifications:
 .. [RISC-V-UNPRIV] RISC-V Instruction Set Manual, Volume I: User-Level ISA, Document Version 20191213 (December 13, 2019),
    https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf
 
-.. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20210915-Public-Review-draft (September 16, 2021),
-   https://github.com/riscv/riscv-isa-manual/releases/download/riscv-privileged-20210915-public-review/riscv-privileged-20210915-public-review.pdf
+.. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20211105-signoff (November 5, 2021),
+   https://github.com/riscv/riscv-isa-manual/releases/download/draft-20211105-c30284b/riscv-privileged.pdf
 
 .. [RISC-V-DEBUG] RISC-V External Debug Support, version 1.0.0, 2021-10-07:,
    https://github.com/riscv/riscv-debug-spec/blob/master/riscv-debug-stable.pdf
 
-.. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28:,
+.. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
 
 .. [RISC-V-ZCEB] RISC-V Standard Extension for the **Zceb** subset of **Zce**, v0.52 (not ratified yet),
@@ -53,6 +53,9 @@ It follows these specifications:
 
 .. [RISC-V-ZCES] RISC-V Standard Extension for the **Zces** subset of **Zce**, v0.52 (not ratified yet),
    https://github.com/riscv/riscv-code-size-reduction/blob/master/Zce-release-candidate/Zces.pdf
+
+.. [RISC-V-CRYPTO] RISC-V Cryptography Extensions Volume I, Scalar & Entropy Source Instructions, Version v1.0.0, 2'nd December, 2021: Ratified,
+   https://github.com/riscv/riscv-crypto/releases/download/v1.0.0-scalar/riscv-crypto-spec-scalar-v1.0.0.pdf
 
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.2,
    https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.2.pdf
@@ -69,7 +72,7 @@ Many features in the RISC-V specification are optional, and |corev| can be param
 
 * The RV32I Base Integer Instruction Set, version 2.1
 
-In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_, [RISC-V-ZBA_ZBB_ZBC_ZBS]_, [RISC-V-ZCEB]_, [RISC-V-ZCEE]_ and [RISC-V-ZCES]_.
+In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_, [RISC-V-ZBA_ZBB_ZBC_ZBS]_, [RISC-V-CRYPTO]_, [RISC-V-ZCEB]_, [RISC-V-ZCEE]_ and [RISC-V-ZCES]_.
 
 .. list-table:: |corev| Standard Instruction Set Extensions
    :header-rows: 1
@@ -119,27 +122,27 @@ In addition, the following standard instruction set extensions are available fro
      - optionally enabled based on ``A_EXT`` parameter
 
    * - **Zba**: Bit Manipulation Address calculation instructions
-     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
+     - Version 0.93 in [RISC-V-ZBA_ZBB_ZBC_ZBS]_
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbb**: Bit Manipulation Base instructions
-     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
+     - Version 0.93
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbc**: Bit Manipulation Carry-Less Multiply instructions
-     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
+     - Version 0.93
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zbs**: Bit Manipulation Bit set, Bit clear, etc. instructions
-     - Version 1.0.0-38-g865e7a7, 2021-06-28 (not ratified yet; version will change)
+     - Version 0.93
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zkt**: Data Independent Execution Latency
-     - Version v1.0.0-rc2 (not ratified yet; version will change)
+     - Version v1.0.0
      - always enabled
 
    * - **Zbkc**: Constant time Carry-Less Multiply
-     - Version v1.0.0-rc2 (not ratified yet; version will change)
+     - Version v1.0.0
      - optionally enabled based on ``B_EXT`` parameter
 
 The following custom instruction set extensions are available.
@@ -160,18 +163,12 @@ The following custom instruction set extensions are available.
    |corev| does not implement the **F** extension for single-precision floating-point instructions internal to the core. The **F** extension
    can be supported by interfacing the |corev| to an external FPU via the eXtension interface.
 
-.. note::
-
-   **Zicount** is used in this User Manual to refer to the counter, timer, and performance counter related functionality described
-   in the Counters chapter of the RISC-V unprivileged specification. Unfortunately RISC-V International did not name this extension,
-   so for now we introduced our own name to refer to this functionality.
-
 Most content of the RISC-V privileged specification is optional.
 |corev| currently supports the following features according to the RISC-V Privileged Specification [RISC-V-PRIV]_.
 
 * M-Mode
 * All CSRs listed in :ref:`cs-registers`
-* Hardware Performance Counters as described in :ref:`performance-counters` based on ``NUM_MHPMCOUNTERS`` parameter
+* Base Counters, Timers and Hardware Performance Counters as described in :ref:`performance-counters` based on ``NUM_MHPMCOUNTERS`` parameter
 * Trap handling supporting direct mode or vectored mode as described at :ref:`exceptions-interrupts`
 * Physical Memory Attribution (PMA) as described in :ref:`pma`
 
