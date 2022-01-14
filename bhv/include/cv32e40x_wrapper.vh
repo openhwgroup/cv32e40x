@@ -35,6 +35,7 @@
 .rvfi_intr(),\
 .rvfi_mode(),\
 .rvfi_ixl(),\
+.rvfi_nmip(),\
 \
 .rvfi_dbg(),\
 .rvfi_dbg_mode(),\
@@ -71,6 +72,10 @@
 .rvfi_csr_mtvec_wmask(),\
 .rvfi_csr_mtvec_rdata(),\
 .rvfi_csr_mtvec_wdata(),\
+.rvfi_csr_mstatush_rmask(),\
+.rvfi_csr_mstatush_wmask(),\
+.rvfi_csr_mstatush_rdata(),\
+.rvfi_csr_mstatush_wdata(),\
 .rvfi_csr_mcountinhibit_rmask(),\
 .rvfi_csr_mcountinhibit_wmask(),\
 .rvfi_csr_mcountinhibit_rdata(),\
@@ -111,6 +116,10 @@
 .rvfi_csr_tinfo_wmask(),\
 .rvfi_csr_tinfo_rdata(),\
 .rvfi_csr_tinfo_wdata(),\
+.rvfi_csr_tcontrol_rmask(),\
+.rvfi_csr_tcontrol_wmask(),\
+.rvfi_csr_tcontrol_rdata(),\
+.rvfi_csr_tcontrol_wdata(),\
 .rvfi_csr_mcontext_rmask(),\
 .rvfi_csr_mcontext_wmask(),\
 .rvfi_csr_mcontext_rdata(),\
@@ -214,4 +223,8 @@
 .rvfi_csr_mseccfgh_rmask(),\
 .rvfi_csr_mseccfgh_wmask(),\
 .rvfi_csr_mseccfgh_rdata(),\
-.rvfi_csr_mseccfgh_wdata()
+.rvfi_csr_mseccfgh_wdata(),\
+.rvfi_csr_mconfigptr_rmask(),\
+.rvfi_csr_mconfigptr_wmask(),\
+.rvfi_csr_mconfigptr_rdata(),\
+.rvfi_csr_mconfigptr_wdata()

@@ -441,6 +441,12 @@ module cv32e40x_wrapper
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      ),
 
+         .csr_mstatush_n_i         ( '0                                                                   ),
+         .csr_mstatush_q_i         ( '0                                                                   ),
+         .csr_mstatush_we_i        ( '0                                                                   ),
+         .csr_tcontrol_n_i         ( '0                                                                   ),
+         .csr_tcontrol_q_i         ( '0                                                                   ),
+         .csr_tcontrol_we_i        ( '0                                                                   ),
          .csr_mcounteren_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
@@ -455,7 +461,10 @@ module cv32e40x_wrapper
          .csr_mseccfg_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mseccfgh_n_i         ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mseccfgh_q_i         ( '0                                    /* Not supported in cv32e40x*/ ),
-         .csr_mseccfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ )
+         .csr_mseccfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mconfigptr_n_i       ( '0                                                                   ),
+         .csr_mconfigptr_q_i       ( '0                                                                   ),
+         .csr_mconfigptr_we_i      ( '0                                                                   )
 
 
 `ifdef RISCV_FORMAL

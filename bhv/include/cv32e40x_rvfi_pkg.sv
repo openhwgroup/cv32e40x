@@ -49,6 +49,7 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] misa;
     logic        [31:0] mie;
     logic        [31:0] mtvec;
+    logic        [31:0] mstatush;
     logic        [31:0] mcountinhibit;
     logic [31:0] [31:0] mhpmevent;
     logic        [31:0] mscratch;
@@ -59,6 +60,7 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] tselect;
     logic [ 3:0] [31:0] tdata;
     logic        [31:0] tinfo;
+    logic        [31:0] tcontrol;
     logic        [31:0] mcontext;
     logic        [31:0] scontext;
     logic        [31:0] dcsr;
@@ -85,6 +87,7 @@ package cv32e40x_rvfi_pkg;
     logic [15:0] [31:0] pmpaddr;
     logic        [31:0] mseccfg;
     logic        [31:0] mseccfgh;
+    logic        [31:0] mconfigptr;
 
   } rvfi_csr_map_t;
 

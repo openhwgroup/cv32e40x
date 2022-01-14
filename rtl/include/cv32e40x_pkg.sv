@@ -482,6 +482,13 @@ typedef struct packed {
   logic         uie; // Tie to zero when user mode is not enabled
 } mstatus_t;
 
+typedef struct packed {
+  logic [31:6] zero1;
+  logic mbe;
+  logic sbe;
+  logic [3:0] zero0;
+} mstatush_t;
+
 // Debug Cause
 parameter DBG_CAUSE_NONE       = 3'h0;
 parameter DBG_CAUSE_EBREAK     = 3'h1;
