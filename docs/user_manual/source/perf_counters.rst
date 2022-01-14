@@ -3,7 +3,7 @@
 Performance Counters
 ====================
 
-|corev| implements performance counters according to the RISC-V Privileged Specification, version 1.11 (see Hardware Performance Monitor, Section 3.1.11).
+|corev| implements performance counters according to [RISC-V-PRIV]_.
 The performance counters are placed inside the Control and Status Registers (CSRs) and can be accessed with the ``CSRRW(I)`` and ``CSRRS/C(I)`` instructions.
 
 |corev| implements the clock cycle counter ``mcycle(h)``, the retired instruction counter ``minstret(h)``, as well as the parameterizable number of event counters ``mhpmcounter3(h)`` - ``mhpmcounter31(h)`` and the corresponding event selector CSRs ``mhpmevent3`` - ``mhpmevent31``, and the ``mcountinhibit`` CSR to individually enable/disable the counters.
@@ -78,7 +78,7 @@ Controlling the counters from software
 
 By default, all available counters are disabled after reset in order to provide the lowest power consumption.
 
-They can be individually enabled/disabled by overwriting the corresponding bit in the ``mcountinhibit`` CSR at address ``0x320`` as described in the RISC-V Privileged Specification, version 1.11 (see Machine Counter-Inhibit CSR, Section 3.1.13).
+They can be individually enabled/disabled by overwriting the corresponding bit in the ``mcountinhibit`` CSR at address ``0x320`` as described in [RISC-V-PRIV]_.
 In particular, to enable/disable ``mcycle(h)``, bit 0 must be written. For ``minstret(h)``, it is bit 2. For event counter ``mhpmcounterX(h)``, it is bit X.
 
 The lower 32 bits of all counters can be accessed through the base register, whereas the upper 32 bits are accessed through the ``h``-register.

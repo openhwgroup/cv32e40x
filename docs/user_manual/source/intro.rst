@@ -87,7 +87,7 @@ In addition, the following standard instruction set extensions are available fro
 
    * - **M**: Standard Extension for Integer Multiplication and Division
      - 2.0
-     - always enabled
+     - optionally enabled based on ``M_EXT`` parameter
 
    * - **Zicntr**: Standard Extension for Base Counters and Timers
      - 2.0
@@ -138,12 +138,16 @@ In addition, the following standard instruction set extensions are available fro
      - optionally enabled based on ``B_EXT`` parameter
 
    * - **Zkt**: Data Independent Execution Latency
-     - Version v1.0.0
+     - Version 1.0.0
      - always enabled
 
    * - **Zbkc**: Constant time Carry-Less Multiply
-     - Version v1.0.0
+     - Version 1.0.0
      - optionally enabled based on ``B_EXT`` parameter
+
+   * - **Zmmul**: Multiplication subset of the **M** extension
+     - Version 0.1
+     - optionally enabled based on ``M_EXT`` parameter
 
 The following custom instruction set extensions are available.
 
