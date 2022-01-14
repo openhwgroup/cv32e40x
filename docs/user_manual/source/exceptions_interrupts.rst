@@ -3,7 +3,7 @@
 Exceptions and Interrupts
 =========================
 
-|corev| implements trap handling for interrupts and exceptions according to the RISC-V Privileged Specification, version 1.11.
+|corev| implements trap handling for interrupts and exceptions according to [RISC-V-PRIV]_.
 The ``irq_i[31:16]`` interrupts are a custom extension.
 
 When entering an interrupt/exception handler, the core sets the ``mepc`` CSR to the current program counter and saves ``mstatus``.MIE to ``mstatus``.MPIE.
@@ -55,7 +55,7 @@ After reset, all interrupts, except for NMIs, are disabled.
 To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
 
 
-If multiple interrupts are pending, they are handled in the fixed priority order defined by the RISC-V Privileged Specification, version 1.11 (see Machine Interrupt Registers, Section 3.1.9).
+If multiple interrupts are pending, they are handled in the fixed priority order defined by [RISC-V-PRIV]_.
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
 ordered as follows: 
 

@@ -15,6 +15,7 @@ Instantiation Template
       .LIB                      (          0 ),
       .A_EXT                    (          0 ),
       .B_EXT                    (       NONE ),
+      .M_EXT                    (          M ),
       .X_EXT                    (          0 ),
       .X_NUM_RS                 (          2 ),
       .X_ID_WIDTH               (          4 ),
@@ -105,10 +106,15 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation support. ``B_EXT`` = NONE: no Bit          |
-|                              |                |               | Manipulation instructions are supported, ``B_EXT`` = ZBA_ZBB_ZBS:  |
+| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation support. ``B_EXT`` = NONE: No Bit          |
+|                              |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB_ZBS:  |
 |                              |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
 |                              |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``M_EXT``                    | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = NONE: No multiply /  |
+|                              |                |               | divide instructions are supported. ``M_EXT`` = ZMMUL: The          |
+|                              |                |               | multiplication subset of the ``M`` extension is supported.         |
+|                              |                |               | ``M_EXT`` = M: The ``M`` extension is supported.                   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_EXT``                    | bit            | 0             | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
