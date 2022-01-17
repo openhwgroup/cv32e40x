@@ -88,7 +88,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        ex_ready_i,     // EX stage is ready for new data
 
   // eXtension interface
-  if_xif.cpu_issue  xif_issue_if
+  if_xif.cpu_issue    xif_issue_if,
+  output logic        xif_offloading_o
 );
 
   // Source/Destination register instruction index
@@ -664,6 +665,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // Instructions with deassert_we set to 1 from the controller bypass logic will not be attempted offloaded.
       assign xif_issue_if.issue_valid     = instr_valid && (illegal_insn || csr_en) &&
                                             !(xif_accepted_q || xif_rejected_q || ctrl_byp_i.deassert_we);
+
+      // Keep xif_offloading_o high after an offloaded instruction was accepted or rejected to get
+      // a new instruction ID from the IF stage
+      assign xif_offloading_o             = xif_issue_if.issue_valid || xif_accepted_q || xif_rejected_q;
 
       assign xif_issue_if.issue_req.instr = instr;
       assign xif_issue_if.issue_req.mode  = PRIV_LVL_M;
