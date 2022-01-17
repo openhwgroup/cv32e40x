@@ -237,7 +237,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        dbg_ack;
 
   // eXtension interface signals
-  logic        xif_offloading_id_if;
+  logic        xif_offloading_id;
 
   // Internal OBI interfaces
   if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
@@ -363,7 +363,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // eXtension interface
     .xif_compressed_if   ( xif_compressed_if        ),
-    .xif_offloading_i    ( xif_offloading_id_if     )
+    .xif_offloading_id_i ( xif_offloading_id        )
   );
 
   /////////////////////////////////////////////////
@@ -426,7 +426,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // eXtension interface
     .xif_issue_if                 ( xif_issue_if              ),
-    .xif_offloading_o             ( xif_offloading_id_if      )
+    .xif_offloading_o             ( xif_offloading_id         )
   );
 
 
