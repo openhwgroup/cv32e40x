@@ -914,8 +914,8 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.tdata[3]           = '0; // Not implemented, read 0
   assign rvfi_csr_wmask_d.tdata[3]           = '0;
 
-  assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_n_i;
-  assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_q_i;
+  assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
+  assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
   assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i;
 
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
