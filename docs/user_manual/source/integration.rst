@@ -26,7 +26,8 @@ Instantiation Template
       .DBG_NUM_TRIGGERS         (          1 ),
       .NUM_MHPMCOUNTERS         (          1 ),
       .PMA_NUM_REGIONS          (          1 ),
-      .PMA_CFG                  (  PMA_CFG[] )
+      .PMA_CFG                  (  PMA_CFG[] ),
+      .SMCLIC                   (          0 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -142,6 +143,8 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``PMA_CFG[]``                | pma_region_t   | PMA_R_DEFAULT | PMA configuration.                                                 |
 |                              |                |               | Array of pma_region_t with PMA_NUM_REGIONS entries, see :ref:`pma` |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``SMCLIC``                   | int (0..1 )    | 0             | Is Smclic supported?                                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
 Interfaces
