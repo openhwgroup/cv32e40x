@@ -595,6 +595,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_cs_registers
   #(
     .A_EXT                      ( A_EXT                  ),
+    .M_EXT                      ( M_EXT                  ),
+    .X_EXT                      ( X_EXT                  ),
+    .X_MISA                     ( X_MISA                 ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i
