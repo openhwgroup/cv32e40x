@@ -34,7 +34,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter NUM_MHPMCOUNTERS             =  1,
   parameter              LIB             =  0,
   parameter bit          A_EXT           =  0,
-  parameter b_ext_e      B_EXT           =  NONE,
+  parameter b_ext_e      B_EXT           =  B_NONE,
+  parameter m_ext_e      M_EXT           =  M,
   parameter bit          X_EXT           =  0,
   parameter int          X_NUM_RS        =  2,
   parameter int          X_ID_WIDTH      =  4,
@@ -378,6 +379,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .A_EXT                        ( A_EXT                     ),
     .B_EXT                        ( B_EXT                     ),
+    .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )

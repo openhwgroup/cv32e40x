@@ -28,7 +28,8 @@
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT                  = 0,
-  parameter b_ext_e      B_EXT                  = NONE,
+  parameter b_ext_e      B_EXT                  = B_NONE,
+  parameter m_ext_e      M_EXT                  = M,
   parameter              DEBUG_TRIGGER_EN       = 1
 )
 (
@@ -120,13 +121,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     .ctrl_fsm_i     ( ctrl_fsm_i     ),
     .decoder_ctrl_o ( decoder_i_ctrl )
   );
-  
-  // RV32M extension decoder
-  cv32e40x_m_decoder m_decoder_i
-  (
-    .instr_rdata_i  ( instr_rdata_i  ),
-    .decoder_ctrl_o ( decoder_m_ctrl )
-  );
+
 
   generate
     if (A_EXT) begin: a_decoder
@@ -140,7 +135,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
-    if (B_EXT != NONE) begin: b_decoder
+    if (B_EXT != B_NONE) begin: b_decoder
       // RV32B extension decoder
       cv32e40x_b_decoder
       #(
@@ -154,6 +149,22 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     end else begin: no_b_decoder
       assign decoder_b_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
+
+    if (M_EXT != M_NONE) begin: m_decoder
+      // RV32M extension decoder
+      cv32e40x_m_decoder
+        #(
+          .M_EXT (M_EXT)
+          )
+      m_decoder_i
+      (
+       .instr_rdata_i  ( instr_rdata_i  ),
+       .decoder_ctrl_o ( decoder_m_ctrl )
+      );
+    end else begin: no_m_decoder
+      assign decoder_m_ctrl = DECODER_CTRL_ILLEGAL_INSN;
+    end
+
   endgenerate
       
   // Mux control outputs from decoders
