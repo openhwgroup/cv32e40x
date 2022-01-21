@@ -84,6 +84,8 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.div_en       = 1'b1;
               decoder_ctrl_o.div_operator = DIV_DIV;
               decoder_ctrl_o.alu_operator = ALU_SLL;
+            end else begin
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
           {7'b000_0001, 3'b101}: begin // divu
@@ -91,6 +93,8 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.div_en       = 1'b1;
               decoder_ctrl_o.div_operator = DIV_DIVU;
               decoder_ctrl_o.alu_operator = ALU_SLL;
+            end else begin
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
           {7'b000_0001, 3'b110}: begin // rem
@@ -98,6 +102,8 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.div_en       = 1'b1;
               decoder_ctrl_o.div_operator = DIV_REM;
               decoder_ctrl_o.alu_operator = ALU_SLL;
+            end else begin
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
           {7'b000_0001, 3'b111}: begin // remu
@@ -105,6 +111,8 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o.div_en       = 1'b1;
               decoder_ctrl_o.div_operator = DIV_REMU;
               decoder_ctrl_o.alu_operator = ALU_SLL;
+            end else begin
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
 
