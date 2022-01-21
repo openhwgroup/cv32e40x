@@ -29,7 +29,7 @@
 
 module cv32e40x_b_decoder import cv32e40x_pkg::*;
 #(
-  parameter b_ext_e B_EXT = NONE
+  parameter b_ext_e B_EXT = B_NONE
 )
 (
   // from IF/ID pipeline

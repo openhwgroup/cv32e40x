@@ -1175,7 +1175,10 @@ typedef struct packed {
   typedef enum logic {TRANSPARENT, REGISTERED} obi_if_state_e;
 
   // Enum used for configuration of B extension
-  typedef enum logic [1:0] {NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
+  typedef enum logic [1:0] {B_NONE, ZBA_ZBB_ZBS, ZBA_ZBB_ZBC_ZBS} b_ext_e;
+
+  // Enum used for configuration of M extension
+  typedef enum logic [1:0] {M_NONE, M, ZMMUL} m_ext_e;
 
   // Pipe PC mux selector defines. Used to control PC mux in control FSM
   typedef enum logic[1:0] {

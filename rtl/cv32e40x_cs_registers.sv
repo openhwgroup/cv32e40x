@@ -30,7 +30,10 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter bit A_EXT        = 0,
+  parameter bit     A_EXT    = 0,
+  parameter m_ext_e M_EXT    = M,
+  parameter bit     X_EXT    = 0,
+  parameter int     X_MISA   = 32'h00000000,
   parameter NUM_MHPMCOUNTERS = 1
 )
 (
@@ -80,14 +83,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     pc_if_i
 );
   
-  localparam logic [31:0] MISA_VALUE =
-  (32'(A_EXT) <<  0)  // A - Atomic Instructions extension
-| (32'(1)     <<  2)  // C - Compressed extension
-| (32'(1)     <<  8)  // I - RV32I/64I/128I base ISA
-| (32'(1)     << 12)  // M - Integer Multiply/Divide extension
-| (32'(0)     << 20)  // U - User mode implemented
-| (32'(0)     << 23)  // X - Non-standard extensions present
-| (32'(MXL)   << 30); // M-XLEN
+  localparam logic [31:0] CORE_MISA =
+  (32'(A_EXT)      <<  0)  // A - Atomic Instructions extension
+| (32'(1)          <<  2)  // C - Compressed extension
+| (32'(1)          <<  8)  // I - RV32I/64I/128I base ISA
+| (32'(M_EXT == M) << 12)  // M - Integer Multiply/Divide extension
+| (32'(0)          << 20)  // U - User mode implemented
+| (32'(0)          << 23)  // X - Non-standard extensions present
+| (32'(MXL)        << 30); // M-XLEN
+
+  localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
 
   // CSR update logic
   logic [31:0] csr_wdata_int;

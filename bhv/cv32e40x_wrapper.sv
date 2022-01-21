@@ -47,7 +47,8 @@ module cv32e40x_wrapper
 #(
   parameter NUM_MHPMCOUNTERS             = 1,
   parameter bit          A_EXT           = 0,
-  parameter b_ext_e      B_EXT           = NONE,
+  parameter b_ext_e      B_EXT           = B_NONE,
+  parameter m_ext_e      M_EXT           = M,
   parameter bit          X_EXT           = 0,
   parameter int          X_NUM_RS        =  2,
   parameter int          X_ID_WIDTH      =  4,
@@ -168,7 +169,12 @@ module cv32e40x_wrapper
                  .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
 
-  bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
+  generate
+    if(M_EXT != M_NONE) begin: mul_sva
+      bind cv32e40x_mult:
+        core_i.ex_stage_i.mul.mult_i cv32e40x_mult_sva mult_sva (.*);
+    end
+  endgenerate
 
   bind cv32e40x_controller_fsm:
     core_i.controller_i.controller_fsm_i
@@ -194,8 +200,12 @@ module cv32e40x_wrapper
   bind cv32e40x_prefetch_unit:
     core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
 
-  bind cv32e40x_div:
-    core_i.ex_stage_i.div_i cv32e40x_div_sva div_sva (.*);
+  generate
+    if(M_EXT == M) begin: div_sva
+      bind cv32e40x_div:
+        core_i.ex_stage_i.div.div_i cv32e40x_div_sva div_sva (.*);
+    end
+  endgenerate
 
   bind cv32e40x_alignment_buffer:
     core_i.if_stage_i.prefetch_unit_i.alignment_buffer_i
@@ -472,6 +482,7 @@ module cv32e40x_wrapper
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
           .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
+          .M_EXT                 ( M_EXT                 ),
           .X_EXT                 ( X_EXT                 ),
           .X_NUM_RS              ( X_NUM_RS              ),
           .X_ID_WIDTH            ( X_ID_WIDTH            ),
