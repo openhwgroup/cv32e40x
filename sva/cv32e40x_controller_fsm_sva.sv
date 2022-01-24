@@ -500,13 +500,13 @@ endgenerate
   // valid_cnt will start counting one cycle after the LSU bus error has
   // become visible to the core. If an instruction was retired (wb_valid=1)
   // when the bus error arrived, we will allow one more instruction to retire
-  // before the NMI is taken. If we didn't retire at the same time as the bus
-  // error, we allow two instructions to retire. In any case, max two
+  // before the NMI is taken (counter < 2). If we didn't retire at the same time as the bus
+  // error, we allow two instructions to retire (counter < 3). In any case, max two
   // instructions will retire after the bus error has become visible to the
   // core.
   a_nmi_handler_max_retire:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    (valid_cnt < (retire_at_error ? 2'b10 : 2'b11))) // Max two instructions are allowed to retire, thus the counter must always be less than 3.
+                    (valid_cnt < (retire_at_error ? 2'b10 : 2'b11)))
     else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 endmodule // cv32e40x_controller_fsm_sva
 
