@@ -349,8 +349,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
 
-
-  assign nmi_allowed = interrupt_allowed;
+  // Factoring in nmi_pending_q to be able to halt the ID stage during the
+  // same cycle as the NMI is visible to the core. If we leave it out,
+  // nmi_allowed may be 1 in the same cycle as the error comes in, and the ID
+  // stage will not be halted. This may cause the instruction in ID to
+  // propagate to EX, and possible retire three instructions before the NMI is
+  // taken (instructions in WB, EX and ID at the time of the bus error).
+  assign nmi_allowed = interrupt_allowed && nmi_pending_q;
 
   // Do not count if we have an exception in WB, trigger match in WB (we do not execute the instruction at trigger address),
   // or WB stage is killed or halted.

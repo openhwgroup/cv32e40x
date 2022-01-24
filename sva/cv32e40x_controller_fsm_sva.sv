@@ -494,11 +494,12 @@ endgenerate
     end
   end
 
-  // valid_cnt will start counting one cycle after the faulted LSU instruction has been retired, allowing for one more retirement before
-  // NMI is taken.
+  // valid_cnt will start counting one cycle after the LSU bus error has become visible to the core, allowing for two retirements before
+  // NMI is taken (bus error may come in between instructions, if the response
+  // is associated with a buffered write).
   a_nmi_handler_max_retire:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    (valid_cnt < 2'b10)) // 0 or 1 instructions are allowed to retire, thus the counter must always be less than 2.
+                    (valid_cnt < 2'b11)) // Max two instructions are allowed to retire, thus the counter must always be less than 3.
     else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 endmodule // cv32e40x_controller_fsm_sva
 
