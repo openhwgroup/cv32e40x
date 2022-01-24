@@ -166,11 +166,13 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``boot_addr_i``         | 32                      | in  | Boot address. First program counter after  |
 |                         |                         |     | reset = ``boot_addr_i``. Must be           |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``mtvec_addr_i``        | 32                      | in  | ``mtvec`` address. Initial value for the   |
 |                         |                         |     | address part of :ref:`csr-mtvec`.          |
+|                         |                         |     | Must be 256-byte aligned                   |
+|                         |                         |     | (i.e. ``mtvec_addr_i[7:0]``  = 0).         |
 |                         |                         |     | Do not change after enabling core          |
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
@@ -181,13 +183,13 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``dm_halt_addr_i``      | 32                      | in  | Address to jump to when entering Debug     |
 |                         |                         |     | Mode, see :ref:`debug-support`. Must be    |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``dm_exception_addr_i`` | 32                      | in  | Address to jump to when an exception       |
 |                         |                         |     | occurs when executing code during Debug    |
 |                         |                         |     | Mode, see :ref:`debug-support`. Must be    |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``hart_id_i``           | 32                      | in  | Hart ID, usually static, can be read from  |
