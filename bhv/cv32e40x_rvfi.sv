@@ -77,14 +77,11 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    // LSU
-   input logic                                lsu_en_wb_i,
-   input logic                                lsu_rvalid_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    // PC //
    input logic [31:0]                         branch_addr_n_i,
 
    input                                      privlvl_t priv_lvl_i,
-   input                                      privlvl_t priv_lvl_lsu_i,
 
    // Controller FSM probe
    input ctrl_fsm_t                           ctrl_fsm_i,
@@ -720,10 +717,7 @@ module cv32e40x_rvfi
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
 
-
-        // Separate privelege level signal needed for LSU intructions because their privilege level can
-        // be set to MPP when MPRV=1, both signals are valid in WB
-        rvfi_mode      <= lsu_en_wb_i ? priv_lvl_lsu_i :  priv_lvl_i;
+        rvfi_mode      <= priv_lvl_i;
 
         rvfi_dbg       <= debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= debug_mode [STAGE_WB];
