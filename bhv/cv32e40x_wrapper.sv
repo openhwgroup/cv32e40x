@@ -367,7 +367,6 @@ module cv32e40x_wrapper
 
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
-         .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
          .data_addr_ex_i           ( core_i.data_addr_o                                                   ),
          .data_wdata_ex_i          ( core_i.data_wdata_o                                                  ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
@@ -376,13 +375,11 @@ module cv32e40x_wrapper
          .rf_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
-         .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
          .priv_lvl_i               ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
-         .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
