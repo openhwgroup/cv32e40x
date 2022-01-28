@@ -98,6 +98,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   csr_opcode_e csr_op;
 
+  logic       csr_en;
   logic       alu_en;
   logic       mul_en;
   logic       div_en;
@@ -207,7 +208,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign div_operator_o     = decoder_ctrl_mux.div_operator;
   assign rf_re_o            = decoder_ctrl_mux.rf_re;                         
   assign rf_we              = decoder_ctrl_mux.rf_we;                           
-  assign csr_en_o           = decoder_ctrl_mux.csr_en;
+  assign csr_en             = decoder_ctrl_mux.csr_en;
   assign csr_op             = decoder_ctrl_mux.csr_op;                          
   assign lsu_en             = decoder_ctrl_mux.lsu_en;                        
   assign lsu_we_o           = decoder_ctrl_mux.lsu_we;                       
@@ -229,6 +230,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign div_en_o = deassert_we_i ? 1'b0        : div_en;
   assign lsu_en_o = deassert_we_i ? 1'b0        : lsu_en;
 
+  assign csr_en_o = deassert_we_i ? 1'b0        : csr_en;
   assign csr_op_o = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
   assign rf_we_o  = deassert_we_i ? 1'b0        : rf_we;
 
