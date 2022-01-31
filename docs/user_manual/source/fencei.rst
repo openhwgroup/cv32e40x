@@ -10,6 +10,8 @@ emptying of the the write buffer).
 The ``fencei_flush_req_o`` signal will go low again the cycle after sampling both ``fencei_flush_req_o`` and ``fencei_flush_ack_i`` high.
 Once ``fencei_flush_req_o`` has gone low again a branch will be taken to the instruction after the ``fence.i`` thereby flushing possibly prefetched instructions.
 
+Fence instructions are not impacted by the distinction between main and I/O regions (defined in :ref:`pma`) and execute as a conservative fence on all operations, ignoring the predecessor and successor fields.
+
 .. note::
 
    If the ``fence.i`` external handshake is not used by the environment of |corev|, then it is recommended to tie the ``fencei_flush_ack_i``
