@@ -151,4 +151,3 @@ Transactions in the write buffer must be completed before the |corev| is able to
  
  * Retire a fence instruction
  * Enter SLEEP mode
- * Offload an instruction via the eXtension interface
