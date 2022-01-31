@@ -552,7 +552,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.csr_en                 <= csr_en;
-        id_ex_pipe_o.csr_op                 <= csr_op;
+        if (csr_en) begin
+          id_ex_pipe_o.csr_op               <= csr_op;
+        end
 
         id_ex_pipe_o.lsu_en                 <= lsu_en;
         if (lsu_en) begin
