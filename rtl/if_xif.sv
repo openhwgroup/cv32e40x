@@ -108,7 +108,7 @@ interface if_xif import cv32e40x_pkg::*;
     logic [                 4:0] rd;      // Register file destination address(es)
     logic [X_RFW_WIDTH/XLEN-1:0] we;      // Register file write enable(s)
     logic [                 5:0] ecsdata; // Write data value for {mstatus.xs, mstatus.fs, mstatus.vs}
-    logic                        ecswe;   // Write enable for Extension Context Status in mstatus
+    logic [                 2:0] ecswe;   // Write enables for {mstatus.xs, mstatus.fs, mstatus.vs}
     logic                        exc;     // Did the instruction cause a synchronous exception?
     logic [                 5:0] exccode; // Exception code
   } x_result_t;
