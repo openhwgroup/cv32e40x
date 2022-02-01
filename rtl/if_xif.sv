@@ -35,7 +35,8 @@ interface if_xif import cv32e40x_pkg::*;
   parameter int          X_MEM_WIDTH     =  32, // Memory access width for loads/stores via the eXtension interface
   parameter int          X_RFR_WIDTH     =  32, // Register file read access width for the eXtension interface
   parameter int          X_RFW_WIDTH     =  32, // Register file write access width for the eXtension interface
-  parameter logic [31:0] X_MISA          =  '0  // MISA extensions implemented on the eXtension interface
+  parameter logic [31:0] X_MISA          =  '0, // MISA extensions implemented on the eXtension interface
+  parameter logic [ 1:0] X_ECS_XS        =  '0  // Default value for mstatus.XS
 );
 
   localparam int XLEN = 32;
@@ -53,20 +54,22 @@ interface if_xif import cv32e40x_pkg::*;
   } x_compressed_resp_t;
 
   typedef struct packed {
-    logic [           31:0]                  instr;     // Offloaded instruction
-    logic [            1:0]                  mode;      // Privilege level
-    logic [X_ID_WIDTH -1:0]                  id;        // Identification of the offloaded instruction
-    logic [X_NUM_RS   -1:0][X_RFR_WIDTH-1:0] rs;        // Register file source operands for the offloaded instruction
-    logic [X_NUM_RS   -1:0]                  rs_valid;  // Validity of the register file source operand(s)
+    logic [          31:0]                  instr;     // Offloaded instruction
+    logic [           1:0]                  mode;      // Privilege level
+    logic [X_ID_WIDTH-1:0]                  id;        // Identification of the offloaded instruction
+    logic [X_NUM_RS  -1:0][X_RFR_WIDTH-1:0] rs;        // Register file source operands for the offloaded instruction
+    logic [X_NUM_RS  -1:0]                  rs_valid;  // Validity of the register file source operand(s)
+    logic [           5:0]                  ecs;       // Extension Context Status ({mstatus.xs, mstatus.fs, mstatus.vs})
+    logic                                   ecs_valid; // Validity of the Extension Context Status
   } x_issue_req_t;
 
   typedef struct packed {
     logic accept;     // Is the offloaded instruction (id) accepted by the coprocessor?
     logic writeback;  // Will the coprocessor perform a writeback in the core to rd?
-    logic float;      // Qualifies whether a writeback is to the floating-point register file or to integer register file?
     logic dualwrite;  // Will the coprocessor perform a dual writeback in the core to rd and rd+1?
     logic dualread;   // Will the coprocessor require dual reads from rs1\rs2\rs3 and rs1+1\rs2+1\rs3+1?
     logic loadstore;  // Is the offloaded instruction a load/store instruction?
+    logic ecswrite ;  // Will the coprocessor write the Extension Context Status in mstatus?
     logic exc;        // Can the offloaded instruction possibly cause a synchronous exception in the coprocessor itself?
   } x_issue_resp_t;
 
@@ -89,24 +92,26 @@ interface if_xif import cv32e40x_pkg::*;
   typedef struct packed {
     logic       exc;      // Did the memory request cause a synchronous exception?
     logic [5:0] exccode;  // Exception code
+    logic       dbg;      // Did the memory request cause a debug trigger match with ``mcontrol.timing`` = 0?
   } x_mem_resp_t;
 
   typedef struct packed {
     logic [X_ID_WIDTH -1:0] id;     // Identification of the offloaded instruction
     logic [X_MEM_WIDTH-1:0] rdata;  // Read data of a read memory transaction
     logic                   err;    // Did the instruction cause a bus error?
+    logic                   dbg;    // Did the read data cause a debug trigger match with ``mcontrol.timing`` = 0?
   } x_mem_result_t;
 
   typedef struct packed {
-    logic [X_ID_WIDTH -   1:0] id;      // Identification of the offloaded instruction
-    logic [X_RFW_WIDTH-   1:0] data;    // Register file write data value(s)
-    logic [               4:0] rd;      // Register file destination address(es)
-    logic [X_RFW_WIDTH-XLEN:0] we;      // Register file write enable(s)
-    logic                      float;   // Floating-point register file or integer register file?
-    logic                      exc;     // Did the instruction cause a synchronous exception?
-    logic [               5:0] exccode; // Exception code
+    logic [X_ID_WIDTH      -1:0] id;      // Identification of the offloaded instruction
+    logic [X_RFW_WIDTH     -1:0] data;    // Register file write data value(s)
+    logic [                 4:0] rd;      // Register file destination address(es)
+    logic [X_RFW_WIDTH/XLEN-1:0] we;      // Register file write enable(s)
+    logic [                 5:0] ecsdata; // Write data value for {mstatus.xs, mstatus.fs, mstatus.vs}
+    logic                        ecswe;   // Write enable for Extension Context Status in mstatus
+    logic                        exc;     // Did the instruction cause a synchronous exception?
+    logic [                 5:0] exccode; // Exception code
   } x_result_t;
-
 
   // Compressed interface
   logic               compressed_valid;

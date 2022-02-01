@@ -45,18 +45,20 @@
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS             = 1,
-  parameter bit          A_EXT           = 0,
-  parameter b_ext_e      B_EXT           = B_NONE,
-  parameter m_ext_e      M_EXT           = M,
-  parameter bit          X_EXT           = 0,
-  parameter int          X_NUM_RS        =  2,
-  parameter int          X_ID_WIDTH      =  4,
-  parameter int          X_MEM_WIDTH     =  32,
-  parameter int          X_RFR_WIDTH     =  32,
-  parameter int          X_RFW_WIDTH     =  32,
-  parameter int          X_MISA          =  32'h00000000,
-  parameter int          PMA_NUM_REGIONS = 0,
+  parameter              LIB                          = 0,
+  parameter bit          A_EXT                        = 0,
+  parameter b_ext_e      B_EXT                        = B_NONE,
+  parameter m_ext_e      M_EXT                        = M,
+  parameter bit          X_EXT                        = 0,
+  parameter int          X_NUM_RS                     = 2,
+  parameter int          X_ID_WIDTH                   = 4,
+  parameter int          X_MEM_WIDTH                  = 32,
+  parameter int          X_RFR_WIDTH                  = 32,
+  parameter int          X_RFW_WIDTH                  = 32,
+  parameter logic [31:0] X_MISA                       = 32'h00000000,
+  parameter logic [1:0]  X_ECS_XS                     = 2'b00,
+  parameter int          NUM_MHPMCOUNTERS             = 1,
+  parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
@@ -476,7 +478,7 @@ module cv32e40x_wrapper
     // instantiate the core
     cv32e40x_core
         #(
-          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .LIB                   ( LIB                   ),
           .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
           .M_EXT                 ( M_EXT                 ),
@@ -487,6 +489,8 @@ module cv32e40x_wrapper
           .X_RFR_WIDTH           ( X_RFR_WIDTH           ),
           .X_RFW_WIDTH           ( X_RFW_WIDTH           ),
           .X_MISA                ( X_MISA                ),
+          .X_ECS_XS              ( X_ECS_XS              ),
+          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (

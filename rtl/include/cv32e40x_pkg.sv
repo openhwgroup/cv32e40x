@@ -524,7 +524,7 @@ typedef struct packed{
 } dcsr_t;
 
 typedef struct packed {
-  logic           interrupt;
+  logic           irq;
   logic [30:8]    zero0;
   logic [7:0]     exception_code;
 } mcause_t;
