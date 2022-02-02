@@ -12,22 +12,23 @@ Instantiation Template
 .. code-block:: verilog
 
   cv32e40x_core #(
-      .LIB                      (          0 ),
-      .A_EXT                    (          0 ),
-      .B_EXT                    (     B_NONE ),
-      .M_EXT                    (          M ),
-      .X_EXT                    (          0 ),
-      .X_NUM_RS                 (          2 ),
-      .X_ID_WIDTH               (          4 ),
-      .X_MEM_WIDTH              (         32 ),
-      .X_RFR_WIDTH              (         32 ),
-      .X_RFW_WIDTH              (         32 ),
-      .X_MISA                   ( 0x00000000 ),
-      .DBG_NUM_TRIGGERS         (          1 ),
-      .NUM_MHPMCOUNTERS         (          1 ),
-      .PMA_NUM_REGIONS          (          1 ),
-      .PMA_CFG                  (  PMA_CFG[] ),
-      .SMCLIC                   (          0 )
+      .LIB                      (         0 ),
+      .A_EXT                    (         0 ),
+      .B_EXT                    (    B_NONE ),
+      .M_EXT                    (         M ),
+      .X_EXT                    (         0 ),
+      .X_NUM_RS                 (         2 ),
+      .X_ID_WIDTH               (         4 ),
+      .X_MEM_WIDTH              (        32 ),
+      .X_RFR_WIDTH              (        32 ),
+      .X_RFW_WIDTH              (        32 ),
+      .X_MISA                   (     32'h0 ),
+      .X_ECS_XS                 (      2'b0 ),
+      .DBG_NUM_TRIGGERS         (         1 ),
+      .NUM_MHPMCOUNTERS         (         1 ),
+      .PMA_NUM_REGIONS          (         1 ),
+      .PMA_CFG                  ( PMA_CFG[] ),
+      .SMCLIC                   (         0 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -131,8 +132,11 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_RFW_WIDTH``              | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_MISA``                   | logic [31:0]   | 0x0000_0000   | MISA extensions implemented on the eXtension interface,            |
+| ``X_MISA``                   | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
 |                              |                |               | see :ref:`csr-misa`.                                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_ECS_XS``                 | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
+|                              |                |               | see :ref:`csr-mstatus`.                                            |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                              |                |               | :ref:`performance-counters`                                        |
