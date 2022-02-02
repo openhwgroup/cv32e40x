@@ -82,7 +82,7 @@ module cv32e40x_core_sva
   property p_irq_enabled_1;
     @(posedge clk) disable iff (!rst_ni)
       (ctrl_fsm.pc_set && (ctrl_fsm.pc_mux == PC_TRAP_IRQ)) |=>
-      (cs_registers_mcause_q.interrupt && cs_registers_mie_q[cs_registers_mcause_q.exception_code[4:0]] && !cs_registers_mstatus_q.mie);
+      (cs_registers_mcause_q.irq && cs_registers_mie_q[cs_registers_mcause_q.exception_code[4:0]] && !cs_registers_mstatus_q.mie);
   endproperty
 
   a_irq_enabled_1 : assert property(p_irq_enabled_1) else `uvm_error("core", "Assertion a_irq_enabled_1 failed")
@@ -184,7 +184,7 @@ always_ff @(posedge clk , negedge rst_ni)
       end
       else begin
         // Disregard saved CSR due to interrupts when chekcing exceptions
-        if(!cs_registers_csr_cause_i.interrupt) begin
+        if(!cs_registers_csr_cause_i.irq) begin
           if (!first_cause_illegal_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_ILLEGAL_INSN) && ctrl_fsm.csr_save_cause) begin
             first_cause_illegal_found <= 1'b1;
             actual_illegal_mepc       <= cs_registers_mepc_n;
