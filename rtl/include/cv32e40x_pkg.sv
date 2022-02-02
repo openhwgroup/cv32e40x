@@ -220,6 +220,7 @@ typedef enum logic[11:0] {
   CSR_MISA           = 12'h301,
   CSR_MIE            = 12'h304,
   CSR_MTVEC          = 12'h305,
+  CSR_MTVT           = 12'h307,
   CSR_MSTATUSH       = 12'h310,
 
   // Performance counters
@@ -535,6 +536,10 @@ typedef struct packed {
   logic [1:0]  mode;
 } mtvec_t;
 
+typedef struct packed {
+  logic [31:6] addr;
+  logic [ 5:0] zero0;
+} mtvt_t;
 
 parameter dcsr_t DCSR_RESET_VAL = '{
   xdebugver : XDEBUGVER_STD,
@@ -546,6 +551,10 @@ parameter mtvec_t MTVEC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
   mode:  MTVEC_MODE};
+
+parameter mtvt_t MTVT_RESET_VAL = '{
+  addr:  '0,
+  zero0: '0};
 
 parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero4: 'b0, // Reserved, hardwired zero

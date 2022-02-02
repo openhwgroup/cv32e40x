@@ -43,6 +43,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter int          X_RFR_WIDTH     =  32,
   parameter int          X_RFW_WIDTH     =  32,
   parameter int          X_MISA          =  32'h00000000,
+  parameter bit          SMCLIC          =  0,
   parameter int          PMA_NUM_REGIONS =  0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -599,6 +600,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .M_EXT                      ( M_EXT                  ),
     .X_EXT                      ( X_EXT                  ),
     .X_MISA                     ( X_MISA                 ),
+    .SMCLIC                     ( SMCLIC                 ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i

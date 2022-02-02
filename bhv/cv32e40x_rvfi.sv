@@ -103,6 +103,9 @@ module cv32e40x_rvfi
    input                                      mtvec_t csr_mtvec_n_i,
    input                                      mtvec_t csr_mtvec_q_i,
    input logic                                csr_mtvec_we_i,
+   input                                      mtvt_t csr_mtvt_n_i,
+   input                                      mtvt_t csr_mtvt_q_i,
+   input logic                                csr_mtvt_we_i,
    input logic [31:0]                         csr_mcountinhibit_n_i,
    input logic [31:0]                         csr_mcountinhibit_q_i,
    input logic                                csr_mcountinhibit_we_i,
@@ -220,6 +223,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mtvec_wmask,
    output logic [31:0]                        rvfi_csr_mtvec_rdata,
    output logic [31:0]                        rvfi_csr_mtvec_wdata,
+   output logic [31:0]                        rvfi_csr_mtvt_rmask,
+   output logic [31:0]                        rvfi_csr_mtvt_wmask,
+   output logic [31:0]                        rvfi_csr_mtvt_rdata,
+   output logic [31:0]                        rvfi_csr_mtvt_wdata,
    output logic [31:0]                        rvfi_csr_mcountinhibit_rmask,
    output logic [31:0]                        rvfi_csr_mcountinhibit_wmask,
    output logic [31:0]                        rvfi_csr_mcountinhibit_rdata,
@@ -827,6 +834,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mtvec              = csr_mtvec_n_i;
   assign rvfi_csr_wmask_d.mtvec              = csr_mtvec_we_i   ? '1 : '0;
 
+  assign rvfi_csr_rdata_d.mtvt               = csr_mtvt_q_i;
+  assign rvfi_csr_wdata_d.mtvt               = csr_mtvt_n_i;
+  assign rvfi_csr_wmask_d.mtvt               = csr_mtvt_we_i   ? '1 : '0;
+
   // Performance counters
   assign rvfi_csr_rdata_d.mcountinhibit      = csr_mcountinhibit_q_i;
   assign rvfi_csr_wdata_d.mcountinhibit      = csr_mcountinhibit_n_i;
@@ -1063,6 +1074,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_mtvec_rmask             = '1;
   assign rvfi_csr_mtvec_wdata             = rvfi_csr_wdata.mtvec;
   assign rvfi_csr_mtvec_wmask             = rvfi_csr_wmask.mtvec;
+  assign rvfi_csr_mtvt_rdata              = rvfi_csr_rdata.mtvt;
+  assign rvfi_csr_mtvt_rmask              = '1;
+  assign rvfi_csr_mtvt_wdata              = rvfi_csr_wdata.mtvt;
+  assign rvfi_csr_mtvt_wmask              = rvfi_csr_wmask.mtvt;
   assign rvfi_csr_mcountinhibit_rdata     = rvfi_csr_rdata.mcountinhibit;
   assign rvfi_csr_mcountinhibit_rmask     = '1;
   assign rvfi_csr_mcountinhibit_wdata     = rvfi_csr_wdata.mcountinhibit;

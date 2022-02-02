@@ -71,6 +71,10 @@
 .rvfi_csr_mtvec_wmask(),\
 .rvfi_csr_mtvec_rdata(),\
 .rvfi_csr_mtvec_wdata(),\
+.rvfi_csr_mtvt_rmask(),\
+.rvfi_csr_mtvt_wmask(),\
+.rvfi_csr_mtvt_rdata(),\
+.rvfi_csr_mtvt_wdata(),\
 .rvfi_csr_mcountinhibit_rmask(),\
 .rvfi_csr_mcountinhibit_wmask(),\
 .rvfi_csr_mcountinhibit_rdata(),\
