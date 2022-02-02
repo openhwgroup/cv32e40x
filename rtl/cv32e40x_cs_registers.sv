@@ -35,6 +35,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter bit          X_EXT            = 0,
   parameter logic [31:0] X_MISA           =  32'h00000000,
   parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
+  parameter bit          SMCLIC           = 0,
   parameter int          NUM_MHPMCOUNTERS = 1
 )
 (
@@ -144,6 +145,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mtvec_we;
   logic mtvec_rd_error;
 
+  mtvt_t  mtvt_n, mtvt_q;
+  logic mtvt_we;
+  logic mtvt_rd_error;
+
   logic [31:0] mip;                     // Bits are masked according to IRQ_MASK
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
   logic mie_we;
@@ -234,6 +239,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MIE: csr_rdata_int = mie_q;
       // mtvec: machine trap-handler base address
       CSR_MTVEC: csr_rdata_int = mtvec_q;
+      // mtvt: machine trap-handler vector table base address
+      CSR_MTVT: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mtvt_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
       // mscratch: machine scratch
       CSR_MSCRATCH: csr_rdata_int = mscratch_q;
       // mepc: exception program counter
@@ -405,6 +419,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
 
+    mtvt_n                   = MTVT_RESET_VAL; // todo: Implement CLIC support
+    mtvt_we                  = 1'b0;
+
     mie_n                    = csr_wdata_int & IRQ_MASK;
     mie_we                   = 1'b0;
   
@@ -424,6 +441,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
               mtvec_we = 1'b1;
+        end
+        // mtvt: machine trap-handler vector table base address
+        CSR_MTVT: begin
+          if (SMCLIC) begin
+            mtvt_we = 1'b1;
+          end
         end
         // mscratch: machine scratch
         CSR_MSCRATCH: begin
@@ -655,6 +678,26 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o  (mtvec_q),
     .rd_error_o (mtvec_rd_error)
   );
+
+  generate
+    if (SMCLIC) begin
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (MTVT_RESET_VAL)
+      ) mtvt_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mtvt_n),
+        .wr_en_i    (mtvt_we),
+        .rd_data_o  (mtvt_q),
+        .rd_error_o (mtvt_rd_error)
+      );
+    end else begin
+      assign mtvt_q        = '0;
+      assign mtvt_rd_error = 1'b0;
+    end
+  endgenerate
 
   assign csr_rdata_o = csr_rdata_int;
 

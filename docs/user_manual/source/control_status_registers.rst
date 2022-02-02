@@ -509,6 +509,31 @@ handler using the content of the MTVEC[31:8] as base address. Only
 8-byte aligned addresses are allowed. Both direct mode and vectored mode
 are supported.
 
+.. _csr-mtvt:
+
+Machine Trap Vector Table Base Address (``mtvt``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x307
+
+Reset Value: 0x0000_0000
+
+Detailed:
+
++-------------+-----------+-------------------------------------------------------------------------------------+
+|   Bit #     |   Mode    |   Description                                                                       |
++=============+===========+=====================================================================================+
+| 31 : 6      |   RW      | BASE[31:6]: The trap-handler vector table base address, always aligned to 64 bytes. |
++-------------+-----------+-------------------------------------------------------------------------------------+
+|  5 : 0      |   RO      | BASE[ 5:0]: The trap-handler vector table base address, always aligned to 64 bytes, |
+|             |           | i.e., mtvt[5:0] is always set to 0.                                                 |
++-------------+-----------+-------------------------------------------------------------------------------------+
+
+When an exception or an interrupt is encountered and table jumps are enabled, the core jumps to the corresponding
+handler from the vector table. The vector table base is pointed to by this register (``mtvt``), and the trap handler
+function address is fetched from ``mtvt`` + 4*exccode (where exccode is the exception code in ``mcause``).
+
+
 Machine Status (``mstatush``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -600,7 +625,7 @@ Detailed:
 +=======+==========+==================================================================+
 | 31:3  | RW       | ``mhpmcounter3`` - ``mhpmcounter31`` inhibits. Depends on        |
 |       |          | ``NUM_MHPMCOUNTERS`` (i.e. bits related to non-implemented       |
-|       |          |  counters always read as 0).                                     |
+|       |          | counters always read as 0).                                      |
 +-------+----------+------------------------------------------------------------------+
 | 2     | RW       | ``minstret`` inhibit                                             |
 +-------+----------+------------------------------------------------------------------+
