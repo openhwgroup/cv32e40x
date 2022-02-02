@@ -49,6 +49,7 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] misa;
     logic        [31:0] mie;
     logic        [31:0] mtvec;
+    logic        [31:0] mtvt;
     logic        [31:0] mcountinhibit;
     logic [31:0] [31:0] mhpmevent;
     logic        [31:0] mscratch;

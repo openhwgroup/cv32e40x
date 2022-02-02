@@ -44,6 +44,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter logic [31:0] X_MISA                       = 32'h00000000,
   parameter logic [1:0]  X_ECS_XS                     = 2'b00,
   parameter int          NUM_MHPMCOUNTERS             = 1,
+  parameter bit          SMCLIC                       = 0,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -601,6 +602,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT                      ( X_EXT                  ),
     .X_MISA                     ( X_MISA                 ),
     .X_ECS_XS                   ( X_ECS_XS               ),
+    .SMCLIC                     ( SMCLIC                 ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i
