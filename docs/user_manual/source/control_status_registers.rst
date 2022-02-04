@@ -84,6 +84,8 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x349         | ``mscratchcswl``  | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on level change                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
+  | 0x34A         | ``mclicbase``     | MRW       | ``SMCLIC`` = 1           | CLIC Base Register                                      |
+  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A0         | ``tselect``       | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Select Register                                 |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A1         | ``tdata1``        | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Data Register 1                                 |
@@ -747,6 +749,155 @@ Detailed:
 +-------------+-----------+---------------------------------------------------------------------------------------------------+
 | 3           | RO        | **Machine Software Interrupt Pending (MSIP)**: if set, irq_i[3] is pending.                       |
 +-------------+-----------+---------------------------------------------------------------------------------------------------+
+
+
+
+.. _csr-mnxti:
+
+Machine Next Interrupt Handler Address and Interrupt Enable (``mnxti``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x345
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 : 0      |   RW       | **MNXTI**: Machine Next Interrupt Handler Address and Interrupt Enable. |
++-------------+------------+-------------------------------------------------------------------------+
+
+This register can be used by the software to service the next interrupt when it is in the same privilege mode,
+without incurring the full cost of an interrupt pipeline flush and context save/restore.
+
+
+.. _csr-mintstatus:
+
+Machine Interrupt Status (``mintstatus``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x346
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 : 24     |   RO       | **MIL**: Machine Interrupt Level                                        |
++-------------+------------+-------------------------------------------------------------------------+
+| 23 : 16     |   RO (0x0) | Reserved, hardwired to 0.                                               |
++-------------+------------+-------------------------------------------------------------------------+
+| 15 :  8     |   RO (0x0) | **SIL**: Supervisor Interrupt Level, hardwired to 0.                    |
++-------------+------------+-------------------------------------------------------------------------+
+|  7 :  0     |   RO (0x0) | **UIL**: User Interrupt Level, hardwired to 0.                          |
++-------------+------------+-------------------------------------------------------------------------+
+
+This register holds the active interrupt level for each privilege mode.
+Only Machine Interrupt Level is supprtorted.
+
+
+.. _csr-mintthresh:
+
+Machine Interrupt-Level Threshold (``mintthresh``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x347
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 :  8     |   RO (0x0) | Reserved, hardwired to 0.                                               |
++-------------+------------+-------------------------------------------------------------------------+
+|  7 :  0     |   RW       | **TH**: Threshold                                                       |
++-------------+------------+-------------------------------------------------------------------------+
+
+This register holds the active machine mode interrupt level threshold.
+
+
+.. _csr-mscratchcsw:
+
+Machine Scratch Swap for Priv Mode Change (``mscratchcsw``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x348
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 : 0      |   RW       | **MSCRATCHCSW**: Machine scratch swap for privilege mode change         |
++-------------+------------+-------------------------------------------------------------------------+
+
+Scratch swap register for multiple privilege modes.
+
+
+
+.. _csr-mscratchcswl:
+
+Machine Scratch Swap for Interrupt-Level Change (``mscratchcswl``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x349
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 : 0      |   RW       | **MSCRATCHCSWL**: Machine Scratch Swap for Interrupt-Level Change       |
++-------------+------------+-------------------------------------------------------------------------+
+
+Scratch swap register for multiple interrupt levels.
+
+
+
+
+.. _csr-mclicbase:
+
+CLIC Base (``mclicbase``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x3xx
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
++-------------+------------+-------------------------------------------------------------------------+
+|   Bit #     |   Mode     |           Description                                                   |
++=============+============+=========================================================================+
+| 31 : 12     |   RW       | **MCLICBASE**: CLIC Base                                                |
++-------------+------------+-------------------------------------------------------------------------+
+| 11 :  0     |   RO (0x0) | Reserved, hardwired to 0.                                               |
++-------------+------------+-------------------------------------------------------------------------+
+
+CLIC base register.
+
 
 .. _csr-tselect:
 

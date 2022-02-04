@@ -261,6 +261,12 @@ typedef enum logic[11:0] {
   CSR_MCAUSE         = 12'h342,
   CSR_MTVAL          = 12'h343,
   CSR_MIP            = 12'h344,
+  CSR_MNXTI          = 12'h345,
+  CSR_MINTSTATUS     = 12'h346,
+  CSR_MINTTHRESH     = 12'h347,
+  CSR_MSCRATCHCSW    = 12'h348,
+  CSR_MSCRATCHCSWL   = 12'h349,
+  CSR_MCLICBASE      = 12'h34A,
 
   // Trigger
   CSR_TSELECT        = 12'h7A0,
@@ -541,6 +547,14 @@ typedef struct packed {
   logic [ 5:0] zero0;
 } mtvt_t;
 
+typedef struct packed {
+  logic [31:24] mil;
+  logic [23:16] zero0;
+  logic [15: 8] sil;
+  logic [ 7: 0] uil;
+} mintstatus_t;
+
+
 parameter dcsr_t DCSR_RESET_VAL = '{
   xdebugver : XDEBUGVER_STD,
   cause:      DBG_CAUSE_NONE,
@@ -555,6 +569,12 @@ parameter mtvec_t MTVEC_RESET_VAL = '{
 parameter mtvt_t MTVT_RESET_VAL = '{
   addr:  '0,
   zero0: '0};
+
+parameter mintstatus_t MINTSTATUS_RESET_VAL = '{
+  mil:   '0,
+  zero0: '0,
+  sil:   '0,
+  uil:   '0};
 
 parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero4: 'b0, // Reserved, hardwired zero

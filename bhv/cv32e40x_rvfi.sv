@@ -124,6 +124,24 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mip_n_i,
    input logic [31:0]                         csr_mip_q_i,
    input logic                                csr_mip_we_i,
+   input logic [31:0]                         csr_mnxti_n_i,
+   input logic [31:0]                         csr_mnxti_q_i,
+   input logic                                csr_mnxti_we_i,
+   input                                      mintstatus_t csr_mintstatus_n_i,
+   input                                      mintstatus_t csr_mintstatus_q_i,
+   input logic                                csr_mintstatus_we_i,
+   input logic [31:0]                         csr_mintthresh_n_i,
+   input logic [31:0]                         csr_mintthresh_q_i,
+   input logic                                csr_mintthresh_we_i,
+   input logic [31:0]                         csr_mscratchcsw_n_i,
+   input logic [31:0]                         csr_mscratchcsw_q_i,
+   input logic                                csr_mscratchcsw_we_i,
+   input logic [31:0]                         csr_mscratchcswl_n_i,
+   input logic [31:0]                         csr_mscratchcswl_q_i,
+   input logic                                csr_mscratchcswl_we_i,
+   input logic [31:0]                         csr_mclicbase_n_i,
+   input logic [31:0]                         csr_mclicbase_q_i,
+   input logic                                csr_mclicbase_we_i,
    input logic [31:0]                         csr_tdata1_n_i,
    input logic [31:0]                         csr_tdata1_q_i,
    input logic                                csr_tdata1_we_i,
@@ -255,6 +273,30 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mip_wmask,
    output logic [31:0]                        rvfi_csr_mip_rdata,
    output logic [31:0]                        rvfi_csr_mip_wdata,
+   output logic [31:0]                        rvfi_csr_mnxti_rmask,
+   output logic [31:0]                        rvfi_csr_mnxti_wmask,
+   output logic [31:0]                        rvfi_csr_mnxti_rdata,
+   output logic [31:0]                        rvfi_csr_mnxti_wdata,
+   output logic [31:0]                        rvfi_csr_mintstatus_rmask,
+   output logic [31:0]                        rvfi_csr_mintstatus_wmask,
+   output logic [31:0]                        rvfi_csr_mintstatus_rdata,
+   output logic [31:0]                        rvfi_csr_mintstatus_wdata,
+   output logic [31:0]                        rvfi_csr_mintthresh_rmask,
+   output logic [31:0]                        rvfi_csr_mintthresh_wmask,
+   output logic [31:0]                        rvfi_csr_mintthresh_rdata,
+   output logic [31:0]                        rvfi_csr_mintthresh_wdata,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_rmask,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_wmask,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_rdata,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_wdata,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_rmask,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_wmask,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_rdata,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_wdata,
+   output logic [31:0]                        rvfi_csr_mclicbase_rmask,
+   output logic [31:0]                        rvfi_csr_mclicbase_wmask,
+   output logic [31:0]                        rvfi_csr_mclicbase_rdata,
+   output logic [31:0]                        rvfi_csr_mclicbase_wdata,
    output logic [31:0]                        rvfi_csr_tselect_rmask,
    output logic [31:0]                        rvfi_csr_tselect_wmask,
    output logic [31:0]                        rvfi_csr_tselect_rdata,
@@ -872,6 +914,30 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mip                = csr_mip_n_i;
   assign rvfi_csr_wmask_d.mip                = csr_mip_we_i ? '1 : '0;
 
+  assign rvfi_csr_rdata_d.mnxti              = csr_mnxti_q_i;
+  assign rvfi_csr_wdata_d.mnxti              = csr_mnxti_n_i;
+  assign rvfi_csr_wmask_d.mnxti              = csr_mnxti_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mintstatus         = csr_mintstatus_q_i;
+  assign rvfi_csr_wdata_d.mintstatus         = csr_mintstatus_n_i;
+  assign rvfi_csr_wmask_d.mintstatus         = csr_mintstatus_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mintthresh         = csr_mintthresh_q_i;
+  assign rvfi_csr_wdata_d.mintthresh         = csr_mintthresh_n_i;
+  assign rvfi_csr_wmask_d.mintthresh         = csr_mintthresh_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mscratchcsw        = csr_mscratchcsw_q_i;
+  assign rvfi_csr_wdata_d.mscratchcsw        = csr_mscratchcsw_n_i;
+  assign rvfi_csr_wmask_d.mscratchcsw        = csr_mscratchcsw_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mscratchcswl       = csr_mscratchcswl_q_i;
+  assign rvfi_csr_wdata_d.mscratchcswl       = csr_mscratchcswl_n_i;
+  assign rvfi_csr_wmask_d.mscratchcswl       = csr_mscratchcswl_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mclicbase          = csr_mclicbase_q_i;
+  assign rvfi_csr_wdata_d.mclicbase          = csr_mclicbase_n_i;
+  assign rvfi_csr_wmask_d.mclicbase          = csr_mclicbase_we_i ? '1 : '0;
+
   // Trigger
   assign rvfi_csr_rdata_d.tselect            = '0;
   assign rvfi_csr_wdata_d.tselect            = '0; // Not implemented, read 0
@@ -1107,6 +1173,30 @@ module cv32e40x_rvfi
   assign rvfi_csr_mip_rmask               = '1;
   assign rvfi_csr_mip_wdata               = rvfi_csr_wdata.mip;
   assign rvfi_csr_mip_wmask               = rvfi_csr_wmask.mip;
+  assign rvfi_csr_mnxti_rmask             = '1;
+  assign rvfi_csr_mnxti_rdata             = rvfi_csr_rdata.mnxti;
+  assign rvfi_csr_mnxti_wmask             = rvfi_csr_wmask.mnxti;
+  assign rvfi_csr_mnxti_wdata             = rvfi_csr_wdata.mnxti;
+  assign rvfi_csr_mintstatus_rdata        = rvfi_csr_rdata.mintstatus;
+  assign rvfi_csr_mintstatus_rmask        = '1;
+  assign rvfi_csr_mintstatus_wdata        = rvfi_csr_wdata.mintstatus;
+  assign rvfi_csr_mintstatus_wmask        = rvfi_csr_wmask.mintstatus;
+  assign rvfi_csr_mintthresh_rdata        = rvfi_csr_rdata.mintthresh;
+  assign rvfi_csr_mintthresh_rmask        = '1;
+  assign rvfi_csr_mintthresh_wdata        = rvfi_csr_wdata.mintthresh;
+  assign rvfi_csr_mintthresh_wmask        = rvfi_csr_wmask.mintthresh;
+  assign rvfi_csr_mscratchcsw_rdata       = rvfi_csr_rdata.mscratchcsw;
+  assign rvfi_csr_mscratchcsw_rmask       = '1;
+  assign rvfi_csr_mscratchcsw_wdata       = rvfi_csr_wdata.mscratchcsw;
+  assign rvfi_csr_mscratchcsw_wmask       = rvfi_csr_wmask.mscratchcsw;
+  assign rvfi_csr_mscratchcswl_rdata      = rvfi_csr_rdata.mscratchcswl;
+  assign rvfi_csr_mscratchcswl_rmask      = '1;
+  assign rvfi_csr_mscratchcswl_wdata      = rvfi_csr_wdata.mscratchcswl;
+  assign rvfi_csr_mscratchcswl_wmask      = rvfi_csr_wmask.mscratchcswl;
+  assign rvfi_csr_mclicbase_rdata         = rvfi_csr_rdata.mclicbase;
+  assign rvfi_csr_mclicbase_rmask         = '1;
+  assign rvfi_csr_mclicbase_wdata         = rvfi_csr_wdata.mclicbase;
+  assign rvfi_csr_mclicbase_wmask         = rvfi_csr_wmask.mclicbase;
   assign rvfi_csr_tselect_rdata           = rvfi_csr_rdata.tselect;
   assign rvfi_csr_tselect_rmask           = '1;
   assign rvfi_csr_tselect_wdata           = rvfi_csr_wdata.tselect;
