@@ -43,9 +43,11 @@ extensions = [
     'sphinx.ext.todo',
     'recommonmark',
     'sphinxcontrib.inkscapeconverter',
-#    'sphinxcontrib.wavedrom',
+    'sphinx_github_changelog',
+    #    'sphinxcontrib.wavedrom',
 ]
 #wavedrom_html_jsinline = False
+#sphinx_github_changelog_token = "..."
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['ytemplates']
