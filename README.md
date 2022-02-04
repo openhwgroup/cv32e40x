@@ -1,7 +1,19 @@
 # OpenHW Group CORE-V CV32E40X RISC-V IP
 
-CV32E40X is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage pipeline that implements
-the RV32IM[A]C[X][Zba_Zbb_Zbs|Zba_Zbb_Zbc_Zbs]Zceb_Zcee_Zces_Zicount_Zicsr_Zifencei instruction set architecture. The CV32E40X core is aimed
+CV32E40X is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage pipeline that implements the following instruction set architecture:
+
+* RV32[I|E]
+* [A]
+* [M|Zmmul]
+* Zca_Zcb_Zcmb_Zcmp_Zcmt
+* [Zba_Zbb_Zbs|Zba_Zbb_Zbc_Zbs]
+* Zicntr
+* Zihpm
+* Zicsr
+* Zifencei
+* [Xif]
+
+The CV32E40X core is aimed
 at compute intensive applications and offers a general purpose extension interface by which custom instructions
 can be added external to the core.
 
@@ -20,7 +32,7 @@ The verification environment for the CV32E40X is _not_ in this Repository.
 The verification environment for this core as well as other cores in the OpenHW Group CORE-V family is at the
 [core-v-verif](https://github.com/openhwgroup/core-v-verif) repository on GitHub.
 
-The Makefiles supported in the **core-v-verif** project automatically clone the appropriate version of the **cv32e40x**  RTL sources.
+The Makefiles supported in the **core-v-verif** project automatically clone the appropriate version of the **CV32E40X**  RTL sources.
 
 ## Constraints
 Example synthesis constraints for the CV32E40X are provided.
