@@ -91,6 +91,9 @@ module cv32e40x_rvfi
    input logic                                nmi_is_store_i,
 
    //// CSR Probes ////
+   input                                      jvt_t csr_jvt_n_i,
+   input                                      jvt_t csr_jvt_q_i,
+   input logic                                csr_jvt_we_i,
    input                                      mstatus_t csr_mstatus_n_i,
    input                                      mstatus_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
@@ -225,6 +228,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_mem_wdata,
 
    // CSRs
+   output logic [31:0]                        rvfi_csr_jvt_rmask,
+   output logic [31:0]                        rvfi_csr_jvt_wmask,
+   output logic [31:0]                        rvfi_csr_jvt_rdata,
+   output logic [31:0]                        rvfi_csr_jvt_wdata,
    output logic [31:0]                        rvfi_csr_mstatus_rmask,
    output logic [31:0]                        rvfi_csr_mstatus_wmask,
    output logic [31:0]                        rvfi_csr_mstatus_rdata,
@@ -859,6 +866,11 @@ module cv32e40x_rvfi
   //  CSRs                      //
   ////////////////////////////////
 
+  // Zc* Register (Jump Vector Table)
+  assign rvfi_csr_rdata_d.jvt                = csr_jvt_q_i;
+  assign rvfi_csr_wdata_d.jvt                = csr_jvt_n_i;
+  assign rvfi_csr_wmask_d.jvt                = csr_jvt_we_i ? '1 : '0;
+
   // Machine trap setup
   assign rvfi_csr_rdata_d.mstatus            = csr_mstatus_q_i;
   assign rvfi_csr_wdata_d.mstatus            = csr_mstatus_n_i;
@@ -1124,6 +1136,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mseccfgh = csr_mseccfgh_we_i ? '1 : '0;
 
   // CSR outputs //
+  assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
+  assign rvfi_csr_jvt_rmask               = '1;
+  assign rvfi_csr_jvt_wdata               = rvfi_csr_wdata.jvt;
+  assign rvfi_csr_jvt_wmask               = rvfi_csr_wmask.jvt;
   assign rvfi_csr_mstatus_rdata           = rvfi_csr_rdata.mstatus;
   assign rvfi_csr_mstatus_rmask           = '1;
   assign rvfi_csr_mstatus_wdata           = rvfi_csr_wdata.mstatus;

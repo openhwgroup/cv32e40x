@@ -388,6 +388,9 @@ module cv32e40x_wrapper
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          // CSRs
+         .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
+         .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_q                                          ),
+         .csr_jvt_we_i             ( core_i.cs_registers_i.jvt_we                                         ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
          .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),

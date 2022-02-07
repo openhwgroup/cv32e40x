@@ -45,6 +45,7 @@ package cv32e40x_rvfi_pkg;
   } rvfi_auto_csr_map_t;
 
   typedef struct packed {
+    logic        [31:0] jvt;
     logic        [31:0] mstatus;
     logic        [31:0] misa;
     logic        [31:0] mie;
@@ -57,6 +58,12 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mcause;
     logic        [31:0] mtval;
     logic        [31:0] mip;
+    logic        [31:0] mnxti;
+    logic        [31:0] mintstatus;
+    logic        [31:0] mintthresh;
+    logic        [31:0] mscratchcsw;
+    logic        [31:0] mscratchcswl;
+    logic        [31:0] mclicbase;
     logic        [31:0] tselect;
     logic [ 3:0] [31:0] tdata;
     logic        [31:0] tinfo;

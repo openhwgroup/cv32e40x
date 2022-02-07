@@ -133,6 +133,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mscratch_we;
   logic mscratch_rd_error;
 
+  jvt_t        jvt_q, jvt_n;
+  logic        jvt_we, jvt_rd_error;
+
   mstatus_t mstatus_q, mstatus_n;
   logic mstatus_we;
   logic mstatus_rd_error;
@@ -246,6 +249,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     illegal_csr_read = 1'b0;
     csr_counter_read_o = 1'b0;
     case (csr_raddr)
+      // jvt: Jump vector table
+      CSR_JVT: csr_rdata_int = jvt_q;
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = mstatus_q;
       // mstatush: All bits hardwired to 0
@@ -446,6 +451,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // write logic
   always_comb
   begin
+
+    jvt_n                    = '0;
+    jvt_we                   = 1'b0;
+
     mscratch_n               = csr_wdata_int;
     mscratch_we              = 1'b0;
     mepc_n                   = csr_wdata_int & ~32'b1;
@@ -507,6 +516,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   
     if (csr_we_int) begin
       case (csr_waddr)
+        // jvt: Jump vector table
+        CSR_JVT: begin
+          jvt_we = 1'b1;
+        end
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
@@ -651,6 +664,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   end
 
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) jvt_csr_i (
+    .clk        (clk),
+    .rst_n      (rst_n),
+    .wr_data_i  (jvt_n),
+    .wr_en_i    (jvt_we),
+    .rd_data_o  (jvt_q),
+    .rd_error_o (jvt_rd_error)
+  );
 
   cv32e40x_csr #(
     .WIDTH      (32),

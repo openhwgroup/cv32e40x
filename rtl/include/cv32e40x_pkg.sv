@@ -203,13 +203,14 @@ typedef enum logic[11:0] {
   // User CSRs
   ///////////////////////////////////////////////////////
 
-  // None
+  CSR_JVT            = 12'h017,
 
   ///////////////////////////////////////////////////////
   // User Custom CSRs
   ///////////////////////////////////////////////////////
 
   // None
+
 
   ///////////////////////////////////////////////////////
   // Machine CSRs
@@ -474,7 +475,14 @@ parameter MSTATUS_MPRV_BIT     = 17;
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
 
 parameter MHPMCOUNTER_WIDTH  = 64;
+
 // Types for packed struct CSRs
+
+typedef struct packed {
+  logic [31:6] base;
+  logic [5: 0] mode;
+} jvt_t;
+
 typedef struct packed {
   logic [31:18] zero4; // Reserved, hardwired zero
   logic         mprv; // hardwired zero
