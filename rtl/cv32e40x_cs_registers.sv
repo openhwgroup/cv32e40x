@@ -850,10 +850,42 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o  (mintthresh_q),
         .rd_error_o (mintthresh_rd_error)
       );
-
-      assign mscratchcsw_q  = 32'h0;
-      assign mscratchcswl_q = 32'h0;
-      assign mclicbase_q    = 32'h0;
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mscratchcsw_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mscratchcsw_n),
+        .wr_en_i    (mscratchcsw_we),
+        .rd_data_o  (mscratchcsw_q),
+        .rd_error_o (mscratchcsw_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mscratchcswl_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mscratchcswl_n),
+        .wr_en_i    (mscratchcswl_we),
+        .rd_data_o  (mscratchcswl_q),
+        .rd_error_o (mscratchcswl_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mclicbase_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mclicbase_n),
+        .wr_en_i    (mclicbase_we),
+        .rd_data_o  (mclicbase_q),
+        .rd_error_o (mclicbase_rd_error)
+      );
 
     end else begin
       assign mtvt_q              = 32'h0;
