@@ -203,13 +203,14 @@ typedef enum logic[11:0] {
   // User CSRs
   ///////////////////////////////////////////////////////
 
-  // None
+  CSR_JVT            = 12'h017,
 
   ///////////////////////////////////////////////////////
   // User Custom CSRs
   ///////////////////////////////////////////////////////
 
   // None
+
 
   ///////////////////////////////////////////////////////
   // Machine CSRs
@@ -220,6 +221,7 @@ typedef enum logic[11:0] {
   CSR_MISA           = 12'h301,
   CSR_MIE            = 12'h304,
   CSR_MTVEC          = 12'h305,
+  CSR_MTVT           = 12'h307,
   CSR_MSTATUSH       = 12'h310,
 
   // Performance counters
@@ -260,6 +262,12 @@ typedef enum logic[11:0] {
   CSR_MCAUSE         = 12'h342,
   CSR_MTVAL          = 12'h343,
   CSR_MIP            = 12'h344,
+  CSR_MNXTI          = 12'h345,
+  CSR_MINTSTATUS     = 12'h346,
+  CSR_MINTTHRESH     = 12'h347,
+  CSR_MSCRATCHCSW    = 12'h348,
+  CSR_MSCRATCHCSWL   = 12'h349,
+  CSR_MCLICBASE      = 12'h34A,
 
   // Trigger
   CSR_TSELECT        = 12'h7A0,
@@ -467,7 +475,14 @@ parameter MSTATUS_MPRV_BIT     = 17;
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
 
 parameter MHPMCOUNTER_WIDTH  = 64;
+
 // Types for packed struct CSRs
+
+typedef struct packed {
+  logic [31:6] base;
+  logic [5: 0] mode;
+} jvt_t;
+
 typedef struct packed {
   logic [31:18] zero4; // Reserved, hardwired zero
   logic         mprv; // hardwired zero
@@ -535,6 +550,18 @@ typedef struct packed {
   logic [1:0]  mode;
 } mtvec_t;
 
+typedef struct packed {
+  logic [31:6] addr;
+  logic [ 5:0] zero0;
+} mtvt_t;
+
+typedef struct packed {
+  logic [31:24] mil;
+  logic [23:16] zero0;
+  logic [15: 8] sil;
+  logic [ 7: 0] uil;
+} mintstatus_t;
+
 
 parameter dcsr_t DCSR_RESET_VAL = '{
   xdebugver : XDEBUGVER_STD,
@@ -546,6 +573,16 @@ parameter mtvec_t MTVEC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
   mode:  MTVEC_MODE};
+
+parameter mtvt_t MTVT_RESET_VAL = '{
+  addr:  '0,
+  zero0: '0};
+
+parameter mintstatus_t MINTSTATUS_RESET_VAL = '{
+  mil:   '0,
+  zero0: '0,
+  sil:   '0,
+  uil:   '0};
 
 parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero4: 'b0, // Reserved, hardwired zero

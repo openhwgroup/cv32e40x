@@ -58,6 +58,7 @@ module cv32e40x_wrapper
   parameter logic [31:0] X_MISA                       = 32'h00000000,
   parameter logic [1:0]  X_ECS_XS                     = 2'b00,
   parameter int          NUM_MHPMCOUNTERS             = 1,
+  parameter bit          SMCLIC                       = 0,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -388,6 +389,9 @@ module cv32e40x_wrapper
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          // CSRs
+         .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
+         .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_q                                          ),
+         .csr_jvt_we_i             ( core_i.cs_registers_i.jvt_we                                         ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
          .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),
@@ -401,6 +405,9 @@ module cv32e40x_wrapper
          .csr_mtvec_n_i            ( core_i.cs_registers_i.mtvec_n                                        ),
          .csr_mtvec_q_i            ( core_i.cs_registers_i.mtvec_q                                        ),
          .csr_mtvec_we_i           ( core_i.cs_registers_i.mtvec_we                                       ),
+         .csr_mtvt_n_i             ( core_i.cs_registers_i.mtvt_n                                         ),
+         .csr_mtvt_q_i             ( core_i.cs_registers_i.mtvt_q                                         ),
+         .csr_mtvt_we_i            ( core_i.cs_registers_i.mtvt_we                                        ),
          .csr_mcountinhibit_q_i    ( core_i.cs_registers_i.mcountinhibit_q                                ),
          .csr_mcountinhibit_n_i    ( core_i.cs_registers_i.mcountinhibit_n                                ),
          .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
@@ -421,6 +428,24 @@ module cv32e40x_wrapper
          .csr_mip_q_i              ( core_i.cs_registers_i.mip_i                                          ),
          .csr_mip_we_i             ( core_i.cs_registers_i.csr_we_int &&
                                      (core_i.cs_registers_i.csr_waddr == CSR_MIP)                         ),
+         .csr_mnxti_n_i            ( core_i.cs_registers_i.mnxti_n                                        ),
+         .csr_mnxti_q_i            ( core_i.cs_registers_i.mnxti_q                                        ),
+         .csr_mnxti_we_i           ( core_i.cs_registers_i.mnxti_we                                       ),
+         .csr_mintstatus_n_i       ( core_i.cs_registers_i.mintstatus_n                                   ),
+         .csr_mintstatus_q_i       ( core_i.cs_registers_i.mintstatus_q                                   ),
+         .csr_mintstatus_we_i      ( core_i.cs_registers_i.mintstatus_we                                  ),
+         .csr_mintthresh_n_i       ( core_i.cs_registers_i.mintthresh_n                                   ),
+         .csr_mintthresh_q_i       ( core_i.cs_registers_i.mintthresh_q                                   ),
+         .csr_mintthresh_we_i      ( core_i.cs_registers_i.mintthresh_we                                  ),
+         .csr_mscratchcsw_n_i      ( core_i.cs_registers_i.mscratchcsw_n                                  ),
+         .csr_mscratchcsw_q_i      ( core_i.cs_registers_i.mscratchcsw_q                                  ),
+         .csr_mscratchcsw_we_i     ( core_i.cs_registers_i.mscratchcsw_we                                 ),
+         .csr_mscratchcswl_n_i     ( core_i.cs_registers_i.mscratchcswl_n                                 ),
+         .csr_mscratchcswl_q_i     ( core_i.cs_registers_i.mscratchcswl_q                                 ),
+         .csr_mscratchcswl_we_i    ( core_i.cs_registers_i.mscratchcswl_we                                ),
+         .csr_mclicbase_n_i        ( core_i.cs_registers_i.mclicbase_n                                    ),
+         .csr_mclicbase_q_i        ( core_i.cs_registers_i.mclicbase_q                                    ),
+         .csr_mclicbase_we_i       ( core_i.cs_registers_i.mclicbase_we                                   ),
          .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ), // todo:ok:rename in RTL to use official CSR names from priv spec
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
@@ -491,6 +516,7 @@ module cv32e40x_wrapper
           .X_MISA                ( X_MISA                ),
           .X_ECS_XS              ( X_ECS_XS              ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .SMCLIC                ( SMCLIC                ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (
