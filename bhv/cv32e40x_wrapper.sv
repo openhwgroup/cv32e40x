@@ -474,7 +474,7 @@ module cv32e40x_wrapper
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      ),
-
+         // TODO Tie relevant signals below to RTL
          .csr_mstatush_n_i         ( '0                                                                   ),
          .csr_mstatush_q_i         ( '0                                                                   ),
          .csr_mstatush_we_i        ( '0                                                                   ),

@@ -1004,7 +1004,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
   assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
   assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
-
+  // TODO: do not tie off mcontext inside the module
   assign rvfi_csr_rdata_d.mcontext           = '0;
   assign rvfi_csr_wdata_d.mcontext           = '0; // Not implemented, read 0
   assign rvfi_csr_wmask_d.mcontext           = '0;
