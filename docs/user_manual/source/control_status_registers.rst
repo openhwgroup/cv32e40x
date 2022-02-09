@@ -529,11 +529,11 @@ Detailed:
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
 |   Bit #     |   R/W     |   Description                                                                                                 |
 +=============+===========+===============================================================================================================+
-| 31 : 8      |   RW      | BASE[31:8]: The trap-handler base address, always aligned to 256 bytes.                                       |
+| 31:8        |   RW      | BASE[31:8]: The trap-handler base address, always aligned to 256 bytes.                                       |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-|  7 : 2      |   R       | BASE[7:2]: The trap-handler base address, always aligned to 256 bytes, i.e., mtvec[7:2] is always set to 0.   |
+| 7:2         |   R (0x0) | BASE[7:2]: The trap-handler base address, always aligned to 256 bytes, i.e., mtvec[7:2] is always set to 0.   |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
-|  1          |   R       | MODE[1]: always 0                                                                                             |
+|  1          |   R (0x0) | MODE[1]: always 0                                                                                             |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
 |  0          |   RW      | MODE[0]: 0 = direct mode, 1 = vectored mode.                                                                  |
 +-------------+-----------+---------------------------------------------------------------------------------------------------------------+
@@ -974,7 +974,6 @@ value of the **type** field. See [RISC-V-DEBUG]_ for details regarding all trigg
 | 26:0  | RW        | **data:** Trigger data depending on type                       |
 +-------+-----------+----------------------------------------------------------------+
 
-
 .. _csr-mcontrol6:
 
 Match Control Type 6 (``mcontrol6``)
@@ -985,7 +984,6 @@ CSR Address: 0x7A1
 Reset Value: 0x6000_0000 (TBD)
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
-
 
 +-------+-----------+----------------------------------------------------------------+
 | Bit#  | R/W       | Description                                                    |
@@ -1036,7 +1034,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
 .. _csr-etrigger:
 
 Exception Trigger (``etrigger``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A1
 
@@ -1409,7 +1407,7 @@ Detailed:
 +-------------+-----------+------------------------------------------------------------------------+
 |   Bit #     |   R/W     |   Description                                                          |
 +=============+===========+========================================================================+
-| 31:0        | R         | Machine Architecture ID of |corev| is 0x14 (decimal 20)                |
+| 31:0        | R (0x14)  | Machine Architecture ID of |corev| is 0x14 (decimal 20)                |
 +-------------+-----------+------------------------------------------------------------------------+
 
 Machine Implementation ID (``mimpid``)
@@ -1464,7 +1462,7 @@ Detailed:
 
   CSR Address: 0x747
 
-  Reset Value: 0x0000_0000
+  Reset Value: defined (based on ``PMP_MSECCFG_RV``)
 
   Detailed:
 
@@ -1500,7 +1498,7 @@ Detailed:
 
   CSR Address: 0x3A0 - 0x3AF
 
-  Reset Value: 0x0000_0000
+  Reset Value: defined (based on ``PMP_PMPNCFG_RV[]``)
 
   Detailed ``pmpcfg0``:
 
@@ -1580,7 +1578,7 @@ Detailed:
 
   CSR Address: 0x3B0 - 0x3EF
 
-  Reset Value: 0x0000_0000
+  Reset Value: defined (based on ``PMP_PMPADDR_RV[]``)
 
   +-------+---------------+---------------------------+
   | Bit#  |  R/W          |  Definition               |
