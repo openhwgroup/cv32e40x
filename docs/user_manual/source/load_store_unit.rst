@@ -138,6 +138,7 @@ Write buffer
 ------------
 
 |corev| contains a a single entry write buffer that is used for bufferable transfers. A bufferable transfer is a write transfer originating from a store instruction, where the write address is inside a bufferable region defined by the PMA (:ref:`pma`).
+Note that Store Conditional (SC) and Atomic Memory Operation (AMO) instructions will not utilize the write buffer.
 
 The write buffer (when not full) allows |corev| to proceed executing instructions without having to wait for ``data_gnt_i`` = 1 and ``data_rvalid_i`` = 1 for these bufferable transers.
 
@@ -146,3 +147,7 @@ The write buffer (when not full) allows |corev| to proceed executing instruction
    On the OBI interface ``data_gnt_i`` = 1 and ``data_rvalid_i`` = 1 still need to be signaled for every transfer (as specified in [OPENHW-OBI]_), also for bufferable transfers.
  
 Bus transfers will occur in program order, no matter if transfers are bufferable and non-bufferable.
+Transactions in the write buffer must be completed before the |corev| is able to:
+ 
+ * Retire a fence instruction
+ * Enter SLEEP mode

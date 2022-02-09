@@ -7,6 +7,7 @@ Editor: **Davide Schiavone**
    :maxdepth: 3
    :caption: Contents:
 
+   preface
    intro
    getting_started
    integration

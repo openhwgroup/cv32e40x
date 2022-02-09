@@ -45,17 +45,21 @@
 module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS             = 1,
-  parameter bit          A_EXT           = 0,
-  parameter b_ext_e      B_EXT           = NONE,
-  parameter bit          X_EXT           = 0,
-  parameter int          X_NUM_RS        =  2,
-  parameter int          X_ID_WIDTH      =  4,
-  parameter int          X_MEM_WIDTH     =  32,
-  parameter int          X_RFR_WIDTH     =  32,
-  parameter int          X_RFW_WIDTH     =  32,
-  parameter int          X_MISA          =  32'h00000000,
-  parameter int          PMA_NUM_REGIONS = 0,
+  parameter              LIB                          = 0,
+  parameter bit          A_EXT                        = 0,
+  parameter b_ext_e      B_EXT                        = B_NONE,
+  parameter m_ext_e      M_EXT                        = M,
+  parameter bit          X_EXT                        = 0,
+  parameter int          X_NUM_RS                     = 2,
+  parameter int          X_ID_WIDTH                   = 4,
+  parameter int          X_MEM_WIDTH                  = 32,
+  parameter int          X_RFR_WIDTH                  = 32,
+  parameter int          X_RFW_WIDTH                  = 32,
+  parameter logic [31:0] X_MISA                       = 32'h00000000,
+  parameter logic [1:0]  X_ECS_XS                     = 2'b00,
+  parameter int          NUM_MHPMCOUNTERS             = 1,
+  parameter bit          SMCLIC                       = 0,
+  parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
@@ -168,7 +172,12 @@ module cv32e40x_wrapper
                  .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
 
-  bind cv32e40x_mult:            core_i.ex_stage_i.mult_i           cv32e40x_mult_sva         mult_sva         (.*);
+  generate
+    if(M_EXT != M_NONE) begin: mul_sva
+      bind cv32e40x_mult:
+        core_i.ex_stage_i.mul.mult_i cv32e40x_mult_sva mult_sva (.*);
+    end
+  endgenerate
 
   bind cv32e40x_controller_fsm:
     core_i.controller_i.controller_fsm_i
@@ -194,8 +203,12 @@ module cv32e40x_wrapper
   bind cv32e40x_prefetch_unit:
     core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
 
-  bind cv32e40x_div:
-    core_i.ex_stage_i.div_i cv32e40x_div_sva div_sva (.*);
+  generate
+    if(M_EXT == M) begin: div_sva
+      bind cv32e40x_div:
+        core_i.ex_stage_i.div.div_i cv32e40x_div_sva div_sva (.*);
+    end
+  endgenerate
 
   bind cv32e40x_alignment_buffer:
     core_i.if_stage_i.prefetch_unit_i.alignment_buffer_i
@@ -357,7 +370,6 @@ module cv32e40x_wrapper
 
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
 
-         .lsu_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.lsu_en                                ),
          .data_addr_ex_i           ( core_i.data_addr_o                                                   ),
          .data_wdata_ex_i          ( core_i.data_wdata_o                                                  ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
@@ -366,19 +378,20 @@ module cv32e40x_wrapper
          .rf_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
-         .lsu_rvalid_wb_i          ( core_i.load_store_unit_i.resp_valid                                  ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
          .priv_lvl_i               ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
-         .priv_lvl_lsu_i           ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          // CSRs
+         .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
+         .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_q                                          ),
+         .csr_jvt_we_i             ( core_i.cs_registers_i.jvt_we                                         ),
          .csr_mstatus_n_i          ( core_i.cs_registers_i.mstatus_n                                      ),
          .csr_mstatus_q_i          ( core_i.cs_registers_i.mstatus_q                                      ),
          .csr_mstatus_we_i         ( core_i.cs_registers_i.mstatus_we                                     ),
@@ -392,6 +405,9 @@ module cv32e40x_wrapper
          .csr_mtvec_n_i            ( core_i.cs_registers_i.mtvec_n                                        ),
          .csr_mtvec_q_i            ( core_i.cs_registers_i.mtvec_q                                        ),
          .csr_mtvec_we_i           ( core_i.cs_registers_i.mtvec_we                                       ),
+         .csr_mtvt_n_i             ( core_i.cs_registers_i.mtvt_n                                         ),
+         .csr_mtvt_q_i             ( core_i.cs_registers_i.mtvt_q                                         ),
+         .csr_mtvt_we_i            ( core_i.cs_registers_i.mtvt_we                                        ),
          .csr_mcountinhibit_q_i    ( core_i.cs_registers_i.mcountinhibit_q                                ),
          .csr_mcountinhibit_n_i    ( core_i.cs_registers_i.mcountinhibit_n                                ),
          .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
@@ -412,6 +428,24 @@ module cv32e40x_wrapper
          .csr_mip_q_i              ( core_i.cs_registers_i.mip_i                                          ),
          .csr_mip_we_i             ( core_i.cs_registers_i.csr_we_int &&
                                      (core_i.cs_registers_i.csr_waddr == CSR_MIP)                         ),
+         .csr_mnxti_n_i            ( core_i.cs_registers_i.mnxti_n                                        ),
+         .csr_mnxti_q_i            ( core_i.cs_registers_i.mnxti_q                                        ),
+         .csr_mnxti_we_i           ( core_i.cs_registers_i.mnxti_we                                       ),
+         .csr_mintstatus_n_i       ( core_i.cs_registers_i.mintstatus_n                                   ),
+         .csr_mintstatus_q_i       ( core_i.cs_registers_i.mintstatus_q                                   ),
+         .csr_mintstatus_we_i      ( core_i.cs_registers_i.mintstatus_we                                  ),
+         .csr_mintthresh_n_i       ( core_i.cs_registers_i.mintthresh_n                                   ),
+         .csr_mintthresh_q_i       ( core_i.cs_registers_i.mintthresh_q                                   ),
+         .csr_mintthresh_we_i      ( core_i.cs_registers_i.mintthresh_we                                  ),
+         .csr_mscratchcsw_n_i      ( core_i.cs_registers_i.mscratchcsw_n                                  ),
+         .csr_mscratchcsw_q_i      ( core_i.cs_registers_i.mscratchcsw_q                                  ),
+         .csr_mscratchcsw_we_i     ( core_i.cs_registers_i.mscratchcsw_we                                 ),
+         .csr_mscratchcswl_n_i     ( core_i.cs_registers_i.mscratchcswl_n                                 ),
+         .csr_mscratchcswl_q_i     ( core_i.cs_registers_i.mscratchcswl_q                                 ),
+         .csr_mscratchcswl_we_i    ( core_i.cs_registers_i.mscratchcswl_we                                ),
+         .csr_mclicbase_n_i        ( core_i.cs_registers_i.mclicbase_n                                    ),
+         .csr_mclicbase_q_i        ( core_i.cs_registers_i.mclicbase_q                                    ),
+         .csr_mclicbase_we_i       ( core_i.cs_registers_i.mclicbase_we                                   ),
          .csr_tdata1_n_i           ( core_i.cs_registers_i.tmatch_control_n                               ), // todo:ok:rename in RTL to use official CSR names from priv spec
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tmatch_control_q                               ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tmatch_control_we                              ),
@@ -478,9 +512,10 @@ module cv32e40x_wrapper
     // instantiate the core
     cv32e40x_core
         #(
-          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .LIB                   ( LIB                   ),
           .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
+          .M_EXT                 ( M_EXT                 ),
           .X_EXT                 ( X_EXT                 ),
           .X_NUM_RS              ( X_NUM_RS              ),
           .X_ID_WIDTH            ( X_ID_WIDTH            ),
@@ -488,6 +523,9 @@ module cv32e40x_wrapper
           .X_RFR_WIDTH           ( X_RFR_WIDTH           ),
           .X_RFW_WIDTH           ( X_RFW_WIDTH           ),
           .X_MISA                ( X_MISA                ),
+          .X_ECS_XS              ( X_ECS_XS              ),
+          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .SMCLIC                ( SMCLIC                ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (

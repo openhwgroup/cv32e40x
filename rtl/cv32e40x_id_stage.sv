@@ -33,7 +33,8 @@
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT                  = 0,
-  parameter b_ext_e      B_EXT                  = NONE,
+  parameter b_ext_e      B_EXT                  = B_NONE,
+  parameter m_ext_e      M_EXT                  = M,
   parameter bit          X_EXT                  = 0,
   parameter              DEBUG_TRIGGER_EN       = 1,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2
@@ -366,6 +367,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   #(
     .A_EXT                           ( A_EXT                     ),
     .B_EXT                           ( B_EXT                     ),
+    .M_EXT                           ( M_EXT                     ),
     .DEBUG_TRIGGER_EN                ( DEBUG_TRIGGER_EN          )
   )
   decoder_i
@@ -550,7 +552,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
 
         id_ex_pipe_o.csr_en                 <= csr_en;
-        id_ex_pipe_o.csr_op                 <= csr_op;
+        if (csr_en) begin
+          id_ex_pipe_o.csr_op               <= csr_op;
+        end
 
         id_ex_pipe_o.lsu_en                 <= lsu_en;
         if (lsu_en) begin
@@ -692,6 +696,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
       end
 
+      assign xif_issue_if.issue_req.ecs       = 6'b111111; // todo: hookup to related mstatus bits (for now just reporting all state as dirty) 
+                                                           // and make sure that instruction after ecs update sees correct bits
+      assign xif_issue_if.issue_req.ecs_valid = 1'b1; // todo: needs to take into account if mstatus extension context writes are in flight
+                                                      // todo: use xif_issue_if.issue_resp.ecswrite
 
       // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
       assign xif_waiting = xif_issue_if.issue_valid && !xif_issue_if.issue_ready && !xif_accepted_q && !xif_rejected_q;
@@ -709,21 +717,23 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end else begin : no_x_ext
 
       // Drive all eXtension interface signals and outputs low if X_EXT == 0
-      assign xif_en                          = 1'b0;
-      assign xif_waiting                     = 1'b0;
-      assign xif_insn_accept                 = 1'b0;
-      assign xif_insn_reject                 = 1'b0;
-      assign xif_we                          = 1'b0;
-      assign xif_exception                   = 1'b0;
-      assign xif_dualwrite                   = 1'b0;
-      assign xif_loadstore                   = 1'b0;
+      assign xif_en                           = 1'b0;
+      assign xif_waiting                      = 1'b0;
+      assign xif_insn_accept                  = 1'b0;
+      assign xif_insn_reject                  = 1'b0;
+      assign xif_we                           = 1'b0;
+      assign xif_exception                    = 1'b0;
+      assign xif_dualwrite                    = 1'b0;
+      assign xif_loadstore                    = 1'b0;
 
-      assign xif_issue_if.issue_valid        = 1'b0;
-      assign xif_issue_if.issue_req.instr    = '0;
-      assign xif_issue_if.issue_req.mode     = '0;
-      assign xif_issue_if.issue_req.id       = '0;
-      assign xif_issue_if.issue_req.rs       = '0;
-      assign xif_issue_if.issue_req.rs_valid = '0;
+      assign xif_issue_if.issue_valid         = 1'b0;
+      assign xif_issue_if.issue_req.instr     = '0;
+      assign xif_issue_if.issue_req.mode      = '0;
+      assign xif_issue_if.issue_req.id        = '0;
+      assign xif_issue_if.issue_req.rs        = '0;
+      assign xif_issue_if.issue_req.rs_valid  = '0;
+      assign xif_issue_if.issue_req.ecs       = '0;
+      assign xif_issue_if.issue_req.ecs_valid = '0;
 
     end
   endgenerate

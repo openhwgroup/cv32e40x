@@ -31,18 +31,21 @@
 
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
-  parameter NUM_MHPMCOUNTERS             =  1,
-  parameter              LIB             =  0,
-  parameter bit          A_EXT           =  0,
-  parameter b_ext_e      B_EXT           =  NONE,
-  parameter bit          X_EXT           =  0,
-  parameter int          X_NUM_RS        =  2,
-  parameter int          X_ID_WIDTH      =  4,
-  parameter int          X_MEM_WIDTH     =  32,
-  parameter int          X_RFR_WIDTH     =  32,
-  parameter int          X_RFW_WIDTH     =  32,
-  parameter int          X_MISA          =  32'h00000000,
-  parameter int          PMA_NUM_REGIONS =  0,
+  parameter              LIB                          = 0,
+  parameter bit          A_EXT                        = 0,
+  parameter b_ext_e      B_EXT                        = B_NONE,
+  parameter m_ext_e      M_EXT                        = M,
+  parameter bit          X_EXT                        = 0,
+  parameter int          X_NUM_RS                     = 2,
+  parameter int          X_ID_WIDTH                   = 4,
+  parameter int          X_MEM_WIDTH                  = 32,
+  parameter int          X_RFR_WIDTH                  = 32,
+  parameter int          X_RFW_WIDTH                  = 32,
+  parameter logic [31:0] X_MISA                       = 32'h00000000,
+  parameter logic [1:0]  X_ECS_XS                     = 2'b00,
+  parameter int          NUM_MHPMCOUNTERS             = 1,
+  parameter bit          SMCLIC                       = 0,
+  parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
@@ -378,6 +381,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .A_EXT                        ( A_EXT                     ),
     .B_EXT                        ( B_EXT                     ),
+    .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )
@@ -440,7 +444,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   /////////////////////////////////////////////////////
   cv32e40x_ex_stage
   #(
-    .X_EXT                      ( X_EXT                        )
+    .X_EXT                      ( X_EXT                        ),
+    .M_EXT                      ( M_EXT                        )
   )
   ex_stage_i
   (
@@ -593,6 +598,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_cs_registers
   #(
     .A_EXT                      ( A_EXT                  ),
+    .M_EXT                      ( M_EXT                  ),
+    .X_EXT                      ( X_EXT                  ),
+    .X_MISA                     ( X_MISA                 ),
+    .X_ECS_XS                   ( X_ECS_XS               ),
+    .SMCLIC                     ( SMCLIC                 ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i

@@ -77,14 +77,11 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    // LSU
-   input logic                                lsu_en_wb_i,
-   input logic                                lsu_rvalid_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    // PC //
    input logic [31:0]                         branch_addr_n_i,
 
    input                                      privlvl_t priv_lvl_i,
-   input                                      privlvl_t priv_lvl_lsu_i,
 
    // Controller FSM probe
    input ctrl_fsm_t                           ctrl_fsm_i,
@@ -94,6 +91,9 @@ module cv32e40x_rvfi
    input logic                                nmi_is_store_i,
 
    //// CSR Probes ////
+   input                                      jvt_t csr_jvt_n_i,
+   input                                      jvt_t csr_jvt_q_i,
+   input logic                                csr_jvt_we_i,
    input                                      mstatus_t csr_mstatus_n_i,
    input                                      mstatus_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
@@ -109,6 +109,9 @@ module cv32e40x_rvfi
    input                                      mtvec_t csr_mtvec_n_i,
    input                                      mtvec_t csr_mtvec_q_i,
    input logic                                csr_mtvec_we_i,
+   input                                      mtvt_t csr_mtvt_n_i,
+   input                                      mtvt_t csr_mtvt_q_i,
+   input logic                                csr_mtvt_we_i,
    input logic [31:0]                         csr_mcountinhibit_n_i,
    input logic [31:0]                         csr_mcountinhibit_q_i,
    input logic                                csr_mcountinhibit_we_i,
@@ -127,6 +130,24 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mip_n_i,
    input logic [31:0]                         csr_mip_q_i,
    input logic                                csr_mip_we_i,
+   input logic [31:0]                         csr_mnxti_n_i,
+   input logic [31:0]                         csr_mnxti_q_i,
+   input logic                                csr_mnxti_we_i,
+   input                                      mintstatus_t csr_mintstatus_n_i,
+   input                                      mintstatus_t csr_mintstatus_q_i,
+   input logic                                csr_mintstatus_we_i,
+   input logic [31:0]                         csr_mintthresh_n_i,
+   input logic [31:0]                         csr_mintthresh_q_i,
+   input logic                                csr_mintthresh_we_i,
+   input logic [31:0]                         csr_mscratchcsw_n_i,
+   input logic [31:0]                         csr_mscratchcsw_q_i,
+   input logic                                csr_mscratchcsw_we_i,
+   input logic [31:0]                         csr_mscratchcswl_n_i,
+   input logic [31:0]                         csr_mscratchcswl_q_i,
+   input logic                                csr_mscratchcswl_we_i,
+   input logic [31:0]                         csr_mclicbase_n_i,
+   input logic [31:0]                         csr_mclicbase_q_i,
+   input logic                                csr_mclicbase_we_i,
    input logic [31:0]                         csr_tdata1_n_i,
    input logic [31:0]                         csr_tdata1_q_i,
    input logic                                csr_tdata1_we_i,
@@ -216,6 +237,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_mem_wdata,
 
    // CSRs
+   output logic [31:0]                        rvfi_csr_jvt_rmask,
+   output logic [31:0]                        rvfi_csr_jvt_wmask,
+   output logic [31:0]                        rvfi_csr_jvt_rdata,
+   output logic [31:0]                        rvfi_csr_jvt_wdata,
    output logic [31:0]                        rvfi_csr_mstatus_rmask,
    output logic [31:0]                        rvfi_csr_mstatus_wmask,
    output logic [31:0]                        rvfi_csr_mstatus_rdata,
@@ -236,6 +261,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mtvec_wmask,
    output logic [31:0]                        rvfi_csr_mtvec_rdata,
    output logic [31:0]                        rvfi_csr_mtvec_wdata,
+   output logic [31:0]                        rvfi_csr_mtvt_rmask,
+   output logic [31:0]                        rvfi_csr_mtvt_wmask,
+   output logic [31:0]                        rvfi_csr_mtvt_rdata,
+   output logic [31:0]                        rvfi_csr_mtvt_wdata,
    output logic [31:0]                        rvfi_csr_mcountinhibit_rmask,
    output logic [31:0]                        rvfi_csr_mcountinhibit_wmask,
    output logic [31:0]                        rvfi_csr_mcountinhibit_rdata,
@@ -264,6 +293,30 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mip_wmask,
    output logic [31:0]                        rvfi_csr_mip_rdata,
    output logic [31:0]                        rvfi_csr_mip_wdata,
+   output logic [31:0]                        rvfi_csr_mnxti_rmask,
+   output logic [31:0]                        rvfi_csr_mnxti_wmask,
+   output logic [31:0]                        rvfi_csr_mnxti_rdata,
+   output logic [31:0]                        rvfi_csr_mnxti_wdata,
+   output logic [31:0]                        rvfi_csr_mintstatus_rmask,
+   output logic [31:0]                        rvfi_csr_mintstatus_wmask,
+   output logic [31:0]                        rvfi_csr_mintstatus_rdata,
+   output logic [31:0]                        rvfi_csr_mintstatus_wdata,
+   output logic [31:0]                        rvfi_csr_mintthresh_rmask,
+   output logic [31:0]                        rvfi_csr_mintthresh_wmask,
+   output logic [31:0]                        rvfi_csr_mintthresh_rdata,
+   output logic [31:0]                        rvfi_csr_mintthresh_wdata,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_rmask,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_wmask,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_rdata,
+   output logic [31:0]                        rvfi_csr_mscratchcsw_wdata,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_rmask,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_wmask,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_rdata,
+   output logic [31:0]                        rvfi_csr_mscratchcswl_wdata,
+   output logic [31:0]                        rvfi_csr_mclicbase_rmask,
+   output logic [31:0]                        rvfi_csr_mclicbase_wmask,
+   output logic [31:0]                        rvfi_csr_mclicbase_rdata,
+   output logic [31:0]                        rvfi_csr_mclicbase_wdata,
    output logic [31:0]                        rvfi_csr_tselect_rmask,
    output logic [31:0]                        rvfi_csr_tselect_wmask,
    output logic [31:0]                        rvfi_csr_tselect_rdata,
@@ -742,10 +795,7 @@ module cv32e40x_rvfi
         rvfi_mem_addr  <= ex_mem_addr;
         rvfi_mem_wdata <= ex_mem_wdata;
 
-
-        // Separate privelege level signal needed for LSU intructions because their privilege level can
-        // be set to MPP when MPRV=1, both signals are valid in WB
-        rvfi_mode      <= lsu_en_wb_i ? priv_lvl_lsu_i :  priv_lvl_i;
+        rvfi_mode      <= priv_lvl_i;
 
         rvfi_dbg       <= debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= debug_mode [STAGE_WB];
@@ -838,6 +888,11 @@ module cv32e40x_rvfi
   //  CSRs                      //
   ////////////////////////////////
 
+  // Zc* Register (Jump Vector Table)
+  assign rvfi_csr_rdata_d.jvt                = csr_jvt_q_i;
+  assign rvfi_csr_wdata_d.jvt                = csr_jvt_n_i;
+  assign rvfi_csr_wmask_d.jvt                = csr_jvt_we_i ? '1 : '0;
+
   // Machine trap setup
   assign rvfi_csr_rdata_d.mstatus            = csr_mstatus_q_i;
   assign rvfi_csr_wdata_d.mstatus            = csr_mstatus_n_i;
@@ -858,6 +913,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mtvec              = csr_mtvec_q_i;
   assign rvfi_csr_wdata_d.mtvec              = csr_mtvec_n_i;
   assign rvfi_csr_wmask_d.mtvec              = csr_mtvec_we_i   ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mtvt               = csr_mtvt_q_i;
+  assign rvfi_csr_wdata_d.mtvt               = csr_mtvt_n_i;
+  assign rvfi_csr_wmask_d.mtvt               = csr_mtvt_we_i   ? '1 : '0;
 
   // Performance counters
   assign rvfi_csr_rdata_d.mcountinhibit      = csr_mcountinhibit_q_i;
@@ -892,6 +951,30 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mip                = ex_csr_rdata.mip;
   assign rvfi_csr_wdata_d.mip                = csr_mip_n_i;
   assign rvfi_csr_wmask_d.mip                = csr_mip_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mnxti              = csr_mnxti_q_i;
+  assign rvfi_csr_wdata_d.mnxti              = csr_mnxti_n_i;
+  assign rvfi_csr_wmask_d.mnxti              = csr_mnxti_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mintstatus         = csr_mintstatus_q_i;
+  assign rvfi_csr_wdata_d.mintstatus         = csr_mintstatus_n_i;
+  assign rvfi_csr_wmask_d.mintstatus         = csr_mintstatus_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mintthresh         = csr_mintthresh_q_i;
+  assign rvfi_csr_wdata_d.mintthresh         = csr_mintthresh_n_i;
+  assign rvfi_csr_wmask_d.mintthresh         = csr_mintthresh_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mscratchcsw        = csr_mscratchcsw_q_i;
+  assign rvfi_csr_wdata_d.mscratchcsw        = csr_mscratchcsw_n_i;
+  assign rvfi_csr_wmask_d.mscratchcsw        = csr_mscratchcsw_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mscratchcswl       = csr_mscratchcswl_q_i;
+  assign rvfi_csr_wdata_d.mscratchcswl       = csr_mscratchcswl_n_i;
+  assign rvfi_csr_wmask_d.mscratchcswl       = csr_mscratchcswl_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mclicbase          = csr_mclicbase_q_i;
+  assign rvfi_csr_wdata_d.mclicbase          = csr_mclicbase_n_i;
+  assign rvfi_csr_wmask_d.mclicbase          = csr_mclicbase_we_i ? '1 : '0;
 
   // Trigger
   assign rvfi_csr_rdata_d.tselect            = '0;
@@ -1087,6 +1170,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mconfigptr      = csr_mconfigptr_we_i ? '1 : '0;
 
   // CSR outputs //
+  assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
+  assign rvfi_csr_jvt_rmask               = '1;
+  assign rvfi_csr_jvt_wdata               = rvfi_csr_wdata.jvt;
+  assign rvfi_csr_jvt_wmask               = rvfi_csr_wmask.jvt;
   assign rvfi_csr_mstatus_rdata           = rvfi_csr_rdata.mstatus;
   assign rvfi_csr_mstatus_rmask           = '1;
   assign rvfi_csr_mstatus_wdata           = rvfi_csr_wdata.mstatus;
@@ -1107,6 +1194,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_mtvec_rmask             = '1;
   assign rvfi_csr_mtvec_wdata             = rvfi_csr_wdata.mtvec;
   assign rvfi_csr_mtvec_wmask             = rvfi_csr_wmask.mtvec;
+  assign rvfi_csr_mtvt_rdata              = rvfi_csr_rdata.mtvt;
+  assign rvfi_csr_mtvt_rmask              = '1;
+  assign rvfi_csr_mtvt_wdata              = rvfi_csr_wdata.mtvt;
+  assign rvfi_csr_mtvt_wmask              = rvfi_csr_wmask.mtvt;
   assign rvfi_csr_mcountinhibit_rdata     = rvfi_csr_rdata.mcountinhibit;
   assign rvfi_csr_mcountinhibit_rmask     = '1;
   assign rvfi_csr_mcountinhibit_wdata     = rvfi_csr_wdata.mcountinhibit;
@@ -1136,6 +1227,30 @@ module cv32e40x_rvfi
   assign rvfi_csr_mip_rmask               = '1;
   assign rvfi_csr_mip_wdata               = rvfi_csr_wdata.mip;
   assign rvfi_csr_mip_wmask               = rvfi_csr_wmask.mip;
+  assign rvfi_csr_mnxti_rmask             = '1;
+  assign rvfi_csr_mnxti_rdata             = rvfi_csr_rdata.mnxti;
+  assign rvfi_csr_mnxti_wmask             = rvfi_csr_wmask.mnxti;
+  assign rvfi_csr_mnxti_wdata             = rvfi_csr_wdata.mnxti;
+  assign rvfi_csr_mintstatus_rdata        = rvfi_csr_rdata.mintstatus;
+  assign rvfi_csr_mintstatus_rmask        = '1;
+  assign rvfi_csr_mintstatus_wdata        = rvfi_csr_wdata.mintstatus;
+  assign rvfi_csr_mintstatus_wmask        = rvfi_csr_wmask.mintstatus;
+  assign rvfi_csr_mintthresh_rdata        = rvfi_csr_rdata.mintthresh;
+  assign rvfi_csr_mintthresh_rmask        = '1;
+  assign rvfi_csr_mintthresh_wdata        = rvfi_csr_wdata.mintthresh;
+  assign rvfi_csr_mintthresh_wmask        = rvfi_csr_wmask.mintthresh;
+  assign rvfi_csr_mscratchcsw_rdata       = rvfi_csr_rdata.mscratchcsw;
+  assign rvfi_csr_mscratchcsw_rmask       = '1;
+  assign rvfi_csr_mscratchcsw_wdata       = rvfi_csr_wdata.mscratchcsw;
+  assign rvfi_csr_mscratchcsw_wmask       = rvfi_csr_wmask.mscratchcsw;
+  assign rvfi_csr_mscratchcswl_rdata      = rvfi_csr_rdata.mscratchcswl;
+  assign rvfi_csr_mscratchcswl_rmask      = '1;
+  assign rvfi_csr_mscratchcswl_wdata      = rvfi_csr_wdata.mscratchcswl;
+  assign rvfi_csr_mscratchcswl_wmask      = rvfi_csr_wmask.mscratchcswl;
+  assign rvfi_csr_mclicbase_rdata         = rvfi_csr_rdata.mclicbase;
+  assign rvfi_csr_mclicbase_rmask         = '1;
+  assign rvfi_csr_mclicbase_wdata         = rvfi_csr_wdata.mclicbase;
+  assign rvfi_csr_mclicbase_wmask         = rvfi_csr_wmask.mclicbase;
   assign rvfi_csr_tselect_rdata           = rvfi_csr_rdata.tselect;
   assign rvfi_csr_tselect_rmask           = '1;
   assign rvfi_csr_tselect_wdata           = rvfi_csr_wdata.tselect;

@@ -28,7 +28,8 @@
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT                  = 0,
-  parameter b_ext_e      B_EXT                  = NONE,
+  parameter b_ext_e      B_EXT                  = B_NONE,
+  parameter m_ext_e      M_EXT                  = M,
   parameter              DEBUG_TRIGGER_EN       = 1
 )
 (
@@ -95,8 +96,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   logic       rf_we;
   logic       lsu_en;
 
-  csr_opcode_e csr_op;
-
+  logic       csr_en;
   logic       alu_en;
   logic       mul_en;
   logic       div_en;
@@ -120,13 +120,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     .ctrl_fsm_i     ( ctrl_fsm_i     ),
     .decoder_ctrl_o ( decoder_i_ctrl )
   );
-  
-  // RV32M extension decoder
-  cv32e40x_m_decoder m_decoder_i
-  (
-    .instr_rdata_i  ( instr_rdata_i  ),
-    .decoder_ctrl_o ( decoder_m_ctrl )
-  );
+
 
   generate
     if (A_EXT) begin: a_decoder
@@ -140,7 +134,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
-    if (B_EXT != NONE) begin: b_decoder
+    if (B_EXT != B_NONE) begin: b_decoder
       // RV32B extension decoder
       cv32e40x_b_decoder
       #(
@@ -154,6 +148,22 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     end else begin: no_b_decoder
       assign decoder_b_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
+
+    if (M_EXT != M_NONE) begin: m_decoder
+      // RV32M extension decoder
+      cv32e40x_m_decoder
+        #(
+          .M_EXT (M_EXT)
+          )
+      m_decoder_i
+      (
+       .instr_rdata_i  ( instr_rdata_i  ),
+       .decoder_ctrl_o ( decoder_m_ctrl )
+      );
+    end else begin: no_m_decoder
+      assign decoder_m_ctrl = DECODER_CTRL_ILLEGAL_INSN;
+    end
+
   endgenerate
       
   // Mux control outputs from decoders
@@ -196,8 +206,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign div_operator_o     = decoder_ctrl_mux.div_operator;
   assign rf_re_o            = decoder_ctrl_mux.rf_re;                         
   assign rf_we              = decoder_ctrl_mux.rf_we;                           
-  assign csr_en_o           = decoder_ctrl_mux.csr_en;
-  assign csr_op             = decoder_ctrl_mux.csr_op;                          
+  assign csr_en             = decoder_ctrl_mux.csr_en;
+  assign csr_op_o           = decoder_ctrl_mux.csr_op;
   assign lsu_en             = decoder_ctrl_mux.lsu_en;                        
   assign lsu_we_o           = decoder_ctrl_mux.lsu_we;                       
   assign lsu_size_o         = decoder_ctrl_mux.lsu_size;                     
@@ -218,7 +228,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign div_en_o = deassert_we_i ? 1'b0        : div_en;
   assign lsu_en_o = deassert_we_i ? 1'b0        : lsu_en;
 
-  assign csr_op_o = deassert_we_i ? CSR_OP_READ : csr_op; // Gating csr_en introduces tight timing path, gate csr_op instead
+  assign csr_en_o = deassert_we_i ? 1'b0        : csr_en;
   assign rf_we_o  = deassert_we_i ? 1'b0        : rf_we;
 
   // Suppress special instruction/illegal instruction bits

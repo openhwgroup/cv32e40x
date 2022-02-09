@@ -272,12 +272,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
   assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
-  // Early version of the pending_nmi signal, including the unflopped lsu_err_wb_i[0]
-  // This signal is used for halting the ID stage in the same cycle as the bus error arrives, and any coming cycles where
-  // an NMI is pending but not allowed to be taken.
+  // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
+  // This signal is used for halting the ID stage in the same cycle as the bus error arrives.
   // This ensures that any instruction in the ID stage that may depend on the result of the faulted load
-  // will not get executed using invalid data.
-  assign pending_nmi_early = (nmi_pending_q || lsu_err_wb_i[0]) && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  // will not propagate to the EX stage. For cycles after lsu_err_wb_i[0] is
+  // high, ID stage will be halted due to pending_nmi and !nmi_allowed.
+  assign pending_nmi_early =  lsu_err_wb_i[0] && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // todo: Halting ID and killing it later will not work for Zce (push/pop)
 
@@ -349,7 +349,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
 
-
+  // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
 
   // Do not count if we have an exception in WB, trigger match in WB (we do not execute the instruction at trigger address),
@@ -416,7 +416,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.halt_id = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall ||
                          (pending_interrupt && !interrupt_allowed) ||
                          (pending_debug && !debug_allowed) ||
-                         (pending_nmi_early && !nmi_allowed);
+                         (pending_nmi && !nmi_allowed) ||
+                         (pending_nmi_early);
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
@@ -476,7 +477,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.pc_mux = PC_TRAP_NMI;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
-          ctrl_fsm_o.csr_cause.interrupt = 1'b1;
+          ctrl_fsm_o.csr_cause.irq = 1'b1;
           ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
 
           // Save pc from oldest valid instruction
@@ -516,7 +517,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
-          ctrl_fsm_o.csr_cause.interrupt = 1'b1;
+          ctrl_fsm_o.csr_cause.irq = 1'b1;
           ctrl_fsm_o.csr_cause.exception_code = {3'b000, irq_id_ctrl_i};
 
           // Save pc from oldest valid instruction

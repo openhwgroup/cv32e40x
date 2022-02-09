@@ -30,8 +30,13 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter bit A_EXT        = 0,
-  parameter NUM_MHPMCOUNTERS = 1
+  parameter bit          A_EXT            = 0,
+  parameter m_ext_e      M_EXT            = M,
+  parameter bit          X_EXT            = 0,
+  parameter logic [31:0] X_MISA           =  32'h00000000,
+  parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
+  parameter bit          SMCLIC           = 0,
+  parameter int          NUM_MHPMCOUNTERS = 1
 )
 (
   // Clock and Reset
@@ -80,14 +85,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     pc_if_i
 );
   
-  localparam logic [31:0] MISA_VALUE =
-  (32'(A_EXT) <<  0)  // A - Atomic Instructions extension
-| (32'(1)     <<  2)  // C - Compressed extension
-| (32'(1)     <<  8)  // I - RV32I/64I/128I base ISA
-| (32'(1)     << 12)  // M - Integer Multiply/Divide extension
-| (32'(0)     << 20)  // U - User mode implemented
-| (32'(0)     << 23)  // X - Non-standard extensions present
-| (32'(MXL)   << 30); // M-XLEN
+  localparam logic [31:0] CORE_MISA =
+  (32'(A_EXT)      <<  0)  // A - Atomic Instructions extension
+| (32'(1)          <<  2)  // C - Compressed extension
+| (32'(1)          <<  8)  // I - RV32I/64I/128I base ISA
+| (32'(M_EXT == M) << 12)  // M - Integer Multiply/Divide extension
+| (32'(0)          << 20)  // U - User mode implemented
+| (32'(0)          << 23)  // X - Non-standard extensions present
+| (32'(MXL)        << 30); // M-XLEN
+
+  localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
 
   // CSR update logic
   logic [31:0] csr_wdata_int;
@@ -126,6 +133,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic mscratch_we;
   logic mscratch_rd_error;
 
+  jvt_t        jvt_q, jvt_n;
+  logic        jvt_we, jvt_rd_error;
+
   mstatus_t mstatus_q, mstatus_n;
   logic mstatus_we;
   logic mstatus_rd_error;
@@ -137,6 +147,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   mtvec_t mtvec_n, mtvec_q;
   logic mtvec_we;
   logic mtvec_rd_error;
+
+  mtvt_t       mtvt_n, mtvt_q;
+  logic        mtvt_we, mtvt_rd_error;
+
+  logic [31:0] mnxti_q, mnxti_n;
+  logic        mnxti_we;
+
+  mintstatus_t mintstatus_q, mintstatus_n;
+  logic        mintstatus_we, mintstatus_rd_error;
+
+  logic [31:0] mintthresh_q, mintthresh_n;
+  logic        mintthresh_we, mintthresh_rd_error;
+
+  logic [31:0] mscratchcsw_q, mscratchcsw_n;
+  logic        mscratchcsw_we;
+
+  logic [31:0] mscratchcswl_q, mscratchcswl_n;
+  logic        mscratchcswl_we;
+
+  logic [31:0] mclicbase_q, mclicbase_n;
+  logic        mclicbase_we;
 
   logic [31:0] mip;                     // Bits are masked according to IRQ_MASK
   logic [31:0] mie_q, mie_n;            // Bits are masked according to IRQ_MASK
@@ -218,6 +249,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     illegal_csr_read = 1'b0;
     csr_counter_read_o = 1'b0;
     case (csr_raddr)
+      // jvt: Jump vector table
+      CSR_JVT: csr_rdata_int = jvt_q;
       // mstatus: always M-mode, contains IE bit
       CSR_MSTATUS: csr_rdata_int = mstatus_q;
       // mstatush: All bits hardwired to 0
@@ -228,6 +261,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MIE: csr_rdata_int = mie_q;
       // mtvec: machine trap-handler base address
       CSR_MTVEC: csr_rdata_int = mtvec_q;
+      // mtvt: machine trap-handler vector table base address
+      CSR_MTVT: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mtvt_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
       // mscratch: machine scratch
       CSR_MSCRATCH: csr_rdata_int = mscratch_q;
       // mepc: exception program counter
@@ -236,6 +278,60 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MCAUSE: csr_rdata_int = mcause_q;
       // mip: interrupt pending
       CSR_MIP: csr_rdata_int = mip;
+      // mnxti: Next Interrupt Handler Address and Interrupt Enable
+      CSR_MNXTI: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mnxti_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+      // mintstatus: Interrupt Status
+      CSR_MINTSTATUS: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mintstatus_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+      // mintthresh: Interrupt-Level Threshold
+      CSR_MINTTHRESH: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mintthresh_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+      // mscratchcsw: Scratch Swap for Multiple Privilege Modes
+      CSR_MSCRATCHCSW: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mscratchcsw_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+      // mscratchcswl: Scratch Swap for Interrupt Levels
+      CSR_MSCRATCHCSWL: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mscratchcswl_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+      // mclicbase: CLIC Base
+      CSR_MCLICBASE: begin
+        if (SMCLIC) begin
+          csr_rdata_int = mclicbase_q;
+        end else begin
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
       // mhartid: unique hardware thread id
       CSR_MHARTID: csr_rdata_int = hart_id_i;
       // mconfigptr: Pointer to configuration data structure. Read only, hardwired to 0
@@ -355,6 +451,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // write logic
   always_comb
   begin
+
+    jvt_n                    = '0;
+    jvt_we                   = 1'b0;
+
     mscratch_n               = csr_wdata_int;
     mscratch_we              = 1'b0;
     mepc_n                   = csr_wdata_int & ~32'b1;
@@ -388,9 +488,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mstatus_we               = 1'b0;
 
     mcause_n                 = '{
-                                  interrupt:      csr_wdata_int[31],
+                                  irq:            csr_wdata_int[31],
                                   exception_code: csr_wdata_int[7:0],
-                                  default: 'b0
+                                  default:        'b0
                                 };
     mcause_we                = 1'b0;
 
@@ -399,11 +499,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
 
+    mtvt_n                   = MTVT_RESET_VAL; // todo: Implement CLIC support
+    mtvt_we                  = 1'b0;
+    mnxti_n                  = '0;
+    mnxti_we                 = 1'b0;
+    mintstatus_n             = MINTSTATUS_RESET_VAL;
+    mintstatus_we            = 1'b0;
+    mintthresh_n             = '0;
+    mintthresh_we            = 1'b0;
+    mscratchcsw_n            = '0;
+    mscratchcsw_we           = 1'b0;
+    mscratchcswl_n           = '0;
+    mscratchcswl_we          = 1'b0;
     mie_n                    = csr_wdata_int & IRQ_MASK;
     mie_we                   = 1'b0;
   
     if (csr_we_int) begin
       case (csr_waddr)
+        // jvt: Jump vector table
+        CSR_JVT: begin
+          jvt_we = 1'b1;
+        end
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
@@ -419,6 +535,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MTVEC: begin
               mtvec_we = 1'b1;
         end
+        // mtvt: machine trap-handler vector table base address
+        CSR_MTVT: begin
+          if (SMCLIC) begin
+            mtvt_we = 1'b1;
+          end
+        end
         // mscratch: machine scratch
         CSR_MSCRATCH: begin
               mscratch_we = 1'b1;
@@ -430,6 +552,31 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mcause
         CSR_MCAUSE: begin 
                 mcause_we = 1'b1;
+        end
+        CSR_MNXTI: begin
+          if (SMCLIC) begin
+            mnxti_we = 1'b1;
+          end
+        end
+        CSR_MINTSTATUS: begin
+          if (SMCLIC) begin
+            mintstatus_we = 1'b1;
+          end
+        end
+        CSR_MINTTHRESH: begin
+          if (SMCLIC) begin
+            mintthresh_we = 1'b1;
+          end
+        end
+        CSR_MSCRATCHCSW: begin
+          if (SMCLIC) begin
+            mscratchcsw_we = 1'b1;
+          end
+        end
+        CSR_MSCRATCHCSWL: begin
+          if (SMCLIC) begin
+            mscratchcswl_we = 1'b1;
+          end
         end
         CSR_DCSR: begin
               dcsr_we = 1'b1;
@@ -517,6 +664,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   end
 
+  cv32e40x_csr #(
+    .WIDTH      (32),
+    .SHADOWCOPY (1'b0),
+    .RESETVALUE (32'd0)
+  ) jvt_csr_i (
+    .clk        (clk),
+    .rst_n      (rst_n),
+    .wr_data_i  (jvt_n),
+    .wr_en_i    (jvt_we),
+    .rd_data_o  (jvt_q),
+    .rd_error_o (jvt_rd_error)
+  );
 
   cv32e40x_csr #(
     .WIDTH      (32),
@@ -649,6 +808,98 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o  (mtvec_q),
     .rd_error_o (mtvec_rd_error)
   );
+
+  generate
+    if (SMCLIC) begin
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (MTVT_RESET_VAL)
+      ) mtvt_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mtvt_n),
+        .wr_en_i    (mtvt_we),
+        .rd_data_o  (mtvt_q),
+        .rd_error_o (mtvt_rd_error)
+      );
+
+      assign mnxti_q = 32'h0;
+
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (MINTSTATUS_RESET_VAL)
+      ) mintstatus_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mintstatus_n),
+        .wr_en_i    (mintstatus_we),
+        .rd_data_o  (mintstatus_q),
+        .rd_error_o (mintstatus_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mintthresh_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mintthresh_n),
+        .wr_en_i    (mintthresh_we),
+        .rd_data_o  (mintthresh_q),
+        .rd_error_o (mintthresh_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mscratchcsw_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mscratchcsw_n),
+        .wr_en_i    (mscratchcsw_we),
+        .rd_data_o  (mscratchcsw_q),
+        .rd_error_o (mscratchcsw_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mscratchcswl_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mscratchcswl_n),
+        .wr_en_i    (mscratchcswl_we),
+        .rd_data_o  (mscratchcswl_q),
+        .rd_error_o (mscratchcswl_rd_error)
+      );
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'h0)
+      ) mclicbase_csr_i (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .wr_data_i  (mclicbase_n),
+        .wr_en_i    (mclicbase_we),
+        .rd_data_o  (mclicbase_q),
+        .rd_error_o (mclicbase_rd_error)
+      );
+
+    end else begin
+      assign mtvt_q              = 32'h0;
+      assign mtvt_rd_error       = 1'b0;
+      assign mnxti_q             = 32'h0;
+      assign mintstatus_q        = 32'h0;
+      assign mintstatus_rd_error = 1'b0;
+      assign mintthresh_q        = 32'h0;
+      assign mintthresh_rd_error = 1'b0;
+      assign mscratchcsw_q       = 32'h0;
+      assign mscratchcswl_q      = 32'h0;
+      assign mclicbase_q         = 32'h0;
+    end
+  endgenerate
 
   assign csr_rdata_o = csr_rdata_int;
 

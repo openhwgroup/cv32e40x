@@ -12,21 +12,23 @@ Instantiation Template
 .. code-block:: verilog
 
   cv32e40x_core #(
-      .LIB                      (          0 ),
-      .A_EXT                    (          0 ),
-      .B_EXT                    (       NONE ),
-      .M_EXT                    (          M ),
-      .X_EXT                    (          0 ),
-      .X_NUM_RS                 (          2 ),
-      .X_ID_WIDTH               (          4 ),
-      .X_MEM_WIDTH              (         32 ),
-      .X_RFR_WIDTH              (         32 ),
-      .X_RFW_WIDTH              (         32 ),
-      .X_MISA                   ( 0x00000000 ),
-      .DBG_NUM_TRIGGERS         (          1 ),
-      .NUM_MHPMCOUNTERS         (          1 ),
-      .PMA_NUM_REGIONS          (          1 ),
-      .PMA_CFG                  (  PMA_CFG[] )
+      .LIB                      (         0 ),
+      .A_EXT                    (         0 ),
+      .B_EXT                    (    B_NONE ),
+      .M_EXT                    (         M ),
+      .X_EXT                    (         0 ),
+      .X_NUM_RS                 (         2 ),
+      .X_ID_WIDTH               (         4 ),
+      .X_MEM_WIDTH              (        32 ),
+      .X_RFR_WIDTH              (        32 ),
+      .X_RFW_WIDTH              (        32 ),
+      .X_MISA                   (     32'h0 ),
+      .X_ECS_XS                 (      2'b0 ),
+      .DBG_NUM_TRIGGERS         (         1 ),
+      .NUM_MHPMCOUNTERS         (         1 ),
+      .PMA_NUM_REGIONS          (         1 ),
+      .PMA_CFG                  ( PMA_CFG[] ),
+      .SMCLIC                   (         0 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -106,12 +108,12 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``B_EXT``                    | b_ext_e        | NONE          | Enable Bit Manipulation support. ``B_EXT`` = NONE: No Bit          |
+| ``B_EXT``                    | b_ext_e        | B_NONE        | Enable Bit Manipulation support. ``B_EXT`` = B_NONE: No Bit        |
 |                              |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB_ZBS:  |
 |                              |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
 |                              |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``M_EXT``                    | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = NONE: No multiply /  |
+| ``M_EXT``                    | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = M_NONE: No multiply /|
 |                              |                |               | divide instructions are supported. ``M_EXT`` = ZMMUL: The          |
 |                              |                |               | multiplication subset of the ``M`` extension is supported.         |
 |                              |                |               | ``M_EXT`` = M: The ``M`` extension is supported.                   |
@@ -130,8 +132,11 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_RFW_WIDTH``              | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_MISA``                   | logic [31:0]   | 0x0000_0000   | MISA extensions implemented on the eXtension interface,            |
+| ``X_MISA``                   | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
 |                              |                |               | see :ref:`csr-misa`.                                               |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_ECS_XS``                 | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
+|                              |                |               | see :ref:`csr-mstatus`.                                            |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                              |                |               | :ref:`performance-counters`                                        |
@@ -142,6 +147,8 @@ Parameters
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``PMA_CFG[]``                | pma_region_t   | PMA_R_DEFAULT | PMA configuration.                                                 |
 |                              |                |               | Array of pma_region_t with PMA_NUM_REGIONS entries, see :ref:`pma` |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``SMCLIC``                   | int (0..1 )    | 0             | Is Smclic supported?                                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
 Interfaces
@@ -163,11 +170,13 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``boot_addr_i``         | 32                      | in  | Boot address. First program counter after  |
 |                         |                         |     | reset = ``boot_addr_i``. Must be           |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``mtvec_addr_i``        | 32                      | in  | ``mtvec`` address. Initial value for the   |
 |                         |                         |     | address part of :ref:`csr-mtvec`.          |
+|                         |                         |     | Must be 256-byte aligned                   |
+|                         |                         |     | (i.e. ``mtvec_addr_i[7:0]``  = 0).         |
 |                         |                         |     | Do not change after enabling core          |
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
@@ -178,13 +187,13 @@ Interfaces
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``dm_halt_addr_i``      | 32                      | in  | Address to jump to when entering Debug     |
 |                         |                         |     | Mode, see :ref:`debug-support`. Must be    |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``dm_exception_addr_i`` | 32                      | in  | Address to jump to when an exception       |
 |                         |                         |     | occurs when executing code during Debug    |
 |                         |                         |     | Mode, see :ref:`debug-support`. Must be    |
-|                         |                         |     | word-aligned. Do not change after enabling |
+|                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``hart_id_i``           | 32                      | in  | Hart ID, usually static, can be read from  |

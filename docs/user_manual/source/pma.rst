@@ -40,6 +40,9 @@ Accesses to regions marked as bufferable (``bufferable=1``) will result in the O
 
 Accesses to regions marked as cacheable (``cacheable=1``) will result in the OBI ``mem_type[1]`` bit being set.
 
+.. note::
+   The PMA must be configured such that accesses to the external debug module are non-cacheable, to enable its program buffer to function correctly.
+
 Atomic operations
 ~~~~~~~~~~~~~~~~~
 Regions supporting atomic operations can be defined by setting ``atomic=1``.
