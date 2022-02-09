@@ -73,7 +73,8 @@ module cv32e40x_wrapper
   input  logic [31:0] boot_addr_i,
   input  logic [31:0] mtvec_addr_i,
   input  logic [31:0] dm_halt_addr_i,
-  input  logic [31:0] hart_id_i,
+  input  logic [31:0] mhartid_i,
+  input  logic [31:0] mimpid_i,
   input  logic [31:0] dm_exception_addr_i,
   input logic [31:0]  nmi_addr_i,
 
@@ -321,7 +322,7 @@ module cv32e40x_wrapper
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
           .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
-          .hart_id_i          ( core_i.hart_id_i                   )
+          .mhartid_i          ( core_i.mhartid_i                   )
 
       );
 
@@ -473,7 +474,8 @@ module cv32e40x_wrapper
          .csr_mhpmcounter_we_i     ( core_i.cs_registers_i.mhpmcounter_we                                 ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
-         .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      ),
+         .csr_mhartid_i            ( core_i.cs_registers_i.mhartid_i                                      ),
+         .csr_mimpid_i             ( core_i.cs_registers_i.mimpid_i                                       ),
 
          .csr_mcounteren_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),

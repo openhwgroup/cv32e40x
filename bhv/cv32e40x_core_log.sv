@@ -44,7 +44,7 @@ module cv32e40x_core_log import cv32e40x_pkg::*;
 (
   input logic        clk_i,
   input ex_wb_pipe_t ex_wb_pipe_i,
-  input logic [31:0] hart_id_i
+  input logic [31:0] mhartid_i
   
 );
 
@@ -60,7 +60,7 @@ module cv32e40x_core_log import cv32e40x_pkg::*;
   begin
     // print warning in case of decoding errors
     if (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.illegal_insn) begin
-      $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, hart_id_i[3:0], ex_wb_pipe_i.pc);
+      $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, mhartid_i[3:0], ex_wb_pipe_i.pc);
     end
   end
 `endif
