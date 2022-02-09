@@ -901,7 +901,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mstatush           = csr_mstatush_q_i;
   assign rvfi_csr_wdata_d.mstatush           = csr_mstatush_n_i;
   assign rvfi_csr_wmask_d.mstatush           = csr_mstatush_we_i ? '1 : '0;
-
+// todo: misa assignments seem swapped
   assign rvfi_csr_rdata_d.misa               = csr_misa_n_i;
   assign rvfi_csr_wdata_d.misa               = csr_misa_q_i;
   assign rvfi_csr_wmask_d.misa               = csr_misa_we_i    ? '1 : '0;
