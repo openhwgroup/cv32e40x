@@ -13,6 +13,7 @@ Instantiation Template
 
   cv32e40x_core #(
       .LIB                      (         0 ),
+      .RV32                     (     RV32I ),
       .A_EXT                    (         0 ),
       .B_EXT                    (    B_NONE ),
       .M_EXT                    (         M ),
@@ -105,6 +106,10 @@ Parameters
 | Name                         | Type/Range     | Default       | Description                                                        |
 +==============================+================+===============+====================================================================+
 | ``LIB``                      | int            | 0             | Standard cell library (semantics defined by integrator)            |
++------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``RV32``                     | rv32_e         | RV32I         | Base Integer Instruction Set.                                      |
+|                              |                |               | ``RV32`` = RV32I: RV32I Base Integer Instruction Set.              |
+|                              |                |               | ``RV32`` = RV32E: RV32E Base Integer Instruction Set.              |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
