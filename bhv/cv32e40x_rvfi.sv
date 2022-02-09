@@ -97,6 +97,9 @@ module cv32e40x_rvfi
    input                                      mstatus_t csr_mstatus_n_i,
    input                                      mstatus_t csr_mstatus_q_i,
    input logic                                csr_mstatus_we_i,
+   input                                      mstatush_t csr_mstatush_n_i,
+   input                                      mstatush_t csr_mstatush_q_i,
+   input logic                                csr_mstatush_we_i,
    input logic [31:0]                         csr_misa_n_i,
    input logic [31:0]                         csr_misa_q_i,
    input logic                                csr_misa_we_i,
@@ -154,6 +157,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_tinfo_n_i,
    input logic [31:0]                         csr_tinfo_q_i,
    input logic                                csr_tinfo_we_i,
+   input logic [31:0]                         csr_tcontrol_n_i,
+   input logic [31:0]                         csr_tcontrol_q_i,
+   input logic                                csr_tcontrol_we_i,
    input                                      dcsr_t csr_dcsr_n_i,
    input                                      dcsr_t csr_dcsr_q_i,
    input logic                                csr_dcsr_we_i,
@@ -166,6 +172,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_dscratch1_n_i,
    input logic [31:0]                         csr_dscratch1_q_i,
    input logic                                csr_dscratch1_we_i,
+   input logic [31:0]                         csr_mconfigptr_n_i,
+   input logic [31:0]                         csr_mconfigptr_q_i,
+   input logic                                csr_mconfigptr_we_i,
 
    // performance counters
    //  cycle,  instret,  hpcounter,  cycleh,  instreth,  hpcounterh
@@ -236,6 +245,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mstatus_wmask,
    output logic [31:0]                        rvfi_csr_mstatus_rdata,
    output logic [31:0]                        rvfi_csr_mstatus_wdata,
+   output logic [31:0]                        rvfi_csr_mstatush_rmask,
+   output logic [31:0]                        rvfi_csr_mstatush_wmask,
+   output logic [31:0]                        rvfi_csr_mstatush_rdata,
+   output logic [31:0]                        rvfi_csr_mstatush_wdata,
    output logic [31:0]                        rvfi_csr_misa_rmask,
    output logic [31:0]                        rvfi_csr_misa_wmask,
    output logic [31:0]                        rvfi_csr_misa_rdata,
@@ -316,6 +329,10 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_tinfo_wmask,
    output logic [31:0]                        rvfi_csr_tinfo_rdata,
    output logic [31:0]                        rvfi_csr_tinfo_wdata,
+   output logic [31:0]                        rvfi_csr_tcontrol_rmask,
+   output logic [31:0]                        rvfi_csr_tcontrol_wmask,
+   output logic [31:0]                        rvfi_csr_tcontrol_rdata,
+   output logic [31:0]                        rvfi_csr_tcontrol_wdata,
    output logic [31:0]                        rvfi_csr_mcontext_rmask,
    output logic [31:0]                        rvfi_csr_mcontext_wmask,
    output logic [31:0]                        rvfi_csr_mcontext_rdata,
@@ -421,7 +438,12 @@ module cv32e40x_rvfi
    output logic        [31:0]                 rvfi_csr_mseccfgh_rmask,
    output logic        [31:0]                 rvfi_csr_mseccfgh_wmask,
    output logic        [31:0]                 rvfi_csr_mseccfgh_rdata,
-   output logic        [31:0]                 rvfi_csr_mseccfgh_wdata
+   output logic        [31:0]                 rvfi_csr_mseccfgh_wdata,
+
+   output logic [31:0]                        rvfi_csr_mconfigptr_rmask,
+   output logic [31:0]                        rvfi_csr_mconfigptr_wmask,
+   output logic [31:0]                        rvfi_csr_mconfigptr_rdata,
+   output logic [31:0]                        rvfi_csr_mconfigptr_wdata
 );
 
   // Propagating from ID stage
@@ -876,6 +898,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mstatus            = csr_mstatus_n_i;
   assign rvfi_csr_wmask_d.mstatus            = csr_mstatus_we_i ? '1 : '0;
 
+  assign rvfi_csr_rdata_d.mstatush           = csr_mstatush_q_i;
+  assign rvfi_csr_wdata_d.mstatush           = csr_mstatush_n_i;
+  assign rvfi_csr_wmask_d.mstatush           = csr_mstatush_we_i ? '1 : '0;
+// todo: misa assignments seem swapped
   assign rvfi_csr_rdata_d.misa               = csr_misa_n_i;
   assign rvfi_csr_wdata_d.misa               = csr_misa_q_i;
   assign rvfi_csr_wmask_d.misa               = csr_misa_we_i    ? '1 : '0;
@@ -971,10 +997,14 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.tdata[3]           = '0; // Not implemented, read 0
   assign rvfi_csr_wmask_d.tdata[3]           = '0;
 
-  assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_n_i;
-  assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_q_i;
+  assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
+  assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
   assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i;
 
+  assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
+  assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
+  assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
+  // TODO: do not tie off mcontext inside the module
   assign rvfi_csr_rdata_d.mcontext           = '0;
   assign rvfi_csr_wdata_d.mcontext           = '0; // Not implemented, read 0
   assign rvfi_csr_wmask_d.mcontext           = '0;
@@ -1128,12 +1158,16 @@ module cv32e40x_rvfi
     end
   endgenerate
 
-  assign rvfi_csr_wdata_d.mseccfg  = csr_mseccfg_n_i;
-  assign rvfi_csr_rdata_d.mseccfg  = csr_mseccfg_q_i;
-  assign rvfi_csr_wmask_d.mseccfg  = csr_mseccfg_we_i ? '1 : '0;
-  assign rvfi_csr_wdata_d.mseccfgh = csr_mseccfgh_n_i;
-  assign rvfi_csr_rdata_d.mseccfgh = csr_mseccfgh_q_i;
-  assign rvfi_csr_wmask_d.mseccfgh = csr_mseccfgh_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mseccfg         = csr_mseccfg_n_i;
+  assign rvfi_csr_rdata_d.mseccfg         = csr_mseccfg_q_i;
+  assign rvfi_csr_wmask_d.mseccfg         = csr_mseccfg_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mseccfgh        = csr_mseccfgh_n_i;
+  assign rvfi_csr_rdata_d.mseccfgh        = csr_mseccfgh_q_i;
+  assign rvfi_csr_wmask_d.mseccfgh        = csr_mseccfgh_we_i ? '1 : '0;
+
+  assign rvfi_csr_rdata_d.mconfigptr      = csr_mconfigptr_q_i;
+  assign rvfi_csr_wdata_d.mconfigptr      = csr_mconfigptr_n_i;
+  assign rvfi_csr_wmask_d.mconfigptr      = csr_mconfigptr_we_i ? '1 : '0;
 
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
@@ -1144,6 +1178,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_mstatus_rmask           = '1;
   assign rvfi_csr_mstatus_wdata           = rvfi_csr_wdata.mstatus;
   assign rvfi_csr_mstatus_wmask           = rvfi_csr_wmask.mstatus;
+  assign rvfi_csr_mstatush_rdata          = rvfi_csr_rdata.mstatush;
+  assign rvfi_csr_mstatush_rmask          = '1;
+  assign rvfi_csr_mstatush_wdata          = rvfi_csr_wdata.mstatush;
+  assign rvfi_csr_mstatush_wmask          = rvfi_csr_wmask.mstatush;
   assign rvfi_csr_misa_rdata              = rvfi_csr_rdata.misa;
   assign rvfi_csr_misa_rmask              = '1;
   assign rvfi_csr_misa_wdata              = rvfi_csr_wdata.misa;
@@ -1226,6 +1264,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_tinfo_rmask             = '1;
   assign rvfi_csr_tinfo_wdata             = rvfi_csr_wdata.tinfo;
   assign rvfi_csr_tinfo_wmask             = rvfi_csr_wmask.tinfo;
+  assign rvfi_csr_tcontrol_rdata          = rvfi_csr_rdata.tcontrol;
+  assign rvfi_csr_tcontrol_rmask          = '1;
+  assign rvfi_csr_tcontrol_wdata          = rvfi_csr_wdata.tcontrol;
+  assign rvfi_csr_tcontrol_wmask          = rvfi_csr_wmask.tcontrol;
   assign rvfi_csr_mcontext_rdata          = rvfi_csr_rdata.mcontext;
   assign rvfi_csr_mcontext_rmask          = '1;
   assign rvfi_csr_mcontext_wdata          = rvfi_csr_wdata.mcontext;
