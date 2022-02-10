@@ -32,6 +32,7 @@
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter              LIB                          = 0,
+  parameter              RV32                         = RV32I, // todo: Add support for RV32E
   parameter bit          A_EXT                        = 0,
   parameter b_ext_e      B_EXT                        = B_NONE,
   parameter m_ext_e      M_EXT                        = M,
@@ -45,6 +46,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter logic [1:0]  X_ECS_XS                     = 2'b00,
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
+  parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -266,7 +268,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
   assign instr_memtype_o                     = m_c_obi_instr_if.req_payload.memtype;
   assign instr_prot_o                        = m_c_obi_instr_if.req_payload.prot;
-  assign instr_dbg_o                         = 1'b0; // todo: Connect this
+  assign instr_dbg_o                         = m_c_obi_instr_if.req_payload.dbg;
   assign m_c_obi_instr_if.s_gnt.gnt          = instr_gnt_i;
   assign m_c_obi_instr_if.s_rvalid.rvalid    = instr_rvalid_i;
   assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
@@ -278,9 +280,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
   assign data_memtype_o                      = m_c_obi_data_if.req_payload.memtype;
   assign data_prot_o                         = m_c_obi_data_if.req_payload.prot;
+  assign data_dbg_o                          = m_c_obi_data_if.req_payload.dbg;
   assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
   assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
-  assign data_dbg_o                          = 1'b0; // todo: Connect this
   assign m_c_obi_data_if.s_gnt.gnt           = data_gnt_i;
   assign m_c_obi_data_if.s_rvalid.rvalid     = data_rvalid_i;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
@@ -626,6 +628,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_MISA                     ( X_MISA                 ),
     .X_ECS_XS                   ( X_ECS_XS               ),
     .SMCLIC                     ( SMCLIC                 ),
+    .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i

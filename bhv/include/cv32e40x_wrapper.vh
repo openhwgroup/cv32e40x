@@ -35,6 +35,7 @@
 .rvfi_intr(),\
 .rvfi_mode(),\
 .rvfi_ixl(),\
+.rvfi_nmip(),\
 \
 .rvfi_dbg(),\
 .rvfi_dbg_mode(),\

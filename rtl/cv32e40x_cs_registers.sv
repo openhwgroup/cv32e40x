@@ -36,7 +36,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter logic [31:0] X_MISA           =  32'h00000000,
   parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
   parameter bit          SMCLIC           = 0,
-  parameter int          NUM_MHPMCOUNTERS = 1
+  parameter int          NUM_MHPMCOUNTERS = 1,
+  parameter int          DBG_NUM_TRIGGERS = 1 // todo: implement support for DBG_NUM_TRIGGERS != 1
 )
 (
   // Clock and Reset

@@ -902,6 +902,7 @@ typedef struct packed {
   logic [INSTR_ADDR_WIDTH-1:0] addr;
   logic [1:0]                  memtype;
   logic [2:0]                  prot;
+  logic                        dbg;
 } obi_inst_req_t;
 
 typedef struct packed {
@@ -917,6 +918,7 @@ typedef struct packed {
   logic [DATA_DATA_WIDTH-1:0]     wdata;
   logic [1:0]                     memtype;
   logic [2:0]                     prot;
+  logic                           dbg;
 } obi_data_req_t;
 
 typedef struct packed {
@@ -943,7 +945,8 @@ parameter inst_resp_t INST_RESP_RESET_VAL = '{
 parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
   addr    : 'h0,
   memtype : 'h0,
-  prot    : {PRIV_LVL_M, 1'b0}
+  prot    : {PRIV_LVL_M, 1'b0},
+  dbg     : 1'b0
 };
 
 // Data transfer bundeled with MPU status
@@ -1159,13 +1162,15 @@ typedef struct packed {
   logic        dbg_ack;               // debug has been taken
 
   // Debug outputs
-  logic        debug_mode;           // Flag signalling we are in debug mode
+  logic        debug_mode_if;        // Flag signalling we are in debug mode, valid in IF
+  logic        debug_mode;           // Flag signalling we are in debug mode, valid in ID, EX and WB
   logic [2:0]  debug_cause;          // cause of debug entry
   logic        debug_csr_save;       // Update debug CSRs
   logic        debug_wfi_no_sleep;   // Debug prevents core from sleeping after WFI
   logic        debug_havereset;      // Signal to external debugger that we have reset
   logic        debug_running;        // Signal to external debugger that we are running (not in debug)
   logic        debug_halted;         // Signal to external debugger that we are halted (in debug mode)
+
 
   // Wakeup Signal to sleep unit
   logic        wake_from_sleep;       // Wakeup (due to irq or debug)
@@ -1204,6 +1209,9 @@ typedef struct packed {
   //  \/    \/_|___/\___|  //
   //                       //
   ///////////////////////////
+
+  // RV32 base integer instruction set
+  typedef enum logic {RV32I, RV32E} rv32_base_integer_instr_set_e;
 
   // Write buffer FSM state encoding
   typedef enum logic {WBUF_EMPTY, WBUF_FULL} write_buffer_state_e;

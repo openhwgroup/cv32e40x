@@ -759,7 +759,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
-  assign ctrl_fsm_o.debug_mode = debug_mode_q;
+  assign ctrl_fsm_o.debug_mode_if = debug_mode_n;
+  assign ctrl_fsm_o.debug_mode    = debug_mode_q;
 
   // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin

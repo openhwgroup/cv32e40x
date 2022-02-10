@@ -444,6 +444,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign align_trans.wdata   = wdata;
   assign align_trans.atop    = trans.atop;
   assign align_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
+  assign align_trans.dbg     = ctrl_fsm_i.debug_mode;
   assign align_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
 
   // Transaction request generation
