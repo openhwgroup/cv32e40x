@@ -73,11 +73,11 @@ Many features in the RISC-V specification are optional, and |corev| can be param
 
    * - **RV32I**: RV32I Base Integer Instruction Set
      - 2.1
-     - optionally enabled based on ``RV32`` parameter
+     - optionally enabled with the ``RV32`` parameter
 
    * - **RV32E**: RV32E Base Integer Instruction Set
      - 1.9 (not ratified yet)
-     - optionally enabled based on ``RV32`` parameter
+     - optionally enabled with the ``RV32`` parameter
 
 In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_, [RISC-V-ZBA_ZBB_ZBC_ZBS]_, [RISC-V-CRYPTO]_ and [RISC-V-ZCA_ZCB_ZCMB_ZCMP_ZCMT]_.
 
@@ -94,7 +94,7 @@ In addition, the following standard instruction set extensions are available fro
 
    * - **M**: Standard Extension for Integer Multiplication and Division
      - 2.0
-     - optionally enabled based on ``M_EXT`` parameter
+     - optionally enabled with the ``M_EXT`` parameter
 
    * - **Zicntr**: Standard Extension for Base Counters and Timers
      - 2.0
@@ -114,43 +114,43 @@ In addition, the following standard instruction set extensions are available fro
 
    * - **Zca**: Subset of the standard **Zc** Code-Size Reduction extension consisting of a subset of **C** with the FP load/stores removed.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled based on ``ZC_EXT`` parameter
+     - optionally enabled with the ``ZC_EXT`` parameter
 
    * - **Zcb**: Subset of the standard **Zc** Code-Size Reduction extension consisting of simple operations.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled based on ``ZC_EXT`` parameter
+     - optionally enabled with the ``ZC_EXT`` parameter
 
    * - **Zcmb**: Subset of the standard **Zc** Code-Size Reduction extension consisting of load/store byte/half which overlap with **c.fld**, **c.fldsp**, **c.fsd**.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled based on ``ZC_EXT`` parameter
+     - optionally enabled with the ``ZC_EXT`` parameter
 
    * - **Zcmp**: Subset of the standard **Zc** Code-Size Reduction extension consisting of push/pop and double move which overlap with **c.fsdsp**.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled based on ``ZC_EXT`` parameter
+     - optionally enabled with the ``ZC_EXT`` parameter
 
    * - **Zcmt**: Subset of the standard **Zc** Code-Size Reduction extension consisting of table jump.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled based on ``ZC_EXT`` parameter
+     - optionally enabled with the ``ZC_EXT`` parameter
 
    * - **A**: Atomic Instructions
      - 2.1
-     - optionally enabled based on ``A_EXT`` parameter
+     - optionally enabled with the ``A_EXT`` parameter
 
    * - **Zba**: Bit Manipulation Address calculation instructions
      - Version 1.0.0
-     - optionally enabled based on ``B_EXT`` parameter
+     - optionally enabled with the ``B_EXT`` parameter
 
    * - **Zbb**: Bit Manipulation Base instructions
      - Version 1.0.0
-     - optionally enabled based on ``B_EXT`` parameter
+     - optionally enabled with the ``B_EXT`` parameter
 
    * - **Zbc**: Bit Manipulation Carry-Less Multiply instructions
      - Version 1.0.0
-     - optionally enabled based on ``B_EXT`` parameter
+     - optionally enabled with the ``B_EXT`` parameter
 
    * - **Zbs**: Bit Manipulation Bit set, Bit clear, etc. instructions
      - Version 1.0.0
-     - optionally enabled based on ``B_EXT`` parameter
+     - optionally enabled with the ``B_EXT`` parameter
 
    * - **Zkt**: Data Independent Execution Latency
      - Version 1.0.0
@@ -158,11 +158,11 @@ In addition, the following standard instruction set extensions are available fro
 
    * - **Zbkc**: Constant time Carry-Less Multiply
      - Version 1.0.0
-     - optionally enabled based on ``B_EXT`` parameter
+     - optionally enabled with the ``B_EXT`` parameter
 
    * - **Zmmul**: Multiplication subset of the **M** extension
      - Version 0.1
-     - optionally enabled based on ``M_EXT`` parameter
+     - optionally enabled with the ``M_EXT`` parameter
 
 The following custom instruction set extensions are available.
 
@@ -175,7 +175,7 @@ The following custom instruction set extensions are available.
 
    * - **Xif**: eXtension Interface
      - 0.1 (not finalized yet; version will change)
-     - optionally enabled based on ``X_EXT`` parameter
+     - optionally enabled with the ``X_EXT`` parameter
 
 .. note::
 
@@ -187,7 +187,7 @@ Most content of the RISC-V privileged specification is optional.
 
 * M-Mode
 * All CSRs listed in :ref:`cs-registers`
-* Base Counters, Timers and Hardware Performance Counters as described in :ref:`performance-counters` based on ``NUM_MHPMCOUNTERS`` parameter
+* Base Counters, Timers and Hardware Performance Counters as described in :ref:`performance-counters` controlled by the ``NUM_MHPMCOUNTERS`` parameter
 * Trap handling supporting direct mode or vectored mode as described at :ref:`exceptions-interrupts`
 * Physical Memory Attribution (PMA) as described in :ref:`pma`
 
