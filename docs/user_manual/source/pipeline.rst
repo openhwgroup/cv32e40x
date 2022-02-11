@@ -15,7 +15,7 @@ Instruction Fetch (IF)
   Fetches instructions from memory via an aligning prefetch buffer, capable of fetching 1 instruction per cycle if the instruction side memory system allows. The IF stage also pre-decodes RVC instructions into RV32I base instructions. See :ref:`instruction-fetch` for details.
 
 Instruction Decode (ID)
-  Decodes fetched instruction and performs required registerfile reads. Jumps are taken from the ID stage.
+  Decodes fetched instruction and performs required register file reads. Jumps are taken from the ID stage.
 
 Execute (EX)
   Executes the instructions. The EX stage contains the ALU, Multiplier and Divider. Branches (with their condition met) are taken from the EX stage. Multi-cycle instructions will stall this stage until they are complete. The address generation part of the load-store-unit (LSU) is contained in EX as well.
