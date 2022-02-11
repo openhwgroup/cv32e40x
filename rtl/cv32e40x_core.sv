@@ -44,6 +44,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter int          X_RFW_WIDTH                  = 32,
   parameter logic [31:0] X_MISA                       = 32'h00000000,
   parameter logic [1:0]  X_ECS_XS                     = 2'b00,
+  parameter bit          ZC_EXT                       = 0, // todo: remove once fully implemented
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
   parameter int          DBG_NUM_TRIGGERS             = 1,
@@ -627,6 +628,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT                      ( X_EXT                  ),
     .X_MISA                     ( X_MISA                 ),
     .X_ECS_XS                   ( X_ECS_XS               ),
+    .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
