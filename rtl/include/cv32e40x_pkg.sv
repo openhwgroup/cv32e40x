@@ -1219,7 +1219,7 @@ typedef struct packed {
   ///////////////////////////
 
   // RV32 base integer instruction set
-  typedef enum logic {RV32I, RV32E} rv32_base_integer_instr_set_e;
+  typedef enum logic {RV32I, RV32E} rv32_e;
 
   // Write buffer FSM state encoding
   typedef enum logic {WBUF_EMPTY, WBUF_FULL} write_buffer_state_e;

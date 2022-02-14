@@ -46,7 +46,7 @@ module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
   parameter              LIB                          = 0,
-  parameter              RV32                         = RV32I,
+  parameter rv32_e       RV32                         = RV32I,
   parameter bit          A_EXT                        = 0,
   parameter b_ext_e      B_EXT                        = B_NONE,
   parameter m_ext_e      M_EXT                        = M,
