@@ -186,6 +186,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mvendorid_i,
    input logic [31:0]                         csr_marchid_i,
    input logic [31:0]                         csr_mhartid_i,
+   input logic [31:0]                         csr_mimpid_i,
 
    input logic [31:0]                         csr_mcounteren_n_i,
    input logic [31:0]                         csr_mcounteren_q_i,
@@ -1130,9 +1131,9 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.marchid            = '0;
   assign rvfi_csr_rdata_d.marchid            = csr_marchid_i;
 
-  assign rvfi_csr_wdata_d.mimpid             = '0; // Not implemented, read 0
+  assign rvfi_csr_wdata_d.mimpid             = '0; // Read Only
   assign rvfi_csr_wmask_d.mimpid             = '0;
-  assign rvfi_csr_rdata_d.mimpid             = '0;
+  assign rvfi_csr_rdata_d.mimpid             = csr_mimpid_i;
 
   assign rvfi_csr_wdata_d.mhartid            = '0; // Read Only
   assign rvfi_csr_wmask_d.mhartid            = '0;

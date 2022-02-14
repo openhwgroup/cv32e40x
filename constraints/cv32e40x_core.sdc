@@ -40,6 +40,12 @@ set clock_period 5.0
 
 # Input delays for interrupts
 set in_delay_irq          [expr $clock_period * 0.50]
+
+# Delay for CLIC
+# todo: set final constraints for CLIC signals
+set in_delay_clic         [expr $clock_period * 0.50]
+set out_delay_clic        [expr $clock_period * 0.50]
+
 # Input delays for early signals
 
 set in_delay_early [expr $clock_period * 0.10] 
@@ -117,13 +123,23 @@ set irq_input_ports [list \
     irq_i* \
 ]
 
+# CLIC Input ports
+set clic_input_ports [list \
+    clic_irq*_i* \
+]
+# CLIC Output ports
+set clic_output_ports [list \
+    clic_irq*_o* \
+]
+
 # Early Input ports (ideally from register)
 set early_input_ports [list \
     debug_req_i \
     boot_addr_i* \
     mtvec_addr_i* \
     dm_halt_addr_i* \
-    hart_id_i* \
+    mhartid_i* \
+    mimpid_i* \
     dm_exception_addr_i* \
     nmi_addr_i* \
 ]
@@ -147,6 +163,7 @@ set obi_output_ports [list \
     instr_addr_o* \
     instr_memtype_o* \
     instr_prot_o* \
+    instr_dbg_o \
     data_req_o \
     data_we_o \
     data_be_o* \
@@ -155,6 +172,7 @@ set obi_output_ports [list \
     data_atop_o* \
     data_memtype_o* \
     data_prot_o* \
+    data_dbg_o \
 ]
 
 # RISC-V Sleep Output ports
@@ -201,10 +219,12 @@ set xif_output_ports [list \
 # X-interface late data outputs
 set xif_output_ports_data_late [list \
     xif_issue_if_issue_req_rs* \
+    xif_issue_if_issue_req_ecs* \
 ]
 
 set xif_output_ports_control_late [list \
     xif_issue_if_issue_req_rs_valid* \
+    xif_issue_if_issue_req_ecs_valid* \
     xif_issue_if_issue_valid \
     xif_commit_if_commit_valid \
 ]
@@ -243,12 +263,14 @@ create_clock \
 
 set all_clock_ports $clock_ports
 
-set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
+set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $clic_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
 
-set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
+set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $clic_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
 
 # IRQs
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
+set_input_delay  $in_delay_clic         [get_ports $clic_input_ports       ] -clock clk_i
+set_output_delay $out_delay_clic        [get_ports $clic_output_ports      ] -clock clk_i
 
 # OBI input/output delays
 set_input_delay  $in_delay_instr_gnt    [ get_ports instr_gnt_i            ] -clock clk_i

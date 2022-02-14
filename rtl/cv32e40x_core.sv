@@ -32,6 +32,7 @@
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter              LIB                          = 0,
+  parameter rv32_e       RV32                         = RV32I, // todo: Add support for RV32E
   parameter bit          A_EXT                        = 0,
   parameter b_ext_e      B_EXT                        = B_NONE,
   parameter m_ext_e      M_EXT                        = M,
@@ -46,6 +47,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter bit          ZC_EXT                       = 0, // todo: remove once fully implemented
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
+  parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -60,7 +62,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] boot_addr_i,
   input  logic [31:0] mtvec_addr_i,
   input  logic [31:0] dm_halt_addr_i,
-  input  logic [31:0] hart_id_i,
+  input  logic [31:0] mhartid_i,
+  input  logic [31:0] mimpid_i,
   input  logic [31:0] dm_exception_addr_i,
   input  logic [31:0] nmi_addr_i,
 
@@ -71,6 +74,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic [31:0] instr_addr_o,
   output logic [1:0]  instr_memtype_o,
   output logic [2:0]  instr_prot_o,
+  output logic        instr_dbg_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -83,11 +87,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic [31:0] data_addr_o,
   output logic [1:0]  data_memtype_o,
   output logic [2:0]  data_prot_o,
+  output logic        data_dbg_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
   output logic [5:0]  data_atop_o,
   input  logic        data_exokay_i,
+
+  // Cycle Count
+  output logic [63:0] mcycle_o,
 
   // eXtension interface
   if_xif.cpu_compressed xif_compressed_if,
@@ -99,6 +107,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
+
+  input  logic        clic_irq_i,
+  input  logic [11:0] clic_irq_id_i,
+  input  logic [ 7:0] clic_irq_il_i,
+  input  logic [ 1:0] clic_irq_priv_i,
+  input  logic        clic_irq_hv_i,
+  output logic [11:0] clic_irq_id_o,
+  output logic        clic_irq_mode_o,
+  output logic        clic_irq_exit_o,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -252,6 +269,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign instr_addr_o                        = m_c_obi_instr_if.req_payload.addr;
   assign instr_memtype_o                     = m_c_obi_instr_if.req_payload.memtype;
   assign instr_prot_o                        = m_c_obi_instr_if.req_payload.prot;
+  assign instr_dbg_o                         = m_c_obi_instr_if.req_payload.dbg;
   assign m_c_obi_instr_if.s_gnt.gnt          = instr_gnt_i;
   assign m_c_obi_instr_if.s_rvalid.rvalid    = instr_rvalid_i;
   assign m_c_obi_instr_if.resp_payload.rdata = instr_rdata_i;
@@ -263,6 +281,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign data_addr_o                         = m_c_obi_data_if.req_payload.addr;
   assign data_memtype_o                      = m_c_obi_data_if.req_payload.memtype;
   assign data_prot_o                         = m_c_obi_data_if.req_payload.prot;
+  assign data_dbg_o                          = m_c_obi_data_if.req_payload.dbg;
   assign data_wdata_o                        = m_c_obi_data_if.req_payload.wdata;
   assign data_atop_o                         = m_c_obi_data_if.req_payload.atop;
   assign m_c_obi_data_if.s_gnt.gnt           = data_gnt_i;
@@ -279,6 +298,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign irq_ack = ctrl_fsm.irq_ack;
   assign irq_id  = ctrl_fsm.irq_id;
   assign dbg_ack = ctrl_fsm.dbg_ack;
+
+  // todo: connect when CLIC is implemented
+  assign clic_irq_id_o   = 12'h0;
+  assign clic_irq_mode_o =  1'b0;
+  assign clic_irq_exit_o =  1'b0;
+
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
@@ -605,6 +630,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_ECS_XS                   ( X_ECS_XS               ),
     .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
+    .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
   )
   cs_registers_i
@@ -613,7 +639,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rst_n                      ( rst_ni                 ),
 
     // Hart ID from outside
-    .hart_id_i                  ( hart_id_i              ),
+    .mhartid_i                  ( mhartid_i             ),
+    .mimpid_i                   ( mimpid_i              ),
+
+    // Cycle Count
+    .mcycle_o                   ( mcycle_o              ),
 
     .mtvec_addr_o               ( mtvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),

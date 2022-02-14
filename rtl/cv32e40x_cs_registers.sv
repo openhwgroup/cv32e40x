@@ -37,7 +37,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
   parameter bit          ZC_EXT           = 0, // todo: remove parameter once fully implemented
   parameter bit          SMCLIC           = 0,
-  parameter int          NUM_MHPMCOUNTERS = 1
+  parameter int          NUM_MHPMCOUNTERS = 1,
+  parameter int          DBG_NUM_TRIGGERS = 1 // todo: implement support for DBG_NUM_TRIGGERS != 1
 )
 (
   // Clock and Reset
@@ -45,10 +46,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic            rst_n,
 
   // Hart ID
-  input  logic [31:0]     hart_id_i,
+  input  logic [31:0]     mhartid_i,
+  input  logic [31:0]     mimpid_i,
   output logic [23:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
   
+  // Cycle Count
+  output logic [MHPMCOUNTER_WIDTH-1:0] mcycle_o,
+
   // Used for mtvec address
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
@@ -359,7 +364,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       // mhartid: unique hardware thread id
-      CSR_MHARTID: csr_rdata_int = hart_id_i;
+      CSR_MHARTID: csr_rdata_int = mhartid_i;
+
+      // mimpid: implementation id
+      CSR_MIMPID: csr_rdata_int = mimpid_i;
 
       // mconfigptr: Pointer to configuration data structure. Read only, hardwired to 0
       CSR_MCONFIGPTR: csr_rdata_int = 'b0;
@@ -371,7 +379,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MARCHID: csr_rdata_int = MARCHID;
 
       // unimplemented, read 0 CSRs
-      CSR_MIMPID,
         CSR_MTVAL :
           csr_rdata_int = 'b0;
 
@@ -547,8 +554,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // jvt: Jump vector table
         CSR_JVT: begin
           if (ZC_EXT) begin
-            jvt_we = 1'b1;
-          end
+          jvt_we = 1'b1;
+        end
         end
         // mstatus: IE bit
         CSR_MSTATUS: begin
@@ -1035,6 +1042,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // |_|   \___|_|  |_|(_)  \____\___/ \__,_|_| |_|\__\___|_|    //
   //                                                             //
   /////////////////////////////////////////////////////////////////
+
+  // Cycle Count Output Signal
+  assign mcycle_o = mhpmcounter_q[0];
 
   // Flop certain events to ease timing
   localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;

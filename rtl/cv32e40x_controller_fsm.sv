@@ -759,7 +759,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
-  assign ctrl_fsm_o.debug_mode = debug_mode_q;
+  // debug_mode_if is a control input for the if stage.
+  // For both debug mode entry end exit, the IF, ID and EX stages are killed. While the IF stage is killed it starts
+  // fetching the next instruction (sets the obi request high), requiring a valid debug mode signal for this fetch.
+  // The debug_mode_if signal is valid for all IF fetches.
+  assign ctrl_fsm_o.debug_mode_if = debug_mode_n;
+  assign ctrl_fsm_o.debug_mode    = debug_mode_q;
 
   // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
   always_ff @(posedge clk_ungated_i, negedge rst_n) begin
