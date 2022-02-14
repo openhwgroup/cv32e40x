@@ -1441,7 +1441,7 @@ Machine Implementation ID (``mimpid``)
 
 CSR Address: 0xF13
 
-Reset Value: 0x0000_0000
+Reset Value: Defined
 
 Detailed:
 
