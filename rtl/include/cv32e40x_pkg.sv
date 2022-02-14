@@ -971,6 +971,7 @@ typedef struct packed {
   logic                           sext;
   logic [DATA_DATA_WIDTH-1:0]     wdata;
   logic [1:0]                     mode;
+  logic                           dbg;
 } trans_req_t;
 
 // Response type for tracking bufferable and load/store in lsu response filter
@@ -1169,8 +1170,8 @@ typedef struct packed {
   logic        dbg_ack;               // debug has been taken
 
   // Debug outputs
-  logic        debug_mode_if;        // Flag signalling we are in debug mode, valid in IF
-  logic        debug_mode;           // Flag signalling we are in debug mode, valid in ID, EX and WB
+  logic        debug_mode_if;        // Flag signalling we are in debug mode, valid for IF
+  logic        debug_mode;           // Flag signalling we are in debug mode, valid for ID, EX and WB
   logic [2:0]  debug_cause;          // cause of debug entry
   logic        debug_csr_save;       // Update debug CSRs
   logic        debug_wfi_no_sleep;   // Debug prevents core from sleeping after WFI
