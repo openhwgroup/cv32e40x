@@ -35,7 +35,7 @@ The |corev| also supports a Trigger Module to enable entry into Debug Mode on a 
  - Number of trigger register(s) : Parametrizable 0-4 triggers using parameter ``DBG_NUM_TRIGGERS``.
  - Supported trigger types: instruction address match (Match Control) and exception trigger.
 
-A trigger match will cause debug entry if TDATA1.action is 1 (hardcoded to 1).
+A trigger match will cause debug entry if TDATA1.action is 1.
 
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
 
