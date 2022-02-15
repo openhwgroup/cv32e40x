@@ -46,6 +46,7 @@ module cv32e40x_wrapper
   import cv32e40x_pkg::*;
 #(
   parameter              LIB                          = 0,
+  parameter rv32_e       RV32                         = RV32I,
   parameter bit          A_EXT                        = 0,
   parameter b_ext_e      B_EXT                        = B_NONE,
   parameter m_ext_e      M_EXT                        = M,
@@ -60,6 +61,7 @@ module cv32e40x_wrapper
   parameter bit          ZC_EXT                       = 0,
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
+  parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -74,7 +76,8 @@ module cv32e40x_wrapper
   input  logic [31:0] boot_addr_i,
   input  logic [31:0] mtvec_addr_i,
   input  logic [31:0] dm_halt_addr_i,
-  input  logic [31:0] hart_id_i,
+  input  logic [31:0] mhartid_i,
+  input  logic [31:0] mimpid_i,
   input  logic [31:0] dm_exception_addr_i,
   input logic [31:0]  nmi_addr_i,
 
@@ -85,6 +88,7 @@ module cv32e40x_wrapper
   output logic [31:0] instr_addr_o,
   output logic [1:0]  instr_memtype_o,
   output logic [2:0]  instr_prot_o,
+  output logic        instr_dbg_o,
   input  logic [31:0] instr_rdata_i,
   input  logic        instr_err_i,
 
@@ -97,11 +101,15 @@ module cv32e40x_wrapper
   output logic [31:0] data_addr_o,
   output logic [1:0]  data_memtype_o,
   output logic [2:0]  data_prot_o,
+  output logic        data_dbg_o,
   output logic [31:0] data_wdata_o,
   input  logic [31:0] data_rdata_i,
   input  logic        data_err_i,
   output logic [5:0]  data_atop_o,
   input  logic        data_exokay_i,
+
+  // Cycle Count
+  output logic [63:0] mcycle_o,
 
   // eXtension interface
   if_xif.cpu_compressed xif_compressed_if,
@@ -113,6 +121,15 @@ module cv32e40x_wrapper
 
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
+
+  input  logic        clic_irq_i,
+  input  logic [11:0] clic_irq_id_i,
+  input  logic [ 7:0] clic_irq_il_i,
+  input  logic [ 1:0] clic_irq_priv_i,
+  input  logic        clic_irq_hv_i,
+  output logic [11:0] clic_irq_id_o,
+  output logic        clic_irq_mode_o,
+  output logic        clic_irq_exit_o,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -322,7 +339,7 @@ module cv32e40x_wrapper
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
           .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
-          .hart_id_i          ( core_i.hart_id_i                   )
+          .mhartid_i          ( core_i.mhartid_i                   )
 
       );
 
@@ -474,7 +491,8 @@ module cv32e40x_wrapper
          .csr_mhpmcounter_we_i     ( core_i.cs_registers_i.mhpmcounter_we                                 ),
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
-         .csr_mhartid_i            ( core_i.cs_registers_i.hart_id_i                                      ),
+         .csr_mhartid_i            ( core_i.cs_registers_i.mhartid_i                                      ),
+         .csr_mimpid_i             ( core_i.cs_registers_i.mimpid_i                                       ),
          // TODO Tie relevant signals below to RTL
          .csr_mstatush_n_i         ( '0                                                                   ),
          .csr_mstatush_q_i         ( '0                                                                   ),
@@ -514,6 +532,7 @@ module cv32e40x_wrapper
     cv32e40x_core
         #(
           .LIB                   ( LIB                   ),
+          .RV32                  ( RV32                  ),
           .A_EXT                 ( A_EXT                 ),
           .B_EXT                 ( B_EXT                 ),
           .M_EXT                 ( M_EXT                 ),
@@ -528,6 +547,7 @@ module cv32e40x_wrapper
           .ZC_EXT                ( ZC_EXT                ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
           .SMCLIC                ( SMCLIC                ),
+          .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
     core_i (

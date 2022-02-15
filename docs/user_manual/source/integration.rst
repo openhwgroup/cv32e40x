@@ -43,7 +43,8 @@ Instantiation Template
       .nmi_addr_i               (),
       .dm_halt_addr_i           (),
       .dm_exception_addr_i      (),
-      .hart_id_i                (),
+      .mhartid_i                (),
+      .mimpid_i                 (),
 
       // Instruction memory interface
       .instr_req_o              (),
@@ -51,6 +52,7 @@ Instantiation Template
       .instr_addr_o             (),
       .instr_memtype_o          (),
       .instr_prot_o             (),
+      .instr_dbg_o              (),
       .instr_rvalid_i           (),
       .instr_rdata_i            (),
       .instr_err_i              (),
@@ -63,6 +65,7 @@ Instantiation Template
       .data_be_o                (),
       .data_memtype_o           (),
       .data_prot_o              (),
+      .data_dbg_o               (),
       .data_wdata_o             (),
       .data_we_o                (),
       .data_rvalid_i            (),
@@ -205,8 +208,11 @@ Interfaces
 |                         |                         |     | word aligned. Do not change after enabling |
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
-| ``hart_id_i``           | 32                      | in  | Hart ID, usually static, can be read from  |
+| ``mhartid_i``           | 32                      | in  | Hart ID, usually static, can be read from  |
 |                         |                         |     | :ref:`csr-mhartid` CSR                     |
++-------------------------+-------------------------+-----+--------------------------------------------+
+| ``mimpid_i``            | 32                      | in  | Implementation ID, usually static, can be  |
+|                         |                         |     | read from :ref:`csr-mimpid` CSR            |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``instr_*``             | Instruction fetch interface, see :ref:`instruction-fetch`                  |
 +-------------------------+----------------------------------------------------------------------------+
