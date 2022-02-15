@@ -124,15 +124,6 @@ When the NMI handler is entered, new data bus faults may be latched.
 
 While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
 
-
-CLIC
-----
-
-|corev| supports CLIC limited to 1024 interrupts, see the CLIC_ spec.
-
-.. _CLIC: https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.pdf
-
-
 Exceptions
 ----------
 
