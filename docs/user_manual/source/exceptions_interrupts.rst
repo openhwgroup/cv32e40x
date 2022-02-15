@@ -136,9 +136,7 @@ Exceptions
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
  |              0 |              2 | Illegal instruction                   |                                                                           |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              3 | Breakpoint                            | Instruction address breakpoint.                                           |
- |                |                |                                       | Load/store/AMO address breakpoint.                                        |
- |                |                |                                       | Environment break.                                                        |
+ |              0 |              3 | Breakpoint                            | Environment break.                                                        |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
  |              0 |              5 | Load access fault                     | Non-naturally aligned load access attempt to an I/O region.               |
  |                |                |                                       | Load-Reserved attempt to region without atomic support.                   |
@@ -154,13 +152,11 @@ Exceptions
 
 If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
 
-* ``instruction address breakpoint (3)``
 * ``instruction access fault (1)``
 * ``instruction bus fault (48)``
 * ``illegal instruction (2)``
 * ``environment call from M-Mode (11)``
 * ``environment break (3)``
-* ``load/store/AMO address breakpoint (3)``
 * ``store/AMO access fault (7)``
 * ``load access fault (5)``
 

@@ -142,7 +142,8 @@ Parameters
 | ``X_RFW_WIDTH``              | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_MISA``                   | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
-|                              |                |               | see :ref:`csr-misa`.                                               |
+|                              |                |               | see :ref:`csr-misa`. X_MISA can only be used to set a subset of    |
+|                              |                |               | the following: {P, V, F, D, Q, X, M}.                              |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_ECS_XS``                 | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
 |                              |                |               | see :ref:`csr-mstatus`.                                            |

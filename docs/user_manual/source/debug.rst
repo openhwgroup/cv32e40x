@@ -30,12 +30,12 @@ A user wishing to perform an abstract access, whereby the user can observe or co
    A supported open source implementation of these building blocks can be found in the `RISC-V Debug Support for PULP Cores IP block <https://github.com/pulp-platform/riscv-dbg/>`_.
 
 
-The |corev| also supports a Trigger Module to enable entry into Debug Mode, or cause a breakpoint exception on a trigger event with the following features:
+The |corev| also supports a Trigger Module to enable entry into Debug Mode on a trigger event with the following features:
 
  - Number of trigger register(s) : Parametrizable 0-4 triggers using parameter ``DBG_NUM_TRIGGERS``.
  - Supported trigger types: instruction address match (Match Control) and exception trigger.
 
-A trigger match will cause debug entry if TDATA1.action is 1, and breakpoint exception if TDATA1.action is 0.
+A trigger match will cause debug entry if TDATA1.action is 1.
 
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
 
@@ -85,8 +85,7 @@ Several trigger registers are included if ``DBG_NUM_TRIGGERS`` is set to a value
 The following are the most relevant: :ref:`csr-tselect`, :ref:`csr-tdata1`,  :ref:`csr-tdata2` and :ref:`csr-tinfo`
 If ``DBG_NUM_TRIGGERS`` is zero, access to the trigger registers will result in an illegal instruction exception.
 
-The TDATA1.DMODE controls write access permission to the currently selected triggers tdata registers. A value of 0 permits both machine mode and debug mode to write to the selected trigger tdata registers.
-The value 1 permits **only** debug mode to write to the currently selected trigger tdata registers. Reset value is 0.
+The TDATA1.DMODE controls write access permission to the currently selected triggers tdata registers. In |corev| this bit is tied to 1, and thus only debug mode is able to write to the trigger registers.
 
 Debug state
 -----------
