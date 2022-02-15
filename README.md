@@ -24,7 +24,7 @@ the [PULP platform](https://www.pulp-platform.org/) team.
 
 The CV32E40X user manual can be found in the _docs_ folder and it is
 captured in reStructuredText, rendered to html using [Sphinx](https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html).
-These documents are viewable using readthedocs and can be viewed [here](https://cv32e40x-user-manual.readthedocs.io/en/latest/).
+These documents are viewable using readthedocs and can be viewed [here](https://docs.openhwgroup.org/projects/cv32e40x-user-manual/en/latest/).
 
 ## Verification
 The verification environment for the CV32E40X is _not_ in this Repository.
