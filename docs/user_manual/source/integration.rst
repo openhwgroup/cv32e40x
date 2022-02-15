@@ -84,6 +84,15 @@ Instantiation Template
        // Interrupt interface
       .irq_i                    (),
 
+      .clic_irq_i               (),
+      .clic_irq_id_i            (),
+      .clic_irq_il_i            (),
+      .clic_irq_priv_i          (),
+      .clic_irq_hv_i            (),
+      .clic_irq_id_o            (),
+      .clic_irq_mode_o          (),
+      .clic_irq_exit_o          (),
+
       // Fencei flush handshake
       .fencei_flush_req_o       (),
       .fencei_flush_ack_i       (),
@@ -163,6 +172,7 @@ Parameters
 | ``SMCLIC``                   | int (0..1 )    | 0             | Is Smclic supported?                                               |
 +------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
+
 Interfaces
 ----------
 
@@ -220,6 +230,8 @@ Interfaces
 +-------------------------+----------------------------------------------------------------------------+
 | ``irq_*``               | Interrupt inputs, see :ref:`exceptions-interrupts`                         |
 +-------------------------+----------------------------------------------------------------------------+
+| ``clic_*``              | CLIC interface, see :ref:`exceptions-interrupts`                           |
++-------------------------+----------------------------------------------------------------------------+
 | ``debug_*``             | Debug interface, see :ref:`debug-support`                                  |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``fetch_enable_i``      | 1                       | in  | Enable the instruction fetch of |corev|.   |
@@ -245,3 +257,4 @@ Interfaces
 +-------------------------+----------------------------------------------------------------------------+
 | ``xif_result_if``       | eXtension result interface, see :ref:`x_result_if`                         |
 +-------------------------+----------------------------------------------------------------------------+
+

@@ -123,11 +123,11 @@ module cv32e40x_wrapper
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
 
   input  logic        clic_irq_i,
-  input  logic [11:0] clic_irq_id_i,
+  input  logic [ 9:0] clic_irq_id_i,
   input  logic [ 7:0] clic_irq_il_i,
   input  logic [ 1:0] clic_irq_priv_i,
   input  logic        clic_irq_hv_i,
-  output logic [11:0] clic_irq_id_o,
+  output logic [ 9:0] clic_irq_id_o,
   output logic        clic_irq_mode_o,
   output logic        clic_irq_exit_o,
 
