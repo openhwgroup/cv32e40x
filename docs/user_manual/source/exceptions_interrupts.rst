@@ -19,8 +19,11 @@ by writing to the ``mtvec`` CSR. For more information, see the :ref:`cs-register
 The core starts fetching at the address defined by ``boot_addr_i``. It is assumed that the boot address is supplied via a register
 to avoid long paths to the instruction fetch unit.
 
-Interrupt Interface
--------------------
+Interrupt Interface - ``SMCLIC`` == 0
+-------------------------------------
+
+If the ``SMCLIC`` parameter is set to 0, then |corev| is configured to support the basic (a.k.a. CLINT) interrupt architecture. In this configuration only the
+basic interrupt handling modes (non-vectored basic mode and vectored basic mode) can be used.
 
 :numref:`Interrupt interface signals` describes the interrupt interface.
 
@@ -46,11 +49,11 @@ Interrupt Interface
   |                         |           | Basic (a.k.a. CLINT) interrupt scheme.           |
   +-------------------------+-----------+--------------------------------------------------+
 
-Interrupts
-----------
+Interrupts - ``SMCLIC`` == 0
+----------------------------
 
 The ``irq_i[31:0]`` interrupts are controlled via the ``mstatus``, ``mie`` and ``mip`` CSRs. |corev| uses the upper 16 bits of ``mie`` and ``mip`` for custom interrupts (``irq_i[31:16]``),
-which reflects an intended custom extension in the RISC-V Basic (a.k.a. CLINT) interrupt architecture.
+which reflects an intended custom extension in the RISC-V basic (a.k.a. CLINT) interrupt architecture.
 After reset, all interrupts, except for NMIs, are disabled.
 To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
 
@@ -59,8 +62,8 @@ If multiple interrupts are pending, they are handled in the fixed priority order
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
 ordered as follows: 
 
-* ``store bus fault NMI (129)``
-* ``load bus fault NMI (128)``
+* ``store bus fault NMI (1021)``
+* ``load bus fault NMI (1020)``
 * ``irq_i[31]``
 * ``irq_i[30]``
 * ...
@@ -72,7 +75,7 @@ ordered as follows:
 The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events.
 To clear the ``irq_i[31:0]`` interrupts at the external source, |corev| relies on a software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
 
-In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the content of the ``mie`` CSR.
+In Debug Mode, all interrupts are ignored independent of ``mstatus.MIE`` and the content of the ``mie`` CSR.
 
 |corev| can trigger the following interrupts as reported in ``mcause``:
 
@@ -87,15 +90,26 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus``.MIE and the
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
  |              1 |          31-16 | Machine Fast Interrupts                         | ``irq_i[31]``-``irq_i[16]``                                     |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |            128 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
+ |              1 |           1020 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |            129 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
+ |              1 |           1021 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
 
 .. note::
 
    Load bus fault and store bus fault are handled as imprecise non-maskable interrupts
    (as opposed to precise exceptions).
+
+Interrupt Interface - ``SMCLIC`` == 1
+-------------------------------------
+
+If the ``SMCLIC`` parameter is set to 1, then |corev| is configured to support the CLIC interrupt architecture. In this configuration only the
+CLIC interrupt handling mode can be used and the ``irq_i[31:0]`` pins are ignored and should be tied to 0.
+
+Interrupts - ``SMCLIC`` == 1
+----------------------------
+
+Although the [RISC-V-SMCLIC] specification supports up to 4096 interrupts, |corev| itself is limited to supporting 1024 interrupts (of which interrupts 1020-1023 are reserved for NMIs).
 
 Non Maskable Interrupts
 -----------------------

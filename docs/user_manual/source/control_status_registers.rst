@@ -42,10 +42,6 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   |  CSR Address  |   Name            | Privilege | Parameter                |  Description                                            |
   +===============+===================+===========+==========================+=========================================================+
-  | Zc CSRs                                                                                                                            |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x017         | ``jvt``           | MRW       | ``ZC_EXT`` = 1           | Table jump base vector and control register             |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | Machine CSRs                                                                                                                       |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x300         | ``mstatus``       | MRW       |                          | Machine Status (lower 32 bits).                         |
@@ -143,6 +139,17 @@ instruction exception.
   | 0xF14         | ``mhartid``       | MRO       |                          | Hardware Thread ID                                      |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0xF15         | ``mconfigptr``    | MRO       |                          | Machine Configuration Pointer                           |
+  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
+
+.. table:: Control and Status Register Map (Unprivileged and User-Level CSRs)
+  :name: Control and Status Register Map (Unprivileged and User-Level CSRs)
+
+  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
+  |  CSR Address  |   Name            | Privilege | Parameter                |  Description                                            |
+  +===============+===================+===========+==========================+=========================================================+
+  | Unprivileged and User-Level CSRs                                                                                                   |
+  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
+  | 0x017         | ``jvt``           | URW       | ``ZC_EXT`` = 1           | Table jump base vector and control register             |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
 
 .. only:: ZICNTR
@@ -280,7 +287,7 @@ level):
   support more than one value. If an unsupported value is written to such a field, subsequent
   reads will return the value marked with an asterix (6* for example) in the definiton of that field.
 
-* **WPRI**: Software should ignore values read from these fields, and presereve the values when writing.
+* **WPRI**: Software should ignore values read from these fields, and preserve the values when writing.
 
 .. note::
 
@@ -369,9 +376,9 @@ Detailed:
 +-------------+--------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W        |           Description                                                   |
 +=============+==============+=========================================================================+
-| 31 :  6     |   RW         | **BASE**: Base Address, 64 byte aligned.                                |
+| 31: 6       |   RW         | **BASE**: Base Address, 64 byte aligned.                                |
 +-------------+--------------+-------------------------------------------------------------------------+
-|  5 :  0     |   WARL (0x0) | **MODE**: Jump table mode                                               |
+|  5: 0       |   WARL (0x0) | **MODE**: Jump table mode                                               |
 +-------------+--------------+-------------------------------------------------------------------------+
 
 Table jump base vector and control register
@@ -519,8 +526,8 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
    The ``WARL  `` in above table is depending on `X_EXT``. If ``X_EXT`` == 1, then some of the ``misa`` bits
    can read values depending on the value of ``X_MISA``.
 
-Machine Interrupt Enable Register (``mie``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x304
 
@@ -560,13 +567,28 @@ Detailed:
 |  0          | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
 +-------------+-----------+------------------------------------------------------------------------------------------+
 
+Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x304
+
+Reset Value: 0x0000_0000
+
+Detailed:
+
++-------------+-----------+------------------------------------------------------------------------------------------+
+|   Bit #     |   R/W     |   Description                                                                            |
++=============+===========+==========================================================================================+
+| 31:0        | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
++-------------+-----------+------------------------------------------------------------------------------------------+
+
 .. note::
-   This CSR description is currently assuming ``SMCLIC`` == 0. The CSR description will be updated to reflect their its when ``SMCLIC`` == 1 in a later revision.
+   In CLIC mode the ``mie`` CSR is replaced by separate memory-mapped interrupt enables (``clicintie``).
 
 .. _csr-mtvec:
 
-Machine Trap-Vector Base Address (``mtvec``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Trap-Vector Base Address (``mtvec``) - ``SMCLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x305
 
@@ -574,27 +596,45 @@ Reset Value: Defined
 
 Detailed:
 
-+-------------+--------------+---------------------------------------------------------------------------------------------------------------+
-|   Bit #     |   R/W        |   Description                                                                                                 |
-+=============+==============+===============================================================================================================+
-| 31:8        |   RW         | BASE[31:8]: The trap-handler base address, always aligned to 256 bytes.                                       |
-+-------------+--------------+---------------------------------------------------------------------------------------------------------------+
-| 7:2         |   WARL (0x0) | BASE[7:2]: The trap-handler base address, always aligned to 256 bytes, i.e., mtvec[7:2] is always set to 0.   |
-+-------------+--------------+---------------------------------------------------------------------------------------------------------------+
-|  1          |   WARL (0x0) | MODE[1]: always 0                                                                                             |
-+-------------+--------------+---------------------------------------------------------------------------------------------------------------+
-|  0          |   RW         | MODE[0]: 0 = direct mode, 1 = vectored mode.                                                                  |
-+-------------+--------------+---------------------------------------------------------------------------------------------------------------+
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+|   Bit # | R/W              |   Description                                                                                                 |
++=========+==================+===============================================================================================================+
+| 31:12   | RW               | **BASE[31:12]**: Trap-handler base address, always aligned to 4096 bytes.                                     |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+| 11:2    | WARL (0x0)       | **BASE[11:2]**: Trap-handler base address, always aligned to 4096 bytes. ``mtvec[11:2]`` is hardwired to 0x0. |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+| 1:0     | WARL (0x0*, 0x1) | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-.. note::
-   This CSR description is currently assuming ``SMCLIC`` == 0. The CSR description will be updated to reflect their its when ``SMCLIC`` == 1 in a later revision.
-
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:8]**, 6'b0, 2'b01}.
+The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:12]**, 10'b0, 2'b01}.
 
 When an exception or an interrupt is encountered, the core jumps to the corresponding
-handler using the content of the MTVEC[31:8] as base address. Only
+handler using the content of the ``mtvec[31:8]`` as base address. Only
 8-byte aligned addresses are allowed. Both direct mode and vectored mode
 are supported.
+
+.. _csr-mtvec-smclic:
+
+Machine Trap-Vector Base Address (``mtvec``) - ``SMCLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x305
+
+Reset Value: Defined
+
+Detailed:
+
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+|   Bit # | R/W              |   Description                                                                                                 |
++=========+==================+===============================================================================================================+
+| 31:12   | RW               | **BASE[31:12]**: Trap-handler base address, always aligned to 4096 bytes.                                     |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+| 11:2    | WARL (0x0)       | **BASE[11:2]**: Trap-handler base address, always aligned to 4096 bytes. ``mtvec[11:2]`` is hardwired to 0x0. |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+| 1:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
++---------+------------------+---------------------------------------------------------------------------------------------------------------+
+
+The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:12]**, 10'b0, 2'b11}.
 
 .. _csr-mtvt:
 
@@ -612,18 +652,16 @@ Detailed:
 +-------------+------------+-----------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                 |
 +=============+============+=======================================================================+
-| 31 : 6      |   RW       | **BASE**: Trap-handler vector table base address, 64 byte aligned.    |
+| 31:6        |   RW       | **BASE**: Trap-handler vector table base address, 64 byte aligned.    |
 +-------------+------------+-----------------------------------------------------------------------+
-|  5 : 0      |   R (0x0)  | Reserved, hardwired to 0.                                             |
+|  5:0        |   R (0x0)  | Reserved. Hardwired to 0.                                             |
 +-------------+------------+-----------------------------------------------------------------------+
 
-When an exception or an interrupt is encountered and table jumps are enabled, the core jumps to the corresponding
-handler from the vector table. The vector table base is pointed to by this register (``mtvt``), and the trap handler
-function address is fetched from ``mtvt`` + 4*exccode (where exccode is the exception code in ``mcause``).
-
+The ``mtvt`` CSR holds the base address of the trap vector table, aligned on a 64-byte or greater
+power-of-two boundary. 
 
 Machine Status (``mstatush``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x310
 
@@ -634,13 +672,13 @@ Detailed:
 +------+--------------+-------------------------------------------------+
 | Bit# |  R/W         | Definition                                      |
 +======+==============+=================================================+
-| 31:6 | WPRI  (0x0)  | Reserved, hardwired to 0.                       |
+| 31:6 | WPRI  (0x0)  | Reserved. Hardwired to 0.                       |
 +------+--------------+-------------------------------------------------+
 | 5    | WARL (0x0)   | **MBE**. Hardwired to 0.                        |
 +------+--------------+-------------------------------------------------+
 | 4    | WARL (0x0)   | **SBE**. Hardwired to 0.                        |
 +------+--------------+-------------------------------------------------+
-| 3:0  | WPRI (0x0)   | Reserved, hardwired to 0.                       |
+| 3:0  | WPRI (0x0)   | Reserved. Hardwired to 0.                       |
 +------+--------------+-------------------------------------------------+
 
 .. only:: USER
@@ -662,7 +700,7 @@ Detailed:
   +-------+------------+------------------------------------------------------------------+
   | Bit#  | R/W        | Description                                                      |
   +=======+============+==================================================================+
-  | 31:3  | WARL (0x0) | RHardwired to 0.                                                 |
+  | 31:3  | WARL (0x0) | Hardwired to 0.                                                  |
   +-------+------------+------------------------------------------------------------------+
   | 2     | RW         | **IR**: ``instret`` enable for user mode.                        |
   +-------+------------+------------------------------------------------------------------+
@@ -795,8 +833,8 @@ in MEPC, and the core jumps to the exception address. When a mret
 instruction is executed, the value from MEPC replaces the current
 program counter.
 
-Machine Cause (``mcause``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Cause (``mcause``) - ``SMCLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x342
 
@@ -805,11 +843,11 @@ Reset Value: 0x0000_0000
 +-------------+------------+----------------------------------------------------------------------------------+
 |   Bit #     |   R/W      |   Description                                                                    |
 +=============+============+==================================================================================+
-| 31          | RW         | **Interrupt:** This bit is set when the exception was triggered by an interrupt. |
+| 31          | RW         | **INTERRUPT:** This bit is set when the exception was triggered by an interrupt. |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 30:8        | WARL (0x0) | Hardwired to 0.                                                                  |
+| 30:10       | WLRL (0x0) | **EXCCODE[30:10]**. Hardwired to 0.                                              |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 7:0         | WLRL       | **Exception Code**   (See note below)                                            |
+| 9:0         | WLRL       | **EXCCODE[30:10]** (See note below)                                              |
 +-------------+------------+----------------------------------------------------------------------------------+
 
 .. note::
@@ -817,8 +855,35 @@ Reset Value: 0x0000_0000
    Software accesses to `mcause[7:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
    when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
-.. note::
-   This CSR description is currently assuming ``SMCLIC`` == 0. The CSR description will be updated to reflect their its when ``SMCLIC`` == 1 in a later revision.
+Machine Cause (``mcause``) - ``SMCLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x342
+
+Reset Value: 0x0000_0000
+
++-------------+------------+----------------------------------------------------------------------------------+
+|   Bit #     |   R/W      |   Description                                                                    |
++=============+============+==================================================================================+
+| 31          | RW         | **INTERRUPT:** This bit is set when the exception was triggered by an interrupt. |
++-------------+------------+----------------------------------------------------------------------------------+
+| 30          | R          | **MINHV**. Set by hardware at start of hardware vectoring, cleared by            |
+|             |            | hardware at end of successful hardware vectoring.                                |
++-------------+------------+----------------------------------------------------------------------------------+
+| 29:28       | WARL (0x3) | **MPP:** Previous privilege mode. Same as ``mstatus.MPP``                        |
++-------------+------------+----------------------------------------------------------------------------------+
+| 27          | R          | **MPIE:** Previous interrupt enable. Same as ``mstatus.MPIE``                    |
++-------------+------------+----------------------------------------------------------------------------------+
+| 26:24       | RW         | Reserved. Hardwired to 0.                                                        |
++-------------+------------+----------------------------------------------------------------------------------+
+| 23:16       | RW         | **MPIL:** Previous interrupt level.                                              |
++-------------+------------+----------------------------------------------------------------------------------+
+| 15:12       | WARL (0x0) | Reserved. Hardwired to 0.                                                        |
++-------------+------------+----------------------------------------------------------------------------------+
+| 11:10       | WLRL (0x0) | **EXCCODE[11:10]**                                                               |
++-------------+------------+----------------------------------------------------------------------------------+
+| 9:0         | WLRL       | **EXCCODE[9:0]**                                                                 |
++-------------+------------+----------------------------------------------------------------------------------+
 
 Machine Trap Value (``mtval``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -835,8 +900,8 @@ Detailed:
 | 31:0        | WARL (0x0) | Hardwired to 0.                                                        |
 +-------------+------------+------------------------------------------------------------------------+
 
-Machine Interrupt Pending Register (``mip``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Pending Register (``mip``) - ``SMCLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x344
 
@@ -876,10 +941,23 @@ Detailed:
 |  0          | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
 +-------------+-----------+------------------------------------------------------------------------------------------+
 
+Machine Interrupt Pending Register (``mip``) - ``SMCLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x344
+
+Reset Value: 0x0000_0000
+
+Detailed:
+
++-------------+-----------+------------------------------------------------------------------------------------------+
+|   Bit #     |   R/W     |   Description                                                                            |
++=============+===========+==========================================================================================+
+| 31:0        | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
++-------------+-----------+------------------------------------------------------------------------------------------+
+
 .. note::
-   This CSR description is currently assuming ``SMCLIC`` == 0. The CSR description will be updated to reflect their its when ``SMCLIC`` == 1 in a later revision.
-
-
+   In CLIC mode the ``mip`` CSR is replaced by separate memory-mapped interrupt enables (``clicintip``).
 
 .. _csr-mnxti:
 
@@ -897,7 +975,7 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 : 0      |   RW       | **MNXTI**: Machine Next Interrupt Handler Address and Interrupt Enable. |
+| 31:0        |   RW       | **MNXTI**: Machine Next Interrupt Handler Address and Interrupt Enable. |
 +-------------+------------+-------------------------------------------------------------------------+
 
 This register can be used by the software to service the next interrupt when it is in the same privilege mode,
@@ -920,13 +998,13 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 : 24     |   R        | **MIL**: Machine Interrupt Level                                        |
+| 31:24       |   R        | **MIL**: Machine Interrupt Level                                        |
 +-------------+------------+-------------------------------------------------------------------------+
-| 23 : 16     |   R (0x0)  | Reserved, hardwired to 0.                                               |
+| 23:16       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
 +-------------+------------+-------------------------------------------------------------------------+
-| 15 :  8     |   R (0x0)  | **SIL**: Supervisor Interrupt Level, hardwired to 0.                    |
+| 15: 8       |   R (0x0)  | **SIL**: Supervisor Interrupt Level, hardwired to 0.                    |
 +-------------+------------+-------------------------------------------------------------------------+
-|  7 :  0     |   R (0x0)  | **UIL**: User Interrupt Level, hardwired to 0.                          |
+|  7: 0       |   R (0x0)  | **UIL**: User Interrupt Level, hardwired to 0.                          |
 +-------------+------------+-------------------------------------------------------------------------+
 
 This register holds the active interrupt level for each privilege mode.
@@ -949,9 +1027,9 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 :  8     |   R (0x0)  | Reserved, hardwired to 0.                                               |
+| 31: 8       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
 +-------------+------------+-------------------------------------------------------------------------+
-|  7 :  0     |   RW       | **TH**: Threshold                                                       |
+|  7: 0       |   RW       | **TH**: Threshold                                                       |
 +-------------+------------+-------------------------------------------------------------------------+
 
 This register holds the machine mode interrupt level threshold.
@@ -973,7 +1051,7 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 : 0      |   RW       | **MSCRATCHCSW**: Machine scratch swap for privilege mode change         |
+| 31:0        |   RW       | **MSCRATCHCSW**: Machine scratch swap for privilege mode change         |
 +-------------+------------+-------------------------------------------------------------------------+
 
 Scratch swap register for multiple privilege modes.
@@ -996,7 +1074,7 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 : 0      |   RW       | **MSCRATCHCSWL**: Machine Scratch Swap for Interrupt-Level Change       |
+| 31:0        |   RW       | **MSCRATCHCSWL**: Machine Scratch Swap for Interrupt-Level Change       |
 +-------------+------------+-------------------------------------------------------------------------+
 
 Scratch swap register for multiple interrupt levels.
@@ -1020,9 +1098,9 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31 : 12     |   RW       | **MCLICBASE**: CLIC Base                                                |
+| 31:12       |   RW       | **MCLICBASE**: CLIC Base                                                |
 +-------------+------------+-------------------------------------------------------------------------+
-| 11 :  0     |   R (0x0)  | Reserved, hardwired to 0.                                               |
+| 11: 0       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
 +-------------+------------+-------------------------------------------------------------------------+
 
 CLIC base register.
@@ -1037,14 +1115,14 @@ CSR Address: 0x7A0
 
 Reset Value: 0x0000_0000
 
-If a value larger than the parameter ``DBG_NUM_TRIGGERS`` is written, the register will contain the value DBG_NUM_TRIGGERS - 1.
++-------------+------------------------------------+----------------------------------------------------------------------------------------+
+|   Bit #     |   R/W                              |   Description                                                                          |
++=============+====================================+========================================================================================+
+|| 31:0       || WARL                              || |corev| implements 0 to ``DBG_NUM_TRIGGERS`` triggers. Selects                        |
+||            || (0x0 - (``DBG_NUM_TRIGGERS``-1)*) || which trigger CSRs are accessed through the tdata* CSRs.                              |
++-------------+------------------------------------+----------------------------------------------------------------------------------------+
 
-+-------------+--------------+----------------------------------------------------------------------------------------+
-|   Bit #     |   R/W        |   Description                                                                          |
-+=============+==============+========================================================================================+
-|| 31:0       || WARL        || |corev| implements 0 to 4 triggers based on the parameter DBG_NUM_TRIGGERS. Selects   |
-||            || (0x0 - 0x4*)|| which trigger CSRs are accessed through the tdata* CSRs.                              |
-+-------------+--------------+----------------------------------------------------------------------------------------+
+If a value larger than the parameter ``DBG_NUM_TRIGGERS`` is written, the register will contain the value ``DBG_NUM_TRIGGERS`` - 1.
 
 .. _csr-tdata1:
 
