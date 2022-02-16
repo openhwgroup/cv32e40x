@@ -1,0 +1,16 @@
+# .github/release.yml
+
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Documentation Updates
+      labels:
+        - Component:Doc
+    - title: RTL Updates
+      labels:
+        - Component:RTL
+    - title: Non-RTL, non-documentation (e.g. bhv, sva)
+      labels:
+        - "*"
