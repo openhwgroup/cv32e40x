@@ -1008,7 +1008,7 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 
 This register holds the active interrupt level for each privilege mode.
-Only Machine Interrupt Level is supprtorted.
+Only Machine Interrupt Level is supported.
 
 
 .. _csr-mintthresh:
@@ -1260,7 +1260,7 @@ Detailed:
 | 31:0  | RW   | **DATA**                                                         |
 +-------+------+------------------------------------------------------------------+
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**.
+Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 This register stores the instruction address to match against for a breakpoint trigger or the currently selected exception codes for an exception trigger.
 
 Trigger Data Register 3 (``tdata3``)
@@ -1297,7 +1297,8 @@ Detailed:
 +=======+============+==================================================================+
 | 31:16 | WARL (0x0) | Hardwired to 0.                                                  |
 +-------+------------+------------------------------------------------------------------+
-| 15:0  | R          | **INFO**. Type 5 and 6 is supported.                             |
+| 15:0  | R  (0x20,  | **INFO**. Type 5 and 6 is supported.                             |
+|       |     0x40)  |                                                                  |
 +-------+------------+------------------------------------------------------------------+
 
 The **info** field contains one bit for each possible `type` enumerated in
