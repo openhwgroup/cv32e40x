@@ -47,6 +47,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter bit          ZC_EXT                       = 0, // todo: remove once fully implemented
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
+  parameter int          SMCLIC_ID_WIDTH              = 6,
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
@@ -108,14 +109,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
 
-  input  logic        clic_irq_i,
-  input  logic [ 9:0] clic_irq_id_i,
-  input  logic [ 7:0] clic_irq_il_i,
-  input  logic [ 1:0] clic_irq_priv_i,
-  input  logic        clic_irq_hv_i,
-  output logic [ 9:0] clic_irq_id_o,
-  output logic        clic_irq_mode_o,
-  output logic        clic_irq_exit_o,
+  // CLIC Interface
+  input  logic                       clic_irq_i,
+  input  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_i,
+  input  logic [ 7:0]                clic_irq_il_i,
+  input  logic [ 1:0]                clic_irq_priv_i,
+  input  logic                       clic_irq_hv_i,
+  output logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_o,
+  output logic                       clic_irq_mode_o,
+  output logic                       clic_irq_exit_o,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
