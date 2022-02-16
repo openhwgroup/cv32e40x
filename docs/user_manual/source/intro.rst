@@ -39,11 +39,11 @@ It follows these specifications:
 .. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20211105-signoff (November 5, 2021),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20211105-c30284b/riscv-privileged.pdf
 
-.. [RISC-V-DEBUG] RISC-V External Debug Support, version 1.0.0, 2021-10-07,
-   https://github.com/riscv/riscv-debug-spec/blob/master/riscv-debug-stable.pdf
+.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0.0-STABLE, fe3d1e65efed4b56574c50867830c3c499f9b18c,
+   https://github.com/riscv/riscv-debug-spec/blob/b659d7dc7f578e1a2a76f9e62a5eec0f2d80045c/riscv-debug-stable.pdf
 
-.. [RISC-V-SMCLIC] "Smclic" Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extension, version 0.9-draft, 12/21/2021,
-   https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.pdf
+.. [RISC-V-SMCLIC] "Smclic" Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extension, version 0.9-draft, 2/15/2022,
+   https://raw.githubusercontent.com/riscv/riscv-fast-interrupt/0b0083ee0af0cd88d59cdcf81e89cd3f9859e9ad/clic.pdf
 
 .. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
@@ -57,7 +57,7 @@ It follows these specifications:
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.2,
    https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.2.pdf
 
-.. [OPENHW-XIF] OpenHW eXtension Interface, revision fa77b73e,
+.. [OPENHW-XIF] OpenHW eXtension Interface, revision 458c8a73,
    https://docs.openhwgroup.org/projects/openhw-group-core-v-xif/
 
 .. [SYMBIOTIC-RVFI] Symbiotic EDA RISC-V Formal Interface

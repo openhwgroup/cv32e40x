@@ -62,8 +62,8 @@ If multiple interrupts are pending, they are handled in the fixed priority order
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
 ordered as follows: 
 
-* ``store bus fault NMI (1021)``
-* ``load bus fault NMI (1020)``
+* ``store bus fault NMI (1025)``
+* ``load bus fault NMI (1024)``
 * ``irq_i[31]``
 * ``irq_i[30]``
 * ...
@@ -90,9 +90,9 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus.MIE`` and the
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
  |              1 |          31-16 | Machine Fast Interrupts                         | ``irq_i[31]``-``irq_i[16]``                                     |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |           1020 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
+ |              1 |           1024 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
- |              1 |           1021 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
+ |              1 |           1025 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
 
 .. note::
@@ -109,7 +109,9 @@ CLIC interrupt handling mode can be used and the ``irq_i[31:0]`` pins are ignore
 Interrupts - ``SMCLIC`` == 1
 ----------------------------
 
-Although the [RISC-V-SMCLIC] specification supports up to 4096 interrupts, |corev| itself is limited to supporting 1024 interrupts (of which interrupts 1020-1023 are reserved for NMIs).
+Although the [RISC-V-SMCLIC]_ specification supports up to 4096 interrupts, |corev| itself supports at most 1024 interrupts. The
+maximum number of supported CLIC interrupts is equal to ``2^SMCLIC_ID_WIDTH``, which can range from 64 to 1024. The ``SMCLIC_ID_WIDTH`` parameter
+also dictates the minimum alignment requirement for the trap vector table to ``2^(2+SMCLIC_ID_WIDTH)`` byte boundaries, see :ref:`csr-mtvt`.
 
 Non Maskable Interrupts
 -----------------------
