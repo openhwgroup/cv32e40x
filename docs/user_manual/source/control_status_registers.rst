@@ -848,14 +848,14 @@ Reset Value: 0x0000_0000
 +=============+============+==================================================================================+
 | 31          | RW         | **INTERRUPT:** This bit is set when the exception was triggered by an interrupt. |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 30:10       | WLRL (0x0) | **EXCCODE[30:10]**. Hardwired to 0.                                              |
+| 30:11       | WLRL (0x0) | **EXCCODE[30:11]**. Hardwired to 0.                                              |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 9:0         | WLRL       | **EXCCODE[30:10]** (See note below)                                              |
+| 10:0        | WLRL       | **EXCCODE[10:0]**. See note below.                                               |
 +-------------+------------+----------------------------------------------------------------------------------+
 
 .. note::
 
-   Software accesses to `mcause[7:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
+   Software accesses to `mcause[10:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
    when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
 Machine Cause (``mcause``) - ``SMCLIC`` == 1
@@ -883,9 +883,9 @@ Reset Value: 0x0000_0000
 +-------------+------------+----------------------------------------------------------------------------------+
 | 15:12       | WARL (0x0) | Reserved. Hardwired to 0.                                                        |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 11:10       | WLRL (0x0) | **EXCCODE[11:10]**                                                               |
+| 11          | WLRL (0x0) | **EXCCODE[11]**                                                                  |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 9:0         | WLRL       | **EXCCODE[9:0]**                                                                 |
+| 10:0        | WLRL       | **EXCCODE[10:0]**                                                                |
 +-------------+------------+----------------------------------------------------------------------------------+
 
 .. note::
