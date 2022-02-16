@@ -5,12 +5,9 @@ changelog:
     labels:
       - ignore-for-release
   categories:
-    - title: Documentation Updates
+    - title: Documentation Changes
       labels:
         - Component:Doc
-    - title: RTL Updates
+    - title: RTL Changes
       labels:
         - Component:RTL
-    - title: Non-RTL, non-documentation (e.g. bhv, sva)
-      labels:
-        - "*"
