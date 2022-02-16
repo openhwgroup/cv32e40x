@@ -446,7 +446,7 @@ Machine ISA (``misa``)
 
 CSR Address: 0x301
 
-Reset Value: defined (based on ``A_EXT``, ``M_EXT``, ``X_EXT``, ``X_MISA``)
+Reset Value: defined (based on ``RV32``, ``A_EXT``, ``M_EXT``, ``X_EXT``, ``X_MISA``)
 
 Detailed:
 
@@ -599,18 +599,17 @@ Detailed:
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 |   Bit # | R/W              |   Description                                                                                                 |
 +=========+==================+===============================================================================================================+
-| 31:12   | RW               | **BASE[31:12]**: Trap-handler base address, always aligned to 4096 bytes.                                     |
+| 31:7    | RW               | **BASE[31:7]**: Trap-handler base address, always aligned to 128 bytes.                                       |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-| 11:2    | WARL (0x0)       | **BASE[11:2]**: Trap-handler base address, always aligned to 4096 bytes. ``mtvec[11:2]`` is hardwired to 0x0. |
+| 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 | 1:0     | WARL (0x0*, 0x1) | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:12]**, 10'b0, 2'b01}.
+The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
 
 When an exception or an interrupt is encountered, the core jumps to the corresponding
-handler using the content of the ``mtvec[31:8]`` as base address. Only
-8-byte aligned addresses are allowed. Both direct mode and vectored mode
+handler using the content of the ``mtvec[31:7]`` as base address. Both direct mode and vectored mode
 are supported.
 
 .. _csr-mtvec-smclic:
@@ -627,14 +626,14 @@ Detailed:
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 |   Bit # | R/W              |   Description                                                                                                 |
 +=========+==================+===============================================================================================================+
-| 31:12   | RW               | **BASE[31:12]**: Trap-handler base address, always aligned to 4096 bytes.                                     |
+| 31:7    | RW               | **BASE[31:7]**: Trap-handler base address, always aligned to 128 bytes.                                       |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-| 11:2    | WARL (0x0)       | **BASE[11:2]**: Trap-handler base address, always aligned to 4096 bytes. ``mtvec[11:2]`` is hardwired to 0x0. |
+| 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 | 1:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:12]**, 10'b0, 2'b11}.
+The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b11}.
 
 .. _csr-mtvt:
 
@@ -652,13 +651,18 @@ Detailed:
 +-------------+------------+-----------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                 |
 +=============+============+=======================================================================+
-| 31:6        |   RW       | **BASE**: Trap-handler vector table base address, 64 byte aligned.    |
+| 31:8        | WARL       | **BASE[31:8]**: Trap-handler vector table base address.               |
+|             |            | See note below for alignment restrictions.                            |
 +-------------+------------+-----------------------------------------------------------------------+
-|  5:0        |   R (0x0)  | Reserved. Hardwired to 0.                                             |
+| 7:6         | WARL (0x0) | **BASE[7:6]**: Trap-handler vector table base address.                |
++-------------+------------+-----------------------------------------------------------------------+
+|  5:0        | R (0x0)    | Reserved. Hardwired to 0.                                             |
 +-------------+------------+-----------------------------------------------------------------------+
 
-The ``mtvt`` CSR holds the base address of the trap vector table, aligned on a 64-byte or greater
-power-of-two boundary. 
+.. note::
+   The ``mtvt`` CSR holds the base address of the trap vector table, aligned on a ``2^(2+SMCLIC_ID_WIDTH)`` bytes or greater
+   power-of-two boundary. For example if ``SMCLIC_ID_WIDTH`` = 8, then 256 CLIC interrupts are supported and the trap vector table
+   is aligned to 1024 bytes, and therefore **BASE[9:8]** will be WARL (0x0).
 
 Machine Status (``mstatush``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -756,11 +760,10 @@ Machine Counter-Inhibit Register (``mcountinhibit``)
 
 CSR Address: 0x320
 
-Reset Value: 0x0000_000D
+Reset Value: Defined
 
-The performance counter inhibit control register. The default value is to inihibit counters out of reset.
-The bit returns a read value of 0 for non implemented counters. This reset value
-shows the result using the default number of performance counters to be 1.
+The performance counter inhibit control register. The default value is to inihibit all implemented counters out of reset.
+The bit returns a read value of 0 for non implemented counters.
 
 Detailed:
 
@@ -845,14 +848,14 @@ Reset Value: 0x0000_0000
 +=============+============+==================================================================================+
 | 31          | RW         | **INTERRUPT:** This bit is set when the exception was triggered by an interrupt. |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 30:10       | WLRL (0x0) | **EXCCODE[30:10]**. Hardwired to 0.                                              |
+| 30:11       | WLRL (0x0) | **EXCCODE[30:11]**. Hardwired to 0.                                              |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 9:0         | WLRL       | **EXCCODE[30:10]** (See note below)                                              |
+| 10:0        | WLRL       | **EXCCODE[10:0]**. See note below.                                               |
 +-------------+------------+----------------------------------------------------------------------------------+
 
 .. note::
 
-   Software accesses to `mcause[7:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
+   Software accesses to `mcause[10:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
    when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
 Machine Cause (``mcause``) - ``SMCLIC`` == 1
@@ -880,10 +883,15 @@ Reset Value: 0x0000_0000
 +-------------+------------+----------------------------------------------------------------------------------+
 | 15:12       | WARL (0x0) | Reserved. Hardwired to 0.                                                        |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 11:10       | WLRL (0x0) | **EXCCODE[11:10]**                                                               |
+| 11          | WLRL (0x0) | **EXCCODE[11]**                                                                  |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 9:0         | WLRL       | **EXCCODE[9:0]**                                                                 |
+| 10:0        | WLRL       | **EXCCODE[10:0]**                                                                |
 +-------------+------------+----------------------------------------------------------------------------------+
+
+.. note::
+
+   ``mcause.MPP`` and ``mstatus.MPP`` mirror each other. ``mcause.MPIE`` and ``mstatus.MPIE`` mirror each other. Reading or writing the
+   fields ``MPP``/``MPIE`` in ``mcause`` is equivalent to reading or writing the homonymous field in ``mstatus``.
 
 Machine Trap Value (``mtval``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
