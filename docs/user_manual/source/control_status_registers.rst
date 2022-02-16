@@ -890,7 +890,7 @@ Reset Value: 0x0000_0000
 
 .. note::
 
-   ``mcause.MPP`` and ``mstatus.MPP`` mirrow each other. ``mcause.MPIE`` and ``mstatus.MPIE`` mirror each other. Reading or writing the
+   ``mcause.MPP`` and ``mstatus.MPP`` mirror each other. ``mcause.MPIE`` and ``mstatus.MPIE`` mirror each other. Reading or writing the
    fields ``MPP``/``MPIE`` in ``mcause`` is equivalent to reading or writing the homonymous field in ``mstatus``.
 
 Machine Trap Value (``mtval``)
