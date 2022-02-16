@@ -73,6 +73,9 @@ Instantiation Template
       .data_err_i               (),
       .data_exokay_i            (),
 
+      // Cycle Count
+      .mcycle_o                 (),
+
       // eXtension interface
       .xif_compressed_if        (),
       .xif_issue_if             (),
@@ -227,6 +230,8 @@ Interfaces
 | ``instr_*``             | Instruction fetch interface, see :ref:`instruction-fetch`                  |
 +-------------------------+----------------------------------------------------------------------------+
 | ``data_*``              | Load-store unit interface, see :ref:`load-store-unit`                      |
++-------------------------+----------------------------------------------------------------------------+
+| ``mcycle_o``            | Cycle Counter Output                                                       |
 +-------------------------+----------------------------------------------------------------------------+
 | ``irq_*``               | Interrupt inputs, see :ref:`exceptions-interrupts`                         |
 +-------------------------+----------------------------------------------------------------------------+
