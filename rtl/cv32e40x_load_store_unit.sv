@@ -28,6 +28,8 @@
 module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT = 0,
+  parameter bit          X_EXT = 0,
+  parameter int          X_ID_WIDTH = 4,
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
@@ -139,17 +141,38 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic           trans_valid_q;        // trans_valid got clocked without trans_ready
 
+  logic                  xif_req;       // The ongoing memory request comes from the XIF interface
+  logic                  xif_ready_1;   // The LSU second stage is ready for an XIF transaction
+  logic                  xif_res_q;     // The next memory result is for the XIF interface
+  logic [X_ID_WIDTH-1:0] xif_id_q;      // Instruction ID of an XIF memory transaction
+
+  assign xif_req = X_EXT & xif_mem_if.mem_valid;
+
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
-  assign trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
-  assign trans.we    = id_ex_pipe_i.lsu_we;
-  assign trans.size  = id_ex_pipe_i.lsu_size;
-  assign trans.wdata = id_ex_pipe_i.operand_c;
-  assign trans.mode  = PRIV_LVL_M; // Machine mode
-  assign trans.dbg   = ctrl_fsm_i.debug_mode;
+  always_comb begin
+    if (xif_req) begin
+      trans.addr  = xif_mem_if.mem_req.addr;
+      trans.we    = xif_mem_if.mem_req.we;
+      trans.size  = 2'b10;                    // XIF memory requests always use maximum size
+      trans.wdata = xif_mem_if.mem_req.wdata;
+      trans.mode  = xif_mem_if.mem_req.mode;  // TODO use mode from XIF request or force machine mode?
+      trans.dbg   = '0;                       // TODO setup debug triggers
 
-  assign trans.atop  = id_ex_pipe_i.lsu_atop;
-  assign trans.sext  = id_ex_pipe_i.lsu_sext;
+      trans.atop  = '0;
+      trans.sext  = '0;
+    end else begin
+      trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
+      trans.we    = id_ex_pipe_i.lsu_we;
+      trans.size  = id_ex_pipe_i.lsu_size;
+      trans.wdata = id_ex_pipe_i.operand_c;
+      trans.mode  = PRIV_LVL_M; // Machine mode
+      trans.dbg   = ctrl_fsm_i.debug_mode;
+
+      trans.atop  = id_ex_pipe_i.lsu_atop;
+      trans.sext  = id_ex_pipe_i.lsu_sext;
+    end
+  end
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
@@ -180,23 +203,23 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         end
       end
       default:
-      begin // Writing a word
+      begin // Writing a word (note: XIF memory requests always write a word)
         if (split_q == 1'b0)
         begin // non-misaligned case
           case (trans.addr[1:0])
-            2'b00: be = 4'b1111;
-            2'b01: be = 4'b1110;
-            2'b10: be = 4'b1100;
-            2'b11: be = 4'b1000;
+            2'b00: be = xif_req ?  xif_mem_if.mem_req.be[3:0]        : 4'b1111;
+            2'b01: be = xif_req ? {xif_mem_if.mem_req.be[2:0], 1'b0} : 4'b1110;
+            2'b10: be = xif_req ? {xif_mem_if.mem_req.be[1:0], 2'b0} : 4'b1100;
+            2'b11: be = xif_req ? {xif_mem_if.mem_req.be[0:0], 3'b0} : 4'b1000;
           endcase; // case (trans.addr[1:0])
         end
         else
         begin // misaligned case
           case (trans.addr[1:0])
             2'b00: be = 4'b0000; // this is not used, but included for completeness
-            2'b01: be = 4'b0001;
-            2'b10: be = 4'b0011;
-            2'b11: be = 4'b0111;
+            2'b01: be = xif_req ? {3'b0, xif_mem_if.mem_req.be[3:3]} : 4'b0001;
+            2'b10: be = xif_req ? {2'b0, xif_mem_if.mem_req.be[3:2]} : 4'b0011;
+            2'b11: be = xif_req ? {1'b0, xif_mem_if.mem_req.be[3:1]} : 4'b0111;
           endcase; // case (trans.addr[1:0])
         end
       end
@@ -248,11 +271,21 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       split_q    <= 1'b0;
     end else begin
-      if(!valid_0_i) begin
+      if(!valid_0_i && !xif_req) begin
         split_q <= 1'b0; // Reset split_st when no valid instructions
       end else if (ctrl_update) begin // EX done, update split_q for next address phase
         split_q <= lsu_split_0_o;
       end
+    end
+  end
+
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      xif_res_q <= '0;
+      xif_id_q  <= '0;
+    end else if (ctrl_update) begin       // request was granted
+      xif_res_q <= xif_req;               // expect an XIF result if we did an XIF request
+      xif_id_q  <= xif_mem_if.mem_req.id; // save XIF instruction ID for result
     end
   end
 
@@ -402,7 +435,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_split_0_o = 1'b0;
     misaligned_halfword = 1'b0;
-    if (valid_0_i && !split_q)
+    if ((valid_0_i || xif_req) && !split_q)
     begin
       case (trans.size)
         2'b10: // word
@@ -451,16 +484,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = valid_0_i && (cnt_q < DEPTH);
+  assign trans_valid = (valid_0_i || xif_req) && (cnt_q < DEPTH);
 
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
-
-  assign ready_1_o = ((cnt_q == 2'b00) ? 1'b1 : resp_valid) && ready_1_i;
+  // XIF transactions bypass the pipeline, hence ready_1_i is not required for the second stage to
+  // be ready for XIF transactions.
+  assign ready_1_o   = ((cnt_q == 2'b00) ? 1'b1 : resp_valid) && ready_1_i;
+  assign xif_ready_1 = ((cnt_q == 2'b00) ? 1'b1 : resp_valid);
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
-  assign valid_1_o = last_q && resp_valid && valid_1_i;
+  assign valid_1_o                          = last_q && resp_valid && valid_1_i && ~xif_res_q;
+  assign xif_mem_result_if.mem_result_valid = last_q && resp_valid &&               xif_res_q;
 
   // LSU EX stage readyness requires two criteria to be met:
   //
@@ -474,31 +510,36 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // and WB stage can only signal readiness in lock step.
 
   // Internal signal used in ctrl_update.
-  // Indicates that address phase in EX is complete
+  // Indicates that address phase in EX is complete.
+  // XIF request bypasses pipeline, ignores ready_0_i but requires xif_ready_1 instead.
   assign done_0    = (
-                      !valid_0_i       ? 1'b1 :
-                      (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
-                      (cnt_q == 2'b01) ? (trans_valid && trans_ready) :
+                      !(valid_0_i || xif_req) ? 1'b1 :
+                      (cnt_q == 2'b00)        ? (trans_valid && trans_ready) :
+                      (cnt_q == 2'b01)        ? (trans_valid && trans_ready) :
                       1'b1
-                     ) && ready_0_i;
+                     ) && (ready_0_i || (xif_req && xif_ready_1));
 
+  // XIF request bypasses pipeline (does not assert valid_0_o) and takes precedence over regular
+  // requests, hence inhibits a concurrent request from EX stage
   assign valid_0_o =  (
                        (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
                        (cnt_q == 2'b01) ? (trans_valid && trans_ready) :
                        1'b1
-                      ) && valid_0_i;
+                      ) && valid_0_i && !xif_req;
 
 
   // External (EX) ready only when not handling multi cycle split accesses
   // otherwise we may let a new instruction into EX, overwriting second phase of split access..
-  assign ready_0_o = done_0 && !lsu_split_0_o;
+  // XIF transactions take precedence, thus the LSU is not ready for EX in case of an XIF request.
+  assign ready_0_o            = done_0 && !lsu_split_0_o && !xif_req;
+  assign xif_mem_if.mem_ready = done_0 && !lsu_split_0_o;
 
 
   // Export mpu status to WB stage/controller
   assign lsu_mpu_status_1_o = resp.mpu_status;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = done_0 && valid_0_i;
+  assign ctrl_update = done_0 && (valid_0_i || xif_req);
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -701,10 +742,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .m_c_obi_data_if    ( m_c_obi_data_if )
   );
 
-  // Drive eXtension interface outputs to 0 for now
-  assign xif_mem_if.mem_ready               = '0;
-  assign xif_mem_if.mem_resp                = '0;
-  assign xif_mem_result_if.mem_result_valid = '0;
-  assign xif_mem_result_if.mem_result       = '0;
+  //////////////////////////////////////////////////////////////////////////////
+  // XIF interface response and result data
+  //////////////////////////////////////////////////////////////////////////////
+
+  // XIF memory response
+  assign xif_mem_if.mem_resp.exc     = '0; // TODO forward MPU errors
+  assign xif_mem_if.mem_resp.exccode = '0;
+  assign xif_mem_if.mem_resp.dbg     = '0; // TODO forward debug triggers
+
+  // XIF memory result
+  assign xif_mem_result_if.mem_result.id    = xif_id_q;
+  assign xif_mem_result_if.mem_result.rdata = rdata_ext;
+  assign xif_mem_result_if.mem_result.err   = '0;            // TODO forward bus errors to coprocessor
+  assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
 
 endmodule // cv32e40x_load_store_unit
