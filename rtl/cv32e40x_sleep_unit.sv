@@ -65,7 +65,6 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i
 );
 
-
   logic              fetch_enable_q;            // Sticky version of fetch_enable_i
   logic              fetch_enable_d;
   logic              core_busy_q;               // Is core still busy (and requires a clock) with what needs to finish before entering sleep?
@@ -79,17 +78,15 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   // Make sticky version of fetch_enable_i
   assign fetch_enable_d = fetch_enable_i ? 1'b1 : fetch_enable_q;
 
-  
+  // Busy when any of the sub units is busy (typically wait for the instruction buffer to fill up)
+  assign core_busy_d = if_busy_i || ctrl_fsm_i.ctrl_busy || lsu_busy_i;
 
-   // Busy when any of the sub units is busy (typically wait for the instruction buffer to fill up)
-   assign core_busy_d = if_busy_i || ctrl_fsm_i.ctrl_busy || lsu_busy_i;
+  // Enable the clock only after the initial fetch enable while busy or waking up to become busy
+  assign clock_en = fetch_enable_q && (ctrl_fsm_i.wake_from_sleep || core_busy_q);
 
-   // Enable the clock only after the initial fetch enable while busy or waking up to become busy
-   assign clock_en = fetch_enable_q && (ctrl_fsm_i.wake_from_sleep || core_busy_q);
-
-   // Sleep only in response to WFI which leads to clock disable; debug_wfi_no_sleep_o in
-   // cv32e40x_controller determines the scenarios for which WFI can(not) cause sleep.
-   assign core_sleep_o = fetch_enable_q && !clock_en;
+  // Sleep only in response to WFI which leads to clock disable; debug_wfi_no_sleep_o in
+  // cv32e40x_controller determines the scenarios for which WFI can(not) cause sleep.
+  assign core_sleep_o = fetch_enable_q && !clock_en;
 
   always_ff @(posedge clk_ungated_i, negedge rst_n)
   begin
