@@ -142,6 +142,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic           trans_valid_q;        // trans_valid got clocked without trans_ready
 
   logic                  xif_req;       // The ongoing memory request comes from the XIF interface
+  logic                  xif_mpu_err;   // The ongoing memory request caused an MPU error
   logic                  xif_ready_1;   // The LSU second stage is ready for an XIF transaction
   logic                  xif_res_q;     // The next memory result is for the XIF interface
   logic [X_ID_WIDTH-1:0] xif_id_q;      // Instruction ID of an XIF memory transaction
@@ -632,7 +633,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Validate bus_error on rvalid from the bus (WB stage)
   // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
   // Todo: This bypasses the MPU, could be merged with mpu_status_e and passed through the MPU instead
-  assign lsu_err_1_o = filter_err;
+  assign lsu_err_1_o = xif_res_q ? '0 : filter_err;
 
   //////////////////////////////////////////////////////////////////////////////
   // MPU
@@ -656,6 +657,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .misaligned_access_i  ( misaligned_access  ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
+    .core_mpu_err_wait_i  ( ~xif_req           ),
+    .core_mpu_err_o       ( xif_mpu_err        ),
     .core_trans_valid_i   ( trans_valid        ),
     .core_trans_ready_o   ( trans_ready        ),
     .core_trans_i         ( align_trans        ),
@@ -746,15 +749,17 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // XIF interface response and result data
   //////////////////////////////////////////////////////////////////////////////
 
-  // XIF memory response
-  assign xif_mem_if.mem_resp.exc     = '0; // TODO forward MPU errors
-  assign xif_mem_if.mem_resp.exccode = '0;
+  // XIF memory response: convert MPU errors to exception codes
+  assign xif_mem_if.mem_resp.exc     = xif_mpu_err;
+  assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
+                                        trans.we ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT
+                                       ) : '0;
   assign xif_mem_if.mem_resp.dbg     = '0; // TODO forward debug triggers
 
   // XIF memory result
   assign xif_mem_result_if.mem_result.id    = xif_id_q;
   assign xif_mem_result_if.mem_result.rdata = rdata_ext;
-  assign xif_mem_result_if.mem_result.err   = '0;            // TODO forward bus errors to coprocessor
+  assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
   assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
 
 endmodule // cv32e40x_load_store_unit

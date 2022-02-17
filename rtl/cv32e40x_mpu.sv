@@ -55,7 +55,14 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    output       CORE_RESP_TYPE core_resp_o,
    
    // Indication from the core that there will be one pending transaction in the next cycle
-   input logic  core_one_txn_pend_n
+   input logic  core_one_txn_pend_n,
+
+   // Indication from the core that MPU errors should be reported after all in flight transactions
+   // are complete (default behavior for main core requests, but not used for XIF requests)
+   input logic  core_mpu_err_wait_i,
+
+   // Report MPU errors to the core immediatly (used in case core_mpu_err_wait_i is not asserted)
+   output logic core_mpu_err_o
    );
 
   logic        pma_err;
@@ -99,13 +106,15 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
           // Signal to the core that the transfer was accepted (but will be consumed by the MPU)
           mpu_err_trans_ready = 1'b1;
 
-          if(core_trans_we) begin
-            // MPU error on write
-            state_n = core_one_txn_pend_n ? MPU_WR_ERR_RESP : MPU_WR_ERR_WAIT;
-          end
-          else begin
-            // MPU error on read
-            state_n = core_one_txn_pend_n ? MPU_RE_ERR_RESP : MPU_RE_ERR_WAIT;
+          if (core_mpu_err_wait_i) begin
+            if(core_trans_we) begin
+              // MPU error on write
+              state_n = core_one_txn_pend_n ? MPU_WR_ERR_RESP : MPU_WR_ERR_WAIT;
+            end
+            else begin
+              // MPU error on read
+              state_n = core_one_txn_pend_n ? MPU_RE_ERR_RESP : MPU_RE_ERR_WAIT;
+            end
           end
 
         end
@@ -161,6 +170,9 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign core_resp_valid_o      = bus_resp_valid_i || mpu_err_trans_valid;
   assign core_resp_o.bus_resp   = bus_resp_i;
   assign core_resp_o.mpu_status = mpu_status;
+
+  // Report MPU errors to the core immediatly
+  assign core_mpu_err_o = mpu_err;
 
   // Signal ready towards core
   assign core_trans_ready_o     = (bus_trans_ready_i && !mpu_block_core) || mpu_err_trans_ready;
