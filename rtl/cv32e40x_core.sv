@@ -416,7 +416,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   id_stage_i
   (
     .clk                          ( clk                       ),     // Gated clock
-    .clk_ungated_i                ( clk_i                     ),     // Ungated clock
     .rst_n                        ( rst_ni                    ),
 
     // Jumps and branches
