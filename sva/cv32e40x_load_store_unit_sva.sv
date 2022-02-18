@@ -21,7 +21,10 @@
 module cv32e40x_load_store_unit_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  #(parameter DEPTH = 0)
+  #(
+    parameter bit    X_EXT = 0,
+    parameter        DEPTH = 0
+  )
   (input logic       clk,
    input logic       rst_n,
    input logic [1:0] cnt_q,
@@ -33,7 +36,10 @@ module cv32e40x_load_store_unit_sva
    input logic       split_q,
    input mpu_status_e lsu_mpu_status_1_o, // WB mpu status
    input ex_wb_pipe_t ex_wb_pipe_i,
-   if_c_obi.monitor  m_c_obi_data_if);
+   if_c_obi.monitor  m_c_obi_data_if,
+   input logic       xif_req,
+   input logic       xif_res_q
+  );
 
   // Check that outstanding transaction count will not overflow DEPTH
   property p_no_transaction_count_overflow_0;
@@ -129,6 +135,15 @@ module cv32e40x_load_store_unit_sva
                     (cnt_q == 2'b00) |-> !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid))
       else `uvm_error("load_store_unit", "cnt_q is zero when WB contains a valid LSU instruction")
 
+  // Check that no XIF request or result are produced if X_EXT is disabled
+  a_lsu_no_xif_req_if_xext_disabled:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  !X_EXT |-> !xif_req)
+    else `uvm_error("load_store_unit", "XIF transaction request despite X_EXT being disabled")
+  a_lsu_no_xif_res_if_xext_disabled:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  !X_EXT |-> !xif_res_q)
+    else `uvm_error("load_store_unit", "XIF transaction result despite X_EXT being disabled")
+
 endmodule // cv32e40x_load_store_unit_sva
 
-  
