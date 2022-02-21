@@ -5,7 +5,7 @@ Physical Memory Attribution (PMA)
 The |corev| includes a Physical Memory Attribution (PMA) unit that allows compile time attribution of the physical memory map.
 The PMA is configured through the top level parameters ``PMA_NUM_REGIONS`` and ``PMA_CFG[]``.
 The number of PMA regions is configured through the ``PMA_NUM_REGIONS`` parameter. Valid values are 0-16.
-The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entries of the type ``pma_region_t``, defined in ``cv32e40x_pkg.sv``:
+The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entries of the type ``pma_cfg_t``, defined in ``cv32e40x_pkg.sv``:
 
 .. code-block:: verilog
 
@@ -16,7 +16,7 @@ The configuration array, ``PMA_CFG[]``, must consist of ``PMA_NUM_REGIONS`` entr
     logic        bufferable;
     logic        cacheable;
     logic        atomic;
-  } pma_region_t;
+  } pma_cfg_t;
 
 In case of address overlap between PMA regions, the region with the lowest index in ``PMA_CFG[]`` will have priority.
 The PMA can be deconfigured by setting ``PMA_NUM_REGIONS=0``. When doing this, ``PMA_CFG[]`` should be left unconnected.
