@@ -210,4 +210,37 @@ interface if_xif import cv32e40x_pkg::*;
     output result
   );
 
+  // Monitor port directions
+  modport monitor_compressed (
+    input  compressed_valid,
+    input  compressed_ready,
+    input  compressed_req,
+    input  compressed_resp
+  );
+  modport monitor_issue (
+    input  issue_valid,
+    input  issue_ready,
+    input  issue_req,
+    input  issue_resp
+  );
+  modport monitor_commit (
+    input  commit_valid,
+    input  commit
+  );
+  modport monitor_mem (
+    input  mem_valid,
+    input  mem_ready,
+    input  mem_req,
+    input  mem_resp
+  );
+  modport monitor_mem_result (
+    input  mem_result_valid,
+    input  mem_result
+  );
+  modport monitor_result (
+    input  result_valid,
+    input  result_ready,
+    input  result
+  );
+
 endinterface : if_xif
