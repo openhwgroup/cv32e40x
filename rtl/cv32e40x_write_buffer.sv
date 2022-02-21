@@ -32,7 +32,7 @@
 module cv32e40x_write_buffer import cv32e40x_pkg::*;
 #(
   parameter int          PMA_NUM_REGIONS = 0,
-  parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
   (
    // clock and reset

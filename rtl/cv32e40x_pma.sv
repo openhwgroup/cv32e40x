@@ -27,7 +27,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
 #(  
   parameter bit          A_EXT = 0,
   parameter int          PMA_NUM_REGIONS = 0,
-  parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
   input  logic [31:0] trans_addr_i,
@@ -42,7 +42,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   
   parameter PMA_ADDR_LSB = 0; // TODO:OE experiment and see if this makes a difference
   
-  pma_region_t pma_cfg;
+  pma_cfg_t pma_cfg;
   logic [31:0] word_addr;
   logic pma_cfg_atomic;
 
