@@ -271,12 +271,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic        rdata_is_split;
 
   // Check if rdata is split over two accesses
-  assign rdata_is_split = (lsu_size_q == 2'b10) && (rdata_offset_q != 2'b00) || // Split word
-                          (lsu_size_q == 2'b01) && (rdata_offset_q == 2'b11);   // Split halfword
+  assign rdata_is_split = ((lsu_size_q == 2'b10) && (rdata_offset_q != 2'b00)) || // Split word
+                          ((lsu_size_q == 2'b01) && (rdata_offset_q == 2'b11));   // Split halfword
 
   // Assemble full rdata
   assign rdata_full  = rdata_is_split ? {resp_rdata, rdata_q} :   // Use lsb data from previous access if split
-                                        {resp_rdata, resp_rdata}; // Set up data for rotate right operation
+                                        {resp_rdata, resp_rdata}; // Set up data for shifting resp_data LSBs into MSBs of rdata_aligned
 
   // Realign rdata
   assign rdata_aligned = rdata_full >> (8*rdata_offset_q);
