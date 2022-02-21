@@ -266,106 +266,31 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////
 
   logic [31:0] rdata_ext;
+  logic [63:0] rdata_full;
+  logic [31:0] rdata_aligned;
+  logic        rdata_is_split;
 
-  logic [31:0] rdata_w_ext; // sign extension for words, actually only split misaligned assembly
-  logic [31:0] rdata_h_ext; // sign extension for half words
-  logic [31:0] rdata_b_ext; // sign extension for bytes
+  // Check if rdata is split over two accesses
+  assign rdata_is_split = ((lsu_size_q == 2'b10) && (rdata_offset_q != 2'b00)) || // Split word
+                          ((lsu_size_q == 2'b01) && (rdata_offset_q == 2'b11));   // Split halfword
 
-  // take care of misaligned/split words
-  always_comb
-  begin
-    case (rdata_offset_q)
-      2'b00: rdata_w_ext = resp_rdata[31:0];
-      2'b01: rdata_w_ext = {resp_rdata[ 7:0], rdata_q[31:8]};
-      2'b10: rdata_w_ext = {resp_rdata[15:0], rdata_q[31:16]};
-      2'b11: rdata_w_ext = {resp_rdata[23:0], rdata_q[31:24]};
-    endcase
-  end
+  // Assemble full rdata
+  assign rdata_full  = rdata_is_split ? {resp_rdata, rdata_q} :   // Use lsb data from previous access if split
+                                        {resp_rdata, resp_rdata}; // Set up data for shifting resp_data LSBs into MSBs of rdata_aligned
 
-  // sign extension for half words
-  always_comb
-  begin
-    case (rdata_offset_q)
-      2'b00:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_h_ext = {16'h0000, resp_rdata[15:0]};
-        else
-          rdata_h_ext = {{16{resp_rdata[15]}}, resp_rdata[15:0]};
-      end
+  // Realign rdata
+  assign rdata_aligned = rdata_full >> (8*rdata_offset_q);
 
-      2'b01:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_h_ext = {16'h0000, resp_rdata[23:8]};
-        else
-          rdata_h_ext = {{16{resp_rdata[23]}}, resp_rdata[23:8]};
-      end
-
-      2'b10:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_h_ext = {16'h0000, resp_rdata[31:16]};
-        else
-          rdata_h_ext = {{16{resp_rdata[31]}}, resp_rdata[31:16]};
-      end
-
-      2'b11:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_h_ext = {16'h0000, resp_rdata[7:0], rdata_q[31:24]};
-        else
-          rdata_h_ext = {{16{resp_rdata[7]}}, resp_rdata[7:0], rdata_q[31:24]};
-      end
-    endcase // case (rdata_offset_q)
-  end
-
-  // sign extension for bytes
-  always_comb
-  begin
-    case (rdata_offset_q)
-      2'b00:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_b_ext = {24'h00_0000, resp_rdata[7:0]};
-        else
-          rdata_b_ext = {{24{resp_rdata[7]}}, resp_rdata[7:0]};
-      end
-
-      2'b01: begin
-        if (lsu_sext_q == 1'b0)
-          rdata_b_ext = {24'h00_0000, resp_rdata[15:8]};
-        else
-          rdata_b_ext = {{24{resp_rdata[15]}}, resp_rdata[15:8]};
-      end
-
-      2'b10:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_b_ext = {24'h00_0000, resp_rdata[23:16]};
-        else
-          rdata_b_ext = {{24{resp_rdata[23]}}, resp_rdata[23:16]};
-      end
-
-      2'b11:
-      begin
-        if (lsu_sext_q == 1'b0)
-          rdata_b_ext = {24'h00_0000, resp_rdata[31:24]};
-        else
-          rdata_b_ext = {{24{resp_rdata[31]}}, resp_rdata[31:24]};
-      end
-    endcase // case (rdata_offset_q)
-  end
-
-  // select word, half word or byte sign extended version
-  always_comb
-  begin
+  // Sign-extend aligned rdata
+  always_comb begin
     case (lsu_size_q)
-      2'b00:   rdata_ext = rdata_b_ext;
-      2'b01:   rdata_ext = rdata_h_ext;
-      default: rdata_ext = rdata_w_ext;
+      2'b00:   rdata_ext = {{24{lsu_sext_q && rdata_aligned[ 7]}},  rdata_aligned[ 7:0]}; // Byte
+      2'b01:   rdata_ext = {{16{lsu_sext_q && rdata_aligned[ 15]}}, rdata_aligned[15:0]}; // Halfword
+      default: rdata_ext =                                          rdata_aligned[31:0];  // Word
     endcase
   end
+
+
 
   always_ff @(posedge clk, negedge rst_n)
   begin
