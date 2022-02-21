@@ -29,7 +29,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT = 0,
   parameter int          PMA_NUM_REGIONS = 0,
-  parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
   input  logic        clk,

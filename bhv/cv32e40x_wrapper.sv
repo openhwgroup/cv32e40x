@@ -64,7 +64,7 @@ module cv32e40x_wrapper
   parameter int          SMCLIC_ID_WIDTH              = 6,
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
-  parameter pma_region_t PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
 )
 (
   // Clock and Reset
