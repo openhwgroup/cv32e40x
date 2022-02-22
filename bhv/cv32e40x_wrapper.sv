@@ -325,6 +325,13 @@ module cv32e40x_wrapper
                .PMA_CFG(PMA_CFG))
       write_buffer_sva(.*);
 
+`ifndef FORMAL
+  bind cv32e40x_rvfi:
+    rvfi_i
+    rvfi_sim_trace
+      tracer_i(.*);
+`endif
+
   bind cv32e40x_rvfi:
     rvfi_i
     cv32e40x_rvfi_sva
