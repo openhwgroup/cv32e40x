@@ -461,15 +461,8 @@ parameter MARCHID = 32'h14;
 parameter MTVEC_MODE        = 2'b01;
 parameter NUM_HPM_EVENTS    =   16;
 
-parameter MSTATUS_UIE_BIT      = 0;
-parameter MSTATUS_SIE_BIT      = 1;
 parameter MSTATUS_MIE_BIT      = 3;
-parameter MSTATUS_UPIE_BIT     = 4;
-parameter MSTATUS_SPIE_BIT     = 5;
 parameter MSTATUS_MPIE_BIT     = 7;
-parameter MSTATUS_MPP_BIT_HIGH = 12;
-parameter MSTATUS_MPP_BIT_LOW  = 11;
-parameter MSTATUS_MPRV_BIT     = 17;
 
 // misa
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
@@ -484,17 +477,17 @@ typedef struct packed {
 } jvt_t;
 
 typedef struct packed {
-  logic [31:18] zero4; // Reserved, hardwired zero
-  logic         mprv; // hardwired zero
-  logic [16:13] zero3; // Unimplemented, hardwired zero
-  logic [12:11] mpp; // Hardwire to 2'b11 when user mode is not enabled
+  logic [31:22] zero5;  // Reserved, hardwired zero
+  logic         tw;     // Hardwired zero
+  logic [20:18] zero4;  // Reserved, hardwired zero
+  logic         mprv;   // Hardwired zero
+  logic [16:13] zero3;  // Reserved, hardwired zero
+  logic [12:11] mpp;    // Hardwired to 2'b11
   logic [10:8]  zero2;
   logic         mpie;
-  logic [6:5]   zero1;
-  logic         upie; // Tie to zero
+  logic [6:4]   zero1; // Reserved, hardwired zero
   logic         mie;
-  logic [2:1]   zero0; // Unimplemented, hardwired zero
-  logic         uie; // Tie to zero when user mode is not enabled
+  logic [2:0]   zero0; // Reserved, hardwired zero
 } mstatus_t;
 
 typedef struct packed {
@@ -592,18 +585,18 @@ parameter mintstatus_t MINTSTATUS_RESET_VAL = '{
   uil:   '0};
 
 parameter mstatus_t MSTATUS_RESET_VAL = '{
-  zero4: 'b0, // Reserved, hardwired zero
-  mprv: 1'b0, // hardwired zero
-  zero3: 'b0, // Unimplemented, hardwired zero
-  mpp: PRIV_LVL_M, // Hardwire to 2'b11 when user mode is not enabled
-  zero2: 'b0,
-  mpie: 1'b0,
-  zero1: 'b0,
-  upie: 1'b0, // Tie to zero
-  mie: 1'b0,
-  zero0: 'b0, // Unimplemented, hardwired zero
-  uie: 1'b0, // Tie to zero when user mode is not enabled
-  default: 'b0};
+  zero5   : 'b0,
+  tw      : 1'b0,
+  zero4   : 'b0,
+  mprv    : 1'b0,
+  zero3   : 'b0,
+  mpp     : PRIV_LVL_M,
+  zero2   : 'b0,
+  mpie    : 1'b0,
+  zero1   : 'b0,
+  mie     : 1'b0,
+  zero0   : 'b0,
+  default : 'b0};
 
 parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
   TTYPE_MCONTROL,        // type    : address/data match

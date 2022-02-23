@@ -514,6 +514,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_we             = 1'b0;
 
     mstatus_n                = '{
+                              tw:   1'b0,
                               mprv: 1'b0,
                               mpp:  PRIV_LVL_M,
                               mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
