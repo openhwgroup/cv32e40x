@@ -267,7 +267,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic [31:0] rdata_ext;
   logic [63:0] rdata_full;
-  logic [31:0] rdata_aligned;
+  logic [63:0] rdata_aligned; // [63:32] unsused
   logic        rdata_is_split;
 
   // Check if rdata is split over two accesses
