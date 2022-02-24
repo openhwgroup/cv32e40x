@@ -52,6 +52,7 @@ module cv32e40x_rvfi
 
    //// EX probes ////
    input logic                                branch_in_ex_i,
+   input logic                                branch_decision_ex_i,
    input logic                                dret_in_ex_i,
    // LSU
    input logic                                lsu_en_ex_i,
@@ -466,6 +467,8 @@ module cv32e40x_rvfi
   logic [31:0]       ex_mem_wdata;
   mem_err_t [3:0]    mem_err;
 
+  logic              branch_taken_ex;
+
   logic [ 3:0] rvfi_mem_mask_int;
   logic [31:0] rvfi_mem_rdata_d;
   logic [31:0] rvfi_mem_wdata_d;
@@ -518,7 +521,7 @@ module cv32e40x_rvfi
   logic         pc_mux_debug;
   logic         pc_mux_dret;
   logic         pc_mux_exception;
-  logic         pc_mux_debugs_exception;
+  logic         pc_mux_debug_exception;
   logic         pc_mux_interrupt;
   logic         pc_mux_nmi;
 
@@ -552,6 +555,7 @@ module cv32e40x_rvfi
   assign pc_mux_debug_exception = (ctrl_fsm_i.pc_mux == PC_TRAP_DBE) && !dret_in_ex_i; // Ignore exceptions from instructons that will never be executed
   assign pc_mux_dret            = (ctrl_fsm_i.pc_mux == PC_DRET);
 
+  assign branch_taken_ex = branch_in_ex_i && branch_decision_ex_i;
 
   // Assign rvfi channels
   assign rvfi_halt = 1'b0; // No intruction causing halt in cv32e40x
@@ -737,7 +741,7 @@ module cv32e40x_rvfi
       //// EX Stage ////
       if (ex_valid_i && wb_ready_i) begin
         // Predicting branch target explicitly to avoid predicting asynchronous events
-        pc_wdata   [STAGE_WB] <= branch_in_ex_i ? branch_target_ex_i : pc_wdata[STAGE_EX];
+        pc_wdata   [STAGE_WB] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_EX];
         debug_mode [STAGE_WB] <= debug_mode         [STAGE_EX];
         debug_cause[STAGE_WB] <= debug_cause        [STAGE_EX];
         instr_pmp_err[STAGE_WB] <= instr_pmp_err    [STAGE_EX];
