@@ -57,7 +57,7 @@ module rvfi_sim_trace
   string              filename, line;
   string              asms[5];
   bit                 itb_file_ok;
-  
+
   // Populate itrace based on retired instruction
   always_comb begin
     if (rvfi_valid && ^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
@@ -68,12 +68,12 @@ module rvfi_sim_trace
       itrace = TRACE_UNKNOWN;
     end
   end
-  
+
   // Parse the listing file
   initial begin
 
     $display("RISC-V Trace: Using itb path defined by plusarg: %s", ITB_PLUSARG);
-    
+
     if (!$value$plusargs({ITB_PLUSARG,"=%s"}, filename)) begin
       $display("RISC-V Trace: No instruction table file found.");
     end
@@ -103,9 +103,10 @@ module rvfi_sim_trace
               // Fetch assembly instruction
               for (int i=0; i < asmlen; i++) begin
                 if(asms[i] == "#") break; // Disregard comments
-                
+
                 // Concatenate assembly instruction
-                tmp_trace.asm = {tmp_trace.asm, " ", asms[i]};
+                $cast(tmp_trace.asm,  $sformatf("%s %s", tmp_trace.asm, asms[i]));
+
               end
 
               imap[tmp_trace.addr] = tmp_trace;
