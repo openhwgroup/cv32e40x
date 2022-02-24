@@ -52,6 +52,7 @@ module cv32e40x_rvfi
 
    //// EX probes ////
    input logic                                branch_in_ex_i,
+   input logic                                dret_in_ex_i,
    // LSU
    input logic                                lsu_en_ex_i,
    input logic                                lsu_pmp_err_ex_i,
@@ -517,6 +518,7 @@ module cv32e40x_rvfi
   logic         pc_mux_debug;
   logic         pc_mux_dret;
   logic         pc_mux_exception;
+  logic         pc_mux_debugs_exception;
   logic         pc_mux_interrupt;
   logic         pc_mux_nmi;
 
@@ -543,11 +545,13 @@ module cv32e40x_rvfi
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
   // in the IF stage to see the reason for executing the instruction (e.g. rvfi_intr).
-  assign pc_mux_interrupt = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ);
-  assign pc_mux_nmi       = (ctrl_fsm_i.pc_mux == PC_TRAP_NMI);
-  assign pc_mux_debug     = (ctrl_fsm_i.pc_mux == PC_TRAP_DBD);
-  assign pc_mux_exception = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || (ctrl_fsm_i.pc_mux == PC_TRAP_DBE);
-  assign pc_mux_dret      = (ctrl_fsm_i.pc_mux == PC_DRET);
+  assign pc_mux_interrupt       = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ);
+  assign pc_mux_nmi             = (ctrl_fsm_i.pc_mux == PC_TRAP_NMI);
+  assign pc_mux_debug           = (ctrl_fsm_i.pc_mux == PC_TRAP_DBD);
+  assign pc_mux_exception       = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || pc_mux_debug_exception ;
+  assign pc_mux_debug_exception = (ctrl_fsm_i.pc_mux == PC_TRAP_DBE) && !dret_in_ex_i; // Ignore exceptions from instructons that will never be executed
+  assign pc_mux_dret            = (ctrl_fsm_i.pc_mux == PC_DRET);
+
 
   // Assign rvfi channels
   assign rvfi_halt = 1'b0; // No intruction causing halt in cv32e40x
