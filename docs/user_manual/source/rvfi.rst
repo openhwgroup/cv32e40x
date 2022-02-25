@@ -123,23 +123,32 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 Interrupts are seen by RVFI as happening between instructions. This means that neither the last instruction before the interrupt nor the first instruction of the interrupt handler will signal any direct side-effects. The first instruction of the handler will however show the resulting state caused by these side-effects (e.g. the CSR rmask/rdata signals will show the updated values, pc_rdata will be at the interrupt handler address etc.).
 
 
-The ``rvfi_intr`` signal is set for the first instruction of the trap handler when encountering an exception or interrupt.
-The signal is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see ``rvfi_intr`` == X in the table below). In this case CSR side-effects (to ``mepc``) can be expected.
+.. code-block:: verilog
+
+   output [NRET * 11 - 1 : 0] rvfi_intr
+
+``rvfi_intr`` consists of 11 bits.
+``rvfi_intr[0]`` is set for the first instruction of the trap handler when encountering an exception or interrupt.
+``rvfi_intr[1]`` indicates it was caused by synchronous trap and
+``rvfi_intr[2]`` indicates it was caused by an interrupt.
+``rvfi_intr[10:3]`` signals the cause for entering the trap handler.
+
+``rvfi_intr`` is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see ``rvfi_intr`` == X in the table below). In this case CSR side-effects (to ``mepc``) can be expected.
 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
 
-  ===============================================  =========  =============  ==========  =================
-  Scenario                                         rvfi_intr  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
-  ===============================================  =========  =============  ==========  =================
-  Synchronous trap                                 1          0x0            0           X
-  Interrupt (includes NMIs from bus errors)        1          0x0            1           X
-  Debug entry due to EBREAK (from non-debug mode)  0          0x1            X           0x1
-  Debug entry due to EBREAK (from debug mode)      0          0x1            X           X
-  Debug entry due to trigger match                 0          0x2            X           0x2
-  Debug entry due to external debug request        X          0x3 or 0x5     X           0x3 or 0x5
-  Debug handler entry due to single step           X          0x4            X           0x4
-  ===============================================  =========  =============  ==========  =================
+  ===============================================  ==============  ===============  =============  ==========  =================
+  Scenario                                         rvfi_intr[2:0]  rvfi_intr[10:3]  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
+  ===============================================  ==============  ===============  =============  ==========  =================
+  Synchronous trap                                 0b011           Sync trap cause  0x0            0           X
+  Interrupt (includes NMIs from bus errors)        0b101           Interrupt cause  0x0            1           X
+  Debug entry due to EBREAK (from non-debug mode)  0b000           0x0              0x1            X           0x1
+  Debug entry due to EBREAK (from debug mode)      0b000           0x0              0x1            X           X
+  Debug entry due to trigger match                 0b000           0x0              0x2            X           0x2
+  Debug entry due to external debug request        X               X                0x3 or 0x5     X           0x3 or 0x5
+  Debug handler entry due to single step           X               X                0x4            X           0x4
+  ===============================================  ==============  ===============  =============  ==========  =================
 
 
 **Program Counter**
