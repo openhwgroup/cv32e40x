@@ -213,7 +213,7 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_valid,
    output logic [63:0]                        rvfi_order,
    output logic [31:0]                        rvfi_insn,
-   output logic [13:0]                        rvfi_trap,
+   output rvfi_trap_t                         rvfi_trap,
    output logic [ 0:0]                        rvfi_halt,
    output logic [ 0:0]                        rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
@@ -572,7 +572,7 @@ module cv32e40x_rvfi
 
 
   // Set rvfi_trap for instructions causing exception or debug entry.
-  logic [13:0]  rvfi_trap_next;
+  rvfi_trap_t  rvfi_trap_next;
 
   always_comb begin
     rvfi_trap_next = '0;
@@ -581,32 +581,32 @@ module cv32e40x_rvfi
       // All debug entries will set pc_mux_debug but only synchronous debug entries will set wb_valid (and in turn rvfi_valid)
       // as asynchronous entries will kill the WB stage whereas synchronous entries will not.
       // Indicate that the trap is a synchronous trap into debug mode
-      rvfi_trap_next[2:0]  = 3'b101;
+      rvfi_trap_next.debug       = 1'b1;
       // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
-      rvfi_trap_next[11:9] = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
+      rvfi_trap_next.debug_cause = ebreak_in_wb_i ? DBG_CAUSE_EBREAK : ctrl_fsm_i.debug_cause;
     end
 
     if (pc_mux_exception) begin
       // Indicate synchronous (non-debug entry) trap
-      rvfi_trap_next[2:0] = 3'b011;
-      rvfi_trap_next[8:3] = ctrl_fsm_i.csr_cause.exception_code;
+      rvfi_trap_next.exception       = 1'b1;
+      rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code;
 
       // Separate exception causes with the same ecseption cause code
       case (ctrl_fsm_i.csr_cause.exception_code)
         EXC_CAUSE_INSTR_FAULT : begin
-          rvfi_trap_next[13:12] = instr_pmp_err[STAGE_WB] ? 2'h1 : 2'h0;
+          rvfi_trap_next.cause_type = instr_pmp_err[STAGE_WB] ? 2'h1 : 2'h0;
         end
         EXC_CAUSE_BREAKPOINT : begin
           // Todo: Add support for trigger match exceptions when implemented in rtl
         end
         EXC_CAUSE_LOAD_FAULT : begin
-          rvfi_trap_next[13:12] = mem_err[STAGE_WB];
+          rvfi_trap_next.cause_type = mem_err[STAGE_WB];
         end
         EXC_CAUSE_STORE_FAULT : begin
-          rvfi_trap_next[13:12] = mem_err[STAGE_WB];
+          rvfi_trap_next.cause_type = mem_err[STAGE_WB];
         end
         default : begin
-          // rvfi_trap_next[13:12] are only set for exception codes that can have multiple causes
+          // rvfi_trap_next.cause_type is only set for exception codes that can have multiple causes
         end
       endcase // case (ctrl_fsm_i.csr_cause.exception_code)
 
@@ -614,14 +614,14 @@ module cv32e40x_rvfi
 
     if(pending_single_step_i && single_step_allowed_i) begin
       // The timing of the single step debug entry does not allow using pc_mux for detection
-      rvfi_trap_next[2:0]  = 3'b101;
-      rvfi_trap_next[11:9] = DBG_CAUSE_STEP;
-      if (pc_mux_exception) begin
-        // Special case, exception in WB and pending single step.
-        // Indicate both non-debug trap and trap into debug mode
-        rvfi_trap_next[2:0]  = 3'b111;
-      end
+      rvfi_trap_next.debug       = 1'b1;
+      rvfi_trap_next.debug_cause = DBG_CAUSE_STEP;
+
+      // In the case of an exception in WB and pending single step, both the exception and the debug flag will be set
     end
+
+    // Set trap bit if there is an exception or debug entry
+    rvfi_trap_next.trap = rvfi_trap_next.exception || rvfi_trap_next.debug;
   end
 
   // Pipeline stage model //
