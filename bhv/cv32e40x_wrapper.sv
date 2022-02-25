@@ -386,6 +386,8 @@ module cv32e40x_wrapper
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
 
          .branch_in_ex_i           ( core_i.controller_i.controller_fsm_i.branch_in_ex                    ),
+         .branch_decision_ex_i     ( core_i.ex_stage_i.branch_decision_o                                  ),
+         .dret_in_ex_i             ( core_i.ex_stage_i.id_ex_pipe_i.sys_dret_insn                         ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
 
          .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
