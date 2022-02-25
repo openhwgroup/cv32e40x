@@ -205,7 +205,7 @@ Interfaces
 |                         |                         |     | core via ``fetch_enable_i``                |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``mtvec_addr_i``        | 32                      | in  | ``mtvec`` address. Initial value for the   |
-|                         |                         |     | address part of :ref:`csr-mtvec `.         |
+|                         |                         |     | address part of :ref:`csr-mtvec`.          |
 |                         |                         |     | Must be 128-byte aligned                   |
 |                         |                         |     | (i.e. ``mtvec_addr_i[6:0]`` = 0).          |
 |                         |                         |     | Do not change after enabling core          |
