@@ -147,7 +147,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic                  xif_res_q;     // The next memory result is for the XIF interface
   logic [X_ID_WIDTH-1:0] xif_id_q;      // Instruction ID of an XIF memory transaction
 
-  assign xif_req = X_EXT & xif_mem_if.mem_valid;
+  assign xif_req = X_EXT && xif_mem_if.mem_valid;
 
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
@@ -496,7 +496,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
   // load/store only its second phase is marked as valid (last_q == 1'b1)
-  assign valid_1_o                          = last_q && resp_valid && valid_1_i && ~xif_res_q;
+  assign valid_1_o                          = last_q && resp_valid && valid_1_i && !xif_res_q;
   assign xif_mem_result_if.mem_result_valid = last_q && resp_valid &&               xif_res_q;
 
   // LSU EX stage readyness requires two criteria to be met:
@@ -657,7 +657,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .misaligned_access_i  ( misaligned_access  ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
-    .core_mpu_err_wait_i  ( ~xif_req           ),
+    .core_mpu_err_wait_i  ( !xif_req           ),
     .core_mpu_err_o       ( xif_mpu_err        ),
     .core_trans_valid_i   ( trans_valid        ),
     .core_trans_ready_o   ( trans_ready        ),
