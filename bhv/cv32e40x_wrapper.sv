@@ -78,9 +78,9 @@ module cv32e40x_wrapper
   input  logic [31:0] mtvec_addr_i,
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] mhartid_i,
-  input  logic [31:0] mimpid_i,
+  input  logic  [3:0] mimpid_patch_i,
   input  logic [31:0] dm_exception_addr_i,
-  input logic [31:0]  nmi_addr_i,
+  input  logic [31:0] nmi_addr_i,
 
   // Instruction memory interface
   output logic        instr_req_o,
@@ -504,7 +504,7 @@ module cv32e40x_wrapper
          .csr_mvendorid_i          ( {MVENDORID_BANK, MVENDORID_OFFSET}                                   ),
          .csr_marchid_i            ( MARCHID                                                              ),
          .csr_mhartid_i            ( core_i.cs_registers_i.mhartid_i                                      ),
-         .csr_mimpid_i             ( core_i.cs_registers_i.mimpid_i                                       ),
+         .csr_mimpid_i             ( core_i.cs_registers_i.mimpid                                         ),
          // TODO Tie relevant signals below to RTL
          .csr_mstatush_n_i         ( '0                                                                   ),
          .csr_mstatush_q_i         ( '0                                                                   ),
