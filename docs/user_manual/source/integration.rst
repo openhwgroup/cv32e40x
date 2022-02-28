@@ -45,7 +45,7 @@ Instantiation Template
       .dm_halt_addr_i           (),
       .dm_exception_addr_i      (),
       .mhartid_i                (),
-      .mimpid_i                 (),
+      .mimpid_patch_i           (),
 
       // Instruction memory interface
       .instr_req_o              (),
@@ -230,8 +230,8 @@ Interfaces
 | ``mhartid_i``           | 32                      | in  | Hart ID, usually static, can be read from  |
 |                         |                         |     | :ref:`csr-mhartid` CSR                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
-| ``mimpid_i``            | 32                      | in  | Implementation ID, usually static, can be  |
-|                         |                         |     | read from :ref:`csr-mimpid` CSR            |
+| ``mimpid_patch_i``      | 4                       | in  | Implementation ID patch. Must be static.   |
+|                         |                         |     | Readable as part of :ref:`csr-mimpid` CSR. |
 +-------------------------+-------------------------+-----+--------------------------------------------+
 | ``instr_*``             | Instruction fetch interface, see :ref:`instruction-fetch`                  |
 +-------------------------+----------------------------------------------------------------------------+
