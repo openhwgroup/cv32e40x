@@ -215,7 +215,7 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_insn,
    output rvfi_trap_t                         rvfi_trap,
    output logic [ 0:0]                        rvfi_halt,
-   output logic [ 0:0]                        rvfi_intr,
+   output rvfi_intr_t                         rvfi_intr,
    output logic [ 1:0]                        rvfi_mode,
    output logic [ 1:0]                        rvfi_ixl,
    output logic [ 1:0]                        rvfi_nmip,
@@ -454,7 +454,7 @@ module cv32e40x_rvfi
   logic [3:0]        debug_mode;
   logic [3:0] [ 2:0] debug_cause;
   logic [3:0]        instr_pmp_err;
-  logic [3:0]        in_trap;
+  rvfi_intr_t [3:0]  in_trap;
   logic [3:0] [ 4:0] rs1_addr;
   logic [3:0] [ 4:0] rs2_addr;
   logic [3:0] [31:0] rs1_rdata;
@@ -568,7 +568,7 @@ module cv32e40x_rvfi
   logic         in_trap_clr;
   // Clear in trap pipeline when it reaches rvfi_intr
   // This is done to avoid reporting already signaled triggers as supressed during by debug
-  assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB];
+  assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB].intr;
 
 
   // Set rvfi_trap for instructions causing exception or debug entry.
@@ -700,16 +700,20 @@ module cv32e40x_rvfi
           debug_cause[STAGE_IF] <=  ebreak_in_wb_i ? 3'h1 : ctrl_fsm_i.debug_cause;
 
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
-          // The succeeding instruction therefore needs to re-trigger the intr bit if it it did not reach the rvfi output.
-          if (|in_trap) begin
-            in_trap[STAGE_IF] <= 1'b1;
-          end
+          // The succeeding instruction therefore needs to re-trigger the intr signals if it it did not reach the rvfi output.
+          in_trap[STAGE_IF] <= in_trap[STAGE_IF].intr ? in_trap[STAGE_IF] :
+                               in_trap[STAGE_ID].intr ? in_trap[STAGE_ID] :
+                               in_trap[STAGE_EX].intr ? in_trap[STAGE_EX] :
+                                                        in_trap[STAGE_WB];
         end
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction
         // The in trap signal is set for the first instruction of interrupt- and exception handlers (not debug handler)
         if (pc_mux_interrupt || pc_mux_nmi || pc_mux_exception) begin
-          in_trap[STAGE_IF] <= 1'b1;
+          in_trap[STAGE_IF].intr      <= 1'b1;
+          in_trap[STAGE_IF].interrupt <= pc_mux_interrupt || pc_mux_nmi;
+          in_trap[STAGE_IF].exception <= pc_mux_exception;
+          in_trap[STAGE_IF].cause     <= ctrl_fsm_i.csr_cause.exception_code;
         end
       end
 

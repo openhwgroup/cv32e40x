@@ -99,6 +99,12 @@ package cv32e40x_rvfi_pkg;
 
   } rvfi_csr_map_t;
 
+  typedef struct packed {
+    logic [10:0] cause;
+    logic        interrupt;
+    logic        exception;
+    logic        intr;
+  } rvfi_intr_t;
 
   typedef struct packed {
     logic [1:0]  cause_type;
