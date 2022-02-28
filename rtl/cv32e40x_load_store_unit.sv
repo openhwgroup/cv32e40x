@@ -280,15 +280,22 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   end
 
-  always_ff @(posedge clk, negedge rst_n) begin
-    if (rst_n == 1'b0) begin
-      xif_res_q <= '0;
-      xif_id_q  <= '0;
-    end else if (ctrl_update) begin       // request was granted
-      xif_res_q <= xif_req;               // expect an XIF result if we did an XIF request
-      xif_id_q  <= xif_mem_if.mem_req.id; // save XIF instruction ID for result
+  generate
+    if (X_EXT) begin
+      always_ff @(posedge clk, negedge rst_n) begin
+        if (rst_n == 1'b0) begin
+          xif_res_q <= '0;
+          xif_id_q  <= '0;
+        end else if (ctrl_update) begin       // request was granted
+          xif_res_q <= xif_req;               // expect an XIF result if we did an XIF request
+          xif_id_q  <= xif_mem_if.mem_req.id; // save XIF instruction ID for result
+        end
+      end
+    end else begin
+      assign xif_res_q <= '0;
+      assign xif_id_q  <= '0;
     end
-  end
+  endgenerate
 
   ////////////////////////////////////////////////////////////////////////
   //  ____  _               _____      _                 _              //
@@ -749,17 +756,29 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // XIF interface response and result data
   //////////////////////////////////////////////////////////////////////////////
 
-  // XIF memory response: convert MPU errors to exception codes
-  assign xif_mem_if.mem_resp.exc     = xif_mpu_err;
-  assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
-                                        trans.we ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT
-                                       ) : '0;
-  assign xif_mem_if.mem_resp.dbg     = '0; // TODO forward debug triggers
+  generate
+    if (X_EXT) begin
+      // XIF memory response: convert MPU errors to exception codes
+      assign xif_mem_if.mem_resp.exc     = xif_mpu_err;
+      assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
+                                            trans.we ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT
+                                           ) : '0;
+      assign xif_mem_if.mem_resp.dbg     = '0; // TODO forward debug triggers
 
-  // XIF memory result
-  assign xif_mem_result_if.mem_result.id    = xif_id_q;
-  assign xif_mem_result_if.mem_result.rdata = rdata_ext;
-  assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
-  assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
+      // XIF memory result
+      assign xif_mem_result_if.mem_result.id    = xif_id_q;
+      assign xif_mem_result_if.mem_result.rdata = rdata_ext;
+      assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
+      assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
+    end else begin
+      assign xif_mem_if.mem_resp.exc            = '0;
+      assign xif_mem_if.mem_resp.exccode        = '0;
+      assign xif_mem_if.mem_resp.dbg            = '0;
+      assign xif_mem_result_if.mem_result.id    = '0;
+      assign xif_mem_result_if.mem_result.rdata = '0;
+      assign xif_mem_result_if.mem_result.err   = '0;
+      assign xif_mem_result_if.mem_result.dbg   = '0;
+    end
+  endgenerate
 
 endmodule // cv32e40x_load_store_unit
