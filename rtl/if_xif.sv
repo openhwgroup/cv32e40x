@@ -79,14 +79,14 @@ interface if_xif import cv32e40x_pkg::*;
   } x_commit_t;
 
   typedef struct packed {
-    logic [X_ID_WIDTH -1:0] id;       // Identification of the offloaded instruction
-    logic [           31:0] addr;     // Virtual address of the memory transaction
-    logic [            1:0] mode;     // Privilege level
-    logic                   we;       // Write enable of the memory transaction
-    logic [            1:0] size;     // Size of the memory transaction
-    logic [X_MEM_WIDTH-1:0] wdata;    // Write data of a store memory transaction
-    logic                   last;     // Is this the last memory transaction for the offloaded instruction?
-    logic                   spec;     // Is the memory transaction speculative?
+    logic [X_ID_WIDTH   -1:0] id;    // Identification of the offloaded instruction
+    logic [             31:0] addr;  // Virtual address of the memory transaction
+    logic [              1:0] mode;  // Privilege level
+    logic                     we;    // Write enable of the memory transaction
+    logic [X_MEM_WIDTH/8-1:0] be;    // Size of the memory transaction
+    logic [X_MEM_WIDTH  -1:0] wdata; // Write data of a store memory transaction
+    logic                     last;  // Is this the last memory transaction for the offloaded instruction?
+    logic                     spec;  // Is the memory transaction speculative?
   } x_mem_req_t;
 
   typedef struct packed {
