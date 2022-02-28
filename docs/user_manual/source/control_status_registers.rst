@@ -1611,8 +1611,22 @@ Detailed:
 +-------------+-----------+------------------------------------------------------------------------+
 |   Bit #     |  R/W      |   Description                                                          |
 +=============+===========+========================================================================+
-| 31:0        | R         | Machine Implementation ID **mimpid_i**, see  :ref:`core-integration`   |
+| 31:20       | R (0x)    | Hardwired to 0.                                                        |
 +-------------+-----------+------------------------------------------------------------------------+
+| 19:16       | R (0x)    | **MAJOR**.                                                             |
++-------------+-----------+------------------------------------------------------------------------+
+| 15:12       | R (0x0)   | Hardwired to 0.                                                        |
++-------------+-----------+------------------------------------------------------------------------+
+| 11:8        | R (0x0)   | **MINOR**.                                                             |
++-------------+-----------+------------------------------------------------------------------------+
+| 7:4         | R (0x0)   | Hardwired to 0.                                                        |
++-------------+-----------+------------------------------------------------------------------------+
+| 3:0         | R         | **PATCH**.  **mimpid_patch_i**, see  :ref:`core-integration`           |
++-------------+-----------+------------------------------------------------------------------------+
+
+The Machine Implementation ID uses a Major, Minor, Patch versioning scheme. The **PATCH** bitfield is defined and set
+by the integrator and shall be set to 0 when no patches are applied. It is made available as **mimpid_patch_i** on the
+boundary of |corev| such that it can easily be changed by a metal layer only change.
 
 .. _csr-mhartid:
 
