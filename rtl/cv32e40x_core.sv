@@ -64,7 +64,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] mtvec_addr_i,
   input  logic [31:0] dm_halt_addr_i,
   input  logic [31:0] mhartid_i,
-  input  logic [31:0] mimpid_i,
+  input  logic  [3:0] mimpid_patch_i,
   input  logic [31:0] dm_exception_addr_i,
   input  logic [31:0] nmi_addr_i,
 
@@ -641,7 +641,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Hart ID from outside
     .mhartid_i                  ( mhartid_i             ),
-    .mimpid_i                   ( mimpid_i              ),
+    .mimpid_patch_i             ( mimpid_patch_i        ),
 
     // Cycle Count
     .mcycle_o                   ( mcycle_o              ),

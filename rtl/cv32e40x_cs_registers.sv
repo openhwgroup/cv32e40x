@@ -45,9 +45,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic            clk,
   input  logic            rst_n,
 
-  // Hart ID
+  // IDs
   input  logic [31:0]     mhartid_i,
-  input  logic [31:0]     mimpid_i,
+  input  logic  [3:0]     mimpid_patch_i,
+
+  // MTVEC
   output logic [23:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
   
@@ -101,6 +103,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 | (32'(MXL)        << 30); // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
+
+  logic [31:0] mimpid;
 
   // CSR update logic
   logic [31:0] csr_wdata_int;
@@ -222,6 +226,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     
   // mip CSR
   assign mip = mip_i;
+
+  // mimpid CSR
+  assign mimpid = {12'b0, MIMPID_MAJOR, 4'b0, MIMPID_MINOR, 4'b0, mimpid_patch_i};
 
   ////////////////////////////////////////
   // Determine if CSR access is illegal //
@@ -367,7 +374,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MHARTID: csr_rdata_int = mhartid_i;
 
       // mimpid: implementation id
-      CSR_MIMPID: csr_rdata_int = mimpid_i;
+      CSR_MIMPID: csr_rdata_int = mimpid;
 
       // mconfigptr: Pointer to configuration data structure. Read only, hardwired to 0
       CSR_MCONFIGPTR: csr_rdata_int = 'b0;
