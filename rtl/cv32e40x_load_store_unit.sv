@@ -281,7 +281,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   generate
-    if (X_EXT) begin
+    if (X_EXT) begin : x_ext_regs
       always_ff @(posedge clk, negedge rst_n) begin
         if (rst_n == 1'b0) begin
           xif_res_q <= '0;
@@ -291,9 +291,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
           xif_id_q  <= xif_mem_if.mem_req.id; // save XIF instruction ID for result
         end
       end
-    end else begin
-      assign xif_res_q <= '0;
-      assign xif_id_q  <= '0;
+    end else begin : no_x_ext_regs
+      assign xif_res_q = 1'b0;
+      assign xif_id_q  = '0;
     end
   endgenerate
 
@@ -683,7 +683,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   generate
-    if (X_EXT) begin
+    if (X_EXT) begin : x_ext
       // XIF memory response: convert MPU errors to exception codes
       assign xif_mem_if.mem_resp.exc     = xif_mpu_err;
       assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
@@ -696,7 +696,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign xif_mem_result_if.mem_result.rdata = rdata_ext;
       assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
       assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
-    end else begin
+    end else begin : no_x_ext
       assign xif_mem_if.mem_resp.exc            = '0;
       assign xif_mem_if.mem_resp.exccode        = '0;
       assign xif_mem_if.mem_resp.dbg            = '0;
