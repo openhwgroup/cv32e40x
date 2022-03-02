@@ -72,51 +72,68 @@ The trap signal indicates that a synchronous trap has ocurred and side-effects c
 
 .. code-block:: verilog
 
-   output [NRET * 14 - 1 : 0] rvfi_trap
+   output rvfi_trap_t[NRET - 1 : 0] rvfi_trap
+
+Where the rvfi_trap_t struct contains the following fields:
+
+.. table:: RVFI trap type
+  :name: RVFI trap type
+
+  =================  ===========  =======
+  Field              Type         Bits
+  =================  ===========  =======
+  trap               logic        [0]
+  exception          logic        [1]
+  debug              logic        [2]
+  exception_cause    logic [5:0]  [8:3]
+  debug_cause        logic [2:0]  [11:9]
+  cause_type         logic [1:0]  [13:12]
+  =================  ===========  =======
+
 
 ``rvfi_trap`` consists of 14 bits.
-``rvfi_trap[0]`` is asserted if an instruction causes an exception or debug entry.
-``rvfi_trap[2:1]`` indicate trap type. ``rvfi_trap[1]`` is set for synchronous traps that do not cause debug entry. ``rvfi_trap[2]`` is set for synchronous traps that do cause debug mode entry.
-``rvfi_trap[8:3]`` provide information about non-debug traps, while ``rvfi_trap[11:9]`` provide information about traps causing entry to debug mode.
-``rvfi_trap[13:12]`` differentiates between fault causes that map to the same exception code in ``rvfi_trap[8:3]`` and ``rvfi_trap[11:9]``.
-When an exception is caused by a single stepped instruction, both ``rvfi_trap[1]`` and ``rvfi_trap[2]`` will be set.
+``rvfi_trap.trap`` is asserted if an instruction causes an exception or debug entry.
+``rvfi_trap.exception`` is set for synchronous traps that do not cause debug entry. ``rvfi_trap.debug`` is set for synchronous traps that do cause debug mode entry.
+``rvfi_trap.exception_cause`` provide information about non-debug traps, while ``rvfi_trap.debug_cause`` provide information about traps causing entry to debug mode.
+``rvfi_trap.cause_type`` differentiates between fault causes that map to the same exception code in ``rvfi_trap.exception_cause`` and ``rvfi_trap.debug_cause``.
+When an exception is caused by a single stepped instruction, both ``rvfi_trap.exception`` and ``rvfi_trap.debug`` will be set.
 When ``rvfi_trap`` signals a trap, CSR side effects and a jump to a trap/debug handler in the next cycle can be expected.
 The different trap scenarios, their expected side-effects and trap signalling are listed in the table below:
 
 .. table:: Table of synchronous trap types
   :name: Table of synchronous trap types
 
-  +------------------------------+-----------+--------------------------------------------+----------------------+------------------------------------------------------------------------------------------------------+   
-  | Scenario                     | Trap Type | rvfi_trap                                  | CSRs updated         | Description                                                                                          |   
-  |                              |           +-----+-----+-----+-------+--------+---------+                      |                                                                                                      |   
-  |                              |           | [0] | [1] | [2] | [8:3] | [11:9] | [13:12] |                      |                                                                                                      |   
-  +==============================+===========+=====+=====+=====+=======+========+=========+======================+======================================================================================================+   
-  | Instruction Access Fault     | Exception | 1   | 1   | X   | 0x01  | X      | 0x0     | ``mcause``, ``mepc`` | PMA detects instruction execution from non-executable memory.                                        |   
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+   
-  | Illegal Instruction          | Exception | 1   | 1   | X   | 0x02  | X      | 0x0     | ``mcause``, ``mepc`` | Illegal instruction decode.                                                                          |   
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+   
-  | Breakpoint                   | Exception | 1   | 1   | X   | 0x03  | X      | 0x0     | ``mcause``, ``mepc`` | EBREAK executed with ``dcsr.ebreakm`` = 0.                                                           |   
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Load Access Fault            | Exception | 1   | 1   | X   | 0x05  | X      | 0x0     | ``mcause``, ``mepc`` | Non-naturally aligned load access attempt to an I/O region.                                          |
-  |                              |           |     |     |     |       |        +---------+----------------------+------------------------------------------------------------------------------------------------------+
-  |                              |           |     |     |     |       |        | 0x1     | ``mcause``, ``mepc`` | Load-Reserved attempt to region without atomic support.                                              |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Store/AMO Access Fault       | Exception | 1   | 1   | X   | 0x07  | X      | 0x0     | ``mcause``, ``mepc`` | Non-naturally aligned store access attempt to an I/O region.                                         |
-  |                              |           |     |     |     |       |        +---------+----------------------+------------------------------------------------------------------------------------------------------+
-  |                              |           |     |     |     |       |        | 0x1     | ``mcause``, ``mepc`` | SC or AMO attempt to region without atomic support.                                                  |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Environment Call             | Exception | 1   | 1   | X   | 0x0B  | X      | 0x0     | ``mcause``, ``mepc`` | ECALL executed from Machine mode.                                                                    |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Instruction Bus Fault        | Exception | 1   | 1   | X   | 0x30  | X      | 0x0     | ``mcause``, ``mepc`` | OBI bus error on instruction fetch.                                                                  |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Breakpoint to debug          | Debug     | 1   | 0   | 1   | X     | 0x1    | 0x0     | ``dpc``, ``dcsr``    | EBREAK from non-debug mode executed with ``dcsr.ebreakm`` == 1.                                      |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Breakpoint in debug          | Debug     | 1   | 0   | 1   | X     | 0x1    | 0x0     | No CSRs updated      | EBREAK in debug mode jumps to debug handler.                                                         |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Debug Trigger Match          | Debug     | 1   | 0   | 1   | X     | 0x2    | 0x0     | ``dpc``, ``dcsr``    | Debug trigger address match with ``mcontrol.timing`` = 0.                                            |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
-  | Single step                  | Debug     | 1   | X   | 1   | X     | 0x4    | X       | ``dpc``, ``dcsr``    | Single step.                                                                                         |
-  +------------------------------+-----------+-----+-----+-----+-------+--------+---------+----------------------+------------------------------------------------------------------------------------------------------+
+  +------------------------------+-----------+-----------------------------------------------------------------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Scenario                     | Trap Type | rvfi_trap                                                             | CSRs updated         | Description                                                                                          |
+  |                              |           +------+-----------+-------+-----------------+-------------+------------+                      |                                                                                                      |
+  |                              |           | trap | exception | debug | exception_cause | debug_cause | cause_type |                      |                                                                                                      |
+  +==============================+===========+======+===========+=======+=================+=============+============+======================+======================================================================================================+
+  | Instruction Access Fault     | Exception | 1    | 1         | X     | 0x01            | X           | 0x0        | ``mcause``, ``mepc`` | PMA detects instruction execution from non-executable memory.                                        |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Illegal Instruction          | Exception | 1    | 1         | X     | 0x02            | X           | 0x0        | ``mcause``, ``mepc`` | Illegal instruction decode.                                                                          |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Breakpoint                   | Exception | 1    | 1         | X     | 0x03            | X           | 0x0        | ``mcause``, ``mepc`` | EBREAK executed with ``dcsr.ebreakm`` = 0.                                                           |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Load Access Fault            | Exception | 1    | 1         | X     | 0x05            | X           | 0x0        | ``mcause``, ``mepc`` | Non-naturally aligned load access attempt to an I/O region.                                          |
+  |                              |           |      |           |       |                 |             +------------+----------------------+------------------------------------------------------------------------------------------------------+
+  |                              |           |      |           |       |                 |             | 0x1        | ``mcause``, ``mepc`` | Load-Reserved attempt to region without atomic support.                                              |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Store/AMO Access Fault       | Exception | 1    | 1         | X     | 0x07            | X           | 0x0        | ``mcause``, ``mepc`` | Non-naturally aligned store access attempt to an I/O region.                                         |
+  |                              |           |      |           |       |                 |             +------------+----------------------+------------------------------------------------------------------------------------------------------+
+  |                              |           |      |           |       |                 |             | 0x1        | ``mcause``, ``mepc`` | SC or AMO attempt to region without atomic support.                                                  |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Environment Call             | Exception | 1    | 1         | X     | 0x0B            | X           | 0x0        | ``mcause``, ``mepc`` | ECALL executed from Machine mode.                                                                    |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Instruction Bus Fault        | Exception | 1    | 1         | X     | 0x30            | X           | 0x0        | ``mcause``, ``mepc`` | OBI bus error on instruction fetch.                                                                  |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Breakpoint to debug          | Debug     | 1    | 0         | 1     | X               | 0x1         | 0x0        | ``dpc``, ``dcsr``    | EBREAK from non-debug mode executed with ``dcsr.ebreakm`` == 1.                                      |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Breakpoint in debug          | Debug     | 1    | 0         | 1     | X               | 0x1         | 0x0        | No CSRs updated      | EBREAK in debug mode jumps to debug handler.                                                         |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Debug Trigger Match          | Debug     | 1    | 0         | 1     | X               | 0x2         | 0x0        | ``dpc``, ``dcsr``    | Debug trigger address match with ``mcontrol.timing`` = 0.                                            |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
+  | Single step                  | Debug     | 1    | X         | 1     | X               | 0x4         | X          | ``dpc``, ``dcsr``    | Single step.                                                                                         |
+  +------------------------------+-----------+------+-----------+-------+-----------------+-------------+------------+----------------------+------------------------------------------------------------------------------------------------------+
 
 **Interrupts**
 
@@ -125,30 +142,54 @@ Interrupts are seen by RVFI as happening between instructions. This means that n
 
 .. code-block:: verilog
 
-   output [NRET * 11 - 1 : 0] rvfi_intr
+   output rvfi_intr_t[NRET - 1 : 0] rvfi_intr
 
-``rvfi_intr`` consists of 11 bits.
-``rvfi_intr[0]`` is set for the first instruction of the trap handler when encountering an exception or interrupt.
-``rvfi_intr[1]`` indicates it was caused by synchronous trap and
-``rvfi_intr[2]`` indicates it was caused by an interrupt.
-``rvfi_intr[10:3]`` signals the cause for entering the trap handler.
+
+Where the rvfi_intr_t struct contains the following fields:
+
+.. table:: RVFI intr type
+  :name: RVFI intr type
+
+  =================  ============  =======
+  Field              Type          Bits
+  =================  ============  =======
+  intr               logic         [0]
+  exception          logic         [1]
+  interrupt          logic         [2]
+  cause              logic [10:0]  [13:3]
+  =================  ============  =======
+
+
+``rvfi_intr`` consists of 14 bits.
+``rvfi_intr.intr`` is set for the first instruction of the trap handler when encountering an exception or interrupt.
+``rvfi_intr.exception`` indicates it was caused by synchronous trap and
+``rvfi_intr.interrupt`` indicates it was caused by an interrupt.
+``rvfi_intr.cause`` signals the cause for entering the trap handler.
 
 ``rvfi_intr`` is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see ``rvfi_intr`` == X in the table below). In this case CSR side-effects (to ``mepc``) can be expected.
 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
 
-  ===============================================  ==============  ===============  =============  ==========  =================
-  Scenario                                         rvfi_intr[2:0]  rvfi_intr[10:3]  rvfi_dbg[2:0]  mcause[31]  dcsr[8:6] (cause)
-  ===============================================  ==============  ===============  =============  ==========  =================
-  Synchronous trap                                 0b011           Sync trap cause  0x0            0           X
-  Interrupt (includes NMIs from bus errors)        0b101           Interrupt cause  0x0            1           X
-  Debug entry due to EBREAK (from non-debug mode)  0b000           0x0              0x1            X           0x1
-  Debug entry due to EBREAK (from debug mode)      0b000           0x0              0x1            X           X
-  Debug entry due to trigger match                 0b000           0x0              0x2            X           0x2
-  Debug entry due to external debug request        X               X                0x3 or 0x5     X           0x3 or 0x5
-  Debug handler entry due to single step           X               X                0x4            X           0x4
-  ===============================================  ==============  ===============  =============  ==========  =================
+  +-------------------------------------------------+------------------------------------------------+---------------+------------+------------+
+  | Scenario                                        | rvfi_intr                                      | rvfi_dbg[2:0] | mcause[31] | dcsr[8:6]  |
+  |                                                 +------+-----------+-----------+-----------------+               |            | (cause)    |
+  |                                                 | intr | exception | interrupt | cause           |               |            |            |
+  +=================================================+======+===========+===========+=================+===============+============+============+
+  | Synchronous trap                                | 0    | 1         | 1         | Sync trap cause | 0x0           | 0          | X          |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Interrupt (includes NMIs from bus errors)       | 1    | 0         | 1         | Interrupt cause | 0x0           | 1          | X          |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Debug entry due to EBREAK (from non-debug mode) | 0    | 0         | 0         | 0x0             | 0x1           | X          | 0x1        |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Debug entry due to EBREAK (from debug mode)     | 0    | 0         | 0         | 0x0             | 0x1           | X          | X          |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Debug entry due to trigger match                | 0    | 0         | 0         | 0x0             | 0x2           | X          | 0x2        |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Debug entry due to external debug request       | X    | X         | X         | X               | 0x3 or 0x5    | X          | 0x3 or 0x5 |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
+  | Debug handler entry due to single step          | X    | X         | X         | X               | 0x4           | X          | 0x4        |
+  +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
 
 
 **Program Counter**
