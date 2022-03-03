@@ -544,15 +544,30 @@ typedef struct packed{
 
 typedef struct packed {
   logic           irq;
-  logic [30:8]    zero0;
-  logic [7:0]     exception_code;
+  logic [30:11]   zero0;
+  logic [10: 0]   exception_code;
 } mcause_t;
 
+// todo: remove parameter when related features are supported in verification:
+//       - 11bit exception code
+//       - NMI address with fixed offset to mtvec
+parameter USE_DEPRECAED_FEATURE_SET = 1'b1;
+
+localparam MTVEC_ADDR_BIT_LOW = USE_DEPRECAED_FEATURE_SET ? 8 : 10;
+typedef struct packed {
+  logic [31:MTVEC_ADDR_BIT_LOW] addr;
+  logic [MTVEC_ADDR_BIT_LOW-1 : 2] zero0;
+  logic [ 1: 0] mode;
+} mtvec_t;
+
+
+// todo: remove when mtvec updates are in on verif side
 typedef struct packed {
   logic [31:8] addr;
   logic [7:2]  zero0;
   logic [1:0]  mode;
-} mtvec_t;
+} deprecated_mtvec_t;
+
 
 typedef struct packed {
   logic [31:6] addr;
@@ -820,19 +835,22 @@ typedef enum logic[3:0] {
 } pc_mux_e;
 
 // Exception Cause
-parameter EXC_CAUSE_INSTR_FAULT     = 8'h01;
-parameter EXC_CAUSE_ILLEGAL_INSN    = 8'h02;
-parameter EXC_CAUSE_BREAKPOINT      = 8'h03;
-parameter EXC_CAUSE_LOAD_FAULT      = 8'h05;
-parameter EXC_CAUSE_STORE_FAULT     = 8'h07;
-parameter EXC_CAUSE_ECALL_MMODE     = 8'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 8'h30;
+parameter EXC_CAUSE_INSTR_FAULT     = 11'h01;
+parameter EXC_CAUSE_ILLEGAL_INSN    = 11'h02;
+parameter EXC_CAUSE_BREAKPOINT      = 11'h03;
+parameter EXC_CAUSE_LOAD_FAULT      = 11'h05;
+parameter EXC_CAUSE_STORE_FAULT     = 11'h07;
+parameter EXC_CAUSE_ECALL_MMODE     = 11'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h30;
 
-parameter INT_CAUSE_LSU_LOAD_FAULT  = 8'h80;
-parameter INT_CAUSE_LSU_STORE_FAULT = 8'h81;
+parameter INT_CAUSE_LSU_LOAD_FAULT  = USE_DEPRECAED_FEATURE_SET ? 11'h80 : 11'h400;
+parameter INT_CAUSE_LSU_STORE_FAULT = USE_DEPRECAED_FEATURE_SET ? 11'h81 : 11'h401;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
+
+// NMI offset
+parameter NMI_MTVEC_INDEX = 7'd15;
 
 ////////////////////////////
 //                        //

@@ -589,7 +589,7 @@ module cv32e40x_rvfi
     if (pc_mux_exception) begin
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next.exception       = 1'b1;
-      rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code;
+      rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code[5:0]; // All synchronous exceptions fit in lower 6 bits
 
       // Separate exception causes with the same ecseption cause code
       case (ctrl_fsm_i.csr_cause.exception_code)

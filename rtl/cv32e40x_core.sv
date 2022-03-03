@@ -184,7 +184,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
     // CSR control
-  logic [23:0] mtvec_addr;
+  logic [21:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
   logic [31:0] csr_rdata;

@@ -142,7 +142,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   // Events in WB
   logic exception_in_wb;
-  logic [7:0] exception_cause_wb;
+  logic [10:0] exception_cause_wb;
   logic wfi_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;

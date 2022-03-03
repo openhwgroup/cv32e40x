@@ -50,7 +50,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic  [3:0]     mimpid_patch_i,
 
   // MTVEC
-  output logic [23:0]     mtvec_addr_o,
+  output logic [21:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
   
   // Cycle Count
@@ -532,12 +532,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     mcause_n                 = '{
                                   irq:            csr_wdata_int[31],
-                                  exception_code: csr_wdata_int[7:0],
+                                  exception_code: csr_wdata_int[10:0],
                                   default:        'b0
                                 };
     mcause_we                = 1'b0;
-
-    mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
+    if (USE_DEPRECAED_FEATURE_SET) begin
+      mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
+    end else begin
+      mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:10] : csr_wdata_int[31:10];
+    end
     mtvec_n.zero0            = mtvec_q.zero0;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
