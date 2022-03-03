@@ -560,15 +560,6 @@ typedef struct packed {
   logic [ 1: 0] mode;
 } mtvec_t;
 
-
-// todo: remove when mtvec updates are in on verif side
-typedef struct packed {
-  logic [31:8] addr;
-  logic [7:2]  zero0;
-  logic [1:0]  mode;
-} deprecated_mtvec_t;
-
-
 typedef struct packed {
   logic [31:6] addr;
   logic [ 5:0] zero0;
