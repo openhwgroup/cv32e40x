@@ -30,6 +30,7 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
+  parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          A_EXT            = 0,
   parameter m_ext_e      M_EXT            = M,
   parameter bit          X_EXT            = 0,
@@ -50,7 +51,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic  [3:0]     mimpid_patch_i,
 
   // MTVEC
-  output logic [21:0]     mtvec_addr_o,
+  output logic [24:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
   
   // Cycle Count
@@ -536,10 +537,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   default:        'b0
                                 };
     mcause_we                = 1'b0;
-    if (USE_DEPRECAED_FEATURE_SET) begin
-      mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:8] : csr_wdata_int[31:8];
-    end else begin
-      mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:10] : csr_wdata_int[31:10];
+    mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
+    if (USE_DEPRECATED_FEATURE_SET) begin
+      mtvec_n[7]             = 1'b0; // todo : remove
     end
     mtvec_n.zero0            = mtvec_q.zero0;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};

@@ -548,16 +548,10 @@ typedef struct packed {
   logic [10: 0]   exception_code;
 } mcause_t;
 
-// todo: remove parameter when related features are supported in verification:
-//       - 11bit exception code
-//       - NMI address with fixed offset to mtvec
-parameter USE_DEPRECAED_FEATURE_SET = 1'b1;
-
-localparam MTVEC_ADDR_BIT_LOW = USE_DEPRECAED_FEATURE_SET ? 8 : 10;
 typedef struct packed {
-  logic [31:MTVEC_ADDR_BIT_LOW] addr;
-  logic [MTVEC_ADDR_BIT_LOW-1 : 2] zero0;
-  logic [ 1: 0] mode;
+  logic [31:7] addr;
+  logic [ 6:2] zero0;
+  logic [ 1:0] mode;
 } mtvec_t;
 
 typedef struct packed {
@@ -834,14 +828,18 @@ parameter EXC_CAUSE_STORE_FAULT     = 11'h07;
 parameter EXC_CAUSE_ECALL_MMODE     = 11'h0B;
 parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h30;
 
-parameter INT_CAUSE_LSU_LOAD_FAULT  = USE_DEPRECAED_FEATURE_SET ? 11'h80 : 11'h400;
-parameter INT_CAUSE_LSU_STORE_FAULT = USE_DEPRECAED_FEATURE_SET ? 11'h81 : 11'h401;
+parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
+parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
+
+// todo: remove once 11bit cause is supported by iss
+parameter DEPRECATED_INT_CAUSE_LSU_LOAD_FAULT  = 11'h80;
+parameter DEPRECATED_INT_CAUSE_LSU_STORE_FAULT = 11'h81;
 
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
 
 // NMI offset
-parameter NMI_MTVEC_INDEX = 7'd15;
+parameter NMI_MTVEC_INDEX = 5'd15;
 
 ////////////////////////////
 //                        //
