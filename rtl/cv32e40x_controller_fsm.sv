@@ -31,6 +31,7 @@
 
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 #(
+  parameter bit       USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit       X_EXT           = 0
 )
 (
@@ -142,7 +143,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   
   // Events in WB
   logic exception_in_wb;
-  logic [7:0] exception_cause_wb;
+  logic [10:0] exception_cause_wb;
   logic wfi_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
@@ -478,7 +479,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
-          ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
+          if (USE_DEPRECATED_FEATURE_SET) begin
+            ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? DEPRECATED_INT_CAUSE_LSU_STORE_FAULT : DEPRECATED_INT_CAUSE_LSU_LOAD_FAULT;
+          end else begin
+            ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
+          end
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin

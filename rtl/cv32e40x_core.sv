@@ -45,6 +45,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter logic [31:0] X_MISA                       = 32'h00000000,
   parameter logic [1:0]  X_ECS_XS                     = 2'b00,
   parameter bit          ZC_EXT                       = 0, // todo: remove once fully implemented
+  parameter bit          USE_DEPRECATED_FEATURE_SET   = 1, // todo: remove once related features are supported by iss
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
   parameter int          SMCLIC_ID_WIDTH              = 6,
@@ -66,7 +67,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   input  logic [31:0] mhartid_i,
   input  logic  [3:0] mimpid_patch_i,
   input  logic [31:0] dm_exception_addr_i,
-  input  logic [31:0] nmi_addr_i,
+  input  logic [31:0] nmi_addr_i, // todo: remove once supported by verification
 
   // Instruction memory interface
   output logic        instr_req_o,
@@ -184,7 +185,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
     // CSR control
-  logic [23:0] mtvec_addr;
+  logic [24:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
   logic [31:0] csr_rdata;
@@ -356,6 +357,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //////////////////////////////////////////////////
   cv32e40x_if_stage
   #(
+    .USE_DEPRECATED_FEATURE_SET (USE_DEPRECATED_FEATURE_SET),
     .A_EXT               ( A_EXT                    ),
     .X_EXT               ( X_EXT                    ),
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
@@ -626,6 +628,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   cv32e40x_cs_registers
   #(
+    .USE_DEPRECATED_FEATURE_SET (USE_DEPRECATED_FEATURE_SET),
     .A_EXT                      ( A_EXT                  ),
     .M_EXT                      ( M_EXT                  ),
     .X_EXT                      ( X_EXT                  ),
@@ -696,6 +699,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////
   cv32e40x_controller
   #(
+    .USE_DEPRECATED_FEATURE_SET     (USE_DEPRECATED_FEATURE_SET),
     .X_EXT                          ( X_EXT                  ),
     .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS )
   )

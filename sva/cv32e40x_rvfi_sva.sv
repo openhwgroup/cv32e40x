@@ -32,8 +32,8 @@ module cv32e40x_rvfi_sva
    input logic             rst_ni,
 
    input logic             rvfi_valid,
-   input logic             rvfi_intr,
-   input logic [13:0]      rvfi_trap,
+   input rvfi_intr_t       rvfi_intr,
+   input rvfi_trap_t       rvfi_trap,
    input logic [2:0]       rvfi_dbg,
 
    input                   ctrl_fsm_t ctrl_fsm_i,
@@ -41,25 +41,21 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      rvfi_csr_mcause_rdata,
    input logic [31:0]      rvfi_pc_rdata,
    input logic [31:0]      nmi_addr_i,
-   
    input logic             irq_ack,
    input logic             dbg_ack,
    input logic             ebreak_in_wb_i,
-   
-   input logic [3:0]       in_trap,
+   input rvfi_intr_t [3:0] in_trap,
    input logic [3:0] [2:0] debug_cause
    );
-  
   // Check that irq_ack results in RVFI capturing a trap
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,
   // but since there can be an infinite delay between irq_ack and rvfi_intr (e.g. because of bus stalls), we're settling for asserting
   // that irq_ack leads to RVFI capturing a trap (in_trap[IF_STAGE] = 1)
   a_irq_ack_rvfi_capture :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     (irq_ack |=> in_trap[STAGE_IF]))
+                     (irq_ack |=> in_trap[STAGE_IF].intr))
       else `uvm_error("rvfi", "irq_ack not captured by RVFI")
 
-   
   // Helper signal, indicating debug cause
   // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
   logic [2:0] debug_cause_int;
@@ -74,8 +70,6 @@ module cv32e40x_rvfi_sva
                      (dbg_ack |=> (debug_cause[STAGE_IF] == $past(debug_cause_int))))
             else `uvm_error("rvfi", "dbg_ack did not lead to rvfi_dbg != 0")
 
-    
-    
   // Helper signal, indicate that a debug entry was signaled on RVFI
   logic  rvfi_dbg_ack;
   assign rvfi_dbg_ack = |rvfi_dbg && rvfi_valid;
@@ -88,14 +82,13 @@ module cv32e40x_rvfi_sva
     end
     else begin
       if (dbg_ack && !rvfi_dbg_ack) begin
-        dbg_ack_cnt <= dbg_ack_cnt+1;
+        dbg_ack_cnt <= dbg_ack_cnt+2'd1;
       end
       else if (rvfi_dbg_ack && !dbg_ack) begin
-        dbg_ack_cnt <= dbg_ack_cnt-1;
+        dbg_ack_cnt <= dbg_ack_cnt-2'd1;
       end
     end
   end
-  
   // Check that rvfi_dbg_ack is preceeded by dbg_ack
   a_rvfi_dbg_dbg_ack :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
@@ -117,52 +110,52 @@ module cv32e40x_rvfi_sva
   a_rvfi_trap_intr :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      no_debug throughout s_goto_next_rvfi_valid(|rvfi_trap) |->
-                     rvfi_intr)
+                     rvfi_intr.intr)
       else `uvm_error("rvfi", "rvfi_trap not followed by rvfi_intr")
 
   // rvfi_trap[2] should always be followed by rvfi_dbg
   a_rvfi_trap_dbg :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     s_goto_next_rvfi_valid(rvfi_trap[2]) |->
+                     s_goto_next_rvfi_valid(rvfi_trap.debug) |->
                      rvfi_dbg != '0)
-      else `uvm_error("rvfi", "rvfi_trap[2] not followed by rvfi_dbg")
+      else `uvm_error("rvfi", "rvfi_trap.debug not followed by rvfi_dbg")
 
-  // Exception code in rvfi_trap[8:3] should align with mcause exception cause in the following retired instruction
+  // Exception code in rvfi_trap.exception_cause should align with mcause exception cause in the following retired instruction
   // This is exempt if we have an NMI, because NMI will result in mcause being updated in between retired instructions.
   // Also, in debug mode, mcause is not updated.
   a_rvfi_trap_mcause_align:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                     (no_debug && !ctrl_fsm_i.pending_nmi) throughout s_goto_next_rvfi_valid(|rvfi_trap) |->
-                     rvfi_intr && (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap[8:3])))
-      else `uvm_error("rvfi", "rvfi_trap[8:3] not consistent with mcause[5:0] in following retired instruction")
+                     rvfi_intr.intr && (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap.exception_cause)))
+      else `uvm_error("rvfi", "rvfi_trap.exception_cause not consistent with mcause[5:0] in following retired instruction")
 
   // Exception code in rvfi_trap[11:9] should align with rvfi_dbg the following retired instruction
   a_rvfi_trap_rvfi_dbg_align:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     s_goto_next_rvfi_valid(rvfi_trap[2]) |->
-                     rvfi_dbg == $past(rvfi_trap[11:9]))
-     else `uvm_error("rvfi", "rvfi_trap[11:9] not consistent with rvfi_dbg in following retired instruction")
+                     s_goto_next_rvfi_valid(rvfi_trap.debug) |->
+                     rvfi_dbg == $past(rvfi_trap.debug_cause))
+     else `uvm_error("rvfi", "rvfi_trap.debug_cause not consistent with rvfi_dbg in following retired instruction")
 
   // Check that rvfi_trap always indicate single step if rvfi_trap[2:1] == 2'b11
   a_rvfi_single_step_trap:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     rvfi_trap[1] && rvfi_trap[2] |-> rvfi_trap[11:9] == DBG_CAUSE_STEP)
+                     rvfi_trap.exception && rvfi_trap.debug |-> rvfi_trap.debug_cause == DBG_CAUSE_STEP)
      else `uvm_error("rvfi", "rvfi_trap[2:1] == 2'b11, but debug cause bits do not indicate single stepping")
 
   // Check that the trap is always signalled on the instruction before single step debug entry (unless killed by interrupt)
   a_rvfi_single_step_no_trap_no_dbg_entry:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     s_goto_next_rvfi_valid(rvfi_trap[11:9] != DBG_CAUSE_STEP) |-> ((rvfi_dbg != DBG_CAUSE_STEP) || rvfi_intr))
+                     s_goto_next_rvfi_valid(rvfi_trap.debug_cause != DBG_CAUSE_STEP) |-> ((rvfi_dbg != DBG_CAUSE_STEP) || rvfi_intr.intr))
      else `uvm_error("rvfi", "Single step debug entry without correct rvfi_trap first")
 
   // Check that dcsr.cause and mcause exception align with rvfi_trap when rvfi_trap[2:1] == 2'b11
   // rvfi_intr should also always be set in this case
   a_rvfi_trap_step_exception:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     s_goto_next_rvfi_valid(rvfi_trap[1] && rvfi_trap[2]) |->
+                     s_goto_next_rvfi_valid(rvfi_trap.exception && rvfi_trap.debug) |->
                      (rvfi_dbg == DBG_CAUSE_STEP) && (rvfi_csr_dcsr_rdata[8:6] == DBG_CAUSE_STEP) &&
-                     (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap[8:3])) &&
-                     rvfi_intr)
+                     (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap.exception_cause)) &&
+                     rvfi_intr.intr)
      else `uvm_error("rvfi", "dcsr.cause, mcause and rvfi_intr not as expected following an exception during single step")
 
   // When dcsr.nmip is set, the next retired instruction should be the NMI handler (except in debug mode).
@@ -170,7 +163,7 @@ module cv32e40x_rvfi_sva
   a_rvfi_nmip_nmi_handler:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      (no_debug && $stable(nmi_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
-                     rvfi_intr &&
+                     rvfi_intr.intr &&
                      (rvfi_pc_rdata == {nmi_addr_i[31:2], 2'b00}) &&
                      ((rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")

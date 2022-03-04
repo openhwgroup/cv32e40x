@@ -48,7 +48,7 @@ module cv32e40x_controller_fsm_sva
   input logic           ex_valid_i,
   input logic           wb_ready_i,
   input logic           exception_in_wb,
-  input logic [7:0]     exception_cause_wb,
+  input logic [10:0]    exception_cause_wb,
   input logic           rf_we_wb_i,
   input logic           csr_we_i,
   input logic           csr_illegal_i,
