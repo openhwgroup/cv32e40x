@@ -12,26 +12,27 @@ Instantiation Template
 .. code-block:: verilog
 
   cv32e40x_core #(
-      .LIB                      (         0 ),
-      .RV32                     (     RV32I ),
-      .A_EXT                    (         0 ),
-      .B_EXT                    (    B_NONE ),
-      .M_EXT                    (         M ),
-      .X_EXT                    (         0 ),
-      .X_NUM_RS                 (         2 ),
-      .X_ID_WIDTH               (         4 ),
-      .X_MEM_WIDTH              (        32 ),
-      .X_RFR_WIDTH              (        32 ),
-      .X_RFW_WIDTH              (        32 ),
-      .X_MISA                   (     32'h0 ),
-      .X_ECS_XS                 (      2'b0 ),
-      .ZC_EXT                   (         0 ),
-      .DBG_NUM_TRIGGERS         (         1 ),
-      .NUM_MHPMCOUNTERS         (         1 ),
-      .PMA_NUM_REGIONS          (         1 ),
-      .PMA_CFG                  ( PMA_CFG[] ),
-      .SMCLIC                   (         0 ),
-      .SMCLIC_ID_WIDTH          (         0 )
+      .LIB                        (         0 ),
+      .RV32                       (     RV32I ),
+      .A_EXT                      (         0 ),
+      .B_EXT                      (    B_NONE ),
+      .M_EXT                      (         M ),
+      .X_EXT                      (         0 ),
+      .X_NUM_RS                   (         2 ),
+      .X_ID_WIDTH                 (         4 ),
+      .X_MEM_WIDTH                (        32 ),
+      .X_RFR_WIDTH                (        32 ),
+      .X_RFW_WIDTH                (        32 ),
+      .X_MISA                     (     32'h0 ),
+      .X_ECS_XS                   (      2'b0 ),
+      .ZC_EXT                     (         0 ),
+      .USE_DEPRECATED_FEATURE_SET (         1 ),
+      .DBG_NUM_TRIGGERS           (         1 ),
+      .NUM_MHPMCOUNTERS           (         1 ),
+      .PMA_NUM_REGIONS            (         1 ),
+      .PMA_CFG                    ( PMA_CFG[] ),
+      .SMCLIC                     (         0 ),
+      .SMCLIC_ID_WIDTH            (         0 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -119,67 +120,72 @@ Parameters
    All eXtension interface parameters (``X_NUM_RS``, ``X_ID_WIDTH``, ``X_MEM_WIDTH``, ``X_RFR_WIDTH`` and ``X_RFW_WIDTH``)
    must be set with values matching the actual ``if_xif`` instance and the coprocessor/interconnect available outside of |corev|.
 
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| Name                         | Type/Range     | Default       | Description                                                        |
-+==============================+================+===============+====================================================================+
-| ``LIB``                      | int            | 0             | Standard cell library (semantics defined by integrator)            |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``RV32``                     | rv32_e         | RV32I         | Base Integer Instruction Set.                                      |
-|                              |                |               | ``RV32`` = RV32I: RV32I Base Integer Instruction Set.              |
-|                              |                |               | ``RV32`` = RV32E: RV32E Base Integer Instruction Set.              |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``A_EXT``                    | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``B_EXT``                    | b_ext_e        | B_NONE        | Enable Bit Manipulation support. ``B_EXT`` = B_NONE: No Bit        |
-|                              |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB_ZBS:  |
-|                              |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
-|                              |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``M_EXT``                    | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = M_NONE: No multiply /|
-|                              |                |               | divide instructions are supported. ``M_EXT`` = ZMMUL: The          |
-|                              |                |               | multiplication subset of the ``M`` extension is supported.         |
-|                              |                |               | ``M_EXT`` = M: The ``M`` extension is supported.                   |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_EXT``                    | bit            | 0             | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_NUM_RS``                 | int (2..3)     | 2             | Number of register file read ports that can be used by the         |
-|                              |                |               | eXtension interface.                                               |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_ID_WIDTH``               | int (3..32)    | 4             | Identification width for the eXtension interface.                  |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_MEM_WIDTH``              | int (32 64,    | 32            | Memory access width for loads/stores via the eXtension interface.  |
-|                              | 128, 256)      |               |                                                                    |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_RFR_WIDTH``              | int (32, 64)   | 32            | Register file read access width for the eXtension interface.       |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_RFW_WIDTH``              | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_MISA``                   | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
-|                              |                |               | see :ref:`csr-misa`. X_MISA can only be used to set a subset of    |
-|                              |                |               | the following: {P, V, F, D, Q, X, M}.                              |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``X_ECS_XS``                 | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
-|                              |                |               | see :ref:`csr-mstatus`.                                            |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``ZC_EXT``                   | bit            | 0             | Enable Zca, Zcb, Zcmb, Zcmp, Zcmt extension support.               |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``NUM_MHPMCOUNTERS``         | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
-|                              |                |               | :ref:`performance-counters`                                        |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``DBG_NUM_TRIGGERS``         | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`                 |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``PMA_NUM_REGIONS``          | int (0..16)    | 0             | Number of PMA regions                                              |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``PMA_CFG[]``                | pma_cfg_t      | PMA_R_DEFAULT | PMA configuration.                                                 |
-|                              |                |               | Array of pma_cfg_t with PMA_NUM_REGIONS entries, see :ref:`pma`    |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``SMCLIC``                   | int (0..1 )    | 0             | Is Smclic supported?                                               |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``SMCLIC_ID_WIDTH``          | int (6..10 )   | 6             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
-|                              |                |               | number of supported interrupts in CLIC mode is                     |
-|                              |                |               | ``2^SMCLIC_ID_WIDTH``. Trap vector table alignment is restricted   |
-|                              |                |               | to at least ``2^(2+SMCLIC_ID_WIDTH)``, see :ref:`csr-mtvt`.        |
-+------------------------------+----------------+---------------+--------------------------------------------------------------------+
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| Name                           | Type/Range     | Default       | Description                                                        |
++================================+================+===============+====================================================================+
+| ``LIB``                        | int            | 0             | Standard cell library (semantics defined by integrator)            |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``RV32``                       | rv32_e         | RV32I         | Base Integer Instruction Set.                                      |
+|                                |                |               | ``RV32`` = RV32I: RV32I Base Integer Instruction Set.              |
+|                                |                |               | ``RV32`` = RV32E: RV32E Base Integer Instruction Set.              |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``A_EXT``                      | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``B_EXT``                      | b_ext_e        | B_NONE        | Enable Bit Manipulation support. ``B_EXT`` = B_NONE: No Bit        |
+|                                |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB_ZBS:  |
+|                                |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
+|                                |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``M_EXT``                      | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = M_NONE: No multiply /|
+|                                |                |               | divide instructions are supported. ``M_EXT`` = ZMMUL: The          |
+|                                |                |               | multiplication subset of the ``M`` extension is supported.         |
+|                                |                |               | ``M_EXT`` = M: The ``M`` extension is supported.                   |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_EXT``                      | bit            | 0             | Enable eXtension Interface (X) support, see :ref:`x_ext`           |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_NUM_RS``                   | int (2..3)     | 2             | Number of register file read ports that can be used by the         |
+|                                |                |               | eXtension interface.                                               |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_ID_WIDTH``                 | int (3..32)    | 4             | Identification width for the eXtension interface.                  |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_MEM_WIDTH``                | int (32 64,    | 32            | Memory access width for loads/stores via the eXtension interface.  |
+|                                | 128, 256)      |               |                                                                    |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_RFR_WIDTH``                | int (32, 64)   | 32            | Register file read access width for the eXtension interface.       |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_RFW_WIDTH``                | int (32, 64)   | 32            | Register file write access width for the eXtension interface.      |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_MISA``                     | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
+|                                |                |               | see :ref:`csr-misa`. X_MISA can only be used to set a subset of    |
+|                                |                |               | the following: {P, V, F, D, Q, X, M}.                              |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``X_ECS_XS``                   | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
+|                                |                |               | see :ref:`csr-mstatus`.                                            |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``ZC_EXT``                     | bit            | 0             | Enable Zca, Zcb, Zcmb, Zcmp, Zcmt extension support.               |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``USE_DEPRECATED_FEATURE_SET`` | bit            | 1             | Use deprecated ``nmi_addr_i`` input and use 8 instead of 11 bits   |
+|                                |                |               | for the **EXCCODE** in ``mcause``.                                 |
+|                                |                |               | Can be removed when relative nmi address and                       |
+|                                |                |               | 11 bit exception code is supported in core-v-verif.                |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``NUM_MHPMCOUNTERS``           | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
+|                                |                |               | :ref:`performance-counters`                                        |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``DBG_NUM_TRIGGERS``           | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`                 |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``PMA_NUM_REGIONS``            | int (0..16)    | 0             | Number of PMA regions                                              |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``PMA_CFG[]``                  | pma_cfg_t      | PMA_R_DEFAULT | PMA configuration.                                                 |
+|                                |                |               | Array of pma_cfg_t with PMA_NUM_REGIONS entries, see :ref:`pma`    |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``SMCLIC``                     | int (0..1 )    | 0             | Is Smclic supported?                                               |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+| ``SMCLIC_ID_WIDTH``            | int (6..10 )   | 6             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
+|                                |                |               | number of supported interrupts in CLIC mode is                     |
+|                                |                |               | ``2^SMCLIC_ID_WIDTH``. Trap vector table alignment is restricted   |
+|                                |                |               | to at least ``2^(2+SMCLIC_ID_WIDTH)``, see :ref:`csr-mtvt`.        |
++--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
 
 Interfaces
