@@ -612,6 +612,8 @@ When an exception or an interrupt is encountered, the core jumps to the correspo
 handler using the content of the ``mtvec[31:7]`` as base address. Both direct mode and vectored mode
 are supported.
 
+The NMI vector location is at index 15 of the machine trap vector table for both direct mode and vectored mode (i.e. at {**mtvec[31:7]**, 5'hF, 2'b00}).
+
 .. _csr-mtvec-smclic:
 
 Machine Trap-Vector Base Address (``mtvec``) - ``SMCLIC`` == 1

@@ -26,7 +26,6 @@ Instantiation Template
       .X_MISA                     (     32'h0 ),
       .X_ECS_XS                   (      2'b0 ),
       .ZC_EXT                     (         0 ),
-      .USE_DEPRECATED_FEATURE_SET (         1 ),
       .DBG_NUM_TRIGGERS           (         1 ),
       .NUM_MHPMCOUNTERS           (         1 ),
       .PMA_NUM_REGIONS            (         1 ),
@@ -42,7 +41,6 @@ Instantiation Template
       // Configuration
       .boot_addr_i              (),
       .mtvec_addr_i             (),
-      .nmi_addr_i               (),
       .dm_halt_addr_i           (),
       .dm_exception_addr_i      (),
       .mhartid_i                (),
@@ -164,11 +162,6 @@ Parameters
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``ZC_EXT``                     | bit            | 0             | Enable Zca, Zcb, Zcmb, Zcmp, Zcmt extension support.               |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``USE_DEPRECATED_FEATURE_SET`` | bit            | 1             | Use deprecated ``nmi_addr_i`` input and use 8 instead of 11 bits   |
-|                                |                |               | for the **EXCCODE** in ``mcause``.                                 |
-|                                |                |               | Can be removed when relative nmi address and                       |
-|                                |                |               | 11 bit exception code is supported in core-v-verif.                |
-+--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``           | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                                |                |               | :ref:`performance-counters`                                        |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
@@ -214,11 +207,6 @@ Interfaces
 |                         |                         |     | address part of :ref:`csr-mtvec`.          |
 |                         |                         |     | Must be 128-byte aligned                   |
 |                         |                         |     | (i.e. ``mtvec_addr_i[6:0]`` = 0).          |
-|                         |                         |     | Do not change after enabling core          |
-|                         |                         |     | via ``fetch_enable_i``                     |
-+-------------------------+-------------------------+-----+--------------------------------------------+
-| ``nmi_addr_i``          | 32                      | in  | ``NMI`` address. Target address for NMIs.  |
-|                         |                         |     | Must be word aligned.                      |
 |                         |                         |     | Do not change after enabling core          |
 |                         |                         |     | via ``fetch_enable_i``                     |
 +-------------------------+-------------------------+-----+--------------------------------------------+
