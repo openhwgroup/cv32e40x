@@ -181,7 +181,7 @@ Parameters
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``SMCLIC``                     | int (0..1 )    | 0             | Is Smclic supported?                                               |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``SMCLIC_ID_WIDTH``            | int (6..10 )   | 6             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
+| ``SMCLIC_ID_WIDTH``            | int (5..10 )   | 5             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
 |                                |                |               | number of supported interrupts in CLIC mode is                     |
 |                                |                |               | ``2^SMCLIC_ID_WIDTH``. Trap vector table alignment is restricted   |
 |                                |                |               | to at least ``2^(2+SMCLIC_ID_WIDTH)``, see :ref:`csr-mtvt`.        |
