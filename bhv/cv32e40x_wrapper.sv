@@ -61,7 +61,7 @@ module cv32e40x_wrapper
   parameter bit          ZC_EXT                       = 0,
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
-  parameter int          SMCLIC_ID_WIDTH              = 6,
+  parameter int          SMCLIC_ID_WIDTH              = 5,
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
