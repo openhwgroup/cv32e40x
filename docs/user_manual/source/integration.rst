@@ -31,7 +31,7 @@ Instantiation Template
       .PMA_NUM_REGIONS            (         1 ),
       .PMA_CFG                    ( PMA_CFG[] ),
       .SMCLIC                     (         0 ),
-      .SMCLIC_ID_WIDTH            (         0 )
+      .SMCLIC_ID_WIDTH            (         5 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -89,12 +89,9 @@ Instantiation Template
 
       .clic_irq_i               (),
       .clic_irq_id_i            (),
-      .clic_irq_il_i            (),
+      .clic_irq_level_i         (),
       .clic_irq_priv_i          (),
-      .clic_irq_hv_i            (),
-      .clic_irq_id_o            (),
-      .clic_irq_mode_o          (),
-      .clic_irq_exit_o          (),
+      .clic_irq_shv_i           (),
 
       // Fencei flush handshake
       .fencei_flush_req_o       (),
@@ -174,10 +171,10 @@ Parameters
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``SMCLIC``                     | int (0..1 )    | 0             | Is Smclic supported?                                               |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``SMCLIC_ID_WIDTH``            | int (5..10 )   | 5             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
+| ``SMCLIC_ID_WIDTH``            | int (1..10 )   | 5             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
 |                                |                |               | number of supported interrupts in CLIC mode is                     |
 |                                |                |               | ``2^SMCLIC_ID_WIDTH``. Trap vector table alignment is restricted   |
-|                                |                |               | to at least ``2^(2+SMCLIC_ID_WIDTH)``, see :ref:`csr-mtvt`.        |
+|                                |                |               | as described ub :ref:`csr-mtvt`.                                   |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
 
@@ -235,7 +232,7 @@ Interfaces
 +-------------------------+----------------------------------------------------------------------------+
 | ``irq_*``               | Interrupt inputs, see :ref:`exceptions-interrupts`                         |
 +-------------------------+----------------------------------------------------------------------------+
-| ``clic_*``              | CLIC interface, see :ref:`exceptions-interrupts`                           |
+| ``clic_*_i``            | CLIC interface, see :ref:`exceptions-interrupts`                           |
 +-------------------------+----------------------------------------------------------------------------+
 | ``debug_*``             | Debug interface, see :ref:`debug-support`                                  |
 +-------------------------+-------------------------+-----+--------------------------------------------+

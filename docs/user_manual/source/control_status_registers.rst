@@ -653,18 +653,16 @@ Detailed:
 +-------------+------------+-----------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                 |
 +=============+============+=======================================================================+
-| 31:7        | WARL       | **BASE[31:7]**: Trap-handler vector table base address.               |
+| 31:6        | WARL       | **BASE[31:6]**: Trap-handler vector table base address.               |
 |             |            | See note below for alignment restrictions.                            |
-+-------------+------------+-----------------------------------------------------------------------+
-| 6           | WARL (0x0) | **BASE[6]**: Trap-handler vector table base address.                  |
 +-------------+------------+-----------------------------------------------------------------------+
 | 5:0         | R (0x0)    | Reserved. Hardwired to 0.                                             |
 +-------------+------------+-----------------------------------------------------------------------+
 
 .. note::
-   The ``mtvt`` CSR holds the base address of the trap vector table, aligned on a ``2^(2+SMCLIC_ID_WIDTH)`` bytes or greater
-   power-of-two boundary. For example if ``SMCLIC_ID_WIDTH`` = 8, then 256 CLIC interrupts are supported and the trap vector table
-   is aligned to 1024 bytes, and therefore **BASE[9:7]** will be WARL (0x0).
+   The ``mtvt`` CSR holds the base address of the trap vector table, which has its alignment restricted to both at least 64-bytes and to
+   ``2^(2+SMCLIC_ID_WIDTH)`` bytes or greater power-of-two boundary. For example if ``SMCLIC_ID_WIDTH`` = 8, then 256 CLIC interrupts are supported and the trap vector table
+   is aligned to 1024 bytes, and therefore **BASE[9:6]** will be WARL (0x0).
 
 Machine Status (``mstatush``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
