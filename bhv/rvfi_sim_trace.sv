@@ -60,12 +60,14 @@ module rvfi_sim_trace
 
   // Populate itrace based on retired instruction
   always_comb begin
-    if (rvfi_valid && ^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
-      // Pick trace from instruction map
-      itrace = imap[rvfi_pc_rdata];
-    end
-    else begin
-      itrace = TRACE_UNKNOWN;
+    if (rvfi_valid) begin
+      if (^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
+        // Pick trace from instruction map
+        itrace = imap[rvfi_pc_rdata];
+      end
+      else begin
+        itrace = TRACE_UNKNOWN;
+      end
     end
   end
 
