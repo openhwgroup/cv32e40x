@@ -54,6 +54,20 @@ The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mo
 
 Whenever |corev| has a pending NMI, the ``rvfi_nmip`` will signal this. ``rvfi_nmip[0]`` will be 1 whenever an NMI is pending, while ``rvfi_nmip[1]`` will be 0 for loads and 1 for stores.
 
+
+**Sleep Signals**
+
+.. code-block:: verilog
+
+   output [NRET - 1 : 0] rvfi_wu
+   output [NRET - 1 : 0] rvfi_sleep
+
+These signals report the sleep state of the core.
+``rvfi_sleep`` is set on the last instruction before the core enters sleep mode and
+``rvfi_wu`` is set for the first instruction executed after waking up.
+
+
+
 Compatibility
 -------------
 
