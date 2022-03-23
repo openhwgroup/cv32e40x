@@ -57,16 +57,33 @@ Whenever |corev| has a pending NMI, the ``rvfi_nmip`` will signal this. ``rvfi_n
 
 **Sleep Signals**
 
+These signals report core sleep and wakeup information.
+
 .. code-block:: verilog
 
-   output [NRET - 1 : 0] rvfi_wu
-   output [NRET - 1 : 0] rvfi_sleep
-
-These signals report the sleep state of the core.
-``rvfi_sleep`` is set on the last instruction before the core enters sleep mode and
-``rvfi_wu`` is set for the first instruction executed after waking up.
+   output rvfi_wu_t [NRET - 1 : 0] rvfi_wu
+   output logic     [NRET - 1 : 0] rvfi_sleep
 
 
+Where the rvfi_wu_t struct contains following fields:
+
+.. table:: RVFI wu type
+  :name: RVFI wu type
+
+  =================  ============  =======
+  Field              Type          Bits
+  =================  ============  =======
+  wu                 logic         [0]
+  interrupt          logic         [1]
+  debug              logic         [2]
+  cause              logic [10:0]  [13:3]
+  =================  ============  =======
+
+``rvfi_sleep`` is set on the last instruction before the core enters sleep mode.
+``rvfi_wu.wu`` is set for the first instruction executed after waking up.
+``rvfi_wu.interrupt`` is set if the wakeup was caused by an interrupt, and
+``rvfi_wu.debug`` is set if the wakeup was caused by a debug request.
+``rvfi_wu.cause`` signals the wakeup cause exception code.
 
 Compatibility
 -------------
