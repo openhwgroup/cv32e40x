@@ -196,13 +196,13 @@ instruction exception.
 
 .. only:: USER
 
-  .. table:: Control and Status Register Map (additional CSRs for User mode)
-    :name: Control and Status Register Map (additional CSRs for User mode)
+  .. table:: Control and Status Register Map (additional CSRs for User mode support)
+    :name: Control and Status Register Map (additional CSRs for User mode support)
 
     +-------------------+----------------+------------+------------+----------------------------------------------------+
     | CSR address       |   Name         | Privilege  | Parameter  |   Description                                      |
     +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | User CSRs                                                                                                         |
+    | Machine CSRs                                                                                                      |
     +===================+================+============+============+====================================================+
     | 0x306             | ``mcounteren`` | MRW        |            | Machine Counter Enable                             |
     +-------------------+----------------+------------+------------+----------------------------------------------------+
