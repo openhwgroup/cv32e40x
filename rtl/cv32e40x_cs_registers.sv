@@ -534,6 +534,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_n              = csr_wdata_int;
     dscratch1_we             = 1'b0;
 
+    // todo: when SD/XS/FS/VS are implemented, a write to mcause.mpp/mpie
+    //       must be handled correctly to not corrupt the mentioned bitfields.
     mstatus_n                = '{
                               tw:   1'b0,
                               mprv: 1'b0,
