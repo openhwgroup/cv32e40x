@@ -534,16 +534,33 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_n              = csr_wdata_int;
     dscratch1_we             = 1'b0;
 
-    // todo: when SD/XS/FS/VS are implemented, a write to mcause.mpp/mpie
-    //       must be handled correctly to not corrupt the mentioned bitfields.
-    mstatus_n                = '{
-                              tw:   1'b0,
-                              mprv: 1'b0,
-                              mpp:  PRIV_LVL_M,
-                              mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-                              mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-                              default: 'b0
-                            };
+    if (SMCLIC) begin
+      // SMCLIC: A write to mcause.mpp or mcause.mpie is stored in mstatus
+      if(mcause_we) begin
+        mstatus_n           = mstatus_q;
+        mstatus_n.mpp       = PRIV_LVL_M;
+        mstatus_n.mpie      = csr_wdata_int[MCAUSE_MPIE_BIT];
+      end else begin
+        // TODO: add support for SD/XS/FS/VS
+        mstatus_n              = '{
+                                    tw:   1'b0,
+                                    mprv: 1'b0,
+                                    mpp:  PRIV_LVL_M,
+                                    mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                                    mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                                    default: 'b0
+                                  };
+      end
+    end else begin
+      mstatus_n                = '{
+                                tw:   1'b0,
+                                mprv: 1'b0,
+                                mpp:  PRIV_LVL_M,
+                                mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                                mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                                default: 'b0
+                              };
+      end // SMCLIC
     mstatus_we               = 1'b0;
 
     // SMCLIC: Not setting mpp or mpie, as these are stored in mstatus

@@ -468,6 +468,8 @@ parameter NUM_HPM_EVENTS    =   16;
 parameter MSTATUS_MIE_BIT      = 3;
 parameter MSTATUS_MPIE_BIT     = 7;
 
+parameter MCAUSE_MPIE_BIT      = 27;
+
 // misa
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
 
