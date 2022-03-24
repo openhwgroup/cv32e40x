@@ -284,7 +284,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MISA: csr_rdata_int = MISA_VALUE;
 
       // mie: machine interrupt enable
-      CSR_MIE: csr_rdata_int = mie_q;
+      CSR_MIE: begin
+        if (SMCLIC) begin
+          // CLIC mode is assumed when SMCLIC = 1
+          csr_rdata_int = '0;
+        end else begin
+         csr_rdata_int = mie_q;
+        end
+      end
 
       // mtvec: machine trap-handler base address
       CSR_MTVEC: csr_rdata_int = mtvec_q;
@@ -323,7 +330,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       // mip: interrupt pending
-      CSR_MIP: csr_rdata_int = mip;
+      CSR_MIP: begin
+        // CLIC mode is assumed when SMCLIC = 1
+        if (SMCLIC) begin
+          csr_rdata_int = '0;
+        end else begin
+          csr_rdata_int = mip;
+        end
+      end
 
       // mnxti: Next Interrupt Handler Address and Interrupt Enable
       CSR_MNXTI: begin
@@ -605,7 +619,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
         // mie: machine interrupt enable
         CSR_MIE: begin
-              mie_we = 1'b1;
+          // CLIC mode is assumed when SMCLIC = 1
+          if (!SMCLIC) begin
+            mie_we = 1'b1;
+          end
         end
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
