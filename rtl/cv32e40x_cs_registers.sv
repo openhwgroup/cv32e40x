@@ -308,6 +308,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       // mcause: exception cause
       CSR_MCAUSE: begin
         if (SMCLIC) begin
+          // CLIC mode is assumed when SMCLIC = 1
           // For CLIC, the mpp and mpie bits from mstatus
           // are readable via mcause
           csr_rdata_int = {
@@ -534,33 +535,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_n              = csr_wdata_int;
     dscratch1_we             = 1'b0;
 
+    // TODO: add support for SD/XS/FS/VS
+    mstatus_n                = '{
+                                  tw:   1'b0,
+                                  mprv: 1'b0,
+                                  mpp:  PRIV_LVL_M,
+                                  mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                                  mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                                  default: 'b0
+                                };
+    // CLIC mode is assumed when SMCLIC = 1
+    // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
     if (SMCLIC) begin
-      // SMCLIC: A write to mcause.mpp or mcause.mpie is stored in mstatus
-      if(mcause_we) begin
-        mstatus_n           = mstatus_q;
-        mstatus_n.mpp       = PRIV_LVL_M;
-        mstatus_n.mpie      = csr_wdata_int[MCAUSE_MPIE_BIT];
-      end else begin
-        // TODO: add support for SD/XS/FS/VS
-        mstatus_n              = '{
-                                    tw:   1'b0,
-                                    mprv: 1'b0,
-                                    mpp:  PRIV_LVL_M,
-                                    mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-                                    mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-                                    default: 'b0
-                                  };
+      if (mcause_we) begin
+        mstatus_n      = mstatus_q; // Preserve all fields
+
+        // Write mpie and mpp as aliased through mcause
+        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
+        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
       end
-    end else begin
-      mstatus_n                = '{
-                                tw:   1'b0,
-                                mprv: 1'b0,
-                                mpp:  PRIV_LVL_M,
-                                mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-                                mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-                                default: 'b0
-                              };
-      end // SMCLIC
+    end
+
     mstatus_we               = 1'b0;
 
     // SMCLIC: Not setting mpp or mpie, as these are stored in mstatus
@@ -633,6 +628,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mcause
         CSR_MCAUSE: begin
             mcause_we = 1'b1;
+            // CLIC mode is assumed when SMCLIC = 1
             // For CLIC, a write to mcause.mpp or mcause.mpie will write to the
             // corresponding bits in mstatus as well.
             if (SMCLIC) begin
