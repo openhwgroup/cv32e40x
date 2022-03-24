@@ -244,7 +244,8 @@ module cv32e40x_wrapper
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
       #(.A_EXT(A_EXT),
-        .PMA_NUM_REGIONS(PMA_NUM_REGIONS))
+        .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
+        .SMCLIC(SMCLIC))
       core_sva (// probed cs_registers signals
                 .cs_registers_mie_q               (core_i.cs_registers_i.mie_q),
                 .cs_registers_mepc_n              (core_i.cs_registers_i.mepc_n),

@@ -27,7 +27,8 @@ module cv32e40x_core_sva
   import cv32e40x_pkg::*;
   #(
     parameter bit A_EXT = 0,
-    parameter int PMA_NUM_REGIONS = 0
+    parameter int PMA_NUM_REGIONS = 0,
+    parameter bit SMCLIC = 0
   )
   (
   input logic        clk,
@@ -36,6 +37,7 @@ module cv32e40x_core_sva
   input ctrl_fsm_t   ctrl_fsm,
   input logic [4:0]  exc_cause,
   input logic [31:0] mie,
+  input logic [31:0] mip,
   input dcsr_t       dcsr,
   input              if_id_pipe_t if_id_pipe,
   input              id_stage_multi_cycle_id_stall,
@@ -66,7 +68,23 @@ module cv32e40x_core_sva
   input mstatus_t    cs_registers_mstatus_q);
 
 
+if(SMCLIC) begin
+  property p_clic_mie_tieoff;
+    @(posedge clk)
+    |mie == 1'b0;
+  endproperty
 
+  a_clic_mie_tieoff : assert property(p_clic_mie_tieoff) else `uvm_error("core", "MIE not tied to 0 in CLIC mode")
+
+  property p_clic_mip_tieoff;
+    @(posedge clk)
+    |mip == 1'b0;
+  endproperty
+
+  a_clic_mip_tieoff : assert property(p_clic_mip_tieoff) else `uvm_error("core", "MIP not tied to 0 in CLIC mode")
+
+  //todo: add CLIC related assertions (level thresholds etc)
+end else begin
   // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
   // The actual mie_n value may be different from mie_q if mie is not
   // written to.
@@ -86,7 +104,7 @@ module cv32e40x_core_sva
   endproperty
 
   a_irq_enabled_1 : assert property(p_irq_enabled_1) else `uvm_error("core", "Assertion a_irq_enabled_1 failed")
-
+end // SMCLIC
 
 // First illegal instruction decoded
 logic         first_illegal_found;
