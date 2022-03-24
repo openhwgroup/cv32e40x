@@ -857,19 +857,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
-    .RESETVALUE (32'd0)
-  ) mie_csr_i (
-    .clk      (clk),
-    .rst_n     (rst_n),
-    .wr_data_i  (mie_n),
-    .wr_en_i    (mie_we),
-    .rd_data_o  (mie_q),
-    .rd_error_o (mie_rd_error)
-  );
-
-  cv32e40x_csr #(
-    .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (MSTATUS_RESET_VAL)
   ) mstatus_csr_i (
     .clk      (clk),
@@ -986,7 +973,22 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_error_o (mclicbase_rd_error)
       );
 
+      assign mie_q  = 32'h0;
+
     end else begin
+      // Only include mie CSR when SMCLIC = 0
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'd0)
+      ) mie_csr_i (
+        .clk      (clk),
+        .rst_n     (rst_n),
+        .wr_data_i  (mie_n),
+        .wr_en_i    (mie_we),
+        .rd_data_o  (mie_q),
+        .rd_error_o (mie_rd_error)
+      );
       assign mtvt_q              = 32'h0;
       assign mtvt_rd_error       = 1'b0;
       assign mnxti_q             = 32'h0;

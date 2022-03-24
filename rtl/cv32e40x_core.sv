@@ -758,7 +758,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Register File read, write back and forwards
     .rf_re_id_i                     ( rf_re_id               ),
     .rf_raddr_id_i                  ( rf_raddr_id            ),
-    
+
     // Fencei flush handshake
     .fencei_flush_ack_i             ( fencei_flush_ack_i     ),
     .fencei_flush_req_o             ( fencei_flush_req_o     ),
@@ -790,26 +790,36 @@ module cv32e40x_core import cv32e40x_pkg::*;
   //  \___/_| |_|\__(_)  \____/\___/|_| |_|\__|_|  \___/|_|_|\___|_|    //
   //                                                                    //
   ////////////////////////////////////////////////////////////////////////
+  generate
+    if (SMCLIC) begin : gen_clic_interrupt
+      // Todo: instantiate cv32e40x_clic_int_controller
+      // For now just tie off outputs
+      assign irq_req_ctrl = '0;
+      assign irq_id_ctrl  = '0;
+      assign irq_wu_ctrl  = '0;
+      assign mip          = '0;
+    end else begin : gen_basic_interrupt
+      cv32e40x_int_controller
+      int_controller_i
+      (
+        .clk                  ( clk                ),
+        .rst_n                ( rst_ni             ),
 
-  cv32e40x_int_controller
-  int_controller_i
-  (
-    .clk                  ( clk                ),
-    .rst_n                ( rst_ni             ),
+        // External interrupt lines
+        .irq_i                ( irq_i              ),
 
-    // External interrupt lines
-    .irq_i                ( irq_i              ),
+        // To cv32e40x_controller
+        .irq_req_ctrl_o       ( irq_req_ctrl       ),
+        .irq_id_ctrl_o        ( irq_id_ctrl        ),
+        .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
-    // To cv32e40x_controller
-    .irq_req_ctrl_o       ( irq_req_ctrl       ),
-    .irq_id_ctrl_o        ( irq_id_ctrl        ),
-    .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
-
-    // To/from with cv32e40x_cs_registers
-    .mie_i                ( mie                ),
-    .mip_o                ( mip                ),
-    .m_ie_i               ( m_irq_enable       )
-  );
+        // To/from with cv32e40x_cs_registers
+        .mie_i                ( mie                ),
+        .mip_o                ( mip                ),
+        .m_ie_i               ( m_irq_enable       )
+      );
+    end
+  endgenerate
 
     /////////////////////////////////////////////////////////
   //  ____  _____ ____ ___ ____ _____ _____ ____  ____   //
