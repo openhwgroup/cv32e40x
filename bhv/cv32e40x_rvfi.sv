@@ -74,6 +74,7 @@ module cv32e40x_rvfi
    input logic                                wb_valid_i,
    input logic                                ebreak_in_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
+   input logic                                csr_en_wb_i,
    // Register writes
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
@@ -85,12 +86,20 @@ module cv32e40x_rvfi
 
    input                                      privlvl_t priv_lvl_i,
 
-   // Controller FSM probe
+   // Controller FSM probes
    input ctrl_fsm_t                           ctrl_fsm_i,
+   input ctrl_state_e                         ctrl_fsm_cs_i,
+   input ctrl_state_e                         ctrl_fsm_ns_i,
    input logic                                pending_single_step_i,
    input logic                                single_step_allowed_i,
    input logic                                nmi_pending_i,
    input logic                                nmi_is_store_i,
+   input logic                                pending_debug_i,
+   input logic                                debug_mode_q_i,
+
+   // Interrupt Controller probes
+   input logic                                irq_wu_ctrl_i,
+   input logic [4:0]                          irq_id_ctrl_i,
 
    //// CSR Probes ////
    input                                      jvt_t csr_jvt_n_i,
@@ -222,6 +231,9 @@ module cv32e40x_rvfi
 
    output logic [ 2:0]                        rvfi_dbg,
    output logic [ 0:0]                        rvfi_dbg_mode,
+
+   output rvfi_wu_t                           rvfi_wu,
+   output logic [ 0:0]                        rvfi_sleep,
 
    output logic [ 4:0]                        rvfi_rd_addr,
    output logic [31:0]                        rvfi_rd_wdata,
@@ -514,8 +526,6 @@ module cv32e40x_rvfi
   logic [31:0]       mhpmcounter_h_during_wb;
 
 
-
-
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         pc_mux_debug;
@@ -570,6 +580,34 @@ module cv32e40x_rvfi
   // This is done to avoid reporting already signaled triggers as supressed during by debug
   assign in_trap_clr = wb_valid_i && in_trap[STAGE_WB].intr;
 
+
+  // Store information about wakeup until fist instruction is retired
+  // This information needs to be stored at the wakeup because other interrupts
+  // can be triggered between wakeup and the first instruction executed after wakeup
+  rvfi_wu_t     rvfi_wu_next;
+  logic         store_irq_wu_cause;
+
+  assign rvfi_wu_next.wu = rvfi_sleep; // If sleep is still set, it is the firs instruction after wakeup
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      store_irq_wu_cause     <= 1'b0;
+      rvfi_wu_next.interrupt <= 1'b0;
+      rvfi_wu_next.debug     <= 1'b0;
+      rvfi_wu_next.cause     <= '0;
+    end else begin
+      // Store wake-up sources when core exits sleep
+      if ((ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i != SLEEP)) begin
+        rvfi_wu_next.interrupt <= irq_wu_ctrl_i;
+        store_irq_wu_cause     <= irq_wu_ctrl_i;
+        rvfi_wu_next.debug     <= pending_debug_i || debug_mode_q_i;
+      end
+      // IRQ cause is flopped and is therefore one cycle behind wakeup triggers
+      if (store_irq_wu_cause) begin
+        store_irq_wu_cause <= 1'b0;
+        rvfi_wu_next.cause <= {'0, irq_id_ctrl_i}; // NMIs will not wake up the core
+      end
+    end
+  end
 
   // Set rvfi_trap for instructions causing exception or debug entry.
   rvfi_trap_t  rvfi_trap_next;
@@ -645,6 +683,8 @@ module cv32e40x_rvfi
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
       rvfi_dbg_mode      <= '0;
+      rvfi_wu            <= '0;
+      rvfi_sleep         <= 1'b0;
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
@@ -817,11 +857,16 @@ module cv32e40x_rvfi
         rvfi_dbg       <= debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= debug_mode [STAGE_WB];
 
+        rvfi_sleep     <= (ctrl_fsm_ns_i == SLEEP);
+        rvfi_wu        <= rvfi_wu_next;
+
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
         rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? branch_addr_n_i & ~32'b1 :
                          (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
+      end else begin // if (wb_valid_i)
+        rvfi_sleep    <= rvfi_sleep; // Keep sleep signal asserted until next valid WB
       end
 
     end
@@ -965,7 +1010,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mtval              = '0;
 
   assign ex_csr_rdata_d.mip                  = csr_mip_q_i;
-  assign rvfi_csr_rdata_d.mip                = ex_csr_rdata.mip;
+  assign rvfi_csr_rdata_d.mip                = csr_en_wb_i ? ex_csr_rdata.mip : csr_mip_q_i;
   assign rvfi_csr_wdata_d.mip                = csr_mip_n_i;
   assign rvfi_csr_wmask_d.mip                = csr_mip_we_i ? '1 : '0;
 
