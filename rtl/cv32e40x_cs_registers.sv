@@ -53,7 +53,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // MTVEC
   output logic [24:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
-  
+
   // Cycle Count
   output logic [MHPMCOUNTER_WIDTH-1:0] mcycle_o,
 
@@ -61,7 +61,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [31:0]     mtvec_addr_i,
   input  logic            csr_mtvec_init_i,
 
-  // ID/EX pipeline 
+  // ID/EX pipeline
   input id_ex_pipe_t      id_ex_pipe_i,
 
   // EX/WB pipeline
@@ -72,7 +72,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // To controller bypass logic
   output logic            csr_counter_read_o,
- 
+
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
 
@@ -83,7 +83,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     mie_o,
   input  logic [31:0]     mip_i,
   output logic            m_irq_enable_o,
-  
+
   output logic [31:0]     mepc_o,
 
   // debug
@@ -93,7 +93,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   input  logic [31:0]     pc_if_i
 );
-  
+
   localparam logic [31:0] CORE_MISA =
   (32'(A_EXT)      <<  0)  // A - Atomic Instructions extension
 | (32'(1)          <<  2)  // C - Compressed extension
@@ -224,7 +224,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // CSR write operations in WB, actual csr_we_int may still become 1'b0 in case of CSR_OP_READ
   assign csr_en_gated    = ex_wb_pipe_i.csr_en && instr_valid;
-    
+
   // mip CSR
   assign mip = mip_i;
 
@@ -306,7 +306,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MEPC: csr_rdata_int = mepc_q;
 
       // mcause: exception cause
-      CSR_MCAUSE: csr_rdata_int = mcause_q;
+      CSR_MCAUSE: begin
+        if (SMCLIC) begin
+          // CLIC mode is assumed when SMCLIC = 1
+          // For CLIC, the mpp and mpie bits from mstatus
+          // are readable via mcause
+          csr_rdata_int = {
+                            mcause_q[31:30],
+                            mstatus_q.mpp,   // 29:28
+                            mstatus_q.mpie,  // 27
+                            mcause_q[26:0]
+                          };
+        end else begin
+          csr_rdata_int = mcause_q;
+        end
+      end
 
       // mip: interrupt pending
       CSR_MIP: csr_rdata_int = mip;
@@ -503,7 +517,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mepc_n                   = csr_wdata_int & ~32'b1;
     mepc_we                  = 1'b0;
     dpc_n                    = csr_wdata_int & ~32'b1;
-    dpc_we                   = 1'b0; 
+    dpc_we                   = 1'b0;
 
     dcsr_n                   = '{
                                 xdebugver : dcsr_q.xdebugver,
@@ -521,16 +535,30 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_n              = csr_wdata_int;
     dscratch1_we             = 1'b0;
 
+    // TODO: add support for SD/XS/FS/VS
     mstatus_n                = '{
-                              tw:   1'b0,
-                              mprv: 1'b0,
-                              mpp:  PRIV_LVL_M,
-                              mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-                              mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-                              default: 'b0
-                            };
+                                  tw:   1'b0,
+                                  mprv: 1'b0,
+                                  mpp:  PRIV_LVL_M,
+                                  mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                                  mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                                  default: 'b0
+                                };
+    // CLIC mode is assumed when SMCLIC = 1
+    // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
+    if (SMCLIC) begin
+      if (mcause_we) begin
+        mstatus_n      = mstatus_q; // Preserve all fields
+
+        // Write mpie and mpp as aliased through mcause
+        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
+        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
+      end
+    end
+
     mstatus_we               = 1'b0;
 
+    // SMCLIC: Not setting mpp or mpie, as these are stored in mstatus
     mcause_n                 = '{
                                   irq:            csr_wdata_int[31],
                                   exception_code: csr_wdata_int[10:0],
@@ -559,7 +587,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mscratchcswl_we          = 1'b0;
     mie_n                    = csr_wdata_int & IRQ_MASK;
     mie_we                   = 1'b0;
-  
+
     if (csr_we_int) begin
       case (csr_waddr)
         // jvt: Jump vector table
@@ -598,8 +626,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               mepc_we = 1'b1;
         end
         // mcause
-        CSR_MCAUSE: begin 
-                mcause_we = 1'b1;
+        CSR_MCAUSE: begin
+            mcause_we = 1'b1;
+            // CLIC mode is assumed when SMCLIC = 1
+            // For CLIC, a write to mcause.mpp or mcause.mpie will write to the
+            // corresponding bits in mstatus as well.
+            if (SMCLIC) begin
+              mstatus_we = 1'b1;
+            end
         end
         CSR_MNXTI: begin
           if (SMCLIC) begin
@@ -638,7 +672,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_DSCRATCH1: begin
                 dscratch1_we = 1'b1;
         end
-                
+
       endcase
     end
 
@@ -842,7 +876,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_error_o (mcause_rd_error)
   );
 
-  
+
 
   cv32e40x_csr #(
     .WIDTH      (32),
@@ -953,16 +987,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // IRQ enable
   assign m_irq_enable_o  = mstatus_q.mie;
-  
+
   assign mtvec_addr_o    = mtvec_q.addr;
   assign mtvec_mode_o    = mtvec_q.mode;
-  
+
   assign mepc_o          = mepc_q;
   assign dpc_o           = dpc_q;
   assign dcsr_o          = dcsr_q;
 
   assign mie_o = mie_q;
-  
+
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
   assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
 
@@ -975,7 +1009,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
  //                         |___/               |___/ |___/            //
  ////////////////////////////////////////////////////////////////////////
 
-  
+
   // Write select
   assign tmatch_control_we = csr_we_int && ctrl_fsm_i.debug_mode && (csr_waddr == CSR_TDATA1);
   assign tmatch_value_we   = csr_we_int && ctrl_fsm_i.debug_mode && (csr_waddr == CSR_TDATA2);
@@ -1005,7 +1039,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               1'b0,                  // store   : not supported
               1'b0};                 // load    : not supported
 
-  assign tmatch_value_n = csr_wdata_int; 
+  assign tmatch_value_n = csr_wdata_int;
 
   cv32e40x_csr #(
     .WIDTH      (32),
@@ -1018,8 +1052,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .wr_en_i    (tmatch_control_we),
     .rd_data_o  (tmatch_control_q),
     .rd_error_o (tmatch_control_rd_error)
-  );   
-  
+  );
+
   cv32e40x_csr #(
     .WIDTH      (32),
     .SHADOWCOPY (1'b0),
@@ -1031,7 +1065,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .wr_en_i    (tmatch_value_we),
     .rd_data_o  (tmatch_value_q),
     .rd_error_o (tmatch_value_rd_error)
-  );  
+  );
 
 
   // Breakpoint matching
@@ -1060,10 +1094,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Flop certain events to ease timing
   localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;
   localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
-  
+
   logic [15:0]          hpm_events_raw;
   logic                 all_counters_disabled;
-  
+
   assign all_counters_disabled = &(mcountinhibit_n | ~MCOUNTINHIBIT_MASK);
 
   genvar                hpm_idx;
@@ -1159,7 +1193,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mcountinhibit_n = mcountinhibit_q;
       mhpmevent_n     = mhpmevent_q;
 
-      
+
       // Inhibit Control
       if(mcountinhibit_we)
         mcountinhibit_n = csr_wdata_int & MCOUNTINHIBIT_MASK;
@@ -1181,7 +1215,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                                   csr_we_int && (csr_waddr == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
 
       // Increment counter
-      
+
       if (wcnt_gidx == 0) begin : gen_mhpmcounter_mcycle
         // mcycle = mhpmcounter[0] : count every cycle (if not inhibited)
         assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
@@ -1202,7 +1236,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end else begin : gen_mhpmcounter_not_implemented
         assign mhpmcounter_write_increment[wcnt_gidx] = 1'b0;
       end
-       
+
     end
   endgenerate
 
