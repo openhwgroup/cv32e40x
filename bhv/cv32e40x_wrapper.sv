@@ -367,6 +367,7 @@ module cv32e40x_wrapper
          .wb_ready_i               ( core_i.wb_stage_i.wb_ready_o                                         ),
          .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
          .csr_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.csr_en                                ),
+         .sys_wfi_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.sys_wfi_insn                          ),
          .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
@@ -424,6 +425,7 @@ module cv32e40x_wrapper
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          .pending_debug_i          ( core_i.controller_i.controller_fsm_i.pending_debug                   ),
          .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
+         .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),
          .irq_wu_ctrl_i            ( core_i.irq_wu_ctrl                                                   ),
          .irq_id_ctrl_i            ( core_i.irq_id_ctrl                                                   ),
          // CSRs

@@ -198,11 +198,11 @@ module cv32e40x_rvfi_sva
                      (rvfi_wu.wu && rvfi_valid) |-> previous_instruction_was_sleep)
       else `uvm_error("rvfi", "rvfi_wu asserted without a previous rvfi_sleep")
 
-  // Check that the last instruction before core_sleep_o had rvfi_sleep set
-  a_always_core_sleep_always_preceeded_by_instr_with_rvfi_sleep:
+  // Check that the last instruction before (or at the same time as) core_sleep_o goes high has rvfi_sleep set
+  a_core_sleep_always_preceeded_by_instr_with_rvfi_sleep:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     core_sleep_i |-> previous_instruction_was_sleep)
-      else `uvm_error("rvfi", "The instruction before asserted core_sleep_o did not have rvfi_sleep set")
+                     core_sleep_i |-> (rvfi_sleep || previous_instruction_was_sleep))
+      else `uvm_error("rvfi", "The last instruction before asserted core_sleep_o did not have rvfi_sleep set")
 
   // Check that rvfi_sleep is always set when the core is sleeping
   // This assertion is stricter than needed (behavior only specified for valid insructions)
