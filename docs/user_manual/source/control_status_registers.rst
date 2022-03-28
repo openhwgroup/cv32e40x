@@ -653,8 +653,15 @@ Detailed:
 +-------------+------------+-----------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                 |
 +=============+============+=======================================================================+
-| 31:6        | WARL       | **BASE[31:6]**: Trap-handler vector table base address.               |
+| 31:N        | RW         | **BASE[31:N]**: Trap-handler vector table base address.               |
+|             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
 |             |            | See note below for alignment restrictions.                            |
++-------------+------------+-----------------------------------------------------------------------+
+| N-1:6       | WARL (0x0) | **BASE[N-1:6]**: Trap-handler vector table base address.              |
+|             |            | This field is only defined if N > 6.                                  |
+|             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
+|             |            | ``mtvt[N-1:6]`` is hardwired to 0x0.                                  |
+|             |            | See note below for  alignment restrictions.                           |
 +-------------+------------+-----------------------------------------------------------------------+
 | 5:0         | R (0x0)    | Reserved. Hardwired to 0.                                             |
 +-------------+------------+-----------------------------------------------------------------------+
