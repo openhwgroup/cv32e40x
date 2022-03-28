@@ -282,10 +282,10 @@ level):
   operation of the core.
 
 * **WARL**: **write-any-read-legal** fields store only legal values written by CSR writes.
-  For example, a WARL (0x0) field supports only the value 0. Any value may be written, but
-  all reads would return zero regardless of the value being written to it. A WARL field may
-  support more than one value. If an unsupported value is written to such a field, subsequent
-  reads will return the value marked with an asterix (6* for example) in the definiton of that field.
+  For example, a WARL (0x0) field supports only the value 0x0. Any value may be written, but
+  all reads would return 0x0 regardless of the value being written to it. A WARL field may
+  support more than one value. If an unsupported value is (attempted to be) written to a WARL field, the original (legal) value
+  of the bitfield is preserved.
 
 * **WPRI**: Software should ignore values read from these fields, and preserve the values when writing.
 
@@ -603,7 +603,7 @@ Detailed:
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 | 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-| 1:0     | WARL (0x0*, 0x1) | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
+| 1:0     | WARL (0x0, 0x1)  | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
 The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
@@ -1127,10 +1127,8 @@ Reset Value: 0x0000_0000
 |   Bit #     |   R/W                              |   Description                                                                          |
 +=============+====================================+========================================================================================+
 || 31:0       || WARL                              || |corev| implements 0 to ``DBG_NUM_TRIGGERS`` triggers. Selects                        |
-||            || (0x0 - (``DBG_NUM_TRIGGERS``-1)*) || which trigger CSRs are accessed through the tdata* CSRs.                              |
+||            || (0x0 - (``DBG_NUM_TRIGGERS``-1))  || which trigger CSRs are accessed through the tdata* CSRs.                              |
 +-------------+------------------------------------+----------------------------------------------------------------------------------------+
-
-If a value larger than the parameter ``DBG_NUM_TRIGGERS`` is written, the register will contain the value ``DBG_NUM_TRIGGERS`` - 1.
 
 .. _csr-tdata1:
 
@@ -1148,7 +1146,7 @@ value of the **type** field. See [RISC-V-DEBUG]_ for details regarding all trigg
 | Bit#  | R/W         | Description                                                    |
 +=======+=============+================================================================+
 || 31:28|| WARL       || **type:** 6 = Address match trigger type.                     |
-||      || (0x5, 0x6*)||           5 = Exception trigger                               |
+||      || (0x5, 0x6) ||           5 = Exception trigger                               |
 +-------+-------------+----------------------------------------------------------------+
 | 27    | WARL (0x1)  | **dmode:** Only debug mode can write tdata registers           |
 +-------+-------------+----------------------------------------------------------------+
@@ -1193,7 +1191,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 | 11    | WARL (0x0)  | **CHAIN:**. Hardwired to 0                                     |
 +-------+-------------+----------------------------------------------------------------+
 || 10:7 || WARL       || **MATCH:** 0: Address matches `tdata2`.                       |
-||      || (0x0*, 0x2,||            2: Address is greater than or equal to `tdata2`    |
+||      || (0x0, 0x2, ||            2: Address is greater than or equal to `tdata2`    |
 ||      ||  0x3)      ||            3: Address is less than `tdata2`                   |
 +-------+-------------+----------------------------------------------------------------+
 | 6     | WARL (0x1)  | **M:** Match in M-Mode.                                        |
