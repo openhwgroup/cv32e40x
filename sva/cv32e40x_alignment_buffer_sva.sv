@@ -29,6 +29,8 @@ module cv32e40x_alignment_buffer_sva
    input logic [31:0]              branch_addr_i,
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
+   input logic                     fetch_ready_i,
+   input logic                     fetch_data_access_o,
    input logic [2:0] instr_cnt_n,
    input logic [2:0] instr_cnt_q,
    input logic                     instr_valid_o,
@@ -243,6 +245,18 @@ module cv32e40x_alignment_buffer_sva
       assert property(p_rptr2_range)
       else
         `uvm_error("Alignment buffer SVA", "Read pointer(2) illegal value")
+
+  // Shall not fetch anything between pointer fetch and the actual instruction fetch
+  // based on the pointer.
+  property p_single_ptr_fetch;
+    @(posedge clk) disable iff (!rst_n)
+    (fetch_valid_o && fetch_ready_i && fetch_data_access_o) |=> !fetch_valid_o until ctrl_fsm_i.pc_set;
+  endproperty
+
+  a_single_ptr_fetch:
+    assert property(p_single_ptr_fetch)
+    else
+      `uvm_error("Alignment buffer SVA", "Multiple fetches for CLIC/Zce pointer")
 
 endmodule // cv32e40x_alignment_buffer_sva
 

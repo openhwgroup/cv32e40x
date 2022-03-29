@@ -73,15 +73,15 @@ if(SMCLIC) begin
     @(posedge clk)
     |mie == 1'b0;
   endproperty
-
-  a_clic_mie_tieoff : assert property(p_clic_mie_tieoff) else `uvm_error("core", "MIE not tied to 0 in CLIC mode")
+  // todo: include when SMCLIC is done
+  //a_clic_mie_tieoff : assert property(p_clic_mie_tieoff) else `uvm_error("core", "MIE not tied to 0 in CLIC mode")
 
   property p_clic_mip_tieoff;
     @(posedge clk)
     |mip == 1'b0;
   endproperty
-
-  a_clic_mip_tieoff : assert property(p_clic_mip_tieoff) else `uvm_error("core", "MIP not tied to 0 in CLIC mode")
+  // todo: include when SMCLIC is done
+  //a_clic_mip_tieoff : assert property(p_clic_mip_tieoff) else `uvm_error("core", "MIP not tied to 0 in CLIC mode")
 
   //todo: add CLIC related assertions (level thresholds etc)
 end else begin

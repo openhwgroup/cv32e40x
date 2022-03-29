@@ -39,7 +39,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter bit          ZC_EXT           = 0, // todo: remove parameter once fully implemented
   parameter bit          SMCLIC           = 0,
   parameter int          NUM_MHPMCOUNTERS = 1,
-  parameter int          DBG_NUM_TRIGGERS = 1 // todo: implement support for DBG_NUM_TRIGGERS != 1
+  parameter int          DBG_NUM_TRIGGERS = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
+  parameter int unsigned MTVT_ADDR_WIDTH  = 26
 )
 (
   // Clock and Reset
@@ -53,6 +54,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // MTVEC
   output logic [24:0]     mtvec_addr_o,
   output logic  [1:0]     mtvec_mode_o,
+
+  // MTVT
+  output logic [MTVT_ADDR_WIDTH-1:0]     mtvt_addr_o, // todo: Use parameter for size depending on SMCLIC_ID_WIDTH
 
   // Cycle Count
   output logic [MHPMCOUNTER_WIDTH-1:0] mcycle_o,
@@ -333,7 +337,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MIP: begin
         // CLIC mode is assumed when SMCLIC = 1
         if (SMCLIC) begin
-          csr_rdata_int = '0;
+          csr_rdata_int = mip;//'0; // todo: fix when SMCLIC testing is done
         end else begin
           csr_rdata_int = mip;
         end
@@ -587,7 +591,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
 
-    mtvt_n                   = MTVT_RESET_VAL; // todo: Implement CLIC support
+    mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}}; // todo: alignment based on SMCLIC_ID_WIDTH
     mtvt_we                  = 1'b0;
     mnxti_n                  = '0;
     mnxti_we                 = 1'b0;
@@ -620,9 +624,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mie: machine interrupt enable
         CSR_MIE: begin
           // CLIC mode is assumed when SMCLIC = 1
-          if (!SMCLIC) begin
+          //if (!SMCLIC) begin // todo: fix when SMCLIC testing is done
             mie_we = 1'b1;
-          end
+          //end
         end
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
@@ -973,8 +977,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_error_o (mclicbase_rd_error)
       );
 
-      assign mie_q  = 32'h0;
-
+      //assign mie_q  = 32'h0; // todo: remove comment once CLIC is in place
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (32'd0)
+      ) mie_csr_i (
+        .clk      (clk),
+        .rst_n     (rst_n),
+        .wr_data_i  (mie_n),
+        .wr_en_i    (mie_we),
+        .rd_data_o  (mie_q),
+        .rd_error_o (mie_rd_error)
+      );
+      assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
     end else begin
       // Only include mie CSR when SMCLIC = 0
       cv32e40x_csr #(

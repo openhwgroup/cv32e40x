@@ -113,12 +113,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // CLIC Interface
   input  logic                       clic_irq_i,
   input  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_i,
-  input  logic [ 7:0]                clic_irq_il_i,
+  input  logic [ 7:0]                clic_irq_level_i,
   input  logic [ 1:0]                clic_irq_priv_i,
-  input  logic                       clic_irq_hv_i,
-  output logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_o,
-  output logic                       clic_irq_mode_o,
-  output logic                       clic_irq_exit_o,
+  input  logic                       clic_irq_shv_i,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -138,6 +135,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Number of register file read ports
   // Core will only use two, but X_EXT may mandate 2 or 3
   localparam int unsigned REGFILE_NUM_READ_PORTS = X_EXT ? X_NUM_RS : 2;
+
+  // Determine alignedness of mtvt
+  // mtvt[31:N] holds mtvt table entry
+  // mtvt[N-1:0] is tied to zero.
+  localparam int unsigned MTVT_LSB = ((SMCLIC_ID_WIDTH + 2) < 6) ? 6 : (SMCLIC_ID_WIDTH + 2);
+  localparam int unsigned MTVT_ADDR_WIDTH = 32 - MTVT_LSB;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
 
@@ -184,9 +187,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_data_t    rf_wdata[REGFILE_NUM_WRITE_PORTS];
   logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
-    // CSR control
+  // CSR control
   logic [24:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
+
+  logic [MTVT_ADDR_WIDTH-1:0] mtvt_addr;
 
   logic [31:0] csr_rdata;
   logic csr_counter_read;
@@ -302,10 +307,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign irq_id  = ctrl_fsm.irq_id;
   assign dbg_ack = ctrl_fsm.dbg_ack;
 
-  // todo: connect when CLIC is implemented
-  assign clic_irq_id_o   = 12'h0;
-  assign clic_irq_mode_o =  1'b0;
-  assign clic_irq_exit_o =  1'b0;
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +363,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT               ( X_EXT                    ),
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
-    .PMA_CFG             ( PMA_CFG                  )
+    .PMA_CFG             ( PMA_CFG                  ),
+    .MTVT_ADDR_WIDTH     ( MTVT_ADDR_WIDTH          )
   )
   if_stage_i
   (
@@ -378,6 +380,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mepc_i              ( mepc                     ), // Exception PC (restore upon return from exception/interrupt)
     .mtvec_addr_i        ( mtvec_addr               ), // Exception/interrupt address (MSBs only)
     .nmi_addr_i          ( nmi_addr_i               ), // NMI address
+    .mtvt_addr_i         ( mtvt_addr                ), // CLIC vector base
 
     .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
 
@@ -637,7 +640,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
-    .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
+    .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       ),
+    .MTVT_ADDR_WIDTH            ( MTVT_ADDR_WIDTH        )
   )
   cs_registers_i
   (
@@ -653,6 +657,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .mtvec_addr_o               ( mtvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),
+
+    .mtvt_addr_o                ( mtvt_addr              ),
 
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
@@ -794,10 +800,31 @@ module cv32e40x_core import cv32e40x_pkg::*;
     if (SMCLIC) begin : gen_clic_interrupt
       // Todo: instantiate cv32e40x_clic_int_controller
       // For now just tie off outputs
+      /*
       assign irq_req_ctrl = '0;
       assign irq_id_ctrl  = '0;
       assign irq_wu_ctrl  = '0;
       assign mip          = '0;
+      */
+      cv32e40x_int_controller
+      int_controller_i
+      (
+        .clk                  ( clk                ),
+        .rst_n                ( rst_ni             ),
+
+        // External interrupt lines
+        .irq_i                ( irq_i              ),
+
+        // To cv32e40x_controller
+        .irq_req_ctrl_o       ( irq_req_ctrl       ),
+        .irq_id_ctrl_o        ( irq_id_ctrl        ),
+        .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
+
+        // To/from with cv32e40x_cs_registers
+        .mie_i                ( mie                ),
+        .mip_o                ( mip                ),
+        .m_ie_i               ( m_irq_enable       )
+      );
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
       int_controller_i

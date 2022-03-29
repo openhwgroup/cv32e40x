@@ -51,10 +51,12 @@ module cv32e40x_rvfi_sva
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,
   // but since there can be an infinite delay between irq_ack and rvfi_intr (e.g. because of bus stalls), we're settling for asserting
   // that irq_ack leads to RVFI capturing a trap (in_trap[IF_STAGE] = 1)
+  /* todo: adapt to CLIC
   a_irq_ack_rvfi_capture :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      (irq_ack |=> in_trap[STAGE_IF].intr))
       else `uvm_error("rvfi", "irq_ack not captured by RVFI")
+  */
 
   // Helper signal, indicating debug cause
   // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i

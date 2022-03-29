@@ -39,6 +39,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           fetch_ready_i,
   output logic           fetch_branch_o,
   output logic [31:0]    fetch_branch_addr_o,
+  output logic           fetch_data_access_o,
 
   // Resp interface
   input  logic           resp_valid_i,
@@ -49,7 +50,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   output logic           instr_valid_o,
   input  logic           instr_ready_i,
   output inst_resp_t     instr_instr_o,
-  output logic [31:0]    instr_addr_o
+  output logic [31:0]    instr_addr_o,
+  output logic           instr_is_ptr_o
 
 );
 
@@ -99,6 +101,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // resp_valid gated while flushing
   logic resp_valid_gated;
 
+  // CLIC vectoring (and Zce table jumps)
+  // Flag for signalling that results is a function pointer
+  logic is_ptr_q;
+  logic ptr_fetch_done_q;
+
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
 
   // Assume we always push all instructions to FIFO
@@ -109,7 +116,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
   // Adjust instruction count with 'pop_q', which tells if we consumed an instruction
   // during the last cycle
-  assign fetch_valid_o = ctrl_fsm_i.instr_req &&
+  assign fetch_valid_o = (ctrl_fsm_i.instr_req || !ptr_fetch_done_q) &&
                          (outstanding_cnt_q < 2) &&
                          (((instr_cnt_q - pop_q) == 'd0) ||
                          ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == 2'd0) ||
@@ -472,17 +479,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   begin
     if(rst_n == 1'b0)
     begin
-      addr_q    <= '0;
-      resp_q    <= INST_RESP_RESET_VAL;
-      valid_q   <= '0;
-      aligned_q <= 1'b0;
-      complete_q <= 1'b0;
-      n_flush_q  <= 'd0;
-      instr_cnt_q <= 'd0;
+      addr_q            <= '0;
+      resp_q            <= INST_RESP_RESET_VAL;
+      valid_q           <= '0;
+      aligned_q         <= 1'b0;
+      complete_q        <= 1'b0;
+      n_flush_q         <= 'd0;
+      instr_cnt_q       <= 'd0;
       outstanding_cnt_q <= 'd0;
-      rptr      <= 'd0;
-      wptr      <= 'd0;
-      pop_q     <= 1'b0;
+      rptr              <= 'd0;
+      wptr              <= 'd0;
+      pop_q             <= 1'b0;
+      is_ptr_q          <= 1'b0;
+      ptr_fetch_done_q  <= 1'b1; // Reset to 1 to avoid pointer fetches out of reset
     end
     else
     begin
@@ -508,6 +517,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // Reset pointers on branch
         wptr <= 'd0;
         rptr <= 'd0;
+        is_ptr_q <= ctrl_fsm_i.pc_set_clicv;
       end else begin
         // Update write pointer on a valid response
         if (resp_valid_gated) begin
@@ -521,6 +531,18 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         end
       end
 
+      // Set pointer fetch done flag when a fetch is granted
+      // If the fetch is accepted the same cycle as the pointer request,
+      // the flag will remain high.
+      if(fetch_valid_o && fetch_ready_i) begin
+        ptr_fetch_done_q <= 1'b1;
+      end else begin
+        // Clear flag if no fetch is granted this cycle, but we do have a pointer request
+        // This ensures that we keep setting fetch_valid_o for the pointer until it is accepted.
+        if(ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv) begin
+          ptr_fetch_done_q <= 1'b0;
+        end
+      end
       // Set pop-bit when instruction is emitted.
       pop_q <= (instr_valid_o && instr_ready_i);
 
@@ -535,4 +557,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o = addr_q;
 
+  // Signal that result is a pointer
+  // CLIC vectoring or Zce table jump
+  assign instr_is_ptr_o = is_ptr_q;
+
+  // Fetch is treated as a data access for CLIC vector fetch
+  // Only set for the initial pc_set_clicv point fetch
+  // If the pointer fetch isn't granted immediately, is_ptr_q will be true until
+  // the cycle after the next pc_set. Must avoid signaling fetch_data_access_o
+  // for the first pc_set after pointer fetch.
+  assign fetch_data_access_o = ctrl_fsm_i.pc_set_clicv || (is_ptr_q && !(ctrl_fsm_i.pc_set && !ctrl_fsm_i.pc_set_clicv));
 endmodule

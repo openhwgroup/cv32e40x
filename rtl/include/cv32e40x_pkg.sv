@@ -167,7 +167,7 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, VECTORING} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -564,7 +564,7 @@ typedef struct packed {
   logic [26:24]   zero1;           // Reserved, hardwired to zero.
   logic [23:16]   mpil;            // CLIC only. Previous interrupt level
   logic [15:12]   zero0;           // Reserved, hardwired to zero.
-  logic [11: 0]   exception_code;  // Bit 11 only used for CLIC, hardwired to zero otherwise
+  logic [11: 0]   exception_code;  // Bit 11 not used, hardwired to zero
 } mcause_t;
 
 typedef struct packed {
@@ -833,7 +833,9 @@ typedef enum logic[3:0] {
   PC_TRAP_IRQ = 4'b1001,
   PC_TRAP_DBD = 4'b1010,
   PC_TRAP_DBE = 4'b1011,
-  PC_TRAP_NMI = 4'b1100
+  PC_TRAP_NMI = 4'b1100,
+  PC_TRAP_CLICV = 4'b1101,
+  PC_TRAP_CLICV_TGT = 4'b1110
 } pc_mux_e;
 
 // Exception Cause
@@ -1006,6 +1008,7 @@ typedef struct packed {
 typedef struct packed
 {
   logic        compressed;
+  logic        clicv;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
@@ -1180,6 +1183,7 @@ typedef struct packed {
   // to IF stage
   logic        instr_req;             // Start fetching instructions
   logic        pc_set;                // jump to address set by pc_mux
+  logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
 
   // To WB stage

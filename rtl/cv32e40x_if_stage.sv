@@ -33,7 +33,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter bit          X_EXT           = 0,
   parameter int          X_ID_WIDTH      = 4,
   parameter int          PMA_NUM_REGIONS = 0,
-  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
+  parameter int unsigned MTVT_ADDR_WIDTH = 26
 )
 (
   input  logic          clk,
@@ -49,6 +50,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic [31:0]   mepc_i,                 // Exception PC (restore upon return from exception/interrupt)
   input  logic [24:0]   mtvec_addr_i,           // Exception/interrupt address (MSBs)
   input  logic [31:0]   nmi_addr_i,             // NMI address
+
+  input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
   input ctrl_fsm_t      ctrl_fsm_i,
   input  logic          trigger_match_i,
@@ -79,6 +82,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic              prefetch_valid;
   inst_resp_t        prefetch_instr;
+  logic              prefetch_is_ptr;
 
   logic              illegal_c_insn;
 
@@ -90,6 +94,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_trans_valid;
   logic              prefetch_trans_ready;
   logic [31:0]       prefetch_trans_addr;
+  logic              prefetch_trans_data_access;
   inst_resp_t        prefetch_inst_resp;
   logic              prefetch_one_txn_pend_n;
 
@@ -125,6 +130,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI: branch_addr_n = USE_DEPRECATED_FEATURE_SET ? {nmi_addr_i[31:2], 2'b00} :
                                                                 {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
+      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b00};
+      PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;
       default:;
     endcase
   end
@@ -135,28 +142,30 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // prefetch buffer, caches a fixed number of instructions
   cv32e40x_prefetch_unit prefetch_unit_i
   (
-    .clk               ( clk                         ),
-    .rst_n             ( rst_n                       ),
+    .clk                 ( clk                         ),
+    .rst_n               ( rst_n                       ),
 
-    .ctrl_fsm_i        ( ctrl_fsm_i                  ),
+    .ctrl_fsm_i          ( ctrl_fsm_i                  ),
 
-    .branch_addr_i     ( {branch_addr_n[31:1], 1'b0} ),
+    .branch_addr_i       ( {branch_addr_n[31:1], 1'b0} ),
 
-    .prefetch_ready_i  ( if_ready                    ),
-    .prefetch_valid_o  ( prefetch_valid              ),
-    .prefetch_instr_o  ( prefetch_instr              ),
-    .prefetch_addr_o   ( pc_if_o                     ),
+    .prefetch_ready_i    ( if_ready                    ),
+    .prefetch_valid_o    ( prefetch_valid              ),
+    .prefetch_instr_o    ( prefetch_instr              ),
+    .prefetch_addr_o     ( pc_if_o                     ),
+    .prefetch_is_ptr_o   ( prefetch_is_ptr             ),
 
-    .trans_valid_o     ( prefetch_trans_valid        ),
-    .trans_ready_i     ( prefetch_trans_ready        ),
-    .trans_addr_o      ( prefetch_trans_addr         ),
+    .trans_valid_o       ( prefetch_trans_valid        ),
+    .trans_ready_i       ( prefetch_trans_ready        ),
+    .trans_addr_o        ( prefetch_trans_addr         ),
+    .trans_data_access_o ( prefetch_trans_data_access  ),
 
-    .resp_valid_i      ( prefetch_resp_valid         ),
-    .resp_i            ( prefetch_inst_resp          ),
+    .resp_valid_i        ( prefetch_resp_valid         ),
+    .resp_i              ( prefetch_inst_resp          ),
 
     // Prefetch Buffer Status
-    .prefetch_busy_o   ( prefetch_busy               ),
-    .one_txn_pend_n    ( prefetch_one_txn_pend_n     )
+    .prefetch_busy_o     ( prefetch_busy               ),
+    .one_txn_pend_n      ( prefetch_one_txn_pend_n     )
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -169,40 +178,41 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign core_trans.prot[2:1] = PRIV_LVL_M;             // Machine mode
   assign core_trans.memtype = 2'b00;                    // memtype is assigned in the MPU, tie off.
 
+  // todo: CLIC: Vector loads must respect mprv
   cv32e40x_mpu
   #(
-    .IF_STAGE             ( 1                       ),
-    .A_EXT                ( A_EXT                   ),
-    .CORE_REQ_TYPE        ( obi_inst_req_t          ),
-    .CORE_RESP_TYPE       ( inst_resp_t             ),
-    .BUS_RESP_TYPE        ( obi_inst_resp_t         ),
-    .PMA_NUM_REGIONS      ( PMA_NUM_REGIONS         ),
-    .PMA_CFG              ( PMA_CFG                 )
+    .IF_STAGE             ( 1                           ),
+    .A_EXT                ( A_EXT                       ),
+    .CORE_REQ_TYPE        ( obi_inst_req_t              ),
+    .CORE_RESP_TYPE       ( inst_resp_t                 ),
+    .BUS_RESP_TYPE        ( obi_inst_resp_t             ),
+    .PMA_NUM_REGIONS      ( PMA_NUM_REGIONS             ),
+    .PMA_CFG              ( PMA_CFG                     )
   )
   mpu_i
   (
-    .clk                  ( clk                     ),
-    .rst_n                ( rst_n                   ),
-    .atomic_access_i      ( 1'b0                    ), // No atomic transfers on instruction side
-    .misaligned_access_i  ( 1'b0                    ), // MPU on instruction side will not issue misaligned access fault
-                                                       // Misaligned access to main is allowed, and accesses outside main will
-                                                       // result in instruction access fault (which will have priority over
-                                                       //  misaligned from I/O fault)
-    .if_data_access_i     ( 1'b0                    ), // Indicate data access from IF stage. TODO: Use for table jumps and CLIC hardware vectoring
-    .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
-    .core_mpu_err_wait_i  ( 1'b1                    ),
-    .core_mpu_err_o       (                         ), // Unconnected on purpose
-    .core_trans_valid_i   ( prefetch_trans_valid    ),
-    .core_trans_ready_o   ( prefetch_trans_ready    ),
-    .core_trans_i         ( core_trans              ),
-    .core_resp_valid_o    ( prefetch_resp_valid     ),
-    .core_resp_o          ( prefetch_inst_resp      ),
+    .clk                  ( clk                         ),
+    .rst_n                ( rst_n                       ),
+    .atomic_access_i      ( 1'b0                        ), // No atomic transfers on instruction side
+    .misaligned_access_i  ( 1'b0                        ), // MPU on instruction side will not issue misaligned access fault
+                                                           // Misaligned access to main is allowed, and accesses outside main will
+                                                           // result in instruction access fault (which will have priority over
+                                                           //  misaligned from I/O fault)
+    .if_data_access_i     ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps and CLIC hardware vectoring
+    .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
+    .core_mpu_err_wait_i  ( 1'b1                        ),
+    .core_mpu_err_o       (                             ), // Unconnected on purpose
+    .core_trans_valid_i   ( prefetch_trans_valid        ),
+    .core_trans_ready_o   ( prefetch_trans_ready        ),
+    .core_trans_i         ( core_trans                  ),
+    .core_resp_valid_o    ( prefetch_resp_valid         ),
+    .core_resp_o          ( prefetch_inst_resp          ),
 
-    .bus_trans_valid_o    ( bus_trans_valid         ),
-    .bus_trans_ready_i    ( bus_trans_ready         ),
-    .bus_trans_o          ( bus_trans               ),
-    .bus_resp_valid_i     ( bus_resp_valid          ),
-    .bus_resp_i           ( bus_resp                )
+    .bus_trans_valid_o    ( bus_trans_valid             ),
+    .bus_trans_ready_i    ( bus_trans_ready             ),
+    .bus_trans_o          ( bus_trans                   ),
+    .bus_resp_valid_i     ( bus_resp_valid              ),
+    .bus_resp_i           ( bus_resp                    )
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -237,10 +247,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign if_busy_o = prefetch_busy;
 
   // Populate instruction meta data
-  instr_meta_t instr_meta_n; 
+  instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n = '0;
     instr_meta_n.compressed = instr_compressed_int;
+    instr_meta_n.clicv      = prefetch_is_ptr;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
@@ -260,7 +271,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // alignment buffer has a valid instruction
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
-        if_id_pipe_o.instr            <= instr_decompressed;
+        // Bypass comressed decoder when result is a pointer
+        if_id_pipe_o.instr            <= prefetch_is_ptr ? prefetch_instr : instr_decompressed;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;

@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,11 +22,11 @@
 // Description:    RTL assertions decoder module                              //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 module cv32e40x_decoder_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-#(  
+#(
   parameter bit A_EXT     = 1'b0
 )
 (
@@ -50,7 +50,7 @@ module cv32e40x_decoder_sva
   a_a_dec_idle : assert property(p_idle_dec(decoder_a_ctrl)) else `uvm_error("decoder", "Assertion a_a_dec_idle failed")
   a_i_dec_idle : assert property(p_idle_dec(decoder_i_ctrl)) else `uvm_error("decoder", "Assertion a_i_dec_idle failed")
   a_b_dec_idle : assert property(p_idle_dec(decoder_b_ctrl)) else `uvm_error("decoder", "Assertion a_b_dec_idle failed")
-  
+
   // Check that the two LSB of the incoming instructions word is always 2'b11
   // Predecoder should always emit uncompressed instructions
   property p_uncompressed_lsb;
@@ -58,7 +58,8 @@ module cv32e40x_decoder_sva
       (instr_rdata_i[1:0] == 2'b11);
   endproperty
 
-  a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
+  // todo: adapt to CLIC addresses in instr field
+  //a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
 
   generate
     if (!A_EXT) begin : gen_no_a_extension_assertions
