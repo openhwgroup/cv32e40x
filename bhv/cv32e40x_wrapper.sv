@@ -255,7 +255,7 @@ module cv32e40x_wrapper
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
                 .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
-                .ctrl_fsm_ns  (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+                .ctrl_fsm_ns                      (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
@@ -340,6 +340,7 @@ module cv32e40x_wrapper
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .nmi_addr_i(core_i.nmi_addr_i),
+               .core_sleep_i(core_i.core_sleep_o),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
@@ -366,6 +367,8 @@ module cv32e40x_wrapper
          .wb_valid_i               ( core_i.wb_stage_i.wb_valid_o                                         ),
          .wb_ready_i               ( core_i.wb_stage_i.wb_ready_o                                         ),
          .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
+         .csr_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.csr_en                                ),
+         .sys_wfi_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.sys_wfi_insn                          ),
          .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
@@ -415,10 +418,17 @@ module cv32e40x_wrapper
 
          .priv_lvl_i               ( PRIV_LVL_M                       /* Not implemented in cv32e40x */   ),
          .ctrl_fsm_i               ( core_i.ctrl_fsm                                                      ),
+         .ctrl_fsm_cs_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs                     ),
+         .ctrl_fsm_ns_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_ns                     ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
+         .pending_debug_i          ( core_i.controller_i.controller_fsm_i.pending_debug                   ),
+         .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
+         .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),
+         .irq_wu_ctrl_i            ( core_i.irq_wu_ctrl                                                   ),
+         .irq_id_ctrl_i            ( core_i.irq_id_ctrl                                                   ),
          // CSRs
          .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
          .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_q                                          ),
