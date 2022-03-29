@@ -125,12 +125,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_DRET:     branch_addr_n = dpc_i;
       PC_FENCEI:   branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
       PC_TRAP_EXC: branch_addr_n = {mtvec_addr_i, 7'h0};                                        // All the exceptions go to base address
-      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b00};          // interrupts are vectored
+      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux[4:0], 2'b00};     // interrupts are vectored
       PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI: branch_addr_n = USE_DEPRECATED_FEATURE_SET ? {nmi_addr_i[31:2], 2'b00} :
                                                                 {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
-      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b00};
+      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b00}; // todo: use only relevant part of m_exc_vec_pc_mux
       PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;
       default:;
     endcase
@@ -198,7 +198,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                                                            // Misaligned access to main is allowed, and accesses outside main will
                                                            // result in instruction access fault (which will have priority over
                                                            //  misaligned from I/O fault)
-    .if_data_access_i     ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps and CLIC hardware vectoring
+    .if_data_access_i     ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose

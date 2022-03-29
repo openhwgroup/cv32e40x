@@ -56,7 +56,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic  [1:0]     mtvec_mode_o,
 
   // MTVT
-  output logic [MTVT_ADDR_WIDTH-1:0]     mtvt_addr_o, // todo: Use parameter for size depending on SMCLIC_ID_WIDTH
+  output logic [MTVT_ADDR_WIDTH-1:0]     mtvt_addr_o,
 
   // Cycle Count
   output logic [MHPMCOUNTER_WIDTH-1:0] mcycle_o,
@@ -337,7 +337,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MIP: begin
         // CLIC mode is assumed when SMCLIC = 1
         if (SMCLIC) begin
-          csr_rdata_int = mip;//'0; // todo: fix when SMCLIC testing is done
+          csr_rdata_int = '0;
         end else begin
           csr_rdata_int = mip;
         end
@@ -591,7 +591,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
     mtvec_we                 = csr_mtvec_init_i;
 
-    mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}}; // todo: alignment based on SMCLIC_ID_WIDTH
+    mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
     mtvt_we                  = 1'b0;
     mnxti_n                  = '0;
     mnxti_we                 = 1'b0;
@@ -624,9 +624,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mie: machine interrupt enable
         CSR_MIE: begin
           // CLIC mode is assumed when SMCLIC = 1
-          //if (!SMCLIC) begin // todo: fix when SMCLIC testing is done
+          if (!SMCLIC) begin
             mie_we = 1'b1;
-          //end
+          end
         end
         // mtvec: machine trap-handler base address
         CSR_MTVEC: begin
@@ -977,19 +977,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_error_o (mclicbase_rd_error)
       );
 
-      //assign mie_q  = 32'h0; // todo: remove comment once CLIC is in place
-      cv32e40x_csr #(
-        .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
-        .RESETVALUE (32'd0)
-      ) mie_csr_i (
-        .clk      (clk),
-        .rst_n     (rst_n),
-        .wr_data_i  (mie_n),
-        .wr_en_i    (mie_we),
-        .rd_data_o  (mie_q),
-        .rd_error_o (mie_rd_error)
-      );
+      assign mie_q  = 32'h0;
       assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
     end else begin
       // Only include mie CSR when SMCLIC = 0

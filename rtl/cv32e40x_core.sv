@@ -707,7 +707,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .USE_DEPRECATED_FEATURE_SET     (USE_DEPRECATED_FEATURE_SET),
     .X_EXT                          ( X_EXT                  ),
-    .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS )
+    .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS ),
+    .SMCLIC                         ( SMCLIC                 ),
+    .SMCLIC_ID_WIDTH                ( SMCLIC_ID_WIDTH        )
   )
   controller_i
   (
@@ -798,31 +800,29 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////
   generate
     if (SMCLIC) begin : gen_clic_interrupt
-      // Todo: instantiate cv32e40x_clic_int_controller
-      // For now just tie off outputs
-      /*
-      assign irq_req_ctrl = '0;
-      assign irq_id_ctrl  = '0;
-      assign irq_wu_ctrl  = '0;
       assign mip          = '0;
-      */
-      cv32e40x_int_controller
+
+      cv32e40x_clic_int_controller
       int_controller_i
       (
         .clk                  ( clk                ),
         .rst_n                ( rst_ni             ),
 
-        // External interrupt lines
-        .irq_i                ( irq_i              ),
+        // CLIC interface
+        .clic_irq_i           ( clic_irq_i         ),
+        .clic_irq_id_i        ( clic_irq_id_i      ),
+        .clic_irq_level_i     ( clic_irq_level_i   ),
+        .clic_irq_priv_i      ( clic_irq_priv_i    ),
+        .clic_irq_shv_i       ( clic_irq_shv_i     ),
 
         // To cv32e40x_controller
+        // todo: add shv
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
         .irq_id_ctrl_o        ( irq_id_ctrl        ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
         // To/from with cv32e40x_cs_registers
-        .mie_i                ( mie                ),
-        .mip_o                ( mip                ),
+        // todo: add CLIC related CSRs (threshold etc)
         .m_ie_i               ( m_irq_enable       )
       );
     end else begin : gen_basic_interrupt

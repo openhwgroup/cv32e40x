@@ -52,6 +52,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_alignment_buffer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetch_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv
 ${DESIGN_RTL_DIR}/cv32e40x_int_controller.sv
+${DESIGN_RTL_DIR}/cv32e40x_clic_int_controller.sv
 ${DESIGN_RTL_DIR}/cv32e40x_ex_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_wb_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_div.sv

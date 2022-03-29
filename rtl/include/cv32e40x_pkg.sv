@@ -1188,10 +1188,11 @@ typedef struct packed {
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [10:0] m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+                                      // Setting to 11 bits (max), unused bits will be tied off
 
   logic        irq_ack;               // irq has been taken
-  logic [4:0]  irq_id;                // id of taken irq
+  logic [10:0] irq_id;                // id of taken irq. Max width, unused bits will be tied off
   logic        dbg_ack;               // debug has been taken
 
   // Debug outputs

@@ -32,7 +32,9 @@
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 #(
   parameter bit       USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
-  parameter bit       X_EXT           = 0
+  parameter bit       X_EXT           = 0,
+  parameter bit       SMCLIC          = 0,
+  parameter int       SMCLIC_ID_WIDTH = 5
 )
 (
   // Clocks and reset
@@ -169,7 +171,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic [2:0] debug_cause_n;
   logic [2:0] debug_cause_q;
 
-  logic [4:0] exc_cause; // id of taken interrupt
+  logic [10:0] exc_cause; // id of taken interrupt. Max width, unused bits are tied off.
 
   logic       fencei_ready;
   logic       fencei_flush_req_set;
@@ -195,7 +197,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign fencei_ongoing = fencei_flush_req_o || fencei_req_and_ack_q;
 
   // Mux selector for vectored IRQ PC
-  assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 5'h0 : exc_cause;
+  assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 11'h0 : exc_cause;
 
   ////////////////////////////////////////////////////////////////////
 
@@ -438,7 +440,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     pipe_pc_mux_ctrl               = PC_WB;
 
-    exc_cause                      = 5'b0;
+    exc_cause                      = 11'b0;
 
     debug_mode_n                   = debug_mode_q;
     ctrl_fsm_o.debug_csr_save      = 1'b0;
@@ -517,7 +519,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_wb = 1'b1;
 
           ctrl_fsm_o.pc_set = 1'b1;
-          ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
+
           exc_cause = irq_id_ctrl_i;
 
           ctrl_fsm_o.irq_ack = 1'b1;
@@ -525,7 +527,17 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
-          ctrl_fsm_o.csr_cause.exception_code = {3'b000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH
+
+
+          if (SMCLIC) begin
+            ctrl_fsm_o.csr_cause.exception_code = {3'b000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH --
+            ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
+            ctrl_fsm_ns = VECTORING;
+          ctrl_fsm_o.pc_set_clicv = 1'b1;
+          end else begin
+            ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
+            ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i};
+          end
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
@@ -540,11 +552,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             pipe_pc_mux_ctrl = PC_IF;
           end
 
-          // Test code for CLIC
-          // Treat all basic mode irqs as vectored CLIC
-          ctrl_fsm_ns = VECTORING;
-          ctrl_fsm_o.pc_set_clicv = 1'b1;
-          ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
         end else begin
           if (exception_in_wb && exception_allowed) begin
             // Kill all stages

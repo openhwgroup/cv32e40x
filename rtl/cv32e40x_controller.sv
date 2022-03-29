@@ -33,7 +33,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 #(
   parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          X_EXT                  = 0,
-  parameter int unsigned REGFILE_NUM_READ_PORTS = 2
+  parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
+  parameter bit          SMCLIC                 = 0,
+  parameter int          SMCLIC_ID_WIDTH        = 5
 )
 (
   input  logic        clk,                        // Gated clock
@@ -115,7 +117,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   cv32e40x_controller_fsm
   #(
     .USE_DEPRECATED_FEATURE_SET  (USE_DEPRECATED_FEATURE_SET),
-    .X_EXT                       ( X_EXT                    )
+    .X_EXT                       ( X_EXT                    ),
+    .SMCLIC                      ( SMCLIC                   ),
+    .SMCLIC_ID_WIDTH             ( SMCLIC_ID_WIDTH          )
   )
   controller_fsm_i
   (
@@ -173,12 +177,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     .lsu_busy_i                  ( lsu_busy_i               ),
 
-   // Data OBI interface monitor 
+   // Data OBI interface monitor
     .m_c_obi_data_if             ( m_c_obi_data_if          ),
-   
+
     // Outputs
     .ctrl_fsm_o                  ( ctrl_fsm_o               ),
-    
+
     // eXtension interface
     .xif_commit_if               ( xif_commit_if            ),
     .xif_csr_error_i             ( xif_csr_error_i          )
