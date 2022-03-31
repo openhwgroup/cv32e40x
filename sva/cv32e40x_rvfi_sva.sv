@@ -45,6 +45,8 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      rvfi_csr_mcause_rdata,
    input logic [31:0]      rvfi_pc_rdata,
    input logic [31:0]      nmi_addr_i,
+   input logic [31:0]      rvfi_csr_mie_rdata,
+   input logic [31:0]      rvfi_csr_mip_rdata,
    input logic             irq_ack,
    input logic             dbg_ack,
    input logic             ebreak_in_wb_i,
@@ -212,6 +214,15 @@ module cv32e40x_rvfi_sva
                      core_sleep_i |-> rvfi_sleep)
       else `uvm_error("rvfi", "rvfi_sleep not asserted even though core_sleep_o was set")
 
+  a_no_pending_irq_in_csr_at_sleep_entry :
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     (rvfi_sleep && rvfi_valid) |-> !(|(rvfi_csr_mie_rdata & rvfi_csr_mip_rdata)))
+      else `uvm_error("rvfi", "rvfi_sleep set even though mie and mip signal pending interrupt")
+
+  a_no_sleep_if_interrupt_is_pending :
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     (|(rvfi_csr_mie_rdata & rvfi_csr_mip_rdata) && rvfi_valid) |-> !rvfi_sleep)
+      else `uvm_error("rvfi", "rvfi_sleep was set even though mie and mip signal pending interrupt")
 
 endmodule : cv32e40x_rvfi_sva
 
