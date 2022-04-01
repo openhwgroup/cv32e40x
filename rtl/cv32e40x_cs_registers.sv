@@ -588,7 +588,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mtvec_n.addr[7]        = 1'b0; // todo : remove
     end
     mtvec_n.zero0            = mtvec_q.zero0;
-    mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
+
+    if (SMCLIC) begin
+      mtvec_n.mode             = mtvec_q.mode; // mode is WARL 0x3 when using CLIC
+    end else begin
+      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
+    end
     mtvec_we                 = csr_mtvec_init_i;
 
     mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
@@ -886,21 +891,23 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
 
-  cv32e40x_csr #(
-    .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
-    .RESETVALUE (MTVEC_RESET_VAL)
-  ) mtvec_csr_i (
-    .clk      (clk),
-    .rst_n     (rst_n),
-    .wr_data_i  (mtvec_n),
-    .wr_en_i    (mtvec_we),
-    .rd_data_o  (mtvec_q),
-    .rd_error_o (mtvec_rd_error)
-  );
+
 
   generate
     if (SMCLIC) begin
+
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (MTVEC_CLIC_RESET_VAL)
+      ) mtvec_csr_i (
+        .clk      (clk),
+        .rst_n     (rst_n),
+        .wr_data_i  (mtvec_n),
+        .wr_en_i    (mtvec_we),
+        .rd_data_o  (mtvec_q),
+        .rd_error_o (mtvec_rd_error)
+      );
       cv32e40x_csr #(
         .WIDTH      (32),
         .SHADOWCOPY (1'b0),
@@ -980,6 +987,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       assign mie_q  = 32'h0;
       assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
     end else begin
+      cv32e40x_csr #(
+        .WIDTH      (32),
+        .SHADOWCOPY (1'b0),
+        .RESETVALUE (MTVEC_BASIC_RESET_VAL)
+      ) mtvec_csr_i (
+        .clk      (clk),
+        .rst_n     (rst_n),
+        .wr_data_i  (mtvec_n),
+        .wr_en_i    (mtvec_we),
+        .rd_data_o  (mtvec_q),
+        .rd_error_o (mtvec_rd_error)
+      );
       // Only include mie CSR when SMCLIC = 0
       cv32e40x_csr #(
         .WIDTH      (32),

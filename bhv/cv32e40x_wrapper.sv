@@ -209,7 +209,7 @@ module cv32e40x_wrapper
                               .xif_commit_kill     (core_i.xif_commit_if.commit.commit_kill),
                               .xif_commit_valid    (core_i.xif_commit_if.commit_valid),
                               .*);
-  bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva cs_registers_sva (.*);
+  bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva  #(.SMCLIC(SMCLIC)) cs_registers_sva (.*);
 
   bind cv32e40x_load_store_unit:
     core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (

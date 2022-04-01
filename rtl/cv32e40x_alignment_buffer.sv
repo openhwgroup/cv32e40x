@@ -101,7 +101,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // resp_valid gated while flushing
   logic resp_valid_gated;
 
-  // CLIC vectoring (and Zce table jumps)
+  // CLIC vectoring (and Zc table jumps)
   // Flag for signalling that results is a function pointer
   logic is_ptr_q;
   logic ptr_fetch_done_q;
@@ -558,7 +558,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign instr_addr_o = addr_q;
 
   // Signal that result is a pointer
-  // CLIC vectoring or Zce table jump
+  // CLIC vectoring or Zc table jump
   assign instr_is_ptr_o = is_ptr_q;
 
   // Fetch is treated as a data access for CLIC vector fetch

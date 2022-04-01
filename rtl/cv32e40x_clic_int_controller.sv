@@ -46,6 +46,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   output logic                       irq_req_ctrl_o,
   output logic [SMCLIC_ID_WIDTH-1:0] irq_id_ctrl_o,
   output logic                       irq_wu_ctrl_o,
+  output logic                       irq_clic_shv_o,
 
   // To/from cv32e40x_cs_registers
   input  logic                       m_ie_i             // Interrupt enable bit from CSR (M mode)
@@ -67,9 +68,9 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   always_ff @(posedge clk, negedge rst_n)
   begin
     if (rst_n == 1'b0) begin
-      clic_irq_q     <= 1'b0;
+      clic_irq_q  <= 1'b0;
     end else begin
-      clic_irq_q     <= clic_irq_i;
+      clic_irq_q  <= clic_irq_i;
     end
   end
 
@@ -79,7 +80,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       clic_irq_id_q     <= '0;
       clic_irq_level_q  <= '0;
-      clic_irq_priv_q   <= '0;
+      clic_irq_priv_q   <= PRIV_LVL_M;
       clic_irq_shv_q    <= 1'b0;
     end else begin
       if (clic_irq_i) begin
@@ -107,5 +108,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
   assign irq_wu_ctrl_o = clic_irq_i;
+
+  assign irq_clic_shv_o = clic_irq_shv_q;
 
 endmodule // cv32e40x_clic_int_controller

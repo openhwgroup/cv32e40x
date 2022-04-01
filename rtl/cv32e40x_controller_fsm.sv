@@ -77,6 +77,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        irq_req_ctrl_i,             // irq requst
   input  logic [4:0]  irq_id_ctrl_i,              // irq id
   input  logic        irq_wu_ctrl_i,              // irq wakeup control
+  input  logic        irq_clic_shv_i,             // CLIC mode selective hardware vectoring
 
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
@@ -197,7 +198,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign fencei_ongoing = fencei_flush_req_o || fencei_req_and_ack_q;
 
   // Mux selector for vectored IRQ PC
-  assign ctrl_fsm_o.m_exc_vec_pc_mux = (mtvec_mode_i == 2'b0) ? 11'h0 : exc_cause;
+  // Used for both basic mode and CLIC when shv == 0.
+  assign ctrl_fsm_o.m_exc_vec_pc_mux = ((mtvec_mode_i == 2'b0) || (mtvec_mode_i == 2'b11 && !irq_clic_shv_i)) ? 11'h0 : exc_cause;
 
   ////////////////////////////////////////////////////////////////////
 
@@ -530,10 +532,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
 
           if (SMCLIC) begin
-            ctrl_fsm_o.csr_cause.exception_code = {3'b000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH --
-            ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
-            ctrl_fsm_ns = VECTORING;
-          ctrl_fsm_o.pc_set_clicv = 1'b1;
+            ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH --
+            if (irq_clic_shv_i) begin
+              ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
+              ctrl_fsm_ns = VECTORING;
+              ctrl_fsm_o.pc_set_clicv = 1'b1;
+            end else begin
+              ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
+            end
           end else begin
             ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
             ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i};

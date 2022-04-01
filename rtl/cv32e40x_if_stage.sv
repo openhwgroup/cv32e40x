@@ -34,7 +34,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter int          X_ID_WIDTH      = 4,
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
-  parameter int unsigned MTVT_ADDR_WIDTH = 26
+  parameter int unsigned MTVT_ADDR_WIDTH = 26,
+  parameter int          SMCLIC_ID_WIDTH = 5
 )
 (
   input  logic          clk,
@@ -130,7 +131,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI: branch_addr_n = USE_DEPRECATED_FEATURE_SET ? {nmi_addr_i[31:2], 2'b00} :
                                                                 {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
-      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux, 2'b00}; // todo: use only relevant part of m_exc_vec_pc_mux
+      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
       PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;
       default:;
     endcase

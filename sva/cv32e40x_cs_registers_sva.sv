@@ -25,13 +25,18 @@
 module cv32e40x_cs_registers_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+#(
+    parameter bit SMCLIC = 0
+  )
+
   (
    input logic        clk,
    input logic        rst_n,
    input ctrl_fsm_t   ctrl_fsm_i,
    input id_ex_pipe_t id_ex_pipe_i,
    input logic [31:0] csr_rdata_o,
-   input logic        csr_we_int
+   input logic        csr_we_int,
+   input logic [1:0]  mtvec_mode_o
    );
 
 
@@ -41,5 +46,13 @@ module cv32e40x_cs_registers_sva
                   (ctrl_fsm_i.kill_wb || ctrl_fsm_i.halt_wb)
                   |-> !csr_we_int)
     else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
+
+  if (SMCLIC) begin
+    // Assert that mtvec[1:0] are always 2'b11
+    a_mtvec_mode_clic:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    1'b1 |-> mtvec_mode_o == 2'b11)
+      else `uvm_error("cs_registers", "mtvec_mode is not 2'b11 in CLIC mode")
+  end
 endmodule // cv32e40x_cs_registers_sva
 

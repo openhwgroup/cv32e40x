@@ -462,7 +462,8 @@ parameter MARCHID = 32'h14;
 parameter MIMPID_MAJOR = 4'h0;  // Major ID
 parameter MIMPID_MINOR = 4'h0;  // Minor ID
 
-parameter MTVEC_MODE        = 2'b01;
+parameter MTVEC_MODE_BASIC  = 2'b01;
+parameter MTVEC_MODE_CLIC   = 2'b11;
 parameter NUM_HPM_EVENTS    =   16;
 
 parameter MSTATUS_MIE_BIT      = 3;
@@ -592,10 +593,15 @@ parameter dcsr_t DCSR_RESET_VAL = '{
   prv:        PRIV_LVL_M,
   default:    '0};
 
-parameter mtvec_t MTVEC_RESET_VAL = '{
+parameter mtvec_t MTVEC_BASIC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
-  mode:  MTVEC_MODE};
+  mode:  MTVEC_MODE_BASIC};
+
+parameter mtvec_t MTVEC_CLIC_RESET_VAL = '{
+  addr: 'd0,
+  zero0: 'd0,
+  mode:  MTVEC_MODE_CLIC};
 
 parameter mtvt_t MTVT_RESET_VAL = '{
   addr:  '0,

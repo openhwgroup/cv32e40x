@@ -259,6 +259,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
+  logic        irq_clic_shv;
 
   // Used (only) by verification environment
   logic        irq_ack;
@@ -364,7 +365,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
     .PMA_CFG             ( PMA_CFG                  ),
-    .MTVT_ADDR_WIDTH     ( MTVT_ADDR_WIDTH          )
+    .MTVT_ADDR_WIDTH     ( MTVT_ADDR_WIDTH          ),
+    .SMCLIC_ID_WIDTH     ( SMCLIC_ID_WIDTH          )
   )
   if_stage_i
   (
@@ -755,6 +757,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
+    .irq_clic_shv_i                 ( irq_clic_shv           ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
@@ -820,6 +823,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
         .irq_id_ctrl_o        ( irq_id_ctrl        ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
+        .irq_clic_shv_o       ( irq_clic_shv       ),
 
         // To/from with cv32e40x_cs_registers
         // todo: add CLIC related CSRs (threshold etc)
@@ -845,6 +849,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .mip_o                ( mip                ),
         .m_ie_i               ( m_irq_enable       )
       );
+
+      // CLIC shv not used in basic mode
+      assign irq_clic_shv = 1'b0;
     end
   endgenerate
 
