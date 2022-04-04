@@ -1199,6 +1199,7 @@ typedef struct packed {
 
   logic        irq_ack;               // irq has been taken
   logic [10:0] irq_id;                // id of taken irq. Max width, unused bits will be tied off
+  logic [7:0]  irq_level;             // level of taken irq
   logic        dbg_ack;               // debug has been taken
 
   // Debug outputs
@@ -1220,6 +1221,7 @@ typedef struct packed {
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
   logic        csr_save_cause;      // Update CSRs
+  logic        csr_clear_minhv;     // Clear the mcause.minhv field
   logic        pending_nmi;         // An NMI is pending (for dcsr.nmip)
 
   // Performance counter events

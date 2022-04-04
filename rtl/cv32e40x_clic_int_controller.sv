@@ -47,12 +47,17 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   output logic [SMCLIC_ID_WIDTH-1:0] irq_id_ctrl_o,
   output logic                       irq_wu_ctrl_o,
   output logic                       irq_clic_shv_o,
+  output logic [7:0]                 irq_clic_level_o,
 
-  // To/from cv32e40x_cs_registers
-  input  logic                       m_ie_i             // Interrupt enable bit from CSR (M mode)
+  // From cv32e40x_cs_registers
+  input  logic                       m_ie_i,             // Interrupt enable bit from CSR (M mode)
+  input  logic [7:0]                 mintthresh_i,       // Current interrupt threshold from CSR
+  input  mintstatus_t                mintstatus_i        // Current mintstatus from CSR
 );
 
   logic                       global_irq_enable;
+  logic  [7:0]                effective_irq_level; // Calculate effective interrupt level
+
 
   // Flops for breaking timing path to instruction interface
   logic                       clic_irq_q;
@@ -92,23 +97,40 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
     end
   end
 
-    // Global interrupt enable
+  // Global interrupt enable
+  // todo: move logic for m_ie_i from cs_registers to here.
   assign global_irq_enable = m_ie_i;
 
+  assign effective_irq_level = (mintthresh_i > mintstatus_i.mil) ? mintthresh_i : mintstatus_i.mil;
   ///////////////////////////
   // Outputs to controller //
   ///////////////////////////
 
-  // Request to take interrupt if there a pending-and-enabled interrupt and interrupts are enabled globally
-  // todo: factor in interrupt level and thresholds
-  assign irq_req_ctrl_o = clic_irq_q && global_irq_enable;
+  // Request to take interrupt if:
+  // There a pending-and-enabled interrupt and interrupts are enabled globally
+  // AND the incoming irq level is above the cores current effective interrupt level.
+  // todo: In user mode, machine threshold should not mask interrupts to machine mode
+  assign irq_req_ctrl_o = clic_irq_q &&
+                          clic_irq_level_q > effective_irq_level &&
+                          global_irq_enable;
 
   // Pass on interrupt ID
   assign irq_id_ctrl_o = clic_irq_id_q;
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
-  assign irq_wu_ctrl_o = clic_irq_i;
+  // SMCLIC spec states three scenarios for wakeup:
+  // 1: priv mode  > current, irq i is max (done in external CLIC), level != 0
+  // 2: priv mode == current, irq i is max (done in external CLIC), level > max(mintstatus.mil, mintthresh.th)
+  // 3: priv mode  < current, irq_i is max (done in external CLIC), level != 0
+  //
+  // 1 is applicable for E40S only as E40X only runs in machine mode
+  // 2 is applicable for both E40S and E40X
+  // 3 is not applicable, we support machine mode interrupts only.
+  // todo: implement (2) for E40S.
+  assign irq_wu_ctrl_o = clic_irq_i && (clic_irq_level_i > effective_irq_level);
 
   assign irq_clic_shv_o = clic_irq_shv_q;
+
+  assign irq_clic_level_o = clic_irq_level_q;
 
 endmodule // cv32e40x_clic_int_controller

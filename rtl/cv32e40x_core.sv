@@ -193,6 +193,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [MTVT_ADDR_WIDTH-1:0] mtvt_addr;
 
+  logic [7:0]  mintthresh;
+  mintstatus_t mintstatus;
+
   logic [31:0] csr_rdata;
   logic csr_counter_read;
 
@@ -259,7 +262,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_req_ctrl;
   logic [4:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
+
+  // CLIC specific irq signals
   logic        irq_clic_shv;
+  logic [7:0]  irq_clic_level;
 
   // Used (only) by verification environment
   logic        irq_ack;
@@ -688,6 +694,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mip_i                      ( mip                    ),
     .m_irq_enable_o             ( m_irq_enable           ),
     .mepc_o                     ( mepc                   ),
+    .mintthresh_o               ( mintthresh             ),
+    .mintstatus_o               ( mintstatus             ),
 
     // debug
     .dpc_o                      ( dpc                    ),
@@ -758,6 +766,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
     .irq_clic_shv_i                 ( irq_clic_shv           ),
+    .irq_clic_level_i               ( irq_clic_level         ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
@@ -806,7 +815,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
       assign mip          = '0;
 
       cv32e40x_clic_int_controller
-      int_controller_i
+      clic_int_controller_i
       (
         .clk                  ( clk                ),
         .rst_n                ( rst_ni             ),
@@ -819,15 +828,17 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .clic_irq_shv_i       ( clic_irq_shv_i     ),
 
         // To cv32e40x_controller
-        // todo: add shv
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
         .irq_id_ctrl_o        ( irq_id_ctrl        ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
         .irq_clic_shv_o       ( irq_clic_shv       ),
+        .irq_clic_level_o     ( irq_clic_level     ),
 
         // To/from with cv32e40x_cs_registers
         // todo: add CLIC related CSRs (threshold etc)
-        .m_ie_i               ( m_irq_enable       )
+        .m_ie_i               ( m_irq_enable       ),
+        .mintthresh_i         ( mintthresh         ),
+        .mintstatus_i         ( mintstatus         )
       );
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
@@ -852,6 +863,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
       // CLIC shv not used in basic mode
       assign irq_clic_shv = 1'b0;
+      assign irq_clic_level = 8'h00;
     end
   endgenerate
 

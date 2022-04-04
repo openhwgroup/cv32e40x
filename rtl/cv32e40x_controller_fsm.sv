@@ -78,6 +78,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic [4:0]  irq_id_ctrl_i,              // irq id
   input  logic        irq_wu_ctrl_i,              // irq wakeup control
   input  logic        irq_clic_shv_i,             // CLIC mode selective hardware vectoring
+  input  logic [7:0]  irq_clic_level_i,           // CLIC mode current interrupt level
 
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
@@ -411,6 +412,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.irq_ack = 1'b0;
     ctrl_fsm_o.irq_id  = '0;
+    ctrl_fsm_o.irq_level = '0;
     ctrl_fsm_o.dbg_ack = 1'b0;
 
     // IF stage is halted if an instruction has been issued during single step
@@ -439,6 +441,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.csr_restore_mret    = 1'b0;
     ctrl_fsm_o.csr_save_cause      = 1'b0;
     ctrl_fsm_o.csr_cause           = 32'h0;
+    ctrl_fsm_o.csr_clear_minhv     = 1'b0;
 
     pipe_pc_mux_ctrl               = PC_WB;
 
@@ -525,7 +528,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           exc_cause = irq_id_ctrl_i;
 
           ctrl_fsm_o.irq_ack = 1'b1;
-          ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
+          ctrl_fsm_o.irq_id  = irq_id_ctrl_i; // todo: support 1k interrupts
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
@@ -533,10 +536,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           if (SMCLIC) begin
             ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH --
+            ctrl_fsm_o.irq_level = irq_clic_level_i;
             if (irq_clic_shv_i) begin
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
               ctrl_fsm_ns = VECTORING;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
+              ctrl_fsm_o.csr_cause.minhv = 1'b1;
             end else begin
               ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
             end
@@ -744,7 +749,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         debug_mode_n = 1'b1;
         ctrl_fsm_ns = FUNCTIONAL;
       end
-      // State for CLIC vectoring (and Zce table jumps)
+      // State for CLIC vectoring (and Zc table jumps)
       // In this state a fetch has been ordered, and the controller
       // is waiting for the pointer to arrive in the decode stage.
       VECTORING: begin
@@ -758,6 +763,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.pc_mux = PC_TRAP_CLICV_TGT;
           ctrl_fsm_o.kill_if = 1'b1;
           ctrl_fsm_o.kill_id = 1'b1; // No need to let this psuedo op continue todo: pass on to WB if exception
+          ctrl_fsm_o.csr_clear_minhv = 1'b1;
           ctrl_fsm_ns = FUNCTIONAL;
         end
       end

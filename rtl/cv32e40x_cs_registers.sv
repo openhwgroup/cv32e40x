@@ -87,6 +87,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]     mie_o,
   input  logic [31:0]     mip_i,
   output logic            m_irq_enable_o,
+  output logic [7:0]      mintthresh_o,
+  output mintstatus_t     mintstatus_o,
 
   output logic [31:0]     mepc_o,
 
@@ -598,18 +600,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
     mtvt_we                  = 1'b0;
-    mnxti_n                  = '0;
+    mnxti_n                  = '0; // todo: implement
     mnxti_we                 = 1'b0;
-    mintstatus_n             = MINTSTATUS_RESET_VAL;
+    mintstatus_n             = mintstatus_q; // All fields of mintstatus are read only
     mintstatus_we            = 1'b0;
-    mintthresh_n             = '0;
+    mintthresh_n             = csr_wdata_int[7:0];
     mintthresh_we            = 1'b0;
-    mscratchcsw_n            = '0;
+    mscratchcsw_n            = csr_wdata_int;
     mscratchcsw_we           = 1'b0;
-    mscratchcswl_n           = '0;
+    mscratchcswl_n           = csr_wdata_int;
     mscratchcswl_we          = 1'b0;
     mie_n                    = csr_wdata_int & IRQ_MASK;
     mie_we                   = 1'b0;
+    mclicbase_n              = {csr_wdata_int[31:12], 12'h000};
+    mclicbase_we             = 1'b0;
 
     if (csr_we_int) begin
       case (csr_waddr)
@@ -686,6 +690,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mscratchcswl_we = 1'b1;
           end
         end
+        CSR_MCLICBASE: begin
+          if (SMCLIC) begin
+            mclicbase_we = 1'b1;
+          end
+        end
         CSR_DCSR: begin
               dcsr_we = 1'b1;
         end
@@ -733,8 +742,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             mepc_n  = ctrl_fsm_i.pipe_pc;
             mepc_we = 1'b1;
 
+            // Set mcause from controller
             mcause_n  = ctrl_fsm_i.csr_cause;
+
+            // mpil is saved from mintstatus
+            mcause_n.mpil = mintstatus_q.mil;
             mcause_we = 1'b1;
+
+            // todo: handle exception vs interrupt
+            // Save new interrupt level to mintstatus
+            mintstatus_n.mil = ctrl_fsm_i.irq_level;
+            mintstatus_we = 1'b1;
+
+
         end
       end //ctrl_fsm_i.csr_save_cause
 
@@ -743,7 +763,17 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_M;
         mstatus_we = 1'b1;
+
+        mintstatus_n.mil = mcause_q.mpil;
+        mintstatus_we = 1'b1;
       end //ctrl_fsm_i.csr_restore_mret
+
+      // mcause.minhv shall be cleared if vector fetch is successful
+      ctrl_fsm_i.csr_clear_minhv: begin
+        mcause_n = mcause_q;
+        mcause_n.minhv = 1'b0;
+        mcause_we = 1'b1;
+      end
 
       default:;
     endcase
@@ -1039,6 +1069,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign mie_o = mie_q;
 
+  assign mintthresh_o = mintthresh_q[7:0];
+  assign mintstatus_o = mintstatus_q;
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
   assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
 
