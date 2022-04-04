@@ -127,6 +127,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   // 2 is applicable for both E40S and E40X
   // 3 is not applicable, we support machine mode interrupts only.
   // todo: implement (2) for E40S.
+  // todo: can we share the comparator below and flop the result for irq_req_ctrl_o?
   assign irq_wu_ctrl_o = clic_irq_i && (clic_irq_level_i > effective_irq_level);
 
   assign irq_clic_shv_o = clic_irq_shv_q;

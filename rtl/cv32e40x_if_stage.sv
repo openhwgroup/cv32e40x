@@ -256,6 +256,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
+  // Todo: E40S: We will probably need to prevent dummy instructions between pointer fetcher and the pointer target fetch
   always_ff @(posedge clk, negedge rst_n)
   begin : IF_ID_PIPE_REGISTERS
     if (rst_n == 1'b0) begin
