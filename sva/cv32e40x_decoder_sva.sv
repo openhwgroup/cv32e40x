@@ -37,7 +37,8 @@ module cv32e40x_decoder_sva
   input decoder_ctrl_t  decoder_i_ctrl,
   input decoder_ctrl_t  decoder_b_ctrl,
   input decoder_ctrl_t  decoder_ctrl_mux,
-  input logic [31:0]    instr_rdata_i
+  input logic [31:0]    instr_rdata_i,
+  input if_id_pipe_t    if_id_pipe
 );
 
   // Check sub decoders have their outputs idle when there is no instruction match
@@ -53,13 +54,14 @@ module cv32e40x_decoder_sva
 
   // Check that the two LSB of the incoming instructions word is always 2'b11
   // Predecoder should always emit uncompressed instructions
+  // Exclude CLIC pointers
   property p_uncompressed_lsb;
     @(posedge clk) disable iff(!rst_n)
-      (instr_rdata_i[1:0] == 2'b11);
+      !if_id_pipe.instr_meta.clic_ptr |-> (instr_rdata_i[1:0] == 2'b11);
   endproperty
 
-  // todo: adapt to CLIC addresses in instr field
-  //a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
+
+  a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
 
   generate
     if (!A_EXT) begin : gen_no_a_extension_assertions

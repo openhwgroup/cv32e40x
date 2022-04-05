@@ -231,23 +231,23 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Exception in WB if the following evaluates to 1
   // CLIC: bus errors for pointer fetches are treated as NMI, not exceptions.
-  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                           ||
-                            !ex_wb_pipe_i.instr_meta.clicv && ex_wb_pipe_i.instr.bus_resp.err   ||
-                            ex_wb_pipe_i.illegal_insn                                           ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                 ||
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
+                            !ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err   ||
+                            ex_wb_pipe_i.illegal_insn                                              ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                   ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
                             (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
   // For CLIC: Pointer fetches with PMA/PMP errors will get the exception code converted to LOAD_FAULT
   //           Bus errors will be converted to NMI as for regular loads.
-  assign exception_cause_wb = !ex_wb_pipe_i.instr_meta.clicv && ex_wb_pipe_i.instr.mpu_status != MPU_OK   ? EXC_CAUSE_INSTR_FAULT     :
-                              !ex_wb_pipe_i.instr_meta.clicv && ex_wb_pipe_i.instr.bus_resp.err           ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              ex_wb_pipe_i.instr_meta.clicv && ex_wb_pipe_i.instr.mpu_status != MPU_OK    ? EXC_CAUSE_LOAD_FAULT     :
-                              ex_wb_pipe_i.illegal_insn                                                   ? EXC_CAUSE_ILLEGAL_INSN    :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                        ? EXC_CAUSE_ECALL_MMODE     :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                         ? EXC_CAUSE_BREAKPOINT      :
-                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)                                       ? EXC_CAUSE_STORE_FAULT     :
+  assign exception_cause_wb = !ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.mpu_status != MPU_OK   ? EXC_CAUSE_INSTR_FAULT     :
+                              !ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err           ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.mpu_status != MPU_OK    ? EXC_CAUSE_LOAD_FAULT     :
+                              ex_wb_pipe_i.illegal_insn                                                      ? EXC_CAUSE_ILLEGAL_INSN    :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                           ? EXC_CAUSE_ECALL_MMODE     :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                            ? EXC_CAUSE_BREAKPOINT      :
+                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)                                          ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
 
   // For now we are always allowed to take exceptions once they arrive in WB.
@@ -286,7 +286,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
   // CLIC pointer fetches with associated bus errors are treated as NMI. The error bit is taken from ex_wb_pipe and not flopped further.
   //      This preserves the address of the pointer (ex_wb_pipe.pc) that must be stored to mepc.
-  assign pending_nmi = (nmi_pending_q || ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clicv && ex_wb_pipe_i.instr.bus_resp.err) &&
+  assign pending_nmi = (nmi_pending_q || ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err) &&
                        !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
@@ -763,14 +763,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // In this state a fetch has been ordered, and the controller
       // is waiting for the pointer to arrive in the decode stage.
       POINTER_FETCH: begin
-        // Stop further prefetching
-        ctrl_fsm_o.instr_req = 1'b0;
-
-        if (if_id_pipe_i.instr_meta.clicv && if_id_pipe_i.instr_valid) begin
+        if (if_id_pipe_i.instr_meta.clic_ptr && if_id_pipe_i.instr_valid) begin
           // Function pointer reached ID stage, do another jump
           // if no faults happened during pointer fetch. (mcause.minhv will stay high for faults)
           if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
-            ctrl_fsm_o.instr_req = 1'b1;
             ctrl_fsm_o.pc_set = 1'b1;
             ctrl_fsm_o.pc_mux = PC_TRAP_CLICV_TGT;
             ctrl_fsm_o.kill_if = 1'b1;
@@ -906,7 +902,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
       // CLIC: Exluding pointer fetches as they are not instructions
-      if (ex_valid_i && wb_ready_i && !lsu_split_ex_i && !ex_wb_pipe_i.instr_meta.clicv) begin
+      if (ex_valid_i && wb_ready_i && !lsu_split_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet

@@ -132,7 +132,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i
                      ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
-                    ) && !ex_wb_pipe_i.instr_meta.clicv && instr_valid;
+                    ) && !ex_wb_pipe_i.instr_meta.clic_ptr && instr_valid;
 
   assign wb_valid_o = wb_valid;
 

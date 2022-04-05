@@ -26,7 +26,12 @@ module cv32e40x_prefetch_unit_sva import cv32e40x_pkg::*;
    input ctrl_fsm_t   ctrl_fsm_i,
    input logic        fetch_valid,
    input logic [31:0] branch_addr_i,
-   input logic        prefetch_ready_i);
+   input logic        prefetch_ready_i,
+   input logic        trans_valid_o,
+   input logic        trans_ready_i,
+   input logic        trans_data_access_o
+
+  );
 
 
   // Check that branch target address is half-word aligned (RV32-C)
@@ -45,7 +50,19 @@ module cv32e40x_prefetch_unit_sva import cv32e40x_pkg::*;
   a_branch_implies_req : assert property(p_branch_implies_req)
     else `uvm_error("prefetch_buffer", "Assertion a_branch_implies_req failed")
 
-  
+  // Shall not fetch anything between pointer fetch and the actual instruction fetch
+  // based on the pointer.
+  property p_single_ptr_fetch;
+    @(posedge clk) disable iff (!rst_n)
+    (trans_valid_o && trans_ready_i && trans_data_access_o) |=> !trans_valid_o until ctrl_fsm_i.pc_set;
+  endproperty
+
+  a_single_ptr_fetch:
+    assert property(p_single_ptr_fetch)
+    else
+      `uvm_error("Alignment buffer SVA", "Multiple fetches for CLIC/Zc pointer")
+
+
 
 endmodule // cv32e40x_prefetch_unit
 

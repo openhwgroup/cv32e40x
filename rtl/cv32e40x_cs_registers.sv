@@ -924,7 +924,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
   generate
-    if (SMCLIC) begin
+    if (SMCLIC) begin : smclic_regs
 
       cv32e40x_csr #(
         .WIDTH      (32),

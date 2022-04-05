@@ -176,9 +176,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign core_trans.addr = prefetch_trans_addr;
   assign core_trans.dbg  = ctrl_fsm_i.debug_mode_if;
-  assign core_trans.prot[0] = 1'b0;                     // Transfers from IF stage are instruction transfers
-  assign core_trans.prot[2:1] = PRIV_LVL_M;             // Machine mode
-  assign core_trans.memtype = 2'b00;                    // memtype is assigned in the MPU, tie off.
+  assign core_trans.prot[0] = prefetch_trans_data_access;  // Transfers from IF stage are data accesses for CLIC pointer fetches
+  assign core_trans.prot[2:1] = PRIV_LVL_M;                // Machine mode
+  assign core_trans.memtype = 2'b00;                       // memtype is assigned in the MPU, tie off.
 
   // todo: CLIC: Vector loads must respect mprv
   cv32e40x_mpu
@@ -252,8 +252,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n = '0;
-    instr_meta_n.compressed = instr_compressed_int;
-    instr_meta_n.clicv      = prefetch_is_ptr;
+    instr_meta_n.compressed    = instr_compressed_int;
+    instr_meta_n.clic_ptr      = prefetch_is_ptr;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
@@ -292,7 +292,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   compressed_decoder_i
   (
     .instr_i            ( prefetch_instr          ),
-    .instr_is_pointer_i ( prefetch_is_ptr         ),
+    .instr_is_ptr_i     ( prefetch_is_ptr         ),
     .instr_o            ( instr_decompressed      ),
     .is_compressed_o    ( instr_compressed_int    ),
     .illegal_instr_o    ( illegal_c_insn          )

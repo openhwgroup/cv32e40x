@@ -27,7 +27,7 @@
 module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
 (
   input  inst_resp_t  instr_i,
-  input  logic        instr_is_pointer_i,
+  input  logic        instr_is_ptr_i,
   output inst_resp_t  instr_o,
   output logic        is_compressed_o,
   output logic        illegal_instr_o
@@ -52,7 +52,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
     illegal_instr_o  = 1'b0;
     instr_o          = instr_i;
 
-    if (instr_is_pointer_i) begin
+    if (instr_is_ptr_i) begin
       is_compressed_o = 1'b0;
     end else begin
       is_compressed_o = (instr[1:0] != 2'b11);

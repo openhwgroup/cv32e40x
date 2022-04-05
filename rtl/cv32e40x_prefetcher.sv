@@ -47,7 +47,8 @@ module cv32e40x_prefetcher
   input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when fetch_branch_i = 1), word aligned
   input  logic                     fetch_valid_i,
   output logic                     fetch_ready_o,
-  input  logic                     fetch_data_access_i,           // Access is data access (CLIC and Zc)
+  input  logic                     fetch_data_access_i,           // Access is data access (CLIC) // todo: add similar for table jump
+  output logic                     fetch_ptr_access_o,            // Handshake is for a pointer access (CLIC and Zc)
 
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
@@ -64,6 +65,7 @@ module cv32e40x_prefetcher
 
   // Transaction address
   logic [31:0]                   trans_addr_q, trans_addr_incr;
+  logic                          trans_data_access_q;
 
   // Increment address (always word fetch)
   assign trans_addr_incr = {trans_addr_q[31:2], 2'b00} + 32'd4;
@@ -76,13 +78,16 @@ module cv32e40x_prefetcher
 
   assign fetch_ready_o = trans_valid_o && trans_ready_i;
 
-  assign trans_data_access_o = fetch_data_access_i;
+  // Signal if handshake is for a pointer or regular instruction.
+  assign fetch_ptr_access_o = trans_data_access_o;
+
 
   // FSM (state_q, next_state) to control trans_addr_o
   always_comb
   begin
     next_state = state_q;
     trans_addr_o = trans_addr_q;
+    trans_data_access_o = trans_data_access_q;
 
     case(state_q)
       // Default state (pass on branch target address or transaction with incremented address)
@@ -92,8 +97,10 @@ module cv32e40x_prefetcher
           // Select branch address on branch, otherwise incremented address
           if (fetch_branch_i) begin
             trans_addr_o = fetch_branch_addr_i;
+            trans_data_access_o = fetch_data_access_i;
           end else begin
             trans_addr_o = trans_addr_incr;
+            trans_data_access_o = 1'b0; // No incremental pointer fetches
           end
         end
         if ((fetch_branch_i) && !(trans_valid_o && trans_ready_i)) begin
@@ -108,6 +115,7 @@ module cv32e40x_prefetcher
         // occur if for example an interrupt is taken right after a taken jump which did not
         // yet have its target address accepted by the bus interface adapter.
         trans_addr_o = fetch_branch_i ? fetch_branch_addr_i : trans_addr_q;
+        trans_data_access_o = fetch_branch_i ? fetch_data_access_i : trans_data_access_q; // No new pointer fetch should be available in this case
         if (trans_valid_o && trans_ready_i) begin
           // Transaction with branch target address has been accepted. Start regular prefetch again.
           next_state = IDLE;
@@ -127,12 +135,14 @@ module cv32e40x_prefetcher
     begin
       state_q        <= IDLE;
       trans_addr_q   <= '0;
+      trans_data_access_q <= 1'b0;
     end
     else
     begin
       state_q        <= next_state;
       if (fetch_branch_i || (trans_valid_o && trans_ready_i)) begin
         trans_addr_q <= trans_addr_o;
+        trans_data_access_q <= fetch_data_access_i;
       end
     end
   end

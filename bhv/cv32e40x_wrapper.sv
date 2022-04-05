@@ -272,6 +272,7 @@ module cv32e40x_wrapper
   bind cv32e40x_decoder: core_i.id_stage_i.decoder_i cv32e40x_decoder_sva #(.A_EXT(A_EXT))
     decoder_sva(.clk   (core_i.id_stage_i.clk),
                 .rst_n (core_i.id_stage_i.rst_n),
+                .if_id_pipe (core_i.if_id_pipe),
                 .*);
 
   // MPU assertions

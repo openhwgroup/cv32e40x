@@ -1014,7 +1014,7 @@ typedef struct packed {
 typedef struct packed
 {
   logic        compressed;
-  logic        clicv;
+  logic        clic_ptr;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
