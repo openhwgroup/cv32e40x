@@ -951,7 +951,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_error_o (mtvt_rd_error)
       );
 
-      assign mnxti_q = 32'h0;
+      assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
+
+      assign mnxti_q = 32'h0; // todo: implement mnxti functionality
 
       cv32e40x_csr #(
         .WIDTH      (32),
@@ -1015,7 +1017,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       );
 
       assign mie_q  = 32'h0;
-      assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
+
     end else begin
       cv32e40x_csr #(
         .WIDTH      (32),

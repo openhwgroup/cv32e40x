@@ -45,7 +45,7 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   logic [31:0] irq_q;
 
   // Register all interrupt inputs (on gated clock). The wake-up logic will
-  // observe irq_i as well, but in all other places irq_q will be used to 
+  // observe irq_i as well, but in all other places irq_q will be used to
   // avoid timing paths from irq_i to instr_*_o
 
   always_ff @(posedge clk, negedge rst_n)
@@ -68,7 +68,7 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
 
   // Global interrupt enable
   assign global_irq_enable = m_ie_i;
- 
+
 
   // Request to take interrupt if there is a locally enabled interrupt while interrupts are also enabled globally
   assign irq_req_ctrl_o = (|irq_local_qual) && global_irq_enable;

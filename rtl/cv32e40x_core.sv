@@ -260,7 +260,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
   logic        irq_req_ctrl;
-  logic [4:0]  irq_id_ctrl;
+  logic [9:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
 
   // CLIC specific irq signals
@@ -269,7 +269,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Used (only) by verification environment
   logic        irq_ack;
-  logic [4:0]  irq_id;
+  logic [9:0]  irq_id;
   logic        dbg_ack;
 
   // eXtension interface signals
@@ -815,6 +815,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
       assign mip          = '0;
 
       cv32e40x_clic_int_controller
+      #(
+          .SMCLIC_ID_WIDTH (SMCLIC_ID_WIDTH)
+      )
       clic_int_controller_i
       (
         .clk                  ( clk                ),
@@ -834,8 +837,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .irq_clic_shv_o       ( irq_clic_shv       ),
         .irq_clic_level_o     ( irq_clic_level     ),
 
-        // To/from with cv32e40x_cs_registers
-        // todo: add CLIC related CSRs (threshold etc)
+        // From with cv32e40x_cs_registers
         .m_ie_i               ( m_irq_enable       ),
         .mintthresh_i         ( mintthresh         ),
         .mintstatus_i         ( mintstatus         )
@@ -852,7 +854,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
         // To cv32e40x_controller
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
-        .irq_id_ctrl_o        ( irq_id_ctrl        ),
+        .irq_id_ctrl_o        ( irq_id_ctrl[4:0]   ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
         // To/from with cv32e40x_cs_registers
@@ -860,6 +862,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .mip_o                ( mip                ),
         .m_ie_i               ( m_irq_enable       )
       );
+
+      // Tie off unused irq_id_ctrl bits
+      assign irq_id_ctrl[9:5] = 5'b00000;
 
       // CLIC shv not used in basic mode
       assign irq_clic_shv = 1'b0;

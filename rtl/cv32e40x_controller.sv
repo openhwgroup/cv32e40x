@@ -75,7 +75,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,
-  input  logic [4:0]  irq_id_ctrl_i,
+  input  logic [9:0]  irq_id_ctrl_i,
   input  logic        irq_wu_ctrl_i,
   input  logic        irq_clic_shv_i,
   input  logic [7:0]  irq_clic_level_i,

@@ -126,12 +126,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_DRET:     branch_addr_n = dpc_i;
       PC_FENCEI:   branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
       PC_TRAP_EXC: branch_addr_n = {mtvec_addr_i, 7'h0};                                        // All the exceptions go to base address
-      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux[4:0], 2'b00};     // interrupts are vectored
+      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.mtvec_pc_mux, 2'b00};     // interrupts are vectored
       PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI: branch_addr_n = USE_DEPRECATED_FEATURE_SET ? {nmi_addr_i[31:2], 2'b00} :
                                                                 {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
-      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.m_exc_vec_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
+      PC_TRAP_CLICV:     branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
+      // CLIC spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;
       default:;
     endcase
@@ -199,7 +200,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                                                            // Misaligned access to main is allowed, and accesses outside main will
                                                            // result in instruction access fault (which will have priority over
                                                            //  misaligned from I/O fault)
-    .if_data_access_i     ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
+    .core_data_access_i   ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose
@@ -274,7 +275,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         // Bypass comressed decoder when result is a pointer
-        if_id_pipe_o.instr            <= prefetch_is_ptr ? prefetch_instr : instr_decompressed;
+        if_id_pipe_o.instr            <= instr_decompressed;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
@@ -290,10 +291,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   cv32e40x_compressed_decoder
   compressed_decoder_i
   (
-    .instr_i         ( prefetch_instr          ),
-    .instr_o         ( instr_decompressed      ),
-    .is_compressed_o ( instr_compressed_int    ),
-    .illegal_instr_o ( illegal_c_insn          )
+    .instr_i            ( prefetch_instr          ),
+    .instr_is_pointer_i ( prefetch_is_ptr         ),
+    .instr_o            ( instr_decompressed      ),
+    .is_compressed_o    ( instr_compressed_int    ),
+    .illegal_instr_o    ( illegal_c_insn          )
   );
 
 

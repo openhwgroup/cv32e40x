@@ -75,7 +75,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        lsu_interruptible_i,        // LSU can be interrupted
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
-  input  logic [4:0]  irq_id_ctrl_i,              // irq id
+  input  logic [9:0]  irq_id_ctrl_i,              // irq id
   input  logic        irq_wu_ctrl_i,              // irq wakeup control
   input  logic        irq_clic_shv_i,             // CLIC mode selective hardware vectoring
   input  logic [7:0]  irq_clic_level_i,           // CLIC mode current interrupt level
@@ -200,7 +200,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Mux selector for vectored IRQ PC
   // Used for both basic mode and CLIC when shv == 0.
-  assign ctrl_fsm_o.m_exc_vec_pc_mux = ((mtvec_mode_i == 2'b0) || (mtvec_mode_i == 2'b11 && !irq_clic_shv_i)) ? 11'h0 : exc_cause;
+  assign ctrl_fsm_o.mtvec_pc_mux = ((mtvec_mode_i == 2'b0) || (mtvec_mode_i == 2'b11 && !irq_clic_shv_i)) ? 5'h0 : exc_cause[4:0];
+
+  // CLIC mode vectored PC mux is always the same as exc_cause.
+  assign ctrl_fsm_o.mtvt_pc_mux = exc_cause;
+
 
   ////////////////////////////////////////////////////////////////////
 
@@ -465,7 +469,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     fencei_flush_req_set           = 1'b0;
 
-    ctrl_fsm_o.pc_set_clicv = 1'b0;
+    ctrl_fsm_o.pc_set_clicv        = 1'b0;
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -534,18 +538,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           exc_cause = irq_id_ctrl_i;
 
           ctrl_fsm_o.irq_ack = 1'b1;
-          ctrl_fsm_o.irq_id  = irq_id_ctrl_i; // todo: support 1k interrupts
+          ctrl_fsm_o.irq_id  = irq_id_ctrl_i;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
 
 
           if (SMCLIC) begin
-            ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i}; // todo: factor in SMCLIC_ID_WIDTH --
+            ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
             ctrl_fsm_o.irq_level = irq_clic_level_i;
             if (irq_clic_shv_i) begin
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
-              ctrl_fsm_ns = VECTORING;
+              ctrl_fsm_ns = POINTER_FETCH;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
               ctrl_fsm_o.csr_cause.minhv = 1'b1;
             end else begin
@@ -553,7 +557,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
           end else begin
             ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
-            ctrl_fsm_o.csr_cause.exception_code = {6'b000000, irq_id_ctrl_i};
+            ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
           end
 
           // Save pc from oldest valid instruction
@@ -758,11 +762,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // State for CLIC vectoring (and Zc table jumps)
       // In this state a fetch has been ordered, and the controller
       // is waiting for the pointer to arrive in the decode stage.
-      VECTORING: begin
+      POINTER_FETCH: begin
         // Stop further prefetching
         ctrl_fsm_o.instr_req = 1'b0;
 
-        if(if_id_pipe_i.instr_meta.clicv && if_id_pipe_i.instr_valid) begin
+        if (if_id_pipe_i.instr_meta.clicv && if_id_pipe_i.instr_valid) begin
           // Function pointer reached ID stage, do another jump
           // if no faults happened during pointer fetch. (mcause.minhv will stay high for faults)
           if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
@@ -772,9 +776,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.csr_clear_minhv = 1'b1;
           end
-          // Note: If the pointer fetch faulted (pma/pmp/bus error), an NMI will
+          // Note: If the pointer fetch faulted (pma/pmp/bus error), an exception or NMI will
           // be taken once the pointer fetch reachces WB (two cycles after the current)
-          // The FSM must be in the FUNCTIONAL state to take the NMI.
+          // The FSM must be in the FUNCTIONAL state to take the exception or NMI.
           ctrl_fsm_ns = FUNCTIONAL;
         end
       end

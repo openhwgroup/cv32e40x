@@ -44,7 +44,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // To cv32e40x_controller
   output logic                       irq_req_ctrl_o,
-  output logic [SMCLIC_ID_WIDTH-1:0] irq_id_ctrl_o,
+  output logic [9:0]                 irq_id_ctrl_o,    // Max width - unused bits are tied off
   output logic                       irq_wu_ctrl_o,
   output logic                       irq_clic_shv_o,
   output logic [7:0]                 irq_clic_level_o,
@@ -61,7 +61,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // Flops for breaking timing path to instruction interface
   logic                       clic_irq_q;
-  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_q;
+  logic [9:0]                 clic_irq_id_q;
   logic [7:0]                 clic_irq_level_q;
   logic [1:0]                 clic_irq_priv_q;
   logic                       clic_irq_shv_q;
@@ -89,8 +89,8 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
       clic_irq_shv_q    <= 1'b0;
     end else begin
       if (clic_irq_i) begin
-        clic_irq_id_q    <= clic_irq_id_i;
-        clic_irq_level_q <= clic_irq_level_i;
+        clic_irq_id_q    <= 10'(clic_irq_id_i); // Casting SMCLIC_ID_WIDTH into max with of 10 bits.
+        clic_irq_level_q <= clic_irq_level_i;   // Will always be PRIV_LVL_M todo: add assertion
         clic_irq_priv_q  <= clic_irq_priv_i;
         clic_irq_shv_q   <= clic_irq_shv_i;
       end

@@ -256,7 +256,7 @@ module cv32e40x_alignment_buffer_sva
   a_single_ptr_fetch:
     assert property(p_single_ptr_fetch)
     else
-      `uvm_error("Alignment buffer SVA", "Multiple fetches for CLIC/Zce pointer")
+      `uvm_error("Alignment buffer SVA", "Multiple fetches for CLIC/Zc pointer")
 
 endmodule // cv32e40x_alignment_buffer_sva
 

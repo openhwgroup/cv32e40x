@@ -116,6 +116,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
   // Adjust instruction count with 'pop_q', which tells if we consumed an instruction
   // during the last cycle
+  // For CLIC vector loads, if the initial pc_set does not immediately get a fetch_ready,
+  // ptr_fetch_done_q will remain low to enable the prefetcher to fetch the pointer even though
+  // the controller pulls instr_req low while waiting for the pointer result.
   assign fetch_valid_o = (ctrl_fsm_i.instr_req || !ptr_fetch_done_q) &&
                          (outstanding_cnt_q < 2) &&
                          (((instr_cnt_q - pop_q) == 'd0) ||
@@ -566,5 +569,5 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // If the pointer fetch isn't granted immediately, is_ptr_q will be true until
   // the cycle after the next pc_set. Must avoid signaling fetch_data_access_o
   // for the first pc_set after pointer fetch.
-  assign fetch_data_access_o = ctrl_fsm_i.pc_set_clicv || (is_ptr_q && !(ctrl_fsm_i.pc_set && !ctrl_fsm_i.pc_set_clicv));
+  assign fetch_data_access_o = (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv) || (is_ptr_q && !(ctrl_fsm_i.pc_set && !ctrl_fsm_i.pc_set_clicv));
 endmodule

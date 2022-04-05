@@ -167,7 +167,7 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, VECTORING} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, POINTER_FETCH} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -564,8 +564,8 @@ typedef struct packed {
   logic           mpie;            // CLIC only, same as mstatus.mpie
   logic [26:24]   zero1;           // Reserved, hardwired to zero.
   logic [23:16]   mpil;            // CLIC only. Previous interrupt level
-  logic [15:12]   zero0;           // Reserved, hardwired to zero.
-  logic [11: 0]   exception_code;  // Bit 11 not used, hardwired to zero
+  logic [15:11]   zero0;           // Reserved, hardwired to zero.
+  logic [10: 0]   exception_code;  // Exception cause
 } mcause_t;
 
 typedef struct packed {
@@ -1194,11 +1194,12 @@ typedef struct packed {
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic [10:0] m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [4:0]  mtvec_pc_mux;          // id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [10:0] mtvt_pc_mux;           // id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
 
   logic        irq_ack;               // irq has been taken
-  logic [10:0] irq_id;                // id of taken irq. Max width, unused bits will be tied off
+  logic [9:0]  irq_id;                // id of taken irq. Max width (1024 interrupts), unused bits will be tied off
   logic [7:0]  irq_level;             // level of taken irq
   logic        dbg_ack;               // debug has been taken
 

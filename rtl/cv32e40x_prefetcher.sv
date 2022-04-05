@@ -47,13 +47,13 @@ module cv32e40x_prefetcher
   input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when fetch_branch_i = 1), word aligned
   input  logic                     fetch_valid_i,
   output logic                     fetch_ready_o,
-  input  logic                     fetch_data_access_i,           // Access is data access (CLIC and Zce)
+  input  logic                     fetch_data_access_i,           // Access is data access (CLIC and Zc)
 
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
   input  logic                     trans_ready_i,           // Transaction request ready (transaction gets accepted when trans_valid_o and trans_ready_i are both 1)
   output logic [31:0]              trans_addr_o,            // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
-  output logic                     trans_data_access_o      // Transaction is treated as a data access (CLIC and Zce)
+  output logic                     trans_data_access_o      // Transaction is treated as a data access (CLIC and Zc)
 
 
 );
