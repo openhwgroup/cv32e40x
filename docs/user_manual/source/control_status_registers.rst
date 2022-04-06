@@ -877,7 +877,7 @@ Reset Value: 0x0000_0000
 +=============+============+==================================================================================+
 | 31          | RW         | **INTERRUPT:** This bit is set when the exception was triggered by an interrupt. |
 +-------------+------------+----------------------------------------------------------------------------------+
-| 30          | R          | **MINHV**. Set by hardware at start of hardware vectoring, cleared by            |
+| 30          | RW         | **MINHV**. Set by hardware at start of hardware vectoring, cleared by            |
 |             |            | hardware at end of successful hardware vectoring.                                |
 +-------------+------------+----------------------------------------------------------------------------------+
 | 29:28       | WARL (0x3) | **MPP:** Previous privilege mode. Same as ``mstatus.MPP``                        |
@@ -996,7 +996,6 @@ Detailed:
 This register can be used by the software to service the next interrupt when it is in the same privilege mode,
 without incurring the full cost of an interrupt pipeline flush and context save/restore.
 
-
 .. _csr-mintstatus:
 
 Machine Interrupt Status (``mintstatus``)
@@ -1025,7 +1024,6 @@ Detailed:
 This register holds the active interrupt level for each privilege mode.
 Only Machine Interrupt Level is supported.
 
-
 .. _csr-mintthresh:
 
 Machine Interrupt-Level Threshold (``mintthresh``)
@@ -1049,7 +1047,6 @@ Detailed:
 
 This register holds the machine mode interrupt level threshold.
 
-
 .. _csr-mscratchcsw:
 
 Machine Scratch Swap for Priv Mode Change (``mscratchcsw``)
@@ -1070,8 +1067,6 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 
 Scratch swap register for multiple privilege modes.
-
-
 
 .. _csr-mscratchcswl:
 
@@ -1094,15 +1089,16 @@ Detailed:
 
 Scratch swap register for multiple interrupt levels.
 
-
-
-
 .. _csr-mclicbase:
 
 CLIC Base (``mclicbase``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x34A
+
+.. note::
+   The address for the ``mclicbase`` CSR has not been defined yet in [RISC-V-SMCLIC]_. The used address is therefore
+   likely to change. Also it is likely that the ``mclicbase`` CSR will be removed all together.
 
 Reset Value: 0x0000_0000
 
@@ -1113,13 +1109,16 @@ Detailed:
 +-------------+------------+-------------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                   |
 +=============+============+=========================================================================+
-| 31:12       |   RW       | **MCLICBASE**: CLIC Base                                                |
+| 31:12       |   R (0x0)  | **MCLICBASE**: CLIC Base                                                |
 +-------------+------------+-------------------------------------------------------------------------+
 | 11: 0       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
 +-------------+------------+-------------------------------------------------------------------------+
 
 CLIC base register.
 
+.. note::
+   Currently ``mclicbase`` CSR is simply hardwired to 0x0 and will therefore likely not reflect the actual CLIC base.
+   This CSR will likely be removed. The [RISC-V-SMCLIC]_ specification does not specify its address yet and therefore no further attempt is made to further implement this in |corev|.
 
 .. _csr-tselect:
 
