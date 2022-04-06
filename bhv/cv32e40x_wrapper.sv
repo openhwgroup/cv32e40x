@@ -334,6 +334,7 @@ module cv32e40x_wrapper
   bind cv32e40x_rvfi:
     rvfi_i
     cv32e40x_rvfi_sva
+      #(.SMCLIC(SMCLIC))
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
@@ -353,6 +354,7 @@ module cv32e40x_wrapper
       );
 
     cv32e40x_rvfi
+      #(.SMCLIC(SMCLIC))
       rvfi_i
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
@@ -417,6 +419,8 @@ module cv32e40x_wrapper
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
+         .clic_nmi_pending_i       ( core_i.controller_i.controller_fsm_i.pending_clic_nmi                ),
+         .clic_nmi_is_store_i      ( 1'b0               /* CLIC NMI can only be due to a load*/           ),
          // CSRs
          .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
          .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_q                                          ),

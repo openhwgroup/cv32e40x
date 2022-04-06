@@ -21,6 +21,9 @@
 module cv32e40x_rvfi
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
+  #(
+    parameter bit SMCLIC = 0
+  )
   (
    input logic                                clk_i,
    input logic                                rst_ni,
@@ -89,8 +92,10 @@ module cv32e40x_rvfi
    input ctrl_fsm_t                           ctrl_fsm_i,
    input logic                                pending_single_step_i,
    input logic                                single_step_allowed_i,
-   input logic                                nmi_pending_i,
-   input logic                                nmi_is_store_i,
+   input logic                                nmi_pending_i,          // regular NMI pending
+   input logic                                nmi_is_store_i,         // regular NMI type
+   input logic                                clic_nmi_pending_i,     // NMI due to CLIC vector load is pending
+   input logic                                clic_nmi_is_store_i,    // NMI type due to CLIC vector load
 
    //// CSR Probes ////
    input                                      jvt_t csr_jvt_n_i,
@@ -827,7 +832,7 @@ module cv32e40x_rvfi
     end
   end // always_ff @
 
-  assign rvfi_nmip = {nmi_is_store_i, nmi_pending_i};
+  assign rvfi_nmip = {(nmi_is_store_i || clic_nmi_is_store_i), (nmi_pending_i || clic_nmi_pending_i)};
 
   // Capture possible performance counter writes during WB, before wb_valid
   // If counter write happens before wb_valid (LSU stalled waiting for rvalid for example),

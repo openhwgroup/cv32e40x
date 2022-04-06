@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_ex_stage import cv32e40x_pkg::*;
-#( 
+#(
   parameter bit     X_EXT = 1'b0,
   parameter m_ext_e M_EXT = M
 )
@@ -428,6 +428,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.div_en && div_valid)   ||
                        (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
                        (id_ex_pipe_i.xif_en && xif_valid)   ||
+                       (id_ex_pipe_i.instr_meta.clic_ptr)   || // todo: Should this instead have it's own _valid?
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
 

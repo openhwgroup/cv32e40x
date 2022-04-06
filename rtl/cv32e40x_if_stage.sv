@@ -200,7 +200,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                                                            // Misaligned access to main is allowed, and accesses outside main will
                                                            // result in instruction access fault (which will have priority over
                                                            //  misaligned from I/O fault)
-    .core_data_access_i   ( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
+    .core_if_data_access_i( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose
@@ -274,7 +274,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // alignment buffer has a valid instruction
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
-        // Bypass comressed decoder when result is a pointer
+        // instr_decompressed may be a pointer in case of CLIC or Zc, handled within the compressed decoder.
         if_id_pipe_o.instr            <= instr_decompressed;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;

@@ -578,42 +578,83 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     mstatus_we               = 1'b0;
 
-    // SMCLIC: Not setting mpp or mpie, as these are stored in mstatus
-    mcause_n                 = '{
-                                  irq:            csr_wdata_int[31],
-                                  exception_code: csr_wdata_int[10:0],
-                                  default:        'b0
-                                };
-    mcause_we                = 1'b0;
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
     if (USE_DEPRECATED_FEATURE_SET) begin
       mtvec_n.addr[7]        = 1'b0; // todo : remove
     end
+
     mtvec_n.zero0            = mtvec_q.zero0;
+    mtvec_we                 = csr_mtvec_init_i;
 
     if (SMCLIC) begin
       mtvec_n.mode             = mtvec_q.mode; // mode is WARL 0x3 when using CLIC
-    end else begin
-      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
-    end
-    mtvec_we                 = csr_mtvec_init_i;
 
-    mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
-    mtvt_we                  = 1'b0;
-    mnxti_n                  = '0; // todo: implement
-    mnxti_we                 = 1'b0;
-    mintstatus_n             = mintstatus_q; // All fields of mintstatus are read only
-    mintstatus_we            = 1'b0;
-    mintthresh_n             = csr_wdata_int[7:0];
-    mintthresh_we            = 1'b0;
-    mscratchcsw_n            = csr_wdata_int;
-    mscratchcsw_we           = 1'b0;
-    mscratchcswl_n           = csr_wdata_int;
-    mscratchcswl_we          = 1'b0;
-    mie_n                    = csr_wdata_int & IRQ_MASK;
-    mie_we                   = 1'b0;
-    mclicbase_n              = {csr_wdata_int[31:12], 12'h000};
-    mclicbase_we             = 1'b0;
+      mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
+      mtvt_we                  = 1'b0;
+
+      mnxti_n                  = '0; // todo: implement
+      mnxti_we                 = 1'b0;
+
+      mintstatus_n             = mintstatus_q; // All fields of mintstatus are read only
+      mintstatus_we            = 1'b0;
+
+      mintthresh_n             = {24'h000000, csr_wdata_int[7:0]};
+      mintthresh_we            = 1'b0;
+
+      mscratchcsw_n            = csr_wdata_int;
+      mscratchcsw_we           = 1'b0;
+
+      mscratchcswl_n           = csr_wdata_int;
+      mscratchcswl_we          = 1'b0;
+
+      mie_n                    = '0;
+      mie_we                   = 1'b0;
+
+      mclicbase_n              = '0; // Read only, tieing to zero for now.
+      mclicbase_we             = 1'b0;
+
+      mcause_n                 = '{
+                                    irq:            csr_wdata_int[31],
+                                    minhv:          csr_wdata_int[30],
+                                    mpil:           csr_wdata_int[23:16],
+                                    exception_code: csr_wdata_int[10:0],
+                                    default:        'b0
+                                  };
+      mcause_we                = 1'b0;
+    end else begin // !SMCLIC
+      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_q.mode : {1'b0, csr_wdata_int[0]};
+
+      mtvt_n                   = '0;
+      mtvt_we                  = 1'b0;
+
+      mnxti_n                  = '0;
+      mnxti_we                 = 1'b0;
+
+      mintstatus_n             = '0;
+      mintstatus_we            = 1'b0;
+
+      mintthresh_n             = '0;
+      mintthresh_we            = 1'b0;
+
+      mscratchcsw_n            = '0;
+      mscratchcsw_we           = 1'b0;
+
+      mscratchcswl_n           = '0;
+      mscratchcswl_we          = 1'b0;
+
+      mie_n                    = csr_wdata_int & IRQ_MASK;
+      mie_we                   = 1'b0;
+
+      mclicbase_n              = '0;
+      mclicbase_we             = 1'b0;
+
+      mcause_n                 = '{
+                                    irq:            csr_wdata_int[31],
+                                    exception_code: csr_wdata_int[10:0],
+                                    default:        'b0
+                                  };
+      mcause_we                = 1'b0;
+    end
 
     if (csr_we_int) begin
       case (csr_waddr)
@@ -745,15 +786,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             // Set mcause from controller
             mcause_n  = ctrl_fsm_i.csr_cause;
 
-            // mpil is saved from mintstatus
-            mcause_n.mpil = mintstatus_q.mil;
+            if (SMCLIC) begin
+              // mpil is saved from mintstatus
+              mcause_n.mpil = mintstatus_q.mil;
+
+              // todo: handle exception vs interrupt
+              // Save new interrupt level to mintstatus
+              mintstatus_n.mil = ctrl_fsm_i.irq_level;
+              mintstatus_we = 1'b1;
+            end else begin
+              mcause_n.mpil = '0;
+            end
+
             mcause_we = 1'b1;
-
-            // todo: handle exception vs interrupt
-            // Save new interrupt level to mintstatus
-            mintstatus_n.mil = ctrl_fsm_i.irq_level;
-            mintstatus_we = 1'b1;
-
 
         end
       end //ctrl_fsm_i.csr_save_cause
@@ -764,15 +809,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_n.mpp  = PRIV_LVL_M;
         mstatus_we = 1'b1;
 
-        mintstatus_n.mil = mcause_q.mpil;
-        mintstatus_we = 1'b1;
+        if (SMCLIC) begin
+          mintstatus_n.mil = mcause_q.mpil;
+          mintstatus_we = 1'b1;
+        end
       end //ctrl_fsm_i.csr_restore_mret
 
       // mcause.minhv shall be cleared if vector fetch is successful
       ctrl_fsm_i.csr_clear_minhv: begin
-        mcause_n = mcause_q;
-        mcause_n.minhv = 1'b0;
-        mcause_we = 1'b1;
+        if (SMCLIC) begin
+          mcause_n = mcause_q;
+          mcause_n.minhv = 1'b0;
+          mcause_we = 1'b1;
+        end
       end
 
       default:;
@@ -1018,7 +1067,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       assign mie_q  = 32'h0;
 
-    end else begin
+    end else begin : basic_mode_regs
       cv32e40x_csr #(
         .WIDTH      (32),
         .SHADOWCOPY (1'b0),

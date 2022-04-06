@@ -107,11 +107,11 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   ///////////////////////////
 
   // Request to take interrupt if:
-  // There a pending-and-enabled interrupt and interrupts are enabled globally
-  // AND the incoming irq level is above the cores current effective interrupt level.
+  // There is a pending-and-enabled interrupt and interrupts are enabled globally
+  // AND the incoming irq level is above the core's current effective interrupt level.
   // todo: In user mode, machine threshold should not mask interrupts to machine mode
   assign irq_req_ctrl_o = clic_irq_q &&
-                          clic_irq_level_q > effective_irq_level &&
+                          (clic_irq_level_q > effective_irq_level) &&
                           global_irq_enable;
 
   // Pass on interrupt ID

@@ -153,6 +153,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        if_busy;
   logic        lsu_busy;
   logic        lsu_interruptible;
+  logic        lsu_write_buffer_empty;
 
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
@@ -561,6 +562,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Control signals
     .busy_o                ( lsu_busy           ),
     .interruptible_o       ( lsu_interruptible  ),
+    .write_buffer_empty_o  ( lsu_write_buffer_empty ),
 
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
@@ -757,6 +759,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
+    .lsu_write_buffer_empty_i       ( lsu_write_buffer_empty ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
