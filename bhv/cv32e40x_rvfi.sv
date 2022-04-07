@@ -849,7 +849,7 @@ module cv32e40x_rvfi
   assign rvfi_nmip = {(nmi_is_store_i || clic_nmi_is_store_i), (nmi_pending_i || clic_nmi_pending_i)};
 
   // Capture possible performance counter writes during WB, before wb_valid
-  // If counter write happens before wb_valid (LSU stalled waiting for rvalid for example),
+  // If counter write happens before wb_valid (e.g. LSU stalled waiting for rvalid or WFI that is in WB multiple cycles),
   // we must keep _n and _q values to correctly set _rdata and _wdata when rvfi_valid is set.
   // If wb_valid occurs in the same cycle as the write, the flags are zero and any
   // stored values will not be used.
@@ -864,7 +864,7 @@ module cv32e40x_rvfi
         mhpmcounter_h_during_wb[i] <= 1'b0;
       end else begin
         // Clear flags on wb_valid
-        if (wb_valid_i) begin
+        if (wb_valid_adjusted) begin
           mhpmcounter_l_during_wb[i] <= 1'b0;
           mhpmcounter_h_during_wb[i] <= 1'b0;
         end else begin
