@@ -101,13 +101,6 @@ package cv32e40x_rvfi_pkg;
 
   typedef struct packed {
     logic [10:0] cause;
-    logic        debug;
-    logic        interrupt;
-    logic        wu;
-  } rvfi_wu_t;
-
-  typedef struct packed {
-    logic [10:0] cause;
     logic        interrupt;
     logic        exception;
     logic        intr;

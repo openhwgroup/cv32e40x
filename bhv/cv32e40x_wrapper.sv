@@ -339,7 +339,6 @@ module cv32e40x_wrapper
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .nmi_addr_i(core_i.nmi_addr_i),
-               .core_sleep_i(core_i.core_sleep_o),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
