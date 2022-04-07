@@ -282,10 +282,10 @@ level):
   operation of the core.
 
 * **WARL**: **write-any-read-legal** fields store only legal values written by CSR writes.
-  For example, a WARL (0x0) field supports only the value 0. Any value may be written, but
-  all reads would return zero regardless of the value being written to it. A WARL field may
-  support more than one value. If an unsupported value is written to such a field, subsequent
-  reads will return the value marked with an asterix (6* for example) in the definiton of that field.
+  For example, a WARL (0x0) field supports only the value 0x0. Any value may be written, but
+  all reads would return 0x0 regardless of the value being written to it. A WARL field may
+  support more than one value. If an unsupported value is (attempted to be) written to a WARL field, the original (legal) value
+  of the bitfield is preserved.
 
 * **WPRI**: Software should ignore values read from these fields, and preserve the values when writing.
 
@@ -603,7 +603,7 @@ Detailed:
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 | 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-| 1:0     | WARL (0x0*, 0x1) | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
+| 1:0     | WARL (0x0, 0x1)  | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
 The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
@@ -653,8 +653,15 @@ Detailed:
 +-------------+------------+-----------------------------------------------------------------------+
 |   Bit #     |   R/W      |           Description                                                 |
 +=============+============+=======================================================================+
-| 31:6        | WARL       | **BASE[31:6]**: Trap-handler vector table base address.               |
+| 31:N        | RW         | **BASE[31:N]**: Trap-handler vector table base address.               |
+|             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
 |             |            | See note below for alignment restrictions.                            |
++-------------+------------+-----------------------------------------------------------------------+
+| N-1:6       | WARL (0x0) | **BASE[N-1:6]**: Trap-handler vector table base address.              |
+|             |            | This field is only defined if N > 6.                                  |
+|             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
+|             |            | ``mtvt[N-1:6]`` is hardwired to 0x0.                                  |
+|             |            | See note below for  alignment restrictions.                           |
 +-------------+------------+-----------------------------------------------------------------------+
 | 5:0         | R (0x0)    | Reserved. Hardwired to 0.                                             |
 +-------------+------------+-----------------------------------------------------------------------+
@@ -1127,10 +1134,8 @@ Reset Value: 0x0000_0000
 |   Bit #     |   R/W                              |   Description                                                                          |
 +=============+====================================+========================================================================================+
 || 31:0       || WARL                              || |corev| implements 0 to ``DBG_NUM_TRIGGERS`` triggers. Selects                        |
-||            || (0x0 - (``DBG_NUM_TRIGGERS``-1)*) || which trigger CSRs are accessed through the tdata* CSRs.                              |
+||            || (0x0 - (``DBG_NUM_TRIGGERS``-1))  || which trigger CSRs are accessed through the tdata* CSRs.                              |
 +-------------+------------------------------------+----------------------------------------------------------------------------------------+
-
-If a value larger than the parameter ``DBG_NUM_TRIGGERS`` is written, the register will contain the value ``DBG_NUM_TRIGGERS`` - 1.
 
 .. _csr-tdata1:
 
@@ -1148,7 +1153,7 @@ value of the **type** field. See [RISC-V-DEBUG]_ for details regarding all trigg
 | Bit#  | R/W         | Description                                                    |
 +=======+=============+================================================================+
 || 31:28|| WARL       || **type:** 6 = Address match trigger type.                     |
-||      || (0x5, 0x6*)||           5 = Exception trigger                               |
+||      || (0x5, 0x6) ||           5 = Exception trigger                               |
 +-------+-------------+----------------------------------------------------------------+
 | 27    | WARL (0x1)  | **dmode:** Only debug mode can write tdata registers           |
 +-------+-------------+----------------------------------------------------------------+
@@ -1193,7 +1198,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 | 11    | WARL (0x0)  | **CHAIN:**. Hardwired to 0                                     |
 +-------+-------------+----------------------------------------------------------------+
 || 10:7 || WARL       || **MATCH:** 0: Address matches `tdata2`.                       |
-||      || (0x0*, 0x2,||            2: Address is greater than or equal to `tdata2`    |
+||      || (0x0, 0x2, ||            2: Address is greater than or equal to `tdata2`    |
 ||      ||  0x3)      ||            3: Address is less than `tdata2`                   |
 +-------+-------------+----------------------------------------------------------------+
 | 6     | WARL (0x1)  | **M:** Match in M-Mode.                                        |
@@ -1714,13 +1719,13 @@ Detailed:
   +-------+-----------------+---------------------------------------------------------------------------------------------------------------+
   | Bit#  |  R/W            | Definition                                                                                                    |
   +=======+=================+===============================================================================================================+
-  | 31:24 | RW / WARL (0x0) | PMP3CFG                                                                                                       |
+  | 31:24 | RW              | PMP3CFG                                                                                                       |
   +-------+-----------------+---------------------------------------------------------------------------------------------------------------+
-  | 23:16 | RW / WARL (0x0) | PMP2CFG                                                                                                       |
+  | 23:16 | RW              | PMP2CFG                                                                                                       |
   +-------+-----------------+---------------------------------------------------------------------------------------------------------------+
-  | 15:8  | RW / WARL (0x0) | PMP1CFG                                                                                                       |
+  | 15:8  | RW              | PMP1CFG                                                                                                       |
   +-------+-----------------+---------------------------------------------------------------------------------------------------------------+
-  | 7:0   | RW / WARL (0x0) | PMP0CFG                                                                                                       |
+  | 7:0   | RW              | PMP0CFG                                                                                                       |
   +-------+-----------------+---------------------------------------------------------------------------------------------------------------+
 
   Detailed ``pmpcfg1``:
@@ -1728,13 +1733,13 @@ Detailed:
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
   | Bit#  |  R/W             | Definition                                                                                                    |
   +=======+==================+===============================================================================================================+
-  | 31:24 | RW / WARL (0x0)  | PMP7CFG                                                                                                       |
+  | 31:24 | RW               | PMP7CFG                                                                                                       |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 23:16 | RW / WARL (0x0)  | PMP6CFG                                                                                                       |
+  | 23:16 | RW               | PMP6CFG                                                                                                       |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 15:8  | RW / WARL (0x0)  | PMP5CFG                                                                                                       |
+  | 15:8  | RW               | PMP5CFG                                                                                                       |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 7:0   | RW / WARL (0x0)  | PMP4CFG                                                                                                       |
+  | 7:0   | RW               | PMP4CFG                                                                                                       |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
 
   ...
@@ -1744,43 +1749,41 @@ Detailed:
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
   | Bit#  |  R/W             | Definition                                                                                                    |
   +=======+==================+===============================================================================================================+
-  | 31:24 | RW / WARL (0x0)  | PMP63CFG                                                                                                      |
+  | 31:24 | RW               | PMP63CFG                                                                                                      |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 23:16 | RW / WARL (0x0)  | PMP62CFG                                                                                                      |
+  | 23:16 | RW               | PMP62CFG                                                                                                      |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 15:8  | RW / WARL (0x0)  | PMP61CFG                                                                                                      |
+  | 15:8  | RW               | PMP61CFG                                                                                                      |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 7:0   | RW / WARL (0x0)  | PMP60CFG                                                                                                      |
+  | 7:0   | RW               | PMP60CFG                                                                                                      |
   +-------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-  The configuration fields for each pmpxcfg are as follows:
+  The configuration fields for each ``pmpxcfg`` are as follows:
 
   +-------+------------------+---------------------------+
   | Bit#  |  R/W             |  Definition               |
   +=======+==================+===========================+
   |    8  | WARL (0x0)       | Reserved                  |
   +-------+------------------+---------------------------+
-  |    7  | RW / WARL (0x0)  | **L**. Lock               |
+  |    7  | RW               | **L**. Lock               |
   +-------+------------------+---------------------------+
   |  6:5  | WARL (0x0)       | Reserved                  |
   +-------+------------------+---------------------------+
-  |  4:3  | RW / WARL (0x0)  | **A**. Mode               |
+  |  4:3  | RW               | **A**. Mode               |
   +-------+------------------+---------------------------+
-  |    2  | RW / WARL (0x0)  | **X**. Execute permission |
+  |    2  | RW /             | **X**. Execute permission |
+  +-------+ WARL (0x0, 0x1,  +---------------------------+
+  |    1  | 0x3, 0x4,        | **W**. Write permission   |
+  +-------+ 0x5, 0x7)        +---------------------------+
+  |    0  |                  | **R**. Read permission    |
   +-------+------------------+---------------------------+
-  |    1  | RW / WARL (0x0)  | **W**. Write permission   |
-  +-------+------------------+---------------------------+
-  |    0  | RW / WARL (0x0)  | **R**. Read permission    |
-  +-------+------------------+---------------------------+
-
-  pmpxcfg is RW if x < ``PMP_NUM_REGIONS`` and WARL (0x0) otherwise.
-
 
   .. note::
+     pmpxcfg is WARL (0x0) if x >= ``PMP_NUM_REGIONS``.
 
-     The **R**, **W** and **X**  together form a WARL field for which the combinations with **R** = 0 and **W** = 1 are reserved for future use
-     if **mseccfg.MML** = 0.
-     In |corev| the **W** bit will be forced to 0 when attempting to write **R** = 0 and **W** = 1 while **mseccfg.MML** = 0.
+  .. note::
+     The **R**, **W** and **X**  together form a collective WARL field for which the combinations with **R** = 0 and **W** = 1 are reserved for future use
+     if **mseccfg.MML** = 0. The value of the collective  **R**, **W**, **X** bitfield will remain unchanged when attempting to write **R** = 0 and **W** = 1 while **mseccfg.MML** = 0.
 
   PMP Address (``pmpaddr0`` - ``pmpaddr63``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
