@@ -169,7 +169,8 @@ Interrupt Interface
   |                                        |           | pending-and-enabled interrupt.                   |
   +----------------------------------------+-----------+--------------------------------------------------+
   | ``clic_irq_priv_i[1:0]``               | input     | Associated privilege mode of the most urgent     |
-  |                                        |           | pending-and-enabled interrupt.                   |
+  |                                        |           | pending-and-enabled interrupt. Only              |
+  |                                        |           | machine-mode interrupts are supported.           |
   +----------------------------------------+-----------+--------------------------------------------------+
   | ``clic_irq_shv_i``                     | input     | Selective hardware vectoring enabled for the     |
   |                                        |           | most urgent pending-and-enabled interrupt?       |
@@ -181,6 +182,14 @@ The term *pending-and-enabled* interrupt in above table refers to *pending-and-l
 .. note::
 
    Edge triggered interrupts are not supported.
+
+.. note::
+
+   ``clic_irq_shv_i`` shall be 0 if ``cliccfg.nvbits`` of the externl CLIC module is 0.
+
+.. note::
+
+   ``clic_irq_priv_i[1:0]`` shall be tied to 2'b11 (machine).
 
 .. note::
 
