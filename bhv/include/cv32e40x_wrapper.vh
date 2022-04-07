@@ -40,9 +40,6 @@
 .rvfi_dbg(),\
 .rvfi_dbg_mode(),\
 \
-.rvfi_wu(),\
-.rvfi_sleep(),\
-\
 .rvfi_rd_addr(),\
 .rvfi_rd_wdata(),\
 .rvfi_rs1_addr(),\

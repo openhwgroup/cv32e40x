@@ -239,9 +239,6 @@ module cv32e40x_rvfi
    output logic [ 2:0]                        rvfi_dbg,
    output logic [ 0:0]                        rvfi_dbg_mode,
 
-   output rvfi_wu_t                           rvfi_wu,
-   output logic [ 0:0]                        rvfi_sleep,
-
    output logic [ 4:0]                        rvfi_rd_addr,
    output logic [31:0]                        rvfi_rd_wdata,
    output logic [ 4:0]                        rvfi_rs1_addr,
@@ -535,7 +532,6 @@ module cv32e40x_rvfi
 
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic         wb_valid_wfi_delayed;
   logic         wb_valid_adjusted;
 
   logic         pc_mux_debug;
@@ -590,37 +586,6 @@ module cv32e40x_rvfi
   // This is done to avoid reporting already signaled triggers as supressed during by debug
   assign in_trap_clr = wb_valid_adjusted && in_trap[STAGE_WB].intr;
 
-
-  // Store information about wakeup until first instruction is retired
-  // This information needs to be stored at the wakeup because other interrupts
-  // can be triggered between wakeup and the first instruction executed after wakeup
-  rvfi_wu_t     rvfi_wu_next;
-  logic         store_irq_wu_cause;
-
-  assign rvfi_wu_next.wu = rvfi_sleep; // If sleep is still set, it is the first instruction after wakeup
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      wb_valid_wfi_delayed   <= 1'b0;
-      store_irq_wu_cause     <= 1'b0;
-      rvfi_wu_next.interrupt <= 1'b0;
-      rvfi_wu_next.debug     <= 1'b0;
-      rvfi_wu_next.cause     <= '0;
-    end else begin
-      wb_valid_wfi_delayed <= wb_valid_i && (ctrl_fsm_ns_i == SLEEP);
-      // Store wake-up sources when core exits sleep
-      if ((ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i != SLEEP)) begin
-        rvfi_wu_next.interrupt <= irq_wu_ctrl_i;
-        store_irq_wu_cause     <= irq_wu_ctrl_i;
-        rvfi_wu_next.debug     <= pending_debug_i || debug_mode_q_i;
-      end
-      // IRQ cause is flopped and is therefore one cycle behind wakeup triggers
-      if (store_irq_wu_cause) begin
-        store_irq_wu_cause <= 1'b0;
-        rvfi_wu_next.cause <= {'0, irq_id_ctrl_i}; // NMIs will not wake up the core
-      end
-    end
-  end
-
   // Set rvfi_trap for instructions causing exception or debug entry.
   rvfi_trap_t  rvfi_trap_next;
 
@@ -674,14 +639,9 @@ module cv32e40x_rvfi
     rvfi_trap_next.trap = rvfi_trap_next.exception || rvfi_trap_next.debug;
   end
 
-
-  // WFI instructions can use two cycles in WB if there are no flopped pending wakeup sources.
-  // In this case their retirement happens in the second cycle, but becuase it makes no difference functionally in rtl,
-  // wb_valid is set in the first WFI cycle to avoid introducing support logic for a multicycle WB stage.
-  // Moving wb_valid to second cycle of WFI instructions in these cases is therefore needed.
-  assign wb_valid_adjusted = (sys_wfi_insn_wb_i && ((ctrl_fsm_ns_i == SLEEP) || (ctrl_fsm_cs_i == SLEEP))) ?
-                             wb_valid_wfi_delayed :
-                             wb_valid_i;
+  // WFI instructions retire when their wake-up condition is present. 
+  // The wake-up condition is only checked in the SLEEP state of the controller FSM.
+  assign wb_valid_adjusted = sys_wfi_insn_wb_i ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i;
 
   // Pipeline stage model //
 
@@ -704,8 +664,6 @@ module cv32e40x_rvfi
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
       rvfi_dbg_mode      <= '0;
-      rvfi_wu            <= '0;
-      rvfi_sleep         <= 1'b0;
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
@@ -879,18 +837,12 @@ module cv32e40x_rvfi
         rvfi_dbg       <= debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= debug_mode [STAGE_WB];
 
-        rvfi_sleep     <= (ctrl_fsm_ns_i == SLEEP);
-        rvfi_wu        <= rvfi_wu_next;
-
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
         rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? branch_addr_n_i & ~32'b1 :
                          (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
-      end else begin
-        rvfi_sleep     <= rvfi_sleep; // Keep sleep signal asserted until next valid WB
       end
-
     end
   end // always_ff @
 
@@ -985,9 +937,9 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mstatush           = csr_mstatush_q_i;
   assign rvfi_csr_wdata_d.mstatush           = csr_mstatush_n_i;
   assign rvfi_csr_wmask_d.mstatush           = csr_mstatush_we_i ? '1 : '0;
-// todo: misa assignments seem swapped
-  assign rvfi_csr_rdata_d.misa               = csr_misa_n_i;
-  assign rvfi_csr_wdata_d.misa               = csr_misa_q_i;
+
+  assign rvfi_csr_rdata_d.misa               = csr_misa_q_i;
+  assign rvfi_csr_wdata_d.misa               = csr_misa_n_i;
   assign rvfi_csr_wmask_d.misa               = csr_misa_we_i    ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mie                = csr_mie_q_i;
