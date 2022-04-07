@@ -842,6 +842,7 @@ module cv32e40x_rvfi
         rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? branch_addr_n_i & ~32'b1 :
                          (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
+      end
     end
   end // always_ff @
 
