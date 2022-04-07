@@ -27,6 +27,9 @@ module cv32e40x_rvfi_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
+  #(
+    parameter bit SMCLIC = 0
+  )
   (
    input logic             clk_i,
    input logic             rst_ni,
@@ -57,10 +60,16 @@ module cv32e40x_rvfi_sva
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,
   // but since there can be an infinite delay between irq_ack and rvfi_intr (e.g. because of bus stalls), we're settling for asserting
   // that irq_ack leads to RVFI capturing a trap (in_trap[IF_STAGE] = 1)
-  a_irq_ack_rvfi_capture :
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     (irq_ack |=> in_trap[STAGE_IF].intr))
-      else `uvm_error("rvfi", "irq_ack not captured by RVFI")
+
+  // todo: for CLIC, the irq ack comes when the pointer fetch is initiated
+  // We should probably set in_trap.intr for the first intstruction of the handler, which comes after the second fetch.
+  if (!SMCLIC) begin
+    a_irq_ack_rvfi_capture :
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                      (irq_ack |=> in_trap[STAGE_IF].intr))
+        else `uvm_error("rvfi", "irq_ack not captured by RVFI")
+  end
+
 
   // Helper signal, indicating debug cause
   // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i

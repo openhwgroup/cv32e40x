@@ -113,12 +113,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // CLIC Interface
   input  logic                       clic_irq_i,
   input  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_i,
-  input  logic [ 7:0]                clic_irq_il_i,
+  input  logic [ 7:0]                clic_irq_level_i,
   input  logic [ 1:0]                clic_irq_priv_i,
-  input  logic                       clic_irq_hv_i,
-  output logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_o,
-  output logic                       clic_irq_mode_o,
-  output logic                       clic_irq_exit_o,
+  input  logic                       clic_irq_shv_i,
 
   // Fencei flush handshake
   output logic        fencei_flush_req_o,
@@ -139,6 +136,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Core will only use two, but X_EXT may mandate 2 or 3
   localparam int unsigned REGFILE_NUM_READ_PORTS = X_EXT ? X_NUM_RS : 2;
 
+  // Determine alignedness of mtvt
+  // mtvt[31:N] holds mtvt table entry
+  // mtvt[N-1:0] is tied to zero.
+  localparam int unsigned MTVT_LSB = ((SMCLIC_ID_WIDTH + 2) < 6) ? 6 : (SMCLIC_ID_WIDTH + 2);
+  localparam int unsigned MTVT_ADDR_WIDTH = 32 - MTVT_LSB;
+
   logic [31:0]       pc_if;             // Program counter in IF stage
 
   // Jump and branch target and decision (EX->IF)
@@ -150,6 +153,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        if_busy;
   logic        lsu_busy;
   logic        lsu_interruptible;
+  logic        lsu_write_buffer_empty;
 
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
@@ -184,9 +188,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
   rf_data_t    rf_wdata[REGFILE_NUM_WRITE_PORTS];
   logic        rf_we   [REGFILE_NUM_WRITE_PORTS];
 
-    // CSR control
+  // CSR control
   logic [24:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
+
+  logic [MTVT_ADDR_WIDTH-1:0] mtvt_addr;
+
+  logic [7:0]  mintthresh;
+  mintstatus_t mintstatus;
 
   logic [31:0] csr_rdata;
   logic csr_counter_read;
@@ -252,12 +261,16 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // irq signals
   // TODO:AB Should find a proper suffix for signals from interrupt_controller
   logic        irq_req_ctrl;
-  logic [4:0]  irq_id_ctrl;
+  logic [9:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
+
+  // CLIC specific irq signals
+  logic        irq_clic_shv;
+  logic [7:0]  irq_clic_level;
 
   // Used (only) by verification environment
   logic        irq_ack;
-  logic [4:0]  irq_id;
+  logic [9:0]  irq_id;
   logic        dbg_ack;
 
   // eXtension interface signals
@@ -302,10 +315,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign irq_id  = ctrl_fsm.irq_id;
   assign dbg_ack = ctrl_fsm.dbg_ack;
 
-  // todo: connect when CLIC is implemented
-  assign clic_irq_id_o   = 12'h0;
-  assign clic_irq_mode_o =  1'b0;
-  assign clic_irq_exit_o =  1'b0;
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +371,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT               ( X_EXT                    ),
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
-    .PMA_CFG             ( PMA_CFG                  )
+    .PMA_CFG             ( PMA_CFG                  ),
+    .MTVT_ADDR_WIDTH     ( MTVT_ADDR_WIDTH          ),
+    .SMCLIC_ID_WIDTH     ( SMCLIC_ID_WIDTH          )
   )
   if_stage_i
   (
@@ -378,6 +389,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mepc_i              ( mepc                     ), // Exception PC (restore upon return from exception/interrupt)
     .mtvec_addr_i        ( mtvec_addr               ), // Exception/interrupt address (MSBs only)
     .nmi_addr_i          ( nmi_addr_i               ), // NMI address
+    .mtvt_addr_i         ( mtvt_addr                ), // CLIC vector base
 
     .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
 
@@ -550,6 +562,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Control signals
     .busy_o                ( lsu_busy           ),
     .interruptible_o       ( lsu_interruptible  ),
+    .write_buffer_empty_o  ( lsu_write_buffer_empty ),
 
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
@@ -637,7 +650,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
-    .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       )
+    .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       ),
+    .MTVT_ADDR_WIDTH            ( MTVT_ADDR_WIDTH        )
   )
   cs_registers_i
   (
@@ -653,6 +667,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .mtvec_addr_o               ( mtvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),
+
+    .mtvt_addr_o                ( mtvt_addr              ),
 
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
@@ -680,6 +696,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mip_i                      ( mip                    ),
     .m_irq_enable_o             ( m_irq_enable           ),
     .mepc_o                     ( mepc                   ),
+    .mintthresh_o               ( mintthresh             ),
+    .mintstatus_o               ( mintstatus             ),
 
     // debug
     .dpc_o                      ( dpc                    ),
@@ -701,7 +719,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .USE_DEPRECATED_FEATURE_SET     (USE_DEPRECATED_FEATURE_SET),
     .X_EXT                          ( X_EXT                  ),
-    .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS )
+    .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS ),
+    .SMCLIC                         ( SMCLIC                 ),
+    .SMCLIC_ID_WIDTH                ( SMCLIC_ID_WIDTH        )
   )
   controller_i
   (
@@ -739,6 +759,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
+    .lsu_write_buffer_empty_i       ( lsu_write_buffer_empty ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
@@ -747,6 +768,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_wu_ctrl_i                  ( irq_wu_ctrl            ),
     .irq_req_ctrl_i                 ( irq_req_ctrl           ),
     .irq_id_ctrl_i                  ( irq_id_ctrl            ),
+    .irq_clic_shv_i                 ( irq_clic_shv           ),
+    .irq_clic_level_i               ( irq_clic_level         ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
@@ -792,12 +815,36 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////
   generate
     if (SMCLIC) begin : gen_clic_interrupt
-      // Todo: instantiate cv32e40x_clic_int_controller
-      // For now just tie off outputs
-      assign irq_req_ctrl = '0;
-      assign irq_id_ctrl  = '0;
-      assign irq_wu_ctrl  = '0;
       assign mip          = '0;
+
+      cv32e40x_clic_int_controller
+      #(
+          .SMCLIC_ID_WIDTH (SMCLIC_ID_WIDTH)
+      )
+      clic_int_controller_i
+      (
+        .clk                  ( clk                ),
+        .rst_n                ( rst_ni             ),
+
+        // CLIC interface
+        .clic_irq_i           ( clic_irq_i         ),
+        .clic_irq_id_i        ( clic_irq_id_i      ),
+        .clic_irq_level_i     ( clic_irq_level_i   ),
+        .clic_irq_priv_i      ( clic_irq_priv_i    ),
+        .clic_irq_shv_i       ( clic_irq_shv_i     ),
+
+        // To cv32e40x_controller
+        .irq_req_ctrl_o       ( irq_req_ctrl       ),
+        .irq_id_ctrl_o        ( irq_id_ctrl        ),
+        .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
+        .irq_clic_shv_o       ( irq_clic_shv       ),
+        .irq_clic_level_o     ( irq_clic_level     ),
+
+        // From with cv32e40x_cs_registers
+        .m_ie_i               ( m_irq_enable       ),
+        .mintthresh_i         ( mintthresh         ),
+        .mintstatus_i         ( mintstatus         )
+      );
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
       int_controller_i
@@ -810,7 +857,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
         // To cv32e40x_controller
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
-        .irq_id_ctrl_o        ( irq_id_ctrl        ),
+        .irq_id_ctrl_o        ( irq_id_ctrl[4:0]   ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
         // To/from with cv32e40x_cs_registers
@@ -818,6 +865,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .mip_o                ( mip                ),
         .m_ie_i               ( m_irq_enable       )
       );
+
+      // Tie off unused irq_id_ctrl bits
+      assign irq_id_ctrl[9:5] = 5'b00000;
+
+      // CLIC shv not used in basic mode
+      assign irq_clic_shv = 1'b0;
+      assign irq_clic_level = 8'h00;
     end
   endgenerate
 

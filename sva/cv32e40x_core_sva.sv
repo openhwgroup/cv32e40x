@@ -73,18 +73,17 @@ if(SMCLIC) begin
     @(posedge clk)
     |mie == 1'b0;
   endproperty
-
   a_clic_mie_tieoff : assert property(p_clic_mie_tieoff) else `uvm_error("core", "MIE not tied to 0 in CLIC mode")
 
   property p_clic_mip_tieoff;
     @(posedge clk)
     |mip == 1'b0;
   endproperty
-
   a_clic_mip_tieoff : assert property(p_clic_mip_tieoff) else `uvm_error("core", "MIP not tied to 0 in CLIC mode")
 
   //todo: add CLIC related assertions (level thresholds etc)
 end else begin
+  // SMCLIC == 0
   // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
   // The actual mie_n value may be different from mie_q if mie is not
   // written to.
@@ -104,6 +103,14 @@ end else begin
   endproperty
 
   a_irq_enabled_1 : assert property(p_irq_enabled_1) else `uvm_error("core", "Assertion a_irq_enabled_1 failed")
+
+  // Assert that no pointer can be in any pipeline stage when SMCLIC == 0
+  property p_clic_noptr_in_pipeline;
+    @(posedge clk) disable iff (!rst_ni)
+      1'b1 |-> (!if_id_pipe.instr_meta.clic_ptr && !id_ex_pipe.instr_meta.clic_ptr && !ex_wb_pipe.instr_meta.clic_ptr);
+  endproperty
+
+  a_clic_noptr_in_pipeline : assert property(p_clic_noptr_in_pipeline) else `uvm_error("core", "CLIC pointer in pipeline when CLIC is not configured.")
 end // SMCLIC
 
 // First illegal instruction decoded
@@ -352,6 +359,8 @@ always_ff @(posedge clk , negedge rst_ni)
           else `uvm_error("core", "Atomic operation classified as bufferable")
     end
   endgenerate
+
+
 
 endmodule // cv32e40x_core_sva
 

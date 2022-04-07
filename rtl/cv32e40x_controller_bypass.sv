@@ -158,7 +158,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
-    if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || if_id_pipe_i.trigger_match) begin
+    // CLIC pointer fetches go through the pipeline, but no write enables should be active.
+    if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || if_id_pipe_i.trigger_match ||
+        if_id_pipe_i.instr_meta.clic_ptr) begin
       ctrl_byp_o.deassert_we = 1'b1;
     end
 

@@ -167,7 +167,7 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, POINTER_FETCH} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -462,7 +462,8 @@ parameter MARCHID = 32'h14;
 parameter MIMPID_MAJOR = 4'h0;  // Major ID
 parameter MIMPID_MINOR = 4'h0;  // Minor ID
 
-parameter MTVEC_MODE        = 2'b01;
+parameter MTVEC_MODE_BASIC  = 2'b01;
+parameter MTVEC_MODE_CLIC   = 2'b11;
 parameter NUM_HPM_EVENTS    =   16;
 
 parameter MSTATUS_MIE_BIT      = 3;
@@ -563,8 +564,8 @@ typedef struct packed {
   logic           mpie;            // CLIC only, same as mstatus.mpie
   logic [26:24]   zero1;           // Reserved, hardwired to zero.
   logic [23:16]   mpil;            // CLIC only. Previous interrupt level
-  logic [15:12]   zero0;           // Reserved, hardwired to zero.
-  logic [11: 0]   exception_code;  // Bit 11 only used for CLIC, hardwired to zero otherwise
+  logic [15:11]   zero0;           // Reserved, hardwired to zero.
+  logic [10: 0]   exception_code;  // Exception cause
 } mcause_t;
 
 typedef struct packed {
@@ -592,10 +593,15 @@ parameter dcsr_t DCSR_RESET_VAL = '{
   prv:        PRIV_LVL_M,
   default:    '0};
 
-parameter mtvec_t MTVEC_RESET_VAL = '{
+parameter mtvec_t MTVEC_BASIC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
-  mode:  MTVEC_MODE};
+  mode:  MTVEC_MODE_BASIC};
+
+parameter mtvec_t MTVEC_CLIC_RESET_VAL = '{
+  addr: 'd0,
+  zero0: 'd0,
+  mode:  MTVEC_MODE_CLIC};
 
 parameter mtvt_t MTVT_RESET_VAL = '{
   addr:  '0,
@@ -833,7 +839,9 @@ typedef enum logic[3:0] {
   PC_TRAP_IRQ = 4'b1001,
   PC_TRAP_DBD = 4'b1010,
   PC_TRAP_DBE = 4'b1011,
-  PC_TRAP_NMI = 4'b1100
+  PC_TRAP_NMI = 4'b1100,
+  PC_TRAP_CLICV = 4'b1101,
+  PC_TRAP_CLICV_TGT = 4'b1110
 } pc_mux_e;
 
 // Exception Cause
@@ -1006,6 +1014,7 @@ typedef struct packed {
 typedef struct packed
 {
   logic        compressed;
+  logic        clic_ptr;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
@@ -1180,14 +1189,18 @@ typedef struct packed {
   // to IF stage
   logic        instr_req;             // Start fetching instructions
   logic        pc_set;                // jump to address set by pc_mux
+  logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic [4:0]  m_exc_vec_pc_mux;      // id of taken irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [4:0]  mtvec_pc_mux;          // id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [9:0]  mtvt_pc_mux;           // id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
+                                      // Setting to 11 bits (max), unused bits will be tied off
 
   logic        irq_ack;               // irq has been taken
-  logic [4:0]  irq_id;                // id of taken irq
+  logic [9:0]  irq_id;                // id of taken irq. Max width (1024 interrupts), unused bits will be tied off
+  logic [7:0]  irq_level;             // level of taken irq
   logic        dbg_ack;               // debug has been taken
 
   // Debug outputs
@@ -1209,6 +1222,7 @@ typedef struct packed {
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
   logic        csr_save_cause;      // Update CSRs
+  logic        csr_clear_minhv;     // Clear the mcause.minhv field
   logic        pending_nmi;         // An NMI is pending (for dcsr.nmip)
 
   // Performance counter events

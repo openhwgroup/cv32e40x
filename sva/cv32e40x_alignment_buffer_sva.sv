@@ -27,8 +27,11 @@ module cv32e40x_alignment_buffer_sva
    input logic [0:2]               valid_q,
    input ctrl_fsm_t                ctrl_fsm_i,
    input logic [31:0]              branch_addr_i,
+   input logic                     fetch_branch_o,
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
+   input logic                     fetch_ready_i,
+   input logic                     fetch_data_access_o,
    input logic [2:0] instr_cnt_n,
    input logic [2:0] instr_cnt_q,
    input logic                     instr_valid_o,
@@ -42,6 +45,7 @@ module cv32e40x_alignment_buffer_sva
    input logic [1:0]               rptr,
    input logic [1:0]               rptr2,
    input logic                     pop_q
+
    );
 
 
@@ -243,6 +247,8 @@ module cv32e40x_alignment_buffer_sva
       assert property(p_rptr2_range)
       else
         `uvm_error("Alignment buffer SVA", "Read pointer(2) illegal value")
+
+
 
 endmodule // cv32e40x_alignment_buffer_sva
 

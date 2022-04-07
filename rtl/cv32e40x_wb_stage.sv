@@ -39,7 +39,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input  logic          clk,            // Not used in RTL; only used by assertions
   input  logic          rst_n,          // Not used in RTL; only used by assertions
 
-  // EX/WB pipeline 
+  // EX/WB pipeline
   input  ex_wb_pipe_t   ex_wb_pipe_i,
 
   // Controller
@@ -128,11 +128,13 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
   // - Will be 1 only for the second phase of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
-
+  // - Will be 0 for CLIC pointer fetches todo: Do we need wb_valid=1 for faulted pointer fetches for RVFI?
+  // todo: Now wb_valid is high once per instruction. For split LSU and push/pop we want it to go high for every
+  //       operation. RVFI, instret etc would need to factor in the 'last' bit
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i
                      ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
-                    ) && instr_valid;
+                    ) && !ex_wb_pipe_i.instr_meta.clic_ptr && instr_valid;
 
   assign wb_valid_o = wb_valid;
 

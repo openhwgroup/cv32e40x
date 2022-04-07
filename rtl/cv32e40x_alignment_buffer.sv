@@ -39,6 +39,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           fetch_ready_i,
   output logic           fetch_branch_o,
   output logic [31:0]    fetch_branch_addr_o,
+  output logic           fetch_data_access_o,
+  input  logic           fetch_ptr_access_i,
 
   // Resp interface
   input  logic           resp_valid_i,
@@ -49,7 +51,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   output logic           instr_valid_o,
   input  logic           instr_ready_i,
   output inst_resp_t     instr_instr_o,
-  output logic [31:0]    instr_addr_o
+  output logic [31:0]    instr_addr_o,
+  output logic           instr_is_ptr_o
 
 );
 
@@ -99,6 +102,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // resp_valid gated while flushing
   logic resp_valid_gated;
 
+  // CLIC vectoring (and Zc table jumps)
+  // Flag for signalling that results is a function pointer
+  logic is_ptr_q;
+  logic ptr_fetch_accepted_q;
+
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
 
   // Assume we always push all instructions to FIFO
@@ -109,9 +117,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Request a transfer when needed, or we do a branch, iff outstanding_cnt_q is less than 2
   // Adjust instruction count with 'pop_q', which tells if we consumed an instruction
   // during the last cycle
-  assign fetch_valid_o = ctrl_fsm_i.instr_req &&
-                         (outstanding_cnt_q < 2) &&
-                         (((instr_cnt_q - pop_q) == 'd0) ||
+  // For CLIC vector loads we want to stop prefetching between an accepted pointer load and
+  // the next pc_set (to the target address).
+  assign fetch_valid_o = (ctrl_fsm_i.instr_req )                                     &&
+                         (outstanding_cnt_q < 2)                                     &&
+                         !(ptr_fetch_accepted_q && !ctrl_fsm_i.pc_set)               && // No fetch until next pc_set after accepted pointer fetches
+                         (((instr_cnt_q - pop_q) == 'd0)                             ||
                          ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == 2'd0) ||
                          ctrl_fsm_i.pc_set);
 
@@ -472,17 +483,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   begin
     if(rst_n == 1'b0)
     begin
-      addr_q    <= '0;
-      resp_q    <= INST_RESP_RESET_VAL;
-      valid_q   <= '0;
-      aligned_q <= 1'b0;
-      complete_q <= 1'b0;
-      n_flush_q  <= 'd0;
-      instr_cnt_q <= 'd0;
+      addr_q            <= '0;
+      resp_q            <= INST_RESP_RESET_VAL;
+      valid_q           <= '0;
+      aligned_q         <= 1'b0;
+      complete_q        <= 1'b0;
+      n_flush_q         <= 'd0;
+      instr_cnt_q       <= 'd0;
       outstanding_cnt_q <= 'd0;
-      rptr      <= 'd0;
-      wptr      <= 'd0;
-      pop_q     <= 1'b0;
+      rptr              <= 'd0;
+      wptr              <= 'd0;
+      pop_q             <= 1'b0;
+      is_ptr_q          <= 1'b0;
+      ptr_fetch_accepted_q  <= 1'b0;
     end
     else
     begin
@@ -503,11 +516,15 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
 
       // Update address and read/write pointers on a requested branch
+      // Incoming pointers for CLIC and Zc may cause the pointers to get wrong values
+      // We do however prevent further fetches after a pointer fetch, and the pointers
+      // will be reset on the next pc_set (jump to target)
       if (ctrl_fsm_i.pc_set) begin
         addr_q  <= branch_addr_i;       // Branch target address will correspond to first instruction received after this.
         // Reset pointers on branch
         wptr <= 'd0;
         rptr <= 'd0;
+        is_ptr_q <= ctrl_fsm_i.pc_set_clicv;
       end else begin
         // Update write pointer on a valid response
         if (resp_valid_gated) begin
@@ -521,6 +538,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         end
       end
 
+      if(fetch_valid_o && fetch_ready_i && fetch_ptr_access_i) begin
+        ptr_fetch_accepted_q <= 1'b1;
+      end else begin
+        if(ctrl_fsm_i.pc_set) begin
+          ptr_fetch_accepted_q <= 1'b0;
+        end
+      end
       // Set pop-bit when instruction is emitted.
       pop_q <= (instr_valid_o && instr_ready_i);
 
@@ -535,4 +559,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o = addr_q;
 
+  // Signal that result is a pointer
+  // CLIC vectoring or Zc table jump
+  assign instr_is_ptr_o = is_ptr_q;
+
+  // Fetch is treated as a data access for CLIC vector fetch
+  // Only set for the initial pc_set_clicv point fetch and qualified with fetch_branch_o
+  // Prefetcher will remember the state of data_access in case of stalls.
+  assign fetch_data_access_o = (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv);
 endmodule

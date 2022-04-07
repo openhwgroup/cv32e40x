@@ -33,7 +33,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 #(
   parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          X_EXT                  = 0,
-  parameter int unsigned REGFILE_NUM_READ_PORTS = 2
+  parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
+  parameter bit          SMCLIC                 = 0,
+  parameter int          SMCLIC_ID_WIDTH        = 5
 )
 (
   input  logic        clk,                        // Gated clock
@@ -67,14 +69,17 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted
+  input  logic        lsu_write_buffer_empty_i,   // LSU write buffer state
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
 
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,
-  input  logic [4:0]  irq_id_ctrl_i,
+  input  logic [9:0]  irq_id_ctrl_i,
   input  logic        irq_wu_ctrl_i,
+  input  logic        irq_clic_shv_i,
+  input  logic [7:0]  irq_clic_level_i,
 
   input logic  [1:0]  mtvec_mode_i,
 
@@ -115,7 +120,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   cv32e40x_controller_fsm
   #(
     .USE_DEPRECATED_FEATURE_SET  (USE_DEPRECATED_FEATURE_SET),
-    .X_EXT                       ( X_EXT                    )
+    .X_EXT                       ( X_EXT                    ),
+    .SMCLIC                      ( SMCLIC                   ),
+    .SMCLIC_ID_WIDTH             ( SMCLIC_ID_WIDTH          )
   )
   controller_fsm_i
   (
@@ -156,10 +163,13 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wb_valid_i                  ( wb_valid_i               ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
+    .lsu_write_buffer_empty_i    ( lsu_write_buffer_empty_i ),
     // Interrupt Controller Signals
     .irq_req_ctrl_i              ( irq_req_ctrl_i           ),
     .irq_id_ctrl_i               ( irq_id_ctrl_i            ),
     .irq_wu_ctrl_i               ( irq_wu_ctrl_i            ),
+    .irq_clic_shv_i              ( irq_clic_shv_i           ),
+    .irq_clic_level_i            ( irq_clic_level_i         ),
 
     .mtvec_mode_i                ( mtvec_mode_i             ),
 
@@ -173,12 +183,12 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
     .lsu_busy_i                  ( lsu_busy_i               ),
 
-   // Data OBI interface monitor 
+   // Data OBI interface monitor
     .m_c_obi_data_if             ( m_c_obi_data_if          ),
-   
+
     // Outputs
     .ctrl_fsm_o                  ( ctrl_fsm_o               ),
-    
+
     // eXtension interface
     .xif_commit_if               ( xif_commit_if            ),
     .xif_csr_error_i             ( xif_csr_error_i          )
