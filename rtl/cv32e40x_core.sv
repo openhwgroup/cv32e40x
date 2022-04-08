@@ -197,8 +197,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [7:0]  mintthresh;
   mintstatus_t mintstatus;
 
+  mcause_t     mcause;
+
   logic [31:0] csr_rdata;
   logic csr_counter_read;
+
+  // CLIC signals for returning pointer to handles
+  // when mnxti is accessed
+  logic        csr_clic_pa_valid;
+  logic [31:0] csr_clic_pa;
 
   // LSU
   logic        lsu_split_ex;
@@ -265,8 +272,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        irq_wu_ctrl;
 
   // CLIC specific irq signals
-  logic        irq_clic_shv;
-  logic [7:0]  irq_clic_level;
+  logic                       irq_clic_shv;
+  logic [7:0]                 irq_clic_level;
+  logic                       mnxti_irq_pending;
+  logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id;
 
   // Used (only) by verification environment
   logic        irq_ack;
@@ -626,7 +635,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .wb_valid_o                 ( wb_valid                     ),
 
     // eXtension interface
-    .xif_result_if              ( xif_result_if                )
+    .xif_result_if              ( xif_result_if                ),
+
+    // CSR/CLIC pointer inputs
+    .clic_pa_valid_i            ( csr_clic_pa_valid            ),
+    .clic_pa_i                  ( csr_clic_pa                  )
   );
 
   //////////////////////////////////////
@@ -649,6 +662,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_ECS_XS                   ( X_ECS_XS               ),
     .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
+    .SMCLIC_ID_WIDTH            ( SMCLIC_ID_WIDTH        ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       ),
     .MTVT_ADDR_WIDTH            ( MTVT_ADDR_WIDTH        )
@@ -698,6 +712,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mepc_o                     ( mepc                   ),
     .mintthresh_o               ( mintthresh             ),
     .mintstatus_o               ( mintstatus             ),
+    .mcause_o                   ( mcause                 ),
+    .mnxti_irq_pending_i        ( mnxti_irq_pending      ),
+    .mnxti_irq_id_i             ( mnxti_irq_id           ),
+    .clic_pa_valid_o            ( csr_clic_pa_valid      ),
+    .clic_pa_o                  ( csr_clic_pa            ),
 
     // debug
     .dpc_o                      ( dpc                    ),
@@ -840,10 +859,15 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .irq_clic_shv_o       ( irq_clic_shv       ),
         .irq_clic_level_o     ( irq_clic_level     ),
 
-        // From with cv32e40x_cs_registers
+        // From cv32e40x_cs_registers
         .m_ie_i               ( m_irq_enable       ),
         .mintthresh_i         ( mintthresh         ),
-        .mintstatus_i         ( mintstatus         )
+        .mintstatus_i         ( mintstatus         ),
+        .mcause_i             ( mcause             ),
+
+        // To cv32e40x_cs_registers
+        .mnxti_irq_pending_o  ( mnxti_irq_pending  ),
+        .mnxti_irq_id_o       ( mnxti_irq_id       )
       );
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
