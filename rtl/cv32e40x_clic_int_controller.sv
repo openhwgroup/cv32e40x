@@ -94,7 +94,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
       clic_irq_shv_q    <= 1'b0;
     end else begin
       if (clic_irq_i) begin
-        clic_irq_id_q    <= clic_irq_id_i; // Casting SMCLIC_ID_WIDTH into max with of 10 bits.
+        clic_irq_id_q    <= clic_irq_id_i;
         clic_irq_level_q <= clic_irq_level_i;   // Will always be PRIV_LVL_M todo: add assertion
         clic_irq_priv_q  <= clic_irq_priv_i;
         clic_irq_shv_q   <= clic_irq_shv_i;
@@ -120,7 +120,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
                           global_irq_enable;
 
   // Pass on interrupt ID
-  assign irq_id_ctrl_o = 10'(clic_irq_id_q);
+  assign irq_id_ctrl_o = 10'(clic_irq_id_q);  // Casting into max with of 10 bits.
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
   // SMCLIC spec states three scenarios for wakeup:
@@ -152,6 +152,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // If mnxti_irq_pending is true, the currently flopped ID will be sent to cs_registers
   // for use in the function pointer
+  // Using native SMCLIC_ID_WIDTH for cleaner pointer concatenation in cs_registers.
   assign mnxti_irq_id_o = clic_irq_id_q;
 
 endmodule // cv32e40x_clic_int_controller
