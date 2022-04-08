@@ -359,7 +359,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (SMCLIC) begin
           // The data read here is what will be used in the read-modify-write portion of the CSR access.
           // For mnxti, this is actually mstatus. The value written back to the GPR will be the address of
-          // the function pointer to the interrupt handler. This is muxed in the WB part of cs_registers.
+          // the function pointer to the interrupt handler. This is muxed in the WB stage.
           csr_rdata_int = mstatus_q;
         end else begin
           csr_rdata_int    = '0;
