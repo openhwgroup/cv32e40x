@@ -768,23 +768,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     // CLIC mode is assumed when SMCLIC = 1
     if (SMCLIC) begin
-      // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
-      // All other mstatus bits are preserved
-      if (mcause_we) begin
-        mstatus_n      = mstatus_q; // Preserve all fields
-
-        // Write mpie and mpp as aliased through mcause
-        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
-        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
-      end else if (mnxti_we) begin
+      if (mnxti_we) begin
         // A mnxti write writes to mstatus.mie
-        mstatus_n     = mstatus_q;
         mstatus_n.mie = csr_wdata_int[MSTATUS_MIE_BIT];
 
-        // mintstatus and mcause are updated if an actual mstatus write happens
+        // mintstatus and mcause are updated if an actual mstatus write happens and
+        // a higher level non-shv interrupt is pending.
         // This is already decoded into the respective _we signals below.
         if (mintstatus_we) begin
-          mintstatus_n = mintstatus_q;
           mintstatus_n.mil = mnxti_irq_level_i;
         end
         if (mcause_we) begin
@@ -792,8 +783,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           mcause_n.irq = 1'b1;
           mcause_n.exception_code = {1'b0, 10'(mnxti_irq_id_i)};
         end
-      end
+      end else if (mcause_we) begin
+        // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
+        // All other mstatus bits are preserved
+        mstatus_n      = mstatus_q; // Preserve all fields
 
+        // Write mpie and mpp as aliased through mcause
+        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
+        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
+      end
       // The CLIC pointer address should always be output for an access to MNXTI,
       // but will only contain a nonzero value if a CLIC interrupt is actually pending
       // with a higher level. The valid below will be high also for the cases where

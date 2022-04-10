@@ -57,7 +57,8 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // To cv32e40x_cs_registers
   output logic                       mnxti_irq_pending_o,// An interrupt is available to the mnxti CSR read
-  output logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id_o      // The id of the availble mnxti interrupt
+  output logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id_o,     // The id of the availble mnxti interrupt
+  output logic [7:0]                 mnxti_irq_level_o   // Level of the available interrupt
 );
 
   logic                       global_irq_enable;
@@ -150,9 +151,10 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
                                !clic_irq_shv_q &&
                                clic_irq_q;
 
-  // If mnxti_irq_pending is true, the currently flopped ID will be sent to cs_registers
-  // for use in the function pointer
+  // If mnxti_irq_pending is true, the currently flopped ID and level will be sent to cs_registers
+  // for use in the function pointer and CSR side effects.
   // Using native SMCLIC_ID_WIDTH for cleaner pointer concatenation in cs_registers.
-  assign mnxti_irq_id_o = clic_irq_id_q;
+  assign mnxti_irq_id_o    = clic_irq_id_q;
+  assign mnxti_irq_level_o = clic_irq_level_q;
 
 endmodule // cv32e40x_clic_int_controller

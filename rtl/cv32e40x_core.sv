@@ -202,10 +202,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] csr_rdata;
   logic csr_counter_read;
 
-  // CLIC signals for returning pointer to handles
+  // CLIC signals for returning pointer addresses
   // when mnxti is accessed
-  logic        csr_clic_pa_valid;
-  logic [31:0] csr_clic_pa;
+  logic        csr_clic_pa_valid;   // A CSR access to mnxti has a valid ponter address
+  logic [31:0] csr_clic_pa;         // Pointer address returned by accessing mnxti
 
   // LSU
   logic        lsu_split_ex;
@@ -276,6 +276,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [7:0]                 irq_clic_level;
   logic                       mnxti_irq_pending;
   logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id;
+  logic [7:0]                 mnxti_irq_level;
 
   // Used (only) by verification environment
   logic        irq_ack;
@@ -715,6 +716,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mcause_o                   ( mcause                 ),
     .mnxti_irq_pending_i        ( mnxti_irq_pending      ),
     .mnxti_irq_id_i             ( mnxti_irq_id           ),
+    .mnxti_irq_level_i          ( mnxti_irq_level        ),
     .clic_pa_valid_o            ( csr_clic_pa_valid      ),
     .clic_pa_o                  ( csr_clic_pa            ),
 
@@ -867,7 +869,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
         // To cv32e40x_cs_registers
         .mnxti_irq_pending_o  ( mnxti_irq_pending  ),
-        .mnxti_irq_id_o       ( mnxti_irq_id       )
+        .mnxti_irq_id_o       ( mnxti_irq_id       ),
+        .mnxti_irq_level_o    ( mnxti_irq_level    )
       );
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
