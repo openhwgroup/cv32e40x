@@ -38,6 +38,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
   parameter bit          ZC_EXT           = 0, // todo: remove parameter once fully implemented
   parameter bit          SMCLIC           = 0,
+  parameter int          SMCLIC_ID_WIDTH  = 5,
   parameter int          NUM_MHPMCOUNTERS = 1,
   parameter int          DBG_NUM_TRIGGERS = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
   parameter int unsigned MTVT_ADDR_WIDTH  = 26
@@ -83,12 +84,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // To EX stage
   output logic            csr_illegal_o, // 1'b1 for illegal CSR access.
 
+  // To WB stage
+  output logic            clic_pa_valid_o,   // CSR read data is an address to a function pointer
+  output logic [31:0]     clic_pa_o,         // Address to CLIC function pointer
+
   // Interrupts
   output logic [31:0]     mie_o,
   input  logic [31:0]     mip_i,
   output logic            m_irq_enable_o,
   output logic [7:0]      mintthresh_o,
   output mintstatus_t     mintstatus_o,
+  output mcause_t         mcause_o,
+
+  input  logic                       mnxti_irq_pending_i,
+  input  logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id_i,
+  input  logic [7:0]                 mnxti_irq_level_i,
 
   output logic [31:0]     mepc_o,
 
@@ -168,7 +178,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   mtvt_t       mtvt_n, mtvt_q;
   logic        mtvt_we, mtvt_rd_error;
 
-  logic [31:0] mnxti_q, mnxti_n;
   logic        mnxti_we;
 
   mintstatus_t mintstatus_q, mintstatus_n;
@@ -348,7 +357,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       // mnxti: Next Interrupt Handler Address and Interrupt Enable
       CSR_MNXTI: begin
         if (SMCLIC) begin
-          csr_rdata_int = mnxti_q;
+          // The data read here is what will be used in the read-modify-write portion of the CSR access.
+          // For mnxti, this is actually mstatus. The value written back to the GPR will be the address of
+          // the function pointer to the interrupt handler. This is muxed in the WB stage.
+          csr_rdata_int = mstatus_q;
         end else begin
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
@@ -564,17 +576,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   mie:  csr_wdata_int[MSTATUS_MIE_BIT],
                                   default: 'b0
                                 };
-    // CLIC mode is assumed when SMCLIC = 1
-    // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
-    if (SMCLIC) begin
-      if (mcause_we) begin
-        mstatus_n      = mstatus_q; // Preserve all fields
-
-        // Write mpie and mpp as aliased through mcause
-        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
-        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
-      end
-    end
 
     mstatus_we               = 1'b0;
 
@@ -592,7 +593,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
       mtvt_we                  = 1'b0;
 
-      mnxti_n                  = '0; // todo: implement
       mnxti_we                 = 1'b0;
 
       mintstatus_n             = mintstatus_q; // All fields of mintstatus are read only
@@ -627,7 +627,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mtvt_n                   = '0;
       mtvt_we                  = 1'b0;
 
-      mnxti_n                  = '0;
       mnxti_we                 = 1'b0;
 
       mintstatus_n             = '0;
@@ -709,6 +708,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MNXTI: begin
           if (SMCLIC) begin
             mnxti_we = 1'b1;
+
+            // Writes to mnxti also writes to mstatus
+            mstatus_we = 1'b1;
+
+            // Writes to mintstatus.mil and mcause depend on the current state of
+            // clic interrupts AND the type of CSR instruction used.
+            // Side effects occur when there is an actual write to the mstatus CSR
+            // This is already coded into the csr_we_int/mnxti_we
+            if (mnxti_irq_pending_i) begin
+              mintstatus_we = 1'b1;
+              mcause_we     = 1'b1;
+            end
           end
         end
         CSR_MINTSTATUS: begin
@@ -751,6 +762,45 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       endcase
     end
+
+    // CSR side effects from other CSRs
+    // All write enables are already calculated at this point
+
+    // CLIC mode is assumed when SMCLIC = 1
+    if (SMCLIC) begin
+      if (mnxti_we) begin
+        // mintstatus and mcause are updated if an actual mstatus write happens and
+        // a higher level non-shv interrupt is pending.
+        // This is already decoded into the respective _we signals below.
+        if (mintstatus_we) begin
+          mintstatus_n.mil = mnxti_irq_level_i;
+        end
+        if (mcause_we) begin
+          mcause_n = mcause_q;
+          mcause_n.irq = 1'b1;
+          mcause_n.exception_code = {1'b0, 10'(mnxti_irq_id_i)};
+        end
+      end else if (mcause_we) begin
+        // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
+        // All other mstatus bits are preserved
+        mstatus_n      = mstatus_q; // Preserve all fields
+
+        // Write mpie and mpp as aliased through mcause
+        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
+        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
+      end
+      // The CLIC pointer address should always be output for an access to MNXTI,
+      // but will only contain a nonzero value if a CLIC interrupt is actually pending
+      // with a higher level. The valid below will be high also for the cases where
+      // no side effects occur.
+      clic_pa_valid_o = csr_en_gated && (csr_waddr == CSR_MNXTI);
+      clic_pa_o       = mnxti_irq_pending_i ? {mtvt_addr_o, mnxti_irq_id_i, 2'b00} : 32'h00000000;
+    end else begin
+      clic_pa_valid_o = 1'b0;
+      clic_pa_o       = '0;
+    end
+
+
 
     // exception controller gets priority over other writes
     unique case (1'b1)
@@ -968,7 +1018,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_error_o (mcause_rd_error)
   );
 
-
+  assign mcause_o = mcause_q;
 
 
 
@@ -1001,8 +1051,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       );
 
       assign mtvt_addr_o = mtvt_q.addr[31:(32-MTVT_ADDR_WIDTH)];
-
-      assign mnxti_q = 32'h0; // todo: implement mnxti functionality
 
       cv32e40x_csr #(
         .WIDTH      (32),
@@ -1095,7 +1143,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       );
       assign mtvt_q              = 32'h0;
       assign mtvt_rd_error       = 1'b0;
-      assign mnxti_q             = 32'h0;
       assign mintstatus_q        = 32'h0;
       assign mintstatus_rd_error = 1'b0;
       assign mintthresh_q        = 32'h0;

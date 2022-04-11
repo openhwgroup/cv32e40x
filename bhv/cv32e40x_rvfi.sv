@@ -106,7 +106,7 @@ module cv32e40x_rvfi
    // Interrupt Controller probes
    input logic [31:0]                         irq_i,
    input logic                                irq_wu_ctrl_i,
-   input logic [4:0]                          irq_id_ctrl_i,
+   input logic [9:0]                          irq_id_ctrl_i,
 
    //// CSR Probes ////
    input                                      jvt_t csr_jvt_n_i,

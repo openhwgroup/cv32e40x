@@ -68,7 +68,11 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   output logic          wb_valid_o,
 
   // eXtension interface
-  if_xif.cpu_result     xif_result_if
+  if_xif.cpu_result     xif_result_if,
+
+  // From cs_registers
+  input logic [31:0]    clic_pa_i,
+  input logic           clic_pa_valid_i
 );
 
   logic                 instr_valid;
@@ -105,7 +109,10 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
-  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i : (ex_wb_pipe_i.xif_en ? xif_result_if.result.data : ex_wb_pipe_i.rf_wdata);
+  assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i               :
+                         (ex_wb_pipe_i.xif_en ? xif_result_if.result.data :
+                         clic_pa_valid_i      ? clic_pa_i                 :
+                         ex_wb_pipe_i.rf_wdata);
 
   //////////////////////////////////////////////////////////////////////////////
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready

@@ -52,7 +52,13 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   // From cv32e40x_cs_registers
   input  logic                       m_ie_i,             // Interrupt enable bit from CSR (M mode)
   input  logic [7:0]                 mintthresh_i,       // Current interrupt threshold from CSR
-  input  mintstatus_t                mintstatus_i        // Current mintstatus from CSR
+  input  mintstatus_t                mintstatus_i,       // Current mintstatus from CSR
+  input  mcause_t                    mcause_i,           // Current mcause from CSR
+
+  // To cv32e40x_cs_registers
+  output logic                       mnxti_irq_pending_o,// An interrupt is available to the mnxti CSR read
+  output logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id_o,     // The id of the availble mnxti interrupt
+  output logic [7:0]                 mnxti_irq_level_o   // Level of the available interrupt
 );
 
   logic                       global_irq_enable;
@@ -61,7 +67,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // Flops for breaking timing path to instruction interface
   logic                       clic_irq_q;
-  logic [9:0]                 clic_irq_id_q;
+  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_q;
   logic [7:0]                 clic_irq_level_q;
   logic [1:0]                 clic_irq_priv_q;
   logic                       clic_irq_shv_q;
@@ -79,7 +85,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
     end
   end
 
-
+  // Flop all irq inputs to break timing paths through the controller.
   always_ff @(posedge clk, negedge rst_n)
   begin
     if (rst_n == 1'b0) begin
@@ -89,7 +95,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
       clic_irq_shv_q    <= 1'b0;
     end else begin
       if (clic_irq_i) begin
-        clic_irq_id_q    <= 10'(clic_irq_id_i); // Casting SMCLIC_ID_WIDTH into max with of 10 bits.
+        clic_irq_id_q    <= clic_irq_id_i;
         clic_irq_level_q <= clic_irq_level_i;   // Will always be PRIV_LVL_M todo: add assertion
         clic_irq_priv_q  <= clic_irq_priv_i;
         clic_irq_shv_q   <= clic_irq_shv_i;
@@ -115,7 +121,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
                           global_irq_enable;
 
   // Pass on interrupt ID
-  assign irq_id_ctrl_o = clic_irq_id_q;
+  assign irq_id_ctrl_o = 10'(clic_irq_id_q);  // Casting into max with of 10 bits.
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
   // SMCLIC spec states three scenarios for wakeup:
@@ -133,5 +139,22 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   assign irq_clic_shv_o = clic_irq_shv_q;
 
   assign irq_clic_level_o = clic_irq_level_q;
+
+  ///////////////////////////
+  // Outputs for mnxti CSR //
+  ///////////////////////////
+
+  // The outputs for mnxti will only be used within cs_registers when a CSR instruction is accessing mnxti
+  assign mnxti_irq_pending_o = (clic_irq_priv_q == PRIV_LVL_M)    &&
+                               (clic_irq_level_q > mcause_i.mpil) &&
+                               (clic_irq_level_q > mintthresh_i)  &&
+                               !clic_irq_shv_q &&
+                               clic_irq_q;
+
+  // If mnxti_irq_pending is true, the currently flopped ID and level will be sent to cs_registers
+  // for use in the function pointer and CSR side effects.
+  // Using native SMCLIC_ID_WIDTH for cleaner pointer concatenation in cs_registers.
+  assign mnxti_irq_id_o    = clic_irq_id_q;
+  assign mnxti_irq_level_o = clic_irq_level_q;
 
 endmodule // cv32e40x_clic_int_controller
