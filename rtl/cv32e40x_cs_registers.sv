@@ -769,9 +769,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     // CLIC mode is assumed when SMCLIC = 1
     if (SMCLIC) begin
       if (mnxti_we) begin
-        // A mnxti write writes to mstatus.mie
-        mstatus_n.mie = csr_wdata_int[MSTATUS_MIE_BIT];
-
         // mintstatus and mcause are updated if an actual mstatus write happens and
         // a higher level non-shv interrupt is pending.
         // This is already decoded into the respective _we signals below.
