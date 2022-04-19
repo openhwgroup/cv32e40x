@@ -711,11 +711,13 @@ typedef enum logic[1:0] {
                     } alu_op_b_mux_e;
 
 // Immediate b selection
-typedef enum logic[1:0] {
-                         IMMB_I      = 2'b00,
-                         IMMB_S      = 2'b01,
-                         IMMB_U      = 2'b10,
-                         IMMB_PCINCR = 2'b11
+typedef enum logic[2:0] {
+                         IMMB_I      = 3'b000,
+                         IMMB_S      = 3'b001,
+                         IMMB_U      = 3'b010,
+                         IMMB_PCINCR = 3'b011,
+                         IMMB_CIW    = 3'b100,
+                         IMMB_CL    = 3'b101
                          } imm_b_mux_e;
 
 // Operand c selection
@@ -1031,6 +1033,7 @@ typedef struct packed
 typedef struct packed {
   logic        instr_valid;
   inst_resp_t  instr;
+  logic        use_merged_dec; // todo: remove once done with decoder merge
   instr_meta_t instr_meta;
   logic [31:0] pc;
   logic [15:0] compressed_instr;
