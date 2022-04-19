@@ -22,7 +22,7 @@
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Decoder for the RV32I Base Instruction set                 //
+// Description:    Decoder for the RV32I Base Instruction set + C             //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,12 +46,28 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
     decoder_ctrl_o.illegal_insn = 1'b0;
 
     unique case (instr_rdata_i[1:0])
+
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      //   ____                                                 _   ____                     _            //
+      //  / ___|___  _ __ ___  _ __  _ __ ___  ___ ___  ___  __| | |  _ \  ___  ___ ___   __| | ___ _ __  //
+      // | |   / _ \| '_ ` _ \| '_ \| '__/ _ \/ __/ __|/ _ \/ _` | | | | |/ _ \/ __/ _ \ / _` |/ _ \ '__| //
+      // | |__| (_) | | | | | | |_) | | |  __/\__ \__ \  __/ (_| | | |_| |  __/ (_| (_) | (_| |  __/ |    //
+      //  \____\___/|_| |_| |_| .__/|_|  \___||___/___/\___|\__,_| |____/ \___|\___\___/ \__,_|\___|_|    //
+      //                      |_|                                                                         //
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+
       // C0
       2'b00: begin
         unique case (instr_rdata_i[15:13])
           3'b000: begin
             // c.addi4spn -> addi rd', x2, imm
-            // todo instr_o.bus_resp.rdata = {2'b0, instr[10:7], instr[12:11], instr[5], instr[6], 2'b00, 5'h02, 3'b000, 2'b01, instr[4:2], OPCODE_OPIMM};
+            decoder_ctrl_o.alu_en           = 1'b1;
+            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
+            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            decoder_ctrl_o.imm_b_mux_sel    = IMMB_CIW;
+            decoder_ctrl_o.rf_we            = 1'b1;
+            decoder_ctrl_o.rf_re[0]         = 1'b1;
+            decoder_ctrl_o.alu_operator     = ALU_ADD; // Add Immediate
             if (instr_rdata_i[12:5] == 8'b0) begin
               decoder_ctrl_o.illegal_insn = 1'b1;
             end
@@ -59,7 +75,15 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
           3'b010: begin
             // c.lw -> lw rd', imm(rs1')
-            // todo instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+            decoder_ctrl_o.lsu_en           = 1'b1;
+            decoder_ctrl_o.rf_we            = 1'b1;
+            decoder_ctrl_o.rf_re[0]         = 1'b1;
+            decoder_ctrl_o.alu_op_a_mux_sel = OP_A_REGA_OR_FWD;
+            decoder_ctrl_o.alu_op_b_mux_sel = OP_B_IMM;
+            decoder_ctrl_o.op_c_mux_sel     = OP_C_NONE;
+            decoder_ctrl_o.imm_b_mux_sel    = IMMB_CL;
+            decoder_ctrl_o.lsu_sext         = 1'b0;
+            decoder_ctrl_o.lsu_size         = 2'b10;
           end
 
           3'b110: begin
@@ -273,6 +297,15 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           end
         endcase
       end
+
+      ////////////////////////////////////////////////
+      //  _   ____                     _            //
+      // | | |  _ \  ___  ___ ___   __| | ___ _ __  //
+      // | | | | | |/ _ \/ __/ _ \ / _` |/ _ \ '__| //
+      // | | | |_| |  __/ (_| (_) | (_| |  __/ |    //
+      // |_| |____/ \___|\___\___/ \__,_|\___|_|    //
+      //                                            //
+      ////////////////////////////////////////////////
 
       default: begin
         // 32 bit (or more) instruction
