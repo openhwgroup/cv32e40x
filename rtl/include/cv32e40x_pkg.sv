@@ -1180,6 +1180,7 @@ typedef struct packed {
   logic         load_stall;             // Stall due to load operation
   logic         csr_stall;
   logic         wfi_stall;
+  logic         mnxti_stall;            // Stall due to mnxti CSR access in EX
   logic         minstret_stall;         // Stall due to minstret/h read in EX
   logic         deassert_we;            // Deassert write enable and special insn bits
   logic         xif_exception_stall;    // Stall (EX) if xif insn in WB can cause an exception

@@ -129,6 +129,12 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // Prevent load/store following a WFI in the pipeline
   assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_wfi_insn && id_ex_pipe_i.instr_valid);
 
+  // Stall ID when mnxti CSR is accessed in EX
+  // This is needed because the data bypass from EX uses csr_rdata, and for mnxti this is actually mstatus and not the result
+  // that will be written to the register file. Could be optimized to only stall when the result from the CSR instruction is used in ID,
+  // but the common usecase is a CSR access followed by a branch using the mnxti result in the RF, so it would likely stall in most cases anyway.
+  assign ctrl_byp_o.mnxti_stall = (id_ex_pipe_i.csr_en && (id_ex_pipe_i.alu_operand_b[11:0] == CSR_MNXTI) && id_ex_pipe_i.instr_valid);
+
   genvar i;
   generate
     for(i=0; i<REGFILE_NUM_READ_PORTS; i++) begin : gen_forward_signals
@@ -175,7 +181,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
     // Stall because of jalr path. Stall if a result is to be forwarded to the PC except if result from WB is an ALU result.
     // No need to deassert anything in ID as ID stage is stalled anyway. alu_jmpr_id_i implies rf_re_id_i[0].
-    if (alu_jmpr_id_i && alu_en_raw_id_i && ((rf_we_wb && rf_rd_wb_jalr_match && lsu_en_wb) || (rf_we_ex && rf_rd_ex_jalr_match))) begin
+    if ((alu_jmpr_id_i && alu_en_raw_id_i) &&
+         ((rf_we_wb && rf_rd_wb_jalr_match && lsu_en_wb) ||
+          (rf_we_wb && rf_rd_wb_jalr_match && (ex_wb_pipe_i.csr_addr == CSR_MNXTI) && ex_wb_pipe_i.csr_en) ||
+          (rf_we_ex && rf_rd_ex_jalr_match))) begin
       ctrl_byp_o.jalr_stall = 1'b1;
     end else begin
       ctrl_byp_o.jalr_stall = 1'b0;
