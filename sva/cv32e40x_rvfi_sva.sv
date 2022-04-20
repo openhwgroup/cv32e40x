@@ -43,7 +43,7 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      rvfi_csr_dcsr_rdata,
    input logic [31:0]      rvfi_csr_mcause_rdata,
    input logic [31:0]      rvfi_pc_rdata,
-   input logic [31:0]      nmi_addr_i,
+   input logic [24:0]      mtvec_addr_i,
    input logic [31:0]      rvfi_csr_mie_rdata,
    input logic [31:0]      rvfi_csr_mip_rdata,
    input logic             irq_ack,
@@ -173,10 +173,10 @@ module cv32e40x_rvfi_sva
   // rvfi_intr should also be set.
   a_rvfi_nmip_nmi_handler:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     (no_debug && $stable(nmi_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
+                     (no_debug && $stable(mtvec_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
                      rvfi_intr.intr &&
-                     (rvfi_pc_rdata == {nmi_addr_i[31:2], 2'b00}) &&
-                     ((rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[7:0] == INT_CAUSE_LSU_STORE_FAULT)))
+                     (rvfi_pc_rdata == {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00}) &&
+                     ((rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")
 
 endmodule : cv32e40x_rvfi_sva

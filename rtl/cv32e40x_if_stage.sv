@@ -28,7 +28,6 @@
 
 module cv32e40x_if_stage import cv32e40x_pkg::*;
 #(
-  parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          A_EXT           = 0,
   parameter bit          X_EXT           = 0,
   parameter int          X_ID_WIDTH      = 4,
@@ -50,7 +49,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic [31:0]   jump_target_id_i,       // Jump target address
   input  logic [31:0]   mepc_i,                 // Exception PC (restore upon return from exception/interrupt)
   input  logic [24:0]   mtvec_addr_i,           // Exception/interrupt address (MSBs)
-  input  logic [31:0]   nmi_addr_i,             // NMI address
 
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
@@ -130,8 +128,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.mtvec_pc_mux, 2'b00};     // interrupts are vectored
       PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
-      PC_TRAP_NMI: branch_addr_n = USE_DEPRECATED_FEATURE_SET ? {nmi_addr_i[31:2], 2'b00} :
-                                                                {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
+      PC_TRAP_NMI: branch_addr_n = {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
       PC_TRAP_CLICV:     branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
       // CLIC spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;

@@ -30,7 +30,6 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          A_EXT            = 0,
   parameter m_ext_e      M_EXT            = M,
   parameter bit          X_EXT            = 0,
@@ -580,10 +579,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mstatus_we               = 1'b0;
 
     mtvec_n.addr             = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
-    if (USE_DEPRECATED_FEATURE_SET) begin
-      mtvec_n.addr[7]        = 1'b0; // todo : remove
-    end
-
     mtvec_n.zero0            = mtvec_q.zero0;
     mtvec_we                 = csr_mtvec_init_i;
 
