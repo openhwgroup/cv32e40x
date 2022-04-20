@@ -46,8 +46,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          sys_fencei_insn_o,      // fence.i instruction
 
   // from IF/ID pipeline
-  input  logic [31:0]   instr_rdata_i,          // Instruction
-  input  logic          illegal_c_insn_i,       // Compressed instruction illegal
+  input  if_id_pipe_t   if_id_pipe_i,
 
   // ALU signals
   output logic          alu_en_o,               // ALU enable
@@ -63,7 +62,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output mul_opcode_e   mul_operator_o,         // Multiplication operation selection
   output logic          mul_en_o,               // Perform integer multiplication
   output logic [1:0]    mul_signed_mode_o,      // Multiplication in signed mode
-  
+
   // DIV related control signals
   output div_opcode_e   div_operator_o,         // Division operation selection
   output logic          div_en_o,               // Perform division
@@ -102,12 +101,17 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   logic       div_en;
   logic       sys_en;
 
+  logic [31:0] instr_rdata;
+
   decoder_ctrl_t decoder_i_ctrl;
   decoder_ctrl_t decoder_m_ctrl;
   decoder_ctrl_t decoder_a_ctrl;
   decoder_ctrl_t decoder_b_ctrl;
   decoder_ctrl_t decoder_ctrl_mux_subdec;
   decoder_ctrl_t decoder_ctrl_mux;
+
+  assign instr_rdata = if_id_pipe_i.use_merged_dec ? {16'b0, if_id_pipe_i.compressed_instr} :
+                                                     if_id_pipe_i.instr.bus_resp.rdata; // todo: temporary hack while merging decoder
 
   // RV32I Base instruction set decoder
   cv32e40x_i_decoder
@@ -116,7 +120,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   )
   i_decoder_i
   (
-    .instr_rdata_i  ( instr_rdata_i  ),
+    .instr_rdata_i  ( instr_rdata    ),
     .ctrl_fsm_i     ( ctrl_fsm_i     ),
     .decoder_ctrl_o ( decoder_i_ctrl )
   );
@@ -127,7 +131,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       // RV32A extension decoder
       cv32e40x_a_decoder a_decoder_i
       (
-        .instr_rdata_i  ( instr_rdata_i  ),
+        .instr_rdata_i  ( instr_rdata    ),
         .decoder_ctrl_o ( decoder_a_ctrl )
       );
     end else begin: no_a_decoder
@@ -142,7 +146,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       )
       b_decoder_i
       (
-        .instr_rdata_i  ( instr_rdata_i  ),
+        .instr_rdata_i  ( instr_rdata    ),
         .decoder_ctrl_o ( decoder_b_ctrl )
       );
     end else begin: no_b_decoder
@@ -157,7 +161,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
           )
       m_decoder_i
       (
-       .instr_rdata_i  ( instr_rdata_i  ),
+       .instr_rdata_i  ( instr_rdata    ),
        .decoder_ctrl_o ( decoder_m_ctrl )
       );
     end else begin: no_m_decoder
@@ -165,7 +169,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     end
 
   endgenerate
-      
+
   // Mux control outputs from decoders
   always_comb
   begin
@@ -180,7 +184,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // Take illegal compressed instruction into account
   always_comb begin
-    if (illegal_c_insn_i) begin
+    if (if_id_pipe_i.illegal_c_insn) begin
       decoder_ctrl_mux = DECODER_CTRL_ILLEGAL_INSN;
     end
     else begin
@@ -192,27 +196,27 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign alu_bch_o          = decoder_ctrl_mux.alu_bch;
   assign alu_jmp_o          = decoder_ctrl_mux.alu_jmp;
   assign alu_jmpr_o         = decoder_ctrl_mux.alu_jmpr;
-  assign alu_operator_o     = decoder_ctrl_mux.alu_operator;                  
-  assign alu_op_a_mux_sel_o = decoder_ctrl_mux.alu_op_a_mux_sel;              
-  assign alu_op_b_mux_sel_o = decoder_ctrl_mux.alu_op_b_mux_sel;              
+  assign alu_operator_o     = decoder_ctrl_mux.alu_operator;
+  assign alu_op_a_mux_sel_o = decoder_ctrl_mux.alu_op_a_mux_sel;
+  assign alu_op_b_mux_sel_o = decoder_ctrl_mux.alu_op_b_mux_sel;
   assign op_c_mux_sel_o     = decoder_ctrl_mux.op_c_mux_sel;
-  assign imm_a_mux_sel_o    = decoder_ctrl_mux.imm_a_mux_sel;                 
-  assign imm_b_mux_sel_o    = decoder_ctrl_mux.imm_b_mux_sel;                 
+  assign imm_a_mux_sel_o    = decoder_ctrl_mux.imm_a_mux_sel;
+  assign imm_b_mux_sel_o    = decoder_ctrl_mux.imm_b_mux_sel;
   assign bch_jmp_mux_sel_o  = decoder_ctrl_mux.bch_jmp_mux_sel;
   assign mul_en             = decoder_ctrl_mux.mul_en;
-  assign mul_operator_o     = decoder_ctrl_mux.mul_operator;               
+  assign mul_operator_o     = decoder_ctrl_mux.mul_operator;
   assign mul_signed_mode_o  = decoder_ctrl_mux.mul_signed_mode;
   assign div_en             = decoder_ctrl_mux.div_en;
   assign div_operator_o     = decoder_ctrl_mux.div_operator;
-  assign rf_re_o            = decoder_ctrl_mux.rf_re;                         
-  assign rf_we              = decoder_ctrl_mux.rf_we;                           
+  assign rf_re_o            = decoder_ctrl_mux.rf_re;
+  assign rf_we              = decoder_ctrl_mux.rf_we;
   assign csr_en             = decoder_ctrl_mux.csr_en;
   assign csr_op_o           = decoder_ctrl_mux.csr_op;
-  assign lsu_en             = decoder_ctrl_mux.lsu_en;                        
-  assign lsu_we_o           = decoder_ctrl_mux.lsu_we;                       
-  assign lsu_size_o         = decoder_ctrl_mux.lsu_size;                     
+  assign lsu_en             = decoder_ctrl_mux.lsu_en;
+  assign lsu_we_o           = decoder_ctrl_mux.lsu_we;
+  assign lsu_size_o         = decoder_ctrl_mux.lsu_size;
   assign lsu_sext_o         = decoder_ctrl_mux.lsu_sext;
-  assign lsu_atop_o         = decoder_ctrl_mux.lsu_atop;                     
+  assign lsu_atop_o         = decoder_ctrl_mux.lsu_atop;
   assign sys_en             = decoder_ctrl_mux.sys_en;
   assign sys_mret_insn_o    = decoder_ctrl_mux.sys_mret_insn;
   assign sys_dret_insn_o    = decoder_ctrl_mux.sys_dret_insn;
@@ -235,5 +239,5 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
   assign alu_en_raw_o = alu_en;
-  
+
 endmodule // cv32e40x_decoder
