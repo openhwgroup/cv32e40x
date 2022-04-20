@@ -337,7 +337,7 @@ module cv32e40x_wrapper
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
-               .mtvec_addr_i(core_i.mtvt_addr),
+               .mtvec_addr_i(core_i.mtvec_addr),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF

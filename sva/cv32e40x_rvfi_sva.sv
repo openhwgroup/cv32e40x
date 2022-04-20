@@ -43,7 +43,7 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      rvfi_csr_dcsr_rdata,
    input logic [31:0]      rvfi_csr_mcause_rdata,
    input logic [31:0]      rvfi_pc_rdata,
-   input logic [31:0]      mtvec_addr_i,
+   input logic [24:0]      mtvec_addr_i,
    input logic [31:0]      rvfi_csr_mie_rdata,
    input logic [31:0]      rvfi_csr_mip_rdata,
    input logic             irq_ack,
