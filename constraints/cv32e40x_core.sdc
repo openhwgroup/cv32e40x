@@ -141,7 +141,6 @@ set early_input_ports [list \
     mhartid_i* \
     mimpid_i* \
     dm_exception_addr_i* \
-    nmi_addr_i* \
 ]
 
 # RISC-V OBI Input ports

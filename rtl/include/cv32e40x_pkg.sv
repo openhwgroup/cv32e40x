@@ -858,10 +858,6 @@ parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h30;
 parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
 parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
 
-// todo: remove once 11bit cause is supported by iss
-parameter DEPRECATED_INT_CAUSE_LSU_LOAD_FAULT  = 11'h80;
-parameter DEPRECATED_INT_CAUSE_LSU_STORE_FAULT = 11'h81;
-
 // Interrupt mask
 parameter IRQ_MASK = 32'hFFFF0888;
 

@@ -31,7 +31,6 @@
 
 module cv32e40x_controller import cv32e40x_pkg::*;
 #(
-  parameter bit          USE_DEPRECATED_FEATURE_SET = 1, // todo: remove once related features are supported by iss
   parameter bit          X_EXT                  = 0,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
   parameter bit          SMCLIC                 = 0,
@@ -119,7 +118,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Main FSM and debug FSM
   cv32e40x_controller_fsm
   #(
-    .USE_DEPRECATED_FEATURE_SET  (USE_DEPRECATED_FEATURE_SET),
     .X_EXT                       ( X_EXT                    ),
     .SMCLIC                      ( SMCLIC                   ),
     .SMCLIC_ID_WIDTH             ( SMCLIC_ID_WIDTH          )

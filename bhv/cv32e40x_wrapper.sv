@@ -80,7 +80,6 @@ module cv32e40x_wrapper
   input  logic [31:0] mhartid_i,
   input  logic  [3:0] mimpid_patch_i,
   input  logic [31:0] dm_exception_addr_i,
-  input  logic [31:0] nmi_addr_i,
 
   // Instruction memory interface
   output logic        instr_req_o,
@@ -338,7 +337,7 @@ module cv32e40x_wrapper
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
-               .nmi_addr_i(core_i.nmi_addr_i),
+               .mtvec_addr_i(core_i.mtvt_addr),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
