@@ -199,6 +199,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [31:0] csr_rdata;
   logic csr_counter_read;
+  logic csr_mnxti_read;
 
   // CLIC signals for returning pointer addresses
   // when mnxti is accessed
@@ -511,6 +512,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // CSR interface
     .csr_rdata_i                ( csr_rdata                    ),
     .csr_illegal_i              ( csr_illegal                  ),
+    .csr_mnxti_read_i           ( csr_mnxti_read               ),
 
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
@@ -700,6 +702,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Raddr from first stage (EX)
     .csr_counter_read_o         ( csr_counter_read       ),
+    .csr_mnxti_read_o           ( csr_mnxti_read         ),
 
     // Interrupt related control signals
     .mie_o                      ( mie                    ),
@@ -750,6 +753,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .id_ex_pipe_i                   ( id_ex_pipe             ),
 
     .csr_counter_read_i             ( csr_counter_read       ),
+    .csr_mnxti_read_i               ( csr_mnxti_read         ),
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
@@ -893,6 +897,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
       // CLIC shv not used in basic mode
       assign irq_clic_shv = 1'b0;
       assign irq_clic_level = 8'h00;
+
+      // CLIC mnxti not used in basic mode
+      assign mnxti_irq_pending = 1'b0;
+      assign mnxti_irq_id      = '0;
+      assign mnxti_irq_level   = '0;
     end
   endgenerate
 
