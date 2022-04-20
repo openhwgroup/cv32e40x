@@ -187,7 +187,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Cannot use wb_stage.rf_wdata_o due to the timing path from the data OBI.
     if ((alu_jmpr_id_i && alu_en_raw_id_i) &&
          ((rf_we_wb && rf_rd_wb_jalr_match && lsu_en_wb) ||
-          (rf_we_wb && rf_rd_wb_jalr_match && (ex_wb_pipe_i.csr_mnxti_access && ex_wb_pipe_i.csr_en) ||
+          (rf_we_wb && rf_rd_wb_jalr_match && (ex_wb_pipe_i.csr_mnxti_access && ex_wb_pipe_i.csr_en)) ||
           (rf_we_ex && rf_rd_ex_jalr_match))) begin
       ctrl_byp_o.jalr_stall = 1'b1;
     end else begin
