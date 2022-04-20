@@ -49,13 +49,13 @@ module cv32e40x_core_sva
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
 
-  input alu_op_a_mux_e alu_op_a_mux_sel,
-  input alu_op_b_mux_e alu_op_b_mux_sel,
-  input logic [31:0] operand_a_id_i,
-  input logic [31:0] operand_b_id_i,
-  input logic [31:0] jalr_fw,
-  input logic [31:0] rf_wdata_wb,
-  input logic        rf_we_wb,
+  input alu_op_a_mux_e alu_op_a_mux_sel_id_i,
+  input alu_op_b_mux_e alu_op_b_mux_sel_id_i,
+  input logic [31:0]   operand_a_id_i,
+  input logic [31:0]   operand_b_id_i,
+  input logic [31:0]   jalr_fw_id_i,
+  input logic [31:0]   rf_wdata_wb,
+  input logic          rf_we_wb,
 
   input logic        alu_jmpr_id_i,
   input logic        alu_en_raw_id_i,
@@ -377,28 +377,51 @@ always_ff @(posedge clk , negedge rst_ni)
   // Check that operand_a data forwarded from EX to ID actually is written to RF in WB
   property p_opa_fwd_ex;
     logic [31:0] opa;
-    (id_stage_id_valid && ex_ready && (alu_op_a_mux_sel == OP_A_REGA_OR_FWD) && (ctrl_byp.operand_a_fw_mux_sel == SEL_FW_EX), opa=operand_a_id_i)
+    @(posedge clk) disable iff (!rst_ni)
+    (id_stage_id_valid && ex_ready && (alu_op_a_mux_sel_id_i == OP_A_REGA_OR_FWD) && (ctrl_byp.operand_a_fw_mux_sel == SEL_FW_EX), opa=operand_a_id_i)
     |=> (opa == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
   endproperty
 
   a_opa_fwd_ex: assert property (p_opa_fwd_ex)
     else `uvm_error("core", "Forwarded data (operand_a) from EX not written to RF the following cycle")
 
+  // Check that operand_a data forwarded from WB to ID actually is written to RF in WB
+  property p_opa_fwd_wb;
+    @(posedge clk) disable iff (!rst_ni)
+    (id_stage_id_valid && ex_ready && (alu_op_a_mux_sel_id_i == OP_A_REGA_OR_FWD) && (ctrl_byp.operand_a_fw_mux_sel == SEL_FW_WB))
+    |-> (operand_a_id_i == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
+  endproperty
+
+  a_opa_fwd_wb: assert property (p_opa_fwd_wb)
+    else `uvm_error("core", "Forwarded data (operand_a) from WB not written to RF in the same cycle")
+
   // Check that operand_b data forwarded from EX to ID actually is written to RF in WB
   property p_opb_fwd_ex;
     logic [31:0] opb;
-    (id_stage_id_valid && ex_ready && (alu_op_b_mux_sel == OP_B_REGB_OR_FWD) && (ctrl_byp.operand_b_fw_mux_sel == SEL_FW_EX), opb=operand_b_id_i)
+    @(posedge clk) disable iff (!rst_ni)
+    (id_stage_id_valid && ex_ready && (alu_op_b_mux_sel_id_i == OP_B_REGB_OR_FWD) && (ctrl_byp.operand_b_fw_mux_sel == SEL_FW_EX), opb=operand_b_id_i)
     |=> (opb == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
   endproperty
 
   a_opb_fwd_ex: assert property (p_opb_fwd_ex)
     else `uvm_error("core", "Forwarded data (operand_b) from EX not written to RF the following cycle")
 
+  // Check that operand_b data forwarded from WB to ID actually is written to RF in WB
+  property p_opb_fwd_wb;
+    @(posedge clk) disable iff (!rst_ni)
+    (id_stage_id_valid && ex_ready && (alu_op_b_mux_sel_id_i == OP_B_REGB_OR_FWD) && (ctrl_byp.operand_b_fw_mux_sel == SEL_FW_WB))
+    |-> (operand_b_id_i == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
+  endproperty
+
+  a_opb_fwd_wb: assert property (p_opb_fwd_wb)
+    else `uvm_error("core", "Forwarded data (operand_b) from WB not written to RF in the same cycle")
+
   // Check that data forwarded from WB to a JALR instruction in ID is actully written to the RF
   property p_jalr_fwd;
+    @(posedge clk) disable iff (!rst_ni)
     (alu_jmpr_id_i && alu_en_raw_id_i) && (ctrl_byp.jalr_fw_mux_sel == SELJ_FW_WB) && !ctrl_byp.jalr_stall
     |->
-    (jalr_fw == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
+    (jalr_fw_id_i == rf_wdata_wb) && (rf_we_wb || (ctrl_fsm.kill_id || ctrl_fsm.halt_id));
   endproperty
 
   a_jalr_fwd: assert property(p_jalr_fwd)

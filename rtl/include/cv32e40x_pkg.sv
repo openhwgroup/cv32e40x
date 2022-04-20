@@ -1124,6 +1124,7 @@ typedef struct packed {
   csr_opcode_e  csr_op;
   logic [11:0]  csr_addr;
   logic [31:0]  csr_wdata;
+  logic         csr_mnxti_access;
 
   // LSU
   logic         lsu_en;

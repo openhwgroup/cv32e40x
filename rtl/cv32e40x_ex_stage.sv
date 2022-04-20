@@ -45,6 +45,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // CSR interface
   input  logic [31:0] csr_rdata_i,
   input  logic        csr_illegal_i,
+  input  logic        csr_mnxti_read_i,
 
   // EX/WB pipeline
   output ex_wb_pipe_t ex_wb_pipe_o,
@@ -334,6 +335,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.csr_op             <= CSR_OP_READ;
       ex_wb_pipe_o.csr_addr           <= 12'h000;
       ex_wb_pipe_o.csr_wdata          <= 32'h00000000;
+      ex_wb_pipe_o.csr_mnxti_access   <= 1'b0;
       ex_wb_pipe_o.xif_en             <= 1'b0;
       ex_wb_pipe_o.xif_meta           <= '0;
     end
@@ -363,9 +365,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // to avoid writing to CSRs inside the core.
         ex_wb_pipe_o.csr_en     <= (csr_illegal_i || xif_csr_error_o) ? 1'b0 : id_ex_pipe_i.csr_en;
         if (id_ex_pipe_i.csr_en) begin
-          ex_wb_pipe_o.csr_addr  <= id_ex_pipe_i.alu_operand_b[11:0];
-          ex_wb_pipe_o.csr_wdata <= id_ex_pipe_i.alu_operand_a;
-          ex_wb_pipe_o.csr_op    <= id_ex_pipe_i.csr_op;
+          ex_wb_pipe_o.csr_addr         <= id_ex_pipe_i.alu_operand_b[11:0];
+          ex_wb_pipe_o.csr_wdata        <= id_ex_pipe_i.alu_operand_a;
+          ex_wb_pipe_o.csr_op           <= id_ex_pipe_i.csr_op;
+          ex_wb_pipe_o.csr_mnxti_access <= csr_mnxti_read_i;
         end
 
         // Propagate signals needed for exception handling in WB

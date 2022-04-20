@@ -77,6 +77,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // To controller bypass logic
   output logic            csr_counter_read_o,
+  output logic            csr_mnxti_read_o,
 
   // Interface to registers (SRAM like)
   output logic [31:0]     csr_rdata_o,
@@ -275,8 +276,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // read logic
   always_comb
   begin
-    illegal_csr_read = 1'b0;
+    illegal_csr_read   = 1'b0;
     csr_counter_read_o = 1'b0;
+    csr_mnxti_read_o   = 1'b0;
 
     case (csr_raddr)
       // jvt: Jump vector table
@@ -361,6 +363,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // For mnxti, this is actually mstatus. The value written back to the GPR will be the address of
           // the function pointer to the interrupt handler. This is muxed in the WB stage.
           csr_rdata_int = mstatus_q;
+          csr_mnxti_read_o = 1'b1;
         end else begin
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;

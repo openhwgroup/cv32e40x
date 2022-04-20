@@ -49,7 +49,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
 
-  // ID/EX pipeline 
+  // ID/EX pipeline
   output id_ex_pipe_t id_ex_pipe_o,
 
   // EX/WB pipeline
@@ -113,7 +113,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 rf_we;
   logic                 rf_we_dec;
   rf_addr_t             rf_waddr;
-  
+
   // ALU Control
   logic                 alu_en;
   logic                 alu_en_raw;
@@ -130,7 +130,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Divider control
   logic                 div_en;
   div_opcode_e          div_operator;
-  
+
   // LSU
   logic                 lsu_en;
   logic                 lsu_we;
@@ -314,7 +314,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin: jalr_fw_mux
     case (ctrl_byp_i.jalr_fw_mux_sel)
-      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;
+      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;  // todo: This won't allow forwarding from the XIF.
       SELJ_REGFILE: jalr_fw = rf_rdata_i[0];
       default:      jalr_fw = rf_rdata_i[0];
     endcase
@@ -413,7 +413,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .sys_ecall_insn_o                ( sys_ecall_insn            ),
     .sys_wfi_insn_o                  ( sys_wfi_insn              ),
     .sys_fencei_insn_o               ( sys_fencei_insn           ),
-    
+
     // from IF/ID pipeline
     .instr_rdata_i                   ( instr_merged              ), // todo: temporary hack while merging decoders
     .illegal_c_insn_i                ( if_id_pipe_i.illegal_c_insn ),
@@ -473,7 +473,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register writeback is enabled either by the decoder or by the XIF
   assign rf_we          = rf_we_dec || xif_we;
 
-  
+
   /////////////////////////////////////////////////////////////////////////////////
   //   ___ ____        _______  __  ____ ___ ____  _____ _     ___ _   _ _____   //
   //  |_ _|  _ \      | ____\ \/ / |  _ \_ _|  _ \| ____| |   |_ _| \ | | ____|  //
@@ -541,7 +541,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // normal pipeline unstall case
       if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
-        
+
         // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin
           id_ex_pipe_o.alu_operand_a        <= operand_a;               // Used by most ALU, CSR and LSU instructions
@@ -549,7 +549,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         if (alu_op_b_mux_sel != OP_B_NONE) begin
           id_ex_pipe_o.alu_operand_b        <= operand_b;               // Used by most ALU, CSR and LSU instructions
         end
-        
+
         if (op_c_mux_sel != OP_C_NONE)
         begin
           id_ex_pipe_o.operand_c            <= operand_c;               // Used by LSU stores and some ALU instructions
@@ -568,7 +568,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         if (div_en) begin
           id_ex_pipe_o.div_operator         <= div_operator;
         end
-        
+
         id_ex_pipe_o.mul_en                 <= mul_en;
         if (mul_en) begin
           id_ex_pipe_o.mul_operator         <= mul_operator;
@@ -725,7 +725,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         end
       end
 
-      assign xif_issue_if.issue_req.ecs       = 6'b111111; // todo: hookup to related mstatus bits (for now just reporting all state as dirty) 
+      assign xif_issue_if.issue_req.ecs       = 6'b111111; // todo: hookup to related mstatus bits (for now just reporting all state as dirty)
                                                            // and make sure that instruction after ecs update sees correct bits
       assign xif_issue_if.issue_req.ecs_valid = 1'b1; // todo: needs to take into account if mstatus extension context writes are in flight
                                                       // todo: use xif_issue_if.issue_resp.ecswrite
