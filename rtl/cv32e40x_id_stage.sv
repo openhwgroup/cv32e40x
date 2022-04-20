@@ -389,9 +389,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                                           //
   ///////////////////////////////////////////////
 
-  logic [31:0] instr_merged;
-  assign instr_merged = if_id_pipe_i.use_merged_dec ? {16'b0, c_instr} : instr; // todo: temporary hack while merging decoder
-
   cv32e40x_decoder
   #(
     .A_EXT                           ( A_EXT                     ),
@@ -415,8 +412,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .sys_fencei_insn_o               ( sys_fencei_insn           ),
 
     // from IF/ID pipeline
-    .instr_rdata_i                   ( instr_merged              ), // todo: temporary hack while merging decoders
-    .illegal_c_insn_i                ( if_id_pipe_i.illegal_c_insn ),
+    .if_id_pipe_i                    ( if_id_pipe_i              ),
 
     // ALU
     .alu_en_o                        ( alu_en                    ),
