@@ -38,6 +38,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_prefetcher
+#(
+    parameter bit SMCLIC = 1'b0
+)
 (
   input  logic                     clk,
   input  logic                     rst_n,

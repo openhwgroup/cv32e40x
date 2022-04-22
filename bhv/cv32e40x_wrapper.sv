@@ -218,7 +218,10 @@ module cv32e40x_wrapper
       .*);
 
   bind cv32e40x_prefetch_unit:
-    core_i.if_stage_i.prefetch_unit_i cv32e40x_prefetch_unit_sva prefetch_unit_sva (.*);
+    core_i.if_stage_i.prefetch_unit_i
+      cv32e40x_prefetch_unit_sva
+      #(.SMCLIC(SMCLIC))
+      prefetch_unit_sva (.*);
 
   generate
     if(M_EXT == M) begin: div_sva
@@ -235,6 +238,7 @@ module cv32e40x_wrapper
   bind cv32e40x_prefetcher:
     core_i.if_stage_i.prefetch_unit_i.prefetcher_i
       cv32e40x_prefetcher_sva
+        #(.SMCLIC(SMCLIC))
         prefetcher_sva (.*);
 
   bind cv32e40x_core:
