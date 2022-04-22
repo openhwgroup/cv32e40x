@@ -184,8 +184,9 @@ always_ff @(posedge clk , negedge rst_ni)
         expected_instr_err_mepc <= ex_wb_pipe.pc;
       end
 
+      // CLIC pointers generate data errors, exluding to avoid cause mismatch. todo: make separate asserts for clicptr exceptions.
       if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
-         !(ctrl_fsm.pc_mux == PC_TRAP_NMI) &&
+         !(ctrl_fsm.pc_mux == PC_TRAP_NMI) && !(ex_wb_pipe.instr_meta.clic_ptr) &&
           (ex_wb_pipe.instr.mpu_status != MPU_OK) && !ctrl_debug_mode_n) begin
         first_instr_mpuerr_found   <= 1'b1;
         expected_instr_mpuerr_mepc <= ex_wb_pipe.pc;

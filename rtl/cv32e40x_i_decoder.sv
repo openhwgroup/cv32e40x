@@ -69,7 +69,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             decoder_ctrl_o.rf_re[0]         = 1'b1;
             decoder_ctrl_o.alu_operator     = ALU_ADD; // Add Immediate
             if (instr_rdata_i[12:5] == 8'b0) begin
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
 
@@ -95,12 +95,12 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           3'b011,       // c.flw -> flw rd', imm(rs1')
           3'b101,       // c.fsd -> fsd rs2', imm(rs1')
           3'b111: begin // c.fsw -> fsw rs2', imm(rs1')
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             // todo instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
           end
           default: begin
             // todo instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
           end
         endcase
       end
@@ -133,7 +133,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           3'b011: begin
             if ({instr_rdata_i[12], instr_rdata_i[6:2]} == 6'b0) begin
               // todo instr_o.bus_resp.rdata = {{15 {instr[12]}}, instr[6:2], instr[11:7], OPCODE_LUI};
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end else begin
               if (instr_rdata_i[11:7] == 5'h02) begin
                 // c.addi16sp -> addi x2, x2, nzimm
@@ -157,7 +157,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                 if (instr_rdata_i[12] == 1'b1) begin
                   // Reserved for future custom extensions (instr_o don't care)
                   // todo instr_o.bus_resp.rdata = {1'b0, instr[10], 5'b0, instr[6:2], 2'b01, instr[9:7], 3'b101, 2'b01, instr[9:7], OPCODE_OPIMM};
-                  decoder_ctrl_o.illegal_insn = 1'b1;
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end else begin
                   if (instr_rdata_i[6:2] == 5'b0) begin
                     // Hint
@@ -202,7 +202,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                     // 100: c.subw
                     // 101: c.addw
                     // todo instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
-                    decoder_ctrl_o.illegal_insn = 1'b1;
+                    decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                   end
                 endcase
               end
@@ -224,7 +224,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             if (instr_rdata_i[12] == 1'b1) begin
               // Reserved for future extensions (instr_o don't care)
               // todo instr_o.bus_resp.rdata = {7'b0, instr[6:2], instr[11:7], 3'b001, instr[11:7], OPCODE_OPIMM};
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end else begin
               if ((instr_rdata_i[6:2] == 5'b0) || (instr_rdata_i[11:7] == 5'b0)) begin
                 // Hint -> slli rd, rd, shamt
@@ -240,7 +240,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             // c.lwsp -> lw rd, imm(x2)
             // todo instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
             if (instr_rdata_i[11:7] == 5'b0) begin
-              decoder_ctrl_o.illegal_insn = 1'b1;
+              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
 
@@ -251,7 +251,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                 // todo instr_o.bus_resp.rdata = {12'b0, instr[11:7], 3'b0, 5'b0, OPCODE_JALR};
                 // c.jr with rs1 = 0 is reserved
                 if (instr_rdata_i[11:7] == 5'b0) begin
-                  decoder_ctrl_o.illegal_insn = 1'b1;
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end
               end else begin
                 if (instr_rdata_i[11:7] == 5'b0) begin
@@ -293,7 +293,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           3'b101,        // c.fsdsp -> fsd rs2, imm(x2)
           3'b111: begin  // c.fswsp -> fsw rs2, imm(x2)
             // todo instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
-            decoder_ctrl_o.illegal_insn = 1'b1;
+            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
           end
         endcase
       end

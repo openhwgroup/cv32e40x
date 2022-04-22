@@ -339,7 +339,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   we are not allowed to take interrupts, and we will re-enter debug mode after finishing the LSU.
   Interrupt will then be taken when we enter the next step.
   */
+  //assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
+
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || ctrl_fsm_o.irq_ack)) && !pending_debug;
+
+  //assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
 
 
   // Detect if there is a live CLIC pointer in the pipeline
@@ -371,6 +375,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
+                         //pending_single_step_ptr ? DBG_CAUSE_STEP :
                          trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
                          (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
