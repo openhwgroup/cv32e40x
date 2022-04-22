@@ -45,6 +45,7 @@ module cv32e40x_core_sva
   input logic        id_stage_id_valid,
   input logic        ex_ready,
   input logic        irq_ack, // irq ack output
+  input logic        irq_clic_shv, // ack'ed irq is a CLIC SHV
   input ex_wb_pipe_t ex_wb_pipe,
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
@@ -185,6 +186,7 @@ always_ff @(posedge clk , negedge rst_ni)
       end
 
       // CLIC pointers generate data errors, exluding to avoid cause mismatch. todo: make separate asserts for clicptr exceptions.
+      // todo: if CLIC spec changes from data to instruction fetch for pointer, this must change again.
       if (!first_instr_mpuerr_found && ex_wb_pipe.instr_valid && !irq_ack && !(ctrl_pending_debug && ctrl_debug_allowed) &&
          !(ctrl_fsm.pc_mux == PC_TRAP_NMI) && !(ex_wb_pipe.instr_meta.clic_ptr) &&
           (ex_wb_pipe.instr.mpu_status != MPU_OK) && !ctrl_debug_mode_n) begin
@@ -326,6 +328,33 @@ always_ff @(posedge clk , negedge rst_ni)
                      |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_no_irq failed")
 
+if (SMCLIC) begin
+  // Non-SHV interrupt taken during single stepping.
+  // If this happens, no instructions should retire until the core is in debug mode.
+  // irq_ack is asserted during FUNCTIONAL state. debug_mode_n will be set during
+  // DEBUG_TAKEN one cycle later
+  a_single_step_with_irq_nonshv :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && !irq_clic_shv)
+                      |->
+                      !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
+      else `uvm_error("core", "Assertion a_single_step_with_irq_nonshv failed")
+
+  // An SHV CLIC interrupt will first do one fetch to get a function pointer,
+  // then a second fetch to the actual interrupt handler. If this second fetch has
+  // no faults, debug is entered with dpc pointing to the handler entry.
+  // Otherwise, if the pointer fetch failed, we will eventually end up in debug mode
+  // with dpc pointing to the respective exception/NMI handler.
+  // In any way, wb_valid shall remain low until we retire the first instruction in debug mode.
+  a_single_step_with_irq_shv :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && irq_clic_shv)
+                      |->
+                      !wb_valid until (wb_valid && ctrl_fsm.debug_mode && dcsr.step))
+      else `uvm_error("core", "Assertion a_single_step_with_irq_shv failed")
+
+
+end else begin
   // Interrupt taken during single stepping.
   // If this happens, no intstructions should retire until the core is in debug mode.
   // irq_ack is asserted during FUNCTIONAL state. debug_mode_n will be set during
@@ -336,7 +365,7 @@ always_ff @(posedge clk , negedge rst_ni)
                       |->
                       !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")
-
+end
   // Check that only a single instruction can retire during single step
   a_single_step_retire :
     assert property (@(posedge clk) disable iff (!rst_ni)

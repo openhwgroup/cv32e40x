@@ -107,7 +107,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output dcsr_t           dcsr_o,
   output logic            trigger_match_o,
 
-  input  logic [31:0]     pc_if_i
+  input  logic [31:0]     pc_if_i,
+  input  logic            ptr_in_if_i
 );
 
   localparam logic [31:0] CORE_MISA =
@@ -1245,7 +1246,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //   Thus we do not have an issue where a write to the tdata2 CSR immediately before the matched instruction
   //   could be missed since we must write in debug mode, then dret to machine mode (kills pipeline) before
   //   returning to dpc.
-  assign trigger_match_o = tmatch_control_q[2] && !ctrl_fsm_i.debug_mode &&
+  //   Todo: There is no CLIC spec for trigger matches for pointers.
+  assign trigger_match_o = tmatch_control_q[2] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
                            (pc_if_i[31:0] == tmatch_value_q[31:0]);
 
 

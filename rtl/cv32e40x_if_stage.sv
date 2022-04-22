@@ -62,6 +62,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic [31:0]   pc_if_o,                // Program counter
   output logic          csr_mtvec_init_o,       // Tell CS regfile to init mtvec
   output logic          if_busy_o,              // Is the IF stage busy fetching instructions?
+  output logic          ptr_in_if_o,            // The IF stage currently holds a pointer
 
   // Stage ready/valid
   output logic          if_valid_o,
@@ -245,6 +246,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign if_valid_o = instr_valid;
 
   assign if_busy_o = prefetch_busy;
+
+  assign ptr_in_if_o = prefetch_is_ptr;
 
   // Populate instruction meta data
   instr_meta_t instr_meta_n;

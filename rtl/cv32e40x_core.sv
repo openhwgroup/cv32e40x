@@ -141,6 +141,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   localparam int unsigned MTVT_ADDR_WIDTH = 32 - MTVT_LSB;
 
   logic [31:0]       pc_if;             // Program counter in IF stage
+  logic              ptr_in_if;         // IF stage contains a pointer
 
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id;
@@ -408,6 +409,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .pc_if_o             ( pc_if                    ),
     .csr_mtvec_init_o    ( csr_mtvec_init_if        ),
     .if_busy_o           ( if_busy                  ),
+    .ptr_in_if_o         ( ptr_in_if                ),
 
     // Pipeline handshakes
     .if_valid_o          ( if_valid                 ),
@@ -723,7 +725,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .dcsr_o                     ( dcsr                   ),
     .trigger_match_o            ( trigger_match_if       ),
 
-    .pc_if_i                    ( pc_if                  )
+    .pc_if_i                    ( pc_if                  ),
+    .ptr_in_if_i                ( ptr_in_if              )
   );
 
   ////////////////////////////////////////////////////////////////////

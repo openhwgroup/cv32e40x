@@ -115,7 +115,7 @@ module cv32e40x_prefetcher
         // occur if for example an interrupt is taken right after a taken jump which did not
         // yet have its target address accepted by the bus interface adapter.
         trans_addr_o = fetch_branch_i ? fetch_branch_addr_i : trans_addr_q;
-        trans_data_access_o = trans_data_access_q; // No other branch reason other than CLIC pinter fetch can happen here.
+        trans_data_access_o = fetch_branch_i ? fetch_data_access_i : trans_data_access_q;
         if (trans_valid_o && trans_ready_i) begin
           // Transaction with branch target address has been accepted. Start regular prefetch again.
           next_state = IDLE;
