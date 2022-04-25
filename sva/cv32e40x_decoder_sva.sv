@@ -119,4 +119,55 @@ module cv32e40x_decoder_sva
                               decoder_ctrl_mux.illegal_insn, if_id_pipe.instr_meta.clic_ptr}))
       else `uvm_error("decoder", "Multiple functional units enabled")
 
+
+
+  // Check that branch/jump related signals can be used from I decoder directly (bypassing other decoders)
+  a_branch_jump_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_i_ctrl.alu_bch == decoder_ctrl_mux.alu_bch) &&
+                (decoder_i_ctrl.bch_jmp_mux_sel == decoder_ctrl_mux.bch_jmp_mux_sel) &&
+                (decoder_i_ctrl.alu_jmp == decoder_ctrl_mux.alu_jmp) &&
+                (decoder_i_ctrl.alu_jmpr == decoder_ctrl_mux.alu_jmpr)))
+    else `uvm_error("decoder", "Branch/jump related signals driven from unexpected decoder")
+
+  // Check that CSR related signals can be used from I decoder directly (bypassing other decoders)
+  a_csr_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_i_ctrl.csr_en == decoder_ctrl_mux.csr_en) &&
+                (decoder_i_ctrl.csr_op == decoder_ctrl_mux.csr_op)))
+    else `uvm_error("decoder", "CSR related signals driven from unexpected decoder")
+
+  // Check that SYS related signals can be used from I decoder directly (bypassing other decoders)
+  a_sys_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_i_ctrl.sys_en == decoder_ctrl_mux.sys_en) &&
+                (decoder_i_ctrl.sys_mret_insn == decoder_ctrl_mux.sys_mret_insn) &&
+                (decoder_i_ctrl.sys_dret_insn == decoder_ctrl_mux.sys_dret_insn) &&
+                (decoder_i_ctrl.sys_ebrk_insn == decoder_ctrl_mux.sys_ebrk_insn) &&
+                (decoder_i_ctrl.sys_ecall_insn == decoder_ctrl_mux.sys_ecall_insn) &&
+                (decoder_i_ctrl.sys_wfi_insn == decoder_ctrl_mux.sys_wfi_insn) &&
+                (decoder_i_ctrl.sys_fencei_insn == decoder_ctrl_mux.sys_fencei_insn)))
+    else `uvm_error("decoder", "SYS related signals driven from unexpected decoder")
+
+  // Check that MUL/DIV related signals can be used from M decoder directly (bypassing other decoders)
+  a_muldiv_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_m_ctrl.mul_en == decoder_ctrl_mux.mul_en) &&
+                (decoder_m_ctrl.mul_operator == decoder_ctrl_mux.mul_operator) &&
+                (decoder_m_ctrl.mul_signed_mode == decoder_ctrl_mux.mul_signed_mode) &&
+                (decoder_m_ctrl.div_en == decoder_ctrl_mux.div_en) &&
+                (decoder_m_ctrl.div_operator == decoder_ctrl_mux.div_operator)))
+    else `uvm_error("decoder", "Mul/div related signals driven from unexpected decoder")
+
+  // Check that ATOP related signals can be used from A decoder directly (bypassing other decoders)
+  a_atop_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_a_ctrl.lsu_atop == decoder_ctrl_mux.lsu_atop)))
+    else `uvm_error("decoder", "Atop related signals driven from unexpected decoder")
+
 endmodule : cv32e40x_decoder_sva

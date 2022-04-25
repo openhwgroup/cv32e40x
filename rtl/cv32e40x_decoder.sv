@@ -193,47 +193,47 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   end
 
   assign alu_en             = decoder_ctrl_mux.alu_en;
-  assign alu_bch_o          = decoder_ctrl_mux.alu_bch;
-  assign alu_jmp_o          = decoder_ctrl_mux.alu_jmp;
-  assign alu_jmpr_o         = decoder_ctrl_mux.alu_jmpr;
+  assign alu_bch_o          = decoder_i_ctrl.alu_bch;                           // Only I decoder handles branches/jumps
+  assign alu_jmp_o          = decoder_i_ctrl.alu_jmp;                           // Only I decoder handles branches/jumps
+  assign alu_jmpr_o         = decoder_i_ctrl.alu_jmpr;                          // Only I decoder handles branches/jumps
   assign alu_operator_o     = decoder_ctrl_mux.alu_operator;
   assign alu_op_a_mux_sel_o = decoder_ctrl_mux.alu_op_a_mux_sel;
   assign alu_op_b_mux_sel_o = decoder_ctrl_mux.alu_op_b_mux_sel;
   assign op_c_mux_sel_o     = decoder_ctrl_mux.op_c_mux_sel;
   assign imm_a_mux_sel_o    = decoder_ctrl_mux.imm_a_mux_sel;
   assign imm_b_mux_sel_o    = decoder_ctrl_mux.imm_b_mux_sel;
-  assign bch_jmp_mux_sel_o  = decoder_ctrl_mux.bch_jmp_mux_sel;
-  assign mul_en             = decoder_ctrl_mux.mul_en;
-  assign mul_operator_o     = decoder_ctrl_mux.mul_operator;
-  assign mul_signed_mode_o  = decoder_ctrl_mux.mul_signed_mode;
-  assign div_en             = decoder_ctrl_mux.div_en;
-  assign div_operator_o     = decoder_ctrl_mux.div_operator;
+  assign bch_jmp_mux_sel_o  = decoder_i_ctrl.bch_jmp_mux_sel;                   // Only I decoder handles branches/jumps
+  assign mul_en             = decoder_m_ctrl.mul_en;                            // Only M decoder handles mul/div
+  assign mul_operator_o     = decoder_m_ctrl.mul_operator;                      // Only M decoder handles mul/div
+  assign mul_signed_mode_o  = decoder_m_ctrl.mul_signed_mode;                   // Only M decoder handles mul/div
+  assign div_en             = decoder_m_ctrl.div_en;                            // Only M decoder handles mul/div
+  assign div_operator_o     = decoder_m_ctrl.div_operator;                      // Only M decoder handles mul/div
   assign rf_re_o            = decoder_ctrl_mux.rf_re;
   assign rf_we              = decoder_ctrl_mux.rf_we;
-  assign csr_en             = decoder_ctrl_mux.csr_en;
-  assign csr_op_o           = decoder_ctrl_mux.csr_op;
+  assign csr_en             = decoder_i_ctrl.csr_en;                            // Only I decoder handles CSR
+  assign csr_op_o           = decoder_i_ctrl.csr_op;                            // Only I decoder handles CSR
   assign lsu_en             = decoder_ctrl_mux.lsu_en;
   assign lsu_we_o           = decoder_ctrl_mux.lsu_we;
   assign lsu_size_o         = decoder_ctrl_mux.lsu_size;
   assign lsu_sext_o         = decoder_ctrl_mux.lsu_sext;
-  assign lsu_atop_o         = decoder_ctrl_mux.lsu_atop;
-  assign sys_en             = decoder_ctrl_mux.sys_en;
-  assign sys_mret_insn_o    = decoder_ctrl_mux.sys_mret_insn;
-  assign sys_dret_insn_o    = decoder_ctrl_mux.sys_dret_insn;
-  assign sys_ebrk_insn_o    = decoder_ctrl_mux.sys_ebrk_insn;
-  assign sys_ecall_insn_o   = decoder_ctrl_mux.sys_ecall_insn;
-  assign sys_wfi_insn_o     = decoder_ctrl_mux.sys_wfi_insn;
-  assign sys_fencei_insn_o  = decoder_ctrl_mux.sys_fencei_insn;
+  assign lsu_atop_o         = decoder_a_ctrl.lsu_atop;                          // Only A decoder handles atomics
+  assign sys_en             = decoder_i_ctrl.sys_en;                            // Only I decoder handles SYS
+  assign sys_mret_insn_o    = decoder_i_ctrl.sys_mret_insn;                     // Only I decoder handles SYS
+  assign sys_dret_insn_o    = decoder_i_ctrl.sys_dret_insn;                     // Only I decoder handles SYS
+  assign sys_ebrk_insn_o    = decoder_i_ctrl.sys_ebrk_insn;                     // Only I decoder handles SYS
+  assign sys_ecall_insn_o   = decoder_i_ctrl.sys_ecall_insn;                    // Only I decoder handles SYS
+  assign sys_wfi_insn_o     = decoder_i_ctrl.sys_wfi_insn;                      // Only I decoder handles SYS
+  assign sys_fencei_insn_o  = decoder_i_ctrl.sys_fencei_insn;                   // Only I decoder handles SYS
 
   // Suppress control signals
-  assign alu_en_o = deassert_we_i ? 1'b0        : alu_en;
-  assign sys_en_o = deassert_we_i ? 1'b0        : sys_en;
-  assign mul_en_o = deassert_we_i ? 1'b0        : mul_en;
-  assign div_en_o = deassert_we_i ? 1'b0        : div_en;
-  assign lsu_en_o = deassert_we_i ? 1'b0        : lsu_en;
+  assign alu_en_o = deassert_we_i ? 1'b0 : alu_en;
+  assign sys_en_o = deassert_we_i ? 1'b0 : sys_en;
+  assign mul_en_o = deassert_we_i ? 1'b0 : mul_en;
+  assign div_en_o = deassert_we_i ? 1'b0 : div_en;
+  assign lsu_en_o = deassert_we_i ? 1'b0 : lsu_en;
 
-  assign csr_en_o = deassert_we_i ? 1'b0        : csr_en;
-  assign rf_we_o  = deassert_we_i ? 1'b0        : rf_we;
+  assign csr_en_o = deassert_we_i ? 1'b0 : csr_en;
+  assign rf_we_o  = deassert_we_i ? 1'b0 : rf_we;
 
   // Suppress special instruction/illegal instruction bits
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
