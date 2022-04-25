@@ -28,6 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
+#(
+    parameter bit SMCLIC = 1'b0
+)
 (
   input  logic        clk,
   input  logic        rst_n,
@@ -169,6 +172,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("First fetch after reset is not a branch"))
 
+if (SMCLIC) begin
   property p_data_q_no_branch;
     @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_data_access_q) |-> !fetch_branch_i);
   endproperty
@@ -177,4 +181,5 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
     assert property(p_data_q_no_branch)
     else
       `uvm_error("Prefetcher SVA", "data_q is set on branch.")
+end // SMCLIC
 endmodule: cv32e40x_prefetcher_sva

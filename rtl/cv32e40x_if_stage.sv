@@ -34,6 +34,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
   parameter int unsigned MTVT_ADDR_WIDTH = 26,
+  parameter bit          SMCLIC          = 1'b0,
   parameter int          SMCLIC_ID_WIDTH = 5
 )
 (
@@ -62,6 +63,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic [31:0]   pc_if_o,                // Program counter
   output logic          csr_mtvec_init_o,       // Tell CS regfile to init mtvec
   output logic          if_busy_o,              // Is the IF stage busy fetching instructions?
+  output logic          ptr_in_if_o,            // The IF stage currently holds a pointer
 
   // Stage ready/valid
   output logic          if_valid_o,
@@ -140,7 +142,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign csr_mtvec_init_o = (ctrl_fsm_i.pc_mux == PC_BOOT) & ctrl_fsm_i.pc_set;
 
   // prefetch buffer, caches a fixed number of instructions
-  cv32e40x_prefetch_unit prefetch_unit_i
+  cv32e40x_prefetch_unit
+  #(
+      .SMCLIC (SMCLIC)
+  )
+  prefetch_unit_i
   (
     .clk                 ( clk                         ),
     .rst_n               ( rst_n                       ),
@@ -245,6 +251,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign if_valid_o = instr_valid;
 
   assign if_busy_o = prefetch_busy;
+
+  assign ptr_in_if_o = prefetch_is_ptr;
 
   // Populate instruction meta data
   instr_meta_t instr_meta_n;

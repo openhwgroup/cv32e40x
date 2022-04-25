@@ -161,6 +161,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic pending_clic_nmi;
   logic pending_debug;
   logic pending_single_step;
+  logic pending_single_step_ptr;
   logic pending_interrupt;
 
 
@@ -178,6 +179,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Flag for checking if we can to a CLIC pointer fetch
   logic wbuf_irq_ok;
+
+  // Internal irq_ack for use when a (clic) pointer reaches ID stage and
+  // we have single stepping enabled.
+  logic non_shv_irq_ack;
 
   // Flops for debug cause
   logic [2:0] debug_cause_n;
@@ -339,7 +344,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   we are not allowed to take interrupts, and we will re-enter debug mode after finishing the LSU.
   Interrupt will then be taken when we enter the next step.
   */
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || ctrl_fsm_o.irq_ack)) && !pending_debug;
+
+  assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
+
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || non_shv_irq_ack)) && !pending_debug;
+
+  // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
+  assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
 
 
   // Detect if there is a live CLIC pointer in the pipeline
@@ -371,6 +382,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
+                         pending_single_step_ptr ? DBG_CAUSE_STEP :
                          trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
                          (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
@@ -810,11 +822,22 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_mux = PC_TRAP_CLICV_TGT;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.csr_clear_minhv = 1'b1;
+
+            // Jump to debug taken in case of a pending single step.
+            // We should enter debug without executing any instruction, and let dpc
+            // point to the first instruction in the handler
+            ctrl_fsm_ns = pending_single_step_ptr ? DEBUG_TAKEN : FUNCTIONAL;
+          end else begin
+            // If the pointer fetch faulted, we don't jump to the target and return to FUNCTIONAL.
+            // Any pending single step will not be taken (the irq handler instruction fetch faulted),
+            // and the associated exception or NMI will be taken in FUNCTIONAL along with the single step once
+            // the pointer reaches WB. Dpc will then point to the first instruction in the exception/NMI handler.
+            ctrl_fsm_ns = FUNCTIONAL;
           end
           // Note: If the pointer fetch faulted (pma/pmp/bus error), an exception or NMI will
           // be taken once the pointer fetch reachces WB (two cycles after the current)
           // The FSM must be in the FUNCTIONAL state to take the exception or NMI.
-          ctrl_fsm_ns = FUNCTIONAL;
+          // A faulted pointer (in ID) should not cause debug entry either,
         end
       end
       default: begin

@@ -28,7 +28,9 @@
 module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  #(  parameter bit X_EXT     = 1'b0)
+  #(  parameter bit X_EXT     = 1'b0,
+      parameter bit SMCLIC    = 1'b0
+  )
 (
   input logic           clk,
   input logic           rst_n,
@@ -511,11 +513,25 @@ endgenerate
                     (valid_cnt < (retire_at_error ? 2'b10 : 2'b11)))
     else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 
-
+if (SMCLIC) begin
   // When a CLIC SHV interrupt is taken, the write buffer must be empty
   a_clic_shv_wbuf_empty:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (irq_clic_shv_i && ctrl_fsm_o.irq_ack) |-> lsu_write_buffer_empty_i)
     else `uvm_error("controller", "LSU write buffer not empty when fetching CLIC pointer")
+
+  // After a pc_set to PC_TRAP_CLICV, only the following jump targets are allowed:
+  // PC_TRAP_CLICV_TGT: Normal execution, the pointer target is being fetched
+  // PC_TRAP_EXC:       The pointer fetch has a synchronous exception
+  // PC_TRAP_NMI:       The pointer fetch has a bus error. Todo: Change if CLIC spec stops using data access for pointer fetch.
+  a_clicv_next_pc_set:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
+                  |=> !ctrl_fsm_o.pc_set until (ctrl_fsm_o.pc_set && ((ctrl_fsm_o.pc_mux == PC_TRAP_CLICV_TGT) ||
+                                                                      (ctrl_fsm_o.pc_mux == PC_TRAP_EXC)       ||
+                                                                      (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
+    else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
+
+end // SMCLIC
 endmodule // cv32e40x_controller_fsm_sva
 
