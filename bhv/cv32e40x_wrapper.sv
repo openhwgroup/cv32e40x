@@ -379,6 +379,7 @@ module cv32e40x_wrapper
          .csr_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.csr_en                                ),
          .sys_wfi_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.sys_wfi_insn                          ),
          .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
+         .sys_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.sys_en                                ),
 
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[1]                            ),
