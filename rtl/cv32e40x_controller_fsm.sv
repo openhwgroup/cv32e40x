@@ -53,7 +53,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  if_id_pipe_t if_id_pipe_i,
   input  logic        alu_en_raw_id_i,            // ALU enable (not gated with deassert)
   input  logic        alu_jmp_id_i,               // ALU jump
-  input  logic        sys_en_id_i,
+  input  logic        sys_en_raw_id_i,
   input  logic        sys_mret_id_i,              // mret in ID stage
 
   // From EX stage
@@ -220,29 +220,33 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // CLIC mode vectored PC mux is always the same as exc_cause.
   assign ctrl_fsm_o.mtvt_pc_mux = exc_cause[9:0];
 
-
   ////////////////////////////////////////////////////////////////////
-
-
   // ID stage
-  // A jump is taken in ID for jump instructions, and also for mret instructions
-  // Checking validity of jump instruction or mret with if_id_pipe_i.instr_valid.
+
+  // A jump is taken in ID for jump and mret instructions.
+  // Checking validity of jump and mret instruction with if_id_pipe_i.instr_valid.
+  // Using raw enable signals can lead to jump/mret being taken when instruction is actually not enabled,
+  // which is okay as isntruction fetches are speculative anyway.
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
-  // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via the jumps pc_set=1
-  assign jump_in_id = ((alu_jmp_id_i && alu_en_raw_id_i && !ctrl_byp_i.jalr_stall) || // todo: study area and functional impact of using alu_en_id_i instead
-                       (sys_en_id_i && sys_mret_id_i && !ctrl_byp_i.csr_stall)) &&
-                         if_id_pipe_i.instr_valid;
+  // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via pc_set.
+
+  assign jump_in_id = ((alu_jmp_id_i && alu_en_raw_id_i && !ctrl_byp_i.jalr_stall) || (sys_mret_id_i && sys_en_raw_id_i && !ctrl_byp_i.csr_stall)) && if_id_pipe_i.instr_valid;
 
   // Blocking on branch_taken_q, as a jump has already been taken
   assign jump_taken_id = jump_in_id && !branch_taken_q; // todo: RVFI does not use jump_taken_id (which is not in itself an issue); we should have an assertion showing that the target address remains constant during jump_in_id; same remark for branches
 
+  ////////////////////////////////////////////////////////////////////
   // EX stage
+
   // Branch taken for valid branch instructions in EX with valid decision
 
   assign branch_in_ex = id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
 
   // Blocking on branch_taken_q, as a branch ha already been taken
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
+
+  ////////////////////////////////////////////////////////////////////
+  // WB stage
 
   // Exception in WB if the following evaluates to 1
   // CLIC: bus errors for pointer fetches are treated as NMI, not exceptions.
@@ -705,7 +709,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
 
             // Jumps in ID (JAL, JALR, mret)
-            if (sys_en_id_i && sys_mret_id_i) begin
+            if (sys_mret_id_i && sys_en_raw_id_i) begin
               ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_MRET;
               ctrl_fsm_o.pc_set = 1'b1;
               // Todo: if mcause.minhv

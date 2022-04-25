@@ -37,6 +37,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   input  logic          deassert_we_i,          // deassert we and special insn (exception in IF)
 
   output logic          sys_en_o,               // System enable
+  output logic          sys_en_raw_o,           // System enable without deassert
   output logic          illegal_insn_o,         // Illegal instruction encountered
   output logic          sys_ebrk_insn_o,        // Trap instruction encountered
   output logic          sys_mret_insn_o,        // Return from exception instruction encountered (M)
@@ -68,7 +69,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          div_en_o,               // Perform division
 
   // CSR
-  output logic          csr_en_o,               // Enable access to CSR
+  output logic          csr_en_o,               // CSR enable
+  output logic          csr_en_raw_o,           // CSR enable without deassert
   output csr_opcode_e   csr_op_o,               // Operation to perform on CSR
 
   // LSU
@@ -239,5 +241,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
   assign alu_en_raw_o = alu_en;
+  assign csr_en_raw_o = csr_en;
+  assign sys_en_raw_o = sys_en;
 
 endmodule // cv32e40x_decoder

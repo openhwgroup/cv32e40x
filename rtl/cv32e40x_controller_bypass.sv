@@ -45,11 +45,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   input ex_wb_pipe_t  ex_wb_pipe_i,
 
   // From ID
-  input  logic        alu_en_raw_id_i,            // ALU enable (not gated with deassert) // todo: study area and functional impact of using alu_en_id_i instead
-  input  logic        alu_jmpr_id_i,              // ALU jump register (JALR)
-  input  logic        sys_en_id_i,
-  input  logic        sys_mret_id_i,              // mret in ID
-  input  logic        csr_en_id_i,                // CSR in ID
+  input  logic        alu_en_raw_id_i,            // ALU enable in ID (not gated with deassert)
+  input  logic        alu_jmpr_id_i,              // ALU jump register in ID (JALR)
+  input  logic        sys_en_raw_id_i,            // SYS enable in ID (not gated with deassert)
+  input  logic        sys_mret_id_i,              // SYS mret in ID
+  input  logic        csr_en_raw_id_i,            // CSR enable in ID (not gated with deassert)
   input  csr_opcode_e csr_op_id_i,                // CSR opcode (ID) // todo: Not used (is this on purpose or should it be used here?)
 
   // From EX
@@ -117,7 +117,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // todo:low:Above loop reasoning only applies to halt_id; for other pipeline stages a local instr_valid signal can maybe be used.
 
-  assign csr_read_in_id = (csr_en_id_i || (sys_en_id_i && sys_mret_id_i)) && if_id_pipe_i.instr_valid;
+  assign csr_read_in_id = (csr_en_raw_id_i || (sys_mret_id_i && sys_en_raw_id_i)) && if_id_pipe_i.instr_valid;
 
   // Detect when a CSR insn  in in EX or WB
   // mret and dret implicitly writes to CSR. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.

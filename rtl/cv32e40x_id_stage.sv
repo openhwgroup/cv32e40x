@@ -69,10 +69,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output logic        alu_jmp_o,        // Jump (JAL, JALR)
   output logic        alu_jmpr_o,       // Jump register (JALR)
 
-  output logic        sys_en_o,
+  output logic        sys_en_raw_o,
   output logic        sys_mret_insn_o,
 
-  output logic        csr_en_o,
+  output logic        csr_en_raw_o,
   output csr_opcode_e csr_op_o,
 
   // RF interface -> controller
@@ -140,10 +140,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // CSR
   logic                 csr_en;
+  logic                 csr_en_raw;
   csr_opcode_e          csr_op;
 
   // SYS
   logic                 sys_en;
+  logic                 sys_en_raw;
   logic                 sys_fencei_insn;
   logic                 sys_ecall_insn;
   logic                 sys_ebrk_insn;
@@ -200,7 +202,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
-  assign sys_en_o = sys_en;
+  assign sys_en_raw_o = sys_en_raw;
   assign sys_mret_insn_o = sys_mret_insn;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
@@ -403,6 +405,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // SYS signals
     .sys_en_o                        ( sys_en                    ),
+    .sys_en_raw_o                    ( sys_en_raw                ),
     .illegal_insn_o                  ( illegal_insn              ),
     .sys_ebrk_insn_o                 ( sys_ebrk_insn             ),
     .sys_mret_insn_o                 ( sys_mret_insn             ),
@@ -435,6 +438,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // CSR
     .csr_en_o                        ( csr_en                    ),
+    .csr_en_raw_o                    ( csr_en_raw                ),
     .csr_op_o                        ( csr_op                    ),
 
     // LSU
@@ -640,7 +644,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign alu_jmp_o    = alu_jmp;
   assign alu_jmpr_o   = alu_jmpr;
 
-  assign csr_en_o = csr_en;
+  assign csr_en_raw_o = csr_en_raw;
   assign csr_op_o = csr_op;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
