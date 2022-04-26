@@ -432,7 +432,7 @@ endgenerate
       retire_at_error <= 1'b0;
     end else begin
       // Req, no rvalid
-      if( (m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && !m_c_obi_data_if.s_rvalid) begin
+      if( (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) && !m_c_obi_data_if.s_rvalid.rvalid) begin
         // Increase outstanding counter
         outstanding_count <= outstanding_count + 2'b01;
 
@@ -446,12 +446,12 @@ endgenerate
         end
 
       // rvalid, no req
-      end else if (!(m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && m_c_obi_data_if.s_rvalid) begin
+      end else if (!(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) && m_c_obi_data_if.s_rvalid.rvalid) begin
         // Decrease outstanding counter
         outstanding_count <= outstanding_count - 2'b01;
 
       // req and rvalid
-      end else if ((m_c_obi_data_if.s_req && m_c_obi_data_if.s_gnt) && m_c_obi_data_if.s_rvalid) begin
+      end else if ((m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) && m_c_obi_data_if.s_rvalid.rvalid) begin
         if (outstanding_count == 2'b10) begin
           // Two outstanding, shift and replace index 0
           outstanding_type[1] <= outstanding_type[0];
@@ -463,7 +463,7 @@ endgenerate
       end
 
 
-      if(m_c_obi_data_if.s_rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched) begin
+      if(m_c_obi_data_if.s_rvalid.rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched) begin
         bus_error_is_write <= outstanding_count == 2'b01 ? outstanding_type[0] : outstanding_type[1];
         bus_error_latched <= 1'b1;
         retire_at_error <= wb_valid_i;
@@ -478,7 +478,7 @@ endgenerate
   // Check that controller latches correct type for bus error
   a_latched_bus_error:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (m_c_obi_data_if.s_rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched)
+                      (m_c_obi_data_if.s_rvalid.rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched)
                       |=> (nmi_is_store_q == bus_error_is_write) &&
                           (nmi_pending_q == bus_error_latched) && bus_error_latched)
       else `uvm_error("controller", "Wrong type for LSU bus error")
