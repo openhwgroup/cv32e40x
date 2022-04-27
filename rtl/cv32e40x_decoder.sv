@@ -110,8 +110,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   decoder_ctrl_t decoder_ctrl_mux_subdec;
   decoder_ctrl_t decoder_ctrl_mux;
 
-  assign instr_rdata = if_id_pipe_i.use_merged_dec ? {16'b0, if_id_pipe_i.compressed_instr} :
-                                                     if_id_pipe_i.instr.bus_resp.rdata; // todo: temporary hack while merging decoder
+  assign instr_rdata = if_id_pipe_i.instr.bus_resp.rdata;
 
   // RV32I Base instruction set decoder
   cv32e40x_i_decoder
