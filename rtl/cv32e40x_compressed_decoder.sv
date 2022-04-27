@@ -107,7 +107,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
             3'b001, 3'b101: begin
               // 001: c.jal -> jal x1, imm
               // 101: c.j   -> jal x0, imm
-              instr_o.bus_resp.rdata = {instr[12], instr[8], instr[10:9], instr[6], instr[7], instr[2], instr[11], instr[5:3], {9 {instr[12]}}, 4'b0, ~instr[15], OPCODE_JAL};
+              instr_o.bus_resp.rdata = {instr[12], instr[8], instr[10:9], instr[6], instr[7], instr[2], instr[11], instr[5:3], {9 {instr[12]}}, 4'b0, !instr[15], OPCODE_JAL};
             end
 
             3'b010: begin
@@ -235,10 +235,14 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
             3'b100: begin
               if (instr[12] == 1'b0) begin
                 if (instr[6:2] == 5'b0) begin
-                  // c.jr -> jalr x0, rd/rs1, 0
-                  instr_o.bus_resp.rdata = {12'b0, instr[11:7], 3'b0, 5'b0, OPCODE_JALR};
-                  // c.jr with rs1 = 0 is reserved
-                  if (instr[11:7] == 5'b0) illegal_instr_o = 1'b1;
+                  if (instr[11:7] == 5'b0) begin
+                    // c.jr with rs1 = 0 is reserved
+                    instr_o.bus_resp.rdata = {7'b0, instr[6:2], 5'b0, 3'b0, instr[11:7], OPCODE_OP}; // Not using OPCODE_JALR on purpose (to allow direct decoder_i_ctrl branch/jump usage)
+                    illegal_instr_o = 1'b1;
+                  end else begin
+                    // c.jr -> jalr x0, rd/rs1, 0
+                    instr_o.bus_resp.rdata = {12'b0, instr[11:7], 3'b0, 5'b0, OPCODE_JALR};
+                  end
                 end else begin
                   if (instr[11:7] == 5'b0) begin
                     // Hint -> add x0, x0, rs2
