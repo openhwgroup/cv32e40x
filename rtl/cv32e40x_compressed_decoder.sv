@@ -30,7 +30,6 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
   input  logic        instr_is_ptr_i,
   output inst_resp_t  instr_o,
   output logic        is_compressed_o,
-  output logic        use_merged_dec_o, // todo: remove this temporary signal once done merging decoder
   output logic        illegal_instr_o
 );
 
@@ -52,7 +51,6 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
   begin
     illegal_instr_o  = 1'b0;
     instr_o          = instr_i;
-    use_merged_dec_o = 1'b0;
 
     if (instr_is_ptr_i) begin
       is_compressed_o = 1'b0;
@@ -64,14 +62,12 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
           unique case (instr[15:13])
             3'b000: begin
               // c.addi4spn -> addi rd', x2, imm
-              use_merged_dec_o = 1'b1;
               instr_o.bus_resp.rdata = {2'b0, instr[10:7], instr[12:11], instr[5], instr[6], 2'b00, 5'h02, 3'b000, 2'b01, instr[4:2], OPCODE_OPIMM};
               if (instr[12:5] == 8'b0)  illegal_instr_o = 1'b1;
             end
 
             3'b010: begin
               // c.lw -> lw rd', imm(rs1')
-              use_merged_dec_o = 1'b1;
               instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
             end
 

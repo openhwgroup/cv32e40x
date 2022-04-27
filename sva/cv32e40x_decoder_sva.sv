@@ -52,7 +52,6 @@ module cv32e40x_decoder_sva
   a_i_dec_idle : assert property(p_idle_dec(decoder_i_ctrl)) else `uvm_error("decoder", "Assertion a_i_dec_idle failed")
   a_b_dec_idle : assert property(p_idle_dec(decoder_b_ctrl)) else `uvm_error("decoder", "Assertion a_b_dec_idle failed")
 
-  /* todo: include and adapt once the merged decoder is completed
   // Check that the two LSB of the incoming instructions word is always 2'b11
   // Predecoder should always emit uncompressed instructions
   // Exclude CLIC pointers
@@ -61,9 +60,8 @@ module cv32e40x_decoder_sva
       !if_id_pipe.instr_meta.clic_ptr |-> (instr_rdata[1:0] == 2'b11);
   endproperty
 
-
   a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
-*/
+
   generate
     if (!A_EXT) begin : gen_no_a_extension_assertions
       // Check that A extension opcodes are decoded as illegal when A extension not enabled

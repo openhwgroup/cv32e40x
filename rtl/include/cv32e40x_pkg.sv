@@ -1029,7 +1029,6 @@ typedef struct packed
 typedef struct packed {
   logic        instr_valid;
   inst_resp_t  instr;
-  logic        use_merged_dec; // todo: remove once done with decoder merge
   instr_meta_t instr_meta;
   logic [31:0] pc;
   logic [15:0] compressed_instr;
