@@ -65,14 +65,12 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Register file write data from EX stage
   input  logic [31:0] rf_wdata_ex_i,
 
-  output logic        alu_en_raw_o,
   output logic        alu_jmp_o,        // Jump (JAL, JALR)
   output logic        alu_jmpr_o,       // Jump register (JALR)
 
-  output logic        sys_en_o,
   output logic        sys_mret_insn_o,
 
-  output logic        csr_en_o,
+  output logic        csr_en_raw_o,
   output csr_opcode_e csr_op_o,
 
   // RF interface -> controller
@@ -116,7 +114,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // ALU Control
   logic                 alu_en;
-  logic                 alu_en_raw;
   logic                 alu_bch;
   logic                 alu_jmp;
   logic                 alu_jmpr;
@@ -140,6 +137,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // CSR
   logic                 csr_en;
+  logic                 csr_en_raw;
   csr_opcode_e          csr_op;
 
   // SYS
@@ -200,7 +198,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
-  assign sys_en_o = sys_en;
   assign sys_mret_insn_o = sys_mret_insn;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
@@ -416,7 +413,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // ALU
     .alu_en_o                        ( alu_en                    ),
-    .alu_en_raw_o                    ( alu_en_raw                ),
     .alu_bch_o                       ( alu_bch                   ),
     .alu_jmp_o                       ( alu_jmp                   ),
     .alu_jmpr_o                      ( alu_jmpr                  ),
@@ -435,6 +431,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
     // CSR
     .csr_en_o                        ( csr_en                    ),
+    .csr_en_raw_o                    ( csr_en_raw                ),
     .csr_op_o                        ( csr_op                    ),
 
     // LSU
@@ -636,11 +633,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end
   end
 
-  assign alu_en_raw_o = alu_en_raw;
   assign alu_jmp_o    = alu_jmp;
   assign alu_jmpr_o   = alu_jmpr;
 
-  assign csr_en_o = csr_en;
+  assign csr_en_raw_o = csr_en_raw;
   assign csr_op_o = csr_op;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)

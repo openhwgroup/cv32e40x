@@ -493,7 +493,7 @@ endgenerate
     end else begin
       if(bus_error_latched) begin
         if(wb_valid_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
-          valid_cnt <= valid_cnt + 1;
+          valid_cnt <= valid_cnt + 1'b1;
         end
       end else begin
         valid_cnt <= '0;

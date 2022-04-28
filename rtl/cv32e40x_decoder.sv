@@ -50,7 +50,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   // ALU signals
   output logic          alu_en_o,               // ALU enable
-  output logic          alu_en_raw_o,           // ALU enable without deassert
   output logic          alu_bch_o,              // ALU branch (ALU used for comparison)
   output logic          alu_jmp_o,              // ALU jump (JALR, JALR) (ALU used to compute LR)
   output logic          alu_jmpr_o,             // ALU jump register (JALR) (ALU used to compute LR)
@@ -68,7 +67,8 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          div_en_o,               // Perform division
 
   // CSR
-  output logic          csr_en_o,               // Enable access to CSR
+  output logic          csr_en_o,               // CSR enable
+  output logic          csr_en_raw_o,           // CSR enable without deassert
   output csr_opcode_e   csr_op_o,               // Operation to perform on CSR
 
   // LSU
@@ -237,6 +237,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // Suppress special instruction/illegal instruction bits
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
 
-  assign alu_en_raw_o = alu_en;
+  assign csr_en_raw_o = csr_en;
 
 endmodule // cv32e40x_decoder

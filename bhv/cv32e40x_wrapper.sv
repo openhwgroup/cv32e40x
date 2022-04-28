@@ -267,7 +267,7 @@ module cv32e40x_wrapper
                 .operand_a_id_i                   (core_i.id_stage_i.operand_a),
                 .operand_b_id_i                   (core_i.id_stage_i.operand_b),
                 .jalr_fw_id_i                     (core_i.id_stage_i.jalr_fw),
-                .alu_en_raw_id_i                  (core_i.alu_en_raw_id),
+                .alu_en_id_i                      (core_i.id_stage_i.alu_en),
                 .alu_jmpr_id_i                    (core_i.alu_jmpr_id),
                 .irq_ack                          (core_i.irq_ack),
                 .*);
@@ -389,8 +389,7 @@ module cv32e40x_wrapper
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .sys_en_id_i              ( core_i.id_stage_i.sys_en_o                                           ),
-         .sys_mret_insn_id_i       ( core_i.id_stage_i.sys_mret_insn_o                                    ),
+         .sys_mret_unqual_id_i     ( core_i.controller_i.controller_fsm_i.sys_mret_unqual_id              ),
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
          .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
