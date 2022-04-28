@@ -253,12 +253,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        trigger_match_if;
 
   // Controller <-> decoder
-  logic        alu_en_raw_id;
   logic        alu_jmp_id;
   logic        alu_jmpr_id;
-  logic        sys_en_id;
   logic        sys_mret_insn_id;
-  logic        csr_en_id;
+  logic        csr_en_raw_id;
   csr_opcode_e csr_op_id;
   logic        csr_illegal;
 
@@ -462,12 +460,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),
 
-    .alu_en_raw_o                 ( alu_en_raw_id             ),
     .alu_jmp_o                    ( alu_jmp_id                ),
     .alu_jmpr_o                   ( alu_jmpr_id               ),
-    .sys_en_o                     ( sys_en_id                 ),
     .sys_mret_insn_o              ( sys_mret_insn_id          ),
-    .csr_en_o                     ( csr_en_id                 ),
+    .csr_en_raw_o                 ( csr_en_raw_id             ),
     .csr_op_o                     ( csr_op_id                 ),
 
     .rf_re_o                      ( rf_re_id                  ),
@@ -767,12 +763,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
 
-    .alu_en_raw_id_i                ( alu_en_raw_id          ),
     .alu_jmp_id_i                   ( alu_jmp_id             ),
     .alu_jmpr_id_i                  ( alu_jmpr_id            ),
-    .sys_en_id_i                    ( sys_en_id              ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
-    .csr_en_id_i                    ( csr_en_id              ),
+    .csr_en_raw_id_i                ( csr_en_raw_id          ),
     .csr_op_id_i                    ( csr_op_id              ),
 
     // LSU

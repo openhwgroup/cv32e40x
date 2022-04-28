@@ -38,8 +38,7 @@ module cv32e40x_rvfi
    input logic                                id_valid_i,
    input logic                                id_ready_i,
    input logic [ 1:0]                         rf_re_id_i,
-   input logic                                sys_en_id_i,
-   input logic                                sys_mret_insn_id_i,
+   input logic                                sys_mret_unqual_id_i,
    input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
    input logic                                is_compressed_id_i,
@@ -738,12 +737,12 @@ module cv32e40x_rvfi
       end
 
       //// ID Stage ////
-      if(id_valid_i && ex_ready_i) begin
+      if (id_valid_i && ex_ready_i) begin
 
         if (jump_in_id_i) begin
           // Predicting mret/jump explicitly instead of using branch_addr_n to
-          // avoid including asynchronous traps and debug reqs in prediction
-          pc_wdata [STAGE_EX] <= (sys_en_id_i && sys_mret_insn_id_i) ? csr_mepc_q_i : jump_target_id_i;
+          // avoid including asynchronous traps and debug reqs in prediction.
+          pc_wdata [STAGE_EX] <= sys_mret_unqual_id_i ? csr_mepc_q_i : jump_target_id_i;
         end else begin
           pc_wdata [STAGE_EX] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
         end

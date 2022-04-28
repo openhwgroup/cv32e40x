@@ -50,12 +50,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
-  input  logic        alu_en_raw_id_i,
   input  logic        alu_jmp_id_i,               // Jump (JAL, JALR)
   input  logic        alu_jmpr_id_i,              // Jump register (JALR)
-  input  logic        sys_en_id_i,
   input  logic        sys_mret_id_i,
-  input  logic        csr_en_id_i,
+  input  logic        csr_en_raw_id_i,
   input  csr_opcode_e csr_op_id_i,
 
   input  id_ex_pipe_t id_ex_pipe_i,
@@ -141,9 +139,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .if_id_pipe_i                ( if_id_pipe_i             ),
     .id_ready_i                  ( id_ready_i               ),
     .id_valid_i                  ( id_valid_i               ),
-    .alu_en_raw_id_i             ( alu_en_raw_id_i          ),
     .alu_jmp_id_i                ( alu_jmp_id_i             ),
-    .sys_en_id_i                 ( sys_en_id_i              ),
     .sys_mret_id_i               ( sys_mret_id_i            ),
 
     // From EX stage
@@ -209,11 +205,9 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From ID
     .rf_re_id_i                 ( rf_re_id_i               ),
     .rf_raddr_id_i              ( rf_raddr_id_i            ),
-    .alu_en_raw_id_i            ( alu_en_raw_id_i          ),
     .alu_jmpr_id_i              ( alu_jmpr_id_i            ),
-    .sys_en_id_i                ( sys_en_id_i              ),
     .sys_mret_id_i              ( sys_mret_id_i            ),
-    .csr_en_id_i                ( csr_en_id_i              ),
+    .csr_en_raw_id_i            ( csr_en_raw_id_i          ),
     .csr_op_id_i                ( csr_op_id_i              ),
 
     // From EX

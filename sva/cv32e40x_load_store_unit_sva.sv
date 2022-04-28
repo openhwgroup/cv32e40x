@@ -101,19 +101,6 @@ module cv32e40x_load_store_unit_sva
   a_no_spurious_rvalid :
     assert property(p_no_spurious_rvalid) else `uvm_error("load_store_unit", "Assertion a_no_spurious_rvalid failed")
 
-  // Check that the address/we/be/atop does not contain X when request is sent
-  property p_address_phase_signals_defined;
-      @(posedge clk) (m_c_obi_data_if.s_req.req == 1'b1) |->
-                     (!($isunknown(m_c_obi_data_if.req_payload.addr) ||
-                        $isunknown(m_c_obi_data_if.req_payload.we)   ||
-                        $isunknown(m_c_obi_data_if.req_payload.be)   ||
-                        $isunknown(m_c_obi_data_if.req_payload.atop)));
-  endproperty
-
-  a_address_phase_signals_defined :
-    assert property(p_address_phase_signals_defined)
-      else `uvm_error("load_store_unit", "Assertion a_address_phase_signals_defined failed")
-
   // No transaction allowd if EX is halted or killed
   a_lsu_halt_kill:
     assert property (@(posedge clk) disable iff (!rst_n)
