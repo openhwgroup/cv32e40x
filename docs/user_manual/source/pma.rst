@@ -25,6 +25,8 @@ Address range
 ~~~~~~~~~~~~~
 The address boundaries of a PMA region are set in ``word_addr_low/word_addr_high``. These contain bits 33:2 of 34-bit, word aligned addresses. To get an address match, the transfer address ``addr`` must be in the range ``{word_addr_low, 2'b00} <= addr[33:0] < {word_addr_high, 2'b00}``. Note that ``addr[33:32] = 2'b00`` as the |corev| does not support Sv32.
 
+If ``X_EXT`` = 1, then the address boundaries shall be configured to be ``X_MEM_WIDTH`` bit aligned.
+
 Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
 Memory ranges can be defined as either main (``main=1``) or I/O (``main=0``). 
