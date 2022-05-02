@@ -250,9 +250,11 @@ Exceptions
  |              0 |              3 | Breakpoint                            | Environment break.                                                        |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
  |              0 |              5 | Load access fault                     | Non-naturally aligned load access attempt to an I/O region.               |
+ |                |                |                                       | Modified load access attempt to an I/O region.                            |
  |                |                |                                       | Load-Reserved attempt to region without atomic support.                   |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
  |              0 |              7 | Store/AMO access fault                | Non-naturally aligned store access attempt to an I/O region.              |
+ |                |                |                                       | Modified store access attempt to an I/O region.                           |
  |                |                |                                       | Store-Conditional or Atomic Memory Operation (AMO) attempt                |
  |                |                |                                       | to region without atomic support.                                         |
  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
