@@ -381,7 +381,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .PMA_CFG             ( PMA_CFG                  ),
     .MTVT_ADDR_WIDTH     ( MTVT_ADDR_WIDTH          ),
     .SMCLIC              ( SMCLIC                   ),
-    .SMCLIC_ID_WIDTH     ( SMCLIC_ID_WIDTH          )
+    .SMCLIC_ID_WIDTH     ( SMCLIC_ID_WIDTH          ),
+    .ZC_EXT              ( ZC_EXT                   )
   )
   if_stage_i
   (
