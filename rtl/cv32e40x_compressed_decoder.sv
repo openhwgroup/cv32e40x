@@ -100,7 +100,6 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                 unique case (instr[12:10])
                   3'b000: begin
                     // c.lbu
-                    //instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
                     instr_o.bus_resp.rdata = {10'b0, instr[5], instr[6], 2'b01, instr[9:7], 3'b100, 2'b01, instr[4:2], OPCODE_LOAD};
                   end
                   3'b001: begin
