@@ -31,10 +31,17 @@ Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
 Memory ranges can be defined as either main (``main=1``) or I/O (``main=0``). 
 Code execution is allowed from main memory and main memory is considered to be idempotent. Non-aligned transactions are supported in main memory.
+Modifiable transactions are supported in main memory.
 Code execution is not allowed from I/O regions and an instruction access fault (exception code 1) is raised when attempting to execute from such regions. 
 I/O regions are considered to be non-idempotent and therefore the PMA will prevent speculative accesses to such regions.
 Non-aligned transactions are not supported in I/O regions.  An attempt to perform a non-naturally aligned load access to an I/O region causes a precise
 load access fault (exception code 5). An attempt to perform a non-naturally aligned store access to an I/O region causes a precise store access fault (exception code 7).
+Modifiable/modified transactions are not supported in I/O regions.  An attempt to perform a modifiable/modified load access to an I/O region causes a precise
+load access fault (exception code 5). An attempt to perform a modifiable/modified store access to an I/O region causes a precise store access fault (exception code 7).
+
+.. note::
+   Modifiable transactions are transactions which allow transformations as for example merging or splitting. For example, a misaligned store word instruction that
+   is handled as two subword transactions on the data interface is considered to use modified transactions.
 
 Bufferable and Cacheable
 ~~~~~~~~~~~~~~~~~~~~~~~~
