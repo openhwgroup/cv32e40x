@@ -26,7 +26,7 @@
 
 module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
 #(
-    parameter bit ZC_EXT = 0  // todo: remove once fully implemented
+    parameter bit ZC_EXT = 0
  )
 (
   input  inst_resp_t  instr_i,
@@ -74,6 +74,9 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                 if (instr[12]) begin
                   // cm.lh -> lh rd', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, instr[11:10], instr[6:5], 1'b0, 2'b01, instr[9:7], 3'b001, 2'b01, instr[4:2], OPCODE_LOAD};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[11:10], instr[6]} == 3'b000) illegal_instr_o = 1'b1;
                 end else begin
                   // cm.lb -> lb rd', imm(rs1')
                   instr_o.bus_resp.rdata = {8'b0, instr[10], instr[6:5], instr[11], 2'b01, instr[9:7], 3'b000, 2'b01, instr[4:2], OPCODE_LOAD};
@@ -132,9 +135,15 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                 if (instr[12]) begin
                   // cm.sh -> sh rs2', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, instr[11:10], instr[6:5], 1'b0, OPCODE_STORE};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[11:10], instr[6]} == 3'b000) illegal_instr_o = 1'b1;
                 end else begin
                   // cm.sb -> sb rs2', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 1'b0, instr[10], instr[6:5], instr[11], OPCODE_STORE};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[10], instr[6]} == 2'b00) illegal_instr_o = 1'b1;
                 end
               end else begin
                 illegal_instr_o = 1'b1;

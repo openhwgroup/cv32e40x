@@ -36,7 +36,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter int unsigned MTVT_ADDR_WIDTH = 26,
   parameter bit          SMCLIC          = 1'b0,
   parameter int          SMCLIC_ID_WIDTH = 5,
-  parameter bit          ZC_EXT          = 0  // todo: remove once fully implemented
+  parameter bit          ZC_EXT          = 0
 )
 (
   input  logic          clk,
@@ -296,7 +296,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   cv32e40x_compressed_decoder
   #(
-      .ZC_EXT (ZC_EXT)   // todo: remove once fully implemented
+      .ZC_EXT (ZC_EXT)
   )
   compressed_decoder_i
   (
