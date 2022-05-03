@@ -35,7 +35,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
   parameter int unsigned MTVT_ADDR_WIDTH = 26,
   parameter bit          SMCLIC          = 1'b0,
-  parameter int          SMCLIC_ID_WIDTH = 5
+  parameter int          SMCLIC_ID_WIDTH = 5,
+  parameter bit          ZC_EXT          = 0
 )
 (
   input  logic          clk,
@@ -294,6 +295,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   end
 
   cv32e40x_compressed_decoder
+  #(
+      .ZC_EXT (ZC_EXT)
+  )
   compressed_decoder_i
   (
     .instr_i            ( prefetch_instr          ),

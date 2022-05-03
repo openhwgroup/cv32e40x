@@ -25,6 +25,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
+#(
+    parameter bit ZC_EXT = 0
+ )
 (
   input  inst_resp_t  instr_i,
   input  logic        instr_is_ptr_i,
@@ -66,6 +69,24 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               if (instr[12:5] == 8'b0)  illegal_instr_o = 1'b1;
             end
 
+            3'b001: begin
+              if (ZC_EXT) begin
+                if (instr[12]) begin
+                  // cm.lh -> lh rd', imm(rs1')
+                  instr_o.bus_resp.rdata = {7'b0, instr[11:10], instr[6:5], 1'b0, 2'b01, instr[9:7], 3'b001, 2'b01, instr[4:2], OPCODE_LOAD};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[11:10], instr[6]} == 3'b000) illegal_instr_o = 1'b1;
+                end else begin
+                  // cm.lb -> lb rd', imm(rs1')
+                  instr_o.bus_resp.rdata = {8'b0, instr[10], instr[6:5], instr[11], 2'b01, instr[9:7], 3'b000, 2'b01, instr[4:2], OPCODE_LOAD};
+                end
+              end else begin
+                illegal_instr_o = 1'b1;
+                instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+              end
+            end
+
             3'b010: begin
               // c.lw -> lw rd', imm(rs1')
               instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
@@ -76,9 +97,61 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12], 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b010, instr[11:10], instr[6], 2'b00, OPCODE_STORE};
             end
 
-            3'b001,       // c.fld -> fld rd', imm(rs1')
+
+            3'b100: begin
+              if (ZC_EXT) begin
+                unique case (instr[12:10])
+                  3'b000: begin
+                    // c.lbu -> lbu rd', imm(rs1')
+                    instr_o.bus_resp.rdata = {10'b0, instr[5], instr[6], 2'b01, instr[9:7], 3'b100, 2'b01, instr[4:2], OPCODE_LOAD};
+                  end
+                  3'b001: begin
+                    // c.lh  -> lh rd', imm(rs1')
+                    // c.lhu -> lhu rd', imm(rs1')
+                    // instr[6] determines sign extension for lh vs lhu
+                    instr_o.bus_resp.rdata = {10'b0, instr[5], 1'b0, 2'b01, instr[9:7], !instr[6], 2'b01, 2'b01, instr[4:2], OPCODE_LOAD};
+                  end
+                  3'b010: begin
+                    // c.sb -> sb rs2', imm(rs1')
+                    instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 3'b000, instr[5], instr[6], OPCODE_STORE};
+                  end
+                  3'b011: begin
+                    // c.sh -> sh rs2', imm(rs1')
+                    instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, 3'b000, instr[5], 1'b0, OPCODE_STORE};
+                  end
+                  default: begin
+                    illegal_instr_o = 1'b1;
+                    instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+                  end
+                endcase
+              end else begin
+                illegal_instr_o = 1'b1;
+                instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+              end
+            end
+
+            3'b101: begin
+              if (ZC_EXT) begin
+                if (instr[12]) begin
+                  // cm.sh -> sh rs2', imm(rs1')
+                  instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, instr[11:10], instr[6:5], 1'b0, OPCODE_STORE};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[11:10], instr[6]} == 3'b000) illegal_instr_o = 1'b1;
+                end else begin
+                  // cm.sb -> sb rs2', imm(rs1')
+                  instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 1'b0, instr[10], instr[6:5], instr[11], OPCODE_STORE};
+
+                  // uimm < 4 is designated for custom use, flagging as illegal
+                  if ({instr[10], instr[6]} == 2'b00) illegal_instr_o = 1'b1;
+                end
+              end else begin
+                illegal_instr_o = 1'b1;
+                instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+              end
+            end
+
             3'b011,       // c.flw -> flw rd', imm(rs1')
-            3'b101,       // c.fsd -> fsd rs2', imm(rs1')
             3'b111: begin // c.fsw -> fsw rs2', imm(rs1')
               illegal_instr_o = 1'b1;
               instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
