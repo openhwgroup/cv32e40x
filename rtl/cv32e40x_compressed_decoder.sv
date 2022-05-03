@@ -72,10 +72,10 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
             3'b001: begin
               if (ZC_EXT) begin
                 if (instr[12]) begin
-                  // cm.lh
+                  // cm.lh -> lh rd', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, instr[11:10], instr[6:5], 1'b0, 2'b01, instr[9:7], 3'b001, 2'b01, instr[4:2], OPCODE_LOAD};
                 end else begin
-                  // cm.lb
+                  // cm.lb -> lb rd', imm(rs1')
                   instr_o.bus_resp.rdata = {8'b0, instr[10], instr[6:5], instr[11], 2'b01, instr[9:7], 3'b000, 2'b01, instr[4:2], OPCODE_LOAD};
                 end
               end else begin
@@ -99,19 +99,21 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               if (ZC_EXT) begin
                 unique case (instr[12:10])
                   3'b000: begin
-                    // c.lbu
+                    // c.lbu -> lbu rd', imm(rs1')
                     instr_o.bus_resp.rdata = {10'b0, instr[5], instr[6], 2'b01, instr[9:7], 3'b100, 2'b01, instr[4:2], OPCODE_LOAD};
                   end
                   3'b001: begin
-                    // c.lh / c.lhu bit 6 sets sign extension
+                    // c.lh  -> lh rd', imm(rs1')
+                    // c.lhu -> lhu rd', imm(rs1')
+                    // instr[6] determines sign extension for lh vs lhu
                     instr_o.bus_resp.rdata = {10'b0, instr[5], 1'b0, 2'b01, instr[9:7], !instr[6], 2'b01, 2'b01, instr[4:2], OPCODE_LOAD};
                   end
                   3'b010: begin
-                    // c.sb
+                    // c.sb -> sb rs2', imm(rs1')
                     instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 3'b000, instr[5], instr[6], OPCODE_STORE};
                   end
                   3'b011: begin
-                    // c.sh
+                    // c.sh -> sh rs2', imm(rs1')
                     instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, 3'b000, instr[5], 1'b0, OPCODE_STORE};
                   end
                   default: begin
@@ -128,10 +130,10 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
             3'b101: begin
               if (ZC_EXT) begin
                 if (instr[12]) begin
-                  // cm.sh
+                  // cm.sh -> sh rs2', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, instr[11:10], instr[6:5], 1'b0, OPCODE_STORE};
                 end else begin
-                  // cm.sb
+                  // cm.sb -> sb rs2', imm(rs1')
                   instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 1'b0, instr[10], instr[6:5], instr[11], OPCODE_STORE};
                 end
               end else begin
