@@ -26,7 +26,8 @@
 
 module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
 #(
-    parameter bit ZC_EXT = 0
+    parameter bit          ZC_EXT    = 0,
+    parameter m_ext_e      M_EXT     = M
  )
 (
   input  inst_resp_t  instr_i,
@@ -121,12 +122,12 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                   end
                   default: begin
                     illegal_instr_o = 1'b1;
-                    instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+                    instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, 3'b000, instr[5], 1'b0, OPCODE_STORE};
                   end
                 endcase
               end else begin
                 illegal_instr_o = 1'b1;
-                instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+                instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, 3'b000, instr[5], 1'b0, OPCODE_STORE};
               end
             end
 
@@ -147,7 +148,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                 end
               end else begin
                 illegal_instr_o = 1'b1;
-                instr_o.bus_resp.rdata = {5'b0, instr[5], instr[12:10], instr[6], 2'b00, 2'b01, instr[9:7], 3'b010, 2'b01, instr[4:2], OPCODE_LOAD};
+                instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b001, instr[11:10], instr[6:5], 1'b0, OPCODE_STORE};
               end
             end
 
@@ -254,10 +255,53 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                       instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
                     end
 
-                    3'b100,
-                    3'b101,
-                    3'b110,
+                    3'b110: begin
+                      if (ZC_EXT) begin
+                        // c.mul -> mul rsd', rsd', rs2'
+                        if (M_EXT != M_NONE) begin
+                          instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
+                        end else begin
+                          illegal_instr_o = 1'b1;
+                          instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
+                        end
+                      end else begin
+                        instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
+                        illegal_instr_o = 1'b1;
+                      end
+                    end
+
                     3'b111: begin
+                      if (ZC_EXT) begin
+                        unique case (instr[4:2])
+                          3'b000: begin
+                            // c.zext.b -> andi rsd', rsd', 0xff
+                            instr_o.bus_resp.rdata = {4'h0, 8'hff, 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                          end
+                          3'b001: begin
+                            // c.sext.b -> TODO:
+                          end
+                          3'b010: begin
+                            // c.zext.h -> TODO:
+                          end
+                          3'b011: begin
+                            //c.sext.h -> TODO:
+                          end
+                          3'b101: begin
+                            // c.not -> xori rsd', rsd' -1
+                            instr_o.bus_resp.rdata = {12'hfff, 2'b01, instr[9:7], 3'b100, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                          end
+                          default: begin
+                            instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
+                            illegal_instr_o = 1'b1;
+                          end
+                        endcase
+                      end else begin
+                        instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
+                        illegal_instr_o = 1'b1;
+                      end
+                    end
+                    3'b100,
+                    3'b101: begin
                       // 100: c.subw
                       // 101: c.addw
                       instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
