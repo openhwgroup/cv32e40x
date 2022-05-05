@@ -258,14 +258,9 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                     end
 
                     3'b110: begin
-                      if (ZC_EXT) begin
+                      if (ZC_EXT && (M_EXT != M_NONE)) begin
                         // c.mul -> mul rsd', rsd', rs2'
-                        if (M_EXT != M_NONE) begin
-                          instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
-                        end else begin
-                          illegal_instr_o = 1'b1;
-                          instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
-                        end
+                        instr_o.bus_resp.rdata = {7'b0000001, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b000, 2'b01, instr[9:7], OPCODE_OP};
                       end else begin
                         instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
                         illegal_instr_o = 1'b1;
