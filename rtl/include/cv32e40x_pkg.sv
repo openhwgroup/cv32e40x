@@ -124,10 +124,12 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_CTZ    = 6'b101000, // (funct3 = 001)
  ALU_B_CPOP   = 6'b100011, // (funct3 = 001)
 
- ALU_B_SEXT_B = 6'b110000, // (funct3 = 001)
- ALU_B_SEXT_H = 6'b111000, // (funct3 = 001)
-
- ALU_B_ZEXT_H = 6'b110011, // (funct3 = 100)
+ // The following three alu opcodes are shared between B and ZC.
+ // Setting bit6==0 allows synth to optimize away most B logic
+ // in the ALU in case only ZC_EXT is enabled.
+ ALU_B_SEXT_B = 6'b010010,
+ ALU_B_SEXT_H = 6'b010100,
+ ALU_B_ZEXT_H = 6'b010101,
 
  ALU_B_REV8   = 6'b110100, // (funct3 = 101)
  ALU_B_ORC_B  = 6'b110010, // (funct3 = 101)

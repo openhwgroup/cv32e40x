@@ -435,6 +435,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .B_EXT                        ( B_EXT                     ),
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
+    .ZC_EXT                       ( ZC_EXT                    ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )
   id_stage_i
