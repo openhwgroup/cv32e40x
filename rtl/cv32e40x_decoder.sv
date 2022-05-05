@@ -30,6 +30,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   parameter bit          A_EXT                  = 0,
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
+  parameter bit          ZC_EXT                 = 0,
   parameter              DEBUG_TRIGGER_EN       = 1
 )
 (
@@ -137,16 +138,18 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
-    if (B_EXT != B_NONE) begin: b_decoder
+    if ((B_EXT != B_NONE) || ZC_EXT) begin: b_decoder
       // RV32B extension decoder
       cv32e40x_b_decoder
       #(
-        .B_EXT (B_EXT)
+        .B_EXT  (B_EXT ),
+        .ZC_EXT (ZC_EXT)
       )
       b_decoder_i
       (
-        .instr_rdata_i  ( instr_rdata    ),
-        .decoder_ctrl_o ( decoder_b_ctrl )
+        .instr_rdata_i      ( instr_rdata                        ),
+        .instr_compressed_i ( if_id_pipe_i.instr_meta.compressed ),
+        .decoder_ctrl_o     ( decoder_b_ctrl                     )
       );
     end else begin: no_b_decoder
       assign decoder_b_ctrl = DECODER_CTRL_ILLEGAL_INSN;
