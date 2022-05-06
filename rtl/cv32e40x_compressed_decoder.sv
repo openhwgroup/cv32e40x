@@ -364,7 +364,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                   // cm.lbu rd', uimm(rs1') -> lbu rd', uimm(rs1')
                   instr_o.bus_resp.rdata = {8'h00, instr[10], instr[6:5], instr[11], 2'b01, instr[9:7], 3'b100, 2'b01, instr[4:2], OPCODE_LOAD};
 
-                  if ({instr[11:10], instr[6]} == 3'b000) begin
+                  if ({instr[10], instr[6]} == 2'b00) begin
                     illegal_instr_o = 1'b1;
                   end
                 end
