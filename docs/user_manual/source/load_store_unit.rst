@@ -151,5 +151,6 @@ The write buffer (when not full) allows |corev| to proceed executing instruction
 Bus transfers will occur in program order, no matter if transfers are bufferable and non-bufferable.
 Transactions in the write buffer must be completed before the |corev| is able to:
  
- * Retire a fence instruction
+ * Retire a ``fence`` instruction
+ * Retire a ``fence.i`` instruction
  * Enter SLEEP mode
