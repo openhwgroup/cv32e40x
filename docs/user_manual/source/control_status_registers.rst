@@ -1313,7 +1313,7 @@ Match Control Type 6 (``mcontrol6``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x6800_1044
+Reset Value: 0x6800_1004
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 
@@ -1347,7 +1347,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 ||      || (0x0, 0x2, ||            2: Address is greater than or equal to `tdata2`    |
 ||      ||  0x3)      ||            3: Address is less than `tdata2`                   |
 +-------+-------------+----------------------------------------------------------------+
-| 6     | WARL (0x1)  | **M**. Match in M-Mode.                                        |
+| 6     | WARL        | **M**. Match in M-Mode.                                        |
 +-------+-------------+----------------------------------------------------------------+
 | 5     | WARL (0x0)  | Hardwired to 0.                                                |
 +-------+-------------+----------------------------------------------------------------+
@@ -1369,7 +1369,7 @@ Exception Trigger (``etrigger``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x5800_0201
+Reset Value: 0x5800_0001
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 
@@ -1390,7 +1390,7 @@ Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 +-------+--------------+----------------------------------------------------------------+
 | 10    | WARL         | **NMI**. Set to enable trigger on NMI.                         |
 +-------+--------------+----------------------------------------------------------------+
-| 9     | WARL (0x1)   | **M**. Match in M-Mode.                                        |
+| 9     | WARL         | **M**. Match in M-Mode.                                        |
 +-------+--------------+----------------------------------------------------------------+
 | 8     | WARL (0x0)   | Hardwired to 0.                                                |
 +-------+--------------+----------------------------------------------------------------+
