@@ -98,10 +98,6 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A5         | ``tcontrol``      | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Control                                         |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x7A8         | ``mcontext``      | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Machine Context Register                                |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x7AA         | ``mscontext``     | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Machine Context Register                                |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7B0         | ``dcsr``          | DRW       |                          | Debug Control and Status                                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7B1         | ``dpc``           | DRW       |                          | Debug PC                                                |
@@ -1292,7 +1288,7 @@ CSR Address: 0x7A1
 
 Reset Value: 0x6800_1044
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.dmode**. The contents of the **data** field depends on the current
+Accessible in Debug Mode or M-Mode, depending on **tdata1.dmode**. The contents of the **data** field depends on the current
 value of the **type** field. See [RISC-V-DEBUG]_ for details regarding all trigger related CSRs.
 
 +-------+-------------+----------------------------------------------------------------+
@@ -1315,7 +1311,7 @@ CSR Address: 0x7A1
 
 Reset Value: 0x6800_1044
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
+Accessible in Debug Mode or M-Mode, depending on **tdata1.dmode**.
 
 +-------+-------------+----------------------------------------------------------------+
 | Bit#  | R/W         | Description                                                    |
@@ -1371,7 +1367,7 @@ CSR Address: 0x7A1
 
 Reset Value: 0x5800_0201
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
+Accessible in Debug Mode or M-Mode, depending on **tdata1.dmode**.
 
 +-------+--------------+----------------------------------------------------------------+
 | Bit#  | R/W          | Description                                                    |
@@ -1419,8 +1415,10 @@ Detailed:
 | 31:0  | RW   | **DATA**                                                         |
 +-------+------+------------------------------------------------------------------+
 
-Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
+Accessible in Debug Mode or M-Mode, depending on **tdata1.dmode**.
 This register stores the instruction address to match against for a breakpoint trigger or the currently selected exception codes for an exception trigger.
+
+.. _csr-tdata3:
 
 Trigger Data Register 3 (``tdata3``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1467,6 +1465,8 @@ does not exist, this field contains 1.
 
 Accessible in Debug Mode or M-Mode.
 
+.. _csr-tcontrol:
+
 Trigger Control (``tcontrol``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1490,42 +1490,6 @@ Detailed:
 | 2:0   | WARL (0x0)  | Hardwired to 0.                                                  |
 +-------+-------------+------------------------------------------------------------------+
 
-|corev| does not support the features requiring this register. CSR is hardwired to 0.
-
-Machine Context Register (``mcontext``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x7A8
-
-Reset Value: 0x0000_0000
-
-Detailed:
-
-+-------+------------+------------------------------------------------------------------+
-| Bit#  | R/W        | Description                                                      |
-+=======+============+==================================================================+
-| 31:0  | WARL (0x0) | Hardwired to 0.                                                  |
-+-------+------------+------------------------------------------------------------------+
-
-Accessible in Debug Mode or M-Mode.
-|corev| does not support the features requiring this register. CSR is hardwired to 0.
-
-Machine Supervisor Context Register (``mscontext``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x7AA
-
-Reset Value: 0x0000_0000
-
-Detailed:
-
-+-------+-------------+------------------------------------------------------------------+
-| Bit#  | R/W         | Description                                                      |
-+=======+=============+==================================================================+
-| 31:0  | WARL (0x0)  | Hardwired to 0.                                                  |
-+-------+-------------+------------------------------------------------------------------+
-
-Accessible in Debug Mode or M-Mode.
 |corev| does not support the features requiring this register. CSR is hardwired to 0.
 
 .. _csr-dcsr:
