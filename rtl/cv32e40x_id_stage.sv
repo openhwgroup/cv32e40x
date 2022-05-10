@@ -74,6 +74,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output logic        csr_en_raw_o,
   output csr_opcode_e csr_op_o,
 
+  output logic        alu_en_o,
+  output logic        sys_en_o,
+
   // RF interface -> controller
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
   output rf_addr_t    rf_raddr_o[REGFILE_NUM_READ_PORTS],
@@ -640,6 +643,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   assign csr_en_raw_o = csr_en_raw;
   assign csr_op_o = csr_op;
+
+  assign alu_en_o     = alu_en;
+  assign sys_en_o     = sys_en;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
   assign multi_cycle_id_stall = 1'b0; //todo:ok Zce push/pop will use this
