@@ -1313,7 +1313,7 @@ Match Control Type 6 (``mcontrol6``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x6800_1004
+Reset Value: 0x6800_1000
 
 Accessible in Debug Mode or M-Mode, depending on **TDATA1.DMODE**.
 
