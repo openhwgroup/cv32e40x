@@ -621,7 +621,7 @@ Detailed:
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 | 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-| 1:0     | WARL (0x0, 0x1)  | **MODE[0]**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.               |
+| 1:0     | WARL (0x0, 0x1)  | **MODE**: Interrupt handling mode. 0x0 = non-vectored basic mode, 0x1 = vectored basic mode.                  |
 +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
 The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
