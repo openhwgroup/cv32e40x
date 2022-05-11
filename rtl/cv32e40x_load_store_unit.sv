@@ -719,4 +719,4 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   endgenerate
 
-endmodule // cv32e40x_load_store_unit
+endmodule

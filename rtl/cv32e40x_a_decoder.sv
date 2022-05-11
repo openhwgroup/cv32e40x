@@ -96,5 +96,5 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
 
   end
 
-endmodule : cv32e40x_a_decoder
+endmodule
 

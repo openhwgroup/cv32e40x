@@ -114,4 +114,4 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
     .clk_o        ( clk_gated_o     )
   );
 
-endmodule // cv32e40x_sleep_unit
+endmodule

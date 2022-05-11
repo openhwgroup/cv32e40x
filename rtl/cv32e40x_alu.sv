@@ -378,4 +378,4 @@ module cv32e40x_alu import cv32e40x_pkg::*;
 
   end
 
-endmodule // cv32e40x_alu
+endmodule

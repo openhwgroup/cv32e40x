@@ -152,7 +152,4 @@ module cv32e40x_instr_obi_interface import cv32e40x_pkg::*;
   // the number of outstanding transactions in any way.
   assign trans_ready_o = (state_q == TRANSPARENT);
 
-  
-  
-
-endmodule // cv32e40x_instr_obi_interface
+endmodule

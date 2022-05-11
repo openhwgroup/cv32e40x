@@ -1088,4 +1088,4 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   endgenerate
 
-endmodule //cv32e40x_controller_fsm
+endmodule

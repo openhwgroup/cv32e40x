@@ -767,4 +767,4 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end
   endgenerate
 
-endmodule // cv32e40x_id_stage
+endmodule

@@ -225,4 +225,4 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .ctrl_byp_o                 ( ctrl_byp_o               )
   );
 
-endmodule // cv32e40x_controller
+endmodule

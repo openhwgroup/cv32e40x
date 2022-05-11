@@ -242,4 +242,4 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
 
   assign csr_en_raw_o = csr_en;
 
-endmodule // cv32e40x_decoder
+endmodule
