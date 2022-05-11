@@ -173,4 +173,4 @@ module cv32e40x_lsu_response_filter
   // bus_resp goes straight through
   assign resp_o = resp_i;
 
-endmodule : cv32e40x_lsu_response_filter
+endmodule

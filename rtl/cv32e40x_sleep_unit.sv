@@ -84,8 +84,9 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
   // Enable the clock only after the initial fetch enable while busy or waking up to become busy
   assign clock_en = fetch_enable_q && (ctrl_fsm_i.wake_from_sleep || core_busy_q);
 
-  // Sleep only in response to WFI which leads to clock disable; debug_wfi_no_sleep_o in
-  // cv32e40x_controller determines the scenarios for which WFI can(not) cause sleep.
+  // Sleep only in response to WFI which leads to clock disable. The controller determines the
+  // scenarios for which WFI can(not) cause sleep. WFI suppression is performed in the i_decoder
+  // based on the debug_wfi_no_sleep signal from the controller.
   assign core_sleep_o = fetch_enable_q && !clock_en;
 
   always_ff @(posedge clk_ungated_i, negedge rst_n)

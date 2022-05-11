@@ -117,5 +117,4 @@ module cv32e40x_write_buffer import cv32e40x_pkg::*;
 
   assign empty_o = (state == WBUF_EMPTY);
 
-endmodule : cv32e40x_write_buffer
-
+endmodule

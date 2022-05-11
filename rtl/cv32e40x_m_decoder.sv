@@ -133,4 +133,4 @@ module cv32e40x_m_decoder import cv32e40x_pkg::*;
     
   end // always_comb
 
-endmodule : cv32e40x_m_decoder
+endmodule

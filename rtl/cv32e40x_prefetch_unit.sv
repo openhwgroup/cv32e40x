@@ -128,4 +128,4 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
   );
 
-endmodule // cv32e40x_prefetch_unit
+endmodule

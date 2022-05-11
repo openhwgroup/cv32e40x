@@ -31,103 +31,102 @@
 
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
-  parameter              LIB                          = 0,
-  parameter rv32_e       RV32                         = RV32I, // todo: Add support for RV32E
-  parameter bit          A_EXT                        = 0,
-  parameter b_ext_e      B_EXT                        = B_NONE,
-  parameter m_ext_e      M_EXT                        = M,
-  parameter bit          X_EXT                        = 0,
-  parameter int          X_NUM_RS                     = 2,
-  parameter int          X_ID_WIDTH                   = 4,
-  parameter int          X_MEM_WIDTH                  = 32,
-  parameter int          X_RFR_WIDTH                  = 32,
-  parameter int          X_RFW_WIDTH                  = 32,
-  parameter logic [31:0] X_MISA                       = 32'h00000000,
-  parameter logic [1:0]  X_ECS_XS                     = 2'b00,
-  parameter bit          ZC_EXT                       = 0, // todo: remove once fully implemented
-  parameter int          NUM_MHPMCOUNTERS             = 1,
-  parameter bit          SMCLIC                       = 0,
-  parameter int          SMCLIC_ID_WIDTH              = 5,
-  parameter int          DBG_NUM_TRIGGERS             = 1,
-  parameter int          PMA_NUM_REGIONS              = 0,
-  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter                             LIB                                     = 0,
+  parameter rv32_e                      RV32                                    = RV32I, // todo: Add support for RV32E
+  parameter bit                         A_EXT                                   = 0,
+  parameter b_ext_e                     B_EXT                                   = B_NONE,
+  parameter m_ext_e                     M_EXT                                   = M,
+  parameter int                         DBG_NUM_TRIGGERS                        = 1,
+  parameter int                         PMA_NUM_REGIONS                         = 0,
+  parameter pma_cfg_t                   PMA_CFG[PMA_NUM_REGIONS-1:0]            = '{default:PMA_R_DEFAULT},
+  parameter bit                         SMCLIC                                  = 0,
+  parameter int                         SMCLIC_ID_WIDTH                         = 5,
+  parameter bit                         X_EXT                                   = 0,
+  parameter int                         X_NUM_RS                                = 2,
+  parameter int                         X_ID_WIDTH                              = 4,
+  parameter int                         X_MEM_WIDTH                             = 32,
+  parameter int                         X_RFR_WIDTH                             = 32,
+  parameter int                         X_RFW_WIDTH                             = 32,
+  parameter logic [31:0]                X_MISA                                  = 32'h00000000,
+  parameter logic [1:0]                 X_ECS_XS                                = 2'b00,
+  parameter bit                         ZC_EXT                                  = 0, // todo: remove once fully implemented
+  parameter int                         NUM_MHPMCOUNTERS                        = 1
 )
 (
-  // Clock and Reset
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  // Clock and reset
+  input  logic                          clk_i,
+  input  logic                          rst_ni,
+  input  logic                          scan_cg_en_i,   // Enable all clock gates for testing
 
-  input  logic        scan_cg_en_i,                     // Enable all clock gates for testing
-
-  // Core ID, Cluster ID, debug mode halt address and boot address are considered more or less static
-  input  logic [31:0] boot_addr_i,
-  input  logic [31:0] mtvec_addr_i,
-  input  logic [31:0] dm_halt_addr_i,
-  input  logic [31:0] mhartid_i,
-  input  logic  [3:0] mimpid_patch_i,
-  input  logic [31:0] dm_exception_addr_i,
+  // Static configuration
+  input  logic [31:0]                   boot_addr_i,
+  input  logic [31:0]                   dm_exception_addr_i,
+  input  logic [31:0]                   dm_halt_addr_i,
+  input  logic [31:0]                   mhartid_i,
+  input  logic  [3:0]                   mimpid_patch_i,
+  input  logic [31:0]                   mtvec_addr_i,
 
   // Instruction memory interface
-  output logic        instr_req_o,
-  input  logic        instr_gnt_i,
-  input  logic        instr_rvalid_i,
-  output logic [31:0] instr_addr_o,
-  output logic [1:0]  instr_memtype_o,
-  output logic [2:0]  instr_prot_o,
-  output logic        instr_dbg_o,
-  input  logic [31:0] instr_rdata_i,
-  input  logic        instr_err_i,
+  output logic                          instr_req_o,
+  input  logic                          instr_gnt_i,
+  input  logic                          instr_rvalid_i,
+  output logic [31:0]                   instr_addr_o,
+  output logic [1:0]                    instr_memtype_o,
+  output logic [2:0]                    instr_prot_o,
+  output logic                          instr_dbg_o,
+  input  logic [31:0]                   instr_rdata_i,
+  input  logic                          instr_err_i,
 
   // Data memory interface
-  output logic        data_req_o,
-  input  logic        data_gnt_i,
-  input  logic        data_rvalid_i,
-  output logic        data_we_o,
-  output logic [3:0]  data_be_o,
-  output logic [31:0] data_addr_o,
-  output logic [1:0]  data_memtype_o,
-  output logic [2:0]  data_prot_o,
-  output logic        data_dbg_o,
-  output logic [31:0] data_wdata_o,
-  input  logic [31:0] data_rdata_i,
-  input  logic        data_err_i,
-  output logic [5:0]  data_atop_o,
-  input  logic        data_exokay_i,
+  output logic                          data_req_o,
+  input  logic                          data_gnt_i,
+  input  logic                          data_rvalid_i,
+  output logic [31:0]                   data_addr_o,
+  output logic [3:0]                    data_be_o,
+  output logic                          data_we_o,
+  output logic [31:0]                   data_wdata_o,
+  output logic [1:0]                    data_memtype_o,
+  output logic [2:0]                    data_prot_o,
+  output logic                          data_dbg_o,
+  output logic [5:0]                    data_atop_o,
+  input  logic [31:0]                   data_rdata_i,
+  input  logic                          data_err_i,
+  input  logic                          data_exokay_i,
 
-  // Cycle Count
-  output logic [63:0] mcycle_o,
+  // Cycle count
+  output logic [63:0]                   mcycle_o,
 
   // eXtension interface
-  if_xif.cpu_compressed xif_compressed_if,
-  if_xif.cpu_issue      xif_issue_if,
-  if_xif.cpu_commit     xif_commit_if,
-  if_xif.cpu_mem        xif_mem_if,
-  if_xif.cpu_mem_result xif_mem_result_if,
-  if_xif.cpu_result     xif_result_if,
+  if_xif.cpu_compressed                 xif_compressed_if,
+  if_xif.cpu_issue                      xif_issue_if,
+  if_xif.cpu_commit                     xif_commit_if,
+  if_xif.cpu_mem                        xif_mem_if,
+  if_xif.cpu_mem_result                 xif_mem_result_if,
+  if_xif.cpu_result                     xif_result_if,
 
-  // Interrupt inputs
-  input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
+  // Basic interrupt architecture
+  input  logic [31:0]                   irq_i,
 
-  // CLIC Interface
-  input  logic                       clic_irq_i,
-  input  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_i,
-  input  logic [ 7:0]                clic_irq_level_i,
-  input  logic [ 1:0]                clic_irq_priv_i,
-  input  logic                       clic_irq_shv_i,
+  // Smclic interrupt architecture
+  input  logic                          clic_irq_i,
+  input  logic [SMCLIC_ID_WIDTH-1:0]    clic_irq_id_i,
+  input  logic [ 7:0]                   clic_irq_level_i,
+  input  logic [ 1:0]                   clic_irq_priv_i,
+  input  logic                          clic_irq_shv_i,
 
-  // Fencei flush handshake
-  output logic        fencei_flush_req_o,
-  input logic         fencei_flush_ack_i,
+  // Fence.i flush handshake
+  output logic                          fencei_flush_req_o,
+  input  logic                          fencei_flush_ack_i,
 
-  // Debug Interface
-  input  logic        debug_req_i,
-  output logic        debug_havereset_o,
-  output logic        debug_running_o,
-  output logic        debug_halted_o,
+  // Debug interface
+  input  logic                          debug_req_i,
+  output logic                          debug_havereset_o,
+  output logic                          debug_running_o,
+  output logic                          debug_halted_o,
 
-  // CPU Control Signals
-  input  logic        fetch_enable_i,
-  output logic        core_sleep_o
+  // CPU control signals
+  input  logic                          fetch_enable_i,
+  output logic                          core_sleep_o
 );
 
   // Number of register file read ports
@@ -859,20 +858,20 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .clic_irq_priv_i      ( clic_irq_priv_i    ),
         .clic_irq_shv_i       ( clic_irq_shv_i     ),
 
-        // To cv32e40x_controller
+        // To controller
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
         .irq_id_ctrl_o        ( irq_id_ctrl        ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
         .irq_clic_shv_o       ( irq_clic_shv       ),
         .irq_clic_level_o     ( irq_clic_level     ),
 
-        // From cv32e40x_cs_registers
+        // From cs_registers
         .m_ie_i               ( m_irq_enable       ),
         .mintthresh_i         ( mintthresh         ),
         .mintstatus_i         ( mintstatus         ),
         .mcause_i             ( mcause             ),
 
-        // To cv32e40x_cs_registers
+        // To cs_registers
         .mnxti_irq_pending_o  ( mnxti_irq_pending  ),
         .mnxti_irq_id_o       ( mnxti_irq_id       ),
         .mnxti_irq_level_o    ( mnxti_irq_level    )
@@ -887,12 +886,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
         // External interrupt lines
         .irq_i                ( irq_i              ),
 
-        // To cv32e40x_controller
+        // To controller
         .irq_req_ctrl_o       ( irq_req_ctrl       ),
         .irq_id_ctrl_o        ( irq_id_ctrl[4:0]   ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
-        // To/from with cv32e40x_cs_registers
+        // To/from with cs_registers
         .mie_i                ( mie                ),
         .mip_o                ( mip                ),
         .m_ie_i               ( m_irq_enable       )
