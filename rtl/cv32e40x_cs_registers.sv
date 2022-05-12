@@ -1496,7 +1496,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   endgenerate
 
-  //  Inhibit Regsiter: mcountinhibit_q
+  //  Inhibit Register: mcountinhibit_q
   //  Note: implemented counters are disabled out of reset to save power
   always_ff @(posedge clk, negedge rst_n) begin
     if (!rst_n) begin
@@ -1506,4 +1506,4 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
   end
 
-endmodule // cv32e40x_cs_registers
+endmodule

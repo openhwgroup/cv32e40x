@@ -157,4 +157,4 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   assign mnxti_irq_id_o    = clic_irq_id_q;
   assign mnxti_irq_level_o = clic_irq_level_q;
 
-endmodule // cv32e40x_clic_int_controller
+endmodule

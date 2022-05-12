@@ -294,5 +294,4 @@ module cv32e40x_div import cv32e40x_pkg::*;
     end
   end
 
-endmodule : cv32e40x_div
-
+endmodule

@@ -75,4 +75,4 @@ module cv32e40x_data_obi_interface import cv32e40x_pkg::*;
 
   assign trans_ready_o = m_c_obi_data_if.s_gnt.gnt;
 
-endmodule // cv32e40x_data_obi_interface
+endmodule
