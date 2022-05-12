@@ -389,7 +389,7 @@ module cv32e40x_wrapper
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .sys_mret_unqual_id_i     ( core_i.controller_i.controller_fsm_i.sys_mret_unqual_id              ),
+         .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id_i                   ),
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
          .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
