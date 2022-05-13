@@ -521,13 +521,13 @@ if (SMCLIC) begin
     else `uvm_error("controller", "LSU write buffer not empty when fetching CLIC pointer")
 
   // After a pc_set to PC_TRAP_CLICV, only the following jump targets are allowed:
-  // PC_TRAP_CLICV_TGT: Normal execution, the pointer target is being fetched
-  // PC_TRAP_EXC:       The pointer fetch has a synchronous exception
-  // PC_TRAP_NMI:       The pointer fetch has a bus error. Todo: Change if CLIC spec stops using data access for pointer fetch.
+  // PC_POINTER : Normal execution, the pointer target is being fetched
+  // PC_TRAP_EXC: The pointer fetch has a synchronous exception
+  // PC_TRAP_NMI: The pointer fetch has a bus error. Todo: Change if CLIC spec stops using data access for pointer fetch.
   a_clicv_next_pc_set:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
-                  |=> !ctrl_fsm_o.pc_set until (ctrl_fsm_o.pc_set && ((ctrl_fsm_o.pc_mux == PC_TRAP_CLICV_TGT) ||
+                  |=> !ctrl_fsm_o.pc_set until (ctrl_fsm_o.pc_set && ((ctrl_fsm_o.pc_mux == PC_POINTER)        ||
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_EXC)       ||
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")

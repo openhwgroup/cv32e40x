@@ -97,7 +97,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_trans_valid;
   logic              prefetch_trans_ready;
   logic [31:0]       prefetch_trans_addr;
-  logic              prefetch_trans_data_access;
   inst_resp_t        prefetch_inst_resp;
   logic              prefetch_one_txn_pend_n;
 
@@ -134,7 +133,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_NMI: branch_addr_n = {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
       PC_TRAP_CLICV:     branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
       // CLIC spec requires to clear bit 0. This clearing is done in the alignment buffer.
-      PC_TRAP_CLICV_TGT: branch_addr_n = if_id_pipe_o.instr.bus_resp.rdata;
+      PC_POINTER : branch_addr_n = if_id_pipe_o.ptr;
       default:;
     endcase
   end
@@ -165,7 +164,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .trans_valid_o       ( prefetch_trans_valid        ),
     .trans_ready_i       ( prefetch_trans_ready        ),
     .trans_addr_o        ( prefetch_trans_addr         ),
-    .trans_data_access_o ( prefetch_trans_data_access  ),
 
     .resp_valid_i        ( prefetch_resp_valid         ),
     .resp_i              ( prefetch_inst_resp          ),
@@ -179,13 +177,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // MPU
   //////////////////////////////////////////////////////////////////////////////
 
-  assign core_trans.addr = prefetch_trans_addr;
-  assign core_trans.dbg  = ctrl_fsm_i.debug_mode_if;
-  assign core_trans.prot[0] = prefetch_trans_data_access;  // Transfers from IF stage are data accesses for CLIC pointer fetches
+  assign core_trans.addr      = prefetch_trans_addr;
+  assign core_trans.dbg       = ctrl_fsm_i.debug_mode_if;
+  assign core_trans.prot[0]   = 1'b0;  // Transfers from IF stage all instruction fetches
   assign core_trans.prot[2:1] = PRIV_LVL_M;                // Machine mode
-  assign core_trans.memtype = 2'b00;                       // memtype is assigned in the MPU, tie off.
+  assign core_trans.memtype   = 2'b00;                       // memtype is assigned in the MPU, tie off.
 
-  // todo: CLIC: Vector loads must respect mprv
   cv32e40x_mpu
   #(
     .IF_STAGE             ( 1                           ),
@@ -205,7 +202,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                                                            // Misaligned access to main is allowed, and accesses outside main will
                                                            // result in instruction access fault (which will have priority over
                                                            //  misaligned from I/O fault)
-    .core_if_data_access_i( prefetch_trans_data_access  ), // Indicate data access from IF stage. TODO: Use for table jumps (?)
+    .core_if_data_access_i( 1'b0                        ), // No data access possible from IF
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose
@@ -281,14 +278,24 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // alignment buffer has a valid instruction
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
-        // instr_decompressed may be a pointer in case of CLIC or Zc, handled within the compressed decoder.
-        if_id_pipe_o.instr            <= instr_decompressed;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
         if_id_pipe_o.pc               <= pc_if_o;
-        if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0];
+        if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0]; // todo: clock gate if not compressed.
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
+
+        if (prefetch_is_ptr) begin
+          // Update pointer value
+          if_id_pipe_o.ptr                <= instr_decompressed.bus_resp.rdata;
+
+          // Need to update bus error status and mpu status, but may omit the 32-bit instruction word
+          if_id_pipe_o.instr.bus_resp.err <= instr_decompressed.bus_resp.err;
+          if_id_pipe_o.instr.mpu_status   <= instr_decompressed.mpu_status;
+        end else begin
+          // Regular instruction, update the whole instr field
+          if_id_pipe_o.instr          <= instr_decompressed;
+        end
       end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
       end

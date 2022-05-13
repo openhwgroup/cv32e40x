@@ -39,7 +39,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           fetch_ready_i,
   output logic           fetch_branch_o,
   output logic [31:0]    fetch_branch_addr_o,
-  output logic           fetch_data_access_o,
+  output logic           fetch_ptr_access_o,
   input  logic           fetch_ptr_access_i,
 
   // Resp interface
@@ -561,10 +561,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Signal that result is a pointer
   // CLIC vectoring or Zc table jump
+  // todo: probably need to differentiate between CLIC and Zc as they will be handled differently by the pipeline/controller.
   assign instr_is_ptr_o = is_ptr_q;
 
-  // Fetch is treated as a data access for CLIC vector fetch
-  // Only set for the initial pc_set_clicv point fetch and qualified with fetch_branch_o
-  // Prefetcher will remember the state of data_access in case of stalls.
-  assign fetch_data_access_o = (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv);
+  // Signal that a pointer is about to be fetched
+  // todo: factor in Zc cm.jt/cm.jalt
+  assign fetch_ptr_access_o = (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv);
 endmodule

@@ -31,7 +31,6 @@ module cv32e40x_alignment_buffer_sva
    input logic [31:0]              fetch_branch_addr_o,
    input logic                     fetch_valid_o,
    input logic                     fetch_ready_i,
-   input logic                     fetch_data_access_o,
    input logic [2:0] instr_cnt_n,
    input logic [2:0] instr_cnt_q,
    input logic                     instr_valid_o,
