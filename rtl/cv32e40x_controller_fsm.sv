@@ -824,7 +824,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // todo: deal with integrity related faults for E40S.
           if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
             ctrl_fsm_o.pc_set = 1'b1;
-            ctrl_fsm_o.pc_mux = PC_TRAP_CLICV_TGT;
+            ctrl_fsm_o.pc_mux = PC_POINTER;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.csr_clear_minhv = 1'b1;
 

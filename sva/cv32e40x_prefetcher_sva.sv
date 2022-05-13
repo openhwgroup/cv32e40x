@@ -44,7 +44,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
   input  logic        trans_ready_i,            // Transaction request ready (transaction gets accepted when trans_valid_o and trans_ready_i are both 1)
   input  logic [31:0] trans_addr_o,             // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
 
-  input  logic        trans_data_access_q,
+  input  logic        trans_ptr_access_q,
 
   // Fetch interface is ready/valid
   input  logic        fetch_ready_o,
@@ -174,7 +174,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
 
 if (SMCLIC) begin
   property p_data_q_no_branch;
-    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_data_access_q) |-> !fetch_branch_i);
+    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) |-> !fetch_branch_i);
   endproperty
 
   a_p_data_q_no_branch:
