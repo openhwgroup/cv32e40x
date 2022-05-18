@@ -139,13 +139,15 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // todo: Now wb_valid is high once per instruction. For split LSU and push/pop we want it to go high for every
   //       operation. RVFI, instret etc would need to factor in the 'last' bit
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
-                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i 
-                                                                  // todo: ideally a similar line is added here that delays signaling wb_valid until a WFI really retires. 
+                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i
+                                                                  // todo: ideally a similar line is added here that delays signaling wb_valid until a WFI really retires.
                                                                   // This should be checked for bad timing paths. Currently RVFI contains a wb_valid_adjusted signal/hack to achieve the same
                      ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
                     ) && !ex_wb_pipe_i.instr_meta.clic_ptr && instr_valid;
 
-  assign wb_valid_o = wb_valid;
+  // todo: May let suboperations (last_op==0) through and handle last_op within RVFI.
+  //       This will also affect single step, and the controller must check last_op.
+  assign wb_valid_o = wb_valid && ex_wb_pipe_i.last_op;
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid && instr_valid;

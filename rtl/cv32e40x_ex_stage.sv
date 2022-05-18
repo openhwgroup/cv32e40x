@@ -338,11 +338,13 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.csr_mnxti_access   <= 1'b0;
       ex_wb_pipe_o.xif_en             <= 1'b0;
       ex_wb_pipe_o.xif_meta           <= '0;
+      ex_wb_pipe_o.last_op            <= 1'b0;
     end
     else
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
+        ex_wb_pipe_o.last_op     <= 1'b1;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline

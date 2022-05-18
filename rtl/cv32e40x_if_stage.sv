@@ -285,6 +285,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.trigger_match    <= 1'b0;
       if_id_pipe_o.xif_id           <= '0;
       if_id_pipe_o.ptr              <= '0;
+      if_id_pipe_o.last_op          <= 1'b0;
     end else begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
@@ -296,6 +297,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0]; // todo: clock gate if not compressed.
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
+        if_id_pipe_o.last_op          <= 1'b1;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
         if (!prefetch_is_tbljmp_ptr) begin
