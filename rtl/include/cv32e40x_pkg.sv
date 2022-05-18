@@ -1015,7 +1015,6 @@ typedef struct packed
   logic        compressed;
   logic        clic_ptr;
   logic        tbljmp;
-  logic        tbljmp_ptr;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information

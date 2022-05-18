@@ -120,6 +120,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // eXtension interface signals
   logic [X_ID_WIDTH-1:0] xif_id;
 
+  // Flag for last operation - used by Zc*
+  logic              last_op;
+
   // Fetch address selection
   always_comb
   begin
@@ -261,14 +264,17 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
+  // Last operation of table jumps are set when the pointer is fed to ID stage
+  // todo: Factor in last operation of sequenced Zc* (push/pop)
+  assign last_op = tbljmp ? 1'b0 : 1'b1;
+
   // Populate instruction meta data
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n = '0;
-    instr_meta_n.compressed    = instr_compressed_int;
+    instr_meta_n.compressed    = if_id_pipe_o.instr_meta.compressed;
     instr_meta_n.clic_ptr      = prefetch_is_clic_ptr;
-    instr_meta_n.tbljmp        = tbljmp;
-    instr_meta_n.tbljmp_ptr    = prefetch_is_tbljmp_ptr;
+    instr_meta_n.tbljmp        = if_id_pipe_o.instr_meta.tbljmp;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
@@ -294,14 +300,22 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
 
-        if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0]; // todo: clock gate if not compressed.
+
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
-        if_id_pipe_o.last_op          <= 1'b1;
+        if_id_pipe_o.last_op          <= last_op;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
+        // No update to the meta compressed, as this is used in calculating the link address.
+        //   Any pointer could change instr_compressed_int and cause a wrong link address.
+        // No update to tbljmp flag, we want flag to be high for both operations.
         if (!prefetch_is_tbljmp_ptr) begin
-          if_id_pipe_o.pc               <= pc_if_o;
+          if_id_pipe_o.pc                    <= pc_if_o;
+          if_id_pipe_o.instr_meta.compressed <= instr_compressed_int;
+          if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
+          if (instr_compressed_int) begin
+            if_id_pipe_o.compressed_instr      <= prefetch_instr.bus_resp.rdata[15:0];
+          end
         end
 
         if (ptr_in_if_o) begin

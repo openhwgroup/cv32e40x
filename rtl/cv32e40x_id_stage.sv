@@ -200,6 +200,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 xif_dualwrite;
   logic                 xif_loadstore;
 
+  // Signal for detection of first operation (of two) of table jumps.
+  logic                 tbljmp_first;
+
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
   assign sys_mret_insn_o = sys_mret_insn;
@@ -255,6 +258,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Destination register seclection
   //---------------------------------------------------------------------------
   assign rf_waddr = instr[REG_D_MSB:REG_D_LSB];
+
+  // Detect first half of table jumps
+  assign tbljmp_first = if_id_pipe_i.instr_meta.tbljmp ? !if_id_pipe_i.last_op : 1'b0;
 
   //////////////////////////////////////////////////////////////////
   //      _                         _____                    _    //
@@ -541,7 +547,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // normal pipeline unstall case
       if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
-        id_ex_pipe_o.last_op      <= 1'b1;
+        id_ex_pipe_o.last_op      <= if_id_pipe_i.last_op;
 
         // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin
@@ -607,7 +613,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
 
-        id_ex_pipe_o.rf_we                  <= rf_we;
+        id_ex_pipe_o.rf_we                  <= tbljmp_first ? 1'b0 : rf_we;  // Only the last part of table jumps write to the link register
         if (rf_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr;
         end
