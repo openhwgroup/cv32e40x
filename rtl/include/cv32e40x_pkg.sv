@@ -1034,8 +1034,9 @@ typedef struct packed {
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
   logic        trigger_match;
-  logic [31:0] xif_id;  // ID of offloaded instruction
-  logic [31:0] ptr;  // Flops to hold 32-bit pointer
+  logic [31:0] xif_id;           // ID of offloaded instruction
+  logic [31:0] ptr;              // Flops to hold 32-bit pointer
+  logic        last_op;          // Last part of multi operation instruction
 } if_id_pipe_t;
 
 // ID/EX pipeline
@@ -1102,6 +1103,8 @@ typedef struct packed {
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
   xif_meta_t    xif_meta;         // xif meta struct
 
+  logic         last_op;
+
 } id_ex_pipe_t;
 
 // EX/WB pipeline
@@ -1146,6 +1149,8 @@ typedef struct packed {
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
   xif_meta_t    xif_meta;         // xif meta struct
+
+  logic         last_op;
 } ex_wb_pipe_t;
 
 // Performance counter events
