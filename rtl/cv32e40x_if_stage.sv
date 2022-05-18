@@ -55,6 +55,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
+  input  jvt_t          jvt_i,
+
   input ctrl_fsm_t      ctrl_fsm_i,
   input  logic          trigger_match_i,
 
@@ -85,7 +87,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   logic              prefetch_valid;
   inst_resp_t        prefetch_instr;
-  logic              prefetch_is_ptr;
+  logic              prefetch_is_clic_ptr;
+  logic              prefetch_is_tbljmp_ptr;
+
+  // flag for predecoded cm.jt / cm.jalt.
+  // Maps to custom use of JAL instruction
+  logic              tbljmp;
 
   logic              illegal_c_insn;
 
@@ -120,20 +127,21 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     branch_addr_n = {boot_addr_i[31:2], 2'b0};
 
     unique case (ctrl_fsm_i.pc_mux)
-      PC_BOOT:     branch_addr_n = {boot_addr_i[31:2], 2'b0};
-      PC_JUMP:     branch_addr_n = jump_target_id_i;
-      PC_BRANCH:   branch_addr_n = branch_target_ex_i;
-      PC_MRET:     branch_addr_n = mepc_i;                                                      // PC is restored when returning from IRQ/exception
-      PC_DRET:     branch_addr_n = dpc_i;
-      PC_FENCEI:   branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
-      PC_TRAP_EXC: branch_addr_n = {mtvec_addr_i, 7'h0};                                        // All the exceptions go to base address
-      PC_TRAP_IRQ: branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.mtvec_pc_mux, 2'b00};     // interrupts are vectored
-      PC_TRAP_DBD: branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
-      PC_TRAP_DBE: branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
-      PC_TRAP_NMI: branch_addr_n = {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
-      PC_TRAP_CLICV:     branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
-      // CLIC spec requires to clear bit 0. This clearing is done in the alignment buffer.
-      PC_POINTER : branch_addr_n = if_id_pipe_o.ptr;
+      PC_BOOT:       branch_addr_n = {boot_addr_i[31:2], 2'b0};
+      PC_JUMP:       branch_addr_n = jump_target_id_i;
+      PC_BRANCH:     branch_addr_n = branch_target_ex_i;
+      PC_MRET:       branch_addr_n = mepc_i;                                                      // PC is restored when returning from IRQ/exception
+      PC_DRET:       branch_addr_n = dpc_i;
+      PC_FENCEI:     branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
+      PC_TRAP_EXC:   branch_addr_n = {mtvec_addr_i, 7'h0};                                        // All the exceptions go to base address
+      PC_TRAP_IRQ:   branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.mtvec_pc_mux, 2'b00};     // interrupts are vectored
+      PC_TRAP_DBD:   branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
+      PC_TRAP_DBE:   branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
+      PC_TRAP_NMI:   branch_addr_n = {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
+      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
+      // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
+      PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
+      PC_TBLJUMP :   branch_addr_n = (jvt_i.base << 6) + (if_id_pipe_o.instr.bus_resp.rdata[19:12] << 2);
       default:;
     endcase
   end
@@ -148,29 +156,30 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   )
   prefetch_unit_i
   (
-    .clk                 ( clk                         ),
-    .rst_n               ( rst_n                       ),
+    .clk                      ( clk                         ),
+    .rst_n                    ( rst_n                       ),
 
-    .ctrl_fsm_i          ( ctrl_fsm_i                  ),
+    .ctrl_fsm_i               ( ctrl_fsm_i                  ),
 
-    .branch_addr_i       ( {branch_addr_n[31:1], 1'b0} ),
+    .branch_addr_i            ( {branch_addr_n[31:1], 1'b0} ),
 
-    .prefetch_ready_i    ( if_ready                    ),
-    .prefetch_valid_o    ( prefetch_valid              ),
-    .prefetch_instr_o    ( prefetch_instr              ),
-    .prefetch_addr_o     ( pc_if_o                     ),
-    .prefetch_is_ptr_o   ( prefetch_is_ptr             ),
+    .prefetch_ready_i         ( if_ready                    ),
+    .prefetch_valid_o         ( prefetch_valid              ),
+    .prefetch_instr_o         ( prefetch_instr              ),
+    .prefetch_addr_o          ( pc_if_o                     ),
+    .prefetch_is_clic_ptr_o   ( prefetch_is_clic_ptr        ),
+    .prefetch_is_tbljmp_ptr_o ( prefetch_is_tbljmp_ptr      ),
 
-    .trans_valid_o       ( prefetch_trans_valid        ),
-    .trans_ready_i       ( prefetch_trans_ready        ),
-    .trans_addr_o        ( prefetch_trans_addr         ),
+    .trans_valid_o            ( prefetch_trans_valid        ),
+    .trans_ready_i            ( prefetch_trans_ready        ),
+    .trans_addr_o             ( prefetch_trans_addr         ),
 
-    .resp_valid_i        ( prefetch_resp_valid         ),
-    .resp_i              ( prefetch_inst_resp          ),
+    .resp_valid_i             ( prefetch_resp_valid         ),
+    .resp_i                   ( prefetch_inst_resp          ),
 
     // Prefetch Buffer Status
-    .prefetch_busy_o     ( prefetch_busy               ),
-    .one_txn_pend_n      ( prefetch_one_txn_pend_n     )
+    .prefetch_busy_o          ( prefetch_busy               ),
+    .one_txn_pend_n           ( prefetch_one_txn_pend_n     )
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -250,14 +259,16 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign if_busy_o = prefetch_busy;
 
-  assign ptr_in_if_o = prefetch_is_ptr;
+  assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
   // Populate instruction meta data
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n = '0;
     instr_meta_n.compressed    = instr_compressed_int;
-    instr_meta_n.clic_ptr      = prefetch_is_ptr;
+    instr_meta_n.clic_ptr      = prefetch_is_clic_ptr;
+    instr_meta_n.tbljmp        = tbljmp;
+    instr_meta_n.tbljmp_ptr    = prefetch_is_tbljmp_ptr;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
@@ -273,6 +284,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.compressed_instr <= '0;
       if_id_pipe_o.trigger_match    <= 1'b0;
       if_id_pipe_o.xif_id           <= '0;
+      if_id_pipe_o.ptr              <= '0;
     end else begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
@@ -280,12 +292,17 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
         if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
-        if_id_pipe_o.pc               <= pc_if_o;
+
         if_id_pipe_o.compressed_instr <= prefetch_instr.bus_resp.rdata[15:0]; // todo: clock gate if not compressed.
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
 
-        if (prefetch_is_ptr) begin
+        // No PC update for tablejump pointer, PC of instruction itself is needed later.
+        if (!prefetch_is_tbljmp_ptr) begin
+          if_id_pipe_o.pc               <= pc_if_o;
+        end
+
+        if (ptr_in_if_o) begin
           // Update pointer value
           if_id_pipe_o.ptr                <= instr_decompressed.bus_resp.rdata;
 
@@ -310,10 +327,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   compressed_decoder_i
   (
     .instr_i            ( prefetch_instr          ),
-    .instr_is_ptr_i     ( prefetch_is_ptr         ),
+    .instr_is_ptr_i     ( ptr_in_if_o             ),
     .instr_o            ( instr_decompressed      ),
     .is_compressed_o    ( instr_compressed_int    ),
-    .illegal_instr_o    ( illegal_c_insn          )
+    .illegal_instr_o    ( illegal_c_insn          ),
+    .tbljmp_o           ( tbljmp                  )
   );
 
 

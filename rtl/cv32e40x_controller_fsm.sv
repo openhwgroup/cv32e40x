@@ -523,6 +523,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     fencei_flush_req_set           = 1'b0;
 
     ctrl_fsm_o.pc_set_clicv        = 1'b0;
+    ctrl_fsm_o.pc_set_tbljmp       = 1'b0;
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -719,8 +720,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               //       state -> POINTER_FETCH
 
             end else begin
-              ctrl_fsm_o.pc_mux = PC_JUMP;
-              ctrl_fsm_o.pc_set = 1'b1;
+              ctrl_fsm_o.pc_mux        = if_id_pipe_i.instr_meta.tbljmp     ? PC_TBLJUMP :
+                                         if_id_pipe_i.instr_meta.tbljmp_ptr ? PC_POINTER : PC_JUMP;
+              ctrl_fsm_o.pc_set        = 1'b1;
+              ctrl_fsm_o.pc_set_tbljmp = if_id_pipe_i.instr_meta.tbljmp;
             end
 
             // Set flag to avoid further jumps to the same target

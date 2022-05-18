@@ -42,7 +42,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   output logic        prefetch_valid_o,
   output inst_resp_t  prefetch_instr_o,
   output logic [31:0] prefetch_addr_o,
-  output logic        prefetch_is_ptr_o,
+  output logic        prefetch_is_clic_ptr_o,
+  output logic        prefetch_is_tbljmp_ptr_o,
 
   // Transaction interface to obi interface
   output logic        trans_valid_o,
@@ -63,9 +64,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
   logic        fetch_branch;
   logic [31:0] fetch_branch_addr;
-  logic        fetch_data_access;
   logic        fetch_ptr_access;
-  logic        fetch_ptr_access_resp;
+  logic        fetch_ptr_resp;
 
 
 
@@ -98,31 +98,32 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   cv32e40x_alignment_buffer
   alignment_buffer_i
   (
-    .clk                  ( clk                    ),
-    .rst_n                ( rst_n                  ),
+    .clk                   ( clk                     ),
+    .rst_n                 ( rst_n                   ),
 
-    .ctrl_fsm_i           ( ctrl_fsm_i             ),
+    .ctrl_fsm_i            ( ctrl_fsm_i              ),
 
-    .branch_addr_i        ( branch_addr_i          ),
-    .prefetch_busy_o      ( prefetch_busy_o        ),
+    .branch_addr_i         ( branch_addr_i           ),
+    .prefetch_busy_o       ( prefetch_busy_o         ),
 
     // prefetch unit
-    .fetch_valid_o        ( fetch_valid            ),
-    .fetch_ready_i        ( fetch_ready            ),
-    .fetch_branch_o       ( fetch_branch           ),
-    .fetch_branch_addr_o  ( fetch_branch_addr      ),
-    .fetch_ptr_access_o   ( fetch_ptr_access       ),
-    .fetch_ptr_access_i   ( fetch_ptr_resp         ),
+    .fetch_valid_o         ( fetch_valid             ),
+    .fetch_ready_i         ( fetch_ready             ),
+    .fetch_branch_o        ( fetch_branch            ),
+    .fetch_branch_addr_o   ( fetch_branch_addr       ),
+    .fetch_ptr_access_o    ( fetch_ptr_access        ),
+    .fetch_ptr_access_i    ( fetch_ptr_resp          ),
 
-    .resp_valid_i         ( resp_valid_i           ),
-    .resp_i               ( resp_i                 ),
-    .one_txn_pend_n       ( one_txn_pend_n         ),
+    .resp_valid_i          ( resp_valid_i            ),
+    .resp_i                ( resp_i                  ),
+    .one_txn_pend_n        ( one_txn_pend_n          ),
     // Instruction interface
-    .instr_valid_o        ( prefetch_valid_o       ),
-    .instr_ready_i        ( prefetch_ready_i       ),
-    .instr_instr_o        ( prefetch_instr_o       ),
-    .instr_addr_o         ( prefetch_addr_o        ),
-    .instr_is_ptr_o       ( prefetch_is_ptr_o      )
+    .instr_valid_o         ( prefetch_valid_o        ),
+    .instr_ready_i         ( prefetch_ready_i        ),
+    .instr_instr_o         ( prefetch_instr_o        ),
+    .instr_addr_o          ( prefetch_addr_o         ),
+    .instr_is_clic_ptr_o   ( prefetch_is_clic_ptr_o  ),
+    .instr_is_tbljmp_ptr_o ( prefetch_is_tbljmp_ptr_o)
 
   );
 

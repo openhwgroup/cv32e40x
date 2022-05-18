@@ -34,7 +34,8 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
   input  logic        instr_is_ptr_i,
   output inst_resp_t  instr_o,
   output logic        is_compressed_o,
-  output logic        illegal_instr_o
+  output logic        illegal_instr_o,
+  output logic        tbljmp_o
 );
 
   import cv32e40x_pkg::*;
@@ -55,6 +56,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
   begin
     illegal_instr_o  = 1'b0;
     instr_o          = instr_i;
+    tbljmp_o         = 1'b0;
 
     if (instr_is_ptr_i) begin
       is_compressed_o = 1'b0;
@@ -422,13 +424,36 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               end
             end
 
+            3'b101: begin
+              if (ZC_EXT) begin
+                // The cm.jt and cm.jalt have no equivalent 32-bit instructions.
+                // Mapping to JAL anyway, but an extra control bit is set to indicate that these
+                // are table jumps as opposed to regular JAL instruction.
+                if (instr[12:8] == 5'b00000) begin
+                  // cm.jt -> JAL x0, index
+                  instr_o.bus_resp.rdata = {13'b0000000000000, instr[7:2], 5'b00000, OPCODE_JAL};
+                  tbljmp_o = 1'b1;
+                end else begin
+                  // cm.jalt -> JAL, x1, index
+                  instr_o.bus_resp.rdata = {11'b00000000000, instr[9:2], 5'b00001, OPCODE_JAL};
+                  tbljmp_o = 1'b1;
+                  if (instr[12:10] != 3'b000) begin
+                    illegal_instr_o = 1'b1;
+                    tbljmp_o = 1'b0;
+                  end
+                end
+              end else begin
+                instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
+                illegal_instr_o = 1'b1;
+              end
+            end
+
             3'b110: begin
               // c.swsp -> sw rs2, imm(x2)
               instr_o.bus_resp.rdata = {4'b0, instr[8:7], instr[12], instr[6:2], 5'h02, 3'b010, instr[11:9], 2'b00, OPCODE_STORE};
             end
 
             3'b011,
-            3'b101,        // c.fsdsp -> fsd rs2, imm(x2)
             3'b111: begin  // c.fswsp -> fsw rs2, imm(x2)
               instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
               illegal_instr_o = 1'b1;

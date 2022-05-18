@@ -831,19 +831,20 @@ typedef struct packed {
 
 // PC mux selector defines
 typedef enum logic[3:0] {
-  PC_BOOT     = 4'b0000,
-  PC_MRET     = 4'b0001,
-  PC_DRET     = 4'b0010,
-  PC_JUMP     = 4'b0100,
-  PC_BRANCH   = 4'b0101,
-  PC_FENCEI   = 4'b0110,
-  PC_TRAP_EXC = 4'b1000,
-  PC_TRAP_IRQ = 4'b1001,
-  PC_TRAP_DBD = 4'b1010,
-  PC_TRAP_DBE = 4'b1011,
-  PC_TRAP_NMI = 4'b1100,
+  PC_BOOT       = 4'b0000,
+  PC_MRET       = 4'b0001,
+  PC_DRET       = 4'b0010,
+  PC_JUMP       = 4'b0100,
+  PC_BRANCH     = 4'b0101,
+  PC_FENCEI     = 4'b0110,
+  PC_TRAP_EXC   = 4'b1000,
+  PC_TRAP_IRQ   = 4'b1001,
+  PC_TRAP_DBD   = 4'b1010,
+  PC_TRAP_DBE   = 4'b1011,
+  PC_TRAP_NMI   = 4'b1100,
   PC_TRAP_CLICV = 4'b1101,
-  PC_POINTER    = 4'b1110
+  PC_POINTER    = 4'b1110,
+  PC_TBLJUMP    = 4'b1111
 } pc_mux_e;
 
 // Exception Cause
@@ -1013,6 +1014,8 @@ typedef struct packed
 {
   logic        compressed;
   logic        clic_ptr;
+  logic        tbljmp;
+  logic        tbljmp_ptr;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
@@ -1191,6 +1194,7 @@ typedef struct packed {
   logic        instr_req;             // Start fetching instructions
   logic        pc_set;                // jump to address set by pc_mux
   logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
+  logic        pc_set_tbljmp;         // Signal pc_set is for Zc* cm.jt / cm.jalt pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
 
   // To WB stage

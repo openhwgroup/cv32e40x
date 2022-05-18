@@ -190,6 +190,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [24:0] mtvec_addr;
   logic [1:0]  mtvec_mode;
 
+  // JVT
+  jvt_t        jvt;
+
   logic [MTVT_ADDR_WIDTH-1:0] mtvt_addr;
 
   logic [7:0]  mintthresh;
@@ -400,6 +403,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mepc_i              ( mepc                     ), // Exception PC (restore upon return from exception/interrupt)
     .mtvec_addr_i        ( mtvec_addr               ), // Exception/interrupt address (MSBs only)
     .mtvt_addr_i         ( mtvt_addr                ), // CLIC vector base
+    .jvt_i               ( jvt                      ),
 
     .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
 
@@ -690,6 +694,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // mtvec address
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init_if      ),
+
+    .jvt_o                      ( jvt                    ),
 
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe             ),
