@@ -29,6 +29,7 @@
 module cv32e40x_if_stage import cv32e40x_pkg::*;
 #(
   parameter bit          A_EXT           = 0,
+  parameter b_ext_e      B_EXT           = B_NONE,
   parameter bit          X_EXT           = 0,
   parameter int          X_ID_WIDTH      = 4,
   parameter int          PMA_NUM_REGIONS = 0,
@@ -37,7 +38,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter bit          SMCLIC          = 1'b0,
   parameter int          SMCLIC_ID_WIDTH = 5,
   parameter bit          ZC_EXT          = 0,
-  parameter m_ext_e      M_EXT           = M
+  parameter m_ext_e      M_EXT           = M_NONE
 )
 (
   input  logic          clk,
@@ -307,6 +308,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   cv32e40x_compressed_decoder
   #(
       .ZC_EXT ( ZC_EXT ),
+      .B_EXT  ( B_EXT  ),
       .M_EXT  ( M_EXT  )
   )
   compressed_decoder_i

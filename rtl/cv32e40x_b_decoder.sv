@@ -29,18 +29,16 @@
 
 module cv32e40x_b_decoder import cv32e40x_pkg::*;
 #(
-  parameter b_ext_e B_EXT  = B_NONE,
-  parameter bit     ZC_EXT = 0
+  parameter b_ext_e B_EXT  = B_NONE
 )
 (
   // from IF/ID pipeline
   input logic [31:0] instr_rdata_i,
-  input logic        instr_compressed_i,
   output             decoder_ctrl_t decoder_ctrl_o
 );
 
-  localparam RV32B_ZBA = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
-  localparam RV32B_ZBB = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+  localparam RV32B_ZBA = (B_EXT == ZBA_ZBB) || (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+  localparam RV32B_ZBB = (B_EXT == ZBA_ZBB) || (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
   localparam RV32B_ZBS = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
   localparam RV32B_ZBC = (B_EXT == ZBA_ZBB_ZBC_ZBS);
 
@@ -129,16 +127,12 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
           end
           {7'b0000100, 3'b100}: begin // Zero extend halfword (zext.h)
             // zext.h is a subset of the proposed pack instruction in Zbkb
-            if (RV32B_ZBB || ZC_EXT) begin
+            if (RV32B_ZBB) begin
               decoder_ctrl_o.alu_operator     = ALU_B_ZEXT_H;
               decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
               decoder_ctrl_o.rf_re[1]         = 1'b0; // rs2 is not read, but field is hardcoded to x0
 
-              // IF ZBB is not configured, we should raise an illegal instruction
-              // if an uncompressed zext.h is being decoded.
-              // Zcb c.zext.h should still allow to execute normally
-              // Also illegal if bits 24:30 are non-zero
-              if ((instr_rdata_i[24:20] != 5'b00000) || (!RV32B_ZBB && !instr_compressed_i)) begin
+              if (instr_rdata_i[24:20] != 5'b00000) begin
                 decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end
             end
@@ -233,29 +227,15 @@ module cv32e40x_b_decoder import cv32e40x_pkg::*;
           end
 
           {7'b011_0000, 5'b0_0100, 3'b001}: begin
-            if (RV32B_ZBB || ZC_EXT) begin
+            if (RV32B_ZBB) begin
               decoder_ctrl_o.alu_operator     = ALU_B_SEXT_B;
               decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
-
-              // IF ZBB is not configured, we should raise an illegal instruction
-              // if an uncompressed sext.b is being decoded.
-              // Zcb c.sext.b should still allow to execute normally
-              if (!RV32B_ZBB && !instr_compressed_i) begin
-                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-              end
             end
           end
           {7'b011_0000, 5'b0_0101, 3'b001}: begin
-            if (RV32B_ZBB || ZC_EXT) begin
+            if (RV32B_ZBB) begin
               decoder_ctrl_o.alu_operator     = ALU_B_SEXT_H;
               decoder_ctrl_o.alu_op_b_mux_sel = OP_B_NONE;
-
-              // IF ZBB is not configured, we should raise an illegal instruction
-              // if an uncompressed sext.h is being decoded.
-              // Zcb c.sext.h should still allow to execute normally
-              if (!RV32B_ZBB && !instr_compressed_i) begin
-                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-              end
             end
           end
           {7'b0110000, 5'b?_????, 3'b101}: begin // Rotate Right immediate (rori)
