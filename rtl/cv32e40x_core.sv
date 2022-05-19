@@ -376,6 +376,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_if_stage
   #(
     .A_EXT               ( A_EXT                    ),
+    .B_EXT               ( B_EXT                    ),
     .X_EXT               ( X_EXT                    ),
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
@@ -436,7 +437,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .B_EXT                        ( B_EXT                     ),
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
-    .ZC_EXT                       ( ZC_EXT                    ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )
   id_stage_i
