@@ -29,15 +29,23 @@ If ``X_EXT`` = 1, then the address boundaries shall be configured to be ``X_MEM_
 
 Main memory vs I/O
 ~~~~~~~~~~~~~~~~~~
-Memory ranges can be defined as either main (``main=1``) or I/O (``main=0``). 
+Memory ranges can be defined as either main (``main=1``) or I/O (``main=0``).
+
 Code execution is allowed from main memory and main memory is considered to be idempotent. Non-aligned transactions are supported in main memory.
 Modifiable transactions are supported in main memory.
+
 Code execution is not allowed from I/O regions and an instruction access fault (exception code 1) is raised when attempting to execute from such regions. 
 I/O regions are considered to be non-idempotent and therefore the PMA will prevent speculative accesses to such regions.
-Non-aligned transactions are not supported in I/O regions.  An attempt to perform a non-naturally aligned load access to an I/O region causes a precise
+Non-aligned transactions are not supported in I/O regions. An attempt to perform a non-naturally aligned load access to an I/O region causes a precise
 load access fault (exception code 5). An attempt to perform a non-naturally aligned store access to an I/O region causes a precise store access fault (exception code 7).
 Modifiable/modified transactions are not supported in I/O regions.  An attempt to perform a modifiable/modified load access to an I/O region causes a precise
 load access fault (exception code 5). An attempt to perform a modifiable/modified store access to an I/O region causes a precise store access fault (exception code 7).
+
+.. note::
+   The [RISC-V-ZCA_ZCB_ZCMB_ZCMP_ZCMT]_ specification leaves it to the core implementation whether ``cm.push``, ``cm.pop``, ``cm.popret`` and ``cm.popretz`` instructions
+   are supported to non-idempotent memories or not. In |corev| the ``cm.push``, ``cm.pop``, ``cm.popret`` and ``cm.popretz`` instructions
+   are **not** allowed to perform their load or store acceses to non-idempotent memories (I/O) and a load access fault (exception code 5) or store access fault (exception code 7)
+   will occur upon the first such load or store access violating this requirement (meaning that the related ``pop`` or ``push`` might become partially executed).
 
 .. note::
    Modifiable transactions are transactions which allow transformations as for example merging or splitting. For example, a misaligned store word instruction that
