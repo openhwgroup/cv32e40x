@@ -147,7 +147,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // todo: May let suboperations (last_op==0) through and handle last_op within RVFI.
   //       This will also affect single step, and the controller must check last_op.
-  assign wb_valid_o = wb_valid && ex_wb_pipe_i.last_op;
+  assign wb_valid_o = wb_valid;
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid && instr_valid;

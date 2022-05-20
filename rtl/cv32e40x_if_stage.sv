@@ -92,7 +92,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // flag for predecoded cm.jt / cm.jalt.
   // Maps to custom use of JAL instruction
-  logic              tbljmp;
+  logic              tbljmp_raw; // Raw table jump from compressed decoder
+  logic              tbljmp;     // Table jump which may deassert due to exceptions
 
   logic              illegal_c_insn;
 
@@ -265,6 +266,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
+  // tbljmp is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
   // todo: Factor in last operation of sequenced Zc* (push/pop)
   assign last_op = tbljmp ? 1'b0 : 1'b1;
 
@@ -313,11 +315,14 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
           if_id_pipe_o.pc                    <= pc_if_o;
           if_id_pipe_o.instr_meta.compressed <= instr_compressed_int;
           if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
+
+          // Only update compressed_instr for compressed instructions
           if (instr_compressed_int) begin
             if_id_pipe_o.compressed_instr      <= prefetch_instr.bus_resp.rdata[15:0];
           end
         end
 
+        // For pointesrs, we want to update the if_id_pipe.ptr field, but also any associated error conditions from bus or MPU.
         if (ptr_in_if_o) begin
           // Update pointer value
           if_id_pipe_o.ptr                <= instr_decompressed.bus_resp.rdata;
@@ -347,9 +352,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .instr_o            ( instr_decompressed      ),
     .is_compressed_o    ( instr_compressed_int    ),
     .illegal_instr_o    ( illegal_c_insn          ),
-    .tbljmp_o           ( tbljmp                  )
+    .tbljmp_o           ( tbljmp_raw              )
   );
 
+  assign tbljmp = (instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK)) ? 1'b0 : tbljmp_raw;
 
   //---------------------------------------------------------------------------
   // eXtension interface

@@ -440,6 +440,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                   if (instr[12:10] != 3'b000) begin
                     illegal_instr_o = 1'b1;
                     tbljmp_o = 1'b0;
+                    instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
                   end
                 end
               end else begin

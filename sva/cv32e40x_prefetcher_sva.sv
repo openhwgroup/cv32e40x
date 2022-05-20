@@ -173,6 +173,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
                 $sformatf("First fetch after reset is not a branch"))
 
 if (SMCLIC) begin
+  // todo: fails if both SMCLIC and Zc* are enabled, and we get an exception the cycle after a table jump pointer fetch has been initiated.
   property p_data_q_no_branch;
     @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) |-> !fetch_branch_i);
   endproperty

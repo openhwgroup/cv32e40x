@@ -388,6 +388,7 @@ module cv32e40x_wrapper
 
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
+         .last_op_if_i             ( core_i.if_stage_i.last_op                                            ),
          .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
          .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id_i                   ),
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
@@ -422,6 +423,7 @@ module cv32e40x_wrapper
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
+         .last_op_wb_i             ( core_i.wb_stage_i.ex_wb_pipe_i.last_op                               ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 

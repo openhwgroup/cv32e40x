@@ -206,6 +206,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not count if halted or killed
   logic       wb_counter_event_gated;
 
+  // Detect uninterruptible table jumps
+  logic       tbljmp_in_ex_wb;
+
   assign fencei_ready = !lsu_busy_i;
 
   // Once the fencei handshake is initiated, it must complete and the instruction must retire.
@@ -351,7 +354,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || non_shv_irq_ack)) && !pending_debug;
+  // Single step into debug can be done when the last operation of an instruction is finished in WB
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && ex_wb_pipe_i.last_op) || non_shv_irq_ack)) && !pending_debug;
 
   // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
   assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
@@ -374,7 +378,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline;
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline && !tbljmp_in_ex_wb;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -399,6 +403,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
   assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
+  // Table jumps may not be interrupted if the last part has reached EX or WB.
+  assign tbljmp_in_ex_wb = ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) || (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op));
+
   // Allow interrupts to be taken only if there is no data request in WB,
   // and no trans_valid has been clocked from EX to environment.
   // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
@@ -417,7 +424,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       assign wbuf_irq_ok = 1'b1;
     end
   endgenerate
-  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && wbuf_irq_ok;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && wbuf_irq_ok && !tbljmp_in_ex_wb;
 
   // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
