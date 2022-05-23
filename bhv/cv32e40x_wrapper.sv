@@ -433,8 +433,6 @@ module cv32e40x_wrapper
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
-         .clic_nmi_pending_i       ( core_i.controller_i.controller_fsm_i.pending_clic_nmi                ),
-         .clic_nmi_is_store_i      ( 1'b0               /* CLIC NMI can only be due to a load*/           ),
          .pending_debug_i          ( core_i.controller_i.controller_fsm_i.pending_debug                   ),
          .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
          .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),

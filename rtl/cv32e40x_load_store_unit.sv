@@ -49,7 +49,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Control outputs
   output logic        busy_o,
   output logic        interruptible_o,
-  output logic        write_buffer_empty_o,
 
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
@@ -94,8 +93,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic           buffer_trans_valid;
   logic           buffer_trans_ready;
   obi_data_req_t  buffer_trans;
-
-  logic           buffer_empty;
 
   logic           filter_trans_valid;
   logic           filter_trans_ready;
@@ -665,11 +662,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     .valid_o            ( bus_trans_valid    ),
     .ready_i            ( bus_trans_ready    ),
-    .trans_o            ( bus_trans          ),
-    .empty_o            ( buffer_empty       )
+    .trans_o            ( bus_trans          )
   );
 
-  assign write_buffer_empty_o = buffer_empty;
   //////////////////////////////////////////////////////////////////////////////
   // OBI interface
   //////////////////////////////////////////////////////////////////////////////

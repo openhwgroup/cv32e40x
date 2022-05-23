@@ -72,7 +72,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
 
   input  logic        lsu_interruptible_i,        // LSU can be interrupted
-  input  logic        lsu_write_buffer_empty_i,   // LSU write buffer state
   // Interrupt Controller Signals
   input  logic        irq_req_ctrl_i,             // irq requst
   input  logic [9:0]  irq_id_ctrl_i,              // irq id
@@ -159,7 +158,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic pending_nmi;
   logic pending_nmi_early;
-  logic pending_clic_nmi;
   logic pending_debug;
   logic pending_single_step;
   logic pending_single_step_ptr;
@@ -175,9 +173,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Flag indicating there is a 'live' CLIC pointer in the pipeline
   // Used to block debug until pointer
   logic pointer_in_pipeline;
-
-  // Flag for checking if we can to a CLIC pointer fetch
-  logic wbuf_irq_ok;
 
   // Internal irq_ack for use when a (clic) pointer reaches ID stage and
   // we have single stepping enabled.
@@ -249,24 +244,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
 
   // Exception in WB if the following evaluates to 1
-  // CLIC: bus errors for pointer fetches are treated as NMI, not exceptions.
   assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
-                            (!ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err) ||
+                             ex_wb_pipe_i.instr.bus_resp.err                                       ||
                             ex_wb_pipe_i.illegal_insn                                              ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                   ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
                             (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
-  // For CLIC: Pointer fetches with PMA/PMP errors will get the exception code converted to LOAD_FAULT
-  //           Bus errors will be converted to NMI as for regular loads.
-  assign exception_cause_wb = (!ex_wb_pipe_i.instr_meta.clic_ptr && (ex_wb_pipe_i.instr.mpu_status != MPU_OK))  ? EXC_CAUSE_INSTR_FAULT     :
-                              (!ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err)            ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              (ex_wb_pipe_i.instr_meta.clic_ptr && (ex_wb_pipe_i.instr.mpu_status != MPU_OK))   ? EXC_CAUSE_LOAD_FAULT     :
-                              ex_wb_pipe_i.illegal_insn                                                         ? EXC_CAUSE_ILLEGAL_INSN    :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                              ? EXC_CAUSE_ECALL_MMODE     :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                               ? EXC_CAUSE_BREAKPOINT      :
-                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)                                             ? EXC_CAUSE_STORE_FAULT     :
+  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                  ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err                            ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn                                  ? EXC_CAUSE_ILLEGAL_INSN    :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)       ? EXC_CAUSE_ECALL_MMODE     :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)        ? EXC_CAUSE_BREAKPOINT      :
+                              (lsu_mpu_status_wb_i == MPU_WR_FAULT)                      ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
 
   // For now we are always allowed to take exceptions once they arrive in WB.
@@ -303,11 +294,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending NMI during debug mode
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  // CLIC pointer fetches with associated bus errors are treated as NMI. The error bit is taken from ex_wb_pipe and not flopped further.
-  //      This preserves the address of the pointer (ex_wb_pipe.pc) that must be stored to mepc.
-  assign pending_clic_nmi = (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr.bus_resp.err);
-  assign pending_nmi = (nmi_pending_q || pending_clic_nmi) &&
-                       !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
   // This signal is used for halting the ID stage in the same cycle as the bus error arrives.
@@ -320,9 +307,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
-  // NMI's related to clic pointer load bus errors are not signaled through dcsr.nmip
-  //  This can only happen during machine mode as interrupts are blocked during debug,
-  //  and the dcsr is not readable from machine mode. No need to expose this bit as it will never be visible.
   assign ctrl_fsm_o.pending_nmi = nmi_pending_q;
 
   // Debug //
@@ -407,17 +391,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
-  // todo: generate CLIC, check shv and write buffer status
-  generate
-    if (SMCLIC) begin : gen_clic_wbuf_check
-      // If an interrupt is SHV, the write buffer must be empty before we allow to take the interrupt
-      // The content in the write buffer could be a pointer update.
-      assign wbuf_irq_ok = irq_clic_shv_i ? lsu_write_buffer_empty_i : 1'b1;
-    end else begin : gen_basic_wbuf_check
-      assign wbuf_irq_ok = 1'b1;
-    end
-  endgenerate
-  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && wbuf_irq_ok;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
 
   // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
