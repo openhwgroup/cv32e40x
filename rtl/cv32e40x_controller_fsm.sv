@@ -244,7 +244,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign branch_taken_ex = branch_in_ex && !branch_taken_q;
 
   // Exception in WB if the following evaluates to 1
-  // CLIC: bus errors for pointer fetches are treated as NMI, not exceptions.
   assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
                              ex_wb_pipe_i.instr.bus_resp.err                                       ||
                             ex_wb_pipe_i.illegal_insn                                              ||
@@ -253,8 +252,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   // Set exception cause
-  // For CLIC: Pointer fetches with PMA/PMP errors will get the exception code converted to LOAD_FAULT
-  //           Bus errors will be converted to NMI as for regular loads.
   assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                  ? EXC_CAUSE_INSTR_FAULT     :
                               ex_wb_pipe_i.instr.bus_resp.err                            ? EXC_CAUSE_INSTR_BUS_FAULT :
                               ex_wb_pipe_i.illegal_insn                                  ? EXC_CAUSE_ILLEGAL_INSN    :
@@ -297,8 +294,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending NMI during debug mode
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  // CLIC pointer fetches with associated bus errors are treated as NMI. The error bit is taken from ex_wb_pipe and not flopped further.
-  //      This preserves the address of the pointer (ex_wb_pipe.pc) that must be stored to mepc.
   assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
   // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
@@ -312,9 +307,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
-  // NMI's related to clic pointer load bus errors are not signaled through dcsr.nmip
-  //  This can only happen during machine mode as interrupts are blocked during debug,
-  //  and the dcsr is not readable from machine mode. No need to expose this bit as it will never be visible.
   assign ctrl_fsm_o.pending_nmi = nmi_pending_q;
 
   // Debug //
