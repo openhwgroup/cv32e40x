@@ -423,7 +423,7 @@ module cv32e40x_wrapper
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
-         .last_op_wb_i             ( core_i.wb_stage_i.ex_wb_pipe_i.last_op                               ),
+         .last_op_wb_i             ( core_i.wb_stage_i.last_op_o                                          ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
@@ -435,8 +435,6 @@ module cv32e40x_wrapper
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
-         .clic_nmi_pending_i       ( core_i.controller_i.controller_fsm_i.pending_clic_nmi                ),
-         .clic_nmi_is_store_i      ( 1'b0               /* CLIC NMI can only be due to a load*/           ),
          .pending_debug_i          ( core_i.controller_i.controller_fsm_i.pending_debug                   ),
          .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
          .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),

@@ -151,7 +151,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        if_busy;
   logic        lsu_busy;
   logic        lsu_interruptible;
-  logic        lsu_write_buffer_empty;
 
   // ID/EX pipeline
   id_ex_pipe_t id_ex_pipe;
@@ -173,6 +172,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Forwarding RF from EX
   logic [31:0] rf_wdata_ex;
+
+  // Detect last_op
+  logic        last_op_ex;
+  logic        last_op_wb;
 
   // Register file signals from ID/decoder to controller
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_id;
@@ -379,6 +382,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_if_stage
   #(
     .A_EXT               ( A_EXT                    ),
+    .B_EXT               ( B_EXT                    ),
     .X_EXT               ( X_EXT                    ),
     .X_ID_WIDTH          ( X_ID_WIDTH               ),
     .PMA_NUM_REGIONS     ( PMA_NUM_REGIONS          ),
@@ -440,7 +444,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .B_EXT                        ( B_EXT                     ),
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
-    .ZC_EXT                       ( ZC_EXT                    ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
   )
   id_stage_i
@@ -542,8 +545,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Pipeline handshakes
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
-    .wb_ready_i                 ( wb_ready                     )
-  );
+    .wb_ready_i                 ( wb_ready                     ),
+    .last_op_o                  ( last_op_ex                   )
+);
 
   ////////////////////////////////////////////////////////////////////////////////////////
   //    _     ___    _    ____    ____ _____ ___  ____  _____   _   _ _   _ ___ _____   //
@@ -579,7 +583,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Control signals
     .busy_o                ( lsu_busy           ),
     .interruptible_o       ( lsu_interruptible  ),
-    .write_buffer_empty_o  ( lsu_write_buffer_empty ),
 
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
@@ -647,7 +650,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // CSR/CLIC pointer inputs
     .clic_pa_valid_i            ( csr_clic_pa_valid            ),
-    .clic_pa_i                  ( csr_clic_pa                  )
+    .clic_pa_i                  ( csr_clic_pa                  ),
+
+    .last_op_o                  ( last_op_wb                   )
   );
 
   //////////////////////////////////////
@@ -770,6 +775,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
 
+    // last_op bits
+    .last_op_ex_i                   ( last_op_ex             ),
+    .last_op_wb_i                   ( last_op_wb             ),
+
     .if_valid_i                     ( if_valid               ),
     .pc_if_i                        ( pc_if                  ),
     // from IF/ID pipeline
@@ -784,13 +793,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_op_id_i                    ( csr_op_id              ),
 
     // LSU
-    .lsu_split_ex_i                 ( lsu_split_ex           ),
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
     .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
-    .lsu_write_buffer_empty_i       ( lsu_write_buffer_empty ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

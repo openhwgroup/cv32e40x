@@ -7,6 +7,80 @@ Exceptions and Interrupts
 If the ``SMCLIC`` parameter is set to 0, then the basic interrupt architecture is supported (see :ref:`basic_interrupt_architecture`).
 If the ``SMCLIC`` parameter is set to 1, then the CLIC interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
 
+Exceptions
+----------
+
+|corev| can trigger the following exceptions as reported in ``mcause``:
+
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ | Interrupt      | Exception Code | Description                           | Scenario(s)                                                               |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |              1 | Instruction access fault              | Execution attempt from I/O region.                                        |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |              2 | Illegal instruction                   |                                                                           |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |              3 | Breakpoint                            | Environment break.                                                        |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |              5 | Load access fault                     | Non-naturally aligned load access attempt to an I/O region.               |
+ |                |                |                                       | Modified load access attempt to an I/O region.                            |
+ |                |                |                                       | Load-Reserved attempt to region without atomic support.                   |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |              7 | Store/AMO access fault                | Non-naturally aligned store access attempt to an I/O region.              |
+ |                |                |                                       | Modified store access attempt to an I/O region.                           |
+ |                |                |                                       | Store-Conditional or Atomic Memory Operation (AMO) attempt                |
+ |                |                |                                       | to region without atomic support.                                         |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |             11 | Environment call from M-Mode (ECALL)  |                                                                           |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+ |              0 |             48 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
+ +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+
+If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
+
+* ``instruction access fault (1)``
+* ``instruction bus fault (48)``
+* ``illegal instruction (2)``
+* ``environment call from M-Mode (11)``
+* ``environment break (3)``
+* ``store/AMO access fault (7)``
+* ``load access fault (5)``
+
+Exceptions in general cannot be disabled and are always active. 
+All exceptions are precise.
+Whether the PMA will actually cause exceptions depends on its configuration.
+|corev|  raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being
+illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding
+is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:`custom-isa-extensions`).
+An instruction bus error leads to a precise instruction interface bus fault if an attempt is made to execute the instruction that has an associated bus error.
+Similarly an instruction fetch with a failing PMA check only leads to an instruction access exception if an actual execution attempt is made for it.
+
+Non Maskable Interrupts
+-----------------------
+
+Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
+
+.. note::
+
+   Specifically ``mstatus.mie`` will get cleared to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of 
+   ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
+   specified at a future date, then we will reconsider our implementation.
+
+The NMI vector location is at index 15 of the machine trap vector table for non-vectored basic mode, vectored basic mode and CLIC mode (i.e. {**mtvec[31:7]**, 5'hF, 2'b00}).
+
+An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
+NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
+This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at most two instructions will retire before the NMI is taken.
+
+If an NMI becomes pending while in debug mode as described above, the NMI will be taken immediately after debug mode has been exited.
+
+In case of bufferable stores, the NMI is allowed to become visible an arbitrary time after the instruction retirement. As for the case with debugging, this can cause several instructions to retire
+before the NMI becomes visible to the core.
+
+When a data bus fault occurs, the first detected fault will be latched and used for ``mcause`` when the NMI is taken. Any new data bus faults occuring while an NMI is pending will be discarded.
+When the NMI handler is entered, new data bus faults may be latched.
+
+While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
+
 .. _basic_interrupt_architecture:
 
 Basic Interrupt Architecture
@@ -207,77 +281,3 @@ Nested Interrupt Handling
 
 CLIC extends interrupt preemption to support up to 256 interrupt levels for each privilege mode,
 where higher-numbered interrupt levels can preempt lower-numbered interrupt levels. See [RISC-V-SMCLIC]_ for details.
-
-Non Maskable Interrupts
------------------------
-
-Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
-
-.. note::
-
-   Specifically ``mstatus.mie`` will get cleared to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of 
-   ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
-   specified at a future date, then we will reconsider our implementation.
-
-The NMI vector location is at index 15 of the machine trap vector table for non-vectored basic mode, vectored basic mode and CLIC mode (i.e. {**mtvec[31:7]**, 5'hF, 2'b00}).
-
-An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
-NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
-This means that many instructions may retire before the NMI is visible to the core if debugging is taking place. Once the NMI is visible to the core, at most two instructions will retire before the NMI is taken.
-
-If an NMI becomes pending while in debug mode as described above, the NMI will be taken immediately after debug mode has been exited.
-
-In case of bufferable stores, the NMI is allowed to become visible an arbitrary time after the instruction retirement. As for the case with debugging, this can cause several instructions to retire
-before the NMI becomes visible to the core.
-
-When a data bus fault occurs, the first detected fault will be latched and used for ``mcause`` when the NMI is taken. Any new data bus faults occuring while an NMI is pending will be discarded.
-When the NMI handler is entered, new data bus faults may be latched.
-
-While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
-
-Exceptions
-----------
-
-|corev| can trigger the following exceptions as reported in ``mcause``:
-
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- | Interrupt      | Exception Code | Description                           | Scenario(s)                                                               |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              1 | Instruction access fault              | Execution attempt from I/O region.                                        |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              2 | Illegal instruction                   |                                                                           |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              3 | Breakpoint                            | Environment break.                                                        |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              5 | Load access fault                     | Non-naturally aligned load access attempt to an I/O region.               |
- |                |                |                                       | Modified load access attempt to an I/O region.                            |
- |                |                |                                       | Load-Reserved attempt to region without atomic support.                   |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |              7 | Store/AMO access fault                | Non-naturally aligned store access attempt to an I/O region.              |
- |                |                |                                       | Modified store access attempt to an I/O region.                           |
- |                |                |                                       | Store-Conditional or Atomic Memory Operation (AMO) attempt                |
- |                |                |                                       | to region without atomic support.                                         |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |             11 | Environment call from M-Mode (ECALL)  |                                                                           |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
- |              0 |             48 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
- +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
-
-If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
-
-* ``instruction access fault (1)``
-* ``instruction bus fault (48)``
-* ``illegal instruction (2)``
-* ``environment call from M-Mode (11)``
-* ``environment break (3)``
-* ``store/AMO access fault (7)``
-* ``load access fault (5)``
-
-Exceptions in general cannot be disabled and are always active. 
-All exceptions are precise.
-Whether the PMA will actually cause exceptions depends on its configuration.
-|corev|  raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being
-illegal according to the ISA implemented by the core, as well as for any instruction that is left undefined in these specifications unless the instruction encoding
-is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:`custom-isa-extensions`).
-An instruction bus error leads to a precise instruction interface bus fault if an attempt is made to execute the instruction that has an associated bus error.
-Similarly an instruction fetch with a failing PMA check only leads to an instruction access exception if an actual execution attempt is made for it.

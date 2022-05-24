@@ -47,10 +47,8 @@ module cv32e40x_write_buffer import cv32e40x_pkg::*;
    // outputs
    output logic          valid_o,
    output obi_data_req_t trans_o,
-   output logic          ready_o,
-
-   output logic          empty_o
-   );
+   output logic          ready_o
+  );
 
   // local signals
   write_buffer_state_e        state, next_state;
@@ -114,7 +112,5 @@ module cv32e40x_write_buffer import cv32e40x_pkg::*;
                    (bufferable || ready_i);  // Ready for bufferable transfer, accept any transfer if downstream is ready
   assign valid_o = (state == WBUF_FULL) || valid_i;
   assign trans_o = (state == WBUF_FULL) ? trans_q : trans_i;
-
-  assign empty_o = (state == WBUF_EMPTY);
 
 endmodule

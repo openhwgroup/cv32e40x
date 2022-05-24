@@ -73,8 +73,8 @@ module cv32e40x_controller_fsm_sva
   input logic           nmi_is_store_q,
   input logic           nmi_pending_q,
   input dcsr_t          dcsr_i,
-  input logic           lsu_write_buffer_empty_i,
-  input logic           irq_clic_shv_i
+  input logic           irq_clic_shv_i,
+  input logic           last_op_wb_i
 );
 
 
@@ -492,7 +492,7 @@ endgenerate
       valid_cnt <= '0;
     end else begin
       if(bus_error_latched) begin
-        if(wb_valid_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
+        if(wb_valid_i && last_op_wb_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
           valid_cnt <= valid_cnt + 1'b1;
         end
       end else begin
@@ -514,11 +514,6 @@ endgenerate
     else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 
 if (SMCLIC) begin
-  // When a CLIC SHV interrupt is taken, the write buffer must be empty
-  a_clic_shv_wbuf_empty:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (irq_clic_shv_i && ctrl_fsm_o.irq_ack) |-> lsu_write_buffer_empty_i)
-    else `uvm_error("controller", "LSU write buffer not empty when fetching CLIC pointer")
 
   // After a pc_set to PC_TRAP_CLICV, only the following jump targets are allowed:
   // PC_POINTER : Normal execution, the pointer target is being fetched

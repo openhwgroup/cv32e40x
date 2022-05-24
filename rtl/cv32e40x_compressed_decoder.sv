@@ -27,7 +27,8 @@
 module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
 #(
     parameter bit          ZC_EXT    = 0,
-    parameter m_ext_e      M_EXT     = M
+    parameter b_ext_e      B_EXT     = B_NONE,
+    parameter m_ext_e      M_EXT     = M_NONE
  )
 (
   input  inst_resp_t  instr_i,
@@ -289,16 +290,31 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                             instr_o.bus_resp.rdata = {4'h0, 8'hff, 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7],  OPCODE_OPIMM};
                           end
                           3'b001: begin
-                            // c.sext.b -> sext.b rsd', rsd'
-                            instr_o.bus_resp.rdata = {7'b0110000, 5'b00100, 2'b01, instr[9:7], 3'b001, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                            if (B_EXT != B_NONE) begin
+                              // c.sext.b -> sext.b rsd', rsd'
+                              instr_o.bus_resp.rdata = {7'b0110000, 5'b00100, 2'b01, instr[9:7], 3'b001, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                            end else begin
+                              instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
+                              illegal_instr_o = 1'b1;
+                            end
                           end
                           3'b010: begin
-                            // c.zext.h -> zext.h rsd', rsd'
-                            instr_o.bus_resp.rdata = {7'b0000100, 5'b00000, 2'b01, instr[9:7], 3'b100, 2'b01, instr[9:7],  OPCODE_OP};
+                            if (B_EXT != B_NONE) begin
+                              // c.zext.h -> zext.h rsd', rsd'
+                              instr_o.bus_resp.rdata = {7'b0000100, 5'b00000, 2'b01, instr[9:7], 3'b100, 2'b01, instr[9:7],  OPCODE_OP};
+                            end else begin
+                              instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
+                              illegal_instr_o = 1'b1;
+                            end
                           end
                           3'b011: begin
-                            //c.sext.h -> sext.h rsd', rsd'
-                            instr_o.bus_resp.rdata = {7'b0110000, 5'b00101, 2'b01, instr[9:7], 3'b001, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                            if (B_EXT != B_NONE) begin
+                              // c.sext.h -> sext.h rsd', rsd'
+                              instr_o.bus_resp.rdata = {7'b0110000, 5'b00101, 2'b01, instr[9:7], 3'b001, 2'b01, instr[9:7],  OPCODE_OPIMM};
+                            end else begin
+                              instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
+                              illegal_instr_o = 1'b1;
+                            end
                           end
                           3'b101: begin
                             // c.not -> xori rsd', rsd', -1

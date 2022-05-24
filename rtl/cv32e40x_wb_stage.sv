@@ -72,7 +72,9 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // From cs_registers
   input logic [31:0]    clic_pa_i,
-  input logic           clic_pa_valid_i
+  input logic           clic_pa_valid_i,
+
+  output logic          last_op_o
 );
 
   logic                 instr_valid;
@@ -133,24 +135,24 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // - Will be 0 for interrupted instruction and debug entry
   // - Will be 1 for synchronous exceptions (which is easier to deal with for RVFI); this implies that wb_valid
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
-  // - Will be 1 only for the second phase of a split misaligned load/store that completes without MPU errors.
+  // - Will be 1 for both phases of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
   // - Will be 0 for CLIC pointer fetches todo: Do we need wb_valid=1 for faulted pointer fetches for RVFI?
-  // todo: Now wb_valid is high once per instruction. For split LSU and push/pop we want it to go high for every
-  //       operation. RVFI, instret etc would need to factor in the 'last' bit
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
-                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)  ||    // LSU instructions have valid result based on data_rvalid_i
+                     ( ex_wb_pipe_i.lsu_en && lsu_valid_i)        // LSU instructions have valid result based on data_rvalid_i
                                                                   // todo: ideally a similar line is added here that delays signaling wb_valid until a WFI really retires.
                                                                   // This should be checked for bad timing paths. Currently RVFI contains a wb_valid_adjusted signal/hack to achieve the same
-                     ( ex_wb_pipe_i.lsu_en && lsu_exception)      // LSU instruction had an exception
                     ) && !ex_wb_pipe_i.instr_meta.clic_ptr && instr_valid;
 
-  // todo: May let suboperations (last_op==0) through and handle last_op within RVFI.
-  //       This will also affect single step, and the controller must check last_op.
+  // Letting all suboperations signal wb_valid
   assign wb_valid_o = wb_valid;
 
+  // Signal that WB stage contains the last operation of an instruction
+  // Split misaligned LSU instructions are forced to be 'last_op' if an exception occurs in either the first or last operation.
+  assign last_op_o = ex_wb_pipe_i.last_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
+
   // Export signal indicating WB stage stalled by load/store
-  assign data_stall_o = (ex_wb_pipe_i.lsu_en && !lsu_valid_i) && !wb_valid && instr_valid;
+  assign data_stall_o = ex_wb_pipe_i.lsu_en && !(lsu_valid_i && last_op_o) && instr_valid;
 
   //---------------------------------------------------------------------------
   // eXtension interface

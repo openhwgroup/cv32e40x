@@ -36,7 +36,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
   parameter bit          X_EXT                  = 0,
-  parameter bit          ZC_EXT                 = 0,
   parameter              DEBUG_TRIGGER_EN       = 1,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2
 )
@@ -401,7 +400,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .A_EXT                           ( A_EXT                     ),
     .B_EXT                           ( B_EXT                     ),
     .M_EXT                           ( M_EXT                     ),
-    .ZC_EXT                          ( ZC_EXT                    ),
     .DEBUG_TRIGGER_EN                ( DEBUG_TRIGGER_EN          )
   )
   decoder_i
