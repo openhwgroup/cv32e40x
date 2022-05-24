@@ -135,7 +135,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // - Will be 0 for interrupted instruction and debug entry
   // - Will be 1 for synchronous exceptions (which is easier to deal with for RVFI); this implies that wb_valid
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
-  // - Will be 1 only for the both phases of a split misaligned load/store that completes without MPU errors.
+  // - Will be 1 for both phases of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
   // - Will be 0 for CLIC pointer fetches todo: Do we need wb_valid=1 for faulted pointer fetches for RVFI?
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
