@@ -422,6 +422,7 @@ module cv32e40x_wrapper
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
+         .last_op_wb_i             ( core_i.wb_stage_i.last_op_o                                          ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 

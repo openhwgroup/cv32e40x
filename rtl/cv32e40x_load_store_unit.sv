@@ -426,10 +426,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign ready_1_o   = ((cnt_q == 2'b00) ? 1'b1 : resp_valid) && ready_1_i;
   assign xif_ready_1 = ((cnt_q == 2'b00) ? 1'b1 : resp_valid);
 
-  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. For a misaligned/split
-  // load/store only its second phase is marked as valid (last_q == 1'b1)
-  assign valid_1_o                          = last_q && resp_valid && valid_1_i && !xif_res_q;
-  assign xif_mem_result_if.mem_result_valid = last_q && resp_valid &&               xif_res_q;
+  // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. Both parts of a misaligned transfer will signal valid_1_o.
+  assign valid_1_o                          = resp_valid && valid_1_i && !xif_res_q;
+  assign xif_mem_result_if.mem_result_valid = last_q && resp_valid && xif_res_q; // todo: last_q or not?
 
   // LSU EX stage readyness requires two criteria to be met:
   //
