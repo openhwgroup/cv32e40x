@@ -73,7 +73,8 @@ module cv32e40x_controller_fsm_sva
   input logic           nmi_is_store_q,
   input logic           nmi_pending_q,
   input dcsr_t          dcsr_i,
-  input logic           irq_clic_shv_i
+  input logic           irq_clic_shv_i,
+  input logic           last_op_wb_i
 );
 
 
@@ -491,7 +492,7 @@ endgenerate
       valid_cnt <= '0;
     end else begin
       if(bus_error_latched) begin
-        if(wb_valid_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
+        if(wb_valid_i && last_op_wb_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
           valid_cnt <= valid_cnt + 1'b1;
         end
       end else begin

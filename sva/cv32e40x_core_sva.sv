@@ -49,6 +49,7 @@ module cv32e40x_core_sva
   input ex_wb_pipe_t ex_wb_pipe,
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
+  input logic        last_op_wb,
 
   input alu_op_a_mux_e alu_op_a_mux_sel_id_i,
   input alu_op_b_mux_e alu_op_b_mux_sel_id_i,
@@ -367,7 +368,7 @@ end
   // Check that only a single instruction can retire during single step
   a_single_step_retire :
     assert property (@(posedge clk) disable iff (!rst_ni)
-                      (wb_valid && dcsr.step && !ctrl_fsm.debug_mode)
+                      (wb_valid && last_op_wb && dcsr.step && !ctrl_fsm.debug_mode)
                       ##1 wb_valid [->1]
                       |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Multiple instructions retired during single stepping")

@@ -59,11 +59,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-  input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
+  input  logic        last_op_ex_i,               // EX stage contains the last operation of an instruction
 
   // From WB stage
   input  ex_wb_pipe_t ex_wb_pipe_i,
   input  logic [1:0]  lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
+  input  logic        last_op_wb_i,               // WB stage contains the last operation of an instruction
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
@@ -335,7 +336,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || non_shv_irq_ack)) && !pending_debug;
+  // single step becomes pending when the last operation of an instruction is done in WB, or we ack a non-shv interrupt.
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && last_op_wb_i) || non_shv_irq_ack)) && !pending_debug;
 
   // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
   assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
@@ -416,7 +418,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.if_invalid    = !if_valid_i && id_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
-  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
+  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !(wb_valid_i && last_op_wb_i);
   assign ctrl_fsm_o.mhpmevent.id_jalr_stall = ctrl_byp_i.jalr_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
@@ -943,7 +945,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
       // CLIC: Exluding pointer fetches as they are not instructions
-      if (ex_valid_i && wb_ready_i && !lsu_split_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
+      if (ex_valid_i && wb_ready_i && last_op_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet
