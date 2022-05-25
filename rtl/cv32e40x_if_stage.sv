@@ -146,6 +146,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
+      // JVT + (index << 2)
       PC_TBLJUMP :   branch_addr_n = (jvt_i.base << 6) + (if_id_pipe_o.instr.bus_resp.rdata[19:12] << 2);
       default:;
     endcase
@@ -323,7 +324,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
           end
         end
 
-        // For pointesrs, we want to update the if_id_pipe.ptr field, but also any associated error conditions from bus or MPU.
+        // For pointers, we want to update the if_id_pipe.ptr field, but also any associated error conditions from bus or MPU.
         if (ptr_in_if_o) begin
           // Update pointer value
           if_id_pipe_o.ptr                <= instr_decompressed.bus_resp.rdata;

@@ -564,10 +564,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o = addr_q;
 
-  // Signal that result is a pointer
-  // CLIC vectoring or Zc table jump
-  // todo: probably need to differentiate between CLIC and Zc as they will be handled differently by the pipeline/controller.
+  // Signal that result is a CLIC pointer
   assign instr_is_clic_ptr_o   = is_clic_ptr_q;
+
+  // Signal that result is a table jump pointer
   assign instr_is_tbljmp_ptr_o = is_tbljmp_ptr_q;
 
   // Signal that a pointer is about to be fetched

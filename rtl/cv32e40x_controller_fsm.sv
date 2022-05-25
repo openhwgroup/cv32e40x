@@ -232,6 +232,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign sys_mret_id = sys_en_id_i && sys_mret_id_i && if_id_pipe_i.instr_valid;
   assign jmp_id      = alu_en_id_i && alu_jmp_id_i  && if_id_pipe_i.instr_valid;
 
+  // Detect that a jump is in the ID stage.
+  // This will also be true for table jumps, as they are encoded as JAL instructions.
+  //   An extra table jump flag is used in the logic for taken jumps to disinguish between
+  //   regular jumps and table jumps.
   assign jump_in_id = (jmp_id && !ctrl_byp_i.jalr_stall) || (sys_mret_id && !ctrl_byp_i.csr_stall);
 
   // Blocking on branch_taken_q, as a jump has already been taken
@@ -363,6 +367,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
+  // Once the first part of a table jump has finished in WB, we are not allowed to take debug before the last part finishes. This can be detected when the last
+  // part of a table jump is in either EX or WB.
   assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline && !tbljmp_in_ex_wb;
 
   // Debug pending for any other reason than single step
@@ -398,6 +404,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // will be interruptable as they were convered to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
+  // Once the first part of a table jump has finished in WB, we are not allowed to take interrupts before the last part finishes. This can be detected when the last
+  // part of a table jump is in either EX or WB.
 
   assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !tbljmp_in_ex_wb;
 
@@ -702,6 +710,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               //       state -> POINTER_FETCH
 
             end else begin
+              // For table jumps we have two different jumps
+              // - First part does a pointer fetch from (jvt + (index<<2))
+              // - Second part jumps to the fetched pointer
+              // Regular jumps use the regular jump to the target calculated in the ID stage.
               ctrl_fsm_o.pc_mux        = if_id_pipe_i.instr_meta.tbljmp && !if_id_pipe_i.last_op ? PC_TBLJUMP :
                                          if_id_pipe_i.instr_meta.tbljmp && if_id_pipe_i.last_op  ? PC_POINTER : PC_JUMP;
               ctrl_fsm_o.pc_set        = 1'b1;
