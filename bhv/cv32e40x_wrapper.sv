@@ -239,7 +239,8 @@ module cv32e40x_wrapper
     core_i.if_stage_i.prefetch_unit_i.prefetcher_i
       cv32e40x_prefetcher_sva
         #(.SMCLIC(SMCLIC))
-        prefetcher_sva (.*);
+        prefetcher_sva ( .prefetch_is_clic_ptr (core_i.if_stage_i.prefetch_unit_i.prefetch_is_clic_ptr_o),
+                        .*);
 
   bind cv32e40x_core:
     core_i cv32e40x_core_sva

@@ -50,7 +50,8 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
   input  logic        fetch_ready_o,
   input  logic        fetch_valid_i,
 
-  input  prefetch_state_e  state_q
+  input  prefetch_state_e  state_q,
+  input  logic        prefetch_is_clic_ptr
 
 
 );
@@ -173,9 +174,13 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
                 $sformatf("First fetch after reset is not a branch"))
 
 if (SMCLIC) begin
-  // todo: fails if both SMCLIC and Zc* are enabled, and we get an exception the cycle after a table jump pointer fetch has been initiated.
+  // We cannot have a new fetch_branch when a CLIC pointer fetch is outstanding. If that happens, the core will lose track of
+  // which which address to return to (mepc, dpc) as the pointer is not associated with an actual instruction.
+  // For Zc pointer fetches, we can allow this (for instance debug entry or exception while the pointer is outstanding).
+  //   For this case, the PC of the tablejump instruction is available in the pipeline.
+
   property p_data_q_no_branch;
-    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) |-> !fetch_branch_i);
+    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) && prefetch_is_clic_ptr |-> !fetch_branch_i);
   endproperty
 
   a_p_data_q_no_branch:

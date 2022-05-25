@@ -399,7 +399,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
 
-  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !tbljmp_in_ex_wb;
 
   // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
