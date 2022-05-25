@@ -56,7 +56,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
-  input  jvt_t          jvt_i,
+  input  logic [JVT_ADDR_WIDTH-1:0]    jvt_addr_i,
 
   input ctrl_fsm_t      ctrl_fsm_i,
   input  logic          trigger_match_i,
@@ -147,7 +147,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
       // JVT + (index << 2)
-      PC_TBLJUMP :   branch_addr_n = (jvt_i.base << 6) + (if_id_pipe_o.instr.bus_resp.rdata[19:12] << 2);
+      PC_TBLJUMP :   branch_addr_n = (jvt_addr_i << 6) + (ctrl_fsm_i.jvt_pc_mux[7:0] << 2);
+      //PC_TBLJUMP :   branch_addr_n = {jvt_addr_i, ctrl_fsm_i.jvt_pc_mux[7:0], 2'b00}; // todo: we really want the code to look like this,
+                                                                                        //       but the current spec does not allow it.
       default:;
     endcase
   end
@@ -273,6 +275,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign last_op = tbljmp ? 1'b0 : 1'b1;
 
   // Populate instruction meta data
+  // Fields 'compressed' and 'tbljmp' keep their old value by default.
+  //   - In case of a table jump we need the fields to stay as 'compressed=1' and 'tbljmp=1'
+  //     even when the pointer is sent to ID (operation 2/2)
+  //   - For all cases except table jump pointer we update the values to the current values from predecoding.
   instr_meta_t instr_meta_n;
   always_comb begin
     instr_meta_n = '0;
@@ -358,6 +364,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .tbljmp_o           ( tbljmp_raw              )
   );
 
+  // tbljmp below is used in calculating 'last_op'. If we have a faulted fetch, the instruction word may be anything
+  // (not cleared on faulted fetches). A faulted fetch should not be decoded to anything and thus tbljmp is cleared.
+  // One could instead set the instruction word itself to all zeros or another illegal instruction on known fetch faults,
+  // but this may impact timing more than suppressing control bits.
   assign tbljmp = (instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK)) ? 1'b0 : tbljmp_raw;
 
   //---------------------------------------------------------------------------

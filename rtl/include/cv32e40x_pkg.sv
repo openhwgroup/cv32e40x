@@ -483,6 +483,10 @@ typedef struct packed {
   logic [5: 0] mode;
 } jvt_t;
 
+// todo: Might change this is Zc TG changes spec to allow some
+// bits of the jvt.base to be WARL
+parameter JVT_ADDR_WIDTH = 26;
+
 typedef struct packed {
   logic         sd;     // State dirty
   logic [30:23] zero3;  // Hardwired zero
@@ -1206,6 +1210,7 @@ typedef struct packed {
   logic [4:0]  mtvec_pc_mux;          // id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
   logic [9:0]  mtvt_pc_mux;           // id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
+  logic [7:0]  jvt_pc_mux;            // Index for table jumps
 
   logic        irq_ack;               // irq has been taken
   logic [9:0]  irq_id;                // id of taken irq. Max width (1024 interrupts), unused bits will be tied off

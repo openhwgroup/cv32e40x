@@ -461,7 +461,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .bch_jmp_mux_sel_o               ( bch_jmp_mux_sel           ),
 
     // From controller fsm
-    .ctrl_fsm_i                      ( ctrl_fsm_i                )
+    .ctrl_fsm_i                      ( ctrl_fsm_i                ),
+
+    // Table jump related signals
+    .tbljmp_first_i                  ( tbljmp_first              )
   );
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
@@ -611,7 +614,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.illegal_insn           <= illegal_insn && !xif_insn_accept;
 
-        id_ex_pipe_o.rf_we                  <= tbljmp_first ? 1'b0 : rf_we;  // Only the last part of table jumps write to the link register
+        id_ex_pipe_o.rf_we                  <= rf_we;
         if (rf_we) begin
           id_ex_pipe_o.rf_waddr             <= rf_waddr;
         end

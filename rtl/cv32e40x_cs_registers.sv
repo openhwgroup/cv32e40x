@@ -66,7 +66,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic            csr_mtvec_init_i,
 
   // JVT to IF stage
-  output jvt_t            jvt_o,
+  output logic [JVT_ADDR_WIDTH-1:0] jvt_addr_o,
   // ID/EX pipeline
   input id_ex_pipe_t      id_ex_pipe_i,
 
@@ -913,7 +913,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_error_o (jvt_rd_error)
   );
 
-  assign jvt_o = jvt_t'(jvt_q);
+  assign jvt_addr_o = jvt_q.base [31:32-JVT_ADDR_WIDTH];
 
   cv32e40x_csr #(
     .WIDTH      (32),

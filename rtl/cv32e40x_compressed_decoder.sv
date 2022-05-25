@@ -445,19 +445,18 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                 // The cm.jt and cm.jalt have no equivalent 32-bit instructions.
                 // Mapping to JAL anyway, but an extra control bit is set to indicate that these
                 // are table jumps as opposed to regular JAL instruction.
-                if (instr[12:8] == 5'b00000) begin
-                  // cm.jt -> JAL x0, index
-                  instr_o.bus_resp.rdata = {13'b0000000000000, instr[7:2], 5'b00000, OPCODE_JAL};
+                if (instr[12:10] == 3'b000) begin
                   tbljmp_o = 1'b1;
-                end else begin
-                  // cm.jalt -> JAL, x1, index
-                  instr_o.bus_resp.rdata = {11'b00000000000, instr[9:2], 5'b00001, OPCODE_JAL};
-                  tbljmp_o = 1'b1;
-                  if (instr[12:10] != 3'b000) begin
-                    illegal_instr_o = 1'b1;
-                    tbljmp_o = 1'b0;
-                    instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
+                  if (instr[9:8] == 2'b00) begin
+                    // cm.jt -> JAL x0, index
+                    instr_o.bus_resp.rdata = {13'b0000000000000, instr[7:2], 5'b00000, OPCODE_JAL};
+                  end else begin
+                    // cm.jalt -> JAL, x1, index
+                    instr_o.bus_resp.rdata = {11'b00000000000, instr[9:2], 5'b00001, OPCODE_JAL};
                   end
+                end else begin
+                    illegal_instr_o = 1'b1;
+                    instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
                 end
               end else begin
                 instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};

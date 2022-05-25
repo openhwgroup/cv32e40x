@@ -218,6 +218,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // CLIC mode vectored PC mux is always the same as exc_cause.
   assign ctrl_fsm_o.mtvt_pc_mux = exc_cause[9:0];
 
+  // Mux selector for table jumps
+  // index for table jumps taken from instruction word in ID stage.
+  assign ctrl_fsm_o.jvt_pc_mux = if_id_pipe_i.instr.bus_resp.rdata[19:12];
+
 
   ////////////////////////////////////////////////////////////////////
   // ID stage
