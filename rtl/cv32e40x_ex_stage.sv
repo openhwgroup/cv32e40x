@@ -73,7 +73,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Stage ready/valid
   output logic        ex_ready_o,       // EX stage is ready for new data
   output logic        ex_valid_o,       // EX stage has valid (non-bubble) data for next stage
-  input  logic        wb_ready_i        // WB stage is ready for new data
+  input  logic        wb_ready_i,       // WB stage is ready for new data
+
+  output logic        last_op_o
 );
 
   // Ready and valid signals
@@ -161,6 +163,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Branch handling
   assign branch_decision_o = alu_cmp_result;
   assign branch_target_o   = id_ex_pipe_i.operand_c;
+
+  // Detect last operation
+  // Both parts of a split misaligned load/store will reach WB, but only the second half will be marked with "last_op"
+  assign last_op_o = (id_ex_pipe_i.lsu_en && lsu_split_i) ? 1'b0 : id_ex_pipe_i.last_op;
 
   ////////////////////////////
   //     _    _    _   _    //
@@ -344,7 +350,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-        ex_wb_pipe_o.last_op     <= 1'b1;
+
+        ex_wb_pipe_o.last_op     <= last_op_o;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline

@@ -32,6 +32,7 @@ module cv32e40x_rvfi
    input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
    input logic                                instr_pmp_err_if_i,
+   input logic                                last_op_if_i,
 
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
@@ -79,6 +80,7 @@ module cv32e40x_rvfi
    input logic                                csr_en_wb_i,
    input logic                                sys_wfi_insn_wb_i,
    input logic                                sys_en_wb_i,
+   input logic                                last_op_wb_i,
    // Register writes
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
@@ -639,7 +641,8 @@ module cv32e40x_rvfi
 
   // WFI instructions retire when their wake-up condition is present.
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
-  assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i;
+  // Other instructions retire when their last suboperation is done in WB.
+  assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i && last_op_wb_i;
 
   // Pipeline stage model //
 
@@ -698,9 +701,11 @@ module cv32e40x_rvfi
         in_trap    [STAGE_ID] <= in_trap    [STAGE_IF];
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
 
-        // Clear captured events
-        in_trap    [STAGE_IF] <= 1'b0;
-        debug_cause[STAGE_IF] <= '0;
+        // Clear captured events when last operation exits IF
+        if (last_op_if_i) begin
+          in_trap    [STAGE_IF] <= 1'b0;
+          debug_cause[STAGE_IF] <= '0;
+        end
 
       end else begin
         if (in_trap_clr) begin

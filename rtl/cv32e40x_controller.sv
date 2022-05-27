@@ -61,8 +61,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  id_ex_pipe_t id_ex_pipe_i,
   input  ex_wb_pipe_t ex_wb_pipe_i,
 
+  // Last operation bits
+  input  logic        last_op_ex_i,               // EX contains the last operation of an instruction
+  input  logic        last_op_wb_i,               // WB contains the last operation of an instruction
+
   // LSU
-  input  logic        lsu_split_ex_i,             // LSU is splitting misaligned
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB stage)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
   input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
@@ -150,7 +153,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .branch_decision_ex_i        ( branch_decision_ex_i     ),
     .ex_ready_i                  ( ex_ready_i               ),
     .ex_valid_i                  ( ex_valid_i               ),
-    .lsu_split_ex_i              ( lsu_split_ex_i           ),
+    .last_op_ex_i                ( last_op_ex_i             ),
 
     // From WB stage
     .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
@@ -159,6 +162,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .data_stall_wb_i             ( data_stall_wb_i          ),
     .wb_ready_i                  ( wb_ready_i               ),
     .wb_valid_i                  ( wb_valid_i               ),
+    .last_op_wb_i                ( last_op_wb_i             ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
     // Interrupt Controller Signals

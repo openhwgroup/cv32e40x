@@ -59,11 +59,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
-  input  logic        lsu_split_ex_i,             // LSU is splitting misaligned, first half is in EX
+  input  logic        last_op_ex_i,               // EX stage contains the last operation of an instruction
 
   // From WB stage
   input  ex_wb_pipe_t ex_wb_pipe_i,
   input  logic [1:0]  lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
+  input  logic        last_op_wb_i,               // WB stage contains the last operation of an instruction
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
@@ -201,6 +202,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not count if halted or killed
   logic       wb_counter_event_gated;
 
+  // Detect uninterruptible table jumps
+  logic       tbljmp_in_ex_wb;
+
   assign fencei_ready = !lsu_busy_i;
 
   // Once the fencei handshake is initiated, it must complete and the instruction must retire.
@@ -213,6 +217,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // CLIC mode vectored PC mux is always the same as exc_cause.
   assign ctrl_fsm_o.mtvt_pc_mux = exc_cause[9:0];
+
+  // Mux selector for table jumps
+  // index for table jumps taken from instruction word in ID stage.
+  assign ctrl_fsm_o.jvt_pc_mux = if_id_pipe_i.instr.bus_resp.rdata[19:12];
 
 
   ////////////////////////////////////////////////////////////////////
@@ -228,6 +236,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign sys_mret_id = sys_en_id_i && sys_mret_id_i && if_id_pipe_i.instr_valid;
   assign jmp_id      = alu_en_id_i && alu_jmp_id_i  && if_id_pipe_i.instr_valid;
 
+  // Detect that a jump is in the ID stage.
+  // This will also be true for table jumps, as they are encoded as JAL instructions.
+  //   An extra table jump flag is used in the logic for taken jumps to disinguish between
+  //   regular jumps and table jumps.
   assign jump_in_id = (jmp_id && !ctrl_byp_i.jalr_stall) || (sys_mret_id && !ctrl_byp_i.csr_stall);
 
   // Blocking on branch_taken_q, as a jump has already been taken
@@ -335,7 +347,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && (wb_valid_i || non_shv_irq_ack)) && !pending_debug;
+  // single step becomes pending when the last operation of an instruction is done in WB, or we ack a non-shv interrupt.
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && last_op_wb_i) || non_shv_irq_ack)) && !pending_debug;
 
   // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
   assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
@@ -358,7 +371,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline;
+  // Once the first part of a table jump has finished in WB, we are not allowed to take debug before the last part finishes. This can be detected when the last
+  // part of a table jump is in either EX or WB.
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline && !tbljmp_in_ex_wb;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -383,6 +398,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
   assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
 
+  // Table jumps may not be interrupted if the last part has reached EX or WB.
+  assign tbljmp_in_ex_wb = ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) || (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op));
+
   // Allow interrupts to be taken only if there is no data request in WB,
   // and no trans_valid has been clocked from EX to environment.
   // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
@@ -390,8 +408,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // will be interruptable as they were convered to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
+  // Once the first part of a table jump has finished in WB, we are not allowed to take interrupts before the last part finishes. This can be detected when the last
+  // part of a table jump is in either EX or WB.
 
-  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb;
+  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !tbljmp_in_ex_wb;
 
   // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
@@ -416,7 +436,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.if_invalid    = !if_valid_i && id_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
-  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
+  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !(wb_valid_i && last_op_wb_i);
   assign ctrl_fsm_o.mhpmevent.id_jalr_stall = ctrl_byp_i.jalr_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
@@ -497,6 +517,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     fencei_flush_req_set           = 1'b0;
 
     ctrl_fsm_o.pc_set_clicv        = 1'b0;
+    ctrl_fsm_o.pc_set_tbljmp       = 1'b0;
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -693,8 +714,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               //       state -> POINTER_FETCH
 
             end else begin
-              ctrl_fsm_o.pc_mux = PC_JUMP;
-              ctrl_fsm_o.pc_set = 1'b1;
+              // For table jumps we have two different jumps
+              // - First part does a pointer fetch from (jvt + (index<<2))
+              // - Second part jumps to the fetched pointer
+              // Regular jumps use the regular jump to the target calculated in the ID stage.
+              ctrl_fsm_o.pc_mux        = if_id_pipe_i.instr_meta.tbljmp && !if_id_pipe_i.last_op ? PC_TBLJUMP :
+                                         if_id_pipe_i.instr_meta.tbljmp && if_id_pipe_i.last_op  ? PC_POINTER : PC_JUMP;
+              ctrl_fsm_o.pc_set        = 1'b1;
+              ctrl_fsm_o.pc_set_tbljmp = if_id_pipe_i.instr_meta.tbljmp && !if_id_pipe_i.last_op;
             end
 
             // Set flag to avoid further jumps to the same target
@@ -943,7 +970,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
       // CLIC: Exluding pointer fetches as they are not instructions
-      if (ex_valid_i && wb_ready_i && !lsu_split_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
+      if (ex_valid_i && wb_ready_i && last_op_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet

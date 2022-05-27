@@ -73,7 +73,8 @@ module cv32e40x_controller_fsm_sva
   input logic           nmi_is_store_q,
   input logic           nmi_pending_q,
   input dcsr_t          dcsr_i,
-  input logic           irq_clic_shv_i
+  input logic           irq_clic_shv_i,
+  input logic           last_op_wb_i
 );
 
 
@@ -491,7 +492,7 @@ endgenerate
       valid_cnt <= '0;
     end else begin
       if(bus_error_latched) begin
-        if(wb_valid_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
+        if(wb_valid_i && last_op_wb_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
           valid_cnt <= valid_cnt + 1'b1;
         end
       end else begin
@@ -527,5 +528,16 @@ if (SMCLIC) begin
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
 
 end // SMCLIC
+
+// Table jumps cannot be interrupted after the first operation has completed.
+// This can earliest happen when the last part of the table jump is in EX
+a_tbljmp_no_irq_debug:
+assert property (@(posedge clk) disable iff (!rst_n)
+                ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) ||
+                (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op))
+                |->
+                (!ctrl_fsm_o.irq_ack && (ctrl_fsm_ns != DEBUG_TAKEN)))
+  else `uvm_error("controller", "Table jump interrupted by debug or interrupt")
+
 endmodule // cv32e40x_controller_fsm_sva
 

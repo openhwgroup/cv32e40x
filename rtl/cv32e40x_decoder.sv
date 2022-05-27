@@ -88,7 +88,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output imm_b_mux_e    imm_b_mux_sel_o,        // Immediate selection for operand b
   output bch_jmp_mux_e  bch_jmp_mux_sel_o,      // Branch / jump target selection
 
-  input  ctrl_fsm_t     ctrl_fsm_i              // Control signal from controller_fsm
+  input  ctrl_fsm_t     ctrl_fsm_i,             // Control signal from controller_fsm
+
+  // Table jump related signals
+  input  logic          tbljmp_first_i          // Currently decoding first operation of a table jump
 );
 
   // write enable/request control
@@ -232,7 +235,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign lsu_en_o = deassert_we_i ? 1'b0 : lsu_en;
 
   assign csr_en_o = deassert_we_i ? 1'b0 : csr_en;
-  assign rf_we_o  = deassert_we_i ? 1'b0 : rf_we;
+
+  // rf_we is deasserted with deassert_we as all other enables
+  // but also for the first part of a table jump (only the last part write to the link register)
+  assign rf_we_o  = (deassert_we_i || tbljmp_first_i) ? 1'b0 : rf_we;
 
   // Suppress special instruction/illegal instruction bits
   assign illegal_insn_o = deassert_we_i ? 1'b0 : decoder_ctrl_mux.illegal_insn;
