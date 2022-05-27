@@ -32,6 +32,7 @@ module cv32e40x_rvfi
    input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
    input logic                                instr_pmp_err_if_i,
+   input logic                                last_op_if_i,
 
    //// ID probes ////
    input logic [31:0]                         pc_id_i,
@@ -700,9 +701,11 @@ module cv32e40x_rvfi
         in_trap    [STAGE_ID] <= in_trap    [STAGE_IF];
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
 
-        // Clear captured events
-        in_trap    [STAGE_IF] <= 1'b0;
-        debug_cause[STAGE_IF] <= '0;
+        // Clear captured events when last operation exits IF
+        if (last_op_if_i) begin
+          in_trap    [STAGE_IF] <= 1'b0;
+          debug_cause[STAGE_IF] <= '0;
+        end
 
       end else begin
         if (in_trap_clr) begin

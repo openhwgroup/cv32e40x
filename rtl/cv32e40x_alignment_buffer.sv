@@ -52,7 +52,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic           instr_ready_i,
   output inst_resp_t     instr_instr_o,
   output logic [31:0]    instr_addr_o,
-  output logic           instr_is_ptr_o
+  output logic           instr_is_clic_ptr_o,
+  output logic           instr_is_tbljmp_ptr_o
 
 );
 
@@ -103,8 +104,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   logic resp_valid_gated;
 
   // CLIC vectoring (and Zc table jumps)
-  // Flag for signalling that results is a function pointer
-  logic is_ptr_q;
+  // Flag for signalling that results is a CLIC function pointer
+  logic is_clic_ptr_q;
+  // Flag for table jump pointer
+  logic is_tbljmp_ptr_q;
   logic ptr_fetch_accepted_q;
 
   assign resp_valid_gated = (n_flush_q > 0) ? 1'b0 : resp_valid_i;
@@ -494,7 +497,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       rptr              <= 'd0;
       wptr              <= 'd0;
       pop_q             <= 1'b0;
-      is_ptr_q          <= 1'b0;
+      is_clic_ptr_q     <= 1'b0;
+      is_tbljmp_ptr_q   <= 1'b0;
       ptr_fetch_accepted_q  <= 1'b0;
     end
     else
@@ -524,7 +528,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // Reset pointers on branch
         wptr <= 'd0;
         rptr <= 'd0;
-        is_ptr_q <= ctrl_fsm_i.pc_set_clicv;
+        is_clic_ptr_q   <= ctrl_fsm_i.pc_set_clicv;
+        is_tbljmp_ptr_q <= ctrl_fsm_i.pc_set_tbljmp;
       end else begin
         // Update write pointer on a valid response
         if (resp_valid_gated) begin
@@ -559,12 +564,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Output instruction address to if_stage
   assign instr_addr_o = addr_q;
 
-  // Signal that result is a pointer
-  // CLIC vectoring or Zc table jump
-  // todo: probably need to differentiate between CLIC and Zc as they will be handled differently by the pipeline/controller.
-  assign instr_is_ptr_o = is_ptr_q;
+  // Signal that result is a CLIC pointer
+  assign instr_is_clic_ptr_o   = is_clic_ptr_q;
+
+  // Signal that result is a table jump pointer
+  assign instr_is_tbljmp_ptr_o = is_tbljmp_ptr_q;
 
   // Signal that a pointer is about to be fetched
-  // todo: factor in Zc cm.jt/cm.jalt
-  assign fetch_ptr_access_o = (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_set_clicv);
+  assign fetch_ptr_access_o = (ctrl_fsm_i.pc_set && (ctrl_fsm_i.pc_set_clicv || ctrl_fsm_i.pc_set_tbljmp));
 endmodule

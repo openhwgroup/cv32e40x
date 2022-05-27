@@ -528,5 +528,16 @@ if (SMCLIC) begin
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
 
 end // SMCLIC
+
+// Table jumps cannot be interrupted after the first operation has completed.
+// This can earliest happen when the last part of the table jump is in EX
+a_tbljmp_no_irq_debug:
+assert property (@(posedge clk) disable iff (!rst_n)
+                ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) ||
+                (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op))
+                |->
+                (!ctrl_fsm_o.irq_ack && (ctrl_fsm_ns != DEBUG_TAKEN)))
+  else `uvm_error("controller", "Table jump interrupted by debug or interrupt")
+
 endmodule // cv32e40x_controller_fsm_sva
 

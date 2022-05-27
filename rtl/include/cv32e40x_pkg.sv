@@ -483,6 +483,10 @@ typedef struct packed {
   logic [5: 0] mode;
 } jvt_t;
 
+// todo: Might change this is Zc TG changes spec to allow some
+// bits of the jvt.base to be WARL
+parameter JVT_ADDR_WIDTH = 22;
+
 typedef struct packed {
   logic         sd;     // State dirty
   logic [30:23] zero3;  // Hardwired zero
@@ -831,19 +835,20 @@ typedef struct packed {
 
 // PC mux selector defines
 typedef enum logic[3:0] {
-  PC_BOOT     = 4'b0000,
-  PC_MRET     = 4'b0001,
-  PC_DRET     = 4'b0010,
-  PC_JUMP     = 4'b0100,
-  PC_BRANCH   = 4'b0101,
-  PC_FENCEI   = 4'b0110,
-  PC_TRAP_EXC = 4'b1000,
-  PC_TRAP_IRQ = 4'b1001,
-  PC_TRAP_DBD = 4'b1010,
-  PC_TRAP_DBE = 4'b1011,
-  PC_TRAP_NMI = 4'b1100,
+  PC_BOOT       = 4'b0000,
+  PC_MRET       = 4'b0001,
+  PC_DRET       = 4'b0010,
+  PC_JUMP       = 4'b0100,
+  PC_BRANCH     = 4'b0101,
+  PC_FENCEI     = 4'b0110,
+  PC_TRAP_EXC   = 4'b1000,
+  PC_TRAP_IRQ   = 4'b1001,
+  PC_TRAP_DBD   = 4'b1010,
+  PC_TRAP_DBE   = 4'b1011,
+  PC_TRAP_NMI   = 4'b1100,
   PC_TRAP_CLICV = 4'b1101,
-  PC_POINTER    = 4'b1110
+  PC_POINTER    = 4'b1110,
+  PC_TBLJUMP    = 4'b1111
 } pc_mux_e;
 
 // Exception Cause
@@ -1013,6 +1018,7 @@ typedef struct packed
 {
   logic        compressed;
   logic        clic_ptr;
+  logic        tbljmp;
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
@@ -1196,6 +1202,7 @@ typedef struct packed {
   logic        instr_req;             // Start fetching instructions
   logic        pc_set;                // jump to address set by pc_mux
   logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
+  logic        pc_set_tbljmp;         // Signal pc_set is for Zc* cm.jt / cm.jalt pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
 
   // To WB stage
@@ -1203,6 +1210,7 @@ typedef struct packed {
   logic [4:0]  mtvec_pc_mux;          // id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
   logic [9:0]  mtvt_pc_mux;           // id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
+  logic [7:0]  jvt_pc_mux;            // Index for table jumps
 
   logic        irq_ack;               // irq has been taken
   logic [9:0]  irq_id;                // id of taken irq. Max width (1024 interrupts), unused bits will be tied off
