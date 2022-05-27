@@ -537,7 +537,7 @@ typedef enum logic [3:0] {
   TTYPE_ETRIGGER = 4'h5
 } trigger_type_e;
 
-typedef struct packed{
+typedef struct packed {
     logic [31:28] xdebugver;
     logic [27:18] zero2;
     logic         ebreakvs; // Hardwired to zero
@@ -625,7 +625,7 @@ parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero0   : 'b0,
   default : 'b0};
 
-parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
+parameter logic [31:0] TDATA1_RST_VAL = {
   TTYPE_MCONTROL,        // type    : address/data match
   1'b1,                  // dmode   : access from D mode only
   6'h00,                 // maskmax : exact match only
@@ -640,7 +640,7 @@ parameter logic [31:0] TMATCH_CONTROL_RST_VAL = {
   1'b0,                  // 0       : zero
   1'b0,                  // s       : not supported
   1'b0,                  // u       : match in u-mode
-  1'b0,      // execute : match instruction address
+  1'b0,                  // execute : match instruction address
   1'b0,                  // store   : not supported
   1'b0};                 // load    : not supported
 
