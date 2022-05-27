@@ -240,7 +240,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // This will also be true for table jumps, as they are encoded as JAL instructions.
   //   An extra table jump flag is used in the logic for taken jumps to disinguish between
   //   regular jumps and table jumps.
-  assign jump_in_id = (jmp_id && !ctrl_byp_i.jalr_stall) || (sys_mret_id && !ctrl_byp_i.csr_stall);
+  // Table jumps do an implicit read of the JVT CSR, so csr_stall must be accounted for.
+  assign jump_in_id = (jmp_id && !if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.jalr_stall) ||
+                      (jmp_id &&  if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.csr_stall ) ||
+                      (sys_mret_id && !ctrl_byp_i.csr_stall);
 
   // Blocking on branch_taken_q, as a jump has already been taken
   assign jump_taken_id = jump_in_id && !branch_taken_q;

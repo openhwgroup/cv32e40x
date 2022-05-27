@@ -81,6 +81,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   logic                              csr_exp_unqual_id;         // Explicit CSR in ID (not qualified with csr_en)
   logic                              csr_unqual_id;             // Explicit or implicit CSR in ID (not qualified)
   logic                              jmpr_unqual_id;            // JALR in ID (not qualified with alu_en)
+  logic                              tbljmp_unqual_id;          // Table jump in ID (not qualified with alu_en)
 
   // todo: make all qualifiers here, and use those signals later in the file
 
@@ -105,8 +106,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign sys_mret_unqual_id = sys_mret_id_i && if_id_pipe_i.instr_valid;
   assign csr_exp_unqual_id = csr_en_raw_id_i && if_id_pipe_i.instr_valid;
   assign jmpr_unqual_id = alu_jmpr_id_i && if_id_pipe_i.instr_valid;
+  assign tbljmp_unqual_id = if_id_pipe_i.instr_meta.tbljmp && if_id_pipe_i.instr_valid;
 
-  assign csr_unqual_id = csr_exp_unqual_id || sys_mret_unqual_id;
+  assign csr_unqual_id = csr_exp_unqual_id || sys_mret_unqual_id || tbljmp_unqual_id;
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //
