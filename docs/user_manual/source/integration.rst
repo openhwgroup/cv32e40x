@@ -25,7 +25,6 @@ Instantiation Template
       .X_RFW_WIDTH                (        32 ),
       .X_MISA                     (     32'h0 ),
       .X_ECS_XS                   (      2'b0 ),
-      .ZC_EXT                     (         0 ),
       .DBG_NUM_TRIGGERS           (         1 ),
       .NUM_MHPMCOUNTERS           (         1 ),
       .PMA_NUM_REGIONS            (         1 ),
@@ -127,9 +126,10 @@ Parameters
 | ``A_EXT``                      | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``B_EXT``                      | b_ext_e        | B_NONE        | Enable Bit Manipulation support. ``B_EXT`` = B_NONE: No Bit        |
-|                                |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB_ZBS:  |
-|                                |                |               | Zba, Zbb and Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS:       |
-|                                |                |               | Zba, Zbb, Zbc and Zbs are supported.                               |
+|                                |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB:      |
+|                                |                |               | Zba and Zbb are supported. ``B_EXT`` = ZBA_ZBB_ZBS: Zba, Zbb and   |
+|                                |                |               | Zbs are supported. ``B_EXT`` = ZBA_ZBB_ZBC_ZBS: Zba, Zbb, Zbc and  |
+|                                |                |               | Zbs are supported.                                                 |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``M_EXT``                      | m_ext_e        | M             | Enable Multiply / Divide support. ``M_EXT`` = M_NONE: No multiply /|
 |                                |                |               | divide instructions are supported. ``M_EXT`` = ZMMUL: The          |
@@ -156,8 +156,6 @@ Parameters
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``X_ECS_XS``                   | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
 |                                |                |               | see :ref:`csr-mstatus`.                                            |
-+--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-| ``ZC_EXT``                     | bit            | 0             | Enable Zca, Zcb, Zcmb, Zcmp, Zcmt extension support.               |
 +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 | ``NUM_MHPMCOUNTERS``           | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
 |                                |                |               | :ref:`performance-counters`                                        |

@@ -117,23 +117,23 @@ In addition, the following standard instruction set extensions are available fro
 
    * - **Zca**: Subset of the standard **Zc** Code-Size Reduction extension consisting of a subset of **C** with the FP load/stores removed.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled with the ``ZC_EXT`` parameter
+     - always enabled
 
    * - **Zcb**: Subset of the standard **Zc** Code-Size Reduction extension consisting of simple operations.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled with the ``ZC_EXT`` parameter
+     - always enabled
 
    * - **Zcmb**: Subset of the standard **Zc** Code-Size Reduction extension consisting of load/store byte/half which overlap with **c.fld**, **c.fldsp**, **c.fsd**.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled with the ``ZC_EXT`` parameter
+     - always enabled
 
    * - **Zcmp**: Subset of the standard **Zc** Code-Size Reduction extension consisting of push/pop and double move which overlap with **c.fsdsp**.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled with the ``ZC_EXT`` parameter
+     - always enabled
 
    * - **Zcmt**: Subset of the standard **Zc** Code-Size Reduction extension consisting of table jump.
      - v0.70.1 (not ratified yet; version will change)
-     - optionally enabled with the ``ZC_EXT`` parameter
+     - always enabled
 
    * - **A**: Atomic Instructions
      - 2.1
