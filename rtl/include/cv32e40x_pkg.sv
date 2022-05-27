@@ -485,7 +485,7 @@ typedef struct packed {
 
 // todo: Might change this is Zc TG changes spec to allow some
 // bits of the jvt.base to be WARL
-parameter JVT_ADDR_WIDTH = 26;
+parameter JVT_ADDR_WIDTH = 22;
 
 typedef struct packed {
   logic         sd;     // State dirty

@@ -544,7 +544,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
 
-    jvt_n                    = {csr_wdata_int[31:6], 6'b000000};
+    jvt_n                    = {csr_wdata_int[31:10], 10'b0000000000};
     jvt_we                   = 1'b0;
 
     mscratch_n               = csr_wdata_int;

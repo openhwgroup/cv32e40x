@@ -147,9 +147,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
       // JVT + (index << 2)
-      PC_TBLJUMP :   branch_addr_n = (jvt_addr_i << 6) + (ctrl_fsm_i.jvt_pc_mux[7:0] << 2);
-      //PC_TBLJUMP :   branch_addr_n = {jvt_addr_i, ctrl_fsm_i.jvt_pc_mux[7:0], 2'b00}; // todo: we really want the code to look like this,
-                                                                                        //       but the current spec does not allow it.
+      PC_TBLJUMP :   branch_addr_n = {jvt_addr_i, ctrl_fsm_i.jvt_pc_mux[7:0], 2'b00};
+
       default:;
     endcase
   end
