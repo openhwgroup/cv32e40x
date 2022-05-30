@@ -14,6 +14,7 @@ Editor: **Davide Schiavone**
    pipeline
    instruction_fetch
    load_store_unit
+   atomics
    pma
    register_file
    x_ext

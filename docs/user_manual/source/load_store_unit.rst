@@ -154,3 +154,9 @@ Transactions in the write buffer must be completed before the |corev| is able to
  * Retire a ``fence`` instruction
  * Retire a ``fence.i`` instruction
  * Enter SLEEP mode
+
+Atomics
+-------
+
+|corev| supports exclusive transactions and atomic transactions if ``A_EXT`` = 1. For atomic transactions |corev| does however **not** provide a full implementation of the ``A`` extension as it is assumed
+that |corev| is used in combination with an external adapter that transforms the OBI transactions (see [OPENHW-OBI]_) into the required *read-modify-write* sequences. For more information about Atomic instructions, see :ref:`atomics`. 
