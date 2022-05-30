@@ -14,9 +14,9 @@ as specified in [OPENHW-OBI]_.
 
 The definition of the related reservation set as well as registering or invalidating a reservation is outside the scope of |corev|.
 
-Exclusive transaction success of ``lr.w`` and ``sc.w`` instructions is signaled with ``data_err_i``  = 0 and ``data_exokay_i`` = 1.
-Exclusive transaction failure of ``lr.w`` and ``sc.w`` instructions is signaled with ``data_err_i``  = 0 and ``data_exokay_i`` = 0.
-Bus errors for ``lr.w`` and ``sc.w`` instructions are signaled with ``data_err_i``  = 0 and ``data_exokay_i`` = 0.
+Exclusive transaction success of ``lr.w`` and ``sc.w`` instructions is signaled with ``data_err_i`` = 0 and ``data_exokay_i`` = 1.
+Exclusive transaction failure of ``lr.w`` and ``sc.w`` instructions is signaled with ``data_err_i`` = 0 and ``data_exokay_i`` = 0.
+Bus errors for ``lr.w`` and ``sc.w`` instructions are signaled with ``data_err_i`` = 1 and ``data_exokay_i`` = 0.
 
 If a ``sc.w`` succeeds |corev| writes 0 ``rd``. If a ``sc.w`` fails |corev|  writes a nonzero value (1) to ``rd``. |corev| ignores the ``data_exokay_i``
 signal for ``lr.w`` instructions and will therefore **not** detect the failure of ``lr.w`` instructions. If a ``lr.w`` fails because it is attempted on
