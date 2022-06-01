@@ -259,4 +259,16 @@
 .rvfi_csr_mconfigptr_rmask(),\
 .rvfi_csr_mconfigptr_wmask(),\
 .rvfi_csr_mconfigptr_rdata(),\
-.rvfi_csr_mconfigptr_wdata()
+.rvfi_csr_mconfigptr_wdata(),\
+.rvfi_csr_menvcfg_rmask(),\
+.rvfi_csr_menvcfg_wmask(),\
+.rvfi_csr_menvcfg_rdata(),\
+.rvfi_csr_menvcfg_wdata(),\
+.rvfi_csr_menvcfgh_rmask(),\
+.rvfi_csr_menvcfgh_wmask(),\
+.rvfi_csr_menvcfgh_rdata(),\
+.rvfi_csr_menvcfgh_wdata(),\
+.rvfi_csr_cpuctrl_rmask(),\
+.rvfi_csr_cpuctrl_wmask(),\
+.rvfi_csr_cpuctrl_rdata(),\
+.rvfi_csr_cpuctrl_wdata()

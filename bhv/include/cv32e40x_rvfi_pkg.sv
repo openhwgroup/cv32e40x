@@ -96,6 +96,9 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mseccfg;
     logic        [31:0] mseccfgh;
     logic        [31:0] mconfigptr;
+    logic        [31:0] menvcfg;
+    logic        [31:0] menvcfgh;
+    logic        [31:0] cpuctrl;
 
   } rvfi_csr_map_t;
 

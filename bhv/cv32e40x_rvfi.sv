@@ -223,6 +223,17 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mseccfgh_q_i,
    input logic                                csr_mseccfgh_we_i,
 
+   input logic [31:0]                         csr_menvcfg_n_i,
+   input logic [31:0]                         csr_menvcfg_q_i,
+   input logic                                csr_menvcfg_we_i,
+   input logic [31:0]                         csr_menvcfgh_n_i,
+   input logic [31:0]                         csr_menvcfgh_q_i,
+   input logic                                csr_menvcfgh_we_i,
+
+   input logic [31:0]                         csr_cpuctrl_n_i,
+   input logic [31:0]                         csr_cpuctrl_q_i,
+   input logic                                csr_cpuctrl_we_i,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
   // the convention of RISC-V Formal Interface Specification.
@@ -462,7 +473,21 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mconfigptr_rmask,
    output logic [31:0]                        rvfi_csr_mconfigptr_wmask,
    output logic [31:0]                        rvfi_csr_mconfigptr_rdata,
-   output logic [31:0]                        rvfi_csr_mconfigptr_wdata
+   output logic [31:0]                        rvfi_csr_mconfigptr_wdata,
+
+   output logic        [31:0]                 rvfi_csr_menvcfg_rmask,
+   output logic        [31:0]                 rvfi_csr_menvcfg_wmask,
+   output logic        [31:0]                 rvfi_csr_menvcfg_rdata,
+   output logic        [31:0]                 rvfi_csr_menvcfg_wdata,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_rmask,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_wmask,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_rdata,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_wdata,
+
+   output logic        [31:0]                 rvfi_csr_cpuctrl_rmask,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_wmask,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_rdata,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_wdata
 );
 
   // Propagating from ID stage
@@ -1212,6 +1237,17 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mconfigptr      = csr_mconfigptr_n_i;
   assign rvfi_csr_wmask_d.mconfigptr      = csr_mconfigptr_we_i ? '1 : '0;
 
+  assign rvfi_csr_wdata_d.menvcfg         = csr_menvcfg_n_i;
+  assign rvfi_csr_rdata_d.menvcfg         = csr_menvcfg_q_i;
+  assign rvfi_csr_wmask_d.menvcfg         = csr_menvcfg_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.menvcfgh        = csr_menvcfgh_n_i;
+  assign rvfi_csr_rdata_d.menvcfgh        = csr_menvcfgh_q_i;
+  assign rvfi_csr_wmask_d.menvcfgh        = csr_menvcfgh_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.cpuctrl         = csr_cpuctrl_n_i;
+  assign rvfi_csr_rdata_d.cpuctrl         = csr_cpuctrl_q_i;
+  assign rvfi_csr_wmask_d.cpuctrl         = csr_cpuctrl_we_i ? '1 : '0;
+
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
   assign rvfi_csr_jvt_rmask               = '1;
@@ -1419,6 +1455,18 @@ module cv32e40x_rvfi
   assign rvfi_csr_mseccfgh_rmask          = '1;
   assign rvfi_csr_mseccfgh_wdata          = rvfi_csr_wdata.mseccfgh;
   assign rvfi_csr_mseccfgh_wmask          = rvfi_csr_wmask.mseccfgh;
+  assign rvfi_csr_menvcfg_rdata           = rvfi_csr_rdata.menvcfg;
+  assign rvfi_csr_menvcfg_rmask           = '1;
+  assign rvfi_csr_menvcfg_wdata           = rvfi_csr_wdata.menvcfg;
+  assign rvfi_csr_menvcfg_wmask           = rvfi_csr_wmask.menvcfg;
+  assign rvfi_csr_menvcfgh_rdata          = rvfi_csr_rdata.menvcfgh;
+  assign rvfi_csr_menvcfgh_rmask          = '1;
+  assign rvfi_csr_menvcfgh_wdata          = rvfi_csr_wdata.menvcfgh;
+  assign rvfi_csr_menvcfgh_wmask          = rvfi_csr_wmask.menvcfgh;
+  assign rvfi_csr_cpuctrl_rdata           = rvfi_csr_rdata.cpuctrl;
+  assign rvfi_csr_cpuctrl_rmask           = '1;
+  assign rvfi_csr_cpuctrl_wdata           = rvfi_csr_wdata.cpuctrl;
+  assign rvfi_csr_cpuctrl_wmask           = rvfi_csr_wmask.cpuctrl;
 
 endmodule // cv32e40x_rvfi
 
