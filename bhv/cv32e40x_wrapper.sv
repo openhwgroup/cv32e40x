@@ -370,61 +370,66 @@ module cv32e40x_wrapper
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
 
+         // Non-pipeline Probes
+         .m_c_obi_instr_if         ( core_i.m_c_obi_instr_if                                              ),
+
+         // IF Probes
          .if_valid_i               ( core_i.if_stage_i.if_valid_o                                         ),
+         .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
+         .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
+         .last_op_if_i             ( core_i.if_stage_i.last_op                                            ),
+         .prefetch_valid_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_valid_o                   ),
+         .prefetch_ready_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_ready_i                   ),
+         .prefetch_addr_if_i       ( core_i.if_stage_i.prefetch_unit_i.prefetch_addr_o                    ),
+         .prefetch_compressed_if_i ( core_i.if_stage_i.instr_compressed_int                               ),
+         .prefetch_instr_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_instr_o                   ),
+
+         // ID Probes
          .id_valid_i               ( core_i.id_stage_i.id_valid_o                                         ),
          .id_ready_i               ( core_i.id_stage_i.id_ready_o                                         ),
-
-         .wb_valid_i               ( core_i.wb_stage_i.wb_valid_o                                         ),
-         .wb_ready_i               ( core_i.wb_stage_i.wb_ready_o                                         ),
-         .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
-         .csr_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.csr_en                                ),
-         .sys_wfi_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.sys_wfi_insn                          ),
-         .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
-         .sys_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.sys_en                                ),
-
+         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
+         .rf_re_id_i               ( core_i.id_stage_i.rf_re_o                                            ),
+         .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id_i                   ),
+         .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
+         .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
+         .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
+         .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
+         .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
+         .lsu_size_id_i            ( core_i.id_stage_i.lsu_size                                           ),
          .rs1_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[0]                            ),
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[1]                            ),
          .operand_a_fw_id_i        ( core_i.id_stage_i.operand_a_fw                                       ),
          .operand_b_fw_id_i        ( core_i.id_stage_i.operand_b_fw                                       ),
 
-         .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
-         .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
-         .last_op_if_i             ( core_i.if_stage_i.last_op                                            ),
-         .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
-         .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id_i                   ),
-         .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
-         .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
-         .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
-
-         .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
-         .lsu_size_id_i            ( core_i.id_stage_i.lsu_size                                           ),
-         .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
-
+         // EX Probes
+         .ex_ready_i               ( core_i.ex_stage_i.ex_ready_o                                         ),
+         .ex_valid_i               ( core_i.ex_stage_i.ex_valid_o                                         ),
          .branch_in_ex_i           ( core_i.controller_i.controller_fsm_i.branch_in_ex                    ),
          .branch_decision_ex_i     ( core_i.ex_stage_i.branch_decision_o                                  ),
          .dret_in_ex_i             ( core_i.ex_stage_i.id_ex_pipe_i.sys_dret_insn                         ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
-
-         .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
          .lsu_pmp_err_ex_i         ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
-         .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma
+         .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma (no expressions allowed in module hookup)
                                     !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
-
-         .ex_ready_i               ( core_i.ex_stage_i.ex_ready_o                                         ),
-         .ex_valid_i               ( core_i.ex_stage_i.ex_valid_o                                         ),
-
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
-
          .data_addr_ex_i           ( core_i.data_addr_o                                                   ),
          .data_wdata_ex_i          ( core_i.data_wdata_o                                                  ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
-         .rf_re_id_i               ( core_i.id_stage_i.rf_re_o                                            ),
+         // WB Probes
+         .wb_valid_i               ( core_i.wb_stage_i.wb_valid_o                                         ),
+         .wb_ready_i               ( core_i.wb_stage_i.wb_ready_o                                         ),
+         .pc_wb_i                  ( core_i.wb_stage_i.ex_wb_pipe_i.pc                                    ),
+         .instr_rdata_wb_i         ( core_i.wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata                  ),
+         .ebreak_in_wb_i           ( core_i.controller_i.controller_fsm_i.ebreak_in_wb                    ),
+         .csr_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.csr_en                                ),
+         .sys_wfi_insn_wb_i        ( core_i.wb_stage_i.ex_wb_pipe_i.sys_wfi_insn                          ),
+         .sys_en_wb_i              ( core_i.wb_stage_i.ex_wb_pipe_i.sys_en                                ),
+         .last_op_wb_i             ( core_i.wb_stage_i.last_op_o                                          ),
          .rf_we_wb_i               ( core_i.wb_stage_i.rf_we_wb_o                                         ),
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
-         .last_op_wb_i             ( core_i.wb_stage_i.last_op_o                                          ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
@@ -441,6 +446,7 @@ module cv32e40x_wrapper
          .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),
          .irq_wu_ctrl_i            ( core_i.irq_wu_ctrl                                                   ),
          .irq_id_ctrl_i            ( core_i.irq_id_ctrl                                                   ),
+
          // CSRs
          .csr_jvt_n_i              ( core_i.cs_registers_i.jvt_n                                          ),
          .csr_jvt_q_i              ( core_i.cs_registers_i.jvt_rdata                                      ),

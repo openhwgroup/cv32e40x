@@ -28,66 +28,67 @@ module cv32e40x_rvfi
    input logic                                clk_i,
    input logic                                rst_ni,
 
+   // Non-pipeline Probes
+   if_c_obi.monitor                           m_c_obi_instr_if,
+
    //// IF Probes ////
    input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
    input logic                                instr_pmp_err_if_i,
    input logic                                last_op_if_i,
+   input logic                                prefetch_valid_if_i,
+   input logic                                prefetch_ready_if_i,
+   input logic [31:0]                         prefetch_addr_if_i,
+   input logic                                prefetch_compressed_if_i,
+   input inst_resp_t                          prefetch_instr_if_i,
 
-   //// ID probes ////
-   input logic [31:0]                         pc_id_i,
+   // ID probes
    input logic                                id_valid_i,
    input logic                                id_ready_i,
+   input logic [31:0]                         pc_id_i,
    input logic [ 1:0]                         rf_re_id_i,
    input logic                                sys_mret_id_i,
    input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
    input logic                                is_compressed_id_i,
-   // LSU
    input logic                                lsu_en_id_i,
    input logic                                lsu_we_id_i,
    input logic [1:0]                          lsu_size_id_i,
-   // Register reads
    input logic [4:0]                          rs1_addr_id_i,
    input logic [4:0]                          rs2_addr_id_i,
    input logic [31:0]                         operand_a_fw_id_i,
    input logic [31:0]                         operand_b_fw_id_i,
 
-   //// EX probes ////
+   // EX probes
+   input logic                                ex_ready_i,
+   input logic                                ex_valid_i,
    input logic                                branch_in_ex_i,
    input logic                                branch_decision_ex_i,
    input logic                                dret_in_ex_i,
-   // LSU
    input logic                                lsu_en_ex_i,
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_atomic_ex_i,
-
-   input logic                                ex_ready_i,
-   input logic                                ex_valid_i,
-
    input logic [31:0]                         branch_target_ex_i,
-
    input logic [31:0]                         data_addr_ex_i,
    input logic [31:0]                         data_wdata_ex_i,
    input logic                                lsu_split_q_ex_i,
 
-   //// WB probes ////
-   input logic [31:0]                         pc_wb_i,
+   // WB probes
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
-   input logic                                ebreak_in_wb_i,
+   input logic [31:0]                         pc_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
+   input logic                                ebreak_in_wb_i,
    input logic                                csr_en_wb_i,
    input logic                                sys_wfi_insn_wb_i,
    input logic                                sys_en_wb_i,
    input logic                                last_op_wb_i,
-   // Register writes
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
-   // LSU
    input logic [31:0]                         lsu_rdata_wb_i,
-   // PC //
+
+   // PC
    input logic [31:0]                         branch_addr_n_i,
 
    input                                      privlvl_t priv_lvl_i,
@@ -549,6 +550,8 @@ module cv32e40x_rvfi
   logic [6:0]   insn_funct7;
   logic [11:0]  insn_csr;
 
+  rvfi_obi_instr_t obi_instr_if;
+
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
   assign insn_funct3 = rvfi_insn[14:12];
@@ -560,6 +563,30 @@ module cv32e40x_rvfi
 `ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_rvfi_trace.svh"
 `endif
+
+  cv32e40x_rvfi_instr_obi
+  rvfi_instr_obi_i
+  (
+    .clk                        ( clk_i                         ),
+    .rst_n                      ( rst_ni                        ),
+
+    .prefetch_valid_i           ( prefetch_valid_if_i           ),
+    .prefetch_ready_i           ( prefetch_ready_if_i           ),
+    .prefetch_addr_i            ( prefetch_addr_if_i            ),
+    .prefetch_compressed_i      ( prefetch_compressed_if_i      ),
+    .kill_if_i                  ( ctrl_fsm_i.kill_if            ),
+
+    .m_c_obi_instr_if           ( m_c_obi_instr_if              ),
+
+    .obi_instr                  ( obi_instr_if                  )
+  );
+
+  cv32e40x_rvfi_data_obi
+  rvfi_data_obi_i
+  (
+    .clk                        ( clk_i                 ),
+    .rst_n                      ( rst_ni                )
+  );
 
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
@@ -1420,5 +1447,4 @@ module cv32e40x_rvfi
   assign rvfi_csr_mseccfgh_wdata          = rvfi_csr_wdata.mseccfgh;
   assign rvfi_csr_mseccfgh_wmask          = rvfi_csr_wmask.mseccfgh;
 
-endmodule // cv32e40x_rvfi
-
+endmodule
