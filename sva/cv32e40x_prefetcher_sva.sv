@@ -117,28 +117,27 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
       `uvm_error("Prefetcher SVA",
                 $sformatf("branch address not propagated to trans_addr_o correctly"))
 
-  // Check that fetch_branch_addr_i is word aligned
+  // Check that fetch_branch_addr_i is halfword aligned
   property p_fetch_branch_addr_aligned;
-    @(posedge clk) disable iff (!rst_n) (fetch_branch_addr_i[1:0] == 2'b00);
+    @(posedge clk) disable iff (!rst_n) (fetch_branch_addr_i[0] == 1'b0);
   endproperty
 
   a_fetch_branch_addr_aligned:
     assert property(p_fetch_branch_addr_aligned)
     else
       `uvm_error("Prefetcher SVA",
-                $sformatf("fetch_branch_addr_i is not word aligned."))
+                $sformatf("fetch_branch_addr_i is not halfword aligned."))
 
-  // Check that trans_addr_o is word aligned
+  // Check that trans_addr_o is halfword aligned
   property p_trans_addr_aligned;
-    @(posedge clk) disable iff (!rst_n) (trans_addr_o[1:0] == 2'b00);
+    @(posedge clk) disable iff (!rst_n) (trans_addr_o[0] == 1'b0);
   endproperty
 
   a_trans_addr_aligned:
     assert property(p_trans_addr_aligned)
     else
       `uvm_error("Prefetcher SVA",
-                $sformatf("trans_addr_o is not word aligned."))
-
+                $sformatf("trans_addr_o is not halfword aligned."))
 
   // Check that we acknowledge a fetch_valid when trans_ready high
   property p_fetch_ready;

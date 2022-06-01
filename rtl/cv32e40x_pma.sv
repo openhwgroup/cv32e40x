@@ -47,8 +47,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   logic pma_cfg_atomic;
 
   // PMA addresses are word addresses
-  assign word_addr =  {2'b00, trans_addr_i[31:2]};
-
+  assign word_addr = {2'b00, trans_addr_i[31:2]};
 
   generate
     if(PMA_NUM_REGIONS == 0) begin: no_pma
