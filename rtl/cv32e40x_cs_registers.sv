@@ -132,7 +132,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Interrupt control signals
   logic [31:0]  mepc_q, mepc_n, mepc_rdata;
   logic         mepc_we;
-  logic         mepc_rd_error;
 
   // Trigger
   logic [31:0]  tselect_q, tselect_n, tselect_rdata;
@@ -140,11 +139,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   logic [31:0]  tdata1_q, tdata1_n, tdata1_rdata;
   logic         tdata1_we;
-  logic         tdata1_rd_error;
 
   logic [31:0]  tdata2_q, tdata2_n, tdata2_rdata;
   logic         tdata2_we;
-  logic         tdata2_rd_error;
 
   logic [31:0]  tdata3_n, tdata3_rdata;                                         // No CSR module instance
   logic         tdata3_we;
@@ -158,31 +155,24 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Debug
   dcsr_t        dcsr_q, dcsr_n, dcsr_rdata;
   logic         dcsr_we;
-  logic         dcsr_rd_error;
 
   logic [31:0]  dpc_q, dpc_n, dpc_rdata;
   logic         dpc_we;
-  logic         dpc_rd_error;
 
   logic [31:0]  dscratch0_q, dscratch0_n, dscratch0_rdata;
   logic         dscratch0_we;
-  logic         dscratch0_rd_error;
 
   logic [31:0]  dscratch1_q, dscratch1_n, dscratch1_rdata;
   logic         dscratch1_we;
-  logic         dscratch1_rd_error;
 
   logic [31:0]  mscratch_q, mscratch_n, mscratch_rdata;
   logic         mscratch_we;
-  logic         mscratch_rd_error;
 
   jvt_t         jvt_q, jvt_n, jvt_rdata;
   logic         jvt_we;
-  logic         jvt_rd_error;
 
   mstatus_t     mstatus_q, mstatus_n, mstatus_rdata;
   logic         mstatus_we;
-  logic         mstatus_rd_error;
 
   logic [31:0]  mstatush_n, mstatush_rdata;                                     // No CSR module instance
   logic         mstatush_we;                                                    // Not used in RTL (used by RVFI)
@@ -192,26 +182,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   mcause_t      mcause_q, mcause_n, mcause_rdata;
   logic         mcause_we;
-  logic         mcause_rd_error;
 
   mtvec_t       mtvec_q, mtvec_n, mtvec_rdata;
   logic         mtvec_we;
-  logic         mtvec_rd_error;
 
   mtvt_t        mtvt_q, mtvt_n, mtvt_rdata;
   logic         mtvt_we;
-  logic         mtvt_rd_error;
 
   logic [31:0]  mnxti_rdata;                                                    // No CSR module instance
   logic         mnxti_we;
 
   mintstatus_t  mintstatus_q, mintstatus_n, mintstatus_rdata;
   logic         mintstatus_we;
-  logic         mintstatus_rd_error;
 
   logic [31:0]  mintthresh_q, mintthresh_n, mintthresh_rdata;
   logic         mintthresh_we;
-  logic         mintthresh_rd_error;
 
   logic [31:0]  mscratchcsw_q, mscratchcsw_n, mscratchcsw_rdata;
   logic         mscratchcsw_we;
@@ -227,7 +212,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   logic [31:0]  mie_q, mie_n, mie_rdata;                                        // Bits are masked according to IRQ_MASK
   logic         mie_we;
-  logic         mie_rd_error;
 
   logic [31:0]  mvendorid_n, mvendorid_rdata;                                   // No CSR module instance
   logic         mvendorid_we;                                                   // Always 0 (MRO), not used in RTL (used by RVFI)
@@ -1050,121 +1034,103 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) jvt_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( jvt_n                 ),
     .wr_en_i            ( jvt_we                ),
-    .rd_data_o          ( jvt_q                 ),
-    .rd_error_o         ( jvt_rd_error          )
+    .rd_data_o          ( jvt_q                 )
   );
 
   assign jvt_addr_o = jvt_q.base [31:32-JVT_ADDR_WIDTH];
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dscratch0_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dscratch0_n           ),
     .wr_en_i            ( dscratch0_we          ),
-    .rd_data_o          ( dscratch0_q           ),
-    .rd_error_o         ( dscratch0_rd_error    )
+    .rd_data_o          ( dscratch0_q           )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dscratch1_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ), 
     .wr_data_i          ( dscratch1_n           ), 
     .wr_en_i            ( dscratch1_we          ), 
-    .rd_data_o          ( dscratch1_q           ), 
-    .rd_error_o         ( dscratch1_rd_error    )  
+    .rd_data_o          ( dscratch1_q           )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (DCSR_RESET_VAL)
   ) dcsr_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dcsr_n                ),
     .wr_en_i            ( dcsr_we               ),
-    .rd_data_o          ( dcsr_q                ),
-    .rd_error_o         ( dcsr_rd_error         )
+    .rd_data_o          ( dcsr_q                )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) dpc_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dpc_n                 ),
     .wr_en_i            ( dpc_we                ),
-    .rd_data_o          ( dpc_q                 ),
-    .rd_error_o         ( dpc_rd_error          )
+    .rd_data_o          ( dpc_q                 )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mepc_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mepc_n                ),
     .wr_en_i            ( mepc_we               ),
-    .rd_data_o          ( mepc_q                ),
-    .rd_error_o         ( mepc_rd_error         )
+    .rd_data_o          ( mepc_q                )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mscratch_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mscratch_n            ),
     .wr_en_i            ( mscratch_we           ),
-    .rd_data_o          ( mscratch_q            ),
-    .rd_error_o         ( mscratch_rd_error     )
+    .rd_data_o          ( mscratch_q            )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (MSTATUS_RESET_VAL)
   ) mstatus_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mstatus_n             ),
     .wr_en_i            ( mstatus_we            ),
-    .rd_data_o          ( mstatus_q             ),
-    .rd_error_o         ( mstatus_rd_error      )
+    .rd_data_o          ( mstatus_q             )
   );
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) mcause_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mcause_n              ),
     .wr_en_i            ( mcause_we             ),
-    .rd_data_o          ( mcause_q              ),
-    .rd_error_o         ( mcause_rd_error       )
+    .rd_data_o          ( mcause_q              )
   );
 
   generate
@@ -1174,131 +1140,110 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (MTVEC_CLIC_RESET_VAL)
       ) mtvec_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mtvec_n               ),
         .wr_en_i        ( mtvec_we              ),
-        .rd_data_o      ( mtvec_q               ),
-        .rd_error_o     ( mtvec_rd_error        )
+        .rd_data_o      ( mtvec_q               )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (MTVT_RESET_VAL)
       ) mtvt_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ), 
         .wr_data_i      ( mtvt_n                ), 
         .wr_en_i        ( mtvt_we               ), 
-        .rd_data_o      ( mtvt_q                ), 
-        .rd_error_o     ( mtvt_rd_error         )  
+        .rd_data_o      ( mtvt_q                )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (MINTSTATUS_RESET_VAL)
       ) mintstatus_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mintstatus_n          ),
         .wr_en_i        ( mintstatus_we         ),
-        .rd_data_o      ( mintstatus_q          ),
-        .rd_error_o     ( mintstatus_rd_error   )
+        .rd_data_o      ( mintstatus_q          )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (32'h0)
       ) mintthresh_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mintthresh_n          ),
         .wr_en_i        ( mintthresh_we         ),
-        .rd_data_o      ( mintthresh_q          ),
-        .rd_error_o     ( mintthresh_rd_error   )
+        .rd_data_o      ( mintthresh_q          )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (32'h0)
       ) mscratchcsw_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mscratchcsw_n         ),
         .wr_en_i        ( mscratchcsw_we        ),
-        .rd_data_o      ( mscratchcsw_q         ),
-        .rd_error_o     ( mscratchcsw_rd_error  )
+        .rd_data_o      ( mscratchcsw_q         )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (32'h0)
       ) mscratchcswl_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mscratchcswl_n        ),
         .wr_en_i        ( mscratchcswl_we       ),
-        .rd_data_o      ( mscratchcswl_q        ),
-        .rd_error_o     ( mscratchcswl_rd_error )
+        .rd_data_o      ( mscratchcswl_q        )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (32'h0)
       ) mclicbase_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mclicbase_n           ),
         .wr_en_i        ( mclicbase_we          ),
-        .rd_data_o      ( mclicbase_q           ),
-        .rd_error_o     ( mclicbase_rd_error    )
+        .rd_data_o      ( mclicbase_q           )
       );
 
     end else begin : basic_mode_csrs
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (MTVEC_BASIC_RESET_VAL)
       ) mtvec_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mtvec_n               ),
         .wr_en_i        ( mtvec_we              ),
-        .rd_data_o      ( mtvec_q               ),
-        .rd_error_o     ( mtvec_rd_error        )
+        .rd_data_o      ( mtvec_q               )
       );
 
       cv32e40x_csr #(
         .WIDTH      (32),
-        .SHADOWCOPY (1'b0),
         .RESETVALUE (32'd0)
       ) mie_csr_i (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mie_n                 ),
         .wr_en_i        ( mie_we                ),
-        .rd_data_o      ( mie_q                 ),
-        .rd_error_o     ( mie_rd_error          )
+        .rd_data_o      ( mie_q                 )
       );
 
       assign mtvt_q              = 32'h0;
-      assign mtvt_rd_error       = 1'b0;
 
       assign mintstatus_q        = 32'h0;
-      assign mintstatus_rd_error = 1'b0;
 
       assign mintthresh_q        = 32'h0;
-      assign mintthresh_rd_error = 1'b0;
 
       assign mscratchcsw_q       = 32'h0;
 
@@ -1388,30 +1333,26 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (TDATA1_RST_VAL)
   ) tdata1_csr_i (
     .clk        (clk),
     .rst_n      (rst_n),
     .wr_data_i  (tdata1_n),
     .wr_en_i    (tdata1_we),
-    .rd_data_o  (tdata1_q),
-    .rd_error_o (tdata1_rd_error)
+    .rd_data_o  (tdata1_q)
   );
 
   assign tdata1_rdata = tdata1_q;
 
   cv32e40x_csr #(
     .WIDTH      (32),
-    .SHADOWCOPY (1'b0),
     .RESETVALUE (32'd0)
   ) tdata2_csr_i (
     .clk        (clk),
     .rst_n      (rst_n),
     .wr_data_i  (tdata2_n),
     .wr_en_i    (tdata2_we),
-    .rd_data_o  (tdata2_q),
-    .rd_error_o (tdata2_rd_error)
+    .rd_data_o  (tdata2_q)
   );
 
   assign tdata2_rdata = tdata2_q;
