@@ -354,21 +354,20 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   always_comb begin
     outstanding_cnt_n = outstanding_cnt_q;
-      case ({outstanding_count_up, outstanding_count_down})
-        2'b00  : begin
-          outstanding_cnt_n = outstanding_cnt_q;
-        end
-        2'b01  : begin
-          outstanding_cnt_n = outstanding_cnt_q - 1'b1;
-        end
-        2'b10  : begin
-          outstanding_cnt_n = outstanding_cnt_q + 1'b1;
-        end
-        2'b11  : begin
-          outstanding_cnt_n = outstanding_cnt_q;
-        end
-      endcase
-    //end
+    case ({outstanding_count_up, outstanding_count_down})
+      2'b00 : begin
+        outstanding_cnt_n = outstanding_cnt_q;
+      end
+      2'b01 : begin
+        outstanding_cnt_n = outstanding_cnt_q - 1'b1;
+      end
+      2'b10 : begin
+        outstanding_cnt_n = outstanding_cnt_q + 1'b1;
+      end
+      2'b11 : begin
+        outstanding_cnt_n = outstanding_cnt_q;
+      end
+    endcase
   end
 
 
