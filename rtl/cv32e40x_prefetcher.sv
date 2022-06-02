@@ -69,8 +69,8 @@ module cv32e40x_prefetcher
   logic [31:0]                   trans_addr_q, trans_addr_incr;
   logic                          trans_ptr_access_q;
 
-  // Increment address (always word fetch)
-  assign trans_addr_incr = {trans_addr_q[31:2], 2'b00} + 32'd4;
+  // Increment address (address will be made word aligned at core level)
+  assign trans_addr_incr = {trans_addr_q[31:1], 1'b0} + 32'd4;
 
   // Transaction request generation
   // alignment_buffer will request a transaction when it needs it.
