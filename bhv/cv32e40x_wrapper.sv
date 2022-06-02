@@ -551,7 +551,25 @@ module cv32e40x_wrapper
          .csr_mseccfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mconfigptr_n_i       ( '0                                                                   ),
          .csr_mconfigptr_q_i       ( '0                                                                   ),
-         .csr_mconfigptr_we_i      ( '0                                                                   )
+         .csr_mconfigptr_we_i      ( '0                                                                   ),
+         .csr_menvcfg_n_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_menvcfg_q_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_menvcfg_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_menvcfgh_n_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_menvcfgh_q_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_menvcfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_cpuctrl_n_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_cpuctrl_q_i          ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_cpuctrl_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_we_i     ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_we_i     ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_we_i     ( '0                                    /* Not supported in cv32e40x*/ )
 
 
 `ifdef RISCV_FORMAL
