@@ -234,6 +234,16 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_cpuctrl_q_i,
    input logic                                csr_cpuctrl_we_i,
 
+   input logic [31:0]                         csr_secureseed0_n_i,
+   input logic [31:0]                         csr_secureseed0_q_i,
+   input logic                                csr_secureseed0_we_i,
+   input logic [31:0]                         csr_secureseed1_n_i,
+   input logic [31:0]                         csr_secureseed1_q_i,
+   input logic                                csr_secureseed1_we_i,
+   input logic [31:0]                         csr_secureseed2_n_i,
+   input logic [31:0]                         csr_secureseed2_q_i,
+   input logic                                csr_secureseed2_we_i,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
   // the convention of RISC-V Formal Interface Specification.
@@ -363,14 +373,6 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_tcontrol_wmask,
    output logic [31:0]                        rvfi_csr_tcontrol_rdata,
    output logic [31:0]                        rvfi_csr_tcontrol_wdata,
-   output logic [31:0]                        rvfi_csr_mcontext_rmask,
-   output logic [31:0]                        rvfi_csr_mcontext_wmask,
-   output logic [31:0]                        rvfi_csr_mcontext_rdata,
-   output logic [31:0]                        rvfi_csr_mcontext_wdata,
-   output logic [31:0]                        rvfi_csr_scontext_rmask,
-   output logic [31:0]                        rvfi_csr_scontext_wmask,
-   output logic [31:0]                        rvfi_csr_scontext_rdata,
-   output logic [31:0]                        rvfi_csr_scontext_wdata,
    output logic [31:0]                        rvfi_csr_dcsr_rmask,
    output logic [31:0]                        rvfi_csr_dcsr_wmask,
    output logic [31:0]                        rvfi_csr_dcsr_rdata,
@@ -487,7 +489,20 @@ module cv32e40x_rvfi
    output logic        [31:0]                 rvfi_csr_cpuctrl_rmask,
    output logic        [31:0]                 rvfi_csr_cpuctrl_wmask,
    output logic        [31:0]                 rvfi_csr_cpuctrl_rdata,
-   output logic        [31:0]                 rvfi_csr_cpuctrl_wdata
+   output logic        [31:0]                 rvfi_csr_cpuctrl_wdata,
+
+   output logic        [31:0]                 rvfi_csr_secureseed0_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed0_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed0_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed0_wdata,
+   output logic        [31:0]                 rvfi_csr_secureseed1_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed1_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed1_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed1_wdata,
+   output logic        [31:0]                 rvfi_csr_secureseed2_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed2_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed2_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed2_wdata
 );
 
   // Propagating from ID stage
@@ -1072,14 +1087,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
   assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
   assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
-  // TODO: do not tie off mcontext inside the module
-  assign rvfi_csr_rdata_d.mcontext           = '0;
-  assign rvfi_csr_wdata_d.mcontext           = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.mcontext           = '0;
-
-  assign rvfi_csr_rdata_d.scontext           = '0;
-  assign rvfi_csr_wdata_d.scontext           = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.scontext           = '0;
 
   // Debug / Trace
   assign ex_csr_rdata_d.nmip                 = csr_dcsr_q_i[3]; // dcsr.nmip is autonomous. Propagate read value from EX stage
@@ -1248,6 +1255,18 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.cpuctrl         = csr_cpuctrl_q_i;
   assign rvfi_csr_wmask_d.cpuctrl         = csr_cpuctrl_we_i ? '1 : '0;
 
+  assign rvfi_csr_wdata_d.secureseed0     = csr_secureseed0_n_i;
+  assign rvfi_csr_rdata_d.secureseed0     = csr_secureseed0_q_i;
+  assign rvfi_csr_wmask_d.secureseed0     = csr_secureseed0_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.secureseed1     = csr_secureseed1_n_i;
+  assign rvfi_csr_rdata_d.secureseed1     = csr_secureseed1_q_i;
+  assign rvfi_csr_wmask_d.secureseed1     = csr_secureseed1_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.secureseed2     = csr_secureseed2_n_i;
+  assign rvfi_csr_rdata_d.secureseed2     = csr_secureseed2_q_i;
+  assign rvfi_csr_wmask_d.secureseed2     = csr_secureseed2_we_i ? '1 : '0;
+
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
   assign rvfi_csr_jvt_rmask               = '1;
@@ -1347,14 +1366,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_tcontrol_rmask          = '1;
   assign rvfi_csr_tcontrol_wdata          = rvfi_csr_wdata.tcontrol;
   assign rvfi_csr_tcontrol_wmask          = rvfi_csr_wmask.tcontrol;
-  assign rvfi_csr_mcontext_rdata          = rvfi_csr_rdata.mcontext;
-  assign rvfi_csr_mcontext_rmask          = '1;
-  assign rvfi_csr_mcontext_wdata          = rvfi_csr_wdata.mcontext;
-  assign rvfi_csr_mcontext_wmask          = rvfi_csr_wmask.mcontext;
-  assign rvfi_csr_scontext_rdata          = rvfi_csr_rdata.scontext;
-  assign rvfi_csr_scontext_rmask          = '1;
-  assign rvfi_csr_scontext_wdata          = rvfi_csr_wdata.scontext;
-  assign rvfi_csr_scontext_wmask          = rvfi_csr_wmask.scontext;
   assign rvfi_csr_dcsr_rdata              = rvfi_csr_rdata.dcsr;
   assign rvfi_csr_dcsr_rmask              = '1;
   assign rvfi_csr_dcsr_wdata              = rvfi_csr_wdata.dcsr;
@@ -1467,6 +1478,18 @@ module cv32e40x_rvfi
   assign rvfi_csr_cpuctrl_rmask           = '1;
   assign rvfi_csr_cpuctrl_wdata           = rvfi_csr_wdata.cpuctrl;
   assign rvfi_csr_cpuctrl_wmask           = rvfi_csr_wmask.cpuctrl;
+  assign rvfi_csr_secureseed0_rdata       = rvfi_csr_rdata.secureseed0;
+  assign rvfi_csr_secureseed0_rmask       = '1;
+  assign rvfi_csr_secureseed0_wdata       = rvfi_csr_wdata.secureseed0;
+  assign rvfi_csr_secureseed0_wmask       = rvfi_csr_wmask.secureseed0;
+  assign rvfi_csr_secureseed1_rdata       = rvfi_csr_rdata.secureseed1;
+  assign rvfi_csr_secureseed1_rmask       = '1;
+  assign rvfi_csr_secureseed1_wdata       = rvfi_csr_wdata.secureseed1;
+  assign rvfi_csr_secureseed1_wmask       = rvfi_csr_wmask.secureseed1;
+  assign rvfi_csr_secureseed2_rdata       = rvfi_csr_rdata.secureseed2;
+  assign rvfi_csr_secureseed2_rmask       = '1;
+  assign rvfi_csr_secureseed2_wdata       = rvfi_csr_wdata.secureseed2;
+  assign rvfi_csr_secureseed2_wmask       = rvfi_csr_wmask.secureseed2;
 
 endmodule // cv32e40x_rvfi
 

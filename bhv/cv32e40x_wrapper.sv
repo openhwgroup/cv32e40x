@@ -560,7 +560,16 @@ module cv32e40x_wrapper
          .csr_menvcfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_cpuctrl_n_i          ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_cpuctrl_q_i          ( '0                                    /* Not supported in cv32e40x*/ ),
-         .csr_cpuctrl_we_i         ( '0                                    /* Not supported in cv32e40x*/ )
+         .csr_cpuctrl_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed0_we_i     ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed1_we_i     ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_n_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_q_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_secureseed2_we_i     ( '0                                    /* Not supported in cv32e40x*/ )
 
 
 `ifdef RISCV_FORMAL
