@@ -474,8 +474,6 @@ parameter MCAUSE_MPIE_BIT      = 27;
 // misa
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
 
-parameter MHPMCOUNTER_WIDTH  = 64;
-
 // Types for packed struct CSRs
 
 typedef struct packed {

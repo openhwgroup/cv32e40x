@@ -17,14 +17,13 @@
 //                 Davide Schiavone - pschiavo@iis.ee.ethz.ch                 //
 //                 Andrea Bettati - andrea.bettati@studenti.unipr.it          //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+//                 Øivind Ekelund - oivind.ekelund@silabs.com                 //
 //                                                                            //
 // Design Name:    Control and Status Registers                               //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Control and Status Registers (CSRs) loosely following the  //
-//                 RiscV draft priviledged instruction set spec (v1.9)        //
-//                 Added Floating point support                               //
+// Description:    Control and Status Registers (CSRs)                        //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,219 +43,208 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 )
 (
   // Clock and Reset
-  input  logic            clk,
-  input  logic            rst_n,
+  input  logic                          clk,
+  input  logic                          rst_n,
 
-  // IDs
-  input  logic [31:0]     mhartid_i,
-  input  logic  [3:0]     mimpid_patch_i,
+  // Configuration
+  input  logic [31:0]                   mhartid_i,
+  input  logic  [3:0]                   mimpid_patch_i,
+  input  logic [31:0]                   mtvec_addr_i,
+  input  logic                          csr_mtvec_init_i,
 
-  // MTVEC
-  output logic [24:0]     mtvec_addr_o,
-  output logic  [1:0]     mtvec_mode_o,
+  // CSRs
+  output dcsr_t                         dcsr_o,
+  output logic [31:0]                   dpc_o,
+  output logic [JVT_ADDR_WIDTH-1:0]     jvt_addr_o,
+  output mcause_t                       mcause_o,
+  output logic [63:0]                   mcycle_o,
+  output logic [31:0]                   mepc_o,
+  output logic [31:0]                   mie_o,
+  output mintstatus_t                   mintstatus_o,
+  output logic [7:0]                    mintthresh_o,
+  output mstatus_t                      mstatus_o,
+  output logic [24:0]                   mtvec_addr_o,
+  output logic  [1:0]                   mtvec_mode_o,
+  output logic [MTVT_ADDR_WIDTH-1:0]    mtvt_addr_o,
 
-  // MTVT
-  output logic [MTVT_ADDR_WIDTH-1:0]     mtvt_addr_o,
+  output privlvl_t                      priv_lvl_o,
 
-  // Cycle Count
-  output logic [MHPMCOUNTER_WIDTH-1:0] mcycle_o,
-
-  // Used for mtvec address
-  input  logic [31:0]     mtvec_addr_i,
-  input  logic            csr_mtvec_init_i,
-
-  // JVT to IF stage
-  output logic [JVT_ADDR_WIDTH-1:0] jvt_addr_o,
   // ID/EX pipeline
-  input id_ex_pipe_t      id_ex_pipe_i,
+  input id_ex_pipe_t                    id_ex_pipe_i,
+  output logic                          csr_illegal_o,
 
   // EX/WB pipeline
-  input ex_wb_pipe_t      ex_wb_pipe_i,
+  input  ex_wb_pipe_t                   ex_wb_pipe_i,
 
-  // From controller FSM
-  input  ctrl_fsm_t       ctrl_fsm_i,
+  // From controller_fsm
+  input  ctrl_fsm_t                     ctrl_fsm_i,
 
-  // To controller bypass logic
-  output logic            csr_counter_read_o,
-  output logic            csr_mnxti_read_o,
+  // To controller_bypass
+  output logic                          csr_counter_read_o,
+  output logic                          csr_mnxti_read_o,
 
-  // Interface to registers (SRAM like)
-  output logic [31:0]     csr_rdata_o,
-
-  // To EX stage
-  output logic            csr_illegal_o, // 1'b1 for illegal CSR access.
-
-  // To WB stage
-  output logic            clic_pa_valid_o,   // CSR read data is an address to a function pointer
-  output logic [31:0]     clic_pa_o,         // Address to CLIC function pointer
+  // Interface to CSRs (SRAM like)
+  output logic [31:0]                   csr_rdata_o,
 
   // Interrupts
-  output logic [31:0]     mie_o,
-  input  logic [31:0]     mip_i,
-  output logic            m_irq_enable_o,
-  output logic [7:0]      mintthresh_o,
-  output mintstatus_t     mintstatus_o,
-  output mcause_t         mcause_o,
+  input  logic [31:0]                   mip_i,
+  input  logic                          mnxti_irq_pending_i,
+  input  logic [SMCLIC_ID_WIDTH-1:0]    mnxti_irq_id_i,
+  input  logic [7:0]                    mnxti_irq_level_i,
+  output logic                          clic_pa_valid_o,        // CSR read data is an address to a function pointer
+  output logic [31:0]                   clic_pa_o,              // Address to CLIC function pointer
 
-  input  logic                       mnxti_irq_pending_i,
-  input  logic [SMCLIC_ID_WIDTH-1:0] mnxti_irq_id_i,
-  input  logic [7:0]                 mnxti_irq_level_i,
-
-  output logic [31:0]     mepc_o,
-
-  // debug
-  output logic [31:0]     dpc_o,
-  output dcsr_t           dcsr_o,
-  output logic            trigger_match_o,
-
-  input  logic [31:0]     pc_if_i,
-  input  logic            ptr_in_if_i
+  // Debug
+  input  logic [31:0]                   pc_if_i,
+  input  logic                          ptr_in_if_i,
+  output logic                          trigger_match_o
 );
 
   localparam logic [31:0] CORE_MISA =
-  (32'(A_EXT)      <<  0)  // A - Atomic Instructions extension
-| (32'(1)          <<  2)  // C - Compressed extension
-| (32'(1)          <<  8)  // I - RV32I/64I/128I base ISA
-| (32'(M_EXT == M) << 12)  // M - Integer Multiply/Divide extension
-| (32'(0)          << 20)  // U - User mode implemented
-| (32'(0)          << 23)  // X - Non-standard extensions present
-| (32'(MXL)        << 30); // M-XLEN
+    (32'(A_EXT)      <<  0) | // A - Atomic Instructions extension
+    (32'(1)          <<  2) | // C - Compressed extension
+    (32'(1)          <<  8) | // I - RV32I/64I/128I base ISA
+    (32'(M_EXT == M) << 12) | // M - Integer Multiply/Divide extension
+    (32'(0)          << 20) | // U - User mode implemented
+    (32'(0)          << 23) | // X - Non-standard extensions present
+    (32'(MXL)        << 30); // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
 
   // CSR update logic
-  logic [31:0]  csr_wdata_int;
-  logic [31:0]  csr_rdata_int;
-  logic         csr_we_int;
+  logic [31:0]                  csr_wdata_int;
+  logic [31:0]                  csr_rdata_int;
+  logic                         csr_we_int;
+
+  csr_opcode_e                  csr_op;
+  csr_num_e                     csr_waddr;
+  csr_num_e                     csr_raddr;
+  logic [31:0]                  csr_wdata;
+  logic                         csr_en_gated;
+
+  logic                         illegal_csr_read;                               // Current CSR cannot be read
+  logic                         illegal_csr_write;                              // Current CSR cannot be written
+
+  logic                         instr_valid;                                    // Local instr_valid
+
+  logic                         unused_signals;
 
   // Interrupt control signals
-  logic [31:0]  mepc_q, mepc_n, mepc_rdata;
-  logic         mepc_we;
+  logic [31:0]                  mepc_q, mepc_n, mepc_rdata;
+  logic                         mepc_we;
 
   // Trigger
-  logic [31:0]  tselect_q, tselect_n, tselect_rdata;
-  logic         tselect_we;                                                     // Not used in RTL (used by RVFI)
+  logic [31:0]                  tselect_q, tselect_n, tselect_rdata;
+  logic                         tselect_we;                                     // Not used in RTL (used by RVFI)
 
-  logic [31:0]  tdata1_q, tdata1_n, tdata1_rdata;
-  logic         tdata1_we;
+  logic [31:0]                  tdata1_q, tdata1_n, tdata1_rdata;
+  logic                         tdata1_we;
 
-  logic [31:0]  tdata2_q, tdata2_n, tdata2_rdata;
-  logic         tdata2_we;
+  logic [31:0]                  tdata2_q, tdata2_n, tdata2_rdata;
+  logic                         tdata2_we;
 
-  logic [31:0]  tdata3_n, tdata3_rdata;                                         // No CSR module instance
-  logic         tdata3_we;
+  logic [31:0]                  tdata3_n, tdata3_rdata;                         // No CSR module instance
+  logic                         tdata3_we;
 
-  logic [31:0]  tinfo_q, tinfo_n, tinfo_rdata;
-  logic         tinfo_we;                                                       // Not used in RTL (used by RVFI)
+  logic [31:0]                  tinfo_q, tinfo_n, tinfo_rdata;
+  logic                         tinfo_we;                                       // Not used in RTL (used by RVFI)
 
-  logic [31:0]  tcontrol_n, tcontrol_rdata;                                     // No CSR module instance
-  logic         tcontrol_we;                                                    // Not used in RTL (used by RVFI)
+  logic [31:0]                  tcontrol_n, tcontrol_rdata;                     // No CSR module instance
+  logic                         tcontrol_we;                                    // Not used in RTL (used by RVFI)
 
   // Debug
-  dcsr_t        dcsr_q, dcsr_n, dcsr_rdata;
-  logic         dcsr_we;
+  dcsr_t                        dcsr_q, dcsr_n, dcsr_rdata;
+  logic                         dcsr_we;
 
-  logic [31:0]  dpc_q, dpc_n, dpc_rdata;
-  logic         dpc_we;
+  logic [31:0]                  dpc_q, dpc_n, dpc_rdata;
+  logic                         dpc_we;
 
-  logic [31:0]  dscratch0_q, dscratch0_n, dscratch0_rdata;
-  logic         dscratch0_we;
+  logic [31:0]                  dscratch0_q, dscratch0_n, dscratch0_rdata;
+  logic                         dscratch0_we;
 
-  logic [31:0]  dscratch1_q, dscratch1_n, dscratch1_rdata;
-  logic         dscratch1_we;
+  logic [31:0]                  dscratch1_q, dscratch1_n, dscratch1_rdata;
+  logic                         dscratch1_we;
 
-  logic [31:0]  mscratch_q, mscratch_n, mscratch_rdata;
-  logic         mscratch_we;
+  logic [31:0]                  mscratch_q, mscratch_n, mscratch_rdata;
+  logic                         mscratch_we;
 
-  jvt_t         jvt_q, jvt_n, jvt_rdata;
-  logic         jvt_we;
+  jvt_t                         jvt_q, jvt_n, jvt_rdata;
+  logic                         jvt_we;
 
-  mstatus_t     mstatus_q, mstatus_n, mstatus_rdata;
-  logic         mstatus_we;
+  mstatus_t                     mstatus_q, mstatus_n, mstatus_rdata;
+  logic                         mstatus_we;
 
-  logic [31:0]  mstatush_n, mstatush_rdata;                                     // No CSR module instance
-  logic         mstatush_we;                                                    // Not used in RTL (used by RVFI)
+  logic [31:0]                  mstatush_n, mstatush_rdata;                     // No CSR module instance
+  logic                         mstatush_we;                                    // Not used in RTL (used by RVFI)
 
-  logic [31:0]  misa_n, misa_rdata;                                             // No CSR module instance
-  logic         misa_we;                                                        // Not used in RTL (used by RVFI)
+  logic [31:0]                  misa_n, misa_rdata;                             // No CSR module instance
+  logic                         misa_we;                                        // Not used in RTL (used by RVFI)
 
-  mcause_t      mcause_q, mcause_n, mcause_rdata;
-  logic         mcause_we;
+  mcause_t                      mcause_q, mcause_n, mcause_rdata;
+  logic                         mcause_we;
 
-  mtvec_t       mtvec_q, mtvec_n, mtvec_rdata;
-  logic         mtvec_we;
+  mtvec_t                       mtvec_q, mtvec_n, mtvec_rdata;
+  logic                         mtvec_we;
 
-  mtvt_t        mtvt_q, mtvt_n, mtvt_rdata;
-  logic         mtvt_we;
+  mtvt_t                        mtvt_q, mtvt_n, mtvt_rdata;
+  logic                         mtvt_we;
 
-  logic [31:0]  mnxti_rdata;                                                    // No CSR module instance
-  logic         mnxti_we;
+  logic [31:0]                  mnxti_rdata;                                    // No CSR module instance
+  logic                         mnxti_we;
 
-  mintstatus_t  mintstatus_q, mintstatus_n, mintstatus_rdata;
-  logic         mintstatus_we;
+  mintstatus_t                  mintstatus_q, mintstatus_n, mintstatus_rdata;
+  logic                         mintstatus_we;
 
-  logic [31:0]  mintthresh_q, mintthresh_n, mintthresh_rdata;
-  logic         mintthresh_we;
+  logic [31:0]                  mintthresh_q, mintthresh_n, mintthresh_rdata;
+  logic                         mintthresh_we;
 
-  logic [31:0]  mscratchcsw_q, mscratchcsw_n, mscratchcsw_rdata;
-  logic         mscratchcsw_we;
+  logic [31:0]                  mscratchcsw_q, mscratchcsw_n, mscratchcsw_rdata;
+  logic                         mscratchcsw_we;
 
-  logic [31:0]  mscratchcswl_q, mscratchcswl_n, mscratchcswl_rdata;
-  logic         mscratchcswl_we;
+  logic [31:0]                  mscratchcswl_q, mscratchcswl_n, mscratchcswl_rdata;
+  logic                         mscratchcswl_we;
 
-  logic [31:0]  mclicbase_q, mclicbase_n, mclicbase_rdata;
-  logic         mclicbase_we;
+  logic [31:0]                  mclicbase_q, mclicbase_n, mclicbase_rdata;
+  logic                         mclicbase_we;
 
-  logic [31:0]  mip_n, mip_rdata;                                               // No CSR module instance
-  logic         mip_we;                                                         // Not used in RTL (used by RVFI)
+  logic [31:0]                  mip_n, mip_rdata;                               // No CSR module instance
+  logic                         mip_we;                                         // Not used in RTL (used by RVFI)
 
-  logic [31:0]  mie_q, mie_n, mie_rdata;                                        // Bits are masked according to IRQ_MASK
-  logic         mie_we;
+  logic [31:0]                  mie_q, mie_n, mie_rdata;                        // Bits are masked according to IRQ_MASK
+  logic                         mie_we;
 
-  logic [31:0]  mvendorid_n, mvendorid_rdata;                                   // No CSR module instance
-  logic         mvendorid_we;                                                   // Always 0 (MRO), not used in RTL (used by RVFI)
+  logic [31:0]                  mvendorid_n, mvendorid_rdata;                   // No CSR module instance
+  logic                         mvendorid_we;                                   // Always 0 (MRO), not used in RTL (used by RVFI)
 
-  logic [31:0]  marchid_n, marchid_rdata;                                       // No CSR module instance
-  logic         marchid_we;                                                     // Always 0 (MRO), not used in RTL (used by RVFI)
+  logic [31:0]                  marchid_n, marchid_rdata;                       // No CSR module instance
+  logic                         marchid_we;                                     // Always 0 (MRO), not used in RTL (used by RVFI)
 
-  logic [31:0]  mimpid_n, mimpid_rdata;                                         // No CSR module instance
-  logic         mimpid_we;                                                      // Always 0 (MRO), not used in RTL (used by RVFI)
+  logic [31:0]                  mimpid_n, mimpid_rdata;                         // No CSR module instance
+  logic                         mimpid_we;                                      // Always 0 (MRO), not used in RTL (used by RVFI)
 
-  logic [31:0]  mhartid_n, mhartid_rdata;                                       // No CSR module instance
-  logic         mhartid_we;                                                     // Always 0 (MRO), not used in RTL (used by RVFI)
+  logic [31:0]                  mhartid_n, mhartid_rdata;                       // No CSR module instance
+  logic                         mhartid_we;                                     // Always 0 (MRO), not used in RTL (used by RVFI)
 
-  logic [31:0]  mconfigptr_n, mconfigptr_rdata;                                 // No CSR module instance
-  logic         mconfigptr_we;                                                  // Always 0 (MRO), not used in RTL (used by RVFI)
+  logic [31:0]                  mconfigptr_n, mconfigptr_rdata;                 // No CSR module instance
+  logic                         mconfigptr_we;                                  // Always 0 (MRO), not used in RTL (used by RVFI)
 
-  logic [31:0]  mtval_n, mtval_rdata;                                           // No CSR module instance
-  logic         mtval_we;                                                       // Not used in RTL (used by RVFI)
+  logic [31:0]                  mtval_n, mtval_rdata;                           // No CSR module instance
+  logic                         mtval_we;                                       // Not used in RTL (used by RVFI)
+
+  privlvl_t                     priv_lvl_rdata;
 
   // Performance Counter Signals
-  logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_q;                    // performance counters
-  logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_n;                    // performance counters next value
-  logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_rdata;                // performance counters next value
-  logic [31:0] [1:0]                   mhpmcounter_we;                   // performance counters write enable
-  logic [31:0] [31:0]                  mhpmevent_q, mhpmevent_n, mhpmevent_rdata; // event enable
-  logic [31:0]                         mcountinhibit_q, mcountinhibit_n, mcountinhibit_rdata; // performance counter enable
-  logic [NUM_HPM_EVENTS-1:0]           hpm_events;                       // events for performance counters
-  logic [31:0] [MHPMCOUNTER_WIDTH-1:0] mhpmcounter_increment;            // increment of mhpmcounter_q
-  logic [31:0]                         mhpmcounter_write_lower;          // write 32 lower bits of mhpmcounter_q
-  logic [31:0]                         mhpmcounter_write_upper;          // write 32 upper bits mhpmcounter_q
-  logic [31:0]                         mhpmcounter_write_increment;      // write increment of mhpmcounter_q
-
-  // Local instr_valid
-  logic         instr_valid;
-
-  csr_opcode_e  csr_op;
-  csr_num_e     csr_waddr;
-  csr_num_e     csr_raddr;
-  logic [31:0]  csr_wdata;
-  logic         csr_en_gated;
-
-  logic         illegal_csr_read;  // Current CSR cannot be read
-  logic         illegal_csr_write; // Current CSR cannot be written
-
-  logic         unused_signals;
+  logic [31:0] [63:0]           mhpmcounter_q;                                  // Performance counters
+  logic [31:0] [63:0]           mhpmcounter_n;                                  // Performance counters next value
+  logic [31:0] [63:0]           mhpmcounter_rdata;                              // Performance counters next value
+  logic [31:0] [1:0]            mhpmcounter_we;                                 // Performance counters write enable
+  logic [31:0] [31:0]           mhpmevent_q, mhpmevent_n, mhpmevent_rdata;      // Event enable
+  logic [31:0]                  mcountinhibit_q, mcountinhibit_n, mcountinhibit_rdata; // Performance counter inhibit
+  logic [NUM_HPM_EVENTS-1:0]    hpm_events;                                     // Events for performance counters
+  logic [31:0] [63:0]           mhpmcounter_increment;                          // Increment of mhpmcounter_q
+  logic [31:0]                  mhpmcounter_write_lower;                        // Write 32 lower bits of mhpmcounter_q
+  logic [31:0]                  mhpmcounter_write_upper;                        // Write 32 upper bits mhpmcounter_q
+  logic [31:0]                  mhpmcounter_write_increment;                    // Write increment of mhpmcounter_q
 
   // Local instr_valid for write portion (WB)
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
@@ -513,7 +501,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
       CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
       CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H: begin
-        csr_rdata_int = (MHPMCOUNTER_WIDTH == 64) ? mhpmcounter_rdata[csr_raddr[4:0]][63:32] : '0;
+        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
         csr_counter_read_o = 1'b1;
       end
 
@@ -705,24 +693,24 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mcause_we                = 1'b0;
     end
 
-    mtval_n       = mtval_rdata;                // Read-only
-    mtval_we      = 1'b0;
+    mtval_n         = mtval_rdata;                // Read-only
+    mtval_we        = 1'b0;
 
     // Read-only CSRS
-    mhartid_n     = mhartid_rdata;              // Read-only
-    mhartid_we    = 1'b0;                       // Always 0
+    mhartid_n       = mhartid_rdata;              // Read-only
+    mhartid_we      = 1'b0;                       // Always 0
 
-    mimpid_n      = mimpid_rdata;               // Read-only
-    mimpid_we     = 1'b0;                       // Always 0
+    mimpid_n        = mimpid_rdata;               // Read-only
+    mimpid_we       = 1'b0;                       // Always 0
 
-    mconfigptr_n  = mconfigptr_rdata;           // Read-only
-    mconfigptr_we = 1'b0;                       // Always 0
+    mconfigptr_n    = mconfigptr_rdata;           // Read-only
+    mconfigptr_we   = 1'b0;                       // Always 0
 
-    mvendorid_n   = mvendorid_rdata;            // Read-only
-    mvendorid_we  = 1'b0;                       // Always 0
+    mvendorid_n     = mvendorid_rdata;            // Read-only
+    mvendorid_we    = 1'b0;                       // Always 0
 
-    marchid_n     = marchid_rdata;              // Read-only
-    marchid_we    = 1'b0;                       // Always 0
+    marchid_n       = marchid_rdata;              // Read-only
+    marchid_we      = 1'b0;                       // Always 0
 
     if (csr_we_int) begin
       case (csr_waddr)
@@ -928,13 +916,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       clic_pa_o       = '0;
     end
 
-
-
     // exception controller gets priority over other writes
     unique case (1'b1)
-
       ctrl_fsm_i.csr_save_cause: begin
-
         if (ctrl_fsm_i.debug_csr_save) begin
             // all interrupts are masked, don't update cause, epc, tval dpc and
             // mpstatus
@@ -1032,10 +1016,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //
   // CSR instances
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) jvt_csr_i (
+  )
+  jvt_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( jvt_n                 ),
@@ -1043,12 +1030,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( jvt_q                 )
   );
 
-  assign jvt_addr_o = jvt_q.base [31:32-JVT_ADDR_WIDTH];
-
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) dscratch0_csr_i (
+  )
+  dscratch0_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dscratch0_n           ),
@@ -1056,21 +1044,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( dscratch0_q           )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) dscratch1_csr_i (
+  )
+  dscratch1_csr_i
+  (
     .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ), 
+    .rst_n              ( rst_n                 ),
     .wr_data_i          ( dscratch1_n           ), 
     .wr_en_i            ( dscratch1_we          ), 
     .rd_data_o          ( dscratch1_q           )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (DCSR_RESET_VAL)
-  ) dcsr_csr_i (
+  )
+  dcsr_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dcsr_n                ),
@@ -1078,10 +1072,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( dcsr_q                )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) dpc_csr_i (
+  )
+  dpc_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( dpc_n                 ),
@@ -1089,10 +1086,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( dpc_q                 )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) mepc_csr_i (
+  )
+  mepc_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mepc_n                ),
@@ -1100,10 +1100,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( mepc_q                )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) mscratch_csr_i (
+  )
+  mscratch_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mscratch_n            ),
@@ -1111,10 +1114,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( mscratch_q            )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (MSTATUS_RESET_VAL)
-  ) mstatus_csr_i (
+  )
+  mstatus_csr_i
+  (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mstatus_n             ),
@@ -1122,10 +1128,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( mstatus_q             )
   );
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) mcause_csr_i (
+  )
+  mcause_csr_i (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( mcause_n              ),
@@ -1136,12 +1144,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   generate
     if (SMCLIC) begin : smclic_csrs
 
-      assign mie_q  = 32'h0;                                                    // CLIC mode is assumed when SMCLIC = 1
+      assign mie_q = 32'h0;                                                     // CLIC mode is assumed when SMCLIC = 1
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (MTVEC_CLIC_RESET_VAL)
-      ) mtvec_csr_i (
+      )
+      mtvec_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mtvec_n               ),
@@ -1149,21 +1160,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mtvec_q               )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (MTVT_RESET_VAL)
-      ) mtvt_csr_i (
+      )
+      mtvt_csr_i
+      (
         .clk            ( clk                   ),
-        .rst_n          ( rst_n                 ), 
+        .rst_n          ( rst_n                 ),
         .wr_data_i      ( mtvt_n                ), 
         .wr_en_i        ( mtvt_we               ), 
         .rd_data_o      ( mtvt_q                )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (MINTSTATUS_RESET_VAL)
-      ) mintstatus_csr_i (
+      )
+      mintstatus_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mintstatus_n          ),
@@ -1171,10 +1188,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mintstatus_q          )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (32'h0)
-      ) mintthresh_csr_i (
+      )
+      mintthresh_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mintthresh_n          ),
@@ -1182,10 +1202,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mintthresh_q          )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (32'h0)
-      ) mscratchcsw_csr_i (
+      )
+      mscratchcsw_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mscratchcsw_n         ),
@@ -1193,10 +1216,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mscratchcsw_q         )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (32'h0)
-      ) mscratchcswl_csr_i (
+      )
+      mscratchcswl_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mscratchcswl_n        ),
@@ -1204,10 +1230,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mscratchcswl_q        )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (32'h0)
-      ) mclicbase_csr_i (
+      )
+      mclicbase_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mclicbase_n           ),
@@ -1217,10 +1246,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     end else begin : basic_mode_csrs
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (MTVEC_BASIC_RESET_VAL)
-      ) mtvec_csr_i (
+      )
+      mtvec_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mtvec_n               ),
@@ -1228,10 +1260,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mtvec_q               )
       );
 
-      cv32e40x_csr #(
+      cv32e40x_csr
+      #(
         .WIDTH      (32),
         .RESETVALUE (32'd0)
-      ) mie_csr_i (
+      )
+      mie_csr_i
+      (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
         .wr_data_i      ( mie_n                 ),
@@ -1289,6 +1324,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mhartid_rdata      = mhartid_i;
   assign mconfigptr_rdata   = 32'h0;
 
+  assign priv_lvl_rdata     = PRIV_LVL_M;
+
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
   assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
 
@@ -1307,17 +1344,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //
   // CSR outputs
 
-  assign m_irq_enable_o  = mstatus_rdata.mie;
-  assign mtvec_addr_o    = mtvec_rdata.addr;
-  assign mtvec_mode_o    = mtvec_rdata.mode;
-  assign mepc_o          = mepc_rdata;
-  assign dpc_o           = dpc_rdata;
-  assign dcsr_o          = dcsr_rdata;
-  assign mie_o           = mie_rdata;
-  assign mintthresh_o    = mintthresh_rdata[7:0];
-  assign mintstatus_o    = mintstatus_rdata;
-  assign mtvt_addr_o     = mtvt_rdata.addr[31:(32-MTVT_ADDR_WIDTH)];
-  assign mcause_o        = mcause_rdata;
+  assign dcsr_o        = dcsr_rdata;
+  assign dpc_o         = dpc_rdata;
+  assign jvt_addr_o    = jvt_rdata.base[31:32-JVT_ADDR_WIDTH];
+  assign mcause_o      = mcause_rdata;
+  assign mcycle_o      = mhpmcounter_rdata[0];
+  assign mepc_o        = mepc_rdata;
+  assign mie_o         = mie_rdata;
+  assign mintstatus_o  = mintstatus_rdata;
+  assign mintthresh_o  = mintthresh_rdata[7:0];
+  assign mstatus_o     = mstatus_rdata;
+  assign mtvec_addr_o  = mtvec_rdata.addr;
+  assign mtvec_mode_o  = mtvec_rdata.mode;
+  assign mtvt_addr_o   = mtvt_rdata.addr[31:(32-MTVT_ADDR_WIDTH)];
+
+  assign priv_lvl_o    = priv_lvl_rdata;
 
   ////////////////////////////////////////////////////////////////////////
   //  ____       _                   _____     _                        //
@@ -1331,28 +1372,34 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign tselect_q = 32'h0; // todo
   assign tselect_rdata = tselect_q;
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (TDATA1_RST_VAL)
-  ) tdata1_csr_i (
-    .clk        (clk),
-    .rst_n      (rst_n),
-    .wr_data_i  (tdata1_n),
-    .wr_en_i    (tdata1_we),
-    .rd_data_o  (tdata1_q)
+  )
+  tdata1_csr_i
+  (
+    .clk                ( clk                   ),
+    .rst_n              ( rst_n                 ),
+    .wr_data_i          ( tdata1_n              ),
+    .wr_en_i            ( tdata1_we             ),
+    .rd_data_o          ( tdata1_q              )
   );
 
   assign tdata1_rdata = tdata1_q;
 
-  cv32e40x_csr #(
+  cv32e40x_csr
+  #(
     .WIDTH      (32),
     .RESETVALUE (32'd0)
-  ) tdata2_csr_i (
-    .clk        (clk),
-    .rst_n      (rst_n),
-    .wr_data_i  (tdata2_n),
-    .wr_en_i    (tdata2_we),
-    .rd_data_o  (tdata2_q)
+  )
+  tdata2_csr_i
+  (
+    .clk                ( clk                   ),
+    .rst_n              ( rst_n                 ),
+    .wr_data_i          ( tdata2_n              ),
+    .wr_en_i            ( tdata2_we             ),
+    .rd_data_o          ( tdata2_q              )
   );
 
   assign tdata2_rdata = tdata2_q;
@@ -1385,9 +1432,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // |_|   \___|_|  |_|(_)  \____\___/ \__,_|_| |_|\__\___|_|    //
   //                                                             //
   /////////////////////////////////////////////////////////////////
-
-  // Cycle Count Output Signal
-  assign mcycle_o = mhpmcounter_rdata[0];
 
   // Flop certain events to ease timing
   localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;
@@ -1510,7 +1554,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       // Write upper counter bits
       assign mhpmcounter_write_upper[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
-                                                  csr_we_int && (csr_waddr == (CSR_MCYCLEH + wcnt_gidx)) && (MHPMCOUNTER_WIDTH == 64);
+                                                  csr_we_int && (csr_waddr == (CSR_MCYCLEH + wcnt_gidx));
 
       // Increment counter
 

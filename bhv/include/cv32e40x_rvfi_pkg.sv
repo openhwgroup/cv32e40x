@@ -21,9 +21,6 @@
 package cv32e40x_rvfi_pkg;
   import cv32e40x_pkg::*;
 
-  // RVFI only supports MHPMCOUNTER_WIDTH == 64
-  parameter MHPMCOUNTER_WORDS  = MHPMCOUNTER_WIDTH/32;
-
   parameter STAGE_IF = 0;
   parameter STAGE_ID = 1;
   parameter STAGE_EX = 2;
