@@ -245,6 +245,26 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_secureseed2_q_i,
    input logic                                csr_secureseed2_we_i,
 
+   input logic [31:0]                         csr_mstateen0_n_i,
+   input logic [31:0]                         csr_mstateen0_q_i,
+   input logic                                csr_mstateen0_we_i,
+   input logic [31:0]                         csr_mstateen1_n_i,
+   input logic [31:0]                         csr_mstateen1_q_i,
+   input logic                                csr_mstateen1_we_i,
+   input logic [31:0]                         csr_mstateen2_n_i,
+   input logic [31:0]                         csr_mstateen2_q_i,
+   input logic                                csr_mstateen2_we_i,
+
+   input logic [31:0]                         csr_mstateen0h_n_i,
+   input logic [31:0]                         csr_mstateen0h_q_i,
+   input logic                                csr_mstateen0h_we_i,
+   input logic [31:0]                         csr_mstateen1h_n_i,
+   input logic [31:0]                         csr_mstateen1h_q_i,
+   input logic                                csr_mstateen1h_we_i,
+   input logic [31:0]                         csr_mstateen2h_n_i,
+   input logic [31:0]                         csr_mstateen2h_q_i,
+   input logic                                csr_mstateen2h_we_i,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
   // the convention of RISC-V Formal Interface Specification.
@@ -503,7 +523,33 @@ module cv32e40x_rvfi
    output logic        [31:0]                 rvfi_csr_secureseed2_rmask,
    output logic        [31:0]                 rvfi_csr_secureseed2_wmask,
    output logic        [31:0]                 rvfi_csr_secureseed2_rdata,
-   output logic        [31:0]                 rvfi_csr_secureseed2_wdata
+   output logic        [31:0]                 rvfi_csr_secureseed2_wdata,
+
+   output logic        [31:0]                 rvfi_csr_mstateen0_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen0_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen0_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen0_wdata,
+   output logic        [31:0]                 rvfi_csr_mstateen1_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen1_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen1_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen1_wdata,
+   output logic        [31:0]                 rvfi_csr_mstateen2_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen2_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen2_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen2_wdata,
+
+   output logic        [31:0]                 rvfi_csr_mstateen0h_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen0h_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen0h_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen0h_wdata,
+   output logic        [31:0]                 rvfi_csr_mstateen1h_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen1h_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen1h_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen1h_wdata,
+   output logic        [31:0]                 rvfi_csr_mstateen2h_rmask,
+   output logic        [31:0]                 rvfi_csr_mstateen2h_wmask,
+   output logic        [31:0]                 rvfi_csr_mstateen2h_rdata,
+   output logic        [31:0]                 rvfi_csr_mstateen2h_wdata
 );
 
   // Propagating from ID stage
@@ -1294,6 +1340,26 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.secureseed2     = csr_secureseed2_q_i;
   assign rvfi_csr_wmask_d.secureseed2     = csr_secureseed2_we_i ? '1 : '0;
 
+  assign rvfi_csr_wdata_d.mstateen0       = csr_mstateen0_n_i;
+  assign rvfi_csr_rdata_d.mstateen0       = csr_mstateen0_q_i;
+  assign rvfi_csr_wmask_d.mstateen0       = csr_mstateen0_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mstateen1       = csr_mstateen1_n_i;
+  assign rvfi_csr_rdata_d.mstateen1       = csr_mstateen1_q_i;
+  assign rvfi_csr_wmask_d.mstateen1       = csr_mstateen1_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mstateen2       = csr_mstateen2_n_i;
+  assign rvfi_csr_rdata_d.mstateen2       = csr_mstateen2_q_i;
+  assign rvfi_csr_wmask_d.mstateen2       = csr_mstateen2_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.mstateen0h      = csr_mstateen0h_n_i;
+  assign rvfi_csr_rdata_d.mstateen0h      = csr_mstateen0h_q_i;
+  assign rvfi_csr_wmask_d.mstateen0h      = csr_mstateen0h_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mstateen1h      = csr_mstateen1h_n_i;
+  assign rvfi_csr_rdata_d.mstateen1h      = csr_mstateen1h_q_i;
+  assign rvfi_csr_wmask_d.mstateen1h      = csr_mstateen1h_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mstateen2h      = csr_mstateen2h_n_i;
+  assign rvfi_csr_rdata_d.mstateen2h      = csr_mstateen2h_q_i;
+  assign rvfi_csr_wmask_d.mstateen2h      = csr_mstateen2h_we_i ? '1 : '0;
+
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
   assign rvfi_csr_jvt_rmask               = '1;
@@ -1518,4 +1584,28 @@ module cv32e40x_rvfi
   assign rvfi_csr_secureseed2_wdata       = rvfi_csr_wdata.secureseed2;
   assign rvfi_csr_secureseed2_wmask       = rvfi_csr_wmask.secureseed2;
 
+  assign rvfi_csr_mstateen0_rdata       = rvfi_csr_rdata.mstateen0;
+  assign rvfi_csr_mstateen0_rmask       = '1;
+  assign rvfi_csr_mstateen0_wdata       = rvfi_csr_wdata.mstateen0;
+  assign rvfi_csr_mstateen0_wmask       = rvfi_csr_wmask.mstateen0;
+  assign rvfi_csr_mstateen1_rdata       = rvfi_csr_rdata.mstateen1;
+  assign rvfi_csr_mstateen1_rmask       = '1;
+  assign rvfi_csr_mstateen1_wdata       = rvfi_csr_wdata.mstateen1;
+  assign rvfi_csr_mstateen1_wmask       = rvfi_csr_wmask.mstateen1;
+  assign rvfi_csr_mstateen2_rdata       = rvfi_csr_rdata.mstateen2;
+  assign rvfi_csr_mstateen2_rmask       = '1;
+  assign rvfi_csr_mstateen2_wdata       = rvfi_csr_wdata.mstateen2;
+  assign rvfi_csr_mstateen2_wmask       = rvfi_csr_wmask.mstateen2;
+  assign rvfi_csr_mstateen0h_rdata      = rvfi_csr_rdata.mstateen0h;
+  assign rvfi_csr_mstateen0h_rmask      = '1;
+  assign rvfi_csr_mstateen0h_wdata      = rvfi_csr_wdata.mstateen0h;
+  assign rvfi_csr_mstateen0h_wmask      = rvfi_csr_wmask.mstateen0h;
+  assign rvfi_csr_mstateen1h_rdata      = rvfi_csr_rdata.mstateen1h;
+  assign rvfi_csr_mstateen1h_rmask      = '1;
+  assign rvfi_csr_mstateen1h_wdata      = rvfi_csr_wdata.mstateen1h;
+  assign rvfi_csr_mstateen1h_wmask      = rvfi_csr_wmask.mstateen1h;
+  assign rvfi_csr_mstateen2h_rdata      = rvfi_csr_rdata.mstateen2h;
+  assign rvfi_csr_mstateen2h_rmask      = '1;
+  assign rvfi_csr_mstateen2h_wdata      = rvfi_csr_wdata.mstateen2h;
+  assign rvfi_csr_mstateen2h_wmask      = rvfi_csr_wmask.mstateen2h;
 endmodule
