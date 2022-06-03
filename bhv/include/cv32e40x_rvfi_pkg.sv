@@ -100,9 +100,11 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mstateen0;
     logic        [31:0] mstateen1;
     logic        [31:0] mstateen2;
+    logic        [31:0] mstateen3;
     logic        [31:0] mstateen0h;
     logic        [31:0] mstateen1h;
     logic        [31:0] mstateen2h;
+    logic        [31:0] mstateen3h;
 
   } rvfi_csr_map_t;
 

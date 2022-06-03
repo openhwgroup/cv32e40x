@@ -585,6 +585,9 @@ module cv32e40x_wrapper
          .csr_mstateen2_n_i        ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen2_q_i        ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen2_we_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3_n_i        ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3_q_i        ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3_we_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen0h_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen0h_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen0h_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
@@ -593,7 +596,10 @@ module cv32e40x_wrapper
          .csr_mstateen1h_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen2h_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mstateen2h_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
-         .csr_mstateen2h_we_i      ( '0                                    /* Not supported in cv32e40x*/ )
+         .csr_mstateen2h_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3h_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3h_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
+         .csr_mstateen3h_we_i      ( '0                                    /* Not supported in cv32e40x*/ )
 
 
 `ifdef RISCV_FORMAL
