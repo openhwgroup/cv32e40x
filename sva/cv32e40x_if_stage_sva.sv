@@ -33,13 +33,13 @@ module cv32e40x_if_stage_sva
   if_c_obi.monitor      m_c_obi_instr_if
 );
 
-  // Check that bus interface transactions are word aligned
-  property p_instr_addr_word_aligned;
-    @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[1:0] == 2'b00);
+  // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
+  property p_instr_addr_aligned;
+    @(posedge clk) (1'b1) |-> (m_c_obi_instr_if.req_payload.addr[0] == 1'b0);
   endproperty
 
-  a_instr_addr_word_aligned : assert property(p_instr_addr_word_aligned)
-    else `uvm_error("if_stage", "Assertion a_instr_addr_word_aligned failed")
+  a_instr_addr_aligned : assert property(p_instr_addr_aligned)
+    else `uvm_error("if_stage", "Assertion a_instr_addr_aligned failed")
 
   // Halt implies not ready and not valid
   a_halt :

@@ -150,7 +150,7 @@ module cv32e40x_alignment_buffer_sva
 
   // Check that we change branch_addr to prefetcher correctly
   property p_prefetcher_branch;
-    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (fetch_branch_addr_o == {branch_addr_i[31:2], 2'b00});
+    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (fetch_branch_addr_o == {branch_addr_i[31:1], 1'b0});
   endproperty
 
     a_prefetcher_branch:

@@ -63,6 +63,7 @@ module cv32e40x_core_sva
   input logic        alu_en_id_i,
 
   // probed OBI signals
+  input logic [31:0] instr_addr_o,
   input logic [1:0]  instr_memtype_o,
   input logic [1:0]  data_memtype_o,
   input logic        data_req_o,
@@ -81,7 +82,6 @@ module cv32e40x_core_sva
   input mcause_t     cs_registers_csr_cause_i, // From controller
   input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
   input mstatus_t    cs_registers_mstatus_q);
-
 
 if(SMCLIC) begin
   property p_clic_mie_tieoff;
@@ -372,6 +372,12 @@ end
                       ##1 wb_valid [->1]
                       |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Multiple instructions retired during single stepping")
+
+  // Check that instruction fetches are always word aligned
+  a_instr_addr_word_aligned :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                     (instr_addr_o[1:0] == 2'b00))
+      else `uvm_error("core", "Instruction fetch not word aligned")
 
   // Check that instruction fetches are always non-bufferable
   a_instr_non_bufferable :

@@ -75,11 +75,13 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        load_access
    );
 
-
   // PMA assertions helper signals
 
   logic is_addr_match;
-  assign is_addr_match = obi_addr == pma_addr;
+
+  // Not checking bits [1:0]; bit 0 is always 0; bit 1 is not checked because it is only
+  // suppressed after the PMA. These address bits are also ignored by the PMA itself.
+  assign is_addr_match = obi_addr[31:2] == pma_addr[31:2];
 
   logic was_obi_waiting;
   logic was_obi_reqnognt;

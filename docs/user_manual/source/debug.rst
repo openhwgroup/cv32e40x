@@ -72,7 +72,7 @@ cleared low a few (unspecified) cycles after ``rst_ni`` has been deasserted **an
 
 ``dm_halt_addr_i`` is the address where the PC jumps to for a debug entry event. When in Debug Mode, an ebreak instruction will also cause the PC to jump back to this address without affecting status registers. (see :ref:`ebreak_behavior` below)
 
-``dm_exception_addr_i`` is the address where the PC jumps to when an exception occurs during Debug Mode. When in Debug Mode, the mret instruction will also cause the PC to jump back to this address without affecting status registers.
+``dm_exception_addr_i`` is the address where the PC jumps to when an exception occurs during Debug Mode. When in Debug Mode, the ``mret`` and ``ecall`` instructions will also cause the PC to jump back to this address without affecting status registers.
 
 Both ``dm_halt_addr_i`` and ``dm_exception_addr_i`` must be word aligned.
 
@@ -144,7 +144,7 @@ Executing the ``ebreak`` instruction when the core is **not** in Debug Mode and 
  - The core enters the exception handler routine located at ``mtvec`` (Debug Mode is not entered)
  - ``mepc`` and ``mcause`` are updated
 
-To properly return from the exception, the ebreak handler will need to increment the ``mepc`` to the next instruction. This requires querying the size of the ebreak instruction that was used to enter the exception (16 bit c.ebreak or 32 bit ebreak). 
+To properly return from the exception, the ebreak handler will need to increment the ``mepc`` to the next instruction. This requires querying the size of the ebreak instruction that was used to enter the exception (16 bit ``c.ebreak`` or 32 bit ``ebreak``).
 
 .. note::
 
@@ -160,7 +160,10 @@ Executing the ``ebreak`` instruction when the core is **not** in Debug Mode and 
 
 Similar to the exception scenario above, the debugger will need to increment the ``dpc`` to the next instruction before returning from Debug Mode.
 
-*Note: The default value of ``dcsr.ebreakm`` is 0 and the ``dcsr`` is only accessible in Debug Mode. To enter Debug Mode from ``ebreak``, the user will first need to enter Debug Mode through some other means, such as from the external ``debug_req_i``, and set ``dcsr.ebreakm``.*
+.. note::
+
+   The default value of ``dcsr.ebreakm`` is 0 and the ``dcsr`` is only accessible in Debug Mode. To enter Debug Mode from ``ebreak``, the user will first need to enter Debug Mode through some other means,
+   such as from the external ``debug_req_i``, and set ``dcsr.ebreakm``.
 
 Scenario 3 : Exit Program Buffer & Restart Debug Code
 """""""""""""""""""""""""""""""""""""""""""""""""""""

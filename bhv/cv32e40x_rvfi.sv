@@ -28,66 +28,67 @@ module cv32e40x_rvfi
    input logic                                clk_i,
    input logic                                rst_ni,
 
+   // Non-pipeline Probes
+   if_c_obi.monitor                           m_c_obi_instr_if,
+
    //// IF Probes ////
    input logic                                if_valid_i,
    input logic [31:0]                         pc_if_i,
    input logic                                instr_pmp_err_if_i,
    input logic                                last_op_if_i,
+   input logic                                prefetch_valid_if_i,
+   input logic                                prefetch_ready_if_i,
+   input logic [31:0]                         prefetch_addr_if_i,
+   input logic                                prefetch_compressed_if_i,
+   input inst_resp_t                          prefetch_instr_if_i,
 
-   //// ID probes ////
-   input logic [31:0]                         pc_id_i,
+   // ID probes
    input logic                                id_valid_i,
    input logic                                id_ready_i,
+   input logic [31:0]                         pc_id_i,
    input logic [ 1:0]                         rf_re_id_i,
    input logic                                sys_mret_id_i,
    input logic                                jump_in_id_i,
    input logic [31:0]                         jump_target_id_i,
    input logic                                is_compressed_id_i,
-   // LSU
    input logic                                lsu_en_id_i,
    input logic                                lsu_we_id_i,
    input logic [1:0]                          lsu_size_id_i,
-   // Register reads
    input logic [4:0]                          rs1_addr_id_i,
    input logic [4:0]                          rs2_addr_id_i,
    input logic [31:0]                         operand_a_fw_id_i,
    input logic [31:0]                         operand_b_fw_id_i,
 
-   //// EX probes ////
+   // EX probes
+   input logic                                ex_ready_i,
+   input logic                                ex_valid_i,
    input logic                                branch_in_ex_i,
    input logic                                branch_decision_ex_i,
    input logic                                dret_in_ex_i,
-   // LSU
    input logic                                lsu_en_ex_i,
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_atomic_ex_i,
-
-   input logic                                ex_ready_i,
-   input logic                                ex_valid_i,
-
    input logic [31:0]                         branch_target_ex_i,
-
    input logic [31:0]                         data_addr_ex_i,
    input logic [31:0]                         data_wdata_ex_i,
    input logic                                lsu_split_q_ex_i,
 
-   //// WB probes ////
-   input logic [31:0]                         pc_wb_i,
+   // WB probes
    input logic                                wb_ready_i,
    input logic                                wb_valid_i,
-   input logic                                ebreak_in_wb_i,
+   input logic [31:0]                         pc_wb_i,
    input logic [31:0]                         instr_rdata_wb_i,
+   input logic                                ebreak_in_wb_i,
    input logic                                csr_en_wb_i,
    input logic                                sys_wfi_insn_wb_i,
    input logic                                sys_en_wb_i,
    input logic                                last_op_wb_i,
-   // Register writes
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
-   // LSU
    input logic [31:0]                         lsu_rdata_wb_i,
-   // PC //
+
+   // PC
    input logic [31:0]                         branch_addr_n_i,
 
    input                                      privlvl_t priv_lvl_i,
@@ -223,6 +224,27 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mseccfgh_q_i,
    input logic                                csr_mseccfgh_we_i,
 
+   input logic [31:0]                         csr_menvcfg_n_i,
+   input logic [31:0]                         csr_menvcfg_q_i,
+   input logic                                csr_menvcfg_we_i,
+   input logic [31:0]                         csr_menvcfgh_n_i,
+   input logic [31:0]                         csr_menvcfgh_q_i,
+   input logic                                csr_menvcfgh_we_i,
+
+   input logic [31:0]                         csr_cpuctrl_n_i,
+   input logic [31:0]                         csr_cpuctrl_q_i,
+   input logic                                csr_cpuctrl_we_i,
+
+   input logic [31:0]                         csr_secureseed0_n_i,
+   input logic [31:0]                         csr_secureseed0_q_i,
+   input logic                                csr_secureseed0_we_i,
+   input logic [31:0]                         csr_secureseed1_n_i,
+   input logic [31:0]                         csr_secureseed1_q_i,
+   input logic                                csr_secureseed1_we_i,
+   input logic [31:0]                         csr_secureseed2_n_i,
+   input logic [31:0]                         csr_secureseed2_q_i,
+   input logic                                csr_secureseed2_we_i,
+
   // RISC-V Formal Interface
   // Does not comply with the coding standards of _i/_o suffixes, but follow,
   // the convention of RISC-V Formal Interface Specification.
@@ -352,14 +374,6 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_tcontrol_wmask,
    output logic [31:0]                        rvfi_csr_tcontrol_rdata,
    output logic [31:0]                        rvfi_csr_tcontrol_wdata,
-   output logic [31:0]                        rvfi_csr_mcontext_rmask,
-   output logic [31:0]                        rvfi_csr_mcontext_wmask,
-   output logic [31:0]                        rvfi_csr_mcontext_rdata,
-   output logic [31:0]                        rvfi_csr_mcontext_wdata,
-   output logic [31:0]                        rvfi_csr_scontext_rmask,
-   output logic [31:0]                        rvfi_csr_scontext_wmask,
-   output logic [31:0]                        rvfi_csr_scontext_rdata,
-   output logic [31:0]                        rvfi_csr_scontext_wdata,
    output logic [31:0]                        rvfi_csr_dcsr_rmask,
    output logic [31:0]                        rvfi_csr_dcsr_wmask,
    output logic [31:0]                        rvfi_csr_dcsr_rdata,
@@ -462,7 +476,34 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mconfigptr_rmask,
    output logic [31:0]                        rvfi_csr_mconfigptr_wmask,
    output logic [31:0]                        rvfi_csr_mconfigptr_rdata,
-   output logic [31:0]                        rvfi_csr_mconfigptr_wdata
+   output logic [31:0]                        rvfi_csr_mconfigptr_wdata,
+
+   output logic        [31:0]                 rvfi_csr_menvcfg_rmask,
+   output logic        [31:0]                 rvfi_csr_menvcfg_wmask,
+   output logic        [31:0]                 rvfi_csr_menvcfg_rdata,
+   output logic        [31:0]                 rvfi_csr_menvcfg_wdata,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_rmask,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_wmask,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_rdata,
+   output logic        [31:0]                 rvfi_csr_menvcfgh_wdata,
+
+   output logic        [31:0]                 rvfi_csr_cpuctrl_rmask,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_wmask,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_rdata,
+   output logic        [31:0]                 rvfi_csr_cpuctrl_wdata,
+
+   output logic        [31:0]                 rvfi_csr_secureseed0_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed0_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed0_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed0_wdata,
+   output logic        [31:0]                 rvfi_csr_secureseed1_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed1_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed1_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed1_wdata,
+   output logic        [31:0]                 rvfi_csr_secureseed2_rmask,
+   output logic        [31:0]                 rvfi_csr_secureseed2_wmask,
+   output logic        [31:0]                 rvfi_csr_secureseed2_rdata,
+   output logic        [31:0]                 rvfi_csr_secureseed2_wdata
 );
 
   // Propagating from ID stage
@@ -548,6 +589,8 @@ module cv32e40x_rvfi
   logic [6:0]   insn_funct7;
   logic [11:0]  insn_csr;
 
+  rvfi_obi_instr_t obi_instr_if;
+
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
   assign insn_funct3 = rvfi_insn[14:12];
@@ -559,6 +602,30 @@ module cv32e40x_rvfi
 `ifdef CV32E40X_TRACE_EXECUTION
   `include "cv32e40x_rvfi_trace.svh"
 `endif
+
+  cv32e40x_rvfi_instr_obi
+  rvfi_instr_obi_i
+  (
+    .clk                        ( clk_i                         ),
+    .rst_n                      ( rst_ni                        ),
+
+    .prefetch_valid_i           ( prefetch_valid_if_i           ),
+    .prefetch_ready_i           ( prefetch_ready_if_i           ),
+    .prefetch_addr_i            ( prefetch_addr_if_i            ),
+    .prefetch_compressed_i      ( prefetch_compressed_if_i      ),
+    .kill_if_i                  ( ctrl_fsm_i.kill_if            ),
+
+    .m_c_obi_instr_if           ( m_c_obi_instr_if              ),
+
+    .obi_instr                  ( obi_instr_if                  )
+  );
+
+  cv32e40x_rvfi_data_obi
+  rvfi_data_obi_i
+  (
+    .clk                        ( clk_i                 ),
+    .rst_n                      ( rst_ni                )
+  );
 
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
@@ -1041,14 +1108,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
   assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
   assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
-  // TODO: do not tie off mcontext inside the module
-  assign rvfi_csr_rdata_d.mcontext           = '0;
-  assign rvfi_csr_wdata_d.mcontext           = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.mcontext           = '0;
-
-  assign rvfi_csr_rdata_d.scontext           = '0;
-  assign rvfi_csr_wdata_d.scontext           = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.scontext           = '0;
 
   // Debug / Trace
   assign ex_csr_rdata_d.nmip                 = csr_dcsr_q_i[3]; // dcsr.nmip is autonomous. Propagate read value from EX stage
@@ -1206,6 +1265,29 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mconfigptr      = csr_mconfigptr_n_i;
   assign rvfi_csr_wmask_d.mconfigptr      = csr_mconfigptr_we_i ? '1 : '0;
 
+  assign rvfi_csr_wdata_d.menvcfg         = csr_menvcfg_n_i;
+  assign rvfi_csr_rdata_d.menvcfg         = csr_menvcfg_q_i;
+  assign rvfi_csr_wmask_d.menvcfg         = csr_menvcfg_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.menvcfgh        = csr_menvcfgh_n_i;
+  assign rvfi_csr_rdata_d.menvcfgh        = csr_menvcfgh_q_i;
+  assign rvfi_csr_wmask_d.menvcfgh        = csr_menvcfgh_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.cpuctrl         = csr_cpuctrl_n_i;
+  assign rvfi_csr_rdata_d.cpuctrl         = csr_cpuctrl_q_i;
+  assign rvfi_csr_wmask_d.cpuctrl         = csr_cpuctrl_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.secureseed0     = csr_secureseed0_n_i;
+  assign rvfi_csr_rdata_d.secureseed0     = csr_secureseed0_q_i;
+  assign rvfi_csr_wmask_d.secureseed0     = csr_secureseed0_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.secureseed1     = csr_secureseed1_n_i;
+  assign rvfi_csr_rdata_d.secureseed1     = csr_secureseed1_q_i;
+  assign rvfi_csr_wmask_d.secureseed1     = csr_secureseed1_we_i ? '1 : '0;
+
+  assign rvfi_csr_wdata_d.secureseed2     = csr_secureseed2_n_i;
+  assign rvfi_csr_rdata_d.secureseed2     = csr_secureseed2_q_i;
+  assign rvfi_csr_wmask_d.secureseed2     = csr_secureseed2_we_i ? '1 : '0;
+
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
   assign rvfi_csr_jvt_rmask               = '1;
@@ -1305,14 +1387,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_tcontrol_rmask          = '1;
   assign rvfi_csr_tcontrol_wdata          = rvfi_csr_wdata.tcontrol;
   assign rvfi_csr_tcontrol_wmask          = rvfi_csr_wmask.tcontrol;
-  assign rvfi_csr_mcontext_rdata          = rvfi_csr_rdata.mcontext;
-  assign rvfi_csr_mcontext_rmask          = '1;
-  assign rvfi_csr_mcontext_wdata          = rvfi_csr_wdata.mcontext;
-  assign rvfi_csr_mcontext_wmask          = rvfi_csr_wmask.mcontext;
-  assign rvfi_csr_scontext_rdata          = rvfi_csr_rdata.scontext;
-  assign rvfi_csr_scontext_rmask          = '1;
-  assign rvfi_csr_scontext_wdata          = rvfi_csr_wdata.scontext;
-  assign rvfi_csr_scontext_wmask          = rvfi_csr_wmask.scontext;
   assign rvfi_csr_dcsr_rdata              = rvfi_csr_rdata.dcsr;
   assign rvfi_csr_dcsr_rmask              = '1;
   assign rvfi_csr_dcsr_wdata              = rvfi_csr_wdata.dcsr;
@@ -1413,6 +1487,29 @@ module cv32e40x_rvfi
   assign rvfi_csr_mseccfgh_rmask          = '1;
   assign rvfi_csr_mseccfgh_wdata          = rvfi_csr_wdata.mseccfgh;
   assign rvfi_csr_mseccfgh_wmask          = rvfi_csr_wmask.mseccfgh;
+  assign rvfi_csr_menvcfg_rdata           = rvfi_csr_rdata.menvcfg;
+  assign rvfi_csr_menvcfg_rmask           = '1;
+  assign rvfi_csr_menvcfg_wdata           = rvfi_csr_wdata.menvcfg;
+  assign rvfi_csr_menvcfg_wmask           = rvfi_csr_wmask.menvcfg;
+  assign rvfi_csr_menvcfgh_rdata          = rvfi_csr_rdata.menvcfgh;
+  assign rvfi_csr_menvcfgh_rmask          = '1;
+  assign rvfi_csr_menvcfgh_wdata          = rvfi_csr_wdata.menvcfgh;
+  assign rvfi_csr_menvcfgh_wmask          = rvfi_csr_wmask.menvcfgh;
+  assign rvfi_csr_cpuctrl_rdata           = rvfi_csr_rdata.cpuctrl;
+  assign rvfi_csr_cpuctrl_rmask           = '1;
+  assign rvfi_csr_cpuctrl_wdata           = rvfi_csr_wdata.cpuctrl;
+  assign rvfi_csr_cpuctrl_wmask           = rvfi_csr_wmask.cpuctrl;
+  assign rvfi_csr_secureseed0_rdata       = rvfi_csr_rdata.secureseed0;
+  assign rvfi_csr_secureseed0_rmask       = '1;
+  assign rvfi_csr_secureseed0_wdata       = rvfi_csr_wdata.secureseed0;
+  assign rvfi_csr_secureseed0_wmask       = rvfi_csr_wmask.secureseed0;
+  assign rvfi_csr_secureseed1_rdata       = rvfi_csr_rdata.secureseed1;
+  assign rvfi_csr_secureseed1_rmask       = '1;
+  assign rvfi_csr_secureseed1_wdata       = rvfi_csr_wdata.secureseed1;
+  assign rvfi_csr_secureseed1_wmask       = rvfi_csr_wmask.secureseed1;
+  assign rvfi_csr_secureseed2_rdata       = rvfi_csr_rdata.secureseed2;
+  assign rvfi_csr_secureseed2_rmask       = '1;
+  assign rvfi_csr_secureseed2_wdata       = rvfi_csr_wdata.secureseed2;
+  assign rvfi_csr_secureseed2_wmask       = rvfi_csr_wmask.secureseed2;
 
-endmodule // cv32e40x_rvfi
-
+endmodule

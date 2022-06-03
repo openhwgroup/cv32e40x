@@ -69,8 +69,6 @@ package cv32e40x_rvfi_pkg;
     logic [ 3:0] [31:0] tdata;
     logic        [31:0] tinfo;
     logic        [31:0] tcontrol;
-    logic        [31:0] mcontext;
-    logic        [31:0] scontext;
     logic        [31:0] dcsr;
     logic        [31:0] dpc;
     logic [ 1:0] [31:0] dscratch;
@@ -96,6 +94,12 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mseccfg;
     logic        [31:0] mseccfgh;
     logic        [31:0] mconfigptr;
+    logic        [31:0] menvcfg;
+    logic        [31:0] menvcfgh;
+    logic        [31:0] cpuctrl;
+    logic        [31:0] secureseed0;
+    logic        [31:0] secureseed1;
+    logic        [31:0] secureseed2;
 
   } rvfi_csr_map_t;
 
@@ -114,6 +118,11 @@ package cv32e40x_rvfi_pkg;
     logic        exception;
     logic        trap;
   } rvfi_trap_t;
+
+  typedef struct packed {
+    obi_inst_req_t  req_payload;
+    obi_inst_resp_t resp_payload;
+  } rvfi_obi_instr_t;
 
 endpackage // cv32e40x_rvfi_pkg
 

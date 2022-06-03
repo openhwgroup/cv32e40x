@@ -27,10 +27,10 @@ module cv32e40x_rvfi_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
-  #(
+#(
     parameter bit SMCLIC = 0
-  )
-  (
+)
+(
    input logic             clk_i,
    input logic             rst_ni,
 
@@ -50,8 +50,16 @@ module cv32e40x_rvfi_sva
    input logic             dbg_ack,
    input logic             ebreak_in_wb_i,
    input rvfi_intr_t [3:0] in_trap,
-   input logic [3:0] [2:0] debug_cause
-   );
+   input logic [3:0] [2:0] debug_cause,
+
+   input logic             if_valid_i,
+   input logic             id_ready_i,
+   input logic [31:0]      pc_if_i,
+   input inst_resp_t       prefetch_instr_if_i,
+   input logic             prefetch_compressed_if_i,
+   input rvfi_obi_instr_t  obi_instr_if
+);
+
   // Check that irq_ack results in RVFI capturing a trap
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,
   // but since there can be an infinite delay between irq_ack and rvfi_intr (e.g. because of bus stalls), we're settling for asserting
@@ -178,6 +186,31 @@ module cv32e40x_rvfi_sva
                      (rvfi_pc_rdata == {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00}) &&
                      ((rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")
+
+  // Check that cv32e40x_rvfi_instr_obi tracks alignment buffer
+  a_rvfi_instr_obi_addr:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     if_valid_i && id_ready_i |->
+                     (pc_if_i[31:2] == obi_instr_if.req_payload.addr[31:2]))
+      else `uvm_error("rvfi", "rvfi_instr_obi addr does not track alignment buffer")
+
+  a_rvfi_instr_obi_rdata_compressed:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     if_valid_i && id_ready_i && prefetch_compressed_if_i |->
+                     (prefetch_instr_if_i.bus_resp.rdata[15:0] == obi_instr_if.resp_payload.rdata[15:0]))
+      else `uvm_error("rvfi", "rvfi_instr_obi compressed rdata does not track alignment buffer")
+
+  a_rvfi_instr_obi_rdata_uncompressed:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     if_valid_i && id_ready_i && !prefetch_compressed_if_i |->
+                     (prefetch_instr_if_i.bus_resp.rdata[31:0] == obi_instr_if.resp_payload.rdata[31:0]))
+      else `uvm_error("rvfi", "rvfi_instr_obi uncompressed rdata does not track alignment buffer")
+
+  a_rvfi_instr_obi_err:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     if_valid_i && id_ready_i |->
+                     (prefetch_instr_if_i.bus_resp.err == obi_instr_if.resp_payload.err))
+      else `uvm_error("rvfi", "rvfi_instr_obi err does not track alignment buffer")
 
 endmodule : cv32e40x_rvfi_sva
 
