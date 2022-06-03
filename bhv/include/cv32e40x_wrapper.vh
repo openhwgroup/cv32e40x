@@ -288,6 +288,10 @@
 .rvfi_csr_mstateen2_wmask(),\
 .rvfi_csr_mstateen2_rdata(),\
 .rvfi_csr_mstateen2_wdata(),\
+.rvfi_csr_mstateen3_rmask(),\
+.rvfi_csr_mstateen3_wmask(),\
+.rvfi_csr_mstateen3_rdata(),\
+.rvfi_csr_mstateen3_wdata(),\
 .rvfi_csr_mstateen0h_rmask(),\
 .rvfi_csr_mstateen0h_wmask(),\
 .rvfi_csr_mstateen0h_rdata(),\
@@ -299,4 +303,8 @@
 .rvfi_csr_mstateen2h_rmask(),\
 .rvfi_csr_mstateen2h_wmask(),\
 .rvfi_csr_mstateen2h_rdata(),\
-.rvfi_csr_mstateen2h_wdata()
+.rvfi_csr_mstateen2h_wdata(),\
+.rvfi_csr_mstateen3h_rmask(),\
+.rvfi_csr_mstateen3h_wmask(),\
+.rvfi_csr_mstateen3h_rdata(),\
+.rvfi_csr_mstateen3h_wdata()
