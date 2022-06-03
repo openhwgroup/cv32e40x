@@ -17,7 +17,7 @@
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
 //                                                                            //
-// Description:    Interrupt Controller of the pipelined processor            //
+// Description:    Basic Interrupt Controller                                 //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,15 +29,18 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   // External interrupt lines
   input  logic [31:0] irq_i,                    // Level-triggered interrupt inputs
 
-  // To cv32e40x_controller
+  // To controller
   output logic        irq_req_ctrl_o,
   output logic  [4:0] irq_id_ctrl_o,
   output logic        irq_wu_ctrl_o,
 
-  // To/from cv32e40x_cs_registers
-  input  logic [31:0] mie_i,             // MIE CSR (bypass)
-  output logic [31:0] mip_o,                    // MIP CSR
-  input  logic        m_ie_i                    // Interrupt enable bit from CSR (M mode)
+  // From cs_registers
+  input  logic [31:0] mie_i,                    // MIE CSR
+  input  mstatus_t    mstatus_i,                // MSTATUS CSR
+  input  privlvl_t    priv_lvl_i,               // Current privilege level of core
+
+  // To cs_registers
+  output logic [31:0] mip_o                     // MIP CSR
 );
 
   logic        global_irq_enable;
@@ -51,9 +54,9 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   always_ff @(posedge clk, negedge rst_n)
   begin
     if (rst_n == 1'b0) begin
-      irq_q     <= '0;
+      irq_q <= '0;
     end else begin
-      irq_q     <= irq_i & IRQ_MASK;
+      irq_q <= irq_i & IRQ_MASK;
     end
   end
 
@@ -67,8 +70,7 @@ module cv32e40x_int_controller import cv32e40x_pkg::*;
   assign irq_wu_ctrl_o = |(irq_i & mie_i);
 
   // Global interrupt enable
-  assign global_irq_enable = m_ie_i;
-
+  assign global_irq_enable = mstatus_i.mie || (priv_lvl_i < PRIV_LVL_M);
 
   // Request to take interrupt if there is a locally enabled interrupt while interrupts are also enabled globally
   assign irq_req_ctrl_o = (|irq_local_qual) && global_irq_enable;

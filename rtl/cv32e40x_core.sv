@@ -208,7 +208,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [31:0] csr_rdata;
   logic csr_counter_read;
-  logic csr_mnxti_read;
+
+  privlvl_t     priv_lvl;
+
+  logic         csr_mnxti_read;
 
   // CLIC signals for returning pointer addresses
   // when mnxti is accessed
@@ -245,10 +248,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        wb_valid;
 
   // Interrupts
-  logic        m_irq_enable; // interrupt_controller
-  logic [31:0] mepc, dpc;    // from cs_registers
-  logic [31:0] mie;          // from cs_registers
-  logic [31:0] mip;          // from cs_registers
+  mstatus_t    mstatus;
+  logic [31:0] mepc, dpc;
+  logic [31:0] mie;
+  logic [31:0] mip;
 
   // Signal from IF to init mtvec at boot time
   logic        csr_mtvec_init_if;
@@ -685,61 +688,56 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clk                        ( clk                    ),
     .rst_n                      ( rst_ni                 ),
 
-    // Hart ID from outside
-    .mhartid_i                  ( mhartid_i             ),
-    .mimpid_patch_i             ( mimpid_patch_i        ),
-
-    // Cycle Count
-    .mcycle_o                   ( mcycle_o              ),
-
-    .mtvec_addr_o               ( mtvec_addr             ),
-    .mtvec_mode_o               ( mtvec_mode             ),
-
-    .mtvt_addr_o                ( mtvt_addr              ),
-
-    // mtvec address
+    // Configuration
+    .mhartid_i                  ( mhartid_i              ),
+    .mimpid_patch_i             ( mimpid_patch_i         ),
     .mtvec_addr_i               ( mtvec_addr_i[31:0]     ),
     .csr_mtvec_init_i           ( csr_mtvec_init_if      ),
 
+    // CSRs
+    .dcsr_o                     ( dcsr                   ),
+    .dpc_o                      ( dpc                    ),
     .jvt_addr_o                 ( jvt_addr               ),
+    .mcause_o                   ( mcause                 ),
+    .mcycle_o                   ( mcycle_o               ),
+    .mepc_o                     ( mepc                   ),
+    .mie_o                      ( mie                    ),
+    .mintstatus_o               ( mintstatus             ),
+    .mintthresh_o               ( mintthresh             ),
+    .mstatus_o                  ( mstatus                ),
+    .mtvec_addr_o               ( mtvec_addr             ),
+    .mtvec_mode_o               ( mtvec_mode             ),
+    .mtvt_addr_o                ( mtvt_addr              ),
+
+    .priv_lvl_o                 ( priv_lvl               ),
 
     // ID/EX pipeline
     .id_ex_pipe_i               ( id_ex_pipe             ),
+    .csr_illegal_o              ( csr_illegal            ),
 
     // EX/WB pipeline
     .ex_wb_pipe_i               ( ex_wb_pipe             ),
 
-    // From controller FSM
+    // From controller_fsm
     .ctrl_fsm_i                 ( ctrl_fsm               ),
+
+    // To controller_bypass
+    .csr_counter_read_o         ( csr_counter_read       ),
+    .csr_mnxti_read_o           ( csr_mnxti_read         ),
 
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
 
-    .csr_illegal_o              (csr_illegal             ),
-
-    // Raddr from first stage (EX)
-    .csr_counter_read_o         ( csr_counter_read       ),
-    .csr_mnxti_read_o           ( csr_mnxti_read         ),
-
-    // Interrupt related control signals
-    .mie_o                      ( mie                    ),
+    // Interrupts
     .mip_i                      ( mip                    ),
-    .m_irq_enable_o             ( m_irq_enable           ),
-    .mepc_o                     ( mepc                   ),
-    .mintthresh_o               ( mintthresh             ),
-    .mintstatus_o               ( mintstatus             ),
-    .mcause_o                   ( mcause                 ),
     .mnxti_irq_pending_i        ( mnxti_irq_pending      ),
     .mnxti_irq_id_i             ( mnxti_irq_id           ),
     .mnxti_irq_level_i          ( mnxti_irq_level        ),
     .clic_pa_valid_o            ( csr_clic_pa_valid      ),
     .clic_pa_o                  ( csr_clic_pa            ),
 
-    // debug
-    .dpc_o                      ( dpc                    ),
-    .dcsr_o                     ( dcsr                   ),
+    // Debug
     .trigger_match_o            ( trigger_match_if       ),
-
     .pc_if_i                    ( pc_if                  ),
     .ptr_in_if_i                ( ptr_in_if              )
   );
@@ -882,10 +880,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .irq_clic_level_o     ( irq_clic_level     ),
 
         // From cs_registers
-        .m_ie_i               ( m_irq_enable       ),
+        .mstatus_i            ( mstatus            ),
         .mintthresh_i         ( mintthresh         ),
         .mintstatus_i         ( mintstatus         ),
         .mcause_i             ( mcause             ),
+        .priv_lvl_i           ( priv_lvl           ),
 
         // To cs_registers
         .mnxti_irq_pending_o  ( mnxti_irq_pending  ),
@@ -907,10 +906,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .irq_id_ctrl_o        ( irq_id_ctrl[4:0]   ),
         .irq_wu_ctrl_o        ( irq_wu_ctrl        ),
 
-        // To/from with cs_registers
+        // To with cs_registers
         .mie_i                ( mie                ),
-        .mip_o                ( mip                ),
-        .m_ie_i               ( m_irq_enable       )
+        .mstatus_i            ( mstatus            ),
+        .priv_lvl_i           ( priv_lvl           ),
+
+        // To/from with cs_registers
+        .mip_o                ( mip                )
       );
 
       // Tie off unused irq_id_ctrl bits
