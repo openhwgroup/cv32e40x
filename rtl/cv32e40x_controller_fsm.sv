@@ -709,7 +709,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
 
             if (sys_mret_id) begin
-              ctrl_fsm_o.pc_mux = debug_mode_q ? PC_TRAP_DBE : PC_MRET;
+              ctrl_fsm_o.pc_mux = PC_MRET;
               ctrl_fsm_o.pc_set = 1'b1;
               // Todo: if mcause.minhv
               //       halt ID until EX and WB are empty

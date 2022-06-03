@@ -624,7 +624,6 @@ module cv32e40x_rvfi
   logic         pc_mux_debug;
   logic         pc_mux_dret;
   logic         pc_mux_exception;
-  logic         pc_mux_debug_exception;
   logic         pc_mux_interrupt;
   logic         pc_mux_nmi;
 
@@ -680,12 +679,7 @@ module cv32e40x_rvfi
   assign pc_mux_interrupt       = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ);
   assign pc_mux_nmi             = (ctrl_fsm_i.pc_mux == PC_TRAP_NMI);
   assign pc_mux_debug           = (ctrl_fsm_i.pc_mux == PC_TRAP_DBD);
-  assign pc_mux_exception       = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || pc_mux_debug_exception ;
-  // The debug exception for mret is taken in ID (contrary to all other exceptions). In the case where we have a dret in the EX stage at the same time,
-  // this can lead to a situation we take the exception for the mret even though it never reaches the WB stage.
-  // This works in rtl because the exception handler instructions will get killed.
-  // In rvfi this exception needs to be ignored as it comes from an instruction that does not retire.
-  assign pc_mux_debug_exception = (ctrl_fsm_i.pc_mux == PC_TRAP_DBE) && !dret_in_ex_i;
+  assign pc_mux_exception       = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || (ctrl_fsm_i.pc_mux == PC_TRAP_DBE) ;
   assign pc_mux_dret            = (ctrl_fsm_i.pc_mux == PC_DRET);
 
   assign branch_taken_ex = branch_in_ex_i && branch_decision_ex_i;
