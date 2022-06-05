@@ -782,7 +782,7 @@ module cv32e40x_rvfi
       mem_wmask          <= '0;
       ex_mem_addr        <= '0;
       ex_mem_wdata       <= '0;
-      mem_err            <= '0;
+      mem_err            <= {4{MEM_ERR_IO_ALIGN}};
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
       rvfi_dbg_mode      <= '0;
