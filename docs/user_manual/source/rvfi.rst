@@ -35,6 +35,8 @@ The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mo
 
 .. table:: Debug Causes
   :name: Debug Causes
+  :widths: 30 20
+  :class: no-scrollbar-table
 
   =================  =====
   Cause              Value
@@ -78,6 +80,8 @@ Where the rvfi_trap_t struct contains the following fields:
 
 .. table:: RVFI trap type
   :name: RVFI trap type
+  :widths: 30 20 20
+  :class: no-scrollbar-table
 
   =================  ===========  =======
   Field              Type         Bits
@@ -102,6 +106,8 @@ The different trap scenarios, their expected side-effects and trap signalling ar
 
 .. table:: Table of synchronous trap types
   :name: Table of synchronous trap types
+  :widths: 20 10 5 5 5 5 5 5 10 30
+  :class: no-scrollbar-table
 
   +------------------------------+-----------+-----------------------------------------------------------------------+----------------------+------------------------------------------------------------------------------------------------------+
   | Scenario                     | Trap Type | rvfi_trap                                                             | CSRs updated         | Description                                                                                          |
@@ -149,6 +155,8 @@ Where the rvfi_intr_t struct contains the following fields:
 
 .. table:: RVFI intr type
   :name: RVFI intr type
+  :widths: 30 20 20
+  :class: no-scrollbar-table
 
   =================  ============  =======
   Field              Type          Bits
@@ -170,6 +178,8 @@ Where the rvfi_intr_t struct contains the following fields:
 
 .. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
   :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+  :widths: 60 5 5 5 10 5 5 5
+  :class: no-scrollbar-table
 
   +-------------------------------------------------+------------------------------------------------+---------------+------------+------------+
   | Scenario                                        | rvfi_intr                                      | rvfi_dbg[2:0] | mcause[31] | dcsr[8:6]  |

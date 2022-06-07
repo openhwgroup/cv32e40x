@@ -42,21 +42,25 @@ The |corev| will not support the optional debug features 10, 11, & 12 listed in 
 Interface
 ---------
 
-+-------------------------------+-----------+--------------------------------------------+
-| Signal                        | Direction | Description                                |
-+===============================+===========+============================================+
-| ``debug_req_i``               | input     | Request to enter Debug Mode                |
-+-------------------------------+-----------+--------------------------------------------+
-| ``debug_havereset_o``         | output    | Debug status: Core has been reset          |
-+-------------------------------+-----------+--------------------------------------------+
-| ``debug_running_o``           | output    | Debug status: Core is running              |
-+-------------------------------+-----------+--------------------------------------------+
-| ``debug_halted_o``            | output    | Debug status: Core is halted               |
-+-------------------------------+-----------+--------------------------------------------+
-| ``dm_halt_addr_i[31:0]``      | input     | Address for debugger entry                 |
-+-------------------------------+-----------+--------------------------------------------+
-| ``dm_exception_addr_i[31:0]`` | input     | Address for debugger exception entry       |
-+-------------------------------+-----------+--------------------------------------------+
+.. table::
+  :widths: 20 10 70
+  :class: no-scrollbar-table
+
+  +-------------------------------+-----------+--------------------------------------------+
+  | Signal                        | Direction | Description                                |
+  +===============================+===========+============================================+
+  | ``debug_req_i``               | input     | Request to enter Debug Mode                |
+  +-------------------------------+-----------+--------------------------------------------+
+  | ``debug_havereset_o``         | output    | Debug status: Core has been reset          |
+  +-------------------------------+-----------+--------------------------------------------+
+  | ``debug_running_o``           | output    | Debug status: Core is running              |
+  +-------------------------------+-----------+--------------------------------------------+
+  | ``debug_halted_o``            | output    | Debug status: Core is halted               |
+  +-------------------------------+-----------+--------------------------------------------+
+  | ``dm_halt_addr_i[31:0]``      | input     | Address for debugger entry                 |
+  +-------------------------------+-----------+--------------------------------------------+
+  | ``dm_exception_addr_i[31:0]`` | input     | Address for debugger exception entry       |
+  +-------------------------------+-----------+--------------------------------------------+
 
 ``debug_req_i`` is the "debug interrupt", issued by the debug module when the core should enter Debug Mode. The ``debug_req_i`` is synchronous to ``clk_i`` and requires a minimum assertion of one clock period to enter Debug Mode. The instruction being decoded during the same cycle that ``debug_req_i`` is first asserted shall not be executed before entering Debug Mode.
 

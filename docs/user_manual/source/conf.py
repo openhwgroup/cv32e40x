@@ -127,7 +127,7 @@ html_logo = '../images/openhw-landscape.svg'
 # so a file named "default.css" will overwrite the builtin "default.css".
 #html_static_path = ['ystatic']
 # Set html_static_path to null on the advice of RTDs:
-html_static_path = []
+html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -139,6 +139,9 @@ html_static_path = []
 #
 # html_sidebars = {}
 
+html_css_files = [
+  'css/custom.css',
+]
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
@@ -170,8 +173,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'CV32E40X_User_Manual.tex', u'CORE-V-Docs Documentation',
-     u'Davide Schiavone', 'manual'),
+    (master_doc, 'CV32E40X_User_Manual.tex', u'CV32E40X User Manual',
+     u'OpenHW Group', 'manual'),
 ]
 
 
