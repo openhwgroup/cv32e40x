@@ -26,6 +26,8 @@ are possible and thus it needs fewer signals.
 
 .. table:: Instruction Fetch interface signals
   :name: Instruction Fetch interface signals
+  :widths: 10 10 80
+  :class: no-scrollbar-table
 
   +----------------------------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+
   | **Signal**                 | **Direction**   | **Description**                                                                                                                                   |

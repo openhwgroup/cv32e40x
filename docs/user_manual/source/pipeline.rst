@@ -32,6 +32,8 @@ and zero stall on the data-side memory interface.
 
 .. table:: Cycle counts per instruction type
   :name: Cycle counts per instruction type
+  :widths: 10 10 80
+  :class: no-scrollbar-table
 
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
   |   Instruction Type    |                 Cycles               |                         Description                         |

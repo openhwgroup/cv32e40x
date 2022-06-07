@@ -19,6 +19,8 @@ The clock gating in the Sleep Unit is impacted by the following:
 
 .. table:: Sleep Unit interface signals
   :name: Sleep Unit interface signals
+  :widths: 10 10 80
+  :class: no-scrollbar-table
 
   +--------------------------------------+-----------+--------------------------------------------------+
   | Signal                               | Direction | Description                                      |
@@ -30,7 +32,6 @@ The clock gating in the Sleep Unit is impacted by the following:
   |                                      |           | ``clk_i`` externally as well. See                |
   |                                      |           | :ref:`wfi` for details.                          |
   +--------------------------------------+-----------+--------------------------------------------------+
-
 
 Startup behavior
 ----------------

@@ -40,6 +40,8 @@ Compressed interface
 
 .. table:: Compressed interface signals
   :name: Compressed interface signals
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+---------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                           
   | **Signal**                                 | **Type**            | **Direction**   | **Description**                                                                                                              |                           
@@ -62,6 +64,8 @@ Issue interface
 
 .. table:: Issue interface signals                                                                                                                                                                                               
   :name: Issue interface signals                                                                                                                                                                                                 
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | **Signal**                                 | **Type**        | **Direction**   | **Description**                                                                                                              |                               
@@ -84,6 +88,8 @@ Commit interface
 
 .. table:: Commit interface signals                                                                                                                                                                                              
   :name: Commit interface signals                                                                                                                                                                                                
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | **Signal**                                 | **Type**        | **Direction**   | **Description**                                                                                                              |                               
@@ -104,6 +110,8 @@ Memory (request/response) interface
 
 .. table:: Memory (request/response) interface signals                                                                                                                                                                           
   :name: Memory (request/response) interface signals                                                                                                                                                                             
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | **Signal**                                 | **Type**        | **Direction**   | **Description**                                                                                                              |                               
@@ -127,6 +135,8 @@ Memory result interface
 
 .. table:: Memory result interface signals                                                                                                                                                                                       
   :name: Memory result interface signals                                                                                                                                                                                         
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | **Signal**                                 | **Type**        | **Direction**   | **Description**                                                                                                              |                               
@@ -146,6 +156,8 @@ Result interface
 
 .. table:: Result interface signals                                                                                                                                                                                              
   :name: Result interface signals                                                                                                                                                                                                
+  :widths: 30 10 10 50
+  :class: no-scrollbar-table
 
   +--------------------------------------------+-----------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+                               
   | **Signal**                                 | **Type**        | **Direction**   | **Description**                                                                                                              |                               
