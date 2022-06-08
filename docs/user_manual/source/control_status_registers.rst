@@ -38,7 +38,7 @@ instruction exception.
 
 .. table:: Control and Status Register Map
   :name: Control and Status Register Map
-  :widths: 10 20 10 20 40
+  :widths: 15 15 10 30 30
   :class: no-scrollbar-table
 
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
