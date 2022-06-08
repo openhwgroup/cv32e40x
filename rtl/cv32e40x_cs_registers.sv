@@ -238,7 +238,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Detect JVT writes (requires pipeline flush)
   logic                         csr_wr_in_wb;
-  logic                         jvt_write_in_wb;
+  logic                         jvt_wr_in_wb;
 
   // Performance Counter Signals
   logic [31:0] [63:0]           mhpmcounter_q;                                  // Performance counters
@@ -1355,10 +1355,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                          (csr_op == CSR_OP_CLEAR));
 
   // Detect when a JVT write is in WB
-  assign jvt_write_in_wb = csr_wr_in_wb && (csr_waddr == CSR_JVT);
+  assign jvt_wr_in_wb = csr_wr_in_wb && (csr_waddr == CSR_JVT);
 
   // Output to controller to request pipeline flush
-  assign csr_wr_in_wb_flush_o = jvt_write_in_wb;
+  assign csr_wr_in_wb_flush_o = jvt_wr_in_wb;
 
   ////////////////////////////////////////////////////////////////////////
   //

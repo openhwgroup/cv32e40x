@@ -838,7 +838,7 @@ typedef enum logic[3:0] {
   PC_DRET       = 4'b0010,
   PC_JUMP       = 4'b0100,
   PC_BRANCH     = 4'b0101,
-  PC_FENCEI     = 4'b0110,
+  PC_WB_PLUS4   = 4'b0110,
   PC_TRAP_EXC   = 4'b1000,
   PC_TRAP_IRQ   = 4'b1001,
   PC_TRAP_DBD   = 4'b1010,

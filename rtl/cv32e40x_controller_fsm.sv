@@ -666,7 +666,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               fencei_flush_req_set = 1'b1;
             end
             if (fencei_req_and_ack_q) begin
-              // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_FENCEI
+              // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_WB_PLUS4
 
               // Unhalt wb, kill if,id,ex
               ctrl_fsm_o.kill_if   = 1'b1;
@@ -684,7 +684,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               end
 
               ctrl_fsm_o.pc_set    = 1'b1;
-              ctrl_fsm_o.pc_mux    = PC_FENCEI;
+              ctrl_fsm_o.pc_mux    = PC_WB_PLUS4;
 
               fencei_flush_req_set = 1'b0;
             end
@@ -702,13 +702,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             debug_mode_n  = 1'b0;
           end else if (csr_wr_in_wb_flush_i) begin
             // CSR write in WB requires pipeline flush, halt all stages except WB
-            // EX could contain a load/store, need to avoid it's address phase going onto the bus
+            // EX could contain a load/store, need to avoid its address phase going onto the bus
             ctrl_fsm_o.halt_if = 1'b1;
             ctrl_fsm_o.halt_id = 1'b1;
             ctrl_fsm_o.halt_ex = 1'b1;
 
-            // Set flop input to get
-            csr_flush_ack_n    = csr_wr_in_wb_flush_i;
+            // Set flop input to get ack in the next cycle when the write is done.
+            csr_flush_ack_n    = 1'b1;
           end else if (csr_flush_ack_q) begin
             // Flush pipeline because of CSR update in the previous cycle
             ctrl_fsm_o.kill_if   = 1'b1;
@@ -725,7 +725,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
 
             ctrl_fsm_o.pc_set    = 1'b1;
-            ctrl_fsm_o.pc_mux    = PC_FENCEI;
+            ctrl_fsm_o.pc_mux    = PC_WB_PLUS4;
 
 
           end else if (branch_taken_ex) begin
