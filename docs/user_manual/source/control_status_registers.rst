@@ -38,7 +38,6 @@ instruction exception.
 
 .. table:: Control and Status Register Map
   :name: Control and Status Register Map
-  :widths: 100
   :class: no-scrollbar-table
 
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
@@ -141,7 +140,6 @@ instruction exception.
 
 .. table:: Control and Status Register Map (Unprivileged and User-Level CSRs)
   :name: Control and Status Register Map (Unprivileged and User-Level CSRs)
-  :widths: 10 10 10 30 40
   :class: no-scrollbar-table
 
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
@@ -156,7 +154,6 @@ instruction exception.
 
   .. table:: Control and Status Register Map (additional CSRs for Zicntr)
     :name: Control and Status Register Map (additional CSRs for Zicntr)
-    :widths: 10 10 10 30 40
     :class: no-scrollbar-table
 
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
@@ -177,7 +174,6 @@ instruction exception.
 
   .. table:: Control and Status Register Map (additional CSRs for Zihpm)
     :name: Control and Status Register Map (additional CSRs for Zihpm)
-    :widths: 10 10 10 30 40
     :class: no-scrollbar-table
 
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
@@ -202,7 +198,6 @@ instruction exception.
 
   .. table:: Control and Status Register Map (additional CSRs for User mode support)
     :name: Control and Status Register Map (additional CSRs for User mode support)
-    :widths: 10 10 10 30 40
     :class: no-scrollbar-table
 
     +-------------------+----------------+------------+------------+----------------------------------------------------+
@@ -237,7 +232,6 @@ instruction exception.
 
   .. table:: Control and Status Register Map (additional CSRs for PMP)
     :name: Control and Status Register Map (additional CSRs for PMP)
-    :widths: 10 10 10 30 40
     :class: no-scrollbar-table
 
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
@@ -274,7 +268,6 @@ instruction exception.
 
   .. table:: Control and Status Register Map (additional CSRs for F extension)
     :name: Control and Status Register Map (additional CSRs for F extension)
-    :widths: 10 10 10 30 40
     :class: no-scrollbar-table
 
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
