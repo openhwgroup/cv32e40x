@@ -59,6 +59,7 @@ release = u''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.todo',
+    'sphinx.ext.imgconverter',
     'recommonmark',
     'sphinxcontrib.inkscapeconverter',
     'sphinx_github_changelog',
