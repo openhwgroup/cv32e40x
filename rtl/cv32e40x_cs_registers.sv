@@ -94,6 +94,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic                          clic_pa_valid_o,        // CSR read data is an address to a function pointer
   output logic [31:0]                   clic_pa_o,              // Address to CLIC function pointer
 
+  // CSR write strobes
+  output logic                          csr_wr_in_wb_flush_o,
+
   // Debug
   input  logic [31:0]                   pc_if_i,
   input  logic                          ptr_in_if_i,
@@ -232,6 +235,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic                         mtval_we;                                       // Not used in RTL (used by RVFI)
 
   privlvl_t                     priv_lvl_rdata;
+
+  // Detect JVT writes (requires pipeline flush)
+  logic                         csr_wr_in_wb;
+  logic                         jvt_wr_in_wb;
 
   // Performance Counter Signals
   logic [31:0] [63:0]           mhpmcounter_q;                                  // Performance counters
@@ -1053,8 +1060,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   (
     .clk                ( clk                   ),
     .rst_n              ( rst_n                 ),
-    .wr_data_i          ( dscratch1_n           ), 
-    .wr_en_i            ( dscratch1_we          ), 
+    .wr_data_i          ( dscratch1_n           ),
+    .wr_en_i            ( dscratch1_we          ),
     .rd_data_o          ( dscratch1_q           )
   );
 
@@ -1169,8 +1176,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       (
         .clk            ( clk                   ),
         .rst_n          ( rst_n                 ),
-        .wr_data_i      ( mtvt_n                ), 
-        .wr_en_i        ( mtvt_we               ), 
+        .wr_data_i      ( mtvt_n                ),
+        .wr_en_i        ( mtvt_we               ),
         .rd_data_o      ( mtvt_q                )
       );
 
@@ -1339,6 +1346,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   endgenerate
 
   assign csr_rdata_o = csr_rdata_int;
+
+  // Any CSR write in WB
+  assign csr_wr_in_wb = ex_wb_pipe_i.csr_en &&
+                        ex_wb_pipe_i.instr_valid &&
+                        ((csr_op == CSR_OP_WRITE) ||
+                         (csr_op == CSR_OP_SET)   ||
+                         (csr_op == CSR_OP_CLEAR));
+
+  // Detect when a JVT write is in WB
+  assign jvt_wr_in_wb = csr_wr_in_wb && (csr_waddr == CSR_JVT);
+
+  // Output to controller to request pipeline flush
+  assign csr_wr_in_wb_flush_o = jvt_wr_in_wb;
 
   ////////////////////////////////////////////////////////////////////////
   //

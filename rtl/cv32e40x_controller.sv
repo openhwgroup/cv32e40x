@@ -84,6 +84,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input logic  [1:0]  mtvec_mode_i,
 
+  input  logic        csr_wr_in_wb_flush_i,
+
   // Debug Signal
   input  logic        debug_req_i,
   input  dcsr_t       dcsr_i,
@@ -165,6 +167,10 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .last_op_wb_i                ( last_op_wb_i             ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
+
+    // CSR write strobes
+    .csr_wr_in_wb_flush_i        ( csr_wr_in_wb_flush_i     ),
+
     // Interrupt Controller Signals
     .irq_req_ctrl_i              ( irq_req_ctrl_i           ),
     .irq_id_ctrl_i               ( irq_id_ctrl_i            ),

@@ -28,7 +28,7 @@
 
 module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 #(
-  parameter int SMCLIC_ID_WIDTH
+  parameter int SMCLIC_ID_WIDTH = 5
 )
 (
   input  logic                       clk,
