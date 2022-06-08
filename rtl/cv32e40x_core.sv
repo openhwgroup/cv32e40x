@@ -208,6 +208,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [31:0] csr_rdata;
   logic csr_counter_read;
+  logic csr_wr_in_wb_flush;
 
   privlvl_t     priv_lvl;
 
@@ -736,6 +737,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clic_pa_valid_o            ( csr_clic_pa_valid      ),
     .clic_pa_o                  ( csr_clic_pa            ),
 
+    // CSR write strobes
+    .csr_wr_in_wb_flush_o       ( csr_wr_in_wb_flush     ),
+
     // Debug
     .trigger_match_o            ( trigger_match_if       ),
     .pc_if_i                    ( pc_if                  ),
@@ -811,6 +815,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
+
+    // CSR write strobes
+    .csr_wr_in_wb_flush_i           ( csr_wr_in_wb_flush     ),
 
     // Debug signals
     .debug_req_i                    ( debug_req_i            ),

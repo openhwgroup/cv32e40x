@@ -90,6 +90,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // All controller FSM outputs
   output ctrl_fsm_t   ctrl_fsm_o,
 
+  // CSR write strobes
+  input  logic        csr_wr_in_wb_flush_i,
+
   // Stage valid/ready signals
   input  logic        if_valid_i,       // IF stage has valid (non-bubble) data for next stage
   input  logic        id_ready_i,       // ID stage is ready for new data
@@ -204,6 +207,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Detect uninterruptible table jumps
   logic       tbljmp_in_ex_wb;
+
+  // Flop for acking flush requests due to CSR writes
+  logic       csr_flush_ack_n;
+  logic       csr_flush_ack_q;
 
   assign fencei_ready = !lsu_busy_i;
 
@@ -521,6 +528,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.pc_set_clicv        = 1'b0;
     ctrl_fsm_o.pc_set_tbljmp       = 1'b0;
+
+    csr_flush_ack_n                = 1'b0;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -690,6 +700,33 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
             single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
+          end else if (csr_wr_in_wb_flush_i) begin
+            // CSR write in WB requires pipeline flush, halt all stages except WB
+            // EX could contain a load/store, need to avoid it's address phase going onto the bus
+            ctrl_fsm_o.halt_if = 1'b1;
+            ctrl_fsm_o.halt_id = 1'b1;
+            ctrl_fsm_o.halt_ex = 1'b1;
+
+            // Set flop input to get
+            csr_flush_ack_n    = csr_wr_in_wb_flush_i;
+          end else if (csr_flush_ack_q) begin
+            // Flush pipeline because of CSR update in the previous cycle
+            ctrl_fsm_o.kill_if   = 1'b1;
+            ctrl_fsm_o.kill_id   = 1'b1;
+            ctrl_fsm_o.kill_ex   = 1'b1;
+
+            // Jump to PC from oldest valid instruction, excluding WB stage
+            if (id_ex_pipe_i.instr_valid) begin
+              pipe_pc_mux_ctrl = PC_EX;
+            end else if (if_id_pipe_i.instr_valid) begin
+              pipe_pc_mux_ctrl = PC_ID;
+            end else begin
+              pipe_pc_mux_ctrl = PC_IF;
+            end
+
+            ctrl_fsm_o.pc_set    = 1'b1;
+            ctrl_fsm_o.pc_mux    = PC_FENCEI;
+
 
           end else if (branch_taken_ex) begin
             ctrl_fsm_o.kill_if = 1'b1;
@@ -934,9 +971,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
+      csr_flush_ack_q       <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
+      csr_flush_ack_q       <= csr_flush_ack_n;
     end
   end
 
