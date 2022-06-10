@@ -153,9 +153,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
   always_comb begin
     if (xif_req) begin
-      trans.addr  = xif_mem_if.mem_req.addr;
+      // XIF memory data signals (wdata, rdata, & be) are already aligned to X_MEM_WIDTH; clear
+      // lower bits of address to avoid further modification by alignment logic.
+      trans.addr  = {xif_mem_if.mem_req.addr[31:2], 2'b00};
       trans.we    = xif_mem_if.mem_req.we;
-      trans.size  = 2'b10;                    // XIF memory requests always use maximum size
+      // Note: The `size` field in the XIF memory request is the size of individual elements; more
+      // bits may be set in `be`; set trans.size always to the bus width to allow any `be` pattern.
+      trans.size  = 2'b10;
       trans.wdata = xif_mem_if.mem_req.wdata;
       trans.mode  = xif_mem_if.mem_req.mode;  // TODO use mode from XIF request or force machine mode?
       trans.dbg   = '0;                       // TODO setup debug triggers
@@ -208,23 +212,27 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         if (split_q == 1'b0)
         begin // non-misaligned case
           case (trans.addr[1:0])
-            2'b00: be = xif_req ?  xif_mem_if.mem_req.be[3:0]        : 4'b1111;
-            2'b01: be = xif_req ? {xif_mem_if.mem_req.be[2:0], 1'b0} : 4'b1110;
-            2'b10: be = xif_req ? {xif_mem_if.mem_req.be[1:0], 2'b0} : 4'b1100;
-            2'b11: be = xif_req ? {xif_mem_if.mem_req.be[0:0], 3'b0} : 4'b1000;
+            2'b00: be = 4'b1111;
+            2'b01: be = 4'b1110;
+            2'b10: be = 4'b1100;
+            2'b11: be = 4'b1000;
           endcase; // case (trans.addr[1:0])
         end
         else
         begin // misaligned case
           case (trans.addr[1:0])
             2'b00: be = 4'b0000; // this is not used, but included for completeness
-            2'b01: be = xif_req ? {3'b0, xif_mem_if.mem_req.be[3:3]} : 4'b0001;
-            2'b10: be = xif_req ? {2'b0, xif_mem_if.mem_req.be[3:2]} : 4'b0011;
-            2'b11: be = xif_req ? {1'b0, xif_mem_if.mem_req.be[3:1]} : 4'b0111;
+            2'b01: be = 4'b0001;
+            2'b10: be = 4'b0011;
+            2'b11: be = 4'b0111;
           endcase; // case (trans.addr[1:0])
         end
       end
     endcase; // case (trans.size)
+    if (xif_req) begin
+      // XIF memory request's be field is already aligned
+      be = xif_mem_if.mem_req.be;
+    end
   end
 
   // Prepare data to be written to the memory. We handle misaligned (split) accesses,
@@ -357,18 +365,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_rdata_1_o = rdata_ext;
 
   // misaligned_access is high for both transfers of a misaligned transfer
-  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword;
+  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword || (xif_req && xif_mem_if.mem_req.attr[1]);
 
   // Check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
   // This is used to gate off ready_0_o to avoid instructions into
   // the EX stage while the LSU is handling the second phase of the split access.
-  // Also detecting misaligned halfwords that don't need a second transfer
+  // Also detecting misaligned halfwords that don't need a second transfer.
+  // Note: XIF memory requests are already aligned and do not need a second memory access.
   always_comb
   begin
     lsu_split_0_o = 1'b0;
     misaligned_halfword = 1'b0;
-    if ((valid_0_i || xif_req) && !split_q)
+    if (valid_0_i && !split_q)
     begin
       case (trans.size)
         2'b10: // word

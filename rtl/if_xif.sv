@@ -64,13 +64,13 @@ interface if_xif import cv32e40x_pkg::*;
   } x_issue_req_t;
 
   typedef struct packed {
-    logic accept;     // Is the offloaded instruction (id) accepted by the coprocessor?
-    logic writeback;  // Will the coprocessor perform a writeback in the core to rd?
-    logic dualwrite;  // Will the coprocessor perform a dual writeback in the core to rd and rd+1?
-    logic dualread;   // Will the coprocessor require dual reads from rs1\rs2\rs3 and rs1+1\rs2+1\rs3+1?
-    logic loadstore;  // Is the offloaded instruction a load/store instruction?
-    logic ecswrite ;  // Will the coprocessor write the Extension Context Status in mstatus?
-    logic exc;        // Can the offloaded instruction possibly cause a synchronous exception in the coprocessor itself?
+    logic       accept;     // Is the offloaded instruction (id) accepted by the coprocessor?
+    logic       writeback;  // Will the coprocessor perform a writeback in the core to rd?
+    logic       dualwrite;  // Will the coprocessor perform a dual writeback in the core to rd and rd+1?
+    logic [2:0] dualread;   // Will the coprocessor require dual reads from rs1\rs2\rs3 and rs1+1\rs2+1\rs3+1?
+    logic       loadstore;  // Is the offloaded instruction a load/store instruction?
+    logic       ecswrite ;  // Will the coprocessor write the Extension Context Status in mstatus?
+    logic       exc;        // Can the offloaded instruction possibly cause a synchronous exception in the coprocessor itself?
   } x_issue_resp_t;
 
   typedef struct packed {
@@ -83,7 +83,9 @@ interface if_xif import cv32e40x_pkg::*;
     logic [             31:0] addr;  // Virtual address of the memory transaction
     logic [              1:0] mode;  // Privilege level
     logic                     we;    // Write enable of the memory transaction
-    logic [X_MEM_WIDTH/8-1:0] be;    // Size of the memory transaction
+    logic [              2:0] size;  // Size of the memory transaction
+    logic [X_MEM_WIDTH/8-1:0] be;    // Byte enables for memory transaction
+    logic [              1:0] attr;  // Memory transaction attributes
     logic [X_MEM_WIDTH  -1:0] wdata; // Write data of a store memory transaction
     logic                     last;  // Is this the last memory transaction for the offloaded instruction?
     logic                     spec;  // Is the memory transaction speculative?
@@ -111,6 +113,8 @@ interface if_xif import cv32e40x_pkg::*;
     logic [                 2:0] ecswe;   // Write enables for {mstatus.xs, mstatus.fs, mstatus.vs}
     logic                        exc;     // Did the instruction cause a synchronous exception?
     logic [                 5:0] exccode; // Exception code
+    logic                        err;     // Did the instruction cause a bus error?
+    logic                        dbg;     // Did the instruction cause a debug trigger match with ``mcontrol.timing`` = 0?
   } x_result_t;
 
   // Compressed interface

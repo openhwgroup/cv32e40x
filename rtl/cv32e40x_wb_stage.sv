@@ -168,7 +168,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Coprocessor signals a synchronous exception
   // TODO: Maybe do something when an exception occurs (other than just inhibiting writeback)
-  assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && xif_result_if.result_valid && xif_result_if.result.exc;
+  assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && xif_result_if.result_valid && (xif_result_if.result.exc || xif_result_if.result.err);
 
   assign xif_result_if.result_ready = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en;
 
