@@ -34,6 +34,12 @@ The |corev| also supports a Trigger Module to enable entry into Debug Mode on a 
  - Number of trigger register(s): Parametrizable number of triggers using parameter ``DBG_NUM_TRIGGERS``.
  - Supported trigger types: Execute/load/store address match (Match Control) and exception trigger.
 
+The compare value used to determine an execute address match is the PC of the instruction, i.e. only the lowest virtual address
+of the instruction is used. The compare value(s) used to determine a load/store address match depend(s) on the size of the transferred
+data item as well as the lowest virtual address of the access. A byte load/store for address ``A`` only uses ``A`` as compare value; a
+halfword load/store for address ``A`` uses ``A`` and ``A+1`` as compare values; a word load/store for address ``A`` uses ``A``, ``A+1``,
+``A+2`` and ``A+3`` as compare values.
+
 A trigger match will cause debug entry if ``tdata1.ACTION`` is 1.
 
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
