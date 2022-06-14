@@ -16,26 +16,25 @@ The following list shows the simplified overview of events that occur in the cor
 
 Debug Mode can be entered by one of the following conditions:
 
- - External debug event using the debug_req_i signal
+ - External debug event using the ``debug_req_i`` signal
  - Trigger Module match event with ``tdata1.action`` set to 1
- - ebreak instruction when not in Debug Mode and when ``dcsr.ebreakm`` == 1 (see :ref:`ebreak_behavior` below)
+ - ``ebreak`` instruction in machine mode when ``dcsr.EBREAKM`` == 1 (see :ref:`ebreak_behavior` below)
 
 A user wishing to perform an abstract access, whereby the user can observe or control a core’s GPR or CSR register from the hart, is done by invoking debug control code to move values to and from internal registers to an externally addressable Debug Module (DM). Using this execution-based debug allows for the reduction of the overall number of debug interface signals.
 
 .. note::
 
    Debug support in |corev| is only one of the components needed to build a System on Chip design with run-control debug support (think "the ability to attach GDB to a core over JTAG").
-   Additionally, a Debug Module and a Debug Transport Module, compliant with the RISC-V Debug Specification, are needed.
+   Additionally, a Debug Module and a Debug Transport Module, compliant with [RISC-V-DEBUG]_, are needed.
 
    A supported open source implementation of these building blocks can be found in the `RISC-V Debug Support for PULP Cores IP block <https://github.com/pulp-platform/riscv-dbg/>`_.
 
-
 The |corev| also supports a Trigger Module to enable entry into Debug Mode on a trigger event with the following features:
 
- - Number of trigger register(s) : Parametrizable 0-4 triggers using parameter ``DBG_NUM_TRIGGERS``.
- - Supported trigger types: instruction address match (Match Control) and exception trigger.
+ - Number of trigger register(s): Parametrizable number of triggers using parameter ``DBG_NUM_TRIGGERS``.
+ - Supported trigger types: Execute/load/store address match (Match Control) and exception trigger.
 
-A trigger match will cause debug entry if ``tdata1.action`` is 1.
+A trigger match will cause debug entry if ``tdata1.ACTION`` is 1.
 
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
 
@@ -89,9 +88,9 @@ The trigger related CSRs (``tselect``, ``tdata1``, ``tdata2``, ``tdata3``, ``tin
 set to a value greater than 0. Further descriptions of these CSRs can be found in :ref:`csr-tselect`, :ref:`csr-tdata1`, :ref:`csr-tdata2`, :ref:`csr-tdata3`,
 :ref:`csr-tinfo`, :ref:`csr-tcontrol` and [RISC-V-DEBUG]_. The optional ``mcontext`` and ``mscontext`` CSRs are not implemented.
 
-If ``DBG_NUM_TRIGGERS`` is zero, access to the trigger registers will result in an illegal instruction exception.
+If ``DBG_NUM_TRIGGERS`` is 0, access to the trigger registers will result in an illegal instruction exception.
 
-The ``tdata1.dmode`` bitfield controls write access permission to the currently selected triggers ``tdata*`` registers. In |corev| this bit is tied to 1, and thus only debug mode is able to write to the trigger registers.
+The ``tdata1.DMODE`` bitfield controls write access permission to the currently selected triggers ``tdata*`` registers. In |corev| this bit is tied to 1, and thus only debug mode is able to write to the trigger registers.
 
 Debug state
 -----------
@@ -135,7 +134,7 @@ The key properties of the debug states are:
 .. _ebreak_behavior:
 
 EBREAK Behavior
---------------------
+---------------
 
 The ``ebreak`` instruction description is distributed across several RISC-V specifications:  [RISC-V-DEBUG]_,
 [RISC-V-PRIV]_, [RISC-V-UNPRIV]_. The following is a summary of the behavior for three common scenarios.
@@ -143,12 +142,12 @@ The ``ebreak`` instruction description is distributed across several RISC-V spec
 Scenario 1 : Enter Exception
 """"""""""""""""""""""""""""
 
-Executing the ``ebreak`` instruction when the core is **not** in Debug Mode and the ``dcsr.ebreakm`` == 0 shall result in the following actions:
+Executing the ``ebreak`` instruction in machine mode when the core is **not** in Debug Mode and ``dcsr.EBREAKM`` == 0 shall result in the following actions:
 
  - The core enters the exception handler routine located at ``mtvec`` (Debug Mode is not entered)
  - ``mepc`` and ``mcause`` are updated
 
-To properly return from the exception, the ebreak handler will need to increment the ``mepc`` to the next instruction. This requires querying the size of the ebreak instruction that was used to enter the exception (16 bit ``c.ebreak`` or 32 bit ``ebreak``).
+To properly return from the exception, the ebreak handler will need to increment the ``mepc`` to the next instruction. This requires querying the size of the ``ebreak`` instruction that was used to enter the exception (16 bit ``c.ebreak`` or 32 bit ``ebreak``).
 
 .. note::
 
@@ -157,7 +156,7 @@ To properly return from the exception, the ebreak handler will need to increment
 Scenario 2 : Enter Debug Mode
 """""""""""""""""""""""""""""
 
-Executing the ``ebreak`` instruction when the core is **not** in Debug Mode and the ``dcsr.ebreakm`` == 1 shall result in the following actions:
+Executing the ``ebreak`` instruction in machine mode when the core is **not** in Debug Mode and ``dcsr.EBREAKM`` == 1 shall result in the following actions:
 
 - The core enters Debug Mode and starts executing debug code located at ``dm_halt_addr_i`` (exception routine not called)
 - ``dpc`` and ``dcsr`` are updated
@@ -166,8 +165,8 @@ Similar to the exception scenario above, the debugger will need to increment the
 
 .. note::
 
-   The default value of ``dcsr.ebreakm`` is 0 and the ``dcsr`` is only accessible in Debug Mode. To enter Debug Mode from ``ebreak``, the user will first need to enter Debug Mode through some other means,
-   such as from the external ``debug_req_i``, and set ``dcsr.ebreakm``.
+   The default value of ``dcsr.EBREAKM`` is 0 and the ``dcsr`` is only accessible in Debug Mode. To enter Debug Mode from ``ebreak``, the user will first need to enter Debug Mode through some other means,
+   such as from the external ``debug_req_i``, and set ``dcsr.EBREAKM``.
 
 Scenario 3 : Exit Program Buffer & Restart Debug Code
 """""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -175,4 +174,4 @@ Scenario 3 : Exit Program Buffer & Restart Debug Code
 Executing the ``ebreak`` instruction when the core is in Debug Mode shall result in the following actions:
 
 - The core remains in Debug Mode and execution jumps back to the beginning of the debug code located at ``dm_halt_addr_i``
-- none of the CSRs are modified
+- None of the CSRs are modified
