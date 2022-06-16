@@ -5,6 +5,12 @@ Debug & Trigger
 
 |corev| offers support for execution-based debug according to [RISC-V-DEBUG]_. The main requirements for the core are described in Chapter 4: RISC-V Debug, Chapter 5: Trigger Module, and Appendix A.2: Execution Based.
 
+.. note::
+
+   As execution based debug is used, the Debug Module (with code entry points defined by ``dm_halt_addr_i`` and ``dm_exception_addr_i``) needs to be located
+   in a memory region that supports code execution. This therefore (at least) requires that the related memory region is marked as Main in the PMA (:ref:`pma`), which
+   is the default behavior if the PMA is deconfigured.
+
 The following list shows the simplified overview of events that occur in the core when debug is requested:
 
  #. Enters Debug Mode

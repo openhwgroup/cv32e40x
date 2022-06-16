@@ -51,6 +51,10 @@ load access fault (exception code 5). An attempt to perform a modifiable/modifie
    Modifiable transactions are transactions which allow transformations as for example merging or splitting. For example, a misaligned store word instruction that
    is handled as two subword transactions on the data interface is considered to use modified transactions.
 
+.. note::
+   As execution based debug is used, the Debug Module (with code entry points defined by ``dm_halt_addr_i`` and ``dm_exception_addr_i``) needs to be located
+   in a memory region that supports code execution, i.e. in a region defined as main.
+
 Bufferable and Cacheable
 ~~~~~~~~~~~~~~~~~~~~~~~~
 Accesses to regions marked as bufferable (``bufferable=1``) will result in the OBI ``mem_type[0]`` bit being set, except if the access was an instruction fetch, a load, or part of an atomic memory operation. Bufferable stores will utilize the write buffer, see :ref:`Write buffer <write_buffer>`.
