@@ -279,7 +279,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
-  // Don't ack the prefetcher for sequenced instruciont until the last instruction is being accepted.
+  // Don't ack the prefetcher for sequenced instructions until the last instruction is being accepted.
   assign prefetch_ready = seq_valid ? (seq_last && if_ready) : if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
@@ -334,6 +334,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         // No update to tbljmp flag, we want flag to be high for both operations.
         if (!prefetch_is_tbljmp_ptr) begin
           if_id_pipe_o.pc                    <= pc_if_o;
+          // todo: push/pop*/doublemoves are compressed, how (if at all) should we signal that when we emit uncompressed sequences?
           if_id_pipe_o.instr_meta.compressed <= seq_valid ? 1'b0 : instr_compressed_int;
           if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
 
