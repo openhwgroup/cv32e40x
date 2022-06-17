@@ -279,7 +279,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
-  // Don't ack the prefetcher when emitting sequenced instructions.
+  // Don't ack the prefetcher for sequenced instruciont until the last instruction is being accepted.
   assign prefetch_ready = seq_valid ? (seq_last && if_ready) : if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
