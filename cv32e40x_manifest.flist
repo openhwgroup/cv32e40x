@@ -29,6 +29,7 @@
 +incdir+${DESIGN_RTL_DIR}/../sva
 
 ${DESIGN_RTL_DIR}/include/cv32e40x_pkg.sv
+${DESIGN_RTL_DIR}/include/cv32e40x_sequencer_pkg.sv
 ${DESIGN_RTL_DIR}/if_c_obi.sv
 ${DESIGN_RTL_DIR}/if_xif.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv
@@ -48,6 +49,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_a_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_b_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_compressed_decoder.sv
+${DESIGN_RTL_DIR}/cv32e40x_sequencer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alignment_buffer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetch_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv

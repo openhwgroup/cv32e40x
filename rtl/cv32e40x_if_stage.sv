@@ -87,6 +87,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic       [31:0] branch_addr_n;
 
   logic              prefetch_valid;
+  logic              prefetch_ready;
   inst_resp_t        prefetch_instr;
   logic              prefetch_is_clic_ptr;
   logic              prefetch_is_tbljmp_ptr;
@@ -124,6 +125,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Flag for last operation - used by Zc*
   logic              last_op;
+
+  // Zc* sequencer signals
+  logic seq_valid;
+  logic seq_last;
+  inst_resp_t seq_instr;
+  logic seq_illegal_instr;
+  logic seq_insn_accepted;
 
   // Fetch address selection
   always_comb
@@ -170,7 +178,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     .branch_addr_i            ( {branch_addr_n[31:1], 1'b0} ),
 
-    .prefetch_ready_i         ( if_ready                    ),
+    .prefetch_ready_i         ( prefetch_ready              ),
     .prefetch_valid_o         ( prefetch_valid              ),
     .prefetch_instr_o         ( prefetch_instr              ),
     .prefetch_addr_o          ( pc_if_o                     ),
@@ -261,12 +269,18 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // if_stage ready when killed, otherwise when not halted.
   assign if_ready = ctrl_fsm_i.kill_if || (id_ready_i && !ctrl_fsm_i.halt_if);
 
-  // if stage valid when local instr_valid is 1
+  // if stage valid when local instr_valid =1
+  // This also holds for sequenced instructions.
+  // - the sequencer will generate instructions based on the current prefetcher output,
+  //   and the prefetch_ready will only be set high when the sequence is done.
   assign if_valid_o = instr_valid;
 
   assign if_busy_o = prefetch_busy;
 
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
+
+  // Don't ack the prefetcher when emitting sequenced instructions.
+  assign prefetch_ready = seq_valid ? (seq_last && if_ready) : if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
   // tbljmp is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
@@ -307,7 +321,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
-        if_id_pipe_o.illegal_c_insn   <= illegal_c_insn;
+        if_id_pipe_o.illegal_c_insn   <= seq_valid ? seq_illegal_instr : illegal_c_insn; // todo: Currently seq_valid is low for seq_illegal_instr
 
 
         if_id_pipe_o.trigger_match    <= trigger_match_i;
@@ -320,7 +334,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         // No update to tbljmp flag, we want flag to be high for both operations.
         if (!prefetch_is_tbljmp_ptr) begin
           if_id_pipe_o.pc                    <= pc_if_o;
-          if_id_pipe_o.instr_meta.compressed <= instr_compressed_int;
+          if_id_pipe_o.instr_meta.compressed <= seq_valid ? 1'b0 : instr_compressed_int;
           if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
 
           // Only update compressed_instr for compressed instructions
@@ -339,7 +353,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
           if_id_pipe_o.instr.mpu_status   <= instr_decompressed.mpu_status;
         end else begin
           // Regular instruction, update the whole instr field
-          if_id_pipe_o.instr          <= instr_decompressed;
+          if_id_pipe_o.instr          <= seq_valid ? seq_instr : instr_decompressed;
         end
       end else if (id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b0;
@@ -362,6 +376,34 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .illegal_instr_o    ( illegal_c_insn          ),
     .tbljmp_o           ( tbljmp_raw              )
   );
+
+  generate
+    if (ZC_EXT) begin : gen_seq
+      cv32e40x_sequencer
+      sequencer_i
+      (
+        .clk                ( clk                     ),
+        .rst_n              ( rst_n                   ),
+        .instr_i            ( prefetch_instr          ),
+        .instr_is_ptr_i     ( ptr_in_if_o             ),
+        .insn_accepted_i    ( seq_insn_accepted       ),
+        .ctrl_fsm_i         ( ctrl_fsm_i              ),
+        .instr_o            ( seq_instr               ),
+        .valid_o            ( seq_valid               ),
+
+        .seq_last_o         ( seq_last                ),
+        .illegal_instr_o    ( seq_illegal_instr       )
+      );
+      assign seq_insn_accepted = if_valid_o && id_ready_i;
+    end else begin : gen_no_seq
+      assign seq_valid = 1'b0;
+      assign seq_last = 1'b0;
+      assign seq_illegal_instr = 1'b0;
+      assign seq_instr = '0;
+      assign seq_insn_accepted = 1'b0;
+    end
+  endgenerate
+
 
   // tbljmp below is used in calculating 'last_op'. If we have a faulted fetch, the instruction word may be anything
   // (not cleared on faulted fetches). A faulted fetch should not be decoded to anything and thus tbljmp is cleared.

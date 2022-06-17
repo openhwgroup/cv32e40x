@@ -1,0 +1,267 @@
+module cv32e40x_sequencer
+import cv32e40x_pkg::*; import cv32e40x_sequencer_pkg::*;
+ (
+    input  logic clk,
+    input  logic rst_n,
+    input  inst_resp_t instr_i,
+    input  logic instr_is_ptr_i,
+    input  logic insn_accepted_i,
+    input  ctrl_fsm_t ctrl_fsm_i,
+    output inst_resp_t instr_o,
+    output logic valid_o,
+    output logic seq_last_o,
+    output logic illegal_instr_o
+  );
+
+  seq_i instr_cnt_q;
+  logic seq_running_q;
+  pushpop_decode_s decode;
+  seq_instr_e seq_instr;
+
+  logic [31:0] instr;
+  logic [3:0]  rlist;
+
+  // Helper signals to indicate type of instruction
+  logic seq_load;
+  logic seq_store;
+  logic seq_move_a2s;
+  logic seq_move_s2a;
+
+  // FSM
+  seq_state_e seq_state_n;
+  seq_state_e seq_state_q;
+
+  assign instr = instr_i.bus_resp.rdata;
+  assign rlist = instr[7:4];
+
+  // Control state (sequencer active or not), count
+  // number of issued sub-instructions and set FSM state
+  always_ff @( posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      seq_running_q <= 1'b0;
+      instr_cnt_q <= '0;
+      seq_state_q <= S_IDLE;
+    end else begin
+      if (valid_o && insn_accepted_i) begin
+        if (!seq_running_q) begin
+          seq_running_q <= 1'b1;
+        end
+
+        if (!seq_last_o) begin
+          instr_cnt_q <= instr_cnt_q + 1'd1;
+        end else begin
+          seq_running_q <= 1'b0;
+          instr_cnt_q <= '0;
+        end
+      end else if (!valid_o) begin
+        seq_running_q <= 1'b0;
+        instr_cnt_q <= '0;
+      end
+
+      seq_state_q <= seq_state_n;
+    end
+  end // always_ff
+
+  ///////////////////////////////////
+  // Decode sequenced instructions //
+  ///////////////////////////////////
+  // todo: detect all illegal encodings
+  always_comb
+  begin
+    seq_instr    = INVALID_INST;
+    illegal_instr_o = 1'b0;
+    seq_load = 1'b0;
+    seq_store = 1'b0;
+    seq_move_a2s = 1'b0;
+    seq_move_s2a = 1'b0;
+    // All sequenced instructions are within C2
+    if (instr[1:0] == 2'b10) begin
+      if (instr[15:13] == 3'b101) begin
+        unique case (instr[12:10])
+          3'b011: begin
+            if (instr[6:5] == 2'b11) begin
+              // cm.mva01s
+              seq_instr    = MVA01S;
+              seq_move_s2a = 1'b1;
+            end else if (instr[6:5] == 2'b01) begin
+              // cm.mvsa01
+              seq_instr    = MVSA01;
+              seq_move_a2s = 1'b1;
+            end
+          end
+          3'b110: begin
+            if (instr[9:8] == 2'b00) begin
+              // cm.push
+              if (rlist > 3) begin
+                seq_instr    = PUSH;
+                seq_store = 1'b1;
+              end else begin
+                seq_instr = INVALID_INST;
+                illegal_instr_o = 1'b1;
+              end
+            end else if (instr[9:8] == 2'b10) begin
+              // cm.pop
+              seq_instr    = POP;
+              seq_load = 1'b1;
+            end
+          end
+          3'b111: begin
+            if (instr[9:8] == 2'b00) begin
+              // cm.popretz
+              seq_instr    = POPRETZ;
+              seq_load = 1'b1;
+            end else if (instr[9:8] == 2'b10) begin
+              // cm.popret
+              seq_instr    = POPRET;
+              seq_load = 1'b1;
+            end
+          end
+          default: begin
+            seq_instr    = INVALID_INST;
+          end
+        endcase
+      end // instr[15:13]
+    end // C2
+  end // always_comb
+
+  assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i;
+
+  assign decode.registers_saved = pushpop_reg_length(rlist);
+  assign decode.register_stack_adj = align_16(12'((decode.registers_saved+1'b1)<<2));
+
+
+  // Compute extra stack adjustment from immediate bits
+  // Immediate encodes number of extra 16 Byte blocks
+  assign decode.additional_stack_adj = {6'd0,instr[3:2],4'd0};
+
+  // Compute total stack adjustment based on saved registers and additional (from immediate)
+  assign decode.total_stack_adj = decode.register_stack_adj + decode.additional_stack_adj;
+
+  always_comb begin : current_stack_adj
+    // factor {{instr_cnt_q+1'b1}<<2}  outside
+    case (seq_instr)
+      PUSH: begin
+        // Start pushing to -4(SP)
+        decode.current_stack_adj = -{{instr_cnt_q+12'b1}<<2};
+      end
+      POP,POPRET, POPRETZ: begin
+        // Need to account for any extra allocated stack space during cm.push
+        // Rewind with decode.total_stack_adj and then start by popping from -4
+        decode.current_stack_adj = decode.total_stack_adj-12'({instr_cnt_q+5'b1}<<2);
+      end
+      default:
+        decode.current_stack_adj = '0;
+    endcase
+  end
+
+  // Set current sreg number based on sequence counter
+  assign decode.sreg = decode.registers_saved - instr_cnt_q - 4'd1;
+
+  // Generate 32-bit instructions for all sequenced operations
+  always_comb begin : sequencer_state_machine
+    instr_o = instr_i;
+    seq_state_n = seq_state_q;
+    seq_last_o = 1'b0;
+    if (ctrl_fsm_i.kill_if) begin
+      seq_state_n = S_IDLE;
+    end else begin
+      case (seq_state_q)
+        S_IDLE: begin
+          // First instruction will be output here
+          if (seq_load) begin
+            instr_o.bus_resp.rdata = {decode.current_stack_adj,REG_SP,3'b010,sn_to_regnum(decode.sreg),OPCODE_LOAD};
+          end else if (seq_store) begin
+            instr_o.bus_resp.rdata = {decode.current_stack_adj[11:5],sn_to_regnum(decode.sreg),5'd2,3'b010,decode.current_stack_adj[4:0],OPCODE_STORE};
+          end else if (seq_move_a2s) begin
+            // addi s*, a0, 0
+            instr_o.bus_resp.rdata = {12'h000, 5'd10, 3'b000, sn_to_regnum(5'(instr[9:7])), OPCODE_OPIMM};
+          end else if (seq_move_s2a) begin
+            // addi a0, s*, 0
+            instr_o.bus_resp.rdata = {12'h000, sn_to_regnum(5'(instr[9:7])), 3'b000, 5'd10, OPCODE_OPIMM};
+          end
+
+          if (valid_o && insn_accepted_i) begin
+            seq_state_n = (seq_move_a2s || seq_move_s2a) ? S_DMOVE :
+                          seq_load                      ? S_POP   : S_PUSH;
+
+          end
+        end
+        S_PUSH: begin
+          instr_o.bus_resp.rdata = {decode.current_stack_adj[11:5],sn_to_regnum(decode.sreg),5'd2,3'b010,decode.current_stack_adj[4:0],OPCODE_STORE};
+          if (instr_cnt_q == decode.registers_saved) begin
+            seq_state_n = S_RA;
+          end
+        end
+        S_POP: begin
+          instr_o.bus_resp.rdata = {decode.current_stack_adj,REG_SP,3'b010,sn_to_regnum(decode.sreg),OPCODE_LOAD};
+          if (instr_cnt_q == decode.registers_saved) begin
+            seq_state_n = S_RA;
+          end
+        end
+        S_DMOVE: begin
+          if (seq_move_a2s) begin
+            instr_o.bus_resp.rdata = {12'h000, 5'd11, 3'b000, sn_to_regnum(5'(instr[4:2])), OPCODE_OPIMM};
+          end else if (seq_move_s2a) begin
+            instr_o.bus_resp.rdata = {12'h000, sn_to_regnum(5'(instr[4:2])), 3'b000, 5'd11, OPCODE_OPIMM};
+          end
+          if (insn_accepted_i) begin
+            seq_state_n = S_IDLE;
+          end
+
+          seq_last_o = 1'b1;
+        end
+        S_RA: begin
+          if (seq_load) begin
+            instr_o.bus_resp.rdata = {decode.current_stack_adj,REG_SP,3'b010,REG_RA,OPCODE_LOAD};
+          end else begin
+            instr_o.bus_resp.rdata = {decode.current_stack_adj[11:5],5'd1,5'd2,3'b010,decode.current_stack_adj[4:0],OPCODE_STORE};
+          end
+
+          if (insn_accepted_i) begin
+            seq_state_n = S_SP;
+          end
+        end
+        S_SP: begin
+          if (seq_load) begin
+            instr_o.bus_resp.rdata = {decode.total_stack_adj,REG_SP,3'b0,REG_SP,OPCODE_OPIMM};
+          end else begin
+            instr_o.bus_resp.rdata = {-decode.total_stack_adj,5'd2,3'b0,5'd2,OPCODE_OPIMM};
+          end
+
+          if (insn_accepted_i) begin
+            if (seq_instr == POPRETZ) begin
+              seq_state_n = S_A0;
+            end else if (seq_instr == POPRET) begin
+              seq_state_n = S_RET;
+            end else begin
+              seq_state_n = S_IDLE;
+              seq_last_o = 1'b1;
+            end
+          end
+        end
+        S_A0: begin
+          instr_o.bus_resp.rdata = {12'h000,5'd0,3'b0,5'd10,OPCODE_OPIMM};
+
+          if (insn_accepted_i) begin
+            seq_state_n = S_RET;
+          end
+        end
+        S_RET: begin
+          instr_o.bus_resp.rdata = {12'b0,REG_RA,3'b0,5'b0,OPCODE_JALR};
+
+          if (insn_accepted_i) begin
+            seq_state_n = S_IDLE;
+          end
+
+          seq_last_o = 1'b1;
+        end
+      endcase
+    end
+  end
+
+/*
+    `ifdef CV32E41P_ASSERT_ON
+        p_seq_finished: assert property (@(posedge clk) disable iff (!rst_n) ~seq_running_q && $past(seq_running_q) |-> $past(instr_cnt_q) == $past(decode.complete_seq_len)-1'd1);
+    `endif
+*/
+endmodule
