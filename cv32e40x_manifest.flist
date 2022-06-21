@@ -29,7 +29,6 @@
 +incdir+${DESIGN_RTL_DIR}/../sva
 
 ${DESIGN_RTL_DIR}/include/cv32e40x_pkg.sv
-${DESIGN_RTL_DIR}/include/cv32e40x_sequencer_pkg.sv
 ${DESIGN_RTL_DIR}/if_c_obi.sv
 ${DESIGN_RTL_DIR}/if_xif.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv

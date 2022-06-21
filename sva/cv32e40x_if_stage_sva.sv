@@ -32,7 +32,10 @@ module cv32e40x_if_stage_sva
   input  ctrl_fsm_t     ctrl_fsm_i,
   if_c_obi.monitor      m_c_obi_instr_if,
   input  logic          seq_valid,
-  input  logic          illegal_c_insn
+  input  logic          seq_ready,
+  input  logic          illegal_c_insn,
+  input  logic          instr_compressed_int,
+  input  logic          prefetch_is_tbljmp_ptr
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -59,10 +62,24 @@ module cv32e40x_if_stage_sva
 
 
   // compressed_decoder and sequencer shall be mutually exclusive
-  a_compressed_seq:
+  // todo: add opposite way - legal compressed -> !valid seq + ready
+  a_compressed_seq_0:
   assert property (@(posedge clk) disable iff (!rst_n)
                     seq_valid |-> illegal_c_insn)
       else `uvm_error("if_stage", "Compressed decoder and sequencer not mutually exclusive.")
+
+  a_compressed_seq_1:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (instr_compressed_int && !illegal_c_insn && !prefetch_is_tbljmp_ptr)
+                    |->
+                    !seq_valid)
+      else `uvm_error("if_stage", "Compressed decoder and sequencer not mutually exclusive.")
+
+  // Kill implies ready and not valid
+  a_seq_kill:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      ctrl_fsm_i.kill_if |-> (seq_ready && !seq_valid))
+        else `uvm_error("if_stage", "Kill should imply ready and not valid.")
 
 
 endmodule // cv32e40x_if_stage

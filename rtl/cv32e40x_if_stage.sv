@@ -118,7 +118,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   obi_inst_req_t     core_trans;
 
   // Local instr_valid
-  logic instr_valid;
+  logic              instr_valid;
 
   // eXtension interface signals
   logic [X_ID_WIDTH-1:0] xif_id;
@@ -126,12 +126,15 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Flag for last operation - used by Zc*
   logic              last_op;
 
+  // ready signal for predecoder, tied to id_ready_i
+  logic              predec_ready;
+
   // Zc* sequencer signals
-  logic seq_valid;
-  logic seq_last;
-  inst_resp_t seq_instr;
-  logic seq_illegal_instr;
-  logic seq_insn_accepted;
+  logic              seq_valid;
+  logic              seq_ready;
+  logic              seq_last;
+  inst_resp_t        seq_instr;
+  logic              seq_illegal_instr;
 
   // Fetch address selection
   always_comb
@@ -263,24 +266,36 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   );
 
   // Local instr_valid when we have valid output from prefetcher
-  // and IF is not halted or killed
+  // and IF stage is not halted or killed
   assign instr_valid = prefetch_valid && !ctrl_fsm_i.kill_if && !ctrl_fsm_i.halt_if;
 
-  // if_stage ready when killed, otherwise when not halted.
-  assign if_ready = ctrl_fsm_i.kill_if || (id_ready_i && !ctrl_fsm_i.halt_if);
+  // if_stage ready when killed, otherwise when not halted and the sequencer and predecoder are both ready
+  assign if_ready = ctrl_fsm_i.kill_if || (seq_ready && predec_ready && !ctrl_fsm_i.halt_if);
 
-  // if stage valid when local instr_valid =1
-  // This also holds for sequenced instructions.
-  // - the sequencer will generate instructions based on the current prefetcher output,
-  //   and the prefetch_ready will only be set high when the sequence is done.
+  // if stage valid when local instr_valid=1
+  // Ideally this should be the following:
+  //
+  // assign if_valid_o = (seq_en    && seq_valid    ) ||
+  //                     (predec_en && predec_valid ) && instr_valid;
+  //
+  // seq_en would be an internal signal in the sequencer that is set when a legal push/pop/doublemove is decoded.
+  // seq_valid would then simply be the same as sequencer's valid_i, which is set to instr_valid.
+  //
+  // predec_valid would be tied to 1'b1 (similar to the ALU in the EX stage) as this is a combinatorial unit with
+  // with no handshake to improve timing.
+  // predec_en would also be tied to 1'b1 as the predecoder will produce output for any input
+  //   Legal or illegal compressed, + passthru of uncompressed instructions
+  // In short: Any prefetched instruction (or pointer) will make if_valid_o high
+
   assign if_valid_o = instr_valid;
 
   assign if_busy_o = prefetch_busy;
 
   assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
 
-  // Don't ack the prefetcher for sequenced instructions until the last instruction is being accepted.
-  assign prefetch_ready = seq_valid ? (seq_last && if_ready) : if_ready;
+  // Acknowledge prefetcher when IF stage is ready. This factors in seq_ready to avoid ack'ing the
+  // prefetcher in the middle of a Zc sequence.
+  assign prefetch_ready = if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
   // tbljmp is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
@@ -378,6 +393,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .tbljmp_o           ( tbljmp_raw              )
   );
 
+  // Setting predec_ready to id_ready_i here instead of passing it through the predecoder.
+  // Predecoder is purely combinatorial and is always ready for new inputs
+  assign predec_ready = id_ready_i;
+
   generate
     if (ZC_EXT) begin : gen_seq
       cv32e40x_sequencer
@@ -385,23 +404,23 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       (
         .clk                ( clk                     ),
         .rst_n              ( rst_n                   ),
+        .valid_i            ( instr_valid             ),
+        .ready_i            ( id_ready_i              ),
         .instr_i            ( prefetch_instr          ),
         .instr_is_ptr_i     ( ptr_in_if_o             ),
-        .insn_accepted_i    ( seq_insn_accepted       ),
-        .ctrl_fsm_i         ( ctrl_fsm_i              ),
         .instr_o            ( seq_instr               ),
         .valid_o            ( seq_valid               ),
+        .ready_o            ( seq_ready               ),
 
         .seq_last_o         ( seq_last                ),
         .illegal_instr_o    ( seq_illegal_instr       )
       );
-      assign seq_insn_accepted = if_valid_o && id_ready_i;
     end else begin : gen_no_seq
       assign seq_valid = 1'b0;
       assign seq_last = 1'b0;
       assign seq_illegal_instr = 1'b0;
       assign seq_instr = '0;
-      assign seq_insn_accepted = 1'b0;
+      assign seq_ready = 1'b1;
     end
   endgenerate
 
