@@ -48,6 +48,7 @@ ${DESIGN_RTL_DIR}/cv32e40x_a_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_b_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_decoder.sv
 ${DESIGN_RTL_DIR}/cv32e40x_compressed_decoder.sv
+${DESIGN_RTL_DIR}/cv32e40x_sequencer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_alignment_buffer.sv
 ${DESIGN_RTL_DIR}/cv32e40x_prefetch_unit.sv
 ${DESIGN_RTL_DIR}/cv32e40x_mult.sv

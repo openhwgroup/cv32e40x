@@ -28,9 +28,14 @@ module cv32e40x_if_stage_sva
   input  logic          rst_n,
 
   input logic           if_ready,
-  input logic           if_valid_o,  
+  input logic           if_valid_o,
   input  ctrl_fsm_t     ctrl_fsm_i,
-  if_c_obi.monitor      m_c_obi_instr_if
+  if_c_obi.monitor      m_c_obi_instr_if,
+  input  logic          seq_valid,
+  input  logic          seq_ready,
+  input  logic          illegal_c_insn,
+  input  logic          instr_compressed,
+  input  logic          prefetch_is_tbljmp_ptr
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -56,5 +61,35 @@ module cv32e40x_if_stage_sva
       else `uvm_error("if_stage", "Kill should imply ready and not valid")
 
 
+  // compressed_decoder and sequencer shall be mutually exclusive
+  // todo: add opposite way - legal compressed -> !valid seq + ready
+  a_compressed_seq_0:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    seq_valid |-> illegal_c_insn)
+      else `uvm_error("if_stage", "Compressed decoder and sequencer not mutually exclusive.")
+
+  a_compressed_seq_1:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (instr_compressed && !illegal_c_insn && !prefetch_is_tbljmp_ptr)
+                    |->
+                    !seq_valid)
+      else `uvm_error("if_stage", "Compressed decoder and sequencer not mutually exclusive.")
+
+  // Kill implies ready and not valid
+  a_seq_kill:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      ctrl_fsm_i.kill_if |-> (seq_ready && !seq_valid))
+        else `uvm_error("if_stage", "Kill should imply ready and not valid.")
+
+/* todo: currently fails as seq_ready will be set to 1'b1 when !valid_i.
+         this factors in both half_if and kill_if, and thus seq_ready will be 1'b1 for halt_if
+         This is similar to the way the multiplier drives it's ready_o in the EX stage.
+  // Halt implies not ready and not valid
+  a_seq_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.halt_if && !ctrl_fsm_i.kill_if)
+                      |-> (!seq_ready && !seq_valid))
+      else `uvm_error("if_stage", "Halt should imply not ready and not valid")
+*/
 endmodule // cv32e40x_if_stage
 
