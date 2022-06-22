@@ -100,7 +100,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              illegal_c_insn;
 
   inst_resp_t        instr_decompressed;
-  logic              instr_compressed_int;
+  logic              instr_compressed;
 
   // Transaction signals to/from obi interface
   logic              prefetch_resp_valid;
@@ -134,7 +134,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              seq_ready;
   logic              seq_last;
   inst_resp_t        seq_instr;
-  logic              seq_illegal_instr;
 
   // Fetch address selection
   always_comb
@@ -336,7 +335,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
-        if_id_pipe_o.illegal_c_insn   <= seq_valid ? seq_illegal_instr : illegal_c_insn; // todo: Currently seq_valid is low for seq_illegal_instr
+        // seq_valid implies no illegal instruction, sequencer successfully decoded an instruction.
+        // compressed decoder will still raise illegal_c_insn as it doesn't (currently) recognize Zc push/pop/dmove
+        if_id_pipe_o.illegal_c_insn   <= seq_valid ? 1'b0 : illegal_c_insn;
 
 
         if_id_pipe_o.trigger_match    <= trigger_match_i;
@@ -345,16 +346,16 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
         // No update to the meta compressed, as this is used in calculating the link address.
-        //   Any pointer could change instr_compressed_int and cause a wrong link address.
+        //   Any pointer could change instr_compressed and cause a wrong link address.
         // No update to tbljmp flag, we want flag to be high for both operations.
         if (!prefetch_is_tbljmp_ptr) begin
           if_id_pipe_o.pc                    <= pc_if_o;
           // todo: push/pop*/doublemoves are compressed, how (if at all) should we signal that when we emit uncompressed sequences?
-          if_id_pipe_o.instr_meta.compressed <= seq_valid ? 1'b0 : instr_compressed_int;
+          if_id_pipe_o.instr_meta.compressed <= instr_compressed;
           if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
 
           // Only update compressed_instr for compressed instructions
-          if (instr_compressed_int) begin
+          if (instr_compressed) begin
             if_id_pipe_o.compressed_instr      <= prefetch_instr.bus_resp.rdata[15:0];
           end
         end
@@ -388,7 +389,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .instr_i            ( prefetch_instr          ),
     .instr_is_ptr_i     ( ptr_in_if_o             ),
     .instr_o            ( instr_decompressed      ),
-    .is_compressed_o    ( instr_compressed_int    ),
+    .is_compressed_o    ( instr_compressed        ),
     .illegal_instr_o    ( illegal_c_insn          ),
     .tbljmp_o           ( tbljmp_raw              )
   );
@@ -404,21 +405,22 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       (
         .clk                ( clk                     ),
         .rst_n              ( rst_n                   ),
-        .valid_i            ( instr_valid             ),
-        .ready_i            ( id_ready_i              ),
+
         .instr_i            ( prefetch_instr          ),
         .instr_is_ptr_i     ( ptr_in_if_o             ),
+
+        .valid_i            ( instr_valid             ),
+        .ready_i            ( id_ready_i              ),
+
+
         .instr_o            ( seq_instr               ),
         .valid_o            ( seq_valid               ),
         .ready_o            ( seq_ready               ),
-
-        .seq_last_o         ( seq_last                ),
-        .illegal_instr_o    ( seq_illegal_instr       )
+        .seq_last_o         ( seq_last                ) // todo: currently not used, will be factored into 'last_op' later
       );
     end else begin : gen_no_seq
       assign seq_valid = 1'b0;
       assign seq_last = 1'b0;
-      assign seq_illegal_instr = 1'b0;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
     end

@@ -1294,7 +1294,7 @@ typedef struct packed {
   //////////////////
 
   typedef logic [4:0] regnum_t;
-  typedef logic [4:0] seq_i;
+  typedef logic [3:0] seq_t;    // Max length is 16 for POPRETZ, counter limit is then 15.
 
   localparam REG_ZERO = 5'd0;
   localparam REG_RA = 5'd1;
@@ -1312,7 +1312,6 @@ typedef struct packed {
 
   typedef enum logic [3:0] {
     R_NONE    = 4'd0,
-    //RA        = 4'h0,
     RA_S0     = 4'd1,
     RA_S0_S1  = 4'd2,
     RA_S0_S2  = 4'd3,
@@ -1326,26 +1325,44 @@ typedef struct packed {
     RA_S0_S11 = 4'd12
   } pushpop_rlist_e;
 
+
   typedef struct packed {
-    //logic [4:0] complete_seq_len;
-    logic [11:0] register_stack_adj;
-    pushpop_rlist_e registers_saved;
-    logic [11:0] additional_stack_adj;
-    logic [11:0] total_stack_adj;  //Redundant
-    logic [11:0] current_stack_adj;
-    regnum_t sreg;
+    logic [11:0]    stack_adj_base;        // Stack adjustment based on space needed by register list
+    pushpop_rlist_e registers_saved;       // Number of s-registers saved (excluding ra)
+    logic [11:0]    total_stack_adj;       // Total stack adjustment (register space + extra blocks)
+    logic [11:0]    current_stack_adj;     // Current stack adjustment for use in sequence
+    regnum_t        sreg;                  // Current s-register being pushed/popped
   } pushpop_decode_s;
 
 
+  // Map any of S0-S11 to X-registers
   function automatic regnum_t sn_to_regnum(regnum_t snum);
     case (snum)
-      0, 1: sn_to_regnum = regnum_t'(snum + 8);
-      default: sn_to_regnum = regnum_t'(snum + 16);
+      0, 1:    sn_to_regnum = regnum_t'({(snum[3:1] != 3'd0), 1'b1, snum[2:0]});
+      default: sn_to_regnum = regnum_t'({(snum[3:1] != 3'd0), snum[3], snum[2:0]});
     endcase
   endfunction
 
-  function automatic logic [11:0] align_16(logic [11:0] number);
-    align_16 = 12'((number + 12'hF) & 12'hFF0);
+  // Set stack adjustment base based on rlist as suggested in Zc spec 0.70.4
+  function automatic logic [11:0] get_stack_adj_base(logic [3:0] rlist);
+    case (rlist)
+      4,5,6,7: begin
+        get_stack_adj_base = 12'd16;
+      end
+      8,9,10,11: begin
+        get_stack_adj_base = 12'd32;
+      end
+      12,13,14: begin
+        get_stack_adj_base = 12'd48;
+      end
+      15: begin
+        get_stack_adj_base = 12'd64;
+      end
+      default: begin
+        get_stack_adj_base = 12'd0;
+      end
+    endcase
+
   endfunction
 
   function automatic pushpop_rlist_e pushpop_reg_length(logic [3:0] rlist4);

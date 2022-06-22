@@ -387,7 +387,7 @@ module cv32e40x_wrapper
          .prefetch_valid_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_valid_o                   ),
          .prefetch_ready_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_ready_i                   ),
          .prefetch_addr_if_i       ( core_i.if_stage_i.prefetch_unit_i.prefetch_addr_o                    ),
-         .prefetch_compressed_if_i ( core_i.if_stage_i.instr_compressed_int                               ),
+         .prefetch_compressed_if_i ( core_i.if_stage_i.instr_compressed                                   ),
          .prefetch_instr_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_instr_o                   ),
 
          // ID Probes
