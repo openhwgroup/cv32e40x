@@ -424,6 +424,12 @@ typedef enum logic[11:0] {
   CSR_MCONFIGPTR     = 12'hF15
 } csr_num_e;
 
+// CSR Bit Implementation Masks
+parameter CSR_JVT_MASK          = 32'hFFFFFC00;
+parameter CSR_MEPC_MASK         = 32'hFFFFFFFE;
+parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
+parameter CSR_MINTTHRESH_MASK   = 32'h000000FF;
+
 // CSR operations
 
 parameter CSR_OP_WIDTH = 2;
