@@ -167,17 +167,14 @@ Where the rvfi_intr_t struct contains the following fields:
   cause              logic [10:0]  [13:3]
   =================  ============  =======
 
-
 ``rvfi_intr`` consists of 14 bits.
 ``rvfi_intr.intr`` is set for the first instruction of the trap handler when encountering an exception or interrupt.
 ``rvfi_intr.exception`` indicates it was caused by synchronous trap and
 ``rvfi_intr.interrupt`` indicates it was caused by an interrupt.
 ``rvfi_intr.cause`` signals the cause for entering the trap handler.
 
-``rvfi_intr`` is not set for debug traps unless a debug entry happens in the first instruction of an interrupt handler (see ``rvfi_intr`` == X in the table below). In this case CSR side-effects (to ``mepc``) can be expected.
-
-.. table:: Table of scenarios for 1st instruction of exception/interrupt/debug handler
-  :name: Table of scenarios for 1st instruction of exception/interrupt/debug handler
+.. table:: Table of scenarios for first instruction of exception/interrupt/debug handler
+  :name: Table of scenarios for first instruction of exception/interrupt/debug handler
   :widths: 60 5 5 5 10 5 5 5
   :class: no-scrollbar-table
 
@@ -186,21 +183,27 @@ Where the rvfi_intr_t struct contains the following fields:
   |                                                 +------+-----------+-----------+-----------------+               |            | (cause)    |
   |                                                 | intr | exception | interrupt | cause           |               |            |            |
   +=================================================+======+===========+===========+=================+===============+============+============+
-  | Synchronous trap                                | 0    | 1         | 1         | Sync trap cause | 0x0           | 0          | X          |
+  | Synchronous trap                                | 1    | 1         | 0         | Sync trap cause | 0x0           | 0          | -          |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
-  | Interrupt (includes NMIs from bus errors)       | 1    | 0         | 1         | Interrupt cause | 0x0           | 1          | X          |
+  | Interrupt (includes NMIs from bus errors)       | 1    | 0         | 1         | Interrupt cause | 0x0           | 1          | -          |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
-  | Debug entry due to EBREAK (from non-debug mode) | 0    | 0         | 0         | 0x0             | 0x1           | X          | 0x1        |
+  | Debug entry due to EBREAK (from non-debug mode) | 0    | 0         | 0         | 0x0             | 0x1           | -          | 0x1        |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
-  | Debug entry due to EBREAK (from debug mode)     | 0    | 0         | 0         | 0x0             | 0x1           | X          | X          |
+  | Debug entry due to EBREAK (from debug mode)     | 0    | 0         | 0         | 0x0             | 0x1           | -          | -          |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
-  | Debug entry due to trigger match                | 0    | 0         | 0         | 0x0             | 0x2           | X          | 0x2        |
+  | Debug entry due to trigger match                | 0    | 0         | 0         | 0x0             | 0x2           | -          | 0x2        |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
   | Debug entry due to external debug request       | X    | X         | X         | X               | 0x3 or 0x5    | X          | 0x3 or 0x5 |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
   | Debug handler entry due to single step          | X    | X         | X         | X               | 0x4           | X          | 0x4        |
   +-------------------------------------------------+------+-----------+-----------+-----------------+---------------+------------+------------+
 
+.. note::
+   In above table the ``-`` symbol indicates an unchanged value. The ``X`` symbol indicates that multiple values are possible.
+
+.. note::
+   ``rvfi_intr`` is not set for debug traps unless a debug entry happens during the first instruction of a trap handler (see ``rvfi_intr`` == ``X`` in the table above).
+   In this case CSR side-effects (to ``mepc`` and ``mcause``) can be expected as well.
 
 **Program Counter**
 
@@ -220,7 +223,6 @@ To reduce the number of signals in the RVFI interface, a vectorized CSR interfac
    output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_wmask
    output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_rdata
    output [<NUM_CSRNAME>-1:0] [NRET * XLEN - 1 : 0] rvfi_csr_<csrname>_wdata
-
 
 Example:
 
@@ -251,12 +253,9 @@ Instead of:
 In contrast to [SYMBIOTIC-RVFI]_, the **mcycle[h]** and **minstret[h]** registers are not modelled as happening "between instructions" but rather as a side-effect of the instruction.
 This means that an instruction that causes an increment (or decrement) of these counters will set the ``rvfi_csr_mcycle_wmask``, and that ``rvfi_csr_mcycle_rdata`` is not necessarily equal to ``rvfi_csr_mcycle_wdata``.
 
-
-
 **Halt Signal**
 
 The ``rvfi_halt`` signal is meant for liveness properties of cores that can halt execution. It is only needed for cores that can lock up. Tied to 0 for RISC-V compliant cores.
-
 
 **Mode Signal**
 
@@ -287,7 +286,6 @@ The trace output is in tab-separated columns.
 11. **rvfi_mem_wmask** Bitmask specifying which bytes in ``rvfi_mem_wdata`` contain valid write data
 12. **rvfi_mem_rdata** The data read from memory address specified in ``mem_addr``
 13. **rvfi_mem_wdata** The data written to memory address specified in ``mem_addr``
-
 
 .. code-block:: text
 
