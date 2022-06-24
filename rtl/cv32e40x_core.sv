@@ -49,7 +49,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter int                         X_RFW_WIDTH                             = 32,
   parameter logic [31:0]                X_MISA                                  = 32'h00000000,
   parameter logic [1:0]                 X_ECS_XS                                = 2'b00,
-  parameter bit                         ZC_EXT                                  = 0, // todo: remove once fully implemented
   parameter int                         NUM_MHPMCOUNTERS                        = 1
 )
 (
@@ -132,6 +131,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Number of register file read ports
   // Core will only use two, but X_EXT may mandate 2 or 3
   localparam int unsigned REGFILE_NUM_READ_PORTS = X_EXT ? X_NUM_RS : 2;
+
+  // Zc is always present
+  localparam bit ZC_EXT = 1;
 
   // Determine alignedness of mtvt
   // mtvt[31:N] holds mtvt table entry
