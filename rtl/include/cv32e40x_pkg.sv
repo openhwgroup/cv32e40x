@@ -1198,22 +1198,24 @@ typedef struct packed {
 
   // to IF stage
   logic        instr_req;             // Start fetching instructions
-  logic        pc_set;                // jump to address set by pc_mux
+  logic        pc_set;                // Jump to address set by pc_mux
   logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
   logic        pc_set_tbljmp;         // Signal pc_set is for Zc* cm.jt / cm.jalt pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
 
   // To WB stage
   logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-  logic [4:0]  mtvec_pc_mux;          // id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
-  logic [9:0]  mtvt_pc_mux;           // id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
+  logic [4:0]  mtvec_pc_mux;          // Id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
+  logic [9:0]  mtvt_pc_mux;           // Id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
   logic [7:0]  jvt_pc_mux;            // Index for table jumps
 
-  logic        irq_ack;               // irq has been taken
-  logic [9:0]  irq_id;                // id of taken irq. Max width (1024 interrupts), unused bits will be tied off
-  logic [7:0]  irq_level;             // level of taken irq
-  logic        dbg_ack;               // debug has been taken
+  logic        irq_ack;               // Irq has been taken
+  logic [9:0]  irq_id;                // Id of taken irq. Max width (1024 interrupts), unused bits will be tied off
+  logic [7:0]  irq_level;             // Level of taken irq (CLIC only)
+  logic [1:0]  irq_priv;              // Associated privilege mode for taken irq (CLIC only)
+  logic        irq_shv;               // Selective hardware vectoring for taken irq (CLIC only)
+  logic        dbg_ack;               // Debug has been taken
 
   // Debug outputs
   logic        debug_mode_if;        // Flag signalling we are in debug mode, valid for IF

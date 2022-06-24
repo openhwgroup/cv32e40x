@@ -47,6 +47,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   output logic                       irq_wu_ctrl_o,
   output logic                       irq_clic_shv_o,
   output logic [7:0]                 irq_clic_level_o,
+  output logic [1:0]                 irq_clic_priv_o,
 
   // From cs_registers
   input  mstatus_t                   mstatus_i,                 // Current mstatus from CSR
@@ -141,6 +142,9 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   assign irq_clic_shv_o = clic_irq_shv_q;
 
   assign irq_clic_level_o = clic_irq_level_q;
+
+  // Take all interrupts into machine mode. clic_irq_priv_i not used on purpose.
+  assign irq_clic_priv_o = PRIV_LVL_M;
 
   ///////////////////////////
   // Outputs for mnxti CSR //
