@@ -71,14 +71,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        data_stall_wb_i,            // WB stalled by LSU
 
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
-
   input  logic        lsu_interruptible_i,        // LSU can be interrupted
+
   // Interrupt Controller Signals
-  input  logic        irq_req_ctrl_i,             // irq requst
-  input  logic [9:0]  irq_id_ctrl_i,              // irq id
-  input  logic        irq_wu_ctrl_i,              // irq wakeup control
+  input  logic        irq_wu_ctrl_i,              // Irq wakeup control
+  input  logic        irq_req_ctrl_i,             // Irq request
+  input  logic [9:0]  irq_id_ctrl_i,              // Irq id
   input  logic        irq_clic_shv_i,             // CLIC mode selective hardware vectoring
   input  logic [7:0]  irq_clic_level_i,           // CLIC mode current interrupt level
+  input  logic [1:0]  irq_clic_priv_i,            // CLIC mode current interrupt privilege
 
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
@@ -470,66 +471,70 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //////////////
   always_comb begin
     // Default values
-    ctrl_fsm_ns = ctrl_fsm_cs;
-    ctrl_fsm_o.ctrl_busy = 1'b1;
-    ctrl_fsm_o.instr_req = 1'b1;
+    ctrl_fsm_ns                 = ctrl_fsm_cs;
+    ctrl_fsm_o.ctrl_busy        = 1'b1;
+    ctrl_fsm_o.instr_req        = 1'b1;
 
-    ctrl_fsm_o.pc_mux    = PC_BOOT;
-    ctrl_fsm_o.pc_set    = 1'b0;
+    ctrl_fsm_o.pc_mux           = PC_BOOT;
+    ctrl_fsm_o.pc_set           = 1'b0;
 
-    ctrl_fsm_o.irq_ack = 1'b0;
-    ctrl_fsm_o.irq_id  = '0;
-    ctrl_fsm_o.irq_level = '0;
-    ctrl_fsm_o.dbg_ack = 1'b0;
+    ctrl_fsm_o.irq_ack          = 1'b0;
+    ctrl_fsm_o.irq_id           = '0;
+    ctrl_fsm_o.irq_level        = '0;
+    ctrl_fsm_o.irq_priv         = '0;
+    ctrl_fsm_o.irq_shv          = '0;
+    ctrl_fsm_o.dbg_ack          = 1'b0;
 
     // IF stage is halted if an instruction has been issued during single step
     // to avoid more than one instructions passing down the pipe.
-    ctrl_fsm_o.halt_if = single_step_halt_if_q;
+    ctrl_fsm_o.halt_if          = single_step_halt_if_q;
+
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
     // currently in ID is not ready to be issued yet). Also halted if interrupt or debug pending
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
-    ctrl_fsm_o.halt_id = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall ||
-                         (pending_interrupt && !interrupt_allowed) ||
-                         (pending_debug && !debug_allowed) ||
-                         (pending_nmi && !nmi_allowed) ||
-                         (pending_nmi_early);
+    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall ||
+      (pending_interrupt && !interrupt_allowed) ||
+      (pending_debug && !debug_allowed) ||
+      (pending_nmi && !nmi_allowed) ||
+      (pending_nmi_early);
+
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
-    ctrl_fsm_o.halt_ex = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
-    ctrl_fsm_o.halt_wb = 1'b0;
+    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
+    ctrl_fsm_o.halt_wb          = 1'b0;
 
     // By default no stages are killed
-    ctrl_fsm_o.kill_if = 1'b0;
-    ctrl_fsm_o.kill_id = 1'b0;
-    ctrl_fsm_o.kill_ex = 1'b0;
-    ctrl_fsm_o.kill_wb = 1'b0;
+    ctrl_fsm_o.kill_if          = 1'b0;
+    ctrl_fsm_o.kill_id          = 1'b0;
+    ctrl_fsm_o.kill_ex          = 1'b0;
+    ctrl_fsm_o.kill_wb          = 1'b0;
 
-    ctrl_fsm_o.csr_restore_mret    = 1'b0;
-    ctrl_fsm_o.csr_save_cause      = 1'b0;
-    ctrl_fsm_o.csr_cause           = 32'h0;
-    ctrl_fsm_o.csr_clear_minhv     = 1'b0;
+    ctrl_fsm_o.csr_restore_mret = 1'b0;
+    ctrl_fsm_o.csr_save_cause   = 1'b0;
+    ctrl_fsm_o.csr_cause        = 32'h0;
+    ctrl_fsm_o.csr_clear_minhv  = 1'b0;
 
-    pipe_pc_mux_ctrl               = PC_WB;
+    pipe_pc_mux_ctrl            = PC_WB;
 
-    exc_cause                      = 11'b0;
+    exc_cause                   = 11'b0;
 
-    debug_mode_n                   = debug_mode_q;
-    ctrl_fsm_o.debug_csr_save      = 1'b0;
-    ctrl_fsm_o.block_data_addr     = 1'b0;
+    debug_mode_n                = debug_mode_q;
+    ctrl_fsm_o.debug_csr_save   = 1'b0;
+    ctrl_fsm_o.block_data_addr  = 1'b0;
 
     // Single step halting of IF
-    single_step_halt_if_n = single_step_halt_if_q;
+    single_step_halt_if_n       = single_step_halt_if_q;
 
     // Ensure jumps and branches are taken only once
-    branch_taken_n                 = branch_taken_q;
+    branch_taken_n              = branch_taken_q;
 
-    fencei_flush_req_set           = 1'b0;
+    fencei_flush_req_set        = 1'b0;
 
-    ctrl_fsm_o.pc_set_clicv        = 1'b0;
-    ctrl_fsm_o.pc_set_tbljmp       = 1'b0;
+    ctrl_fsm_o.pc_set_clicv     = 1'b0;
+    ctrl_fsm_o.pc_set_tbljmp    = 1'b0;
 
-    csr_flush_ack_n                = 1'b0;
+    csr_flush_ack_n             = 1'b0;
 
     unique case (ctrl_fsm_cs)
       RESET: begin
@@ -604,6 +609,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           if (SMCLIC) begin
             ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
             ctrl_fsm_o.irq_level = irq_clic_level_i;
+            ctrl_fsm_o.irq_priv = irq_clic_priv_i;
+            ctrl_fsm_o.irq_shv = irq_clic_shv_i;
             if (irq_clic_shv_i) begin
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
               ctrl_fsm_ns = POINTER_FETCH;
