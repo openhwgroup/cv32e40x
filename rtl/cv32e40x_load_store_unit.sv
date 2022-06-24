@@ -354,7 +354,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_rdata_1_o = rdata_ext;
 
   // misaligned_access is high for both transfers of a misaligned transfer
-  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword || (xif_req && xif_mem_if.mem_req.attr[1]);
+  // TODO: Give MPU a separate modified_access_i input
+  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword || (xif_req && (xif_mem_if.mem_req.attr[0] || xif_mem_if.mem_req.attr[1]));
 
   // Check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
