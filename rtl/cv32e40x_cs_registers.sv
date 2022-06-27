@@ -540,16 +540,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
 
-    jvt_n         = {csr_wdata_int[31:10], 10'b0000000000};
+    jvt_n         = csr_wdata_int & CSR_JVT_MASK;
     jvt_we        = 1'b0;
 
     mscratch_n    = csr_wdata_int;
     mscratch_we   = 1'b0;
 
-    mepc_n        = csr_wdata_int & ~32'b1;
+    mepc_n        = csr_wdata_int & CSR_MEPC_MASK;
     mepc_we       = 1'b0;
 
-    dpc_n         = csr_wdata_int & ~32'b1;
+    dpc_n         = csr_wdata_int & CSR_DPC_MASK;
     dpc_we        = 1'b0;
 
     dcsr_n        = '{
@@ -616,7 +616,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                 };
     mstatus_we    = 1'b0;
 
-    mstatush_n    = csr_wdata_int;
+    mstatush_n    = mstatush_rdata; // Read only
     mstatush_we   = 1'b0;
 
     misa_n        = misa_rdata; // Read only
@@ -637,13 +637,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mintstatus_n             = mintstatus_rdata; // Read only
       mintstatus_we            = 1'b0;
 
-      mintthresh_n             = {24'h000000, csr_wdata_int[7:0]};
+      mintthresh_n             = csr_wdata_int & CSR_MINTTHRESH_MASK;
       mintthresh_we            = 1'b0;
 
-      mscratchcsw_n            = csr_wdata_int;
+      mscratchcsw_n            = csr_wdata_int; // todo: isssue 589
       mscratchcsw_we           = 1'b0;
 
-      mscratchcswl_n           = csr_wdata_int;
+      mscratchcswl_n           = csr_wdata_int; // todo: isssue 589
       mscratchcswl_we          = 1'b0;
 
       mie_n                    = '0;
