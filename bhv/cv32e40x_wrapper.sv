@@ -335,11 +335,12 @@ module cv32e40x_wrapper
                .PMA_CFG(PMA_CFG))
       write_buffer_sva(.*);
 
+/* todo: include once localparam ZC_EXT is set back to 1
   bind cv32e40x_sequencer:
     core_i.if_stage_i.gen_seq.sequencer_i
       cv32e40x_sequencer_sva
         sequencer_sva (.*);
-
+*/
 `ifndef FORMAL
   bind cv32e40x_rvfi:
     rvfi_i
