@@ -659,10 +659,6 @@ module cv32e40x_rvfi
   assign insn_funct7 = rvfi_insn[31:25];
   assign insn_csr    = rvfi_insn[31:20];
 
-`ifdef CV32E40X_TRACE_EXECUTION
-  `include "cv32e40x_rvfi_trace.svh"
-`endif
-
   cv32e40x_rvfi_instr_obi
   rvfi_instr_obi_i
   (
