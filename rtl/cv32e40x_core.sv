@@ -238,6 +238,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
 
+  logic        lsu_first_op_ex;
+  logic        lsu_last_op_ex;
+
   logic        data_stall_wb;
 
   // Stage ready signals
@@ -556,6 +559,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_o                ( lsu_valid_ex                 ),
     .lsu_ready_i                ( lsu_ready_0                  ),
     .lsu_split_i                ( lsu_split_ex                 ),
+    .lsu_last_op_i              ( lsu_last_op_ex               ),
+    .lsu_first_op_i             ( lsu_first_op_ex              ),
 
     // Pipeline handshakes
     .ex_ready_o                 ( ex_ready                     ),
@@ -601,11 +606,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
-    .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
+    .lsu_first_op_0_o      ( lsu_first_op_ex    ),
+    .lsu_last_op_0_o       ( lsu_last_op_ex     ),
 
     // Stage 1 outputs (WB)
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
+    .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)

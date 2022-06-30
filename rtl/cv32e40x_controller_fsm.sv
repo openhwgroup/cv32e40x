@@ -256,7 +256,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Blocking on branch_taken_q, as a jump has already been taken
   assign jump_taken_id = jump_in_id && !branch_taken_q;
 
- // todo: RVFI does not use jump_taken_id (which is not in itself an issue); we should have an assertion showing that the target address remains constant during jump_in_id; same remark for branches
+  // Note: RVFI does not use jump_taken_id (which is not in itself an issue); An assertion in id_stage_sva checks that the jump target remains stable;
+  // todo: Do we need a similar stability check for branches?
 
   // EX stage
   // Branch taken for valid branch instructions in EX with valid decision

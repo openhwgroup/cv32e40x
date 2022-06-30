@@ -123,7 +123,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // eXtension interface signals
   logic [X_ID_WIDTH-1:0] xif_id;
 
-  // Flag for last operation - used by Zc*
+  // Flag for first and last operation - used by Zc*
+  logic              first_op;
   logic              last_op;
 
   // ready signal for predecoder, tied to id_ready_i
@@ -132,6 +133,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Zc* sequencer signals
   logic              seq_valid;
   logic              seq_ready;
+  logic              seq_first;
   logic              seq_last;
   inst_resp_t        seq_instr;
 
@@ -301,6 +303,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // todo: Factor in last operation of sequenced Zc* (push/pop)
   assign last_op = tbljmp ? 1'b0 : 1'b1;
 
+  // Flag first operation of a sequence.
+  // todo: factor in seq_first. For now only tablejump pointer may be the only non-first operation.
+  assign first_op = prefetch_is_tbljmp_ptr ? 1'b0 : 1'b1;
+
   // Populate instruction meta data
   // Fields 'compressed' and 'tbljmp' keep their old value by default.
   //   - In case of a table jump we need the fields to stay as 'compressed=1' and 'tbljmp=1'
@@ -329,6 +335,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.xif_id           <= '0;
       if_id_pipe_o.ptr              <= '0;
       if_id_pipe_o.last_op          <= 1'b0;
+      if_id_pipe_o.first_op         <= 1'b0;
     end else begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
@@ -343,6 +350,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
         if_id_pipe_o.last_op          <= last_op;
+        if_id_pipe_o.first_op         <= first_op;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
         // No update to the meta compressed, as this is used in calculating the link address.
@@ -420,9 +428,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       );
     end else begin : gen_no_seq
       assign seq_valid = 1'b0;
-      assign seq_last = 1'b0;
+      assign seq_last  = 1'b0;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
+      assign seq_first = 1'b1;
     end
   endgenerate
 

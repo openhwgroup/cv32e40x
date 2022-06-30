@@ -56,7 +56,17 @@ module cv32e40x_id_stage_sva
   input logic           id_ready_o,
   input logic           id_valid_o,
   input ctrl_fsm_t      ctrl_fsm_i,
-  input logic           xif_insn_accept
+  input logic           xif_insn_accept,
+  input logic [31:0]    jalr_fw,
+  input logic [31:0]    operand_a_fw,
+  input ctrl_byp_t      ctrl_byp_i,
+  input logic           alu_jmp,
+  input logic           alu_jmpr,
+  input logic [31:0]    jmp_target_o,
+  input logic           jmp_taken_id_ctrl_i
+
+
+
 );
 
 /* todo: check and fix/remove
@@ -125,5 +135,27 @@ module cv32e40x_id_stage_sva
                      $onehot0({alu_en, div_en, mul_en, csr_en, sys_en, lsu_en, xif_en}))
       else `uvm_error("id_stage", "Multiple functional units enabled")
 
+  // Assert that jalr_fw has the same value as operand_a_fw when a jump is taken
+  // Only checking for JALR, as regular JAL do not use any RF or bypass operands for the jump target.
+  a_jalr_fw_match :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      jmp_taken_id_ctrl_i && alu_jmpr
+                      |->
+                      (jalr_fw == operand_a_fw))
+      else `uvm_error("id_stage", "jalr_fw does not match operand_a_fw")
+
+  // Assert stable jump target for a jump instruction that stays multiple cycles in ID
+  // Target must remain stable until instruction exits ID (id_valid && ex_ready, or
+  // instructions is killed.
+  property p_jmp_target_stable;
+    logic [31:0] jmp_target;
+    @(posedge clk) disable iff (!rst_n)
+    (jmp_taken_id_ctrl_i && !ctrl_fsm_i.kill_id, jmp_target=jmp_target_o)
+    |->
+    (jmp_target == jmp_target_o) until_with ((id_valid_o && ex_ready_i) || ctrl_fsm_i.kill_id);
+  endproperty
+
+  a_jmp_target_stable: assert property (p_jmp_target_stable)
+    else `uvm_error("id_stage", "Jump target not stable")
 endmodule // cv32e40x_id_stage_sva
 

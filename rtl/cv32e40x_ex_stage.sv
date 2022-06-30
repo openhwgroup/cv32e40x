@@ -69,6 +69,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        lsu_valid_o,
   input  logic        lsu_ready_i,
   input  logic        lsu_split_i,      // LSU is performing first part of a misaligned/split instruction
+  input  logic        lsu_last_op_i,
+  input  logic        lsu_first_op_i,
 
   // Stage ready/valid
   output logic        ex_ready_o,       // EX stage is ready for new data
@@ -118,6 +120,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Detect if we get an illegal CSR instruction
   logic           csr_is_illegal;
 
+  // Local first_op signal
+  logic           first_op;
+
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
@@ -166,7 +171,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // Detect last operation
   // Both parts of a split misaligned load/store will reach WB, but only the second half will be marked with "last_op"
-  assign last_op_o = (id_ex_pipe_i.lsu_en && lsu_split_i) ? 1'b0 : id_ex_pipe_i.last_op;
+  assign last_op_o = id_ex_pipe_i.lsu_en ? (lsu_last_op_i && id_ex_pipe_i.last_op) : id_ex_pipe_i.last_op;
+
+  assign first_op = id_ex_pipe_i.lsu_en ? (lsu_first_op_i && id_ex_pipe_i.first_op) : id_ex_pipe_i.first_op;
 
   ////////////////////////////
   //     _    _    _   _    //
@@ -344,6 +351,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.csr_mnxti_access   <= 1'b0;
       ex_wb_pipe_o.xif_en             <= 1'b0;
       ex_wb_pipe_o.xif_meta           <= '0;
+      ex_wb_pipe_o.first_op           <= 1'b0;
       ex_wb_pipe_o.last_op            <= 1'b0;
     end
     else
@@ -352,6 +360,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_valid <= 1'b1;
 
         ex_wb_pipe_o.last_op     <= last_op_o;
+        ex_wb_pipe_o.first_op    <= first_op;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline

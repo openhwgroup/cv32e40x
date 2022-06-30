@@ -58,6 +58,7 @@ module cv32e40x_rvfi
    input logic [4:0]                          rs2_addr_id_i,
    input logic [31:0]                         operand_a_fw_id_i,
    input logic [31:0]                         operand_b_fw_id_i,
+   input logic                                first_op_id_i,
 
    // EX probes
    input logic                                ex_ready_i,
@@ -873,8 +874,11 @@ module cv32e40x_rvfi
         instr_pmp_err[STAGE_EX] <= instr_pmp_err[STAGE_ID];
         rs1_addr   [STAGE_EX] <= rs1_addr_id;
         rs2_addr   [STAGE_EX] <= rs2_addr_id;
-        rs1_rdata  [STAGE_EX] <= rs1_rdata_id;
-        rs2_rdata  [STAGE_EX] <= rs2_rdata_id;
+        // Only update rs1/rs2 on the first part of a multi operation instruction.
+        // Jumps may actually use rs1 before (id_valid && ex_ready), an assertion exists to check that
+        // the jump target is stable and it should be safe to use rs1/2_rdata at the time of the pipeline handshake.
+        rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX];
+        rs2_rdata  [STAGE_EX] <= first_op_id_i ? rs2_rdata_id : rs1_rdata[STAGE_EX];
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
       end else begin
