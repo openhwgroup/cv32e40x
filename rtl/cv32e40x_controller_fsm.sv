@@ -175,6 +175,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic debug_allowed;
   logic single_step_allowed;
 
+  // Flag for blocking interrupts due to debug conditions
+  logic debug_interruptible;
+
   // Flag indicating there is a 'live' CLIC pointer in the pipeline
   // Used to block debug until pointer
   logic pointer_in_pipeline;
@@ -316,16 +319,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
-  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending NMI during debug mode
-  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  assign pending_nmi = nmi_pending_q && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  assign pending_nmi = nmi_pending_q;
 
   // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
   // This signal is used for halting the ID stage in the same cycle as the bus error arrives.
   // This ensures that any instruction in the ID stage that may depend on the result of the faulted load
   // will not propagate to the EX stage. For cycles after lsu_err_wb_i[0] is
   // high, ID stage will be halted due to pending_nmi and !nmi_allowed.
-  assign pending_nmi_early =  lsu_err_wb_i[0] && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  assign pending_nmi_early =  lsu_err_wb_i[0];
 
   // todo: Halting ID and killing it later will not work for Zce (push/pop)
 
@@ -405,28 +406,30 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
-  // interrupt may be pending from the int_controller even though we are in debug mode.
-  // Gating the pending signal instead of the allowed signal for debug related conditions, otherwise a pending interrupt during debug mode
-  // or single stepping with dcsr.stepie==0 would stall ID stage and we would never get out of debug, resulting in a deadlock.
-  assign pending_interrupt = irq_req_ctrl_i && !debug_mode_q && !(dcsr_i.step && !dcsr_i.stepie);
+  // interrupt pending comes directly from the interrupt controller
+  assign pending_interrupt = irq_req_ctrl_i;
 
   // Table jumps may not be interrupted if the last part has reached EX or WB.
   assign tbljmp_in_ex_wb = ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) || (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op));
 
   // Allow interrupts to be taken only if there is no data request in WB,
   // and no trans_valid has been clocked from EX to environment.
+  // Not allowing interrupts when the core cannot take interrupts due to debug conditions.
   // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
   // LSU instructions which were suppressed due to previous exceptions or trigger match
-  // will be interruptable as they were convered to NOP in ID stage.
+  // will be interruptable as they were converted to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
   // Once the first part of a table jump has finished in WB, we are not allowed to take interrupts before the last part finishes. This can be detected when the last
   // part of a table jump is in either EX or WB.
 
-  assign interrupt_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !tbljmp_in_ex_wb;
+  assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !tbljmp_in_ex_wb;
 
   // Allowing NMI's follow the same rule as regular interrupts.
   assign nmi_allowed = interrupt_allowed;
+
+  // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
+  assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
 
   // Do not count if we have an exception in WB, trigger match in WB (we do not execute the instruction at trigger address),
   // or WB stage is killed or halted.
@@ -493,11 +496,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // ID stage is halted for regular stalls (i.e. stalls for which the instruction
     // currently in ID is not ready to be issued yet). Also halted if interrupt or debug pending
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
+    // Interrupts: Machine mode: Prevent issuing new instructions until we get an interruptible bubble.
+    //             Debug mode:   Interrupts are not allowed during debug. Cannot halt ID stage in such a case
+    //                           since the dret that brings the core out of debug mode may never get passed a halted ID stage.
     ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall ||
-      (pending_interrupt && !interrupt_allowed) ||
-      (pending_debug && !debug_allowed) ||
-      (pending_nmi && !nmi_allowed) ||
-      (pending_nmi_early);
+      (((pending_interrupt && !interrupt_allowed) || (pending_nmi && !nmi_allowed) || (pending_nmi_early)) && debug_interruptible) ||
+      (pending_debug && !debug_allowed);
+
 
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
