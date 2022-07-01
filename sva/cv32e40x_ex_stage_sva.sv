@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,7 @@
 module cv32e40x_ex_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-#(  
+#(
   parameter bit X_EXT     = 1'b0
 )
 (
@@ -41,7 +41,10 @@ module cv32e40x_ex_stage_sva
   input id_ex_pipe_t    id_ex_pipe_i,
   input ex_wb_pipe_t    ex_wb_pipe_o,
   input logic           lsu_split_i,
-  input logic           csr_illegal_i
+  input logic           csr_illegal_i,
+
+  input logic [31:0]    branch_target_o,
+  input logic           branch_taken_ex_ctrl_i
 );
 
   // Halt implies not ready and not valid
@@ -110,5 +113,17 @@ endgenerate
                      $onehot0({id_ex_pipe_i.alu_en, id_ex_pipe_i.div_en, id_ex_pipe_i.mul_en,
                      id_ex_pipe_i.csr_en, id_ex_pipe_i.sys_en, id_ex_pipe_i.lsu_en, id_ex_pipe_i.xif_en}))
       else `uvm_error("ex_stage", "Multiple functional units enabled")
+
+  // Check that branch target remains constant while a branch instruction is in EX
+  property p_bch_target_stable;
+    logic [31:0] bch_target;
+    @(posedge clk) disable iff (!rst_n)
+    (branch_taken_ex_ctrl_i && !ctrl_fsm_i.kill_ex, bch_target=branch_target_o)
+    |->
+    (bch_target == branch_target_o) until_with ((ex_valid_o && wb_ready_i) || ctrl_fsm_i.kill_ex);
+  endproperty
+
+  a_bch_target_stable: assert property (p_bch_target_stable)
+    else `uvm_error("ex_stage", "Branch target not stable")
 
 endmodule // cv32e40x_ex_stage_sva

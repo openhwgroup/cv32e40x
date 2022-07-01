@@ -123,7 +123,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // eXtension interface signals
   logic [X_ID_WIDTH-1:0] xif_id;
 
-  // Flag for first and last operation - used by Zc*
+  // Flags for first and last operation of an instruction
   logic              first_op;
   logic              last_op;
 
@@ -431,7 +431,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       assign seq_last  = 1'b0;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
-      assign seq_first = 1'b1;
+      assign seq_first = 1'b0;
     end
   endgenerate
 

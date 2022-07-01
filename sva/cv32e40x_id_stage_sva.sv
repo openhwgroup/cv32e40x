@@ -137,6 +137,8 @@ module cv32e40x_id_stage_sva
 
   // Assert that jalr_fw has the same value as operand_a_fw when a jump is taken
   // Only checking for JALR, as regular JAL do not use any RF or bypass operands for the jump target.
+  // Checked because RVFI is using operand_a_fw only, even for JALR instructions. With this assert proven,
+  // there is no need to mux in jalr_fw inside RVFI.
   a_jalr_fw_match :
     assert property (@(posedge clk) disable iff (!rst_n)
                       jmp_taken_id_ctrl_i && alu_jmpr

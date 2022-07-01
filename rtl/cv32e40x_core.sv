@@ -224,6 +224,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // LSU
   logic        lsu_split_ex;
+  logic        lsu_first_op_ex;
+  logic        lsu_last_op_ex;
   mpu_status_e lsu_mpu_status_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
@@ -237,9 +239,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_ready_wb;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
-
-  logic        lsu_first_op_ex;
-  logic        lsu_last_op_ex;
 
   logic        data_stall_wb;
 

@@ -170,6 +170,7 @@ module cv32e40x_wrapper
   bind cv32e40x_ex_stage:
     core_i.ex_stage_i cv32e40x_ex_stage_sva #(.X_EXT(X_EXT)) ex_stage_sva
     (
+      .branch_taken_ex_ctrl_i (core_i.controller_i.controller_fsm_i.branch_taken_ex),
       .*
     );
 
