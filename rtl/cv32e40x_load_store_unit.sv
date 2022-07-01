@@ -52,6 +52,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
+  output logic        lsu_first_op_0_o,         // First operation is active in EX
+  output logic        lsu_last_op_0_o,          // Last operation is active in EX
 
   // Stage 1 outputs (WB)
   output logic [1:0]  lsu_err_1_o,
@@ -386,6 +388,11 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       endcase // case (trans.size)
     end
   end
+
+  // Set flags for first and last op
+  // Only valid when id_ex_pipe.lsu_en == 1
+  assign lsu_last_op_0_o = !lsu_split_0_o;
+  assign lsu_first_op_0_o = !split_q;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
   // In the case of mpu errors, the LSU control logic can have outstanding transfers not seen by the response filter.

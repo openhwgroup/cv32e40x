@@ -543,12 +543,14 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.instr_meta             <= '0;
       id_ex_pipe_o.trigger_match          <= 1'b0;
 
+      id_ex_pipe_o.first_op               <= 1'b0;
       id_ex_pipe_o.last_op                <= 1'b0;
     end else begin
       // normal pipeline unstall case
       if (id_valid_o && ex_ready_i) begin
         id_ex_pipe_o.instr_valid  <= 1'b1;
         id_ex_pipe_o.last_op      <= if_id_pipe_i.last_op;
+        id_ex_pipe_o.first_op     <= if_id_pipe_i.first_op;
 
         // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin

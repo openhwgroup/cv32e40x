@@ -163,12 +163,14 @@ module cv32e40x_wrapper
   bind cv32e40x_id_stage:
     core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
     (
+      .jmp_taken_id_ctrl_i (core_i.controller_i.controller_fsm_i.jump_taken_id),
       .*
     );
 
   bind cv32e40x_ex_stage:
     core_i.ex_stage_i cv32e40x_ex_stage_sva #(.X_EXT(X_EXT)) ex_stage_sva
     (
+      .branch_taken_ex_ctrl_i (core_i.controller_i.controller_fsm_i.branch_taken_ex),
       .*
     );
 
@@ -406,6 +408,7 @@ module cv32e40x_wrapper
          .rs2_addr_id_i            ( core_i.register_file_wrapper_i.raddr_i[1]                            ),
          .operand_a_fw_id_i        ( core_i.id_stage_i.operand_a_fw                                       ),
          .operand_b_fw_id_i        ( core_i.id_stage_i.operand_b_fw                                       ),
+         .first_op_id_i            ( core_i.id_stage_i.if_id_pipe_i.first_op                              ),
 
          // EX Probes
          .ex_ready_i               ( core_i.ex_stage_i.ex_ready_o                                         ),
