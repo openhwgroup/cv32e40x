@@ -299,10 +299,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // any operations. A trigger match is a last_op by definition.
   // todo: Factor CLIC pointers?
   assign last_op_o = trigger_match_i ? 1'b1 :
-                     tbljmp ? 1'b0 :
-                     seq_valid ? seq_last : 1'b1;
+                     tbljmp          ? 1'b0 :  // tbljmps are the first half
+                     seq_valid       ? seq_last : 1'b1;
 
   // Flag first operation of a sequence.
+  // Sequencer will set seq_first=1 when not in use
+  // Would ideally be something like "seq_valid ? : seq_first : 1'b1", but that would cause combinatorial loops
+  // through the controllers sequence_interruptible, via kill_ex and seq_valid and then into the first_op_o.
   // todo: factor in CLIC pointers?
   assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 : seq_first;
 

@@ -204,13 +204,14 @@ import cv32e40x_pkg::*;
     instr_o = instr_i;
     seq_state_n = seq_state_q;
     seq_last_o = 1'b0;
+    // default to 1, used by IF stage regardless of seq_valid
+    // See explanation around combinatorial loops in the if_stage.sv.
     seq_first_o = 1'b1;
     ready_o = 1'b0;
 
     case (seq_state_q)
       S_IDLE: begin
         // First instruction is output here
-        //seq_first_o = 1'b1;
         if (seq_load) begin
           if (decode.registers_saved == 'd1) begin
             // Exactly one S register popped

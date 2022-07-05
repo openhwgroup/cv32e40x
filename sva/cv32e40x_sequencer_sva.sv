@@ -71,6 +71,12 @@ module cv32e40x_sequencer_sva
                       |-> (!ready_o && !valid_o))
       else `uvm_error("sequencer", "Halt should imply not ready and not valid")
 
+  // State should not update while halted and not killed
+  a_seq_halt_state_stable :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (halt_i && !kill_i)
+                      |=> ($stable(instr_cnt_q) && $stable(seq_state_q)))
+      else `uvm_error("sequencer", "Counter or state not stable while halted")
 
   // todo: add assertion to check that atomic part cannot be killed -- how? Depends on when operations are done in WB
 
