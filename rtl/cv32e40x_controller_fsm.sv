@@ -488,7 +488,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (if_id_pipe_i.instr_valid) begin
       id_stage_haltable = first_op_id_i;
     end else begin
-      // IF stage first_op defaults to 1'b1 if the stage does not hold a valid instruction.
+      // IF stage first_op defaults to 1'b1 if the stage does not hold a valid instruction or
+      // table jump pointer. Table jump pointers will have first_op set to 0.
       id_stage_haltable = first_op_if_i;
     end
   end
