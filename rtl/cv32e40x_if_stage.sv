@@ -294,20 +294,26 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign prefetch_ready = if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
-  // tbljmp is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
-  // Trigger matches will get all write enables deasserted, and debug entered before executing
-  // any operations. A trigger match is a last_op by definition.
+  // tbljmp (first operation) is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
+  // Trigger matches will get all write enables deasserted in ID, and debug entered before retiring
+  // any operations once the first operation reaches WB. A trigger match is a last_op by definition.
   // todo: Factor CLIC pointers?
   assign last_op_o = trigger_match_i ? 1'b1 :
                      tbljmp          ? 1'b0 :  // tbljmps are the first half
-                     seq_valid       ? seq_last : 1'b1;
+                     seq_valid       ? seq_last : 1'b1; // Any other regular instructions are single operation.
 
   // Flag first operation of a sequence.
-  // Sequencer will set seq_first=1 when not in use
-  // Would ideally be something like "seq_valid ? : seq_first : 1'b1", but that would cause combinatorial loops
-  // through the controllers sequence_interruptible, via kill_ex and seq_valid and then into the first_op_o.
+  // Sequencer will set seq_first=1 when not in use - any other instruction handled by the compressed decoder (except table jumps)
+  // will always have first_op=1 and may thus use seq_first.
+  // Would ideally be something like "seq_valid ? : seq_first : 1'b1", but that causes combinatorial loops
+  // through the controllers sequence_interruptible, via kill_ex and seq_valid and then into the first_op_o again.
+  // Trigger matches will have all write enables deasserted in ID, and once the first operation reaches WB the debug entry will be made.
+  // Marking as first (and last above) since we know it will not be a true sequence. Sequencer will keep sequencing, but will get killed
+  // upon debug entry and no side effect will occur.
   // todo: factor in CLIC pointers?
-  assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 : seq_first;
+  assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 :
+                      trigger_match_i        ? 1'b1 : seq_first;
+
 
 
   // Populate instruction meta data

@@ -217,10 +217,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       csr_flush_ack_n;
   logic       csr_flush_ack_q;
 
-  // Flag for checking if pipeline can be killed due to multi op instructions
+  // Flag for checking if multi op instructions are in an interruptible state
   logic       sequence_interruptible;
 
-  // Flg for checking if ID stage can be halted
+  // Flag for checking if ID stage can be halted
   // Used to not halt sequences in the middle, potentially causing deadlocks
   logic       id_stage_haltable;
 
@@ -485,7 +485,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // If ID stage does not contain a valid instruction, the same check is performed
   // for the IF stage (although this is likely not needed).
   always_comb begin
-    id_stage_haltable = 1'b0;
     if (if_id_pipe_i.instr_valid) begin
       id_stage_haltable = first_op_id_i;
     end else begin
@@ -536,7 +535,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // but not allowed to be taken. This is to create an interruptible bubble in WB.
     // Interrupts: Machine mode: Prevent issuing new instructions until we get an interruptible bubble.
     //             Debug mode:   Interrupts are not allowed during debug. Cannot halt ID stage in such a case
-    //                           since the dret that brings the core out of debug mode may never get passed a halted ID stage.
+    //                           since the dret that brings the core out of debug mode may never get past a halted ID stage.
     //             Sequences:    If we need to halt for debug or interrupt not allowed due to a sequence, we must check if we can
     //                           actually halt the ID stage or not. Halting the same sequence that causes *_allowed to go to 0
     //                           may cause a deadlock.

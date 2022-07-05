@@ -209,7 +209,7 @@ import cv32e40x_pkg::*;
     seq_first_o = 1'b1;
     ready_o = 1'b0;
 
-    case (seq_state_q)
+    unique case (seq_state_q)
       S_IDLE: begin
         // First instruction is output here
         if (seq_load) begin
@@ -351,6 +351,12 @@ import cv32e40x_pkg::*;
         seq_state_n = S_IDLE;
         ready_o = ready_i && !halt_i;
         seq_last_o = 1'b1;
+      end
+
+      default: begin
+        // Should not happen
+        ready_o = 1'b1;
+        seq_state_n = S_IDLE;
       end
     endcase
 
