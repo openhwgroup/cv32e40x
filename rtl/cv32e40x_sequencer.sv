@@ -42,10 +42,13 @@ import cv32e40x_pkg::*;
 
     input  logic       valid_i,          // valid input from if stage
     input  logic       ready_i,          // Downstream is ready (ID stage)
+    input  logic       halt_i,           // Halt, not ready for new input, no output valid. Keep state
+    input  logic       kill_i,           // Kill. Ready for inputs, no output valid. Reset state
 
     output inst_resp_t instr_o,          // Output sequenced (32-bit) instruction
     output logic       valid_o,          // Output is valid - input is valid AND we decode a valid seq instruction
     output logic       ready_o,          // Sequencer is ready for new inputs
+    output logic       seq_first_o,      // First operation is being output
     output logic       seq_last_o        // Last operation is being output
   );
 
@@ -82,9 +85,12 @@ import cv32e40x_pkg::*;
         end
 
         seq_state_q <= seq_state_n;
-      end else if (!valid_o) begin
-        // Whenever we have no valid outputs, reset counter to 0.
-        // This is factoring in kill_if and halt_if.
+      end
+
+      if ((!valid_o && !halt_i) || kill_i) begin
+        // Whenever we have no valid outputs and are not halted, reset counter to 0.
+        // In case both halt_i and kill_i are high, kill_i takes presedence.
+        // Not resetting if halted, as we might have to continue the sequence after being unhalted.
         instr_cnt_q <= '0;
         seq_state_q <= seq_state_n;
       end
@@ -159,7 +165,8 @@ import cv32e40x_pkg::*;
   // In principle this is the same as "seq_en && valid_i"
   //   as the output of the above decode logic is equivalent to seq_en
   // todo: halting IF stage would imply !valid, can this be an issue?
-  assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i && valid_i;
+  // todo: revisit the error conditions below
+  assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i && !(instr_i.bus_resp.err || !(instr_i.mpu_status == MPU_OK)) && valid_i && !halt_i && !kill_i;
 
 
   // Calculate number of S* registers needed in sequence (push/pop* only)
@@ -197,12 +204,13 @@ import cv32e40x_pkg::*;
     instr_o = instr_i;
     seq_state_n = seq_state_q;
     seq_last_o = 1'b0;
-
+    seq_first_o = 1'b1;
     ready_o = 1'b0;
 
     case (seq_state_q)
       S_IDLE: begin
         // First instruction is output here
+        //seq_first_o = 1'b1;
         if (seq_load) begin
           if (decode.registers_saved == 'd1) begin
             // Exactly one S register popped
@@ -258,6 +266,7 @@ import cv32e40x_pkg::*;
       end
       // todo: Any instruction output while not in S_IDLE should not combinatorially depend on instr_rdata_i
       S_PUSH: begin
+        seq_first_o = 1'b0;
         // sw rs2, current_stack_adj(sp)
         instr_o.bus_resp.rdata = {decode.current_stack_adj[11:5],sn_to_regnum(decode.sreg),REG_SP,3'b010,decode.current_stack_adj[4:0],OPCODE_STORE};
         // Advance FSM when we have saved all s* registers
@@ -266,6 +275,7 @@ import cv32e40x_pkg::*;
         end
       end
       S_POP: begin
+        seq_first_o = 1'b0;
         // lw rd, current_stack_adj(sp)
         instr_o.bus_resp.rdata = {decode.current_stack_adj,REG_SP,3'b010,sn_to_regnum(decode.sreg),OPCODE_LOAD};
         // Advance FSM when we have loaded all s* registers
@@ -274,6 +284,7 @@ import cv32e40x_pkg::*;
         end
       end
       S_DMOVE: begin
+        seq_first_o = 1'b0;
         // Second half of double moves
         if (seq_move_a2s) begin
           // addi s*, a1, 0
@@ -284,10 +295,11 @@ import cv32e40x_pkg::*;
         end
 
         seq_state_n = S_IDLE;
-        ready_o = ready_i;
+        ready_o = ready_i && !halt_i;
         seq_last_o = 1'b1;
       end
       S_RA: begin
+        seq_first_o = 1'b0;
         // push pop ra register
         if (seq_load) begin
           // lw ra, current_stack_adj(sp)
@@ -300,6 +312,7 @@ import cv32e40x_pkg::*;
         seq_state_n = S_SP;
       end
       S_SP: begin
+        seq_first_o = 1'b0;
         // Adjust stack pointer
         if (seq_load) begin
           // addi sp, sp, total_stack_adj
@@ -316,11 +329,12 @@ import cv32e40x_pkg::*;
           seq_state_n = S_RET;
         end else begin
           seq_state_n = S_IDLE;
-          ready_o = ready_i;
+          ready_o = ready_i && !halt_i;
           seq_last_o = 1'b1;
         end
       end
       S_A0: begin
+        seq_first_o = 1'b0;
         // Clear a0 for popretz
         // addi ra, x0, 0
         instr_o.bus_resp.rdata = {12'h000,5'd0,3'b0,5'd10,OPCODE_OPIMM};
@@ -328,19 +342,20 @@ import cv32e40x_pkg::*;
         seq_state_n = S_RET;
       end
       S_RET: begin
+        seq_first_o = 1'b0;
         // return for popret/popretz
         // jalr x0, 0(ra)
         instr_o.bus_resp.rdata = {12'b0,REG_RA,3'b0,5'b0,OPCODE_JALR};
 
         seq_state_n = S_IDLE;
-        ready_o = ready_i;
+        ready_o = ready_i && !halt_i;
         seq_last_o = 1'b1;
       end
     endcase
 
-    // If there is no valid output, default to ready_o and IDLE state.
-    // valid_i is already baked into valid_o and thus this takes effect on kill_if and halt_if
-    if (!valid_o) begin
+    // If there is no valid output or we are killed: default to ready_o and set state to IDLE.
+    // No reset if !valid while halted, as we may need to continue the sequence after being unhalted.
+    if ((!valid_o && !halt_i) || kill_i) begin
       ready_o = 1'b1;
       seq_state_n = S_IDLE;
     end

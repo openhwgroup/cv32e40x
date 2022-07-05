@@ -36,6 +36,7 @@ module cv32e40x_controller_fsm_sva
   input logic           rst_n,
   input logic           debug_mode_q,
   input ctrl_fsm_t      ctrl_fsm_o,
+  input ctrl_byp_t      ctrl_byp_i,
   input logic           jump_taken_id,
   input logic           branch_taken_ex,
   input logic           branch_decision_ex_i,
@@ -75,7 +76,14 @@ module cv32e40x_controller_fsm_sva
   input dcsr_t          dcsr_i,
   input logic           irq_clic_shv_i,
   input logic           last_op_wb_i,
-  input logic           csr_wr_in_wb_flush_i
+  input logic           csr_wr_in_wb_flush_i,
+  input logic [2:0]     debug_cause_q,
+  input logic           id_valid_i,
+  input logic           first_op_id_i,
+  input logic           last_op_id_i,
+  input logic           ex_ready_i,
+  input logic           sequence_interruptible,
+  input logic           id_stage_haltable
 );
 
 
@@ -530,21 +538,76 @@ if (SMCLIC) begin
 
 end // SMCLIC
 
-// Table jumps cannot be interrupted after the first operation has completed.
-// This can earliest happen when the last part of the table jump is in EX
-a_tbljmp_no_irq_debug:
-assert property (@(posedge clk) disable iff (!rst_n)
-                ((id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op) ||
-                (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op))
-                |->
-                (!ctrl_fsm_o.irq_ack && (ctrl_fsm_ns != DEBUG_TAKEN)))
-  else `uvm_error("controller", "Table jump interrupted by debug or interrupt")
+  // Instruction sequences may not be interrupted/killed if the first operation has already been retired.
+  // Helper logic to track first_op and last_op through the WB stage to detect uninterruptible sequences
+  logic first_op_done_wb;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      first_op_done_wb <= 1'b0;
+    end else begin
+      if(!first_op_done_wb) begin
+        if(wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin
+          first_op_done_wb <= 1'b1;
+        end
+      end else begin
+        // first_op_done_wb is set, clear when last_op retires
+        if(wb_valid_i && last_op_wb_i) begin
+          first_op_done_wb <= 1'b0;
+        end
+      end
+    end
+  end
 
-// Assert that we have no pc_set in the same cycle as a CSR write in WB requires flushing of the pipeline
-a_csr_wr_in_wb_no_fetch:
-assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_wr_in_wb_flush_i && !ctrl_fsm_o.kill_wb) |-> (!ctrl_fsm_o.pc_set))
-  else `uvm_error("controller", "Fetching new instruction before CSR values are updated")
+  // Helper logic to track first_op and last_op through the ID stage to detect unhaltable sequences
+  logic first_op_done_id;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      first_op_done_id <= 1'b0;
+    end else begin
+      if(!first_op_done_id) begin
+        if(id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin
+          first_op_done_id <= 1'b1;
+        end
+      end else begin
+        // first_op_done_id is set, clear when last_op retires
+        if(id_valid_i && ex_ready_i && last_op_id_i) begin
+          first_op_done_id <= 1'b0;
+        end
+      end
+      // Reset flag if ID stage is killed
+      if (ctrl_fsm_o.kill_id) begin
+        first_op_done_id <= 1'b0;
+      end
+    end
+  end
+
+  a_no_sequence_interrupt:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (first_op_done_wb |-> !ctrl_fsm_o.irq_ack))
+    else `uvm_error("controller", "Sequence broken by interrupt")
+
+  a_no_sequence_nmi:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (first_op_done_wb |-> !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
+    else `uvm_error("controller", "Sequence broken by NMI")
+
+  a_no_sequence_ext_debug:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (first_op_done_wb |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ))))
+    else `uvm_error("controller", "Sequence broken by external debug")
+
+  // Check that we do not allow ID stage to be halted for pending interrupts/debug if a sequence is not done
+  // in the ID stage.
+  a_id_stage_haltable:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (first_op_done_id |-> !id_stage_haltable))
+    else `uvm_error("controller", "id_stage_haltable not correct")
+
+  // Assert that we have no pc_set in the same cycle as a CSR write in WB requires flushing of the pipeline
+  a_csr_wr_in_wb_no_fetch:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_wr_in_wb_flush_i && !ctrl_fsm_o.kill_wb) |-> (!ctrl_fsm_o.pc_set))
+    else `uvm_error("controller", "Fetching new instruction before CSR values are updated")
 
 endmodule
 

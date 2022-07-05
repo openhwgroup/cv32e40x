@@ -34,19 +34,45 @@ module cv32e40x_sequencer_sva
   input  logic           rst_n,
 
   input  logic           valid_i,
+  input  logic           kill_i,
+  input  logic           halt_i,
+  input  logic           valid_o,
+  input  logic           ready_i,
+  input  logic           ready_o,
   input  seq_t           instr_cnt_q,
   input  seq_state_e     seq_state_q,
   input  logic           seq_last_o,
   input  seq_instr_e     seq_instr
 );
 
-  // After kill (or halt) or any cycle with !valid_i, all state must be reset.
+  // After kill, all state must be reset.
   a_kill_state:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    !valid_i |=> ((instr_cnt_q == '0) && (seq_state_q == S_IDLE)))
-      else `uvm_error("sequencer", "Sequencer state not reset after !valid_i.")
+                    kill_i |=> ((instr_cnt_q == '0) && (seq_state_q == S_IDLE)))
+      else `uvm_error("sequencer", "Sequencer state not reset after kill_i.")
 
-  // todo: add assertion to check that atomic part cannot be killed
+  // After sequence is done, all state must be reset.
+  a_done_state:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (valid_o && seq_last_o && ready_i) |=> ((instr_cnt_q == '0) && (seq_state_q == S_IDLE)))
+      else `uvm_error("sequencer", "Sequencer state not reset after finishing sequence")
+
+  // Kill implies ready and not valid
+  a_seq_kill:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    kill_i |-> (ready_o && !valid_o))
+      else `uvm_error("sequencer", "Kill should imply ready and not valid.")
+
+
+  // Halt implies not ready and not valid
+  a_seq_halt :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (halt_i && !kill_i)
+                      |-> (!ready_o && !valid_o))
+      else `uvm_error("sequencer", "Halt should imply not ready and not valid")
+
+
+  // todo: add assertion to check that atomic part cannot be killed -- how? Depends on when operations are done in WB
 
 
   // Check max sequence length

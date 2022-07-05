@@ -77,7 +77,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   output logic        ex_valid_o,       // EX stage has valid (non-bubble) data for next stage
   input  logic        wb_ready_i,       // WB stage is ready for new data
 
-  output logic        last_op_o
+  output logic        last_op_o,
+  output logic        first_op_o
 );
 
   // Ready and valid signals
@@ -120,11 +121,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Detect if we get an illegal CSR instruction
   logic           csr_is_illegal;
 
-  // Local first_op signal
-  logic           first_op;
-
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
+  // todo: consider not factoring halt_ex into the mul/div/lsu_en_gated below
+  //       Halting EX currently reset state of these units. The IF stage sequencer is _not_ reset on a halt_if.
+  //       Maybe we need to split out valid and halt into the submodules?
   assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
   assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
@@ -173,7 +174,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // Both parts of a split misaligned load/store will reach WB, but only the second half will be marked with "last_op"
   assign last_op_o = id_ex_pipe_i.lsu_en ? (lsu_last_op_i && id_ex_pipe_i.last_op) : id_ex_pipe_i.last_op;
 
-  assign first_op = id_ex_pipe_i.lsu_en ? (lsu_first_op_i && id_ex_pipe_i.first_op) : id_ex_pipe_i.first_op;
+  assign first_op_o = id_ex_pipe_i.lsu_en ? (lsu_first_op_i && id_ex_pipe_i.first_op) : id_ex_pipe_i.first_op;
 
   ////////////////////////////
   //     _    _    _   _    //
@@ -360,7 +361,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         ex_wb_pipe_o.instr_valid <= 1'b1;
 
         ex_wb_pipe_o.last_op     <= last_op_o;
-        ex_wb_pipe_o.first_op    <= first_op;
+        ex_wb_pipe_o.first_op    <= first_op_o;
         // Deassert rf_we in case of illegal csr instruction or
         // when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
