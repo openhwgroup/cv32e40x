@@ -180,8 +180,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] rf_wdata_ex;
 
   // Detect last_op
+  logic        last_op_if;
   logic        last_op_ex;
   logic        last_op_wb;
+
+  // First op bits
+  logic        first_op_if;
+  logic        first_op_id;
+  logic        first_op_ex;
 
   // Register file signals from ID/decoder to controller
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_id;
@@ -437,6 +443,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .if_busy_o           ( if_busy                  ),
     .ptr_in_if_o         ( ptr_in_if                ),
 
+    .first_op_o          ( first_op_if              ),
+    .last_op_o           ( last_op_if               ),
+
     // Pipeline handshakes
     .if_valid_o          ( if_valid                 ),
     .id_ready_i          ( id_ready                 ),
@@ -495,6 +504,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_op_o                     ( csr_op_id                 ),
     .alu_en_o                     ( alu_en_id                 ),
     .sys_en_o                     ( sys_en_id                 ),
+
+    .first_op_o                   ( first_op_id               ),
 
     .rf_re_o                      ( rf_re_id                  ),
     .rf_raddr_o                   ( rf_raddr_id               ),
@@ -565,7 +576,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
     .wb_ready_i                 ( wb_ready                     ),
-    .last_op_o                  ( last_op_ex                   )
+    .last_op_o                  ( last_op_ex                   ),
+    .first_op_o                 ( first_op_ex                  )
   );
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -788,6 +800,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // From ID/EX pipeline
     .id_ex_pipe_i                   ( id_ex_pipe             ),
+    .first_op_ex_i                  ( first_op_ex            ),
 
     .csr_counter_read_i             ( csr_counter_read       ),
     .csr_mnxti_read_i               ( csr_mnxti_read         ),
@@ -801,6 +814,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .if_valid_i                     ( if_valid               ),
     .pc_if_i                        ( pc_if                  ),
+    .first_op_if_i                  ( first_op_if            ),
+    .last_op_if_i                   ( last_op_if             ),
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
 
@@ -811,6 +826,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
     .csr_en_raw_id_i                ( csr_en_raw_id          ),
     .csr_op_id_i                    ( csr_op_id              ),
+    .first_op_id_i                  ( first_op_id            ),
 
     // LSU
     .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),

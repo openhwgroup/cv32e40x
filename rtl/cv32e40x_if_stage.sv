@@ -70,6 +70,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic          if_busy_o,              // Is the IF stage busy fetching instructions?
   output logic          ptr_in_if_o,            // The IF stage currently holds a pointer
 
+  output logic          first_op_o,
+  output logic          last_op_o,
+
   // Stage ready/valid
   output logic          if_valid_o,
   input  logic          id_ready_i,
@@ -122,10 +125,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // eXtension interface signals
   logic [X_ID_WIDTH-1:0] xif_id;
-
-  // Flags for first and last operation of an instruction
-  logic              first_op;
-  logic              last_op;
 
   // ready signal for predecoder, tied to id_ready_i
   logic              predec_ready;
@@ -273,20 +272,16 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // if_stage ready when killed, otherwise when not halted and the sequencer and predecoder are both ready
   assign if_ready = ctrl_fsm_i.kill_if || (seq_ready && predec_ready && !ctrl_fsm_i.halt_if);
 
+
   // if stage valid when local instr_valid=1
   // Ideally this should be the following:
   //
   // assign if_valid_o = (seq_en    && seq_valid    ) ||
   //                     (predec_en && predec_valid ) && instr_valid;
   //
-  // seq_en would be an internal signal in the sequencer that is set when a legal push/pop/doublemove is decoded.
-  // seq_valid would then simply be the same as sequencer's valid_i, which is set to instr_valid.
-  //
-  // predec_valid would be tied to 1'b1 (similar to the ALU in the EX stage) as this is a combinatorial unit with
-  // with no handshake to improve timing.
-  // predec_en would also be tied to 1'b1 as the predecoder will produce output for any input
-  //   Legal or illegal compressed, + passthru of uncompressed instructions
-  // In short: Any prefetched instruction (or pointer) will make if_valid_o high
+  // The predecoder is purely combinatorial module, and will produce a valid output for any valid input (instr_valid)
+  // The Sequencer will output valid=1 for any instruction it can decode while not halted or killed
+  //   when its valid_i (prefetch_valid) is high.
 
   assign if_valid_o = instr_valid;
 
@@ -299,13 +294,27 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign prefetch_ready = if_ready;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
-  // tbljmp is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
-  // todo: Factor in last operation of sequenced Zc* (push/pop)
-  assign last_op = tbljmp ? 1'b0 : 1'b1;
+  // tbljmp (first operation) is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
+  // Trigger matches will get all write enables deasserted in ID, and debug entered before retiring
+  // any operations once the first operation reaches WB. A trigger match is a last_op by definition.
+  // todo: Factor CLIC pointers?
+  assign last_op_o = trigger_match_i ? 1'b1 :
+                     tbljmp          ? 1'b0 :  // tbljmps are the first half
+                     seq_valid       ? seq_last : 1'b1; // Any other regular instructions are single operation.
 
   // Flag first operation of a sequence.
-  // todo: factor in seq_first. For now only tablejump pointer may be the only non-first operation.
-  assign first_op = prefetch_is_tbljmp_ptr ? 1'b0 : 1'b1;
+  // Sequencer will set seq_first=1 when not in use - any other instruction handled by the compressed decoder (except table jumps)
+  // will always have first_op=1 and may thus use seq_first.
+  // Would ideally be something like "seq_valid ? : seq_first : 1'b1", but that causes combinatorial loops
+  // through the controllers sequence_interruptible, via kill_ex and seq_valid and then into the first_op_o again.
+  // Trigger matches will have all write enables deasserted in ID, and once the first operation reaches WB the debug entry will be made.
+  // Marking as first (and last above) since we know it will not be a true sequence. Sequencer will keep sequencing, but will get killed
+  // upon debug entry and no side effect will occur.
+  // todo: factor in CLIC pointers?
+  assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 :
+                      trigger_match_i        ? 1'b1 : seq_first;
+
+
 
   // Populate instruction meta data
   // Fields 'compressed' and 'tbljmp' keep their old value by default.
@@ -349,8 +358,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
-        if_id_pipe_o.last_op          <= last_op;
-        if_id_pipe_o.first_op         <= first_op;
+        if_id_pipe_o.last_op          <= last_op_o;
+        if_id_pipe_o.first_op         <= first_op_o;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
         // No update to the meta compressed, as this is used in calculating the link address.
@@ -417,26 +426,29 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         .instr_i            ( prefetch_instr          ),
         .instr_is_ptr_i     ( ptr_in_if_o             ),
 
-        .valid_i            ( instr_valid             ),
+        .valid_i            ( prefetch_valid          ),
         .ready_i            ( id_ready_i              ),
+        .halt_i             ( ctrl_fsm_i.halt_if      ),
+        .kill_i             ( ctrl_fsm_i.kill_if      ),
 
 
         .instr_o            ( seq_instr               ),
         .valid_o            ( seq_valid               ),
         .ready_o            ( seq_ready               ),
-        .seq_last_o         ( seq_last                ) // todo: currently not used, will be factored into 'last_op' later
+        .seq_first_o        ( seq_first               ),
+        .seq_last_o         ( seq_last                )
       );
     end else begin : gen_no_seq
       assign seq_valid = 1'b0;
       assign seq_last  = 1'b0;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
-      assign seq_first = 1'b0;
+      assign seq_first = 1'b1; // Tie high to enable default first_op when ZC_EXT=0
     end
   endgenerate
 
 
-  // tbljmp below is used in calculating 'last_op'. If we have a faulted fetch, the instruction word may be anything
+  // tbljmp below is used in calculating 'last_op_o'. If we have a faulted fetch, the instruction word may be anything
   // (not cleared on faulted fetches). A faulted fetch should not be decoded to anything and thus tbljmp is cleared.
   // One could instead set the instruction word itself to all zeros or another illegal instruction on known fetch faults,
   // but this may impact timing more than suppressing control bits.

@@ -159,5 +159,7 @@ module cv32e40x_id_stage_sva
 
   a_jmp_target_stable: assert property (p_jmp_target_stable)
     else `uvm_error("id_stage", "Jump target not stable")
+
+
 endmodule // cv32e40x_id_stage_sva
 

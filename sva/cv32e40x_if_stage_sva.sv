@@ -62,7 +62,6 @@ module cv32e40x_if_stage_sva
 
 
   // compressed_decoder and sequencer shall be mutually exclusive
-  // todo: add opposite way - legal compressed -> !valid seq + ready
   a_compressed_seq_0:
   assert property (@(posedge clk) disable iff (!rst_n)
                     seq_valid |-> illegal_c_insn)
@@ -81,15 +80,6 @@ module cv32e40x_if_stage_sva
                       ctrl_fsm_i.kill_if |-> (seq_ready && !seq_valid))
         else `uvm_error("if_stage", "Kill should imply ready and not valid.")
 
-/* todo: currently fails as seq_ready will be set to 1'b1 when !valid_i.
-         this factors in both half_if and kill_if, and thus seq_ready will be 1'b1 for halt_if
-         This is similar to the way the multiplier drives it's ready_o in the EX stage.
-  // Halt implies not ready and not valid
-  a_seq_halt :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_i.halt_if && !ctrl_fsm_i.kill_if)
-                      |-> (!seq_ready && !seq_valid))
-      else `uvm_error("if_stage", "Halt should imply not ready and not valid")
-*/
+
 endmodule // cv32e40x_if_stage
 
