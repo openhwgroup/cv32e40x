@@ -84,6 +84,7 @@ module cv32e40x_rvfi
    input logic                                sys_wfi_insn_wb_i,
    input logic                                sys_en_wb_i,
    input logic                                last_op_wb_i,
+   input logic                                first_op_wb_i,
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
@@ -298,11 +299,17 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_pc_rdata,
    output logic [31:0]                        rvfi_pc_wdata,
 
-   output logic [31:0]                        rvfi_mem_addr,
-   output logic [ 3:0]                        rvfi_mem_rmask,
-   output logic [ 3:0]                        rvfi_mem_wmask,
-   output logic [31:0]                        rvfi_mem_rdata,
-   output logic [31:0]                        rvfi_mem_wdata,
+   output logic [32*NMEM-1:0]                 rvfi_mem_addr,
+   output logic [ 4*NMEM-1:0]                 rvfi_mem_rmask,
+   output logic [ 4*NMEM-1:0]                 rvfi_mem_wmask,
+   output logic [32*NMEM-1:0]                 rvfi_mem_rdata,
+   output logic [32*NMEM-1:0]                 rvfi_mem_wdata,
+
+   output logic [32*32-1:0]                   rvfi_gpr_rdata,
+   output logic [31:0]                        rvfi_gpr_rmask,
+   output logic [32*32-1:0]                   rvfi_gpr_wdata,
+   output logic [31:0]                        rvfi_gpr_wmask,
+
 
    // CSRs
    output logic [31:0]                        rvfi_csr_jvt_rmask,
@@ -580,6 +587,15 @@ module cv32e40x_rvfi
   logic [3:0] [ 3:0] mem_rmask;
   logic [3:0] [ 3:0] mem_wmask;
 
+  // Propagate from ID stage on all suboperations.
+  logic [3:0] [ 4:0] rs1_addr_subop;
+  logic [3:0] [ 4:0] rs2_addr_subop;
+  logic [3:0] [31:0] rs1_rdata_subop;
+  logic [3:0] [31:0] rs2_rdata_subop;
+  logic [3:0]        rs1_re_subop;
+  logic [3:0]        rs2_re_subop;
+
+
   //Propagating from EX stage
   logic [31:0]       ex_mem_addr;
   logic [31:0]       ex_mem_wdata;
@@ -635,6 +651,7 @@ module cv32e40x_rvfi
   logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         wb_valid_adjusted;
+  logic         wb_valid_subop;
 
   logic         pc_mux_debug;
   logic         pc_mux_dret;
@@ -649,6 +666,9 @@ module cv32e40x_rvfi
   logic [4:0]   insn_rs2;
   logic [6:0]   insn_funct7;
   logic [11:0]  insn_csr;
+
+  // sub operation counter
+  logic [3:0]   subop_cnt;
 
   rvfi_obi_instr_t obi_instr_if;
 
@@ -760,7 +780,9 @@ module cv32e40x_rvfi
   // WFI instructions retire when their wake-up condition is present.
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
   // Other instructions retire when their last suboperation is done in WB.
+  assign wb_valid_subop    = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i;
   assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i && last_op_wb_i;
+
 
   // Pipeline stage model //
 
@@ -804,6 +826,19 @@ module cv32e40x_rvfi
       rvfi_mem_rdata     <= '0;
       rvfi_mem_wmask     <= '0;
       rvfi_mem_wdata     <= '0;
+      rvfi_gpr_rdata     <= '0;
+      rvfi_gpr_rmask     <= '0;
+      rvfi_gpr_wdata     <= '0;
+      rvfi_gpr_wmask     <= '0;
+
+      subop_cnt          <= '0;
+
+      rs1_addr_subop     <= '0;
+      rs2_addr_subop     <= '0;
+      rs1_rdata_subop    <= '0;
+      rs2_rdata_subop    <= '0;
+      rs1_re_subop       <= '0;
+      rs2_re_subop       <= '0;
 
     end else begin
 
@@ -872,15 +907,25 @@ module cv32e40x_rvfi
         debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
         debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
         instr_pmp_err[STAGE_EX] <= instr_pmp_err[STAGE_ID];
-        rs1_addr   [STAGE_EX] <= rs1_addr_id;
-        rs2_addr   [STAGE_EX] <= rs2_addr_id;
         // Only update rs1/rs2 on the first part of a multi operation instruction.
         // Jumps may actually use rs1 before (id_valid && ex_ready), an assertion exists to check that
         // the jump target is stable and it should be safe to use rs1/2_rdata at the time of the pipeline handshake.
+        // rs1/2 should reflect state of the first operation of any instruction.
+        rs1_addr   [STAGE_EX] <= first_op_id_i ? rs1_addr_id : rs1_addr[STAGE_EX];
+        rs2_addr   [STAGE_EX] <= first_op_id_i ? rs2_addr_id : rs2_addr[STAGE_EX];
         rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX];
-        rs2_rdata  [STAGE_EX] <= first_op_id_i ? rs2_rdata_id : rs1_rdata[STAGE_EX];
+        rs2_rdata  [STAGE_EX] <= first_op_id_i ? rs2_rdata_id : rs2_rdata[STAGE_EX];
+
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
         mem_wmask  [STAGE_EX] <= (lsu_en_id_i &&  lsu_we_id_i) ? rvfi_mem_mask_int : '0;
+
+        // Update rs1/2 values for all suboperations (will populate rvfi_gpr_rmask/rdata)
+        rs1_addr_subop   [STAGE_EX] <= rs1_addr_id;
+        rs2_addr_subop   [STAGE_EX] <= rs2_addr_id;
+        rs1_rdata_subop  [STAGE_EX] <= rs1_rdata_id;
+        rs2_rdata_subop  [STAGE_EX] <= rs2_rdata_id;
+        rs1_re_subop     [STAGE_EX] <= rf_re_id_i[0];
+        rs2_re_subop     [STAGE_EX] <= rf_re_id_i[1];
       end else begin
         if (in_trap_clr) begin
           // Clear interrupt pipeline when it reaches rvfi_intr
@@ -903,6 +948,13 @@ module cv32e40x_rvfi
         mem_rmask  [STAGE_WB] <= mem_rmask          [STAGE_EX];
         mem_wmask  [STAGE_WB] <= mem_wmask          [STAGE_EX];
         in_trap    [STAGE_WB] <= in_trap            [STAGE_EX];
+
+        rs1_addr_subop   [STAGE_WB] <= rs1_addr_subop [STAGE_EX];
+        rs2_addr_subop   [STAGE_WB] <= rs2_addr_subop [STAGE_EX];
+        rs1_rdata_subop  [STAGE_WB] <= rs1_rdata_subop[STAGE_EX];
+        rs2_rdata_subop  [STAGE_WB] <= rs2_rdata_subop[STAGE_EX];
+        rs1_re_subop     [STAGE_WB] <= rs1_re_subop   [STAGE_EX];
+        rs2_re_subop     [STAGE_WB] <= rs2_re_subop   [STAGE_EX];
 
         if (!lsu_split_q_ex_i) begin
           // The second part of the split misaligned acess is suppressed to keep
@@ -936,8 +988,6 @@ module cv32e40x_rvfi
 
         rvfi_trap       <= rvfi_trap_next;
 
-        rvfi_mem_rdata  <= lsu_rdata_wb_i;
-
         rvfi_rd_addr    <= rd_addr_wb;
         rvfi_rd_wdata   <= rd_wdata_wb;
 
@@ -951,10 +1001,6 @@ module cv32e40x_rvfi
         rvfi_rs2_addr  <= rs2_addr  [STAGE_WB];
         rvfi_rs1_rdata <= rs1_rdata [STAGE_WB];
         rvfi_rs2_rdata <= rs2_rdata [STAGE_WB];
-        rvfi_mem_rmask <= mem_rmask [STAGE_WB];
-        rvfi_mem_wmask <= mem_wmask [STAGE_WB];
-        rvfi_mem_addr  <= ex_mem_addr;
-        rvfi_mem_wdata <= ex_mem_wdata;
 
         rvfi_mode      <= priv_lvl_i;
 
@@ -966,6 +1012,54 @@ module cv32e40x_rvfi
         rvfi_pc_wdata <= (pc_mux_debug || pc_mux_exception) ? branch_addr_n_i & ~32'b1 :
                          (pc_mux_dret) ? csr_dpc_q_i :
                          pc_wdata[STAGE_WB] & ~32'b1;
+      end
+
+      // Update state for suboperations - also valid for the last operation
+      if (wb_valid_subop) begin
+        // Clear rvfi_mem and rvfi_gpr on first op
+        if (first_op_wb_i) begin
+          rvfi_mem_addr      <= '0;
+          rvfi_mem_rmask     <= '0;
+          rvfi_mem_rdata     <= '0;
+          rvfi_mem_wmask     <= '0;
+          rvfi_mem_wdata     <= '0;
+
+          rvfi_gpr_rdata     <= '0;
+          rvfi_gpr_rmask     <= '0;
+          rvfi_gpr_wdata     <= '0;
+          rvfi_gpr_wmask     <= '0;
+        end
+
+        // Update rvfi_mem
+        rvfi_mem_rdata[(32*(subop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_rmask[(4*(subop_cnt+1))-1 -: 4]   <= mem_rmask [STAGE_WB];
+        rvfi_mem_wmask[(4*(subop_cnt+1))-1 -: 4]   <= mem_wmask [STAGE_WB];
+        rvfi_mem_addr[(32*(subop_cnt+1))-1 -: 32]  <= ex_mem_addr;
+        rvfi_mem_wdata[(32*(subop_cnt+1))-1 -: 32] <= ex_mem_wdata;
+
+        // Update rvfi_gpr for writes to RF
+        if (rf_we_wb_i) begin
+          rvfi_gpr_wdata[(32*(rd_addr_wb+1))-1 -: 32] <= rd_wdata_wb;
+          rvfi_gpr_wmask[rd_addr_wb]                  <= 1'b1;
+        end
+
+        // Update rvfi_gpr for reads from RF
+        if (rs1_re_subop[STAGE_WB]) begin
+          rvfi_gpr_rmask[rs1_addr_subop[STAGE_WB]] <= 1'b1;
+          rvfi_gpr_rdata[(32*(rs1_addr_subop[STAGE_WB]+1))-1 -: 32] <= rs1_rdata_subop[STAGE_WB];
+        end
+
+        if (rs2_re_subop[STAGE_WB]) begin
+          rvfi_gpr_rmask[rs2_addr_subop[STAGE_WB]] <= 1'b1;
+          rvfi_gpr_rdata[(32*(rs2_addr_subop[STAGE_WB]+1))-1 -: 32] <= rs2_rdata_subop[STAGE_WB];
+        end
+        if (last_op_wb_i) begin
+          // Reset suboperation counter when the last op is done in WB.
+          subop_cnt <= 4'h0;
+        end else begin
+          // Increment subop counter
+          subop_cnt <= subop_cnt + 4'h1;
+        end
       end
     end
   end // always_ff @
