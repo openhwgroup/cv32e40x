@@ -130,11 +130,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              predec_ready;
 
   // Zc* sequencer signals
-  logic              seq_valid;
-  logic              seq_ready;
-  logic              seq_first;
-  logic              seq_last;
-  inst_resp_t        seq_instr;
+  logic              seq_valid;       // sequencer has valid output
+  logic              seq_ready;       // sequencer is ready for new inputs
+  logic              seq_instr_valid; // Sequencer has valid inputs
+  logic              seq_first;       // sequencer is outputting the first operation
+  logic              seq_last;        // sequencer is outputting the last operation
+  inst_resp_t        seq_instr;       // Instruction for sequenced operation
 
   // Fetch address selection
   always_comb
@@ -291,7 +292,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Acknowledge prefetcher when IF stage is ready. This factors in seq_ready to avoid ack'ing the
   // prefetcher in the middle of a Zc sequence.
-  assign prefetch_ready = if_ready;
+  // No need to ack the prefetcher when tbljmp==1, as this is will generate a pc_set and kill_if when
+  // the table jump is taken in ID and the pointer fetch is initiated (or the table jump is killed).
+  assign prefetch_ready = if_ready && !tbljmp;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
   // tbljmp (first operation) is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
@@ -415,6 +418,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Predecoder is purely combinatorial and is always ready for new inputs
   assign predec_ready = id_ready_i;
 
+  // Do not signal valid to the sequencer in case of a trigger match.
+  // No need for the sequencer to start a sequence, the instruction will cause
+  // debug entry on the first operation with no side effects done.
+  assign seq_instr_valid = prefetch_valid && !trigger_match_i;
+
   generate
     if (ZC_EXT) begin : gen_seq
       cv32e40x_sequencer
@@ -426,7 +434,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         .instr_i            ( prefetch_instr          ),
         .instr_is_ptr_i     ( ptr_in_if_o             ),
 
-        .valid_i            ( prefetch_valid          ),
+        .valid_i            ( seq_instr_valid         ),
         .ready_i            ( id_ready_i              ),
         .halt_i             ( ctrl_fsm_i.halt_if      ),
         .kill_i             ( ctrl_fsm_i.kill_if      ),
@@ -452,7 +460,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // (not cleared on faulted fetches). A faulted fetch should not be decoded to anything and thus tbljmp is cleared.
   // One could instead set the instruction word itself to all zeros or another illegal instruction on known fetch faults,
   // but this may impact timing more than suppressing control bits.
-  assign tbljmp = (instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK)) ? 1'b0 : tbljmp_raw;
+  // Deassert also for trigger matches, as this will be a single operation and enter debug mode before executing. Similar to how
+  // deassert_we is set in the ID stage for trigger matches.
+  assign tbljmp = (instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK)) ? 1'b0 :
+                  trigger_match_i ? 1'b0 : tbljmp_raw;
 
   //---------------------------------------------------------------------------
   // eXtension interface
