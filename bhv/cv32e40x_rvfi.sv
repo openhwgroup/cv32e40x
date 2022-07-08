@@ -670,6 +670,9 @@ module cv32e40x_rvfi
   // sub operation counter
   logic [3:0]   subop_cnt;
 
+  // Memory operation counter
+  logic [6:0]   memop_cnt;
+
   rvfi_obi_instr_t obi_instr_if;
 
   assign insn_opcode = rvfi_insn[6:0];
@@ -832,6 +835,7 @@ module cv32e40x_rvfi
       rvfi_gpr_wmask     <= '0;
 
       subop_cnt          <= '0;
+      memop_cnt          <= '0;
 
       rs1_addr_subop     <= '0;
       rs2_addr_subop     <= '0;
@@ -1031,11 +1035,11 @@ module cv32e40x_rvfi
         end
 
         // Update rvfi_mem
-        rvfi_mem_rdata[(32*(subop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
-        rvfi_mem_rmask[(4*(subop_cnt+1))-1 -: 4]   <= mem_rmask [STAGE_WB];
-        rvfi_mem_wmask[(4*(subop_cnt+1))-1 -: 4]   <= mem_wmask [STAGE_WB];
-        rvfi_mem_addr[(32*(subop_cnt+1))-1 -: 32]  <= ex_mem_addr;
-        rvfi_mem_wdata[(32*(subop_cnt+1))-1 -: 32] <= ex_mem_wdata;
+        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
+        rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
+        rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_addr;
+        rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_wdata;
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
@@ -1053,12 +1057,19 @@ module cv32e40x_rvfi
           rvfi_gpr_rmask[rs2_addr_subop[STAGE_WB]] <= 1'b1;
           rvfi_gpr_rdata[(32*(rs2_addr_subop[STAGE_WB]+1))-1 -: 32] <= rs2_rdata_subop[STAGE_WB];
         end
+
+        // Handle counter for suboperations and memory operations
         if (last_op_wb_i) begin
-          // Reset suboperation counter when the last op is done in WB.
+          // Reset suboperation and memop counters when the last op is done in WB.
           subop_cnt <= 4'h0;
+          memop_cnt <= '0;
         end else begin
           // Increment subop counter
           subop_cnt <= subop_cnt + 4'h1;
+
+          if (|mem_rmask [STAGE_WB] || |mem_wmask [STAGE_WB]) begin
+            memop_cnt <= memop_cnt + 7'h1;
+          end
         end
       end
     end
