@@ -56,6 +56,11 @@
 .rvfi_mem_rdata(),\
 .rvfi_mem_wdata(),\
 \
+.rvfi_gpr_rdata(),\
+.rvfi_gpr_rmask(),\
+.rvfi_gpr_wdata(),\
+.rvfi_gpr_wmask(),\
+\
 .rvfi_csr_jvt_rmask(),\
 .rvfi_csr_jvt_wmask(),\
 .rvfi_csr_jvt_rdata(),\

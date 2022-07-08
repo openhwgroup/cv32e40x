@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module rvfi_sim_trace
+  import cv32e40x_rvfi_pkg::*;
   #(parameter string ITB_PLUSARG = "itb_file",
     parameter string LOGFILE_PATH_PLUSARG = "log_file")
   (
@@ -39,11 +40,11 @@ module rvfi_sim_trace
    input logic [31:0] rvfi_rs2_rdata,
    input logic [4:0]  rvfi_rd_addr,
    input logic [31:0] rvfi_rd_wdata,
-   input logic [31:0] rvfi_mem_addr ,
-   input logic [3:0]  rvfi_mem_rmask,
-   input logic [3:0]  rvfi_mem_wmask,
-   input logic [31:0] rvfi_mem_rdata,
-   input logic [31:0] rvfi_mem_wdata
+   input logic [32*NMEM-1:0] rvfi_mem_addr ,
+   input logic [ 4*NMEM-1:0] rvfi_mem_rmask,
+   input logic [ 4*NMEM-1:0] rvfi_mem_wmask,
+   input logic [32*NMEM-1:0] rvfi_mem_rdata,
+   input logic [32*NMEM-1:0] rvfi_mem_wdata
    );
 
   typedef struct      {
@@ -72,6 +73,8 @@ module rvfi_sim_trace
   bit                 itb_file_ok, logfile_ok, enable_log_write;
 
   // Populate itrace based on retired instruction
+  // todo: update tracer to support Zc sequences
+  //       Currently only the lower index of rvfi_mem is used, and no usage of rvfi_gpr*
   always_comb begin
     if (rvfi_valid) begin
       if (^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
@@ -84,9 +87,9 @@ module rvfi_sim_trace
                                                             rvfi_rs1_addr, rvfi_rs1_rdata,
                                                             rvfi_rs2_addr, rvfi_rs2_rdata,
                                                             rvfi_rd_addr, rvfi_rd_wdata,
-                                                            rvfi_mem_addr,
-                                                            rvfi_mem_rmask, rvfi_mem_rdata,
-                                                            rvfi_mem_wmask, rvfi_mem_wdata);
+                                                            rvfi_mem_addr[31:0],
+                                                            rvfi_mem_rmask[3:0], rvfi_mem_rdata[31:0],
+                                                            rvfi_mem_wmask[3:0], rvfi_mem_wdata[31:0]);
           asm_string = $sformatf("%-s %-s",  rvfi_info_string, string'(itrace.asm));
           $fdisplay(logfile, asm_string);
           asm_string = "";
