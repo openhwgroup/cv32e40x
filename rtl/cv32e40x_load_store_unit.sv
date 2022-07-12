@@ -385,6 +385,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
           if (trans.addr[0] != 1'b0)
             misaligned_halfword = 1'b1;
         end
+        default:;
       endcase // case (trans.size)
     end
   end
