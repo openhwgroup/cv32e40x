@@ -307,6 +307,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     unique case (imm_a_mux_sel)
       IMMA_Z:      imm_a = imm_z_type;
       IMMA_ZERO:   imm_a = '0;
+      default:     imm_a = '0;
     endcase
   end
 
