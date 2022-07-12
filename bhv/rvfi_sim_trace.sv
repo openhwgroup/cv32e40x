@@ -30,7 +30,8 @@
 module rvfi_sim_trace
   import cv32e40x_rvfi_pkg::*;
   #(parameter string ITB_PLUSARG = "itb_file",
-    parameter string LOGFILE_PATH_PLUSARG = "log_file")
+    parameter string LOGFILE_PATH_PLUSARG = "log_file",
+    parameter logic  ITRACE_ENABLE = 0)
   (
    input logic        rvfi_valid,
    input logic [31:0] rvfi_pc_rdata,
@@ -75,108 +76,114 @@ module rvfi_sim_trace
   // Populate itrace based on retired instruction
   // todo: update tracer to support Zc sequences
   //       Currently only the lower index of rvfi_mem is used, and no usage of rvfi_gpr*
-  always_comb begin
-    if (rvfi_valid) begin
-      if (^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
-        // Pick trace from instruction map
-        itrace = imap[rvfi_pc_rdata];
-        if (logfile_ok) begin
-          rvfi_info_string = $sformatf(
-            "0x%8h | x%-2d (0x%8h) | x%-2d (0x%8h) | x%-2d (0x%8h) | 0x%8h | 0x%4b | 0x%8h | 0x%4b | 0x%8h ||",
-                                                            rvfi_pc_rdata,
-                                                            rvfi_rs1_addr, rvfi_rs1_rdata,
-                                                            rvfi_rs2_addr, rvfi_rs2_rdata,
-                                                            rvfi_rd_addr, rvfi_rd_wdata,
-                                                            rvfi_mem_addr[31:0],
-                                                            rvfi_mem_rmask[3:0], rvfi_mem_rdata[31:0],
-                                                            rvfi_mem_wmask[3:0], rvfi_mem_wdata[31:0]);
-          asm_string = $sformatf("%-s %-s",  rvfi_info_string, string'(itrace.asm));
-          $fdisplay(logfile, asm_string);
-          asm_string = "";
-        end
-      end
-      else begin
-        itrace = TRACE_UNKNOWN;
-      end
-    end
-  end
-
-  // Parse the listing file
-  initial begin
-    enable_log_write = 1'b1;
-
-    $display("RISC-V Trace: Using itb path defined by plusarg: %s", ITB_PLUSARG);
-
-    if (!$value$plusargs({LOGFILE_PATH_PLUSARG,"=%s"}, logfilename)) begin
-      $display($sformatf("Not generating instruction trace log file, please supply +%0s=<PATH> if desired.", LOGFILE_PATH_PLUSARG));
-      enable_log_write = 1'b0;
-    end
-
-    if (!$value$plusargs({ITB_PLUSARG,"=%s"}, filename)) begin
-      $display("RISC-V Trace: No instruction table file found.");
-    end
-    else begin
-
-      file = $fopen(filename, "r");
-      if (enable_log_write == 1'b1) begin
-        logfile = $fopen(logfilename, "w");
-        if (logfile == 0) begin
-          $warning("Failed to open log file: %0s", logfilename);
-          logfile_ok = 1'b0;
-        end
-        else begin
-          logfile_ok = 1'b1;
-          $fdisplay(logfile, {$sformatf("%-10s | %-3s (%-10s) | %-3s (%-10s) | %-3s (%-10s) | ",
-                              "pc", "rs1", "   data", "rs2", "   data", "rd", "   data"),
-                              $sformatf("%-10s | %-6s | %-10s | %-6s | %-10s ||  Assembly",
-                              "memaddr", "rmask", "rdata", "wmask", "wdata")
-                  });
-          $fdisplay(logfile, {"==================================================================",
-                              "=========================================================================="});
-        end
-      end
-
-      if (file == 0) begin
-        $display("RISC-V Trace: Failed to open instruction table file %s", filename);
-        itb_file_ok = 1'b0;
-      end
-      else begin
-
-        $display("RISC-V Trace: Loading instruction table file %s", filename);
-        itb_file_ok = 1'b1;
-
-        // Iterate through itb file
-        while ($fgets(line, file)) begin
-          // Skip comments
-          if(line[0] != "#") begin
-
-            // Search for expected pattern in line
-            elements_found = $sscanf(line, "%d %s %s %d %h %d %s %s %s %s %s",
-                                     tmp_trace.addr, tmp_trace.c_func, tmp_trace.c_file, tmp_trace.c_line, tmp_trace.mcode, asmlen, asms[0], asms[1], asms[2], asms[3], asms[4]);
-
-            if (elements_found > 6) begin
-              // Fetch assembly instruction
-              for (int i=0; i < asmlen; i++) begin
-                if(asms[i] == "#") break; // Disregard comments
-
-                // Concatenate assembly instruction
-                $cast(tmp_trace.asm,  $sformatf("%-0s %-0s", tmp_trace.asm, asms[i]));
-              end
-
-              imap[tmp_trace.addr] = tmp_trace;
-              tmp_trace.asm = "";
+  generate
+  begin
+    if (ITRACE_ENABLE) begin
+      always_comb begin
+        if (rvfi_valid) begin
+          if (^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
+            // Pick trace from instruction map
+            itrace = imap[rvfi_pc_rdata];
+            if (logfile_ok) begin
+              rvfi_info_string = $sformatf(
+                "0x%8h | x%-2d (0x%8h) | x%-2d (0x%8h) | x%-2d (0x%8h) | 0x%8h | 0x%4b | 0x%8h | 0x%4b | 0x%8h ||",
+                                                                rvfi_pc_rdata,
+                                                                rvfi_rs1_addr, rvfi_rs1_rdata,
+                                                                rvfi_rs2_addr, rvfi_rs2_rdata,
+                                                                rvfi_rd_addr, rvfi_rd_wdata,
+                                                                rvfi_mem_addr[31:0],
+                                                                rvfi_mem_rmask[3:0], rvfi_mem_rdata[31:0],
+                                                                rvfi_mem_wmask[3:0], rvfi_mem_wdata[31:0]);
+              asm_string = $sformatf("%-s %-s",  rvfi_info_string, string'(itrace.asm));
+              $fdisplay(logfile, asm_string);
+              asm_string = "";
             end
+          end
+          else begin
+            itrace = TRACE_UNKNOWN;
           end
         end
       end
-      $fclose(file);
-      $display("RISC-V Trace: Loaded %d instructions.", imap.size());
-    end
-  end
 
-  final begin
-    if (logfile_ok) begin
-      $fclose(logfile);
+      // Parse the listing file
+      initial begin
+        enable_log_write = 1'b1;
+
+        $display("RISC-V Trace: Using itb path defined by plusarg: %s", ITB_PLUSARG);
+
+        if (!$value$plusargs({LOGFILE_PATH_PLUSARG,"=%s"}, logfilename)) begin
+          $display($sformatf("Not generating instruction trace log file, please supply +%0s=<PATH> if desired.", LOGFILE_PATH_PLUSARG));
+          enable_log_write = 1'b0;
+        end
+
+        if (!$value$plusargs({ITB_PLUSARG,"=%s"}, filename)) begin
+          $display("RISC-V Trace: No instruction table file found.");
+        end
+        else begin
+
+          file = $fopen(filename, "r");
+          if (enable_log_write == 1'b1) begin
+            logfile = $fopen(logfilename, "w");
+            if (logfile == 0) begin
+              $warning("Failed to open log file: %0s", logfilename);
+              logfile_ok = 1'b0;
+            end
+            else begin
+              logfile_ok = 1'b1;
+              $fdisplay(logfile, {$sformatf("%-10s | %-3s (%-10s) | %-3s (%-10s) | %-3s (%-10s) | ",
+                                  "pc", "rs1", "   data", "rs2", "   data", "rd", "   data"),
+                                  $sformatf("%-10s | %-6s | %-10s | %-6s | %-10s ||  Assembly",
+                                  "memaddr", "rmask", "rdata", "wmask", "wdata")
+                      });
+              $fdisplay(logfile, {"==================================================================",
+                                  "=========================================================================="});
+            end
+          end
+
+          if (file == 0) begin
+            $display("RISC-V Trace: Failed to open instruction table file %s", filename);
+            itb_file_ok = 1'b0;
+          end
+          else begin
+
+            $display("RISC-V Trace: Loading instruction table file %s", filename);
+            itb_file_ok = 1'b1;
+
+            // Iterate through itb file
+            while ($fgets(line, file)) begin
+              // Skip comments
+              if(line[0] != "#") begin
+
+                // Search for expected pattern in line
+                elements_found = $sscanf(line, "%d %s %s %d %h %d %s %s %s %s %s",
+                                         tmp_trace.addr, tmp_trace.c_func, tmp_trace.c_file, tmp_trace.c_line, tmp_trace.mcode, asmlen, asms[0], asms[1], asms[2], asms[3], asms[4]);
+
+                if (elements_found > 6) begin
+                  // Fetch assembly instruction
+                  for (int i=0; i < asmlen; i++) begin
+                    if(asms[i] == "#") break; // Disregard comments
+
+                    // Concatenate assembly instruction
+                    $cast(tmp_trace.asm,  $sformatf("%-0s %-0s", tmp_trace.asm, asms[i]));
+                  end
+
+                  imap[tmp_trace.addr] = tmp_trace;
+                  tmp_trace.asm = "";
+                end
+              end
+            end
+          end
+          $fclose(file);
+          $display("RISC-V Trace: Loaded %d instructions.", imap.size());
+        end
+      end
+
+      final begin
+        if (logfile_ok) begin
+          $fclose(logfile);
+        end
+      end
     end
   end
+  endgenerate
 endmodule
