@@ -83,7 +83,7 @@ module cv32e40x_core_sva
   input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
   input mstatus_t    cs_registers_mstatus_q);
 
-if(SMCLIC) begin
+if (SMCLIC) begin
   property p_clic_mie_tieoff;
     @(posedge clk)
     |mie == 1'b0;
@@ -224,7 +224,7 @@ always_ff @(posedge clk , negedge rst_ni)
       end
       else begin
         // Disregard saved CSR due to interrupts when chekcing exceptions
-        if(!cs_registers_csr_cause_i.irq) begin
+        if (!cs_registers_csr_cause_i.irq) begin
           if (!first_cause_illegal_found && (cs_registers_csr_cause_i.exception_code == EXC_CAUSE_ILLEGAL_INSN) && ctrl_fsm.csr_save_cause) begin
             first_cause_illegal_found <= 1'b1;
             actual_illegal_mepc       <= cs_registers_mepc_n;
@@ -296,7 +296,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // For checking single step, ID stage is used as it contains a 'multi_cycle_id_stall' signal.
   // This makes it easy to count misaligned LSU ins as one instruction instead of two.
   logic inst_taken;
-  assign inst_taken = id_stage_id_valid && ex_ready && if_id_pipe.last_op && !id_stage_multi_cycle_id_stall;
+  assign inst_taken = id_stage_id_valid && ex_ready && if_id_pipe.last_op && !id_stage_multi_cycle_id_stall; // todo: the && !id_stage_multi_cycle_id_stall signal should now no longer be needed
 
   // Support for single step assertion
   // In case of single step + taken interrupt, the first instruction
@@ -309,9 +309,9 @@ always_ff @(posedge clk , negedge rst_ni)
         interrupt_taken <= 1'b0;
       end
       else begin
-        if(irq_ack == 1'b1) begin
+        if (irq_ack == 1'b1) begin
           interrupt_taken <= 1'b1;
-        end else if(ctrl_debug_mode_n) begin
+        end else if (ctrl_debug_mode_n) begin
           interrupt_taken <= 1'b0;
         end
       end
@@ -326,6 +326,8 @@ always_ff @(posedge clk , negedge rst_ni)
                      ##1 inst_taken [->1]
                      |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_no_irq failed")
+
+// todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
 
 if (SMCLIC) begin
   // Non-SHV interrupt taken during single stepping.

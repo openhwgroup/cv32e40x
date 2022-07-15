@@ -304,7 +304,7 @@ module cv32e40x_controller_fsm_sva
 
 // Only include following assertions if X_EXT=1
 generate;
-  if(X_EXT) begin
+  if (X_EXT) begin
 
     // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline is
     // flagged as killed on the eXtension interface
@@ -360,11 +360,11 @@ generate;
         commit_kill_flag  <= 1'b0;
       end else begin
         // Clear flag if EX is killed or instruction goes to WB
-        if(ctrl_fsm_o.kill_ex || (ex_valid_i && wb_ready_i)) begin
+        if (ctrl_fsm_o.kill_ex || (ex_valid_i && wb_ready_i)) begin
           commit_valid_flag <= 1'b0;
           commit_kill_flag  <= 1'b0;
         // Set flag when commit_valid goes high
-        end else if(xif_commit_valid) begin
+        end else if (xif_commit_valid) begin
           commit_valid_flag <= 1'b1;
           commit_kill_flag  <= xif_commit_kill;
         end
@@ -441,11 +441,11 @@ endgenerate
       retire_at_error <= 1'b0;
     end else begin
       // Req, no rvalid
-      if( (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) && !m_c_obi_data_if.s_rvalid.rvalid) begin
+      if (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt && !m_c_obi_data_if.s_rvalid.rvalid) begin
         // Increase outstanding counter
         outstanding_count <= outstanding_count + 2'b01;
 
-        if(outstanding_count == 2'b00) begin
+        if (outstanding_count == 2'b00) begin
           // No outstanding, assign first entry
           outstanding_type[0] <= m_c_obi_data_if.req_payload.we;
         end else begin
@@ -472,7 +472,7 @@ endgenerate
       end
 
 
-      if(m_c_obi_data_if.s_rvalid.rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched) begin
+      if (m_c_obi_data_if.s_rvalid.rvalid && m_c_obi_data_if.resp_payload.err && !bus_error_latched) begin
         bus_error_is_write <= outstanding_count == 2'b01 ? outstanding_type[0] : outstanding_type[1];
         bus_error_latched <= 1'b1;
         retire_at_error <= wb_valid_i;
@@ -500,8 +500,8 @@ endgenerate
     if (rst_n == 1'b0) begin
       valid_cnt <= '0;
     end else begin
-      if(bus_error_latched) begin
-        if(wb_valid_i && last_op_wb_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
+      if (bus_error_latched) begin
+        if (wb_valid_i && last_op_wb_i && !ctrl_fsm_o.debug_mode && !(dcsr_i.step && !dcsr_i.stepie)) begin
           valid_cnt <= valid_cnt + 1'b1;
         end
       end else begin
@@ -545,18 +545,20 @@ end // SMCLIC
     if (rst_n == 1'b0) begin
       first_op_done_wb <= 1'b0;
     end else begin
-      if(!first_op_done_wb) begin
-        if(wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin
+      if (!first_op_done_wb) begin
+        if (wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin
           first_op_done_wb <= 1'b1;
         end
       end else begin
         // first_op_done_wb is set, clear when last_op retires
-        if(wb_valid_i && last_op_wb_i) begin
+        if (wb_valid_i && last_op_wb_i) begin
           first_op_done_wb <= 1'b0;
         end
       end
     end
   end
+
+// todo: make above code look the same as below code (add kill_wb related logic)
 
   // Helper logic to track first_op and last_op through the ID stage to detect unhaltable sequences
   logic first_op_done_id;
@@ -564,13 +566,13 @@ end // SMCLIC
     if (rst_n == 1'b0) begin
       first_op_done_id <= 1'b0;
     end else begin
-      if(!first_op_done_id) begin
-        if(id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin
+      if (!first_op_done_id) begin
+        if (id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin
           first_op_done_id <= 1'b1;
         end
       end else begin
         // first_op_done_id is set, clear when last_op retires
-        if(id_valid_i && ex_ready_i && last_op_id_i) begin
+        if (id_valid_i && ex_ready_i && last_op_id_i) begin
           first_op_done_id <= 1'b0;
         end
       end
@@ -586,6 +588,8 @@ end // SMCLIC
                     (first_op_done_wb |-> !ctrl_fsm_o.irq_ack))
     else `uvm_error("controller", "Sequence broken by interrupt")
 
+// todo: add equivalency check related to first_op_done_wb computation and sequence_interruptible
+
   a_no_sequence_nmi:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (first_op_done_wb |-> !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
@@ -593,14 +597,14 @@ end // SMCLIC
 
   a_no_sequence_ext_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (first_op_done_wb |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ))))
+                    (first_op_done_wb |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ)))) // todo: timing of (debug_cause_q == DBG_CAUSE_HALTREQ) seems wrong (and whole calsuse should not be needed)
     else `uvm_error("controller", "Sequence broken by external debug")
 
   // Check that we do not allow ID stage to be halted for pending interrupts/debug if a sequence is not done
   // in the ID stage.
   a_id_stage_haltable:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (first_op_done_id |-> !id_stage_haltable))
+                    (first_op_done_id |-> !id_stage_haltable)) // todo: proof equivalency, not just implication
     else `uvm_error("controller", "id_stage_haltable not correct")
 
   // Assert that we have no pc_set in the same cycle as a CSR write in WB requires flushing of the pipeline

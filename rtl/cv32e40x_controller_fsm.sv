@@ -184,7 +184,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Flag indicating there is a 'live' CLIC pointer in the pipeline
   // Used to block debug until pointer
-  logic pointer_in_pipeline;
+  logic clic_ptr_in_pipeline;
 
   // Internal irq_ack for use when a (clic) pointer reaches ID stage and
   // we have single stepping enabled.
@@ -383,10 +383,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if(SMCLIC) begin : gen_clic_pointer_flag
       // We only need to check EX and WB, as the FSM will only be in FUNCTIONAL state
       // one cycle after the target CLIC jump has been performed from ID
-      assign pointer_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
-                                   (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr);
+      assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
+                                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr);
     end else begin : gen_basic_pointer_flag
-      assign pointer_in_pipeline = 1'b0;
+      assign clic_ptr_in_pipeline = 1'b0;
     end
   endgenerate
   // Regular debug will kill insn in WB, do not allow if LSU is not interruptible, a fence.i handshake is taking place
@@ -395,8 +395,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
   // Once the first part of a table jump has finished in WB, we are not allowed to take debug before the last part finishes. This can be detected when the last
-  // part of a table jump is in either EX or WB.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !pointer_in_pipeline && sequence_interruptible;
+  // part of a table jump is in either EX or WB. // todo: update comments related to table jump (explain general concept and to which instructions it applies)
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||
@@ -475,7 +475,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end else if (if_id_pipe_i.instr_valid) begin
       sequence_interruptible = first_op_id_i;
     end else begin
-      sequence_interruptible = first_op_if_i;
+      sequence_interruptible = first_op_if_i; // todo: first/last op should always be classified with instr_vali; if not it needs proper explanation.
     end
   end
 
@@ -490,7 +490,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end else begin
       // IF stage first_op defaults to 1'b1 if the stage does not hold a valid instruction or
       // table jump pointer. Table jump pointers will have first_op set to 0.
-      id_stage_haltable = first_op_if_i;
+      id_stage_haltable = first_op_if_i; // todo: first/last op should always be classified with instr_valid; if not it needs proper explanation (and I would prefer if we get rid of this special reliance on the 1'b1 default)
     end
   end
 
