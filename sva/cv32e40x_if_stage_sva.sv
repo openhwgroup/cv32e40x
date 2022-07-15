@@ -80,6 +80,5 @@ module cv32e40x_if_stage_sva
                       ctrl_fsm_i.kill_if |-> (seq_ready && !seq_valid))
         else `uvm_error("if_stage", "Kill should imply ready and not valid.")
 
-
 endmodule // cv32e40x_if_stage
 

@@ -915,9 +915,9 @@ module cv32e40x_rvfi
         // Jumps may actually use rs1 before (id_valid && ex_ready), an assertion exists to check that
         // the jump target is stable and it should be safe to use rs1/2_rdata at the time of the pipeline handshake.
         // rs1/2 should reflect state of the first operation of any instruction.
-        rs1_addr   [STAGE_EX] <= first_op_id_i ? rs1_addr_id : rs1_addr[STAGE_EX];
-        rs2_addr   [STAGE_EX] <= first_op_id_i ? rs2_addr_id : rs2_addr[STAGE_EX];
-        rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX];
+        rs1_addr   [STAGE_EX] <= first_op_id_i ? rs1_addr_id : rs1_addr[STAGE_EX]; // todo: why the first_op_id_i dependency? In https://github.com/openhwgroup/cv32e40x/pull/605 it was stated as not needed.
+        rs2_addr   [STAGE_EX] <= first_op_id_i ? rs2_addr_id : rs2_addr[STAGE_EX]; // todo: why the first_op_id_i dependency? In https://github.com/openhwgroup/cv32e40x/pull/605 it was stated as not needed.
+        rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX]; // todo: add good explanation why the select is needed here and not for example on rs1_rdata_subop
         rs2_rdata  [STAGE_EX] <= first_op_id_i ? rs2_rdata_id : rs2_rdata[STAGE_EX];
 
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;
@@ -1035,7 +1035,7 @@ module cv32e40x_rvfi
         end
 
         // Update rvfi_mem
-        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i; // todo: document rvfi_mem_* signals in user manual RVFI section as they differ from the official RVFI. At what index will the 'official' RVFI info be present (also for misaligned loads/stores)?
         rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
         rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
         rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_addr;

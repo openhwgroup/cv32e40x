@@ -72,7 +72,7 @@ import cv32e40x_pkg::*;
   assign rlist = instr[7:4];
 
   // Count number of instructions emitted and set next state for FSM.
-  always_ff @( posedge clk, negedge rst_n) begin
+  always_ff @(posedge clk, negedge rst_n) begin
     if (!rst_n) begin
       instr_cnt_q <= '0;
       seq_state_q <= S_IDLE;
@@ -89,7 +89,7 @@ import cv32e40x_pkg::*;
 
       if ((!valid_o && !halt_i) || kill_i) begin
         // Whenever we have no valid outputs and are not halted, reset counter to 0.
-        // In case both halt_i and kill_i are high, kill_i takes presedence.
+        // In case both halt_i and kill_i are high, kill_i takes precedence.
         // Not resetting if halted, as we might have to continue the sequence after being unhalted.
         instr_cnt_q <= '0;
         seq_state_q <= seq_state_n;
@@ -165,7 +165,7 @@ import cv32e40x_pkg::*;
   // In principle this is the same as "seq_en && valid_i"
   //   as the output of the above decode logic is equivalent to seq_en
   // todo: halting IF stage would imply !valid, can this be an issue?
-  // todo: revisit the error conditions below
+  // todo: revisit the error conditions below (they are bad for the critical path; why can't they be done in ID?)
   assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i && !(instr_i.bus_resp.err || !(instr_i.mpu_status == MPU_OK)) && valid_i && !halt_i && !kill_i;
 
 
@@ -205,7 +205,7 @@ import cv32e40x_pkg::*;
     seq_state_n = seq_state_q;
     seq_last_o = 1'b0;
     // default to 1, used by IF stage regardless of seq_valid
-    // See explanation around combinatorial loops in the if_stage.sv.
+    // See explanation around combinatorial loops in the if_stage.sv. // todo: reconsider, this is not clean enough
     seq_first_o = 1'b1;
     ready_o = 1'b0;
 

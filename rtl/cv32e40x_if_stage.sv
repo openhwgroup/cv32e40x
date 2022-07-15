@@ -313,11 +313,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Trigger matches will have all write enables deasserted in ID, and once the first operation reaches WB the debug entry will be made.
   // Marking as first (and last above) since we know it will not be a true sequence. Sequencer will keep sequencing, but will get killed
   // upon debug entry and no side effect will occur.
+  // todo: The treatement of trigger match causes 1 instruction to possibly have first/last op set multiple times. Can this be avoided (it messes up the semantics of first/last op)?
   // todo: factor in CLIC pointers?
   assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 :
                       trigger_match_i        ? 1'b1 : seq_first;
 
-
+  // todo: first/last op need to be treated in the same manner (assignments need to look more similar). Also seq_first/seq_last need cleaner semantics with respect ot how they relate to seq_valid.
 
   // Populate instruction meta data
   // Fields 'compressed' and 'tbljmp' keep their old value by default.
@@ -451,7 +452,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       assign seq_last  = 1'b0;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
-      assign seq_first = 1'b1; // Tie high to enable default first_op when ZC_EXT=0
+      assign seq_first = 1'b1; // Tie high to enable default first_op when ZC_EXT=0 // todo: Clean up semantics of seq_first and make this one default 0.
     end
   endgenerate
 
@@ -464,6 +465,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // deassert_we is set in the ID stage for trigger matches.
   assign tbljmp = (instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK)) ? 1'b0 :
                   trigger_match_i ? 1'b0 : tbljmp_raw;
+
+// todo: The above tbljmp assignment is likely very timing critical. Why is it important to suppress table jumps here, whereas the same thing is not done for non-sequenced compressed instructions nor for sequenced instructions.
+// In fact sequenced instructions seems only gated by trigger match, which also seems inconsistent. Can't all further handling of bus/parity/MPU/trigger match be done in ID?
 
   //---------------------------------------------------------------------------
   // eXtension interface
