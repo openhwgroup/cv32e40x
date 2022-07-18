@@ -48,6 +48,10 @@ The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mo
   Single Step         0x4
   =================  =====
 
+.. note::
+   ``rvfi_dbg`` will not always match ``dcsr.CAUSE`` because an ``ebreak`` in debug mode will be reported via ``rvfi_dbg``,
+   whereas ``dcsr.CAUSE`` will remain unchanged for that case.
+
 **NMI signals**
 
 .. code-block:: verilog
@@ -66,7 +70,6 @@ This chapter specifies interpretations and compatibilities to the [SYMBIOTIC-RVF
 All RVFI output signals are qualified with the ``rvfi_valid`` signal.
 Any RVFI operation (retired or trapped instruction) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
 When ``rvfi_valid`` is low, all other RVFI outputs can be driven to arbitrary values.
-
 
 **Trap Signal**
 
