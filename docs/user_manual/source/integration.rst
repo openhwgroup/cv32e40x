@@ -156,7 +156,7 @@ Parameters
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``X_MISA``                     | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
   |                                |                |               | see :ref:`csr-misa`. X_MISA can only be used to set a subset of    |
-  |                                |                |               | the following: {P, V, F, D, Q, X, M}.                              |
+  |                                |                |               | the following: {P, V, F, X, M}.                                    |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``X_ECS_XS``                   | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
   |                                |                |               | see :ref:`csr-mstatus`.                                            |
