@@ -521,7 +521,7 @@ Detailed:
   +-------------+------------+------------------------------------------------------------------------+
   | 17          | WARL (0x0) | **R** (Reserved).                                                      |
   +-------------+------------+------------------------------------------------------------------------+
-  | 16          | WARL       | **Q** (Quad-precision floating-point extension).                       |
+  | 16          | WARL (0x0) | **Q** (Quad-precision floating-point extension).                       |
   +-------------+------------+------------------------------------------------------------------------+
   | 15          | WARL       | **P** (Packed-SIMD extension).                                         |
   +-------------+------------+------------------------------------------------------------------------+
@@ -548,7 +548,7 @@ Detailed:
   +-------------+------------+------------------------------------------------------------------------+
   | 4           | WARL       | **E** (RV32E base ISA).                                                |
   +-------------+------------+------------------------------------------------------------------------+
-  | 3           | WARL       | **D** (Double-precision floating-point extension).                     |
+  | 3           | WARL (0x0) | **D** (Double-precision floating-point extension).                     |
   +-------------+------------+------------------------------------------------------------------------+
   | 2           | WARL (0x1) | **C** (Compressed extension).                                          |
   +-------------+------------+------------------------------------------------------------------------+
@@ -569,7 +569,7 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
 
 .. note::
 
-   The ``WARL  `` in above table is depending on `X_EXT``. If ``X_EXT`` == 1, then some of the ``misa`` bits
+   The ``WARL`` in above table is depending on `X_EXT``. If ``X_EXT`` == 1, then some of the ``misa`` bits
    can read values depending on the value of ``X_MISA``.
 
 Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 0
