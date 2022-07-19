@@ -230,7 +230,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                                                            // Misaligned access to main is allowed, and accesses outside main will
                                                            // result in instruction access fault (which will have priority over
                                                            //  misaligned from I/O fault)
-    .core_if_data_access_i( 1'b0                        ), // No data access possible from IF
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose

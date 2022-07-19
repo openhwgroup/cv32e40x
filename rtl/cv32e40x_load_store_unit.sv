@@ -601,7 +601,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .atomic_access_i      ( 1'b0               ), // TODO:OE update to support atomic PMA checks
     .misaligned_access_i  ( misaligned_access  ),
 
-    .core_if_data_access_i( 1'b0               ), // Only applicable for IF stage
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
     .core_mpu_err_wait_i  ( !xif_req           ),
     .core_mpu_err_o       ( xif_mpu_err        ),
