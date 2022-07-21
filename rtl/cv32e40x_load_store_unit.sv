@@ -154,27 +154,15 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
   always_comb begin
-    if (xif_req) begin
-      trans.addr  = xif_mem_if.mem_req.addr;
-      trans.we    = xif_mem_if.mem_req.we;
-      trans.size  = 2'b10;                    // XIF memory requests always use maximum size
-      trans.wdata = xif_mem_if.mem_req.wdata;
-      trans.mode  = xif_mem_if.mem_req.mode;  // TODO use mode from XIF request or force machine mode?
-      trans.dbg   = '0;                       // TODO setup debug triggers
+    trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
+    trans.we    = id_ex_pipe_i.lsu_we;
+    trans.size  = id_ex_pipe_i.lsu_size;
+    trans.wdata = id_ex_pipe_i.operand_c;
+    trans.mode  = PRIV_LVL_M; // Machine mode
+    trans.dbg   = ctrl_fsm_i.debug_mode;
 
-      trans.atop  = '0;
-      trans.sext  = '0;
-    end else begin
-      trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
-      trans.we    = id_ex_pipe_i.lsu_we;
-      trans.size  = id_ex_pipe_i.lsu_size;
-      trans.wdata = id_ex_pipe_i.operand_c;
-      trans.mode  = PRIV_LVL_M; // Machine mode
-      trans.dbg   = ctrl_fsm_i.debug_mode;
-
-      trans.atop  = id_ex_pipe_i.lsu_atop;
-      trans.sext  = id_ex_pipe_i.lsu_sext;
-    end
+    trans.atop  = id_ex_pipe_i.lsu_atop;
+    trans.sext  = id_ex_pipe_i.lsu_sext;
   end
 
   ///////////////////////////////// BE generation ////////////////////////////////
@@ -210,19 +198,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         if (split_q == 1'b0)
         begin // non-misaligned case
           case (trans.addr[1:0])
-            2'b00: be = xif_req ?  xif_mem_if.mem_req.be[3:0]        : 4'b1111;
-            2'b01: be = xif_req ? {xif_mem_if.mem_req.be[2:0], 1'b0} : 4'b1110;
-            2'b10: be = xif_req ? {xif_mem_if.mem_req.be[1:0], 2'b0} : 4'b1100;
-            2'b11: be = xif_req ? {xif_mem_if.mem_req.be[0:0], 3'b0} : 4'b1000;
+            2'b00: be = 4'b1111;
+            2'b01: be = 4'b1110;
+            2'b10: be = 4'b1100;
+            2'b11: be = 4'b1000;
           endcase; // case (trans.addr[1:0])
         end
         else
         begin // misaligned case
           case (trans.addr[1:0])
             2'b00: be = 4'b0000; // this is not used, but included for completeness
-            2'b01: be = xif_req ? {3'b0, xif_mem_if.mem_req.be[3:3]} : 4'b0001;
-            2'b10: be = xif_req ? {2'b0, xif_mem_if.mem_req.be[3:2]} : 4'b0011;
-            2'b11: be = xif_req ? {1'b0, xif_mem_if.mem_req.be[3:1]} : 4'b0111;
+            2'b01: be = 4'b0001;
+            2'b10: be = 4'b0011;
+            2'b11: be = 4'b0111;
           endcase; // case (trans.addr[1:0])
         end
       end
@@ -253,10 +241,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       rdata_offset_q   <= 2'b0;
       last_q           <= 1'b0;
     end else if (ctrl_update) begin     // request was granted, we wait for rvalid and can continue to WB
-      lsu_size_q       <= trans.size;
-      lsu_sext_q       <= trans.sext;
-      lsu_we_q         <= trans.we;
-      rdata_offset_q   <= trans.addr[1:0];
+      if (xif_req) begin
+        // Note: lsu_size_q is set to max size to prevent the zero/sign extension logic from
+        // overwriting data
+        lsu_size_q     <= 2'b10;
+        lsu_sext_q     <= 1'b0;
+        lsu_we_q       <= xif_mem_if.mem_req.we;
+        rdata_offset_q <= '0;
+      end else begin
+        lsu_size_q     <= trans.size;
+        lsu_sext_q     <= trans.sext;
+        lsu_we_q       <= trans.we;
+        rdata_offset_q <= trans.addr[1:0];
+      end
       // If we currently signal split from first stage (EX), WB stage will not see the last transfer for this update.
       // Otherwise we are on the last. For non-split accesses we always mark as last.
       last_q           <= lsu_split_0_o ? 1'b0 : 1'b1;
@@ -359,18 +356,20 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_rdata_1_o = rdata_ext;
 
   // misaligned_access is high for both transfers of a misaligned transfer
-  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword;
+  // TODO: Give MPU a separate modified_access_i input
+  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword || (xif_req && (xif_mem_if.mem_req.attr[0] || xif_mem_if.mem_req.attr[1]));
 
   // Check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
   // This is used to gate off ready_0_o to avoid instructions into
   // the EX stage while the LSU is handling the second phase of the split access.
-  // Also detecting misaligned halfwords that don't need a second transfer
+  // Also detecting misaligned halfwords that don't need a second transfer.
+  // Note: XIF memory requests are already aligned and do not need a second memory access.
   always_comb
   begin
     lsu_split_0_o = 1'b0;
     misaligned_halfword = 1'b0;
-    if ((valid_0_i || xif_req) && !split_q)
+    if (valid_0_i && !xif_req && !split_q)
     begin
       case (trans.size)
         2'b10: // word
@@ -407,19 +406,30 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // - maximum number of outstanding transactions will not be exceeded (cnt_q < DEPTH)
   //////////////////////////////////////////////////////////////////////////////
 
-  // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
-
-  // todo: As part of the fix for https://github.com/openhwgroup/cv32e40x/issues/388 the following should be used as well:
-  // assign align_trans.addr    = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
-
-  assign align_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
-  assign align_trans.we      = trans.we;
-  assign align_trans.be      = be;
-  assign align_trans.wdata   = wdata;
-  assign align_trans.atop    = trans.atop;
-  assign align_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
-  assign align_trans.dbg     = trans.dbg;
-  assign align_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
+  always_comb begin
+    if (xif_req) begin
+      align_trans.addr    = xif_mem_if.mem_req.addr;
+      align_trans.we      = xif_mem_if.mem_req.we;
+      align_trans.be      = xif_mem_if.mem_req.be;
+      align_trans.wdata   = xif_mem_if.mem_req.wdata;
+      align_trans.atop    = '0;
+      align_trans.prot    = {xif_mem_if.mem_req.mode, 1'b1}; // XIF transfers are data transfers
+      align_trans.dbg     = '0;                              // TODO setup debug triggers
+      align_trans.memtype = 2'b00;                           // Memory type is assigned in MPU
+    end else begin
+      // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
+      // todo: As part of the fix for https://github.com/openhwgroup/cv32e40x/issues/388 the following should be used as well:
+      // align_trans.addr   = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
+      align_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
+      align_trans.we      = trans.we;
+      align_trans.be      = be;
+      align_trans.wdata   = wdata;
+      align_trans.atop    = trans.atop;
+      align_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
+      align_trans.dbg     = trans.dbg;
+      align_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
+    end
+  end
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
