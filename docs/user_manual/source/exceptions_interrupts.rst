@@ -35,13 +35,13 @@ Exceptions
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
   |              0 |             11 | Environment call from M-Mode (ECALL)  |                                                                           |
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
-  |              0 |             48 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
+  |              0 |             24 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
 
 If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
 
 * ``instruction access fault (1)``
-* ``instruction bus fault (48)``
+* ``instruction bus fault (24)``
 * ``illegal instruction (2)``
 * ``environment call from M-Mode (11)``
 * ``environment break (3)``
