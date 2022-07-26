@@ -667,10 +667,14 @@ Detailed:
 The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
 
 When an exception or an interrupt is encountered, the core jumps to the corresponding
-handler using the content of the ``mtvec[31:7]`` as base address. Both direct mode and vectored mode
+handler using the content of the ``mtvec[31:7]`` as base address. Both non-vectored basic mode and vectored basic mode 
 are supported.
 
-The NMI vector location is at index 15 of the machine trap vector table for both direct mode and vectored mode (i.e. at {**mtvec[31:7]**, 5'hF, 2'b00}).
+Upon an NMI in non-vectored basic mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
+Upon an NMI in vectored basic mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b00} (i.e. index 15).
+
+.. note::
+   For NMIs the exception codes in the ``mcause`` CSR do not match the table index as for regular interrupts.
 
 .. note::
    Memory writes to the ``mtvec`` based vector table require an instruction barrier (``fence.i``) to guarantee that they are visible to the instruction fetch (see :ref:`fencei` and [RISC-V-UNPRIV]_).
@@ -701,6 +705,8 @@ Detailed:
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
 The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b11}.
+
+Upon an NMI in CLIC mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
 
 .. note::
    Memory writes to the ``mtvec`` based vector table require an instruction barrier (``fence.i``) to guarantee that they are visible to the instruction fetch (see :ref:`fencei` and [RISC-V-UNPRIV]_).

@@ -68,7 +68,17 @@ Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` simil
    ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
    specified at a future date, then we will reconsider our implementation.
 
-The NMI vector location is at index 15 of the machine trap vector table for non-vectored basic mode, vectored basic mode and CLIC mode (i.e. {**mtvec[31:7]**, 5'hF, 2'b00}).
+If ``SMCLIC`` == 0, then the NMI vector location is as follows:
+
+* Upon an NMI in non-vectored basic mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
+* Upon an NMI in vectored basic mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b00} (i.e. index 15).
+
+If ``SMCLIC`` == 1, then the NMI vector location is as follows:
+
+* Upon an NMI in CLIC mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
+
+.. note::
+   For NMIs the exception codes in the ``mcause`` CSR do not match the table index as for regular interrupts.
 
 An NMI will occur when a load or store instruction experiences a bus fault. The fault resulting in an NMI is handled in an imprecise manner, meaning that the instruction that causes the fault is allowed to retire and the associated NMI is taken afterwards.
 NMIs are never masked by the ``MIE`` bit. NMIs are masked however while in debug mode or while single stepping with ``STEPIE`` = 0 in the ``dcsr`` CSR.
