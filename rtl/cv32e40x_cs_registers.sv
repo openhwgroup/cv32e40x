@@ -234,7 +234,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mtval_n, mtval_rdata;                           // No CSR module instance
   logic                         mtval_we;                                       // Not used in RTL (used by RVFI)
 
-  privlvl_t                     priv_lvl_rdata;
+  privlvl_t                     priv_lvl_n, priv_lvl_q, priv_lvl_rdata; // todo: Use the priv_* signals as much as possible as in the 40S
+  logic                         priv_lvl_we;
+  logic [1:0]                   priv_lvl_q_int;
 
   // Detect JVT writes (requires pipeline flush)
   logic                         csr_wr_in_wb;
@@ -557,7 +559,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                       ebreakm   : csr_wdata_int[15],
                       stepie    : csr_wdata_int[11],
                       step      : csr_wdata_int[2],
-                      prv       : PRIV_LVL_M,
+                      prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[1:0]),
                       cause     : dcsr_rdata.cause,
                       default   : 'd0
                      };
@@ -609,7 +611,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mstatus_n     = '{
                                   tw:   1'b0,
                                   mprv: 1'b0,
-                                  mpp:  PRIV_LVL_M,
+                                  mpp:  mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
                                   mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
                                   mie:  csr_wdata_int[MSTATUS_MIE_BIT],
                                   default: 'b0
@@ -621,6 +623,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     misa_n        = misa_rdata; // Read only
     misa_we       = 1'b0;
+
+    priv_lvl_n    = priv_lvl_rdata;
+    priv_lvl_we   = 1'b0;
 
     mtvec_n.addr  = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
     mtvec_n.zero0 = mtvec_rdata.zero0;
@@ -910,7 +915,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
         // Write mpie and mpp as aliased through mcause
         mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
-        mstatus_n.mpp  = PRIV_LVL_M; // todo: handle priv mode for E40S
+        mstatus_n.mpp  = mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]);
       end
       // The CLIC pointer address should always be output for an access to MNXTI,
       // but will only contain a nonzero value if a CLIC interrupt is actually pending
@@ -923,66 +928,83 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       clic_pa_o       = '0;
     end
 
-    // exception controller gets priority over other writes
+    // Exception controller gets priority over other writes
     unique case (1'b1)
       ctrl_fsm_i.csr_save_cause: begin
         if (ctrl_fsm_i.debug_csr_save) begin
-            // all interrupts are masked, don't update cause, epc, tval dpc and
-            // mpstatus
-            // dcsr.nmip is not a flop, but comes directly from the controller
-            dcsr_n = '{
-              xdebugver : dcsr_rdata.xdebugver,
-              ebreakm   : dcsr_rdata.ebreakm,
-              stepie    : dcsr_rdata.stepie,
-              step      : dcsr_rdata.step,
-              prv       : PRIV_LVL_M,
-              cause     : ctrl_fsm_i.debug_cause,
-              default   : 'd0
-            };
-            dcsr_we = 1'b1;
+          // All interrupts are masked, don't update mcause, mepc, mtval, dpc and mstatus
+          // dcsr.nmip is not a flop, but comes directly from the controller
+          dcsr_n         = '{
+            xdebugver : dcsr_rdata.xdebugver,
+            ebreakm   : dcsr_rdata.ebreakm,
+            stepie    : dcsr_rdata.stepie,
+            step      : dcsr_rdata.step,
+            prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
+            cause     : ctrl_fsm_i.debug_cause,
+            default   : 'd0
+          };
+          dcsr_we        = 1'b1;
 
-            dpc_n  = ctrl_fsm_i.pipe_pc;
-            dpc_we = 1'b1;
+          dpc_n          = ctrl_fsm_i.pipe_pc;
+          dpc_we         = 1'b1;
+
+          priv_lvl_n     = PRIV_LVL_M;                  // Execute with machine mode privilege in debug mode
+          priv_lvl_we    = 1'b1;
         end else begin
-            mstatus_n.mpie = mstatus_rdata.mie;
-            mstatus_n.mie  = 1'b0;
-            mstatus_n.mpp  = PRIV_LVL_M;
-            mstatus_we = 1'b1;
+          priv_lvl_n     = PRIV_LVL_M;                  // Trap into machine mode
+          priv_lvl_we    = 1'b1;
 
-            mepc_n  = ctrl_fsm_i.pipe_pc;
-            mepc_we = 1'b1;
+          mstatus_n      = mstatus_rdata;
+          mstatus_n.mie  = 1'b0;
+          mstatus_n.mpie = mstatus_rdata.mie;
+          mstatus_n.mpp  = priv_lvl_rdata;
+          mstatus_we     = 1'b1;
 
-            // Set mcause from controller
-            mcause_n  = ctrl_fsm_i.csr_cause;
+          mepc_n         = ctrl_fsm_i.pipe_pc;
+          mepc_we        = 1'b1;
 
-            if (SMCLIC) begin
-              // mpil is saved from mintstatus
-              mcause_n.mpil = mintstatus_rdata.mil;
+          mcause_n       = ctrl_fsm_i.csr_cause;
 
-              // todo: handle exception vs interrupt
-              // Save new interrupt level to mintstatus
-              mintstatus_n.mil = ctrl_fsm_i.irq_level;
-              mintstatus_we = 1'b1;
-            end else begin
-              mcause_n.mpil = '0;
-            end
+          if (SMCLIC) begin
+            // mpil is saved from mintstatus
+            mcause_n.mpil = mintstatus_rdata.mil;
 
-            mcause_we = 1'b1;
+            // todo: handle exception vs interrupt
+            // Save new interrupt level to mintstatus
+            mintstatus_n.mil = ctrl_fsm_i.irq_level;
+            mintstatus_we = 1'b1;
+          end else begin
+            mcause_n.mpil = '0;
+          end
+
+          mcause_we = 1'b1;
 
         end
       end //ctrl_fsm_i.csr_save_cause
 
-      ctrl_fsm_i.csr_restore_mret: begin //MRET
+      ctrl_fsm_i.csr_restore_mret: begin // MRET
+        priv_lvl_n     = privlvl_t'(mstatus_rdata.mpp);
+        priv_lvl_we    = 1'b1;
+
+        mstatus_n      = mstatus_rdata;
         mstatus_n.mie  = mstatus_rdata.mpie;
         mstatus_n.mpie = 1'b1;
-        mstatus_n.mpp  = PRIV_LVL_M;
-        mstatus_we = 1'b1;
+        mstatus_n.mpp  = PRIV_LVL_LOWEST;
+        mstatus_we     = 1'b1;
 
         if (SMCLIC) begin
           mintstatus_n.mil = mcause_rdata.mpil;
           mintstatus_we = 1'b1;
         end
       end //ctrl_fsm_i.csr_restore_mret
+
+      ctrl_fsm_i.csr_restore_dret: begin // DRET
+        // Restore to the recorded privilege level
+        priv_lvl_n = dcsr_rdata.prv;
+        priv_lvl_we = 1'b1;
+
+// todo: Section 4.6 of debug spec: If the new privilege mode is less privileged than M-mode, MPRV in mstatus is cleared.
+      end //ctrl_fsm_i.csr_restore_dret
 
       // mcause.minhv shall be cleared if vector fetch is successful
       ctrl_fsm_i.csr_clear_minhv: begin
