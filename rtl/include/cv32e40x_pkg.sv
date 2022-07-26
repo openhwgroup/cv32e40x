@@ -457,6 +457,8 @@ typedef enum logic[1:0] {
   PRIV_LVL_U = 2'b00
 } privlvl_t;
 
+parameter privlvl_t PRIV_LVL_LOWEST = PRIV_LVL_M;
+
 // Machine Vendor ID - OpenHW JEDEC ID is '2 decimal (bank 13)'
 parameter MVENDORID_OFFSET = 7'h2;      // Final byte without parity bit
 parameter MVENDORID_BANK = 25'hC;       // Number of continuation codes
@@ -474,6 +476,8 @@ parameter NUM_HPM_EVENTS    =   16;
 
 parameter MSTATUS_MIE_BIT      = 3;
 parameter MSTATUS_MPIE_BIT     = 7;
+parameter MSTATUS_MPP_BIT_LOW  = 11;
+parameter MSTATUS_MPP_BIT_HIGH = 12;
 
 parameter MCAUSE_MPIE_BIT      = 27;
 
@@ -1244,6 +1248,7 @@ typedef struct packed {
   logic [31:0] pipe_pc;             // PC from pipeline
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
+  logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
   logic        csr_clear_minhv;     // Clear the mcause.minhv field
   logic        pending_nmi;         // An NMI is pending (for dcsr.nmip)
@@ -1266,6 +1271,27 @@ typedef struct packed {
   // Kill signal for xif_commit_if
   logic        kill_xif; // Kill (attempted) offloaded instruction
 } ctrl_fsm_t;
+
+  ////////////////////////////////////////
+  // Resolution functions
+
+  function automatic privlvl_t dcsr_prv_resolve
+  (
+    privlvl_t   current_value,
+    logic [1:0] next_value
+  );
+    // dcsr.prv is WARL(0x3)
+    return PRIV_LVL_M;
+  endfunction
+
+  function automatic logic [1:0] mstatus_mpp_resolve
+  (
+    logic [1:0] current_value,
+    logic [1:0] next_value
+  );
+    // mstatus.mpp is WARL(0x3)
+    return PRIV_LVL_M;
+  endfunction
 
   ///////////////////////////
   //                       //

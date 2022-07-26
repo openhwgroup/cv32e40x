@@ -380,7 +380,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Detect if there is a live CLIC pointer in the pipeline
   // This should block debug
   generate
-    if(SMCLIC) begin : gen_clic_pointer_flag
+    if (SMCLIC) begin : gen_clic_pointer_flag
       // We only need to check EX and WB, as the FSM will only be in FUNCTIONAL state
       // one cycle after the target CLIC jump has been performed from ID
       assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
@@ -558,6 +558,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.kill_wb          = 1'b0;
 
     ctrl_fsm_o.csr_restore_mret = 1'b0;
+    ctrl_fsm_o.csr_restore_dret = 1'b0;
+
     ctrl_fsm_o.csr_save_cause   = 1'b0;
     ctrl_fsm_o.csr_cause        = 32'h0;
     ctrl_fsm_o.csr_clear_minhv  = 1'b0;
@@ -751,6 +753,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
             ctrl_fsm_o.pc_mux  = PC_DRET;
             ctrl_fsm_o.pc_set  = 1'b1;
+
+            ctrl_fsm_o.csr_restore_dret  = 1'b1;
 
             single_step_halt_if_n = 1'b0;
             debug_mode_n  = 1'b0;
