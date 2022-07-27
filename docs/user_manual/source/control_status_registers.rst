@@ -695,12 +695,12 @@ Detailed:
   +=========+==================+===============================================================================================================+
   | 31:7    | WARL             | **BASE[31:7]**: Trap-handler base address, always aligned to 128 bytes.                                       |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 6:2     | WARL (0x0)       | **BASE[6:2]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6:2]`` is hardwired to 0x0.    |
+  | 6       | WARL (0x0)       | **BASE[6]**: Trap-handler base address, always aligned to 128 bytes. ``mtvec[6]`` is hardwired to 0x0.        |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
-  | 1:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
+  | 5:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b11}.
+The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 1'b0, 6'b000011}.
 
 .. note::
    Memory writes to the ``mtvec`` based vector table require an instruction barrier (``fence.i``) to guarantee that they are visible to the instruction fetch (see :ref:`fencei` and [RISC-V-UNPRIV]_).
