@@ -164,9 +164,13 @@ instruction exception.
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC00         | ``cycle``         | URO       |                     | Cycle Counter                                           |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+    | 0xC01         | ``time``          | URO       |                     | Time                                                    |
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC02         | ``instret``       | URO       |                     | Instructions-Retired Counter                            |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC80         | ``cycleh``        | URO       |                     | Upper 32 Cycle Counter                                  |
+    +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
+    | 0xC81         | ``timeh``         | URO       |                     | Upper 32 Time                                           |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
     | 0xC82         | ``instreth``      | URO       |                     | Upper 32 Instructions-Retired Counter                   |
     +---------------+-------------------+-----------+---------------------+---------------------------------------------------------+
@@ -2193,6 +2197,30 @@ Detailed:
 
   Read-only unprivileged shadow of the lower 32 bits of the 64 bit machine mode cycle counter.
 
+  .. _csr-time:
+
+  Time (``time``)
+  ~~~~~~~~~~~~~~~
+
+  CSR Address: 0xC01
+
+  Reset Value: defined (based on ``time_i``)
+
+  Detailed:
+
+  .. table::
+    :widths: 10 20 70
+    :class: no-scrollbar-table
+
+    +-------+------+------------------------------------------------------------------+
+    | Bit#  | R/W  | Description                                                      |
+    +=======+======+==================================================================+
+    | 31:0  | R    |                                                                  |
+    +-------+------+------------------------------------------------------------------+
+
+  Read-only unprivileged shadow of the lower 32 bits of the 64 bit time counter. A
+  read of the ``time`` CSR value returns the value present on the ``time_i[31:0]`` pins.
+
   Instructions-Retired Counter (``instret``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2260,6 +2288,30 @@ Detailed:
     +-------+------+------------------------------------------------------------------+
 
   Read-only unprivileged shadow of the upper 32 bits of the 64 bit machine mode cycle counter.
+
+  .. _csr-timeh:
+
+  Upper 32 Time (``timeh``)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  CSR Address: 0xC81
+
+  Reset Value: defined (based on ``time_i``)
+
+  Detailed:
+
+  .. table::
+    :widths: 10 20 70
+    :class: no-scrollbar-table
+
+    +-------+------+------------------------------------------------------------------+
+    | Bit#  | R/W  | Description                                                      |
+    +=======+======+==================================================================+
+    | 31:0  | R    |                                                                  |
+    +-------+------+------------------------------------------------------------------+
+
+  Read-only unprivileged shadow of the upper 32 bits of the 64 bit time counter. A
+  read of the ``time`` CSR value returns the value present on the ``time_i[63:32]`` pins.
 
   Upper 32 Instructions-Retired Counter (``instreth``)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
