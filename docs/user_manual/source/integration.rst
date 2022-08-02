@@ -72,8 +72,9 @@ Instantiation Template
       .data_err_i               (),
       .data_exokay_i            (),
 
-      // Cycle Count
+      // Cycle, Time
       .mcycle_o                 (),
+      .time_i                   (),
 
       // eXtension interface
       .xif_compressed_if        (),
@@ -234,6 +235,8 @@ Interfaces
   | ``data_*``              | Load-store unit interface, see :ref:`load-store-unit`                      |
   +-------------------------+----------------------------------------------------------------------------+
   | ``mcycle_o``            | Cycle Counter Output                                                       |
+  +-------------------------+----------------------------------------------------------------------------+
+  | ``time_i``              | Time input, see :ref:`csr-time` CSR and :ref:`csr-timeh` CSR               |
   +-------------------------+----------------------------------------------------------------------------+
   | ``irq_*``               | Interrupt inputs, see :ref:`exceptions-interrupts`                         |
   +-------------------------+----------------------------------------------------------------------------+
