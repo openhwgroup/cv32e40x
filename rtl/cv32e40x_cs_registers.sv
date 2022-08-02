@@ -887,7 +887,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_DSCRATCH1: begin
            dscratch1_we = 1'b1;
         end
-
+        default:;
       endcase
     end
 
@@ -1037,6 +1037,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_wdata_int = csr_wdata;
           csr_we_int    = 1'b0;
         end
+        default:;
       endcase
     end
   end
