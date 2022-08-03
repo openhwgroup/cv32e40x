@@ -222,6 +222,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end
           end
+          default:;
         endcase
       end
 

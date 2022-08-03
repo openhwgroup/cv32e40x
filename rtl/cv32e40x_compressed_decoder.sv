@@ -335,8 +335,10 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
                       instr_o.bus_resp.rdata = {7'b0, 2'b01, instr[4:2], 2'b01, instr[9:7], 3'b111, 2'b01, instr[9:7], OPCODE_OP};
                       illegal_instr_o = 1'b1;
                     end
+                    default:;
                   endcase
                 end
+                default:;
               endcase
             end
 
@@ -345,6 +347,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               // 1: c.bnez -> bne rs1', x0, imm
               instr_o.bus_resp.rdata = {{4 {instr[12]}}, instr[6:5], instr[2], 5'b0, 2'b01, instr[9:7], 2'b00, instr[13], instr[11:10], instr[4:3], instr[12], OPCODE_BRANCH};
             end
+            default:;
           endcase
         end
 
@@ -472,6 +475,7 @@ module cv32e40x_compressed_decoder import cv32e40x_pkg::*;
               instr_o.bus_resp.rdata = {4'b0, instr[3:2], instr[12], instr[6:4], 2'b00, 5'h02, 3'b010, instr[11:7], OPCODE_LOAD};
               illegal_instr_o = 1'b1;
             end
+            default:;
           endcase
         end
 

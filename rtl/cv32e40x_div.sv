@@ -114,7 +114,9 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
   always_comb
   begin
-    unique case (operator_i)
+    alu_clz_data = op_b_i;
+
+    case (operator_i)
       DIV_DIVU,
       DIV_REMU: alu_clz_data = op_b_i;
 
@@ -126,6 +128,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
           alu_clz_data = op_b_i;
         end
       end
+      default:;
     endcase
   end
 
