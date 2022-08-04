@@ -291,8 +291,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Acknowledge prefetcher when IF stage is ready. This factors in seq_ready to avoid ack'ing the
   // prefetcher in the middle of a Zc sequence.
-  // No need to ack the prefetcher when tbljmp==1, as this is will generate a pc_set and kill_if when
-  // the table jump is taken in ID and the pointer fetch is initiated (or the table jump is killed).
   assign prefetch_ready = if_ready && !tbljmp;
 
   // Last operation of table jumps are set when the pointer is fed to ID stage
@@ -315,7 +313,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // todo: The treatement of trigger match causes 1 instruction to possibly have first/last op set multiple times. Can this be avoided (it messes up the semantics of first/last op)?
   // todo: factor in CLIC pointers?
   assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 :
-                      trigger_match_i        ? 1'b1 : seq_first;
+                      trigger_match_i        ? 1'b1 :
+                      seq_valid              ? seq_first : 1'b1;
 
   // todo: first/last op need to be treated in the same manner (assignments need to look more similar). Also seq_first/seq_last need cleaner semantics with respect ot how they relate to seq_valid.
 
