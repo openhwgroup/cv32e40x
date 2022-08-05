@@ -1065,7 +1065,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       sequence_in_progress_wb <= 1'b0;
     end else begin
       if (!sequence_in_progress_wb) begin
-        if (wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin
+        if (wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin // wb_valid implies ex_wb_pipe.instr_valid
           sequence_in_progress_wb <= 1'b1;
         end
       end else begin
@@ -1081,14 +1081,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
-  // Helper logic to track first_op and last_op through the ID stage to detect unhaltable sequences
+  // Logic to track first_op and last_op through the ID stage to detect unhaltable sequences
   // Flop set when first_op is done in ID, and cleared when last_op is done, or ID is killed
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       sequence_in_progress_id <= 1'b0;
     end else begin
       if (!sequence_in_progress_id) begin
-        if (id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin
+        if (id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin // id_valid implies if_id_pipe.instr.valid
           sequence_in_progress_id <= 1'b1;
         end
       end else begin

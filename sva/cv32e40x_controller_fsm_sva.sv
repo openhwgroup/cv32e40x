@@ -86,8 +86,8 @@ module cv32e40x_controller_fsm_sva
   input logic           ex_ready_i,
   input logic           sequence_interruptible,
   input logic           id_stage_haltable,
-  input logic           instr_valid_if_i,
-  input logic           ptr_in_if_i
+  input logic           prefetch_valid_if_i,
+  input logic           prefetch_is_tbljmp_ptr_if_i
 );
 
 
@@ -556,12 +556,12 @@ end // SMCLIC
       sequence_interruptible_alt = first_op_ex_i;
     end else if (if_id_pipe_i.instr_valid) begin
       sequence_interruptible_alt = first_op_id_i;
-    end else if (instr_valid_if_i) begin
+    end else if (prefetch_valid_if_i) begin
       sequence_interruptible_alt = first_op_if_i;
     end else begin
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
       // and we should safely be able to interrupt unless the IF stage is waiting for a table jump pointer
-      sequence_interruptible_alt = !ptr_in_if_i;
+      sequence_interruptible_alt = !prefetch_is_tbljmp_ptr_if_i;
     end
   end
 
@@ -574,12 +574,12 @@ end // SMCLIC
   always_comb begin
     if (if_id_pipe_i.instr_valid) begin
       id_stage_haltable_alt = first_op_id_i;
-    end else if (instr_valid_if_i) begin
+    end else if (prefetch_valid_if_i) begin
       id_stage_haltable_alt = first_op_if_i;
     end else begin
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
       // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer
-      id_stage_haltable_alt = !ptr_in_if_i;
+      id_stage_haltable_alt = !prefetch_is_tbljmp_ptr_if_i;
     end
   end
 
