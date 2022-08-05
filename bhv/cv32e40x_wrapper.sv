@@ -203,13 +203,17 @@ module cv32e40x_wrapper
       cv32e40x_controller_fsm_sva
         #(.X_EXT(X_EXT))
         controller_fsm_sva   (
-                              .lsu_outstanding_cnt (core_i.load_store_unit_i.cnt_q),
-                              .rf_we_wb_i          (core_i.wb_stage_i.rf_we_wb_o  ),
-                              .csr_we_i            (core_i.cs_registers_i.csr_we_int  ),
-                              .csr_illegal_i       (core_i.cs_registers_i.csr_illegal_o),
-                              .xif_commit_kill     (core_i.xif_commit_if.commit.commit_kill),
-                              .xif_commit_valid    (core_i.xif_commit_if.commit_valid),
-                              .last_op_id_i        (core_i.if_id_pipe.last_op),
+                              .lsu_outstanding_cnt          (core_i.load_store_unit_i.cnt_q),
+                              .rf_we_wb_i                   (core_i.wb_stage_i.rf_we_wb_o  ),
+                              .csr_we_i                     (core_i.cs_registers_i.csr_we_int  ),
+                              .csr_illegal_i                (core_i.cs_registers_i.csr_illegal_o),
+                              .xif_commit_kill              (core_i.xif_commit_if.commit.commit_kill),
+                              .xif_commit_valid             (core_i.xif_commit_if.commit_valid),
+                              .last_op_id_i                 (core_i.if_id_pipe.last_op),
+                              .first_op_if_i                (core_i.first_op_if),
+                              .first_op_ex_i                (core_i.first_op_ex),
+                              .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
+                              .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
                               .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva  #(.SMCLIC(SMCLIC)) cs_registers_sva (.*);
 

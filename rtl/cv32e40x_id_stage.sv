@@ -77,6 +77,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   output logic        sys_en_o,
 
   output logic        first_op_o,
+  output logic        last_op_o,
 
   // RF interface -> controller
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
@@ -679,6 +680,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_valid_o = (instr_valid && !xif_waiting) || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
   assign first_op_o = if_id_pipe_i.first_op;
+  assign last_op_o  = if_id_pipe_i.last_op;
   //---------------------------------------------------------------------------
   // eXtension interface
   //---------------------------------------------------------------------------
