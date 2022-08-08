@@ -106,7 +106,7 @@ Instantiation Template
       // Special control signals
       .fetch_enable_i           (),
       .core_sleep_o             (),
-      .wfe_wu_i                 ()
+      .wu_wfe_i                 ()
   );
 
 Parameters
@@ -256,7 +256,7 @@ Interfaces
   +-------------------------+-------------------------+-----+--------------------------------------------+
   | ``core_sleep_o``        | 1                       | out | Core is sleeping, see :ref:`sleep_unit`.   |
   +-------------------------+-------------------------+-----+--------------------------------------------+
-  | ``wfe_wu_i``            | 1                       | in  | Wake-up for ``wfe``, see :ref:`sleep_unit`.|
+  | ``wu_wfe_i``            | 1                       | in  | Wake-up for ``wfe``, see :ref:`sleep_unit`.|
   +-------------------------+-------------------------+-----+--------------------------------------------+
   | ``xif_compressed_if``   | eXtension compressed interface, see :ref:`x_compressed_if`                 |
   +-------------------------+----------------------------------------------------------------------------+

@@ -33,7 +33,7 @@ The clock gating in the Sleep Unit is impacted by the following:
   |                                      |           | ``clk_i`` externally as well. See                |
   |                                      |           | :ref:`wfi` and :ref:`wfe` for details.           |
   +--------------------------------------+-----------+--------------------------------------------------+
-  | ``wfe_wu_i``                         | input     | Wake-up signal for custom **wfe** instruction.   |
+  | ``wu_wfe_i``                         | input     | Wake-up signal for custom **wfe** instruction.   |
   |                                      |           | See :ref:`wfe` for details.                      |
   +--------------------------------------+-----------+--------------------------------------------------+
 
@@ -89,6 +89,6 @@ WFE
 ---
 
 The custom **wfe** instruction behaves exactly as the **wfi** instruction, except that a wake-up can additionally be triggered
-by asserting ``wfe_wu_i``.
+by asserting ``wu_wfe_i``.
 
 The **wfe** instruction is encoded as a custom SYSTEM instruction with opcode ``0x8C00_0073``.
