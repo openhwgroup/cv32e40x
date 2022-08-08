@@ -105,7 +105,8 @@ Instantiation Template
 
       // Special control signals
       .fetch_enable_i           (),
-      .core_sleep_o             ()
+      .core_sleep_o             (),
+      .wu_i                     ()
   );
 
 Parameters
@@ -157,7 +158,7 @@ Parameters
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``X_MISA``                     | logic [31:0]   | 32'h0         | MISA extensions implemented on the eXtension interface,            |
   |                                |                |               | see :ref:`csr-misa`. X_MISA can only be used to set a subset of    |
-  |                                |                |               | the following: {P, V, F, X, M}.                                    |
+  |                                |                |               | the following: {P, V, F, M}.                                       |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``X_ECS_XS``                   | logic [1:0]    | 2'b0          | Default value for ``mstatus.XS`` if X_EXT = 1,                     |
   |                                |                |               | see :ref:`csr-mstatus`.                                            |
@@ -254,6 +255,8 @@ Interfaces
   |                         |                         |     | ``fetch_enable_i`` is ignored.             |
   +-------------------------+-------------------------+-----+--------------------------------------------+
   | ``core_sleep_o``        | 1                       | out | Core is sleeping, see :ref:`sleep_unit`.   |
+  +-------------------------+-------------------------+-----+--------------------------------------------+
+  | ``wu_i``                | 1                       | in  | Wake-up, see :ref:`sleep_unit`.            |
   +-------------------------+-------------------------+-----+--------------------------------------------+
   | ``xif_compressed_if``   | eXtension compressed interface, see :ref:`x_compressed_if`                 |
   +-------------------------+----------------------------------------------------------------------------+
