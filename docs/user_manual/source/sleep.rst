@@ -14,6 +14,7 @@ The clock gating in the Sleep Unit is impacted by the following:
  * ``rst_ni``
  * ``fetch_enable_i``
  * **wfi** instruction
+ * **wfe** instruction
 
 :numref:`Sleep Unit interface signals` describes the Sleep Unit interface.
 
@@ -26,11 +27,14 @@ The clock gating in the Sleep Unit is impacted by the following:
   | Signal                               | Direction | Description                                      |
   +======================================+===========+==================================================+
   | ``core_sleep_o``                     | output    | Core is sleeping because                         |
-  |                                      |           | of a **wfi** instruction. If                     |
+  |                                      |           | of a **wfi** or **wfe** instruction. If          |
   |                                      |           | ``core_sleep_o`` = 1, then ``clk_i`` is gated    |
   |                                      |           | off internally and it is allowed to gate off     |
   |                                      |           | ``clk_i`` externally as well. See                |
-  |                                      |           | :ref:`wfi` for details.                          |
+  |                                      |           | :ref:`wfi` and :ref:`wfe` for details.           |
+  +--------------------------------------+-----------+--------------------------------------------------+
+  | ``wu_wfe_i``                         | input     | Wake-up signal for custom **wfe** instruction.   |
+  |                                      |           | See :ref:`wfe` for details.                      |
   +--------------------------------------+-----------+--------------------------------------------------+
 
 Startup behavior
@@ -78,3 +82,13 @@ will not become 1.
    :align: center
 
    **wfi** example
+
+.. _wfe:
+
+WFE
+---
+
+The custom **wfe** instruction behaves exactly as the **wfi** instruction, except that a wake-up can additionally be triggered
+by asserting ``wu_wfe_i``.
+
+The **wfe** instruction is encoded as a custom SYSTEM instruction with opcode ``0x8C00_0073``.
