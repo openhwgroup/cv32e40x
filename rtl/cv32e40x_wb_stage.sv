@@ -149,7 +149,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Signal that WB stage contains the last operation of an instruction
   // Split misaligned LSU instructions are forced to be 'last_op' if an exception occurs in either the first or last operation.
-  assign last_op_o = ex_wb_pipe_i.last_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
+  assign last_op_o = ex_wb_pipe_i.last_op || ctrl_fsm_i.exception_in_wb || ex_wb_pipe_i.trigger_match;
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = ex_wb_pipe_i.lsu_en && !(lsu_valid_i && last_op_o) && instr_valid;

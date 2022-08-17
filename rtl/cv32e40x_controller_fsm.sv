@@ -293,6 +293,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
                             (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
+  assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
+
   // Set exception cause
   assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                  ? EXC_CAUSE_INSTR_FAULT     :
                               ex_wb_pipe_i.instr.bus_resp.err                            ? EXC_CAUSE_INSTR_BUS_FAULT :

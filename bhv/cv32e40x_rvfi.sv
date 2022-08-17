@@ -915,10 +915,13 @@ module cv32e40x_rvfi
         // Only update rs1/rs2 on the first part of a multi operation instruction.
         // Jumps may actually use rs1 before (id_valid && ex_ready), an assertion exists to check that
         // the jump target is stable and it should be safe to use rs1/2_rdata at the time of the pipeline handshake.
-        // rs1/2 should reflect state of the first operation of any instruction.
-        rs1_addr   [STAGE_EX] <= first_op_id_i ? rs1_addr_id : rs1_addr[STAGE_EX]; // todo: why the first_op_id_i dependency? In https://github.com/openhwgroup/cv32e40x/pull/605 it was stated as not needed.
-        rs2_addr   [STAGE_EX] <= first_op_id_i ? rs2_addr_id : rs2_addr[STAGE_EX]; // todo: why the first_op_id_i dependency? In https://github.com/openhwgroup/cv32e40x/pull/605 it was stated as not needed.
-        rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX]; // todo: add good explanation why the select is needed here and not for example on rs1_rdata_subop
+        // rs1/2 address and rdata should reflect state of the first operation of any instruction, thus
+        // the gating with first_op_id_i in the lines below to not update the fields multiple times for sequenced instructions (including table jumps).
+        // The rs*_subop fields below are used to capture the state of _all_ operations within a sequence, and are used to populate the rvfi_gpr outputs
+        // to reflect all values read by the entire instruction.
+        rs1_addr   [STAGE_EX] <= first_op_id_i ? rs1_addr_id : rs1_addr[STAGE_EX];
+        rs2_addr   [STAGE_EX] <= first_op_id_i ? rs2_addr_id : rs2_addr[STAGE_EX];
+        rs1_rdata  [STAGE_EX] <= first_op_id_i ? rs1_rdata_id : rs1_rdata[STAGE_EX];
         rs2_rdata  [STAGE_EX] <= first_op_id_i ? rs2_rdata_id : rs2_rdata[STAGE_EX];
 
         mem_rmask  [STAGE_EX] <= (lsu_en_id_i && !lsu_we_id_i) ? rvfi_mem_mask_int : '0;

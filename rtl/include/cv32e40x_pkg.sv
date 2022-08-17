@@ -1270,6 +1270,9 @@ typedef struct packed {
 
   // Kill signal for xif_commit_if
   logic        kill_xif; // Kill (attempted) offloaded instruction
+
+  // Signal that an exception is in WB
+  logic        exception_in_wb;
 } ctrl_fsm_t;
 
   ////////////////////////////////////////

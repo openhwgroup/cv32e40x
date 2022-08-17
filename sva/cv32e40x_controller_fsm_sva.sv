@@ -195,6 +195,8 @@ module cv32e40x_controller_fsm_sva
   // the controller will kill the pipeline and jump to debug with dpc set to exception handler,
   // while id_ex_pipe may still contain the valid last phase of the misaligned LSU
   // todo:ok: Add a second assert to check above exception?
+  // todo: Currently fails for Zc sequences where the first instruction has an exception. Could exclude all exceptions
+  //       in the same way only LSU MPU errors are excluded.
   a_single_step_pipecheck :
     assert property (@(posedge clk) disable iff (!rst_n)
             (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN) &&
@@ -570,6 +572,8 @@ end // SMCLIC
   // could cause a deadlock because a sequence cannot finish through ID.
   // If ID stage does not contain a valid instruction, the same check is performed
   // for the IF stage (although this is likely not needed).
+  // todo: This logic currently does not match the RTL version when not gating instruction in IF due to exceptions.
+  //       Assertions checking SVA vs RTL commented out.
   logic id_stage_haltable_alt;
   always_comb begin
     if (if_id_pipe_i.instr_valid) begin
@@ -585,7 +589,7 @@ end // SMCLIC
 
   a_no_sequence_interrupt:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible_alt |-> !ctrl_fsm_o.irq_ack))
+                    (!sequence_interruptible |-> !ctrl_fsm_o.irq_ack))
     else `uvm_error("controller", "Sequence broken by interrupt")
 
   a_interruptible_equivalency:
@@ -595,21 +599,21 @@ end // SMCLIC
 
   a_no_sequence_nmi:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible_alt |-> !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
+                    (!sequence_interruptible |-> !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Sequence broken by NMI")
 
   a_no_sequence_ext_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible_alt |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ)))) // todo: timing of (debug_cause_q == DBG_CAUSE_HALTREQ) seems wrong (and whole calsuse should not be needed)
+                    (!sequence_interruptible |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ)))) // todo: timing of (debug_cause_q == DBG_CAUSE_HALTREQ) seems wrong (and whole calsuse should not be needed)
     else `uvm_error("controller", "Sequence broken by external debug")
-
+/* todo: Bring back in if id_stage_haltable_alt can be correctly calculated.
   // Check that we do not allow ID stage to be halted for pending interrupts/debug if a sequence is not done
   // in the ID stage.
   a_id_stage_haltable:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (id_stage_haltable_alt == id_stage_haltable))
     else `uvm_error("controller", "id_stage_haltable not correct")
-
+*/
   // Assert that we have no pc_set in the same cycle as a CSR write in WB requires flushing of the pipeline
   a_csr_wr_in_wb_no_fetch:
   assert property (@(posedge clk) disable iff (!rst_n)

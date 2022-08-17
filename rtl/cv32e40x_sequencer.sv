@@ -165,8 +165,7 @@ import cv32e40x_pkg::*;
   // In principle this is the same as "seq_en && valid_i"
   //   as the output of the above decode logic is equivalent to seq_en
   // todo: halting IF stage would imply !valid, can this be an issue?
-  // todo: revisit the error conditions below (they are bad for the critical path; why can't they be done in ID?)
-  assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i && !(instr_i.bus_resp.err || !(instr_i.mpu_status == MPU_OK)) && valid_i && !halt_i && !kill_i;
+  assign valid_o = (seq_instr != INVALID_INST) && !instr_is_ptr_i && valid_i && !halt_i && !kill_i;
 
 
   // Calculate number of S* registers needed in sequence (push/pop* only)
