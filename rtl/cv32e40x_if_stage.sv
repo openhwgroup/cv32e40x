@@ -72,6 +72,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   output logic          first_op_o,
   output logic          last_op_o,
+  output logic          abort_op_o,
 
   // Stage ready/valid
   output logic          if_valid_o,
@@ -311,6 +312,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
                       seq_valid              ? seq_first : 1'b1; // Any other regular instructions are single operation.
 
 
+  // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
+  assign abort_op_o = instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK) || trigger_match_i;
+
   // Populate instruction meta data
   // Fields 'compressed' and 'tbljmp' keep their old value by default.
   //   - In case of a table jump we need the fields to stay as 'compressed=1' and 'tbljmp=1'
@@ -340,6 +344,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.ptr              <= '0;
       if_id_pipe_o.last_op          <= 1'b0;
       if_id_pipe_o.first_op         <= 1'b0;
+      if_id_pipe_o.abort_op         <= 1'b0;
     end else begin
       // Valid pipeline output if we are valid AND the
       // alignment buffer has a valid instruction
@@ -355,6 +360,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.xif_id           <= xif_id;
         if_id_pipe_o.last_op          <= last_op_o;
         if_id_pipe_o.first_op         <= first_op_o;
+        if_id_pipe_o.abort_op         <= abort_op_o;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
         // No update to the meta compressed, as this is used in calculating the link address.

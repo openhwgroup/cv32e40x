@@ -36,6 +36,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_if_i,
    input logic                                instr_pmp_err_if_i,
    input logic                                last_op_if_i,
+   input logic                                abort_op_if_i,
    input logic                                prefetch_valid_if_i,
    input logic                                prefetch_ready_if_i,
    input logic [31:0]                         prefetch_addr_if_i,
@@ -85,6 +86,7 @@ module cv32e40x_rvfi
    input logic                                sys_en_wb_i,
    input logic                                last_op_wb_i,
    input logic                                first_op_wb_i,
+   input logic                                abort_op_wb_i,
    input logic                                rf_we_wb_i,
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
@@ -784,7 +786,7 @@ module cv32e40x_rvfi
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
   // Other instructions retire when their last suboperation is done in WB.
   assign wb_valid_subop    = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i;
-  assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i && last_op_wb_i;
+  assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i && (last_op_wb_i || abort_op_wb_i);
 
 
   // Pipeline stage model //
@@ -860,7 +862,7 @@ module cv32e40x_rvfi
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
 
         // Clear captured events when last operation exits IF
-        if (last_op_if_i) begin
+        if (last_op_if_i || abort_op_if_i) begin
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end
@@ -1063,7 +1065,7 @@ module cv32e40x_rvfi
         end
 
         // Handle counter for suboperations and memory operations
-        if (last_op_wb_i) begin
+        if (last_op_wb_i || abort_op_wb_i) begin
           // Reset suboperation and memop counters when the last op is done in WB.
           subop_cnt <= 4'h0;
           memop_cnt <= '0;

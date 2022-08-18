@@ -214,6 +214,7 @@ module cv32e40x_wrapper
                               .first_op_ex_i                (core_i.first_op_ex),
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
+                              .abort_op_id_i                (core_i.id_stage_i.abort_op),
                               .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva  #(.SMCLIC(SMCLIC)) cs_registers_sva (.*);
 
@@ -391,6 +392,7 @@ module cv32e40x_wrapper
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
          .last_op_if_i             ( core_i.if_stage_i.last_op_o                                          ),
+         .abort_op_if_i            ( core_i.if_stage_i.abort_op_o                                         ),
          .prefetch_valid_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_valid_o                   ),
          .prefetch_ready_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_ready_i                   ),
          .prefetch_addr_if_i       ( core_i.if_stage_i.prefetch_unit_i.prefetch_addr_o                    ),
@@ -445,6 +447,7 @@ module cv32e40x_wrapper
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
+         .abort_op_wb_i            ( core_i.wb_stage_i.abort_op_o                                         ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 

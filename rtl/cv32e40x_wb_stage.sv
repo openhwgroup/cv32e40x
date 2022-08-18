@@ -74,7 +74,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input logic [31:0]    clic_pa_i,
   input logic           clic_pa_valid_i,
 
-  output logic          last_op_o
+  output logic          last_op_o,
+  output logic          abort_op_o
 );
 
   logic                 instr_valid;
@@ -150,10 +151,13 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Signal that WB stage contains the last operation of an instruction
   // Exceptions and trigger matchces are forced to be 'last_op' as they either terminate a sequence or
   // The sequence will be trapped on the first operation in case of a trigger match.
-  assign last_op_o = ex_wb_pipe_i.last_op || ctrl_fsm_i.exception_in_wb || ex_wb_pipe_i.trigger_match;
+  assign last_op_o = ex_wb_pipe_i.last_op;
+
+  // Append any MPU exception to abort_op
+  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
 
   // Export signal indicating WB stage stalled by load/store
-  assign data_stall_o = ex_wb_pipe_i.lsu_en && !(lsu_valid_i && last_op_o) && instr_valid;
+  assign data_stall_o = ex_wb_pipe_i.lsu_en && !(lsu_valid_i && (last_op_o || abort_op_o)) && instr_valid;
 
   //---------------------------------------------------------------------------
   // eXtension interface

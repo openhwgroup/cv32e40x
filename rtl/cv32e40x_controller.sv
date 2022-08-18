@@ -48,6 +48,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // From IF stage
   input  logic [31:0] pc_if_i,
   input  logic        last_op_if_i,
+  input  logic        abort_op_if_i,
 
   // from IF/ID pipeline
   input  if_id_pipe_t if_id_pipe_i,
@@ -68,6 +69,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   // Last operation bits
   input  logic        last_op_ex_i,               // EX contains the last operation of an instruction
   input  logic        last_op_wb_i,               // WB contains the last operation of an instruction
+
+  input  logic        abort_op_wb_i,
 
   // LSU
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB stage)
@@ -146,6 +149,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .if_valid_i                  ( if_valid_i               ),
     .pc_if_i                     ( pc_if_i                  ),
     .last_op_if_i                ( last_op_if_i             ),
+    .abort_op_if_i               ( abort_op_if_i            ),
 
     // From ID stage
     .if_id_pipe_i                ( if_id_pipe_i             ),
@@ -173,6 +177,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wb_ready_i                  ( wb_ready_i               ),
     .wb_valid_i                  ( wb_valid_i               ),
     .last_op_wb_i                ( last_op_wb_i             ),
+    .abort_op_wb_i               ( abort_op_wb_i            ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
 

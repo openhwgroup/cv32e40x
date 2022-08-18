@@ -134,7 +134,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Zc is always present
   // todo: turn on when Zc is ready for core-v-verif
-  localparam bit ZC_EXT = 0;
+  localparam bit ZC_EXT = 1;
 
   // Determine alignedness of mtvt
   // mtvt[31:N] holds mtvt table entry
@@ -184,6 +184,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        last_op_id;
   logic        last_op_ex;
   logic        last_op_wb;
+
+  // Abort_op bits
+  logic        abort_op_if;
+  logic        abort_op_wb;
 
   // First op bits
   logic        first_op_if;
@@ -446,6 +450,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .first_op_o          ( first_op_if              ),
     .last_op_o           ( last_op_if               ),
+    .abort_op_o          ( abort_op_if              ),
 
     // Pipeline handshakes
     .if_valid_o          ( if_valid                 ),
@@ -687,7 +692,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .clic_pa_valid_i            ( csr_clic_pa_valid            ),
     .clic_pa_i                  ( csr_clic_pa                  ),
 
-    .last_op_o                  ( last_op_wb                   )
+    .last_op_o                  ( last_op_wb                   ),
+    .abort_op_o                 ( abort_op_wb                  )
   );
 
   //////////////////////////////////////
@@ -814,9 +820,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .last_op_ex_i                   ( last_op_ex             ),
     .last_op_wb_i                   ( last_op_wb             ),
 
+    .abort_op_wb_i                  ( abort_op_wb            ),
+
     .if_valid_i                     ( if_valid               ),
     .pc_if_i                        ( pc_if                  ),
     .last_op_if_i                   ( last_op_if             ),
+    .abort_op_if_i                  ( abort_op_if            ),
+
     // from IF/ID pipeline
     .if_id_pipe_i                   ( if_id_pipe             ),
 
