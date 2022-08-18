@@ -102,6 +102,8 @@ Instantiation Template
       .debug_havereset_o        (),
       .debug_running_o          (),
       .debug_halted_o           (),
+      .debug_pc_valid_o         (),
+      .debug_pc_o               (),
 
       // Special control signals
       .fetch_enable_i           (),
