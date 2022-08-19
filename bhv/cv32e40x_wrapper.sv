@@ -391,6 +391,7 @@ module cv32e40x_wrapper
          .pc_if_i                  ( core_i.if_stage_i.pc_if_o                                            ),
          .instr_pmp_err_if_i       ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
          .last_op_if_i             ( core_i.if_stage_i.last_op_o                                          ),
+         .abort_op_if_i            ( core_i.if_stage_i.abort_op_o                                         ),
          .prefetch_valid_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_valid_o                   ),
          .prefetch_ready_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_ready_i                   ),
          .prefetch_addr_if_i       ( core_i.if_stage_i.prefetch_unit_i.prefetch_addr_o                    ),
@@ -445,6 +446,7 @@ module cv32e40x_wrapper
          .rf_addr_wb_i             ( core_i.wb_stage_i.rf_waddr_wb_o                                      ),
          .rf_wdata_wb_i            ( core_i.wb_stage_i.rf_wdata_wb_o                                      ),
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
+         .abort_op_wb_i            ( core_i.wb_stage_i.abort_op_o                                         ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 
@@ -453,6 +455,7 @@ module cv32e40x_wrapper
          .ctrl_fsm_cs_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs                     ),
          .ctrl_fsm_ns_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_ns                     ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
+         .pending_single_step_ptr_i( core_i.controller_i.controller_fsm_i.pending_single_step_ptr         ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),

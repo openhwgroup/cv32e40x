@@ -74,7 +74,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input logic [31:0]    clic_pa_i,
   input logic           clic_pa_valid_i,
 
-  output logic          last_op_o
+  output logic          last_op_o,
+  output logic          abort_op_o
 );
 
   logic                 instr_valid;
@@ -148,11 +149,14 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   assign wb_valid_o = wb_valid;
 
   // Signal that WB stage contains the last operation of an instruction
-  // Split misaligned LSU instructions are forced to be 'last_op' if an exception occurs in either the first or last operation.
-  assign last_op_o = ex_wb_pipe_i.last_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
+  assign last_op_o = ex_wb_pipe_i.last_op;
+
+  // Append any MPU exception to abort_op
+  // An abort_op_o = 1 will terminate a sequence, either to take an exception or debug due to trigger match.
+  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
 
   // Export signal indicating WB stage stalled by load/store
-  assign data_stall_o = ex_wb_pipe_i.lsu_en && !(lsu_valid_i && last_op_o) && instr_valid;
+  assign data_stall_o = ex_wb_pipe_i.lsu_en && !lsu_valid_i && instr_valid;
 
   //---------------------------------------------------------------------------
   // eXtension interface

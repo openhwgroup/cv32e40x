@@ -1052,6 +1052,7 @@ typedef struct packed {
   logic [31:0] ptr;              // Flops to hold 32-bit pointer
   logic        first_op;         // First part of multi operation instruction
   logic        last_op;          // Last part of multi operation instruction
+  logic        abort_op;         // Instruction will be aborted due to known exceptions or trigger matches
 } if_id_pipe_t;
 
 // ID/EX pipeline
@@ -1120,6 +1121,7 @@ typedef struct packed {
 
   logic         first_op;         // First part of multi operation instruction
   logic         last_op;          // Last part of multi operation instruction
+  logic         abort_op;         // Instruction will be aborted due to known exceptions or trigger matches
 
 } id_ex_pipe_t;
 
@@ -1168,6 +1170,7 @@ typedef struct packed {
 
   logic         first_op;         // First part of multi operation instruction
   logic         last_op;          // Last part of multi operation instruction
+  logic         abort_op;         // Instruction will be aborted due to known exceptions or trigger matches
 } ex_wb_pipe_t;
 
 // Performance counter events
@@ -1202,6 +1205,7 @@ typedef struct packed {
   logic         mnxti_stall;            // Stall due to mnxti CSR access in EX
   logic         minstret_stall;         // Stall due to minstret/h read in EX
   logic         deassert_we;            // Deassert write enable and special insn bits
+  logic         id_stage_abort;         // Same signal as deassert_we, with better name for use in the controller.
   logic         xif_exception_stall;    // Stall (EX) if xif insn in WB can cause an exception
 } ctrl_byp_t;
 
@@ -1270,6 +1274,9 @@ typedef struct packed {
 
   // Kill signal for xif_commit_if
   logic        kill_xif; // Kill (attempted) offloaded instruction
+
+  // Signal that an exception is in WB
+  logic        exception_in_wb;
 } ctrl_fsm_t;
 
   ////////////////////////////////////////

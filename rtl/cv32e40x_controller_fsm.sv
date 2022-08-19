@@ -49,6 +49,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From IF stage
   input  logic [31:0] pc_if_i,
   input  logic        last_op_if_i,               // IF stage is handling the last operation of a sequence.
+  input  logic        abort_op_if_i,              // IF stage contains an operation that will be aborted (bus error or MPU exception)
 
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
@@ -58,6 +59,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        sys_en_id_i,                // sys_en qualifier for mret
   input  logic        first_op_id_i,              // ID stage is handling the first operation of a sequence
   input  logic        last_op_id_i,               // ID stage is handling the last operation of a sequence
+  input  logic        abort_op_id_i,              // ID stage contains an (to be) aborted instruction or sequence
 
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,
@@ -68,6 +70,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  ex_wb_pipe_t ex_wb_pipe_i,
   input  logic [1:0]  lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
   input  logic        last_op_wb_i,               // WB stage contains the last operation of an instruction
+  input  logic        abort_op_wb_i,              // WB stage contains an (to be) aborted instruction or sequence
 
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
@@ -293,6 +296,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
                             (lsu_mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
+  assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
+
   // Set exception cause
   assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                  ? EXC_CAUSE_INSTR_FAULT     :
                               ex_wb_pipe_i.instr.bus_resp.err                            ? EXC_CAUSE_INSTR_BUS_FAULT :
@@ -376,7 +381,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
   // single step becomes pending when the last operation of an instruction is done in WB, or we ack a non-shv interrupt.
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && last_op_wb_i) || non_shv_irq_ack)) && !pending_debug;
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack)) && !pending_debug;
 
   // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
   assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
@@ -463,7 +468,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.if_invalid    = !if_valid_i && id_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
-  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !(wb_valid_i && last_op_wb_i);
+  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
   assign ctrl_fsm_o.mhpmevent.id_jalr_stall = ctrl_byp_i.jalr_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
@@ -930,7 +935,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Detect first insn issue in single step after dret
     // Any Zc sequence must fully complete (last_op_if_i) before halting the IF stage.
     // Used to block further issuing
-    if (!ctrl_fsm_o.debug_mode && dcsr_i.step && !single_step_halt_if_q && (if_valid_i && id_ready_i && last_op_if_i)) begin
+    if (!ctrl_fsm_o.debug_mode && dcsr_i.step && !single_step_halt_if_q && (if_valid_i && id_ready_i && (last_op_if_i || abort_op_if_i))) begin
       single_step_halt_if_n = 1'b1;
     end
 
@@ -1059,41 +1064,42 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Instruction sequences may not be interrupted/killed if the first operation has already been retired.
-  // Flop set when first_op is done in WB, and cleared when last_op is done, or WB is killed
+  // Flop set when first_op without either last_op or abort_op is done in WB, and cleared when last_op is done.
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       sequence_in_progress_wb <= 1'b0;
     end else begin
       if (!sequence_in_progress_wb) begin
-        if (wb_valid_i && ex_wb_pipe_i.first_op && !last_op_wb_i) begin // wb_valid implies ex_wb_pipe.instr_valid
+        if (wb_valid_i && ex_wb_pipe_i.first_op && !(last_op_wb_i || abort_op_wb_i)) begin // wb_valid implies ex_wb_pipe.instr_valid
           sequence_in_progress_wb <= 1'b1;
         end
       end else begin
-        // sequence_in_progress_wb is set, clear when last_op retires
-        if (wb_valid_i && last_op_wb_i) begin
+        // sequence_in_progress_wb is set, clear when last_op retires or sequence is aborted.
+        if (wb_valid_i && (last_op_wb_i || abort_op_wb_i)) begin
           sequence_in_progress_wb <= 1'b0;
         end
-        // Needed in the future, but commented out to make a SEC clean PR.
-        //if (ctrl_fsm_o.kill_wb) begin
-        //  sequence_in_progress_wb <= 1'b0;
-        //end
+
+        // No need to reset this flag on kill_wb.
+        // When flag is high, there should be no reason to kill WB as they are blocked by the flag itself.
       end
     end
   end
 
   // Logic to track first_op and last_op through the ID stage to detect unhaltable sequences
   // Flop set when first_op is done in ID, and cleared when last_op is done, or ID is killed
+  // If the ID stage first_op has a known exception or trigger match the flop will not be set
+  // as the controller will either take an exception or enter debug mode without finishing the sequence.
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       sequence_in_progress_id <= 1'b0;
     end else begin
       if (!sequence_in_progress_id) begin
-        if (id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i) begin // id_valid implies if_id_pipe.instr.valid
+        if (id_valid_i && ex_ready_i && first_op_id_i && !(last_op_id_i || abort_op_id_i)) begin // id_valid implies if_id_pipe.instr.valid
           sequence_in_progress_id <= 1'b1;
         end
       end else begin
         // sequence_in_progress_id is set, clear when last_op retires
-        if (id_valid_i && ex_ready_i && last_op_id_i) begin
+        if (id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) begin
           sequence_in_progress_id <= 1'b0;
         end
       end
