@@ -187,6 +187,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Abort_op bits
   logic        abort_op_if;
+  logic        abort_op_id;
   logic        abort_op_wb;
 
   // First op bits
@@ -513,6 +514,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .first_op_o                   ( first_op_id               ),
     .last_op_o                    ( last_op_id                ),
+    .abort_op_o                   ( abort_op_id               ),
 
     .rf_re_o                      ( rf_re_id                  ),
     .rf_raddr_o                   ( rf_raddr_id               ),
@@ -820,6 +822,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .last_op_ex_i                   ( last_op_ex             ),
     .last_op_wb_i                   ( last_op_wb             ),
 
+    .abort_op_id_i                  ( abort_op_id            ),
     .abort_op_wb_i                  ( abort_op_wb            ),
 
     .if_valid_i                     ( if_valid               ),

@@ -61,6 +61,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  csr_opcode_e csr_op_id_i,
   input  logic        first_op_id_i,
   input  logic        last_op_id_i,
+  input  logic        abort_op_id_i,
 
   input  id_ex_pipe_t id_ex_pipe_i,
 
@@ -161,6 +162,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .sys_en_id_i                 ( sys_en_id_i              ),
     .first_op_id_i               ( first_op_id_i            ),
     .last_op_id_i                ( last_op_id_i             ),
+    .abort_op_id_i               ( abort_op_id_i            ),
 
     // From EX stage
     .id_ex_pipe_i                ( id_ex_pipe_i             ),

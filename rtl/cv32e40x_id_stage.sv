@@ -78,6 +78,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   output logic        first_op_o,
   output logic        last_op_o,
+  output logic        abort_op_o,
 
   // RF interface -> controller
   output logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_o,
@@ -204,8 +205,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Signal for detection of first operation (of two) of table jumps.
   logic                 tbljmp_first;
-
-  logic                 abort_op;
 
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
@@ -558,7 +557,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         id_ex_pipe_o.instr_valid  <= 1'b1;
         id_ex_pipe_o.last_op      <= last_op_o;
         id_ex_pipe_o.first_op     <= first_op_o;
-        id_ex_pipe_o.abort_op     <= abort_op;
+        id_ex_pipe_o.abort_op     <= abort_op_o;
 
         // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin
@@ -683,9 +682,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
   assign id_valid_o = (instr_valid && !xif_waiting) || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
 
-  assign first_op_o = if_id_pipe_i.first_op;
-  assign last_op_o  = if_id_pipe_i.last_op;
-  assign abort_op   = if_id_pipe_i.abort_op || ctrl_byp_i.id_stage_abort;
+  assign first_op_o  = if_id_pipe_i.first_op;
+  assign last_op_o   = if_id_pipe_i.last_op;
+  assign abort_op_o  = if_id_pipe_i.abort_op || ctrl_byp_i.id_stage_abort;
   //---------------------------------------------------------------------------
   // eXtension interface
   //---------------------------------------------------------------------------

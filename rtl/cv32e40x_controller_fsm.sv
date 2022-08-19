@@ -49,7 +49,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From IF stage
   input  logic [31:0] pc_if_i,
   input  logic        last_op_if_i,               // IF stage is handling the last operation of a sequence.
-  input  logic        abort_op_if_i,              // IF stage contains an operation that will aborted (bus error or MPU exception)
+  input  logic        abort_op_if_i,              // IF stage contains an operation that will be aborted (bus error or MPU exception)
 
   // From ID stage
   input  if_id_pipe_t if_id_pipe_i,
@@ -59,6 +59,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic        sys_en_id_i,                // sys_en qualifier for mret
   input  logic        first_op_id_i,              // ID stage is handling the first operation of a sequence
   input  logic        last_op_id_i,               // ID stage is handling the last operation of a sequence
+  input  logic        abort_op_id_i,              // ID stage contains an (to be) aborted instruction or sequence
 
   // From EX stage
   input  id_ex_pipe_t id_ex_pipe_i,
@@ -467,7 +468,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.mhpmevent.if_invalid    = !if_valid_i && id_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_invalid    = !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.ex_invalid    = !ex_valid_i && wb_ready_i;
-  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !(wb_valid_i && (last_op_wb_i || abort_op_wb_i));
+  assign ctrl_fsm_o.mhpmevent.wb_invalid    = !wb_valid_i;
   assign ctrl_fsm_o.mhpmevent.id_jalr_stall = ctrl_byp_i.jalr_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.id_ld_stall   = ctrl_byp_i.load_stall && !id_valid_i && ex_ready_i;
   assign ctrl_fsm_o.mhpmevent.wb_data_stall = data_stall_wb_i;
@@ -1093,12 +1094,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       sequence_in_progress_id <= 1'b0;
     end else begin
       if (!sequence_in_progress_id) begin
-        if (id_valid_i && ex_ready_i && first_op_id_i && !last_op_id_i && !ctrl_byp_i.id_stage_abort) begin // id_valid implies if_id_pipe.instr.valid
+        if (id_valid_i && ex_ready_i && first_op_id_i && !(last_op_id_i || abort_op_id_i)) begin // id_valid implies if_id_pipe.instr.valid
           sequence_in_progress_id <= 1'b1;
         end
       end else begin
         // sequence_in_progress_id is set, clear when last_op retires
-        if (id_valid_i && ex_ready_i && last_op_id_i) begin
+        if (id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) begin
           sequence_in_progress_id <= 1'b0;
         end
       end

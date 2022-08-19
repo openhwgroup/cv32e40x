@@ -214,7 +214,6 @@ module cv32e40x_wrapper
                               .first_op_ex_i                (core_i.first_op_ex),
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
-                              .abort_op_id_i                (core_i.id_stage_i.abort_op),
                               .*);
   bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva  #(.SMCLIC(SMCLIC)) cs_registers_sva (.*);
 
@@ -456,6 +455,7 @@ module cv32e40x_wrapper
          .ctrl_fsm_cs_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs                     ),
          .ctrl_fsm_ns_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_ns                     ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
+         .pending_single_step_ptr_i( core_i.controller_i.controller_fsm_i.pending_single_step_ptr         ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),

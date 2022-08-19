@@ -102,6 +102,7 @@ module cv32e40x_rvfi
    input ctrl_state_e                         ctrl_fsm_cs_i,
    input ctrl_state_e                         ctrl_fsm_ns_i,
    input logic                                pending_single_step_i,
+   input logic                                pending_single_step_ptr_i,
    input logic                                single_step_allowed_i,
    input logic                                nmi_pending_i,          // regular NMI pending
    input logic                                nmi_is_store_i,         // regular NMI type
@@ -712,7 +713,7 @@ module cv32e40x_rvfi
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
   // in the IF stage to see the reason for executing the instruction (e.g. rvfi_intr).
-  assign pc_mux_interrupt       = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ);
+  assign pc_mux_interrupt       = (ctrl_fsm_i.pc_mux == PC_TRAP_IRQ) || (ctrl_fsm_i.pc_mux == PC_TRAP_CLICV);
   assign pc_mux_nmi             = (ctrl_fsm_i.pc_mux == PC_TRAP_NMI);
   assign pc_mux_debug           = (ctrl_fsm_i.pc_mux == PC_TRAP_DBD);
   assign pc_mux_exception       = (ctrl_fsm_i.pc_mux == PC_TRAP_EXC) || (ctrl_fsm_i.pc_mux == PC_TRAP_DBE) ;
@@ -770,7 +771,7 @@ module cv32e40x_rvfi
 
     end
 
-    if(pending_single_step_i && single_step_allowed_i) begin
+    if((pending_single_step_i || pending_single_step_ptr_i) && single_step_allowed_i) begin
       // The timing of the single step debug entry does not allow using pc_mux for detection
       rvfi_trap_next.debug       = 1'b1;
       rvfi_trap_next.debug_cause = DBG_CAUSE_STEP;
@@ -887,6 +888,13 @@ module cv32e40x_rvfi
                                in_trap[STAGE_ID].intr ? in_trap[STAGE_ID] :
                                in_trap[STAGE_EX].intr ? in_trap[STAGE_EX] :
                                                         in_trap[STAGE_WB];
+        // In case the first instruction during debug mode gets an exception, if_stage will be killed and the clearing
+        // of debug_cause due to last_op_if_i during (if_valid && id_ready) may never happen. This will lead to a wrong
+        // value of debug_cause on RVFI outputs. To avoid this, debug_cause is cleared if IF stage is killed due to an exception.
+        // The only sources of kill_if during debug mode is jumps, branches and exceptions. We cannot reset debug_cause due to
+        // jumps and branches as they would then report wrong debug cause when they retire.
+        end else if (ctrl_fsm_i.kill_if && pc_mux_exception) begin
+          debug_cause[STAGE_IF] <= '0;
         end
 
         // Picking up trap entry when IF is not valid to propagate for next valid instruction

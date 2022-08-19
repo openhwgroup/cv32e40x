@@ -633,9 +633,26 @@ end // SMCLIC
     else `uvm_error("controller", "ID stage not haltable after a deasserted operation")
 
   // Check that wb stage is interruptible after passing through an operation with exception_in_wb
-  a_wb_interruptible_exception:
+  a_wb_interruptible_abort:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (wb_valid_i && abort_op_wb_i)
+                    |=>
+                    sequence_interruptible)
+    else `uvm_error("controller", "sequence_interruptible should be 1 after an exception has been taken.")
+
+
+  // Check that id stage is haltable after passing through an operation with abort_op=1
+  a_id_halt_last:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (id_valid_i && ex_ready_i && last_op_id_i)
+                    |=>
+                    id_stage_haltable)
+    else `uvm_error("controller", "ID stage not haltable after a deasserted operation")
+
+  // Check that wb stage is interruptible after passing through an operation with exception_in_wb
+  a_wb_interruptible_last:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (wb_valid_i && last_op_wb_i)
                     |=>
                     sequence_interruptible)
     else `uvm_error("controller", "sequence_interruptible should be 1 after an exception has been taken.")
