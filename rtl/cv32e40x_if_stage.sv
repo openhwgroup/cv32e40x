@@ -96,10 +96,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_is_clic_ptr;
   logic              prefetch_is_tbljmp_ptr;
 
-  // flag for predecoded cm.jt / cm.jalt.
-  // Maps to custom use of JAL instruction
-  logic              tbljmp;
-
   logic              illegal_c_insn;
 
   inst_resp_t        instr_decompressed;
@@ -136,6 +132,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              seq_first;       // sequencer is outputting the first operation
   logic              seq_last;        // sequencer is outputting the last operation
   inst_resp_t        seq_instr;       // Instruction for sequenced operation
+  logic              seq_tbljmp;      // Sequenced instruction is a table jump
 
   // Fetch address selection
   always_comb
@@ -364,7 +361,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
           // Sequenced instructions are marked as illegal by the compressed decoder, however, the instr_compressed
           // flag is still set and can be used when propagating to ID.
           if_id_pipe_o.instr_meta.compressed <= instr_compressed;
-          if_id_pipe_o.instr_meta.tbljmp     <= tbljmp;
+          if_id_pipe_o.instr_meta.tbljmp     <= seq_tbljmp;
 
           // Only update compressed_instr for compressed instructions
           if (instr_compressed) begin
@@ -419,33 +416,33 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       cv32e40x_sequencer
       sequencer_i
       (
-        .clk                ( clk                     ),
-        .rst_n              ( rst_n                   ),
+        .clk                  ( clk                     ),
+        .rst_n                ( rst_n                   ),
 
-        .instr_i            ( prefetch_instr          ),
-        .instr_is_clic_ptr_i( prefetch_is_clic_ptr    ),
-        .instr_is_tblj_ptr_i( prefetch_is_tbljmp_ptr  ),
+        .instr_i              ( prefetch_instr          ),
+        .instr_is_clic_ptr_i  ( prefetch_is_clic_ptr    ),
+        .instr_is_tbljmp_ptr_i( prefetch_is_tbljmp_ptr  ),
 
-        .valid_i            ( seq_instr_valid         ),
-        .ready_i            ( id_ready_i              ),
-        .halt_i             ( ctrl_fsm_i.halt_if      ),
-        .kill_i             ( ctrl_fsm_i.kill_if      ),
+        .valid_i              ( seq_instr_valid         ),
+        .ready_i              ( id_ready_i              ),
+        .halt_i               ( ctrl_fsm_i.halt_if      ),
+        .kill_i               ( ctrl_fsm_i.kill_if      ),
 
 
-        .instr_o            ( seq_instr               ),
-        .valid_o            ( seq_valid               ),
-        .ready_o            ( seq_ready               ),
-        .seq_first_o        ( seq_first               ),
-        .seq_last_o         ( seq_last                ),
-        .seq_tbljmp_o       ( tbljmp                  )
+        .instr_o              ( seq_instr               ),
+        .valid_o              ( seq_valid               ),
+        .ready_o              ( seq_ready               ),
+        .seq_first_o          ( seq_first               ),
+        .seq_last_o           ( seq_last                ),
+        .seq_tbljmp_o         ( seq_tbljmp              )
       );
     end else begin : gen_no_seq
-      assign seq_valid = 1'b0;
-      assign seq_last  = 1'b0;
-      assign seq_instr = '0;
-      assign seq_ready = 1'b1;
-      assign seq_first = 1'b0;
-      assign tbljmp    = 1'b0;
+      assign seq_valid  = 1'b0;
+      assign seq_last   = 1'b0;
+      assign seq_instr  = '0;
+      assign seq_ready  = 1'b1;
+      assign seq_first  = 1'b0;
+      assign seq_tbljmp = 1'b0;
     end
   endgenerate
 

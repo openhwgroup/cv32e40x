@@ -39,7 +39,7 @@ import cv32e40x_pkg::*;
 
     input  inst_resp_t instr_i,               // Instruction from prefetch unit
     input  logic       instr_is_clic_ptr_i,   // CLIC pointer flag, instr_i does not contain an instruction
-    input  logic       instr_is_tblj_ptr_i,   // Tablejump pointer flag, instr_i does not contain an instruction
+    input  logic       instr_is_tbljmp_ptr_i, // Tablejump pointer flag, instr_i does not contain an instruction
 
     input  logic       valid_i,               // valid input from if stage
     input  logic       ready_i,               // Downstream is ready (ID stage)
@@ -82,7 +82,7 @@ import cv32e40x_pkg::*;
   assign instr = instr_i.bus_resp.rdata;
   assign rlist = instr[7:4];
 
-  assign instr_is_pointer = instr_is_clic_ptr_i || instr_is_tblj_ptr_i;
+  assign instr_is_pointer = instr_is_clic_ptr_i || instr_is_tbljmp_ptr_i;
 
   // Count number of instructions emitted and set next state for FSM.
   always_ff @(posedge clk, negedge rst_n) begin
@@ -96,7 +96,7 @@ import cv32e40x_pkg::*;
         // has a bus error or mpu error, the instruction after the tablejump may reach EX before the pipeline is killed.
         // If this next instruction is a load or store, the starting value for the stack adjustment will be wrong and the LSU
         // outputs may get affected. If one changes to not ack the prefetcher on table jumps, this exclusion can likely be removed.
-        if (!seq_last_o && !seq_tbljmp_o && !instr_is_tblj_ptr_i) begin
+        if (!seq_last_o && !seq_tbljmp_o && !instr_is_tbljmp_ptr_i) begin
           instr_cnt_q <= instr_cnt_q + 1'd1;
         end else begin
           instr_cnt_q <= '0;
@@ -195,7 +195,7 @@ import cv32e40x_pkg::*;
   //   as the output of the above decode logic is equivalent to seq_en
   // We have valid outputs for any correctly decoded instruction, or when we are handling a tablejump pointer.
   // todo: halting IF stage would imply !valid, can this be an issue?
-  assign valid_o = ((seq_instr != INVALID_INST) || instr_is_tblj_ptr_i) && valid_i && !halt_i && !kill_i;
+  assign valid_o = ((seq_instr != INVALID_INST) || instr_is_tbljmp_ptr_i) && valid_i && !halt_i && !kill_i;
 
 
   // Calculate number of S* registers needed in sequence (push/pop* only)
@@ -410,9 +410,9 @@ import cv32e40x_pkg::*;
   // Bypass the sequencer FSM when there is an incoming tablejump pointer.
   // Tablejump pointers are the last/non-first of a sequence.
   // While waiting for a tablejump pointer, we still need to obey halt/kill inputs for the ready_o.
-  assign seq_last_o  = instr_is_tblj_ptr_i ? 1'b1               : seq_last_fsm;
-  assign seq_first_o = instr_is_tblj_ptr_i ? 1'b0               : seq_first_fsm;
-  assign ready_o     = instr_is_tblj_ptr_i ? (ready_i && !halt_i) || kill_i : ready_fsm;
+  assign seq_last_o  = instr_is_tbljmp_ptr_i ? 1'b1 : seq_last_fsm;
+  assign seq_first_o = instr_is_tbljmp_ptr_i ? 1'b0 : seq_first_fsm;
+  assign ready_o     = instr_is_tbljmp_ptr_i ? (ready_i && !halt_i) || kill_i : ready_fsm;
 
 
 endmodule
