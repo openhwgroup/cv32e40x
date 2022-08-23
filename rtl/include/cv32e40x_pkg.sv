@@ -480,6 +480,8 @@ parameter MSTATUS_MPP_BIT_LOW  = 11;
 parameter MSTATUS_MPP_BIT_HIGH = 12;
 
 parameter MCAUSE_MPIE_BIT      = 27;
+parameter MCAUSE_MPP_BIT_LOW   = 28;
+parameter MCAUSE_MPP_BIT_HIGH  = 29;
 
 // misa
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32

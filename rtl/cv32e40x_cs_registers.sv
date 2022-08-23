@@ -915,7 +915,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
         // Write mpie and mpp as aliased through mcause
         mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
-        mstatus_n.mpp  = mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]);
+        mstatus_n.mpp  = mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]);
       end
       // The CLIC pointer address should always be output for an access to MNXTI,
       // but will only contain a nonzero value if a CLIC interrupt is actually pending
