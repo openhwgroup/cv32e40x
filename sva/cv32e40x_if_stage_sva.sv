@@ -62,8 +62,8 @@ module cv32e40x_if_stage_sva
 
 
   // compressed_decoder and sequencer shall be mutually exclusive
-  // Excluding table jumps pointers as these will set seq_valid=1, but may
-  // contain a pointer that the compressed decoder is able to decode.
+  // Excluding table jumps pointers as these will set seq_valid=1 while the
+  // compressed decoder ignore pointers (illegal_c_insn will be 0)
   a_compressed_seq_0:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (seq_valid && !prefetch_is_tbljmp_ptr) |-> illegal_c_insn)

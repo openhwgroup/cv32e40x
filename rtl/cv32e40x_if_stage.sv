@@ -445,6 +445,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       assign seq_instr = '0;
       assign seq_ready = 1'b1;
       assign seq_first = 1'b0;
+      assign tbljmp    = 1'b0;
     end
   endgenerate
 
