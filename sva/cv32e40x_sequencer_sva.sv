@@ -42,7 +42,10 @@ module cv32e40x_sequencer_sva
   input  seq_t           instr_cnt_q,
   input  seq_state_e     seq_state_q,
   input  logic           seq_last_o,
-  input  seq_instr_e     seq_instr
+  input  seq_instr_e     seq_instr,
+  input  logic           instr_is_tbljmp_ptr_i,
+  input  logic           instr_is_clic_ptr_i,
+  input  logic           seq_tbljmp_o
 );
 
   // After kill, all state must be reset.
@@ -152,5 +155,21 @@ module cv32e40x_sequencer_sva
                     |->
                     (instr_cnt_q < 'd2))
         else `uvm_error("sequencer", "mva01s sequence too long")
+
+  // Check that the sequencer does not decode any instructions from pointers
+  a_ptr_illegal:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (instr_is_tbljmp_ptr_i || instr_is_clic_ptr_i)
+                    |->
+                    (seq_instr == INVALID_INST))
+        else `uvm_error("sequencer", "Instruction should not be decoded from a pointer")
+
+  // Check that the sequence counter does not count for tablejumps or tablejump pointers
+  a_tbljmp_cnt:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (valid_o && ready_i && (seq_tbljmp_o || instr_is_tbljmp_ptr_i))
+                    |=>
+                    (instr_cnt_q == '0))
+        else `uvm_error("sequencer", "Should not count when handling table jumps")
 endmodule
 
