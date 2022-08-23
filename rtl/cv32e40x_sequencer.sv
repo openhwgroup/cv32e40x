@@ -294,7 +294,7 @@ import cv32e40x_pkg::*;
             instr_o.bus_resp.rdata = {11'b00000000000, instr[9:2], 5'b00001, OPCODE_JAL};
           end
           // The second half of tablejumps (pointer) will not use the FSM (the jump will kill the sequencer anyway).
-          // Signalling ready here will acknowledge the prefetcher (to remain SEC clean).
+          // Signalling ready here will acknowledge the prefetcher.
           ready_fsm = ready_i && !halt_i;
         end else if (seq_move_s2a) begin
           // move s to a
