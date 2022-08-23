@@ -293,23 +293,16 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // prefetcher in the middle of a Zc sequence.
   assign prefetch_ready = if_ready;
 
-  // Last operation of table jumps are set when the pointer is fed to ID stage
-  // tbljmp (first operation) is set when a cm.jt or cm.jalt is decoded in the compressed decoder.
   // Sequenced instructions set last_op from the sequencer.
   // Any other instruction will be single operation, and gets last_op=1.
   // todo: Factor CLIC pointers?
-  assign last_op_o = prefetch_is_tbljmp_ptr ? 1'b1 :  // tbljmp pointers are the last half
-                     tbljmp                 ? 1'b0 :  // tbljmps are the first half
-                     seq_valid              ? seq_last : 1'b1; // Any other regular instructions are single operation.
+  assign last_op_o = seq_valid ? seq_last : 1'b1; // Any other regular instructions are single operation.
 
   // Flag first operation of a sequence.
-  // For table jumps the tbljmp instruction is the first operation, and the pointer is the last.
   // Any sequenced instructions use the seq_first from the sequencer.
   // Any other instruction will be single operation, and gets first_op=1.
   // todo: factor in CLIC pointers?
-  assign first_op_o = prefetch_is_tbljmp_ptr ? 1'b0 :
-                      tbljmp                 ? 1'b1 :
-                      seq_valid              ? seq_first : 1'b1; // Any other regular instructions are single operation.
+  assign first_op_o = seq_valid ? seq_first : 1'b1; // Any other regular instructions are single operation.
 
 
   // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
@@ -409,8 +402,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .instr_is_ptr_i     ( ptr_in_if_o             ),
     .instr_o            ( instr_decompressed      ),
     .is_compressed_o    ( instr_compressed        ),
-    .illegal_instr_o    ( illegal_c_insn          ),
-    .tbljmp_o           ( tbljmp                  )
+    .illegal_instr_o    ( illegal_c_insn          )
   );
 
   // Setting predec_ready to id_ready_i here instead of passing it through the predecoder.
@@ -431,7 +423,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         .rst_n              ( rst_n                   ),
 
         .instr_i            ( prefetch_instr          ),
-        .instr_is_ptr_i     ( ptr_in_if_o             ),
+        .instr_is_clic_ptr_i( prefetch_is_clic_ptr    ),
+        .instr_is_tblj_ptr_i( prefetch_is_tbljmp_ptr  ),
 
         .valid_i            ( seq_instr_valid         ),
         .ready_i            ( id_ready_i              ),
@@ -443,7 +436,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         .valid_o            ( seq_valid               ),
         .ready_o            ( seq_ready               ),
         .seq_first_o        ( seq_first               ),
-        .seq_last_o         ( seq_last                )
+        .seq_last_o         ( seq_last                ),
+        .seq_tbljmp_o       ( tbljmp                  )
       );
     end else begin : gen_no_seq
       assign seq_valid = 1'b0;

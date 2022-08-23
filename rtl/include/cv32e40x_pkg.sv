@@ -1351,7 +1351,8 @@ typedef struct packed {
     POPRET,
     POPRETZ,
     MVA01S,
-    MVSA01
+    MVSA01,
+    TBLJMP
   } seq_instr_e;
 
   typedef enum logic [3:0] {
