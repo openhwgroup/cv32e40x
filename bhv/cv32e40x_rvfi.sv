@@ -71,8 +71,8 @@ module cv32e40x_rvfi
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_atomic_ex_i,
    input logic [31:0]                         branch_target_ex_i,
-   input logic [31:0]                         data_addr_ex_i,
-   input logic [31:0]                         data_wdata_ex_i,
+   input logic [31:0]                         buffer_trans_addr_ex_i,
+   input logic [31:0]                         buffer_trans_wdata_ex_i,
    input logic                                lsu_split_q_ex_i,
 
    // WB probes
@@ -651,7 +651,7 @@ module cv32e40x_rvfi
   logic [31:0]       mhpmcounter_h_during_wb;
 
 
-  logic [63:0] data_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
+  logic [63:0] buffer_trans_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
   logic         wb_valid_adjusted;
   logic         wb_valid_subop;
@@ -1141,11 +1141,11 @@ module cv32e40x_rvfi
   end
 
   // Memory adddress
-  assign rvfi_mem_addr_d = data_addr_ex_i;
+  assign rvfi_mem_addr_d = buffer_trans_addr_ex_i;
 
   // Align Memory write data
-  assign rvfi_mem_wdata_d  = data_wdata_ror[31:0];
-  assign data_wdata_ror    = {data_wdata_ex_i, data_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
+  assign rvfi_mem_wdata_d       = buffer_trans_wdata_ror[31:0];
+  assign buffer_trans_wdata_ror = {buffer_trans_wdata_ex_i, buffer_trans_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
   // The rd_addr signal in rtl can contain contain unused non-zero values when not reading
