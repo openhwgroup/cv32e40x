@@ -427,8 +427,8 @@ module cv32e40x_wrapper
          .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma (no expressions allowed in module hookup)
                                     !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
-         .data_addr_ex_i           ( core_i.load_store_unit_i.buffer_trans.addr                           ),
-         .data_wdata_ex_i          ( core_i.load_store_unit_i.buffer_trans.wdata                          ),
+         .buffer_trans_addr_ex_i   ( core_i.load_store_unit_i.buffer_trans.addr                           ),
+         .buffer_trans_wdata_ex_i  ( core_i.load_store_unit_i.buffer_trans.wdata                          ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
          // WB Probes
