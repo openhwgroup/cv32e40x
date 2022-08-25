@@ -93,7 +93,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic [7:0]                    mnxti_irq_level_i,
   output logic                          clic_pa_valid_o,        // CSR read data is an address to a function pointer
   output logic [31:0]                   clic_pa_o,              // Address to CLIC function pointer
-  output logic                          csr_irq_enable_write_o, // An irq enable write is being performed in WB (mie or mstatus.mie)
+  output logic                          csr_irq_enable_write_o, // An irq enable write is being performed in WB
 
   // CSR write strobes
   output logic                          csr_wr_in_wb_flush_o,
