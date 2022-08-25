@@ -529,7 +529,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
-    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall;
+    // Halting EX when an instruction in WB may cause an interrupt to become pending.
+    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall;
     ctrl_fsm_o.halt_wb          = 1'b0;
 
     // By default no stages are killed
