@@ -56,6 +56,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   // From WB
   input  logic        wb_ready_i,                 // WB stage is ready
+  input  logic        csr_irq_enable_write_i,     // WB is writing to a CSR that may enable an interrupt.
 
   // Controller Bypass outputs
   output ctrl_byp_t   ctrl_byp_o
@@ -171,6 +172,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     ctrl_byp_o.deassert_we         = 1'b0;
     ctrl_byp_o.csr_stall           = 1'b0;
     ctrl_byp_o.minstret_stall      = 1'b0;
+    ctrl_byp_o.irq_enable_stall    = 1'b0;
 
     // deassert WE when the core has an exception in ID (ins converted to nop and propagated to WB)
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
@@ -212,6 +214,11 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // csr_counter_read_i is derived from csr_raddr, which is gated with id_ex_pipe.csr_en and id_ex_pipe.instr_valid
     if (csr_counter_read_i && ex_wb_pipe_i.instr_valid) begin
       ctrl_byp_o.minstret_stall = 1'b1;
+    end
+
+    // Stall EX when an interrupt may be enabled from WB while there is a LSU instruction in EX.
+    if (csr_irq_enable_write_i && (id_ex_pipe_i.instr_valid && id_ex_pipe_i.lsu_en)) begin
+      ctrl_byp_o.irq_enable_stall = 1'b1;
     end
   end
 

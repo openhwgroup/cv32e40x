@@ -224,6 +224,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] csr_rdata;
   logic csr_counter_read;
   logic csr_wr_in_wb_flush;
+  logic csr_irq_enable_write;
 
   privlvl_t     priv_lvl;
 
@@ -763,6 +764,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // To controller_bypass
     .csr_counter_read_o         ( csr_counter_read       ),
     .csr_mnxti_read_o           ( csr_mnxti_read         ),
+    .csr_irq_enable_write_o     ( csr_irq_enable_write   ),
 
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
@@ -813,6 +815,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     .csr_counter_read_i             ( csr_counter_read       ),
     .csr_mnxti_read_i               ( csr_mnxti_read         ),
+    .csr_irq_enable_write_i         ( csr_irq_enable_write   ),
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),

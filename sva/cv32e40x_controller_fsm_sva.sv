@@ -656,5 +656,13 @@ end // SMCLIC
                     |=>
                     sequence_interruptible)
     else `uvm_error("controller", "sequence_interruptible should be 1 after an exception has been taken.")
+
+  // No new exception may occur in WB unless wb was ready the cycle before
+  a_wb_ready_exception:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (!wb_ready_i)
+                    |=>
+                    $stable(exception_in_wb))
+    else `uvm_error("controller", "New exception in WB without WB being ready.")
 endmodule
 

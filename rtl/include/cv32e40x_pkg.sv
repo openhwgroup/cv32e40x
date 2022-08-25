@@ -1209,6 +1209,7 @@ typedef struct packed {
   logic         deassert_we;            // Deassert write enable and special insn bits
   logic         id_stage_abort;         // Same signal as deassert_we, with better name for use in the controller.
   logic         xif_exception_stall;    // Stall (EX) if xif insn in WB can cause an exception
+  logic         irq_enable_stall;       // Stall (EX) if an interrupt may be enabled by the instruction in WB.
 } ctrl_byp_t;
 
 // Controller FSM outputs

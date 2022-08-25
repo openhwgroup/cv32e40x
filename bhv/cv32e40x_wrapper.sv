@@ -267,6 +267,9 @@ module cv32e40x_wrapper
                 .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
+                .ctrl_pending_nmi                 (core_i.controller_i.controller_fsm_i.pending_nmi),
+                .ctrl_pending_interrupt           (core_i.controller_i.controller_fsm_i.pending_interrupt),
+                .ctrl_interrupt_allowed           (core_i.controller_i.controller_fsm_i.interrupt_allowed),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
 
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid_o),
@@ -278,6 +281,10 @@ module cv32e40x_wrapper
                 .alu_en_id_i                      (core_i.id_stage_i.alu_en),
                 .alu_jmpr_id_i                    (core_i.alu_jmpr_id),
                 .irq_ack                          (core_i.irq_ack),
+                .mie_n                            (core_i.cs_registers_i.mie_n),
+                .mie_we                           (core_i.cs_registers_i.mie_we),
+                .clic_irq_q                       (core_i.gen_clic_interrupt.clic_int_controller_i.clic_irq_q),
+                .clic_irq_level_q                 (core_i.gen_clic_interrupt.clic_int_controller_i.clic_irq_level_q),
                 .*);
 
   bind cv32e40x_sleep_unit:
