@@ -19,10 +19,7 @@
 // limitations under the License.
 
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:       Arjan Bink - arjan.bink@silabs.com                         //
-//                                                                            //
-// Additional contributions by:                                               //
-//                 Øystein Knauserud - oystein.knauserud@silabs.com           //
+// Engineer:       Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                                                                            //
 // Design Name:    cv32e40x_clic_int_controller_sva                           //
 // Project Name:   CV32E40X                                                   //
@@ -35,10 +32,6 @@
 module cv32e40x_clic_int_controller_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-#(
-    parameter bit SMCLIC = 0
-  )
-
   (
    input logic        clk,
    input logic        rst_n,
