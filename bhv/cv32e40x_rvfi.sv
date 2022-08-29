@@ -1678,8 +1678,8 @@ module cv32e40x_rvfi
   assign rvfi_csr_mcounteren_wmask        = rvfi_csr_wmask.mcounteren;
   assign rvfi_csr_pmpcfg_rdata            = rvfi_csr_rdata.pmpcfg;
   assign rvfi_csr_pmpcfg_rmask            = '1;
-  assign rvfi_csr_pmpcfg_wdata            = rvfi_csr_wmask.pmpcfg;
-  assign rvfi_csr_pmpcfg_wmask            = rvfi_csr_wdata.pmpcfg;
+  assign rvfi_csr_pmpcfg_wdata            = rvfi_csr_wdata.pmpcfg;
+  assign rvfi_csr_pmpcfg_wmask            = rvfi_csr_wmask.pmpcfg;
   assign rvfi_csr_pmpaddr_rdata           = rvfi_csr_rdata.pmpaddr;
   assign rvfi_csr_pmpaddr_rmask           = '1;
   assign rvfi_csr_pmpaddr_wdata           = rvfi_csr_wdata.pmpaddr;
