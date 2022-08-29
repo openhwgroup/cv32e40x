@@ -79,6 +79,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted
+  input  logic        lsu_valid_wb_i,             // LSU is valid in WB (factors in rvalid from either OBI bus or write buffer)
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -182,6 +183,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wb_valid_i                  ( wb_valid_i               ),
     .last_op_wb_i                ( last_op_wb_i             ),
     .abort_op_wb_i               ( abort_op_wb_i            ),
+    .lsu_valid_wb_i              ( lsu_valid_wb_i           ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
 

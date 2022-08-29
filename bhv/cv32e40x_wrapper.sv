@@ -33,6 +33,7 @@
   `include "cv32e40x_sleep_unit_sva.sv"
   `include "cv32e40x_rvfi_sva.sv"
   `include "cv32e40x_sequencer_sva.sv"
+  `include "cv32e40x_clic_int_controller_sva.sv"
 `endif
 
 `include "cv32e40x_wrapper.vh"
@@ -215,7 +216,12 @@ module cv32e40x_wrapper
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
                               .*);
-  bind cv32e40x_cs_registers:        core_i.cs_registers_i              cv32e40x_cs_registers_sva  #(.SMCLIC(SMCLIC)) cs_registers_sva (.*);
+  bind cv32e40x_cs_registers:
+    core_i.cs_registers_i
+      cv32e40x_cs_registers_sva
+        #(.SMCLIC(SMCLIC))
+        cs_registers_sva (.wb_valid_i (core_i.wb_valid),
+                          .*);
 
   bind cv32e40x_load_store_unit:
     core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (
@@ -263,11 +269,9 @@ module cv32e40x_wrapper
                 .branch_taken_in_ex               (core_i.controller_i.controller_fsm_i.branch_taken_ex),
                 .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
-                .ctrl_fsm_ns                      (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
                 .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
                 .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
-                .ctrl_pending_nmi                 (core_i.controller_i.controller_fsm_i.pending_nmi),
                 .ctrl_pending_interrupt           (core_i.controller_i.controller_fsm_i.pending_interrupt),
                 .ctrl_interrupt_allowed           (core_i.controller_i.controller_fsm_i.interrupt_allowed),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
@@ -283,9 +287,19 @@ module cv32e40x_wrapper
                 .irq_ack                          (core_i.irq_ack),
                 .mie_n                            (core_i.cs_registers_i.mie_n),
                 .mie_we                           (core_i.cs_registers_i.mie_we),
-                .clic_irq_q                       (core_i.gen_clic_interrupt.clic_int_controller_i.clic_irq_q),
-                .clic_irq_level_q                 (core_i.gen_clic_interrupt.clic_int_controller_i.clic_irq_level_q),
                 .*);
+generate
+if (SMCLIC) begin : clic_asserts
+  bind cv32e40x_clic_int_controller:
+    core_i.gen_clic_interrupt.clic_int_controller_i
+      cv32e40x_clic_int_controller_sva
+        clic_int_controller_sva (.ctrl_pending_interrupt  (core_i.controller_i.controller_fsm_i.pending_interrupt),
+                                 .ctrl_interrupt_allowed  (core_i.controller_i.controller_fsm_i.interrupt_allowed),
+                                 .ctrl_fsm                (core_i.ctrl_fsm),
+                                 .dcsr                    (core_i.dcsr),
+                                 .*);
+end
+endgenerate
 
   bind cv32e40x_sleep_unit:
     core_i.sleep_unit_i cv32e40x_sleep_unit_sva
