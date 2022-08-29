@@ -851,6 +851,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
+    .lsu_valid_wb_i                 ( lsu_valid_wb           ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

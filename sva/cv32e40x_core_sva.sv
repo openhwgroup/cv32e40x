@@ -72,6 +72,7 @@ module cv32e40x_core_sva
   input logic        data_req_o,
   input logic        data_we_o,
   input logic [5:0]  data_atop_o,
+  input logic        data_rvalid_i,
 
   // probed controller signals
   input logic        ctrl_debug_mode_n,
@@ -79,17 +80,13 @@ module cv32e40x_core_sva
   input logic        ctrl_debug_allowed,
   input logic        ctrl_interrupt_allowed,
   input logic        ctrl_pending_interrupt,
-  input              ctrl_state_e ctrl_fsm_ns,
   input ctrl_byp_t   ctrl_byp,
-  input logic        ctrl_pending_nmi,
-   // probed cs_registers signals
+  // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
   input mcause_t     cs_registers_csr_cause_i, // From controller
   input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
-  input mstatus_t    cs_registers_mstatus_q,
-  input logic        clic_irq_q,
-  input logic [7:0]  clic_irq_level_q);
+  input mstatus_t    cs_registers_mstatus_q);
 
 if (SMCLIC) begin
   property p_clic_mie_tieoff;
@@ -484,31 +481,7 @@ end
   a_tbljmp_stall: assert property(p_tbljmp_stall)
     else `uvm_error("core", "Table jump not stalled while CSR is written");
 
-if (SMCLIC) begin
-    // Check that a pending interrupt is taken as soon as possible after being enabled
-  property p_clic_enable;
-    @(posedge clk) disable iff (!rst_ni)
-    ( !irq_req_ctrl
-       ##1
-       irq_req_ctrl && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie))
-       |-> (ctrl_pending_interrupt && ctrl_interrupt_allowed));
-  endproperty;
-
-  a_clic_enable: assert property(p_clic_enable)
-    else `uvm_error("core", "Interrupt not taken soon enough after enabling");
-
-  // Check a pending interrupt that is disabled is actually not taken
-  property p_clic_disable;
-    @(posedge clk) disable iff (!rst_ni)
-    (  irq_req_ctrl
-        ##1
-        !irq_req_ctrl && $stable(clic_irq_q) && $stable(clic_irq_level_q)
-        |-> !(ctrl_pending_interrupt && ctrl_interrupt_allowed));
-  endproperty;
-
-  a_clic_disable: assert property(p_clic_disable)
-    else `uvm_error("core", "Interrupt taken after disabling");
-end else begin
+if (!SMCLIC) begin
   // Check that a pending interrupt is taken as soon as possible after being enabled
   property p_mip_mie_write_enable;
     @(posedge clk) disable iff (!rst_ni)
@@ -533,5 +506,18 @@ end else begin
   a_mip_mie_write_disable: assert property(p_mip_mie_write_disable)
     else `uvm_error("core", "Interrupt taken after disabling");
 end
+
+// Clearing external interrupts via a store instruction causes irq_i to go low the next cycle.
+  // The interrupt controller uses flopped versions of irq_i, and thus we need to disregard interrupts
+  // for one cycle after an rvalid has been observed.
+property p_no_irq_after_lsu;
+  @(posedge clk) disable iff (!rst_ni)
+  (  wb_valid && ex_wb_pipe.lsu_en && ex_wb_pipe.instr_valid
+     |=>
+     !ctrl_interrupt_allowed);
+endproperty;
+
+a_no_irq_after_lsu: assert property(p_no_irq_after_lsu)
+  else `uvm_error("core", "Interrupt taken after disabling");
 endmodule // cv32e40x_core_sva
 

@@ -75,6 +75,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // From LSU (WB)
   input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB timing)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
+  input  logic        lsu_valid_wb_i,             // LSU instruction in WB is valid
 
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU can be interrupted
@@ -227,6 +228,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Used to not halt sequences in the middle, potentially causing deadlocks
   logic       sequence_in_progress_id;
   logic       id_stage_haltable;
+
+  // Flag that is high during the cycle after an LSU instruction finishes in WB
+  logic       interrupt_blanking_q;
 
   assign sequence_interruptible = !sequence_in_progress_wb;
 
@@ -440,10 +444,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Once the first part of a table jump has finished in WB, we are not allowed to take interrupts before the last part finishes. This can be detected when the last
   // part of a table jump is in either EX or WB.
 
-  assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible;
+  assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible && !interrupt_blanking_q;
 
-  // Allowing NMI's follow the same rule as regular interrupts.
-  assign nmi_allowed = interrupt_allowed;
+  // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
+  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible;
 
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
@@ -521,7 +525,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     //             Sequences:    If we need to halt for debug or interrupt not allowed due to a sequence, we must check if we can
     //                           actually halt the ID stage or not. Halting the same sequence that causes *_allowed to go to 0
     //                           may cause a deadlock.
-    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall ||
+    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall_id ||
       (((pending_interrupt && !interrupt_allowed) || (pending_nmi && !nmi_allowed) || (pending_nmi_early)) && debug_interruptible && id_stage_haltable) ||
       (pending_debug && !debug_allowed && id_stage_haltable);
 
@@ -530,7 +534,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
     // Halting EX when an instruction in WB may cause an interrupt to become pending.
-    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall;
+    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_stall_ex;
     ctrl_fsm_o.halt_wb          = 1'b0;
 
     // By default no stages are killed
@@ -1017,6 +1021,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
       csr_flush_ack_q       <= csr_flush_ack_n;
+    end
+  end
+
+  // Flop used to track LSU instructions in WB. High in the cycle after an LSU instruction
+  // leaves WB.
+  // Used for disregarding interrupts one cycle after a load/store to make sure the
+  // interrupt controller propagates the inputs through its flops.
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      interrupt_blanking_q <= 1'b0;
+    end else begin
+      interrupt_blanking_q <= ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en && lsu_valid_wb_i;
     end
   end
 

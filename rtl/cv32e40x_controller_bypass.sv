@@ -144,7 +144,12 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // This is needed because the data bypass from EX uses csr_rdata, and for mnxti this is actually mstatus and not the result
   // that will be written to the register file. Could be optimized to only stall when the result from the CSR instruction is used in ID,
   // but the common usecase is a CSR access followed by a branch using the mnxti result in the RF, so it would likely stall in most cases anyway.
-  assign ctrl_byp_o.mnxti_stall = csr_mnxti_read_i;
+  assign ctrl_byp_o.mnxti_stall_id = csr_mnxti_read_i;
+
+  // Stall EX stage when an mnxti is in EX and an LSU instruction is in WB.
+  // This is needed to make sure that any external interrupt clearing (due to a LSU instruction) gets picked
+  // up correctly by the mnxti access.
+  assign ctrl_byp_o.mnxti_stall_ex = csr_mnxti_read_i && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid);
 
   genvar i;
   generate
