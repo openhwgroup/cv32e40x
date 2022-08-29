@@ -525,7 +525,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     //             Sequences:    If we need to halt for debug or interrupt not allowed due to a sequence, we must check if we can
     //                           actually halt the ID stage or not. Halting the same sequence that causes *_allowed to go to 0
     //                           may cause a deadlock.
-    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_stall_id ||
+    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_id_stall ||
       (((pending_interrupt && !interrupt_allowed) || (pending_nmi && !nmi_allowed) || (pending_nmi_early)) && debug_interruptible && id_stage_haltable) ||
       (pending_debug && !debug_allowed && id_stage_haltable);
 
@@ -534,7 +534,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
     // Halting EX when an instruction in WB may cause an interrupt to become pending.
-    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_stall_ex;
+    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_ex_stall;
     ctrl_fsm_o.halt_wb          = 1'b0;
 
     // By default no stages are killed
@@ -1032,7 +1032,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       interrupt_blanking_q <= 1'b0;
     end else begin
-      interrupt_blanking_q <= ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en && lsu_valid_wb_i;
+      interrupt_blanking_q <= ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en;
     end
   end
 

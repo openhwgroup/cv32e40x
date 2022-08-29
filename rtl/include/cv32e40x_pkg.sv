@@ -1204,8 +1204,8 @@ typedef struct packed {
   logic         load_stall;             // Stall due to load operation
   logic         csr_stall;
   logic         wfi_stall;
-  logic         mnxti_stall_id;         // Stall ID due to mnxti CSR access in EX
-  logic         mnxti_stall_ex;         // Stall EX due to LSU instruction in WB
+  logic         mnxti_id_stall;         // Stall ID due to mnxti CSR access in EX
+  logic         mnxti_ex_stall;         // Stall EX due to LSU instruction in WB
   logic         minstret_stall;         // Stall due to minstret/h read in EX
   logic         deassert_we;            // Deassert write enable and special insn bits
   logic         id_stage_abort;         // Same signal as deassert_we, with better name for use in the controller.

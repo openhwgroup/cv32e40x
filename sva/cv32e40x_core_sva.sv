@@ -72,7 +72,6 @@ module cv32e40x_core_sva
   input logic        data_req_o,
   input logic        data_we_o,
   input logic [5:0]  data_atop_o,
-  input logic        data_rvalid_i,
 
   // probed controller signals
   input logic        ctrl_debug_mode_n,
