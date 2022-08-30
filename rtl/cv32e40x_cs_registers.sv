@@ -970,10 +970,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             // mpil is saved from mintstatus
             mcause_n.mpil = mintstatus_rdata.mil;
 
-            // todo: handle exception vs interrupt
             // Save new interrupt level to mintstatus
-            mintstatus_n.mil = ctrl_fsm_i.irq_level;
-            mintstatus_we = 1'b1;
+            // Horizontal synchronous exception traps keep the interrupt level, vertical synchronous exception traps to higher privilege level use interrupt level 0.
+            // Since only PRIV_LVL_M is supported, all exceptions keep the current interrupt level, while interrupts will update the interrupt level.
+            if (ctrl_fsm_i.csr_cause.irq) begin
+              mintstatus_n.mil = ctrl_fsm_i.irq_level;
+              mintstatus_we = 1'b1;
+            end
           end else begin
             mcause_n.mpil = '0;
           end
