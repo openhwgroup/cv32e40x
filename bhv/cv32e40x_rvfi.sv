@@ -604,6 +604,8 @@ module cv32e40x_rvfi
   logic [31:0]       ex_mem_wdata;
   mem_err_t [3:0]    mem_err;
 
+  logic              lsu_mem_split_wb;
+
   logic              branch_taken_ex;
 
   logic [ 3:0] rvfi_mem_mask_int;
@@ -848,6 +850,8 @@ module cv32e40x_rvfi
       rs1_re_subop       <= '0;
       rs2_re_subop       <= '0;
 
+      lsu_mem_split_wb   <= '0;
+
     end else begin
 
       //// IF Stage ////
@@ -974,6 +978,7 @@ module cv32e40x_rvfi
         rs1_re_subop     [STAGE_WB] <= rs1_re_subop   [STAGE_EX];
         rs2_re_subop     [STAGE_WB] <= rs2_re_subop   [STAGE_EX];
 
+        lsu_mem_split_wb <= lsu_split_q_ex_i;
         if (!lsu_split_q_ex_i) begin
           // The second part of the split misaligned acess is suppressed to keep
           // the start address and data for the whole misaligned transfer
@@ -1048,12 +1053,14 @@ module cv32e40x_rvfi
           rvfi_gpr_wmask     <= '0;
         end
 
-        // Update rvfi_mem
-        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i; // todo: document rvfi_mem_* signals in user manual RVFI section as they differ from the official RVFI. At what index will the 'official' RVFI info be present (also for misaligned loads/stores)?
-        rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
-        rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
-        rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_addr;
-        rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_wdata;
+        // Update rvfi_mem (first part of split misaligned do not cause update)
+        if (!lsu_mem_split_wb) begin
+          rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
+          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
+          rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_addr;
+          rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_wdata;
+        end
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
