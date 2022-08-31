@@ -214,7 +214,7 @@ The ``pc_wdata`` signal shows the predicted next program counter. This predictio
 
 **Memory Access**
 
-For |corev|, the rvfi_mem interface has been expanded to support multiple memory operations per instruction. The new format of the rvfi_mem signals can be seen in the table below.
+For |corev|, the ``rvfi_mem`` interface has been expanded to support multiple memory operations per instruction. The new format of the rvfi_mem signals can be seen in the code block below.
 
 .. code-block:: verilog
 
@@ -224,26 +224,10 @@ For |corev|, the rvfi_mem interface has been expanded to support multiple memory
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_rdata
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_wdata
 
-Any instruction that issues multiple loads or stores will populate multiple entries in rvfi_mem. Misaligned loads or stores that are split by |corev| due to alignment will be reported once, in the lowest index of rvfi_mem.
-Instructions will populate the rvfi_mem outputs with incrementing ``NMEM``, starting at ``NMEM=1``. Instructions with a single memory operation, including split misaligned transfers, will pouplate rvfi_mem as follows:
+Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, starting at ``NMEM=1``.
 
-.. code-block:: verilog
-
-  rvfi_mem_addr[1 * XLEN - 1 : 0]    <= load_address
-  rvfi_mem_rmask[1 * XLEN/8 - 1 : 0] <= read_mask
-  rvfi_mem_wmask[1 * XLEN/8 - 1 : 0] <= write_mask
-  rvfi_mem_rdata[1 * XLEN - 1 : 0]   <= read_data
-  rvfi_mem_wdata[1 * XLEN - 1 : 0]   <= write_data
-
-Further memory operations from the same instruction will use the code below with ``memop_n`` indicating the current value of the memory operation counter.
-
-.. code-block:: verilog
-
-  rvfi_mem_addr[memop_n * XLEN - 1 -: 32]    <= load_address
-  rvfi_mem_rmask[memop_n * XLEN/8 - 1 -: 4] <= read_mask
-  rvfi_mem_wmask[memop_n * XLEN/8 - 1 -: 4] <= write_mask
-  rvfi_mem_rdata[memop_n * XLEN - 1 -: 32]   <= read_data
-  rvfi_mem_wdata[memop_n * XLEN - 1 -: 32]   <= write_data
+Instructions with a single memory operation (e.g. all RV32I instructions), including split misaligned transfers, will only use NMEM = 1.
+Instructions with multiple memory operations (e.g. the push and pop instructions from Zcmp) use NMEM > 1 in case multiple memory operations actually occur.
 
 
 For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
@@ -284,16 +268,16 @@ Instead of:
 
 **CSR mnxti**
 
-CSR accesses to the ``mnxti`` CSR does a read-modify-write on the ``mstatus`` CSR, and returns a pointer address if there is a pending non-SHV CLIC interrupt.
+CSR accesses to the ``mnxti`` CSR do a read-modify-write on the ``mstatus`` CSR, and return a pointer address if there is a pending non-SHV CLIC interrupt.
 If there is a pending non-SHV CLIC interrupt, it also updates ``mintstatus`` and ``mcause``.
-To reflect this behavior, the ``rvfi_csr_mnxti*`` outputs for ``mnxti`` has a different semantic than other CSRs.
+To reflect this behavior, the ``rvfi_csr_mnxti*`` outputs for ``mnxti`` have a different semantic than other CSRs.
 
 The ``rvfi_csr_mnxti*``  is reported as follows on RVFI:
 
-  * The rmask will always be all ones as for other CSRs.
-  * The wmask will be all ones whenever the CSR instruction actually writes to ``mstatus``.
-  * The wdata will be the write data written to ``mstatus``.
-  * The rdata will report a pointer address if an interrupt is pending, or 0 if no interrupt is pending.
+  * The ``rmask`` will always be all ones as for other CSRs.
+  * The ``wmask`` will be all ones whenever the CSR instruction actually writes to ``mstatus``.
+  * The ``wdata`` will be the data written to ``mstatus``.
+  * The ``rdata`` will report a pointer address if an interrupt is pending, or 0 if no interrupt is pending.
 
 Note that the ``rvfi_csr_mstatus*`` will also reflect the access to ``mstatus`` due to an ``mnxti`` access.
 In case the access to ``mnxti`` returns a valid pointer address, the ``rvfi_csr_mintstatus*`` and ``rvfi_csr_mcause*`` will also have values showing the side effects of accessing ``mnxti``.
@@ -311,7 +295,7 @@ The interface is defined as follows:
    output [NRET * 32 -1 : 0]         rvfi_gpr_wmask
 
 
-The outputs ``rvfi_gpr_rdata`` and ``rvfi_gpr_wdata`` reflects the entire register file, with each XLEN field of the vector representing one GPR, with x0 starting at index [XLEN - 1 : 0], x1 at index [2*XLEN-1 -: XLEN] and so on.
+The outputs ``rvfi_gpr_rdata`` and ``rvfi_gpr_wdata`` reflect the entire register file, with each XLEN field of the vector representing one GPR, with [x0] starting at index [XLEN - 1 : 0], [x1] at index [2*XLEN-1 -: XLEN] and so on.
 Each bit in the outputs ``rvfi_gpr_rmask`` and ``rvfi_gpr_wmask`` indicates if a GPR has been read or written during an instruction. The index of the bit indicates the address of the GPR accessed. Entries in ``rvfi_gpr_rdata``
 and ``rvfi_gpr_wdata`` are only considered valid if the corresponding bit in the ``rvfi_gpr_rmask`` or ``rvfi_gpr_wmask`` is set.
 
