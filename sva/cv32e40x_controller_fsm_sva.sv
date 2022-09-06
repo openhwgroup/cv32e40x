@@ -89,7 +89,8 @@ module cv32e40x_controller_fsm_sva
   input logic           id_stage_haltable,
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
-  input logic           abort_op_id_i
+  input logic           abort_op_id_i,
+  input mcause_t        mcause_i
 );
 
 
@@ -531,7 +532,7 @@ if (SMCLIC) begin
   // After a pc_set to PC_TRAP_CLICV, only the following jump targets are allowed:
   // PC_POINTER : Normal execution, the pointer target is being fetched
   // PC_TRAP_EXC: The pointer fetch has a synchronous exception
-  // PC_TRAP_NMI: The pointer fetch has a bus error. Todo: Change if CLIC spec stops using data access for pointer fetch.
+  // PC_TRAP_NMI: A buffered write may receive a data_err_i long after the instruction has left WB.
   a_clicv_next_pc_set:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
@@ -539,6 +540,13 @@ if (SMCLIC) begin
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_EXC)       ||
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
+
+  // Check that EX and WB are empty when an mret does it's jump when mcause.minhv is set
+  a_minhv_ex_wb_pipeline_empty:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_o.pc_set && ctrl_fsm_o.pc_mux == PC_MRET) && mcause_i.minhv
+                  |-> !(id_ex_pipe_i.instr_valid || ex_wb_pipe_i.instr_valid))
+    else `uvm_error("controller", "EX and WB not empty on mret with mcause.minhv set")
 
 end // SMCLIC
 
