@@ -668,10 +668,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mintthresh_n             = csr_wdata_int & CSR_MINTTHRESH_MASK;
       mintthresh_we            = 1'b0;
 
-      mscratchcsw_n            = mstatus_n; // mscratchcsw operates conditionally on mscratch
+      mscratchcsw_n            = mscratch_n; // mscratchcsw operates conditionally on mscratch
       mscratchcsw_we           = 1'b0;
 
-      mscratchcswl_n           = mstatus_n; // mscratchcswl operates conditionally on mscratch
+      mscratchcswl_n           = mscratch_n; // mscratchcswl operates conditionally on mscratch
       mscratchcswl_we          = 1'b0;
 
       mie_n                    = '0;
