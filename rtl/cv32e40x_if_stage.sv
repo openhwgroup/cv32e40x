@@ -83,6 +83,10 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic          xif_offloading_id_i     // ID stage attempts to offload an instruction
 );
 
+  // ALBUF_DEPTH set to 3 as the alignment_buffer will need 3 entries to function correctly
+  localparam int unsigned ALBUF_DEPTH     = 3;
+  localparam int unsigned ALBUF_CNT_WIDTH = $clog2(ALBUF_DEPTH);
+
   logic              if_ready;
 
   // prefetch buffer related signals
@@ -102,12 +106,13 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              instr_compressed;
 
   // Transaction signals to/from obi interface
-  logic              prefetch_resp_valid;
-  logic              prefetch_trans_valid;
-  logic              prefetch_trans_ready;
-  logic [31:0]       prefetch_trans_addr;
-  inst_resp_t        prefetch_inst_resp;
-  logic              prefetch_one_txn_pend_n;
+  logic                       prefetch_resp_valid;
+  logic                       prefetch_trans_valid;
+  logic                       prefetch_trans_ready;
+  logic [31:0]                prefetch_trans_addr;
+  inst_resp_t                 prefetch_inst_resp;
+  logic                       prefetch_one_txn_pend_n;
+  logic [ALBUF_CNT_WIDTH-1:0] prefetch_outstnd_cnt_q;
 
   logic              bus_resp_valid;
   obi_inst_resp_t    bus_resp;
@@ -133,6 +138,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              seq_last;        // sequencer is outputting the last operation
   inst_resp_t        seq_instr;       // Instruction for sequenced operation
   logic              seq_tbljmp;      // Sequenced instruction is a table jump
+
+  logic              unused_signals;
 
   // Fetch address selection
   always_comb
@@ -168,7 +175,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // prefetch buffer, caches a fixed number of instructions
   cv32e40x_prefetch_unit
   #(
-      .SMCLIC (SMCLIC)
+      .SMCLIC          (SMCLIC),
+      .ALBUF_DEPTH     (ALBUF_DEPTH),
+      .ALBUF_CNT_WIDTH (ALBUF_CNT_WIDTH)
   )
   prefetch_unit_i
   (
@@ -195,7 +204,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     // Prefetch Buffer Status
     .prefetch_busy_o          ( prefetch_busy               ),
-    .one_txn_pend_n           ( prefetch_one_txn_pend_n     )
+    .one_txn_pend_n           ( prefetch_one_txn_pend_n     ),
+    .outstnd_cnt_q_o          ( prefetch_outstnd_cnt_q      )
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -471,5 +481,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
     end
   endgenerate
+
+
+  // Some signals are unused on purpose. Use them here for easier LINT waiving.
+  assign unused_signals = |prefetch_outstnd_cnt_q;
 
 endmodule
