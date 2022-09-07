@@ -28,7 +28,9 @@
 
 module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 #(
-    parameter bit SMCLIC = 1'b0
+    parameter bit SMCLIC                   = 1'b0,
+    parameter int unsigned ALBUF_DEPTH     = 3,
+    parameter int unsigned ALBUF_CNT_WIDTH = $clog2(ALBUF_DEPTH)
 )
 (
   input  logic        clk,
@@ -53,7 +55,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   input  logic        resp_valid_i,
   input  inst_resp_t  resp_i,
 
-  output logic        one_txn_pend_n,
+  output logic                       one_txn_pend_n,
+  output logic [ALBUF_CNT_WIDTH-1:0] outstnd_cnt_q_o,
 
   // Prefetch Buffer Status
   output logic        prefetch_busy_o
@@ -96,6 +99,10 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
 
   cv32e40x_alignment_buffer
+  #(
+    .ALBUF_DEPTH(ALBUF_DEPTH),
+    .ALBUF_CNT_WIDTH(ALBUF_CNT_WIDTH)
+  )
   alignment_buffer_i
   (
     .clk                   ( clk                     ),
@@ -117,6 +124,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .resp_valid_i          ( resp_valid_i            ),
     .resp_i                ( resp_i                  ),
     .one_txn_pend_n        ( one_txn_pend_n          ),
+    .outstnd_cnt_q_o       ( outstnd_cnt_q_o         ),
+
     // Instruction interface
     .instr_valid_o         ( prefetch_valid_o        ),
     .instr_ready_i         ( prefetch_ready_i        ),

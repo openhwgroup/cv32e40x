@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
+#(
+  parameter int unsigned ALBUF_DEPTH     = 3,
+  parameter int unsigned ALBUF_CNT_WIDTH = $clog2(ALBUF_DEPTH)
+)
 (
   input  logic           clk,
   input  logic           rst_n,
@@ -48,27 +52,23 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
 
   // Interface to if_stage
-  output logic           instr_valid_o,
-  input  logic           instr_ready_i,
-  output inst_resp_t     instr_instr_o,
-  output logic [31:0]    instr_addr_o,
-  output logic           instr_is_clic_ptr_o,
-  output logic           instr_is_tbljmp_ptr_o
-
+  output logic                       instr_valid_o,
+  input  logic                       instr_ready_i,
+  output inst_resp_t                 instr_instr_o,
+  output logic [31:0]                instr_addr_o,
+  output logic                       instr_is_clic_ptr_o,
+  output logic                       instr_is_tbljmp_ptr_o,
+  output logic [ALBUF_CNT_WIDTH-1:0] outstnd_cnt_q_o
 );
 
-  // FIFO_DEPTH set to 3 as the alignment_buffer will need 3 to function correctly
-  localparam DEPTH                     = 3;
-  localparam int unsigned FIFO_ADDR_DEPTH   = $clog2(DEPTH);
-
   // Counter for number of instructions in the FIFO
-  // FIFO_ADDR_DEPTH defines number of words
+  // ALBUF_CNT_WIDTH defines number of words
   // We must count number of instructions, thus
   // using the value without subtracting
-  logic [FIFO_ADDR_DEPTH:0] instr_cnt_n, instr_cnt_q;
+  logic [ALBUF_CNT_WIDTH:0] instr_cnt_n, instr_cnt_q;
 
   // Counter for number of outstanding transactions
-  logic [FIFO_ADDR_DEPTH-1:0] outstanding_cnt_n, outstanding_cnt_q;
+  logic [ALBUF_CNT_WIDTH-1:0] outstanding_cnt_n, outstanding_cnt_q;
   logic outstanding_count_up;
   logic outstanding_count_down;
 
@@ -131,7 +131,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
 
   // Indicate that there will be one pending transaction in the next cycle
-  assign one_txn_pend_n = outstanding_cnt_n == FIFO_ADDR_DEPTH'(1);
+  assign one_txn_pend_n = outstanding_cnt_n == ALBUF_CNT_WIDTH'(1);
 
   // Signal aligned branch to the prefetcher
   assign fetch_branch_o = ctrl_fsm_i.pc_set;
@@ -140,14 +140,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   //////////////////
   // FIFO signals //
   //////////////////
-  inst_resp_t [0:DEPTH-1]  resp_q;
-  logic [0:DEPTH-1]        valid_n,   valid_int,   valid_q;
+  inst_resp_t [0:ALBUF_DEPTH-1]  resp_q;
+  logic [0:ALBUF_DEPTH-1]        valid_n,   valid_int,   valid_q;
   inst_resp_t resp_n;
 
   // Read/write pointer for FIFO
-  logic [FIFO_ADDR_DEPTH-1:0] rptr, rptr_n;
-  logic [FIFO_ADDR_DEPTH-1:0] rptr2;
-  logic [FIFO_ADDR_DEPTH-1:0] wptr, wptr_n;
+  logic [ALBUF_CNT_WIDTH-1:0] rptr, rptr_n;
+  logic [ALBUF_CNT_WIDTH-1:0] rptr2;
+  logic [ALBUF_CNT_WIDTH-1:0] wptr, wptr_n;
 
   logic             [31:0]  addr_n, addr_q, addr_incr;
   logic             [31:0]  instr, instr_unaligned;
@@ -271,7 +271,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Write response and update valid bit and write pointer
     if (resp_valid_gated) begin
       // Increase write pointer, wrap to zero if at last entry
-      wptr_n   = wptr < (DEPTH-1) ? wptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
+      wptr_n   = wptr < (ALBUF_DEPTH-1) ? wptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
       // Set fifo and valid write data
       resp_n   = resp_i;
       valid_int[wptr] = 1'b1;
@@ -298,7 +298,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
 
       // Advance FIFO one step, wrap if at last entry
-      rptr_n = rptr < (DEPTH-1) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
+      rptr_n = rptr < (ALBUF_DEPTH-1) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
     end else begin
       // aligned case
       if (aligned_is_compressed) begin
@@ -310,7 +310,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         addr_n = {addr_incr[31:2], 2'b00};
 
         // Advance FIFO one step, wrap if at last entry
-        rptr_n = rptr < (DEPTH-1) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
+        rptr_n = rptr < (ALBUF_DEPTH-1) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
       end
     end
 
@@ -323,7 +323,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   end
 
   // rptr2 will always be one higher than rptr
-  assign rptr2 = (rptr < (DEPTH-1)) ? rptr + FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0);
+  assign rptr2 = (rptr < (ALBUF_DEPTH-1)) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
 
   // Counting instructions in FIFO
   always_comb begin
@@ -341,7 +341,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       // Update number of instructions
       // Subracting emitted instructions lags behind by 1 cycle
       // to break timing paths from instr_ready_i to instr_cnt_q;
-      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? FIFO_ADDR_DEPTH'(1) : FIFO_ADDR_DEPTH'(0));
+      instr_cnt_n = instr_cnt_q + n_pushed_ins - (pop_q ? ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0));
     end
   end
 
@@ -557,6 +557,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       outstanding_cnt_q <= outstanding_cnt_n;
     end
   end
+
+  // Output outstanding transaction counter to if_stage
+  assign outstnd_cnt_q_o = outstanding_cnt_q;
 
   // Output instruction address to if_stage
   assign instr_addr_o = addr_q;
