@@ -956,6 +956,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // The FSM must be in the FUNCTIONAL state to take the exception or NMI.
           // A faulted pointer (in ID) should not cause debug entry either,
         end
+
+        // Mret in WB restores CSR regs
+        if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
+          ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
+        end
+
       end
       default: begin
         // should never happen
