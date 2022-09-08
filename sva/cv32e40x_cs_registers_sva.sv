@@ -46,7 +46,13 @@ module cv32e40x_cs_registers_sva
    input logic        clic_pa_valid_o,
    input mintstatus_t mintstatus_rdata,
    input privlvl_t    priv_lvl_n,
-   input privlvl_t    priv_lvl_rdata
+   input privlvl_t    priv_lvl_rdata,
+   input logic [31:0] mscratch_rdata,
+   input mcause_t     mcause_rdata,
+   csr_num_e          csr_waddr,
+   input logic        mscratch_we,
+   input logic        instr_valid,
+   input csr_opcode_e csr_op
 
    );
 
@@ -90,6 +96,38 @@ module cv32e40x_cs_registers_sva
 
     a_htrap_interrupt_level: assert property(p_htrap_interrupt_level)
       else `uvm_error("cs_registers", "Horizontal trap taken caused interrupt level to change");
+
+    // Check that mscratch do not update due to mscratchcsw if the conditions are not right
+    property p_mscratchcsw_mscratch;
+      @(posedge clk) disable iff (!rst_n)
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW) && (mcause_rdata.mpp == PRIV_LVL_M)
+        |=> $stable(mscratch_rdata));
+    endproperty;
+
+    a_mscratchcsw_mscratch: assert property(p_mscratchcsw_mscratch)
+      else `uvm_error("cs_registers", "Mscratch not stable after mscratwchsw with mpp=M");
+
+    // Check that mscratch do not update due to mscratchcswl if the conditions are not right
+    property p_mscratchcswl_mscratch;
+      @(posedge clk) disable iff (!rst_n)
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && !((mcause_rdata.mpil == '0) != (mintstatus_rdata.mil == '0))
+        |=> $stable(mscratch_rdata));
+    endproperty;
+
+    a_mscratchcswl_mscratch: assert property(p_mscratchcswl_mscratch)
+      else `uvm_error("cs_registers", "Mscratch not stable after mscratwchswl");
+
+    // Check that mscratch is written by mscratchcswl when the conditions are right
+    property p_mscratchcswl_mscratch_we;
+      @(posedge clk) disable iff (!rst_n)
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && ((mcause_rdata.mpil == '0) != (mintstatus_rdata.mil == '0))
+         && (csr_op != CSR_OP_READ) && instr_valid
+        |-> mscratch_we);
+    endproperty;
+
+    a_mscratchcswl_mscratch_we: assert property(p_mscratchcswl_mscratch_we)
+      else `uvm_error("cs_registers", "Mscratch not written by mscratchcswl");
+
   end
 endmodule
 
