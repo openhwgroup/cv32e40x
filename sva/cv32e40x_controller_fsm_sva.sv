@@ -50,6 +50,7 @@ module cv32e40x_controller_fsm_sva
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input logic           ex_valid_i,
   input logic           wb_ready_i,
+  input logic           mret_in_wb,
   input logic           exception_in_wb,
   input logic [10:0]    exception_cause_wb,
   input logic           rf_we_wb_i,
@@ -672,5 +673,12 @@ end // SMCLIC
                     |=>
                     $stable(exception_in_wb))
     else `uvm_error("controller", "New exception in WB without WB being ready.")
+
+
+  // MRET in WB always results in cst_restore_mret being set
+  a_mret_in_wb_csr_restore_mret:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (mret_in_wb && wb_valid_i) |-> ctrl_fsm_o.csr_restore_mret)
+    else `uvm_error("controller", "MRET in WB did not result in csr_restore_mret.")
 endmodule
 
