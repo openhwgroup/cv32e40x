@@ -420,12 +420,14 @@ endgenerate
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 
   // Ensure bubble in EX while in SLEEP mode.
-  // WFI instruction will be in WB
+  // WFI or WFE instruction will be in WB
   // Bubble is needed to avoid any LSU instructions to go on the bus while handling the WFI, as this
   // could cause the pipeline not to be interruptible when we wake up to an interrupt that should be taken.
   a_wfi_bubbles:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_cs == SLEEP) |-> !(id_ex_pipe_i.instr_valid))
+                      (ctrl_fsm_cs == SLEEP)
+                      |->
+                      !(id_ex_pipe_i.instr_valid) && ((ex_wb_pipe_i.sys_en && ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn))))
       else `uvm_error("controller", "EX stage not empty while in SLEEP state")
 
   // When halt_limited_wb is asserted, there can only be WFI instruction in WB

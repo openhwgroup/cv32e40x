@@ -796,6 +796,7 @@ typedef struct packed {
   logic                              sys_fencei_insn;
   logic                              sys_mret_insn;
   logic                              sys_wfi_insn;
+  logic                              sys_wfe_insn;
 } decoder_ctrl_t;
 
   parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{
@@ -831,7 +832,8 @@ typedef struct packed {
                                                           sys_ecall_insn               : 1'b0,
                                                           sys_fencei_insn              : 1'b0,
                                                           sys_mret_insn                : 1'b0,
-                                                          sys_wfi_insn                 : 1'b0
+                                                          sys_wfi_insn                 : 1'b0,
+                                                          sys_wfe_insn                 : 1'b0
                                                           };
 
 ///////////////////////////////////////////////
@@ -1101,6 +1103,7 @@ typedef struct packed {
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
+  logic         sys_wfe_insn;
 
   logic         illegal_insn;
 
@@ -1165,6 +1168,7 @@ typedef struct packed {
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
+  logic         sys_wfe_insn;
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface

@@ -88,6 +88,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic [7:0]  irq_clic_level_i,           // CLIC mode current interrupt level
   input  logic [1:0]  irq_clic_priv_i,            // CLIC mode current interrupt privilege
 
+  // Wakeup signal for WFE (from toplevel input)
+  input  logic        wu_wfe_i,
+
   // From cs_registers
   input  logic  [1:0] mtvec_mode_i,
   input  dcsr_t       dcsr_i,
@@ -162,6 +165,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic exception_in_wb;
   logic [10:0] exception_cause_wb;
   logic wfi_in_wb;
+  logic wfe_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
   logic dret_in_wb;
@@ -322,6 +326,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // wfi in wb
   assign wfi_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid;
+
+  // wfe in wb
+  assign wfe_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn && ex_wb_pipe_i.instr_valid;
 
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
@@ -693,9 +700,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_save_cause = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
           // Special insn
-          end else if (wfi_in_wb) begin
+          end else if (wfi_in_wb || wfe_in_wb) begin
             // Halt the entire pipeline
-            // WFI will stay in WB until we exit sleep mode
+            // WFI/WFE will stay in WB until we exit sleep mode
             ctrl_fsm_o.halt_wb = 1'b1;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
@@ -1000,7 +1007,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign ctrl_fsm_o.wake_from_sleep    = irq_wu_ctrl_i || pending_debug || debug_mode_q;
+  assign ctrl_fsm_o.wake_from_sleep    = irq_wu_ctrl_i || pending_debug || debug_mode_q ||
+                                         (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn && ex_wb_pipe_i.instr_valid && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
   assign ctrl_fsm_o.debug_wfi_no_sleep = debug_mode_q || dcsr_i.step || trigger_match_in_wb;
 
   ////////////////////
