@@ -418,11 +418,12 @@ endgenerate
                      (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 
-  // Ensure bubbles in EX and WB while in SLEEP mode
+  // Ensure bubble in EX while in SLEEP mode.
+  // WFI instruction will be in WB
   a_wfi_bubbles:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_cs == SLEEP) |-> !(ex_wb_pipe_i.instr_valid || id_ex_pipe_i.instr_valid))
-      else `uvm_error("controller", "EX and WB stages not empty while in SLEEP state")
+                      (ctrl_fsm_cs == SLEEP) |-> !(id_ex_pipe_i.instr_valid))
+      else `uvm_error("controller", "EX stage not empty while in SLEEP state")
 
   // Assert correct exception cause for mpu load faults (checks default of cause mux)
   a_mpu_re_cause_mux:

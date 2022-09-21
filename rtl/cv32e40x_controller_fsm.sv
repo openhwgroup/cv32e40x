@@ -691,9 +691,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
           // Special insn
           end else if (wfi_in_wb) begin
-            // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
-            ctrl_fsm_o.halt_if = 1'b1;
-            ctrl_fsm_o.halt_id = 1'b1; // Ensures second bubble after WFI (EX is empty while in SLEEP)
+            // Halt the entire pipeline
+            // WFI will stay in WB until we exit sleep mode
+            ctrl_fsm_o.halt_wb = 1'b1;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
@@ -866,6 +866,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         if (ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
+          // Keep IF/ID/EX halted. May possibly remove this and gain one cycle when waking up to
+          // globally disabled interrupts or WFE.
+          ctrl_fsm_o.halt_ex = 1'b1;
+          ctrl_fsm_o.halt_wb = 1'b0; // Unhalt WB to allow WFI to retire when we exit SLEEP mode
         end
       end
       DEBUG_TAKEN: begin

@@ -655,7 +655,7 @@ module cv32e40x_rvfi
 
   logic [63:0] buffer_trans_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic         wb_valid_adjusted;
+  logic         wb_valid;
   logic         wb_valid_subop;
 
   logic         pc_mux_debug;
@@ -730,7 +730,7 @@ module cv32e40x_rvfi
   logic         in_trap_clr;
   // Clear in trap pipeline when it reaches rvfi_intr
   // This is done to avoid reporting already signaled triggers as supressed during by debug
-  assign in_trap_clr = wb_valid_adjusted && in_trap[STAGE_WB].intr;
+  assign in_trap_clr = wb_valid && in_trap[STAGE_WB].intr;
 
   // Set rvfi_trap for instructions causing exception or debug entry.
   rvfi_trap_t  rvfi_trap_next;
@@ -788,8 +788,8 @@ module cv32e40x_rvfi
   // WFI instructions retire when their wake-up condition is present.
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
   // Other instructions retire when their last suboperation is done in WB.
-  assign wb_valid_subop    = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i;
-  assign wb_valid_adjusted = (sys_en_wb_i && sys_wfi_insn_wb_i) ? (ctrl_fsm_cs_i == SLEEP) && (ctrl_fsm_ns_i == FUNCTIONAL) : wb_valid_i && (last_op_wb_i || abort_op_wb_i);
+  assign wb_valid_subop    = wb_valid_i;
+  assign wb_valid          = wb_valid_i && (last_op_wb_i || abort_op_wb_i);
 
 
   // Pipeline stage model //
@@ -1002,8 +1002,8 @@ module cv32e40x_rvfi
 
 
       //// WB Stage ////
-      rvfi_valid      <= wb_valid_adjusted;
-      if (wb_valid_adjusted) begin
+      rvfi_valid      <= wb_valid;
+      if (wb_valid) begin
 
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
@@ -1114,7 +1114,7 @@ module cv32e40x_rvfi
         mhpmcounter_h_during_wb[i] <= 1'b0;
       end else begin
         // Clear flags on wb_valid
-        if (wb_valid_adjusted) begin
+        if (wb_valid) begin
           mhpmcounter_l_during_wb[i] <= 1'b0;
           mhpmcounter_h_during_wb[i] <= 1'b0;
         end else begin
