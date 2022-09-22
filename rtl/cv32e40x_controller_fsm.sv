@@ -691,9 +691,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
           // Special insn
           end else if (wfi_in_wb) begin
-            // Not halting EX/WB to allow insn (interruptible bubble) in EX to pass to WB before sleeping
-            ctrl_fsm_o.halt_if = 1'b1;
-            ctrl_fsm_o.halt_id = 1'b1; // Ensures second bubble after WFI (EX is empty while in SLEEP)
+            // Halt the entire pipeline
+            // WFI will stay in WB until we exit sleep mode
+            ctrl_fsm_o.halt_wb = 1'b1;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
           end else if (fencei_in_wb) begin
@@ -858,14 +858,21 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
       SLEEP: begin
-        // There should be a bubble in EX and WB in this state (checked by assertion)
+        // There should be a bubble in EX in this state (checked by assertion)
         // We are avoiding that a load/store starts its bus transaction
         ctrl_fsm_o.ctrl_busy = 1'b0;
         ctrl_fsm_o.instr_req = 1'b0;
-        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring following instructions
+        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring WFI until we wake up.
+
+        // Wake up from SLEEP
         if (ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
+          // Keep IF/ID/EX halted while waking up.
+          // Any jump/table jump/mret which is in ID in this cycle must also remain in ID
+          // the next cycle for their side effects to be taken during the FUNCTIONAL state in case the interrupt is not actually taken.
+          ctrl_fsm_o.halt_ex = 1'b1;
+          ctrl_fsm_o.halt_wb = 1'b0; // Unhalt WB to allow WFI to retire when we exit SLEEP mode
         end
       end
       DEBUG_TAKEN: begin
