@@ -655,7 +655,7 @@ module cv32e40x_rvfi
 
   logic [63:0] buffer_trans_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
 
-  logic         wb_valid;
+  logic         wb_valid_lastop;
   logic         wb_valid_subop;
 
   logic         pc_mux_debug;
@@ -730,7 +730,7 @@ module cv32e40x_rvfi
   logic         in_trap_clr;
   // Clear in trap pipeline when it reaches rvfi_intr
   // This is done to avoid reporting already signaled triggers as supressed during by debug
-  assign in_trap_clr = wb_valid && in_trap[STAGE_WB].intr;
+  assign in_trap_clr = wb_valid_lastop && in_trap[STAGE_WB].intr;
 
   // Set rvfi_trap for instructions causing exception or debug entry.
   rvfi_trap_t  rvfi_trap_next;
@@ -789,7 +789,7 @@ module cv32e40x_rvfi
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
   // Other instructions retire when their last suboperation is done in WB.
   assign wb_valid_subop    = wb_valid_i;
-  assign wb_valid          = wb_valid_i && (last_op_wb_i || abort_op_wb_i);
+  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i);
 
 
   // Pipeline stage model //
@@ -1002,8 +1002,8 @@ module cv32e40x_rvfi
 
 
       //// WB Stage ////
-      rvfi_valid      <= wb_valid;
-      if (wb_valid) begin
+      rvfi_valid      <= wb_valid_lastop;
+      if (wb_valid_lastop) begin
 
         rvfi_order      <= rvfi_order + 64'b1;
         rvfi_pc_rdata   <= pc_wb_i;
@@ -1098,10 +1098,10 @@ module cv32e40x_rvfi
 
   assign rvfi_nmip = {nmi_is_store_i, nmi_pending_i};
 
-  // Capture possible performance counter writes during WB, before wb_valid
-  // If counter write happens before wb_valid (e.g. LSU stalled waiting for rvalid or WFI that is in WB multiple cycles),
+  // Capture possible performance counter writes during WB, before wb_valid_lastop
+  // If counter write happens before wb_valid_lastop (e.g. LSU stalled waiting for rvalid or WFI that is in WB multiple cycles),
   // we must keep _n and _q values to correctly set _rdata and _wdata when rvfi_valid is set.
-  // If wb_valid occurs in the same cycle as the write, the flags are zero and any
+  // If wb_valid_lastop occurs in the same cycle as the write, the flags are zero and any
   // stored values will not be used.
   generate for (genvar i = 0; i < 32; i++)
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -1114,7 +1114,7 @@ module cv32e40x_rvfi
         mhpmcounter_h_during_wb[i] <= 1'b0;
       end else begin
         // Clear flags on wb_valid
-        if (wb_valid) begin
+        if (wb_valid_lastop) begin
           mhpmcounter_l_during_wb[i] <= 1'b0;
           mhpmcounter_h_during_wb[i] <= 1'b0;
         end else begin

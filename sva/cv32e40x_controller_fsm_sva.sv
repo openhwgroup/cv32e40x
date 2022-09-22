@@ -91,7 +91,8 @@ module cv32e40x_controller_fsm_sva
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
   input logic           abort_op_id_i,
-  input mcause_t        mcause_i
+  input mcause_t        mcause_i,
+  input logic           lsu_trans_valid_i
 );
 
 
@@ -420,10 +421,36 @@ endgenerate
 
   // Ensure bubble in EX while in SLEEP mode.
   // WFI instruction will be in WB
+  // Bubble is needed to avoid any LSU instructions to go on the bus while handling the WFI, as this
+  // could cause the pipeline not to be interruptible when we wake up to an interrupt that should be taken.
   a_wfi_bubbles:
     assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_cs == SLEEP) |-> !(id_ex_pipe_i.instr_valid))
       else `uvm_error("controller", "EX stage not empty while in SLEEP state")
+
+  // Check that the pipeline is interruptible when we wake up from SLEEP
+  a_wakeup_interruptible:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_cs == SLEEP) && (ctrl_fsm_ns == FUNCTIONAL)
+                      |=>
+                      interrupt_allowed)
+      else `uvm_error("controller", "Pipeline not interruptible after waking from SLEEP")
+
+  // When entering SLEEP mode, no LSU should perform a request.
+  a_enter_sleep_no_lsu:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_cs == FUNCTIONAL) && (ctrl_fsm_ns == SLEEP)
+                      |=>
+                      !lsu_trans_valid_i)
+      else `uvm_error("controller", "LSU trans_valid high when entering SLEEP")
+
+  // When in SLEEP mode, no LSU should perform a request.
+  a_sleep_no_lsu:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == SLEEP)
+                    |=>
+                    !lsu_trans_valid_i)
+    else `uvm_error("controller", "LSU trans_valid high during SLEEP")
 
   // Assert correct exception cause for mpu load faults (checks default of cause mux)
   a_mpu_re_cause_mux:
