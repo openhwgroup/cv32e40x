@@ -135,7 +135,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   (
     .instr_rdata_i  ( instr_rdata         ),
     .ctrl_fsm_i     ( ctrl_fsm_i          ),
-    .decoder_ctrl_o ( decoder_x_ctrl )
+    .decoder_ctrl_o ( decoder_x_ctrl      )
   );
 
 

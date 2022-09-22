@@ -92,7 +92,9 @@ module cv32e40x_controller_fsm_sva
   input logic           prefetch_is_tbljmp_ptr_if_i,
   input logic           abort_op_id_i,
   input mcause_t        mcause_i,
-  input logic           lsu_trans_valid_i
+  input logic           lsu_trans_valid_i,
+  input logic           irq_wu_ctrl_i,
+  input logic           wu_wfe_i
 );
 
 
@@ -444,21 +446,34 @@ endgenerate
                       interrupt_allowed)
       else `uvm_error("controller", "Pipeline not interruptible after waking from SLEEP")
 
-  // When entering SLEEP mode, no LSU should perform a request.
+  // When entering or in SLEEP mode, no LSU should perform a request.
   a_enter_sleep_no_lsu:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_cs == FUNCTIONAL) && (ctrl_fsm_ns == SLEEP)
+                      (ctrl_fsm_cs == SLEEP) || (ctrl_fsm_ns == SLEEP)
                       |=>
                       !lsu_trans_valid_i)
-      else `uvm_error("controller", "LSU trans_valid high when entering SLEEP")
+      else `uvm_error("controller", "LSU trans_valid high when entering or in SLEEP")
 
-  // When in SLEEP mode, no LSU should perform a request.
-  a_sleep_no_lsu:
+
+  // WFI cannot wake up to wu_wfe_i pin
+  // Disregarding debug related reasons to wake up
+  a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (ctrl_fsm_cs == SLEEP)
+                    (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
+                    !irq_wu_ctrl_i && wu_wfe_i && !pending_debug
                     |=>
-                    !lsu_trans_valid_i)
-    else `uvm_error("controller", "LSU trans_valid high during SLEEP")
+                    (ctrl_fsm_cs == SLEEP))
+    else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
+
+  // WFE wakes up to either interrupts or wu_wfe_i
+  // Disregarding debug related reasons to wake up
+  a_wfe_wakeup:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn &&
+                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_debug
+                    |->
+                    (ctrl_fsm_ns == FUNCTIONAL))
+    else `uvm_error("controller", "WFE must wake up to interuppts or wu_wfe_i")
 
   // Assert correct exception cause for mpu load faults (checks default of cause mux)
   a_mpu_re_cause_mux:
