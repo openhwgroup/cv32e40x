@@ -42,7 +42,7 @@ Modifiable/modified transactions are not supported in I/O regions.  An attempt t
 load access fault (exception code 5). An attempt to perform a modifiable/modified store access to an I/O region causes a precise store access fault (exception code 7).
 
 .. note::
-   The [RISC-V-ZCA_ZCB_ZCMB_ZCMP_ZCMT]_ specification leaves it to the core implementation whether ``cm.push``, ``cm.pop``, ``cm.popret`` and ``cm.popretz`` instructions
+   The [RISC-V-ZCA_ZCB_ZCMP_ZCMT]_ specification leaves it to the core implementation whether ``cm.push``, ``cm.pop``, ``cm.popret`` and ``cm.popretz`` instructions
    are supported to non-idempotent memories or not. In |corev| the ``cm.push``, ``cm.pop``, ``cm.popret`` and ``cm.popretz`` instructions
    are **not** allowed to perform their load or store acceses to non-idempotent memories (I/O) and a load access fault (exception code 5) or store access fault (exception code 7)
    will occur upon the first such load or store access violating this requirement (meaning that the related ``pop`` or ``push`` might become partially executed).
