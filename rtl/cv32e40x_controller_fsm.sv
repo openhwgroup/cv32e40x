@@ -535,7 +535,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     //             Sequences:    If we need to halt for debug or interrupt not allowed due to a sequence, we must check if we can
     //                           actually halt the ID stage or not. Halting the same sequence that causes *_allowed to go to 0
     //                           may cause a deadlock.
-    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_stall || ctrl_byp_i.mnxti_id_stall ||
+    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_wfe_stall || ctrl_byp_i.mnxti_id_stall ||
       (((pending_interrupt && !interrupt_allowed) || (pending_nmi && !nmi_allowed) || (pending_nmi_early)) && debug_interruptible && id_stage_haltable) ||
       (pending_debug && !debug_allowed && id_stage_haltable);
 
@@ -1007,9 +1007,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign ctrl_fsm_o.wake_from_sleep    = irq_wu_ctrl_i || pending_debug || debug_mode_q ||
-                                         (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn && ex_wb_pipe_i.instr_valid && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
-  assign ctrl_fsm_o.debug_wfi_no_sleep = debug_mode_q || dcsr_i.step || trigger_match_in_wb;
+  assign ctrl_fsm_o.wake_from_sleep        = irq_wu_ctrl_i || pending_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
+  assign ctrl_fsm_o.debug_wfi_wfe_no_sleep = debug_mode_q || dcsr_i.step || trigger_match_in_wb;
 
   ////////////////////
   // Flops          //

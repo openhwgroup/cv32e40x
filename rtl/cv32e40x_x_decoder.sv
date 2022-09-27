@@ -26,9 +26,9 @@
 module cv32e40x_x_decoder import cv32e40x_pkg::*;
   (
    // from IF/ID pipeline
-   input logic [31:0] instr_rdata_i,
+   input  logic [31:0]   instr_rdata_i,
    input  ctrl_fsm_t     ctrl_fsm_i,
-   output             decoder_ctrl_t decoder_ctrl_o
+   output decoder_ctrl_t decoder_ctrl_o
    );
 
   always_comb
@@ -38,34 +38,18 @@ module cv32e40x_x_decoder import cv32e40x_pkg::*;
     decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
     decoder_ctrl_o.illegal_insn = 1'b0;
 
-    unique case (instr_rdata_i[6:0])
+    if (instr_rdata_i == 32'h8C000073) begin
+      // WFE instruction
+      decoder_ctrl_o.sys_en = 1'b1;
 
-      OPCODE_SYSTEM: begin
-        if (instr_rdata_i[14:12] == 3'b000) begin
-          if ({instr_rdata_i[25:15], instr_rdata_i[11:7]} == '0) begin
-            if (instr_rdata_i[31:26] == 6'b100011) begin
-              // WFE instructions
-              decoder_ctrl_o.sys_en = 1'b1;
-
-              // Suppressing WFI in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
-              decoder_ctrl_o.sys_wfe_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
-            end else begin
-              decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-            end
-          end else begin
-            decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-          end
-        end else begin
-          decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-        end
-      end
-      default: begin
-        // No match
-        decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
-      end
-    endcase
-
+      // Suppressing WFI in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
+      decoder_ctrl_o.sys_wfe_insn = ctrl_fsm_i.debug_wfi_wfe_no_sleep ? 1'b0 : 1'b1;
+    end else begin
+      decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+    end
   end
+
+
 
 endmodule
 

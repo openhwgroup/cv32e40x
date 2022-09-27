@@ -42,7 +42,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          sys_mret_insn_o,        // Return from exception instruction encountered (M)
   output logic          sys_dret_insn_o,        // Return from debug (M)
   output logic          sys_ecall_insn_o,       // Environment call (syscall) instruction encountered
-  output logic          sys_wfi_insn_o,         // Pipeline flush is requested
+  output logic          sys_wfi_insn_o,
   output logic          sys_wfe_insn_o,
   output logic          sys_fencei_insn_o,      // fence.i instruction
 
@@ -233,13 +233,13 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign lsu_sext_o         = decoder_ctrl_mux.lsu_sext;
   assign lsu_atop_o         = decoder_a_ctrl.lsu_atop;                          // Only A decoder handles atomics
   assign sys_en             = decoder_ctrl_mux.sys_en;
-  assign sys_mret_insn_o    = decoder_i_ctrl.sys_mret_insn;                     // Only I decoder handles SYS
-  assign sys_dret_insn_o    = decoder_i_ctrl.sys_dret_insn;                     // Only I decoder handles SYS
-  assign sys_ebrk_insn_o    = decoder_i_ctrl.sys_ebrk_insn;                     // Only I decoder handles SYS
-  assign sys_ecall_insn_o   = decoder_i_ctrl.sys_ecall_insn;                    // Only I decoder handles SYS
-  assign sys_wfi_insn_o     = decoder_i_ctrl.sys_wfi_insn;                      // Only I decoder handles SYS
+  assign sys_mret_insn_o    = decoder_i_ctrl.sys_mret_insn;                     // Only I decoder handles MRET
+  assign sys_dret_insn_o    = decoder_i_ctrl.sys_dret_insn;                     // Only I decoder handles DRET
+  assign sys_ebrk_insn_o    = decoder_i_ctrl.sys_ebrk_insn;                     // Only I decoder handles EBREAK
+  assign sys_ecall_insn_o   = decoder_i_ctrl.sys_ecall_insn;                    // Only I decoder handles ECALL
+  assign sys_wfi_insn_o     = decoder_i_ctrl.sys_wfi_insn;                      // Only I decoder handles WFI
   assign sys_wfe_insn_o     = decoder_x_ctrl.sys_wfe_insn;                      // Only X decoder handles WFE
-  assign sys_fencei_insn_o  = decoder_i_ctrl.sys_fencei_insn;                   // Only I decoder handles SYS
+  assign sys_fencei_insn_o  = decoder_i_ctrl.sys_fencei_insn;                   // Only I decoder handles FENCE.I
 
   // Suppress control signals
   assign alu_en_o = deassert_we_i ? 1'b0 : alu_en;

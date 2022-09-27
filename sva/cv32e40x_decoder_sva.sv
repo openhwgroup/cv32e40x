@@ -36,6 +36,7 @@ module cv32e40x_decoder_sva
   input decoder_ctrl_t  decoder_a_ctrl,
   input decoder_ctrl_t  decoder_i_ctrl,
   input decoder_ctrl_t  decoder_b_ctrl,
+  input decoder_ctrl_t  decoder_x_ctrl,
   input decoder_ctrl_t  decoder_ctrl_mux,
   input logic [31:0]    instr_rdata,
   input if_id_pipe_t    if_id_pipe
@@ -149,6 +150,14 @@ module cv32e40x_decoder_sva
                 (decoder_i_ctrl.sys_wfi_insn == decoder_ctrl_mux.sys_wfi_insn) &&
                 (decoder_i_ctrl.sys_fencei_insn == decoder_ctrl_mux.sys_fencei_insn)))
     else `uvm_error("decoder", "SYS related signals driven from unexpected decoder")
+
+  // Check that WFI is driven directly from the x_decoder
+  a_wfi_decode :
+    assert property (@(posedge clk) disable iff (!rst_n)
+      1'b1 |-> (
+                (decoder_x_ctrl.sys_wfe_insn == decoder_ctrl_mux.sys_wfe_insn)))
+
+    else `uvm_error("decoder", "WFE related signals driven from unexpected decoder")
 
   // Check that MUL/DIV related signals can be used from M decoder directly (bypassing other decoders)
   a_muldiv_decode :

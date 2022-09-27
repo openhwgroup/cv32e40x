@@ -322,7 +322,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h105: begin // wfi
                 // Suppressing WFI in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
-                decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
+                decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_wfi_wfe_no_sleep ? 1'b0 : 1'b1;
               end
 
               default: begin

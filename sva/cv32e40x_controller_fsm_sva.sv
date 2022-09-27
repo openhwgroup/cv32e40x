@@ -425,7 +425,7 @@ endgenerate
   // WFI or WFE instruction will be in WB
   // Bubble is needed to avoid any LSU instructions to go on the bus while handling the WFI, as this
   // could cause the pipeline not to be interruptible when we wake up to an interrupt that should be taken.
-  a_wfi_bubbles:
+  a_wfi_wfe_bubbles:
     assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_cs == SLEEP)
                       |->
@@ -731,5 +731,11 @@ end // SMCLIC
   assert property (@(posedge clk) disable iff (!rst_n)
                     (mret_in_wb && wb_valid_i) |-> ctrl_fsm_o.csr_restore_mret)
     else `uvm_error("controller", "MRET in WB did not result in csr_restore_mret.")
+
+  // No CSR should be updated during sleep, and hence no irq_enable_stall should be active.
+  a_no_irq_write_during_sleep:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == SLEEP) |-> !ctrl_byp_i.irq_enable_stall)
+    else `uvm_error("controller", "irq_enable_stall while SLEEPING should not happen.")
 endmodule
 
