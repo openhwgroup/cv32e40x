@@ -1269,6 +1269,7 @@ typedef struct packed {
   logic        halt_id; // Halt ID stage
   logic        halt_ex; // Halt EX stage
   logic        halt_wb; // Halt WB stage
+  logic        halt_limited_wb; // Halt WB stage during SLEEP, but not cs_registers
 
   // Kill signals
   logic        kill_if; // Kill IF stage

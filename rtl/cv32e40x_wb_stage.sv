@@ -86,7 +86,9 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   logic                 xif_waiting;
   logic                 xif_exception;
 
-  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
+  // WB stage has two halt sources, ctrl_fsm_i.halt_wb and ctrl_fsm_i.halt_limited_wb. The limited halt is only set during
+  // the SLEEP state, and is used to prevent timing paths from interrupt inputs to obi outputs when waking up from SLEEP.
+  assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb && !ctrl_fsm_i.halt_limited_wb;
 
   assign lsu_exception = (lsu_mpu_status_i != MPU_OK);
 
@@ -129,7 +131,8 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // Stage ready/valid
 
-  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !xif_waiting && !ctrl_fsm_i.halt_wb);
+  // Using both ctrl_fsm_i.halt_wb and ctrl_fsm_i.halt_limited_wb to halt.
+  assign wb_ready_o = ctrl_fsm_i.kill_wb || (lsu_ready_i && !xif_waiting && !ctrl_fsm_i.halt_wb && !ctrl_fsm_i.halt_limited_wb);
 
   // wb_valid
   //

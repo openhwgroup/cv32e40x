@@ -129,5 +129,14 @@ module cv32e40x_cs_registers_sva
       else `uvm_error("cs_registers", "Mscratch not written by mscratchcswl");
 
   end
+
+  // Check that no csr instruction can be in WB during sleep when ctrl_fsm.halt_limited_wb is set
+  property p_halt_limited_wb;
+    @(posedge clk) disable iff (!rst_n)
+    (  ctrl_fsm_i.halt_limited_wb |-> !(ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid));
+  endproperty;
+
+  a_halt_limited_wb: assert property(p_halt_limited_wb)
+    else `uvm_error("cs_registers", "CSR in WB while halt_limited_wb is set");
 endmodule
 
