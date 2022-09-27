@@ -458,8 +458,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // When WB is halted, we do not know (yet) if the instruction will retire or get killed.
   // Halted WB due to debug will result in WB getting killed
   // Halted WB due to fence.i will result in fence.i retire after handshake is done and we count when WB is un-halted
+  // ctrl_fsm_o.halt_limited_wb will only be set during SLEEP, and only affect the WB stage (not cs_registers)
+  //  In terms of counter events, no event should be counted while either of the WB related halts are asserted.
   assign wb_counter_event_gated = wb_counter_event && !exception_in_wb && !trigger_match_in_wb &&
-                                  !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb;
+                                  !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb && !ctrl_fsm_o.halt_limited_wb;
 
   // Performance counter events
   assign ctrl_fsm_o.mhpmevent.minstret      = wb_counter_event_gated;
@@ -537,6 +539,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Halting EX when an instruction in WB may cause an interrupt to become pending.
     ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_ex_stall;
     ctrl_fsm_o.halt_wb          = 1'b0;
+    ctrl_fsm_o.halt_limited_wb  = 1'b0;
 
     // By default no stages are killed
     ctrl_fsm_o.kill_if          = 1'b0;
@@ -860,19 +863,25 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       SLEEP: begin
         // There should be a bubble in EX in this state (checked by assertion)
         // We are avoiding that a load/store starts its bus transaction
-        ctrl_fsm_o.ctrl_busy = 1'b0;
-        ctrl_fsm_o.instr_req = 1'b0;
-        ctrl_fsm_o.halt_wb   = 1'b1; // Put backpressure on pipeline to avoid retiring WFI until we wake up.
+        ctrl_fsm_o.ctrl_busy         = 1'b0;
+        ctrl_fsm_o.instr_req         = 1'b0;
+        // Put backpressure on pipeline to avoid retiring WFI until we wake up.
+        // Using limited version of halt_wb to avoid timing paths through cs_registers and bypass onto the data OBI bus.
+        // Assertions exist to check that no CSR instruction can be in WB at this time.
+        ctrl_fsm_o.halt_limited_wb   = 1'b1;
 
         // Wake up from SLEEP
         if (ctrl_fsm_o.wake_from_sleep) begin
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
-          // Keep IF/ID/EX halted while waking up.
-          // Any jump/table jump/mret which is in ID in this cycle must also remain in ID
+          // Keep IF/ID halted while waking up (EX contains a bubble)
+          // Any jump/tablejump/mret which is in ID in this cycle must also remain in ID
           // the next cycle for their side effects to be taken during the FUNCTIONAL state in case the interrupt is not actually taken.
-          ctrl_fsm_o.halt_ex = 1'b1;
-          ctrl_fsm_o.halt_wb = 1'b0; // Unhalt WB to allow WFI to retire when we exit SLEEP mode
+          ctrl_fsm_o.halt_id = 1'b1;
+
+          // Unhalt WB to allow WFI to retire when we exit SLEEP mode
+          // Using limited version of halt_wb to avoid timing paths through cs_registers and bypass onto the data OBI bus.
+          ctrl_fsm_o.halt_limited_wb = 1'b0;
         end
       end
       DEBUG_TAKEN: begin
@@ -1103,7 +1112,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       wb_counter_event <= 1'b0;
     end else begin
       // When the last part of an instruction reaches WB we may increment counters,
-      // unless WB stage is halted. A halted instruction in WB may or may not be killed later,
+      // unless WB stage is halted. WB stage is halted due to either halt_wb or halt_limited wb (SLEEP with WFI/WFE in WB only).
+      // A halted instruction in WB may or may not be killed later,
       // thus we cannot count it until we know for sure if it will retire.
       // i.e halt_wb due to debug will result in killed WB, while for fence.i it will retire.
       // Note that this event bit is further gated before sent to the actual counters in case
@@ -1113,7 +1123,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet
-        if (!ctrl_fsm_o.halt_wb) begin
+        if (!ctrl_fsm_o.halt_wb && !ctrl_fsm_o.halt_limited_wb) begin
           wb_counter_event <= 1'b0;
         end
       end

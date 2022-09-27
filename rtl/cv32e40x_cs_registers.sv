@@ -257,6 +257,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mhpmcounter_write_increment;                    // Write increment of mhpmcounter_q
 
   // Local instr_valid for write portion (WB)
+  // Not factoring in ctrl_fsm_i.halt_limited_wb. This signal is only set during SLEEP mode, and while in SLEEP
+  // there cannot be any CSR instruction in WB.
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb;
 
   // CSR access. Read in EX, write in WB

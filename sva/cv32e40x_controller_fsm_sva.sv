@@ -428,6 +428,12 @@ endgenerate
                       (ctrl_fsm_cs == SLEEP) |-> !(id_ex_pipe_i.instr_valid))
       else `uvm_error("controller", "EX stage not empty while in SLEEP state")
 
+  // When halt_limited_wb is asserted, there can only be WFI instruction in WB
+  a_halt_limited_wfi:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_o.halt_limited_wb) |-> (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid))
+      else `uvm_error("controller", "No WFI in WB while halt_limited_wb is asserted")
+
   // Check that the pipeline is interruptible when we wake up from SLEEP
   a_wakeup_interruptible:
     assert property (@(posedge clk) disable iff (!rst_n)
