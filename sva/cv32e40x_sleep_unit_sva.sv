@@ -118,14 +118,14 @@ module cv32e40x_sleep_unit_sva
     else `uvm_error("sleep_unit", "Assertion a_gate_clock_during_sleep failed")
 
   // Sleep mode can only be entered in response to a WFI or WFE instruction
-  property p_only_sleep_for_wfi;
+  property p_only_sleep_for_wfi_wfe;
       @(posedge clk_ungated_i) disable iff (!rst_n)
         (core_sleep_o == 1'b1) |-> (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 12'b000100000101, 13'b0, OPCODE_SYSTEM } ||
                                    (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 6'b100011, 11'b00000000000, 3'b000, 5'b00000, OPCODE_SYSTEM }));
     endproperty
 
   a_only_sleep_for_wfi : assert property(p_only_sleep_for_wfi)
-    else `uvm_error("sleep_unit", "Assertion a_only_sleep_for_wfi failed")
+    else `uvm_error("sleep_unit", "Assertion a_only_sleep_for_wfi_wfe failed")
 
   // In sleep mode the core will not be busy (e.g. no ongoing/outstanding instruction or data transactions)
   property p_not_busy_during_sleep;

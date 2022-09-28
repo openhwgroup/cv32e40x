@@ -190,11 +190,11 @@ module cv32e40x_controller_fsm_sva
             ((ctrl_fsm_cs == RESET) || (ctrl_fsm_cs == BOOT_SET)) |-> (!if_valid_i && !if_id_pipe_i.instr_valid && !id_ex_pipe_i.instr_valid && !ex_wb_pipe_i.instr_valid) )
       else `uvm_error("controller", "Instruction valid during RESET or BOOT_SET")
 
-  // Check that no LSU insn can be in EX when there is a WFI in WB
-  a_wfi_lsu_csr :
+  // Check that no LSU insn can be in EX when there is a WFI or WFE in WB
+  a_wfi_wfe_lsu_csr :
   assert property (@(posedge clk) disable iff (!rst_n)
-          (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
-    else `uvm_error("controller", "LSU instruction follows WFI")
+          (ex_wb_pipe_i.sys_en && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn) && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
+    else `uvm_error("controller", "LSU instruction follows WFI or WFE")
 
   // Check that no new instructions (first_op=1) are valid in ID or EX when a single step is taken
   // In case of interrupt during step, the instruction being stepped could be in any stage, and will get killed.
@@ -435,8 +435,8 @@ endgenerate
   // When halt_limited_wb is asserted, there can only be WFI instruction in WB
   a_halt_limited_wfi:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_o.halt_limited_wb) |-> (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid))
-      else `uvm_error("controller", "No WFI in WB while halt_limited_wb is asserted")
+                      (ctrl_fsm_o.halt_limited_wb) |-> (ex_wb_pipe_i.sys_en && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn) && ex_wb_pipe_i.instr_valid))
+      else `uvm_error("controller", "No WFI or WFE in WB while halt_limited_wb is asserted")
 
   // Check that the pipeline is interruptible when we wake up from SLEEP
   a_wakeup_interruptible:
