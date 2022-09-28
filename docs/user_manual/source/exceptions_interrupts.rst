@@ -68,6 +68,8 @@ Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` simil
    ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
    specified at a future date, then we will reconsider our implementation.
 
+NMIs have higher priority than other interrupts for both the basic interrupt architecture and the CLIC interrupt architecture.
+
 If ``SMCLIC`` == 0, then the NMI vector location is as follows:
 
 * Upon an NMI in non-vectored basic mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
@@ -295,6 +297,8 @@ Interrupts
 Although the [RISC-V-SMCLIC]_ specification supports up to 4096 interrupts, |corev| itself supports at most 1024 interrupts. The
 maximum number of supported CLIC interrupts is equal to ``2^SMCLIC_ID_WIDTH``, which can range from 2 to 1024. The ``SMCLIC_ID_WIDTH`` parameter
 also impacts the alignment requirement for the trap vector table, see :ref:`csr-mtvt`.
+
+Interrupt prioritization is mostly performed in the part of CLIC that is external to the core, with the exception that |corev| prioritizes all NMIs above interrupts received via ``clic_irq_i``.
 
 Nested Interrupt Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
