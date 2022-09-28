@@ -124,7 +124,7 @@ module cv32e40x_sleep_unit_sva
                                    (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 6'b100011, 11'b00000000000, 3'b000, 5'b00000, OPCODE_SYSTEM }));
     endproperty
 
-  a_only_sleep_for_wfi : assert property(p_only_sleep_for_wfi)
+  a_only_sleep_for_wfi_wfe : assert property(p_only_sleep_for_wfi_wfe)
     else `uvm_error("sleep_unit", "Assertion a_only_sleep_for_wfi_wfe failed")
 
   // In sleep mode the core will not be busy (e.g. no ongoing/outstanding instruction or data transactions)
