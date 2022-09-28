@@ -138,7 +138,6 @@ module cv32e40x_decoder_sva
     else `uvm_error("decoder", "CSR related signals driven from unexpected decoder")
 
   // Check that SYS related signals can be used from I decoder directly (bypassing other decoders)
-  // Note that with the WFE instruction, sys_en may be driven by both I-decoder and X-decoder.
   a_sys_decode :
     assert property (@(posedge clk) disable iff (!rst_n)
       1'b1 |-> (
