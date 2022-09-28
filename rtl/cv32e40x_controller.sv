@@ -92,6 +92,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic [7:0]  irq_clic_level_i,
   input  logic [1:0]  irq_clic_priv_i,
 
+  input  logic        wu_wfe_i,
+
   input logic  [1:0]  mtvec_mode_i,
   input  mcause_t     mcause_i,
 
@@ -199,6 +201,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .irq_clic_shv_i              ( irq_clic_shv_i           ),
     .irq_clic_level_i            ( irq_clic_level_i         ),
     .irq_clic_priv_i             ( irq_clic_priv_i          ),
+
+    .wu_wfe_i                    ( wu_wfe_i                 ),
 
     .mtvec_mode_i                ( mtvec_mode_i             ),
 

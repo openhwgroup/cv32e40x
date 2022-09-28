@@ -796,6 +796,7 @@ typedef struct packed {
   logic                              sys_fencei_insn;
   logic                              sys_mret_insn;
   logic                              sys_wfi_insn;
+  logic                              sys_wfe_insn;
 } decoder_ctrl_t;
 
   parameter decoder_ctrl_t DECODER_CTRL_ILLEGAL_INSN =  '{
@@ -831,7 +832,8 @@ typedef struct packed {
                                                           sys_ecall_insn               : 1'b0,
                                                           sys_fencei_insn              : 1'b0,
                                                           sys_mret_insn                : 1'b0,
-                                                          sys_wfi_insn                 : 1'b0
+                                                          sys_wfi_insn                 : 1'b0,
+                                                          sys_wfe_insn                 : 1'b0
                                                           };
 
 ///////////////////////////////////////////////
@@ -1101,6 +1103,7 @@ typedef struct packed {
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
+  logic         sys_wfe_insn;
 
   logic         illegal_insn;
 
@@ -1165,6 +1168,7 @@ typedef struct packed {
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
+  logic         sys_wfe_insn;
 
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
@@ -1203,7 +1207,7 @@ typedef struct packed {
   logic         jalr_stall;             // Stall due to JALR hazard (JALR used result from EX or LSU result in WB)
   logic         load_stall;             // Stall due to load operation
   logic         csr_stall;
-  logic         wfi_stall;
+  logic         wfi_wfe_stall;
   logic         mnxti_id_stall;         // Stall ID due to mnxti CSR access in EX
   logic         mnxti_ex_stall;         // Stall EX due to LSU instruction in WB
   logic         minstret_stall;         // Stall due to minstret/h read in EX
@@ -1239,14 +1243,14 @@ typedef struct packed {
   logic        dbg_ack;               // Debug has been taken
 
   // Debug outputs
-  logic        debug_mode_if;        // Flag signalling we are in debug mode, valid for IF
-  logic        debug_mode;           // Flag signalling we are in debug mode, valid for ID, EX and WB
-  logic [2:0]  debug_cause;          // cause of debug entry
-  logic        debug_csr_save;       // Update debug CSRs
-  logic        debug_wfi_no_sleep;   // Debug prevents core from sleeping after WFI
-  logic        debug_havereset;      // Signal to external debugger that we have reset
-  logic        debug_running;        // Signal to external debugger that we are running (not in debug)
-  logic        debug_halted;         // Signal to external debugger that we are halted (in debug mode)
+  logic        debug_mode_if;          // Flag signalling we are in debug mode, valid for IF
+  logic        debug_mode;             // Flag signalling we are in debug mode, valid for ID, EX and WB
+  logic [2:0]  debug_cause;            // cause of debug entry
+  logic        debug_csr_save;         // Update debug CSRs
+  logic        debug_wfi_wfe_no_sleep; // Debug prevents core from sleeping after WFI
+  logic        debug_havereset;        // Signal to external debugger that we have reset
+  logic        debug_running;          // Signal to external debugger that we are running (not in debug)
+  logic        debug_halted;           // Signal to external debugger that we are halted (in debug mode)
 
 
   // Wakeup Signal to sleep unit

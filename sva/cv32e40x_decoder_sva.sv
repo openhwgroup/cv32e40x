@@ -147,8 +147,10 @@ module cv32e40x_decoder_sva
                 (decoder_i_ctrl.sys_ebrk_insn == decoder_ctrl_mux.sys_ebrk_insn) &&
                 (decoder_i_ctrl.sys_ecall_insn == decoder_ctrl_mux.sys_ecall_insn) &&
                 (decoder_i_ctrl.sys_wfi_insn == decoder_ctrl_mux.sys_wfi_insn) &&
+                (decoder_i_ctrl.sys_wfe_insn == decoder_ctrl_mux.sys_wfe_insn) &&
                 (decoder_i_ctrl.sys_fencei_insn == decoder_ctrl_mux.sys_fencei_insn)))
     else `uvm_error("decoder", "SYS related signals driven from unexpected decoder")
+
 
   // Check that MUL/DIV related signals can be used from M decoder directly (bypassing other decoders)
   a_muldiv_decode :

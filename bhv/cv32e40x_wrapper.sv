@@ -123,6 +123,9 @@ module cv32e40x_wrapper
   // Interrupt inputs
   input  logic [31:0] irq_i,                    // CLINT interrupts + CLINT extension interrupts
 
+  // WFE input
+  input  logic        wu_wfe_i,
+
   // CLIC Interface
   input  logic                       clic_irq_i,
   input  logic [SMCLIC_ID_WIDTH-1:0] clic_irq_id_i,

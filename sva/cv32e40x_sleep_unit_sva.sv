@@ -58,7 +58,7 @@ module cv32e40x_sleep_unit_sva
   endproperty
 
   a_clock_en_1 : assert property(p_clock_en_1) else `uvm_error("sleep_unit", "Assertion a_clock_en_1 failed")
-  
+
   // Clock gate is not enabled before receiving fetch_enable_i pulse
   property p_clock_en_2;
    @(posedge clk_ungated_i) disable iff (!rst_n) (fetch_enable_q == 1'b0) |-> (clock_en == 1'b0);
@@ -78,7 +78,7 @@ module cv32e40x_sleep_unit_sva
 
   // Clock gate is enabled when exit from SLEEP state is required
   property p_clock_en_5;
-    @(posedge clk_ungated_i) disable iff (!rst_n) 
+    @(posedge clk_ungated_i) disable iff (!rst_n)
       ((ctrl_fsm_cs == SLEEP) && (ctrl_fsm_ns != SLEEP)) |-> (clock_en == 1'b1);
   endproperty
 
@@ -117,14 +117,15 @@ module cv32e40x_sleep_unit_sva
   a_gate_clock_during_sleep : assert property(p_gate_clock_during_sleep)
     else `uvm_error("sleep_unit", "Assertion a_gate_clock_during_sleep failed")
 
-  // Sleep mode can only be entered in response to a WFI instruction
-  property p_only_sleep_for_wfi;
+  // Sleep mode can only be entered in response to a WFI or WFE instruction
+  property p_only_sleep_for_wfi_wfe;
       @(posedge clk_ungated_i) disable iff (!rst_n)
-        (core_sleep_o == 1'b1) |-> (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 12'b000100000101, 13'b0, OPCODE_SYSTEM });
+        (core_sleep_o == 1'b1) |-> (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 12'b000100000101, 13'b0, OPCODE_SYSTEM } ||
+                                   (wb_stage_i.ex_wb_pipe_i.instr.bus_resp.rdata == { 6'b100011, 11'b00000000000, 3'b000, 5'b00000, OPCODE_SYSTEM }));
     endproperty
 
-  a_only_sleep_for_wfi : assert property(p_only_sleep_for_wfi)
-    else `uvm_error("sleep_unit", "Assertion a_only_sleep_for_wfi failed")
+  a_only_sleep_for_wfi_wfe : assert property(p_only_sleep_for_wfi_wfe)
+    else `uvm_error("sleep_unit", "Assertion a_only_sleep_for_wfi_wfe failed")
 
   // In sleep mode the core will not be busy (e.g. no ongoing/outstanding instruction or data transactions)
   property p_not_busy_during_sleep;
@@ -135,4 +136,4 @@ module cv32e40x_sleep_unit_sva
     else `uvm_error("sleep_unit", "Assertion a_not_busy_during_sleep failed")
 
 endmodule // cv32e40x_sleep_unit_sva
-  
+

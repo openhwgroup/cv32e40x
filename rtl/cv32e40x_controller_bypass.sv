@@ -136,9 +136,9 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
                               (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)))
                               );
 
-  // Stall ID when WFI is active in EX.
-  // Prevent load/store following a WFI in the pipeline
-  assign ctrl_byp_o.wfi_stall = (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_wfi_insn && id_ex_pipe_i.instr_valid);
+  // Stall ID when WFI or WFE is active in EX.
+  // Prevent load/store following a WFI or WFE in the pipeline
+  assign ctrl_byp_o.wfi_wfe_stall = (id_ex_pipe_i.sys_en && (id_ex_pipe_i.sys_wfi_insn || id_ex_pipe_i.sys_wfe_insn) && id_ex_pipe_i.instr_valid);
 
   // Stall ID when mnxti CSR is accessed in EX
   // This is needed because the data bypass from EX uses csr_rdata, and for mnxti this is actually mstatus and not the result

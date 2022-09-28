@@ -41,6 +41,9 @@ set clock_period 5.0
 # Input delays for interrupts
 set in_delay_irq          [expr $clock_period * 0.50]
 
+# Input delay for wu_wfe_i
+set in_delay_wfe          [expr $clock_period * 0.50]
+
 # Delay for CLIC
 # todo: set final constraints for CLIC signals
 set in_delay_clic         [expr $clock_period * 0.50]
@@ -48,7 +51,7 @@ set out_delay_clic        [expr $clock_period * 0.50]
 
 # Input delays for early signals
 
-set in_delay_early [expr $clock_period * 0.10] 
+set in_delay_early [expr $clock_period * 0.10]
 
 # Input delay for fencei handshake
 set in_delay_fencei       [expr $clock_period * 0.80]
@@ -121,6 +124,11 @@ set clock_ports [list \
 # IRQ Input ports
 set irq_input_ports [list \
     irq_i* \
+]
+
+# WFE Input ports
+set wfe_input_ports [list \
+    wu_wfe_i \
 ]
 
 # CLIC Input ports
@@ -255,14 +263,14 @@ set xif_mem_result_if_valid [list \
 create_clock \
       -name clk_i \
       -period $clock_period \
-      [get_ports clk_i] 
+      [get_ports clk_i]
 
 
 ########### Defining Default I/O constraints ###################
 
 set all_clock_ports $clock_ports
 
-set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $clic_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
+set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $wfe_input_ports $clic_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
 
 set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $clic_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
 
@@ -270,6 +278,9 @@ set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [lis
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
 set_input_delay  $in_delay_clic         [get_ports $clic_input_ports       ] -clock clk_i
 set_output_delay $out_delay_clic        [get_ports $clic_output_ports      ] -clock clk_i
+
+# WFE
+set_input_delay  $in_delay_wfe          [get_ports $wfe_input_ports        ] -clock clk_i
 
 # OBI input/output delays
 set_input_delay  $in_delay_instr_gnt    [ get_ports instr_gnt_i            ] -clock clk_i

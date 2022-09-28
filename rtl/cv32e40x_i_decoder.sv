@@ -23,6 +23,7 @@
 // Language:       SystemVerilog                                              //
 //                                                                            //
 // Description:    Decoder for the RV32I Base Instruction set                 //
+//                 Custom instruction WFE is also decoded in the I decoder    //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +38,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
    output decoder_ctrl_t decoder_ctrl_o
    );
+
+   localparam CUSTOM_EXT = 1;
 
   always_comb
   begin
@@ -322,7 +325,16 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h105: begin // wfi
                 // Suppressing WFI in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
-                decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_wfi_no_sleep ? 1'b0 : 1'b1;
+                decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_wfi_wfe_no_sleep ? 1'b0 : 1'b1;
+              end
+
+              12'h8C0: begin // wfe
+                if (CUSTOM_EXT == 1) begin
+                  // Suppressing WFE in case of ctrl_fsm_i.debug_wfi_no_sleep to prevent sleeping when not allowed.
+                  decoder_ctrl_o.sys_wfe_insn = ctrl_fsm_i.debug_wfi_wfe_no_sleep ? 1'b0 : 1'b1;
+                end else begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
               end
 
               default: begin

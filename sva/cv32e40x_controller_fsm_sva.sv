@@ -92,7 +92,9 @@ module cv32e40x_controller_fsm_sva
   input logic           prefetch_is_tbljmp_ptr_if_i,
   input logic           abort_op_id_i,
   input mcause_t        mcause_i,
-  input logic           lsu_trans_valid_i
+  input logic           lsu_trans_valid_i,
+  input logic           irq_wu_ctrl_i,
+  input logic           wu_wfe_i
 );
 
 
@@ -188,11 +190,11 @@ module cv32e40x_controller_fsm_sva
             ((ctrl_fsm_cs == RESET) || (ctrl_fsm_cs == BOOT_SET)) |-> (!if_valid_i && !if_id_pipe_i.instr_valid && !id_ex_pipe_i.instr_valid && !ex_wb_pipe_i.instr_valid) )
       else `uvm_error("controller", "Instruction valid during RESET or BOOT_SET")
 
-  // Check that no LSU insn can be in EX when there is a WFI in WB
-  a_wfi_lsu_csr :
+  // Check that no LSU insn can be in EX when there is a WFI or WFE in WB
+  a_wfi_wfe_lsu_csr :
   assert property (@(posedge clk) disable iff (!rst_n)
-          (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
-    else `uvm_error("controller", "LSU instruction follows WFI")
+          (ex_wb_pipe_i.sys_en && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn) && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
+    else `uvm_error("controller", "LSU instruction follows WFI or WFE")
 
   // Check that no new instructions (first_op=1) are valid in ID or EX when a single step is taken
   // In case of interrupt during step, the instruction being stepped could be in any stage, and will get killed.
@@ -420,19 +422,21 @@ endgenerate
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 
   // Ensure bubble in EX while in SLEEP mode.
-  // WFI instruction will be in WB
+  // WFI or WFE instruction will be in WB
   // Bubble is needed to avoid any LSU instructions to go on the bus while handling the WFI, as this
   // could cause the pipeline not to be interruptible when we wake up to an interrupt that should be taken.
-  a_wfi_bubbles:
+  a_wfi_wfe_bubbles:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_cs == SLEEP) |-> !(id_ex_pipe_i.instr_valid))
+                      (ctrl_fsm_cs == SLEEP)
+                      |->
+                      !(id_ex_pipe_i.instr_valid) && ((ex_wb_pipe_i.sys_en && ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn))))
       else `uvm_error("controller", "EX stage not empty while in SLEEP state")
 
   // When halt_limited_wb is asserted, there can only be WFI instruction in WB
   a_halt_limited_wfi:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_o.halt_limited_wb) |-> (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn && ex_wb_pipe_i.instr_valid))
-      else `uvm_error("controller", "No WFI in WB while halt_limited_wb is asserted")
+                      (ctrl_fsm_o.halt_limited_wb) |-> (ex_wb_pipe_i.sys_en && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn) && ex_wb_pipe_i.instr_valid))
+      else `uvm_error("controller", "No WFI or WFE in WB while halt_limited_wb is asserted")
 
   // Check that the pipeline is interruptible when we wake up from SLEEP
   a_wakeup_interruptible:
@@ -442,21 +446,34 @@ endgenerate
                       interrupt_allowed)
       else `uvm_error("controller", "Pipeline not interruptible after waking from SLEEP")
 
-  // When entering SLEEP mode, no LSU should perform a request.
+  // When entering or in SLEEP mode, no LSU should perform a request.
   a_enter_sleep_no_lsu:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (ctrl_fsm_cs == FUNCTIONAL) && (ctrl_fsm_ns == SLEEP)
+                      (ctrl_fsm_cs == SLEEP) || (ctrl_fsm_ns == SLEEP)
                       |=>
                       !lsu_trans_valid_i)
-      else `uvm_error("controller", "LSU trans_valid high when entering SLEEP")
+      else `uvm_error("controller", "LSU trans_valid high when entering or in SLEEP")
 
-  // When in SLEEP mode, no LSU should perform a request.
-  a_sleep_no_lsu:
+
+  // WFI cannot wake up to wu_wfe_i pin
+  // Disregarding debug related reasons to wake up
+  a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (ctrl_fsm_cs == SLEEP)
+                    (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
+                    !irq_wu_ctrl_i && wu_wfe_i && !pending_debug
                     |=>
-                    !lsu_trans_valid_i)
-    else `uvm_error("controller", "LSU trans_valid high during SLEEP")
+                    (ctrl_fsm_cs == SLEEP))
+    else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
+
+  // WFE wakes up to either interrupts or wu_wfe_i
+  // Disregarding debug related reasons to wake up
+  a_wfe_wakeup:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn &&
+                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_debug
+                    |->
+                    (ctrl_fsm_ns == FUNCTIONAL))
+    else `uvm_error("controller", "WFE must wake up to interuppts or wu_wfe_i")
 
   // Assert correct exception cause for mpu load faults (checks default of cause mux)
   a_mpu_re_cause_mux:
@@ -714,5 +731,11 @@ end // SMCLIC
   assert property (@(posedge clk) disable iff (!rst_n)
                     (mret_in_wb && wb_valid_i) |-> ctrl_fsm_o.csr_restore_mret)
     else `uvm_error("controller", "MRET in WB did not result in csr_restore_mret.")
+
+  // No CSR should be updated during sleep, and hence no irq_enable_stall should be active.
+  a_no_irq_write_during_sleep:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == SLEEP) |-> !ctrl_byp_i.irq_enable_stall)
+    else `uvm_error("controller", "irq_enable_stall while SLEEPING should not happen.")
 endmodule
 

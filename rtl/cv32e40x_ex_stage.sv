@@ -341,6 +341,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.sys_fencei_insn    <= 1'b0;
       ex_wb_pipe_o.sys_mret_insn      <= 1'b0;
       ex_wb_pipe_o.sys_wfi_insn       <= 1'b0;
+      ex_wb_pipe_o.sys_wfe_insn       <= 1'b0;
 
       ex_wb_pipe_o.trigger_match      <= 1'b0;
 
@@ -405,6 +406,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
           ex_wb_pipe_o.sys_fencei_insn <= id_ex_pipe_i.sys_fencei_insn;
           ex_wb_pipe_o.sys_mret_insn   <= id_ex_pipe_i.sys_mret_insn;
           ex_wb_pipe_o.sys_wfi_insn    <= id_ex_pipe_i.sys_wfi_insn;
+          ex_wb_pipe_o.sys_wfe_insn    <= id_ex_pipe_i.sys_wfe_insn;
         end
 
         // CSR illegal instruction detected in this stage, OR'ing in the status

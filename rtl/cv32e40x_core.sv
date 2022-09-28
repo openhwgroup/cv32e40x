@@ -106,6 +106,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Basic interrupt architecture
   input  logic [31:0]                   irq_i,
 
+  // Event wakeup signal
+  input  logic                          wu_wfe_i,
+
   // Smclic interrupt architecture
   input  logic                          clic_irq_i,
   input  logic [SMCLIC_ID_WIDTH-1:0]    clic_irq_id_i,
@@ -863,6 +866,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .irq_clic_shv_i                 ( irq_clic_shv           ),
     .irq_clic_level_i               ( irq_clic_level         ),
     .irq_clic_priv_i                ( irq_clic_priv          ),
+
+    .wu_wfe_i                       ( wu_wfe_i               ),
 
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
