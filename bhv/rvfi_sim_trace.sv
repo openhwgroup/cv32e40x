@@ -31,7 +31,7 @@ module rvfi_sim_trace
   import cv32e40x_rvfi_pkg::*;
   #(parameter string ITB_PLUSARG = "itb_file",
     parameter string LOGFILE_PATH_PLUSARG = "log_file",
-    parameter logic  ITRACE_ENABLE = 0)
+    parameter logic  ITRACE_ENABLE = 1)
   (
    input logic        rvfi_valid,
    input logic [31:0] rvfi_pc_rdata,
@@ -79,7 +79,7 @@ module rvfi_sim_trace
   generate
   begin
     if (ITRACE_ENABLE) begin
-      always_comb begin
+      always @ (rvfi_valid, rvfi_pc_rdata) begin
         if (rvfi_valid) begin
           if (^rvfi_pc_rdata !== 1'bx && imap.exists(rvfi_pc_rdata)) begin
             // Pick trace from instruction map
