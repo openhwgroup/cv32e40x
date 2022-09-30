@@ -39,8 +39,8 @@ It follows these specifications:
 .. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20211105-signoff (November 5, 2021),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20211105-c30284b/riscv-privileged.pdf
 
-.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0.0-STABLE, fe3d1e65efed4b56574c50867830c3c499f9b18c,
-   https://github.com/riscv/riscv-debug-spec/blob/b659d7dc7f578e1a2a76f9e62a5eec0f2d80045c/riscv-debug-stable.pdf
+.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0.0-STABLE, 9dc1ee4e4653730f1b318731f9ea8e97f116670a,
+   https://github.com/riscv/riscv-debug-spec/blob/14a8d628e1fb736043eb54e0596adddb9717f0de/riscv-debug-stable.pdf
 
 .. [RISC-V-SMCLIC] "Smclic" Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extension, version 0.9-draft, 3/15/2022,
    https://github.com/riscv/riscv-fast-interrupt/blob/af247be97888f759c61a00800f86171f28151820/clic.pdf 
@@ -187,13 +187,18 @@ The following custom instruction set extensions are available.
    can be supported by interfacing the |corev| to an external FPU via the eXtension interface.
 
 Most content of the RISC-V privileged specification is optional.
-|corev| currently supports the following features according to the RISC-V Privileged Specification [RISC-V-PRIV]_.
+|corev| supports the following features according to the RISC-V Privileged Specification [RISC-V-PRIV]_:
 
 * M-Mode
 * All CSRs listed in :ref:`cs-registers`
 * Base Counters, Timers and Hardware Performance Counters as described in :ref:`performance-counters` controlled by the ``NUM_MHPMCOUNTERS`` parameter
 * Trap handling supporting direct mode or vectored mode as described at :ref:`exceptions-interrupts`
 * Physical Memory Attribution (PMA) as described in :ref:`pma`
+
+|corev| supports the following ISA extensions from the RISC-V Debug Support specification [RISC-V-DEBUG]_:
+
+* **Sdext**: External Debug support. Always enabled.
+* **Sdtrig**: Trigger Module. Optionally enabled with the ``DBG_NUM_TRIGGERS`` parameter.
 
 Synthesis guidelines
 --------------------
