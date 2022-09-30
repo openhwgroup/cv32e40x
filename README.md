@@ -5,7 +5,7 @@ CV32E40X is a small and efficient, 32-bit, in-order RISC-V core with a 4-stage p
 * RV32[I|E]
 * [A]
 * [M|Zmmul]
-* Zca_Zcb_Zcmb_Zcmp_Zcmt
+* Zca_Zcb_Zcmp_Zcmt
 * [Zba_Zbb_Zbs|Zba_Zbb_Zbc_Zbs]
 * Zicntr
 * Zihpm

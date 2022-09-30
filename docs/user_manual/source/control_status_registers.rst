@@ -1455,7 +1455,7 @@ Reset Value: 0x0000_0000
 .. _csr-tdata1:
 
 Trigger Data 1 (``tdata1``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A1
 
@@ -1468,8 +1468,8 @@ Reset Value: 0x6800_1000
   +-------+-------------+----------------------------------------------------------------+
   | Bit#  | R/W         | Description                                                    |
   +=======+=============+================================================================+
-  | 31:28 | WARL (0x5,  | **TYPE**. 5 = Exception trigger, 6 = Address match trigger     |
-  |       | 0x6)        | type.                                                          |
+  | 31:28 | WARL (0x5,  | **TYPE**. 0x5 (``etrigger``), 0x6 (``mcontrol6``),             |
+  |       | 0x6, 0xF)   | 0xF (``disabled``).                                            |
   +-------+-------------+----------------------------------------------------------------+
   | 27    | WARL (0x1)  | **DMODE**. Only debug mode can write ``tdata`` registers.      |
   +-------+-------------+----------------------------------------------------------------+
@@ -1477,15 +1477,15 @@ Reset Value: 0x6800_1000
   +-------+-------------+----------------------------------------------------------------+
 
 .. note::
-   The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described for
-   ``mcontrol6`` and ``etrigger``.
+   The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described in
+   :ref:`csr-mcontrol6`, :ref:`csr-etrigger` and :ref:`csr-tdata1_disabled`.
 
 .. _csr-mcontrol6:
 
 Match Control Type 6 (``mcontrol6``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CSR Address: 0x7A1 (``mcontrol6`` is accessible as ``tdata1`` when ``tdata1.TYPE`` is 6)
+CSR Address: 0x7A1 (``mcontrol6`` is accessible as ``tdata1`` when ``tdata1.TYPE`` is 0x6)
 
 Reset Value: Not applicable
 
@@ -1542,7 +1542,7 @@ Reset Value: Not applicable
 Exception Trigger (``etrigger``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CSR Address: 0x7A1 (``etrigger`` is accessible as ``tdata1`` when ``tdata1.TYPE`` is 5)
+CSR Address: 0x7A1 (``etrigger`` is accessible as ``tdata1`` when ``tdata1.TYPE`` is 0x5)
 
 Reset Value: Not applicable
 
@@ -1577,6 +1577,31 @@ Reset Value: Not applicable
   +-------+--------------+----------------------------------------------------------------+
   | 5:0   | WARL (0x1)   | **ACTION**. Enter debug mode on match.                         |
   +-------+--------------+----------------------------------------------------------------+
+
+.. _csr-tdata1_disabled:
+
+Trigger Data 1 (``tdata1``) - ``disabled`` view
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x7A1 (``tdata1`` view when ``tdata1.TYPE`` is 0xF)
+
+Reset Value: Not applicable
+
+.. table::
+  :widths: 10 20 70
+  :class: no-scrollbar-table
+
+
+  +-------+-------------+----------------------------------------------------------------+
+  | Bit#  | R/W         | Description                                                    |
+  +=======+=============+================================================================+
+  | 31:28 | WARL (0xF)  | **TYPE**. 0xF (``disabled``).                                  |
+  +-------+-------------+----------------------------------------------------------------+
+  | 27    | WARL (0x1)  | **DMODE**. Only debug mode can write ``tdata`` registers.      |
+  +-------+-------------+----------------------------------------------------------------+
+  | 26:0  | WARL (0x0)  | **DATA**.                                                      |
+  +-------+-------------+----------------------------------------------------------------+
+
 
 .. _csr-tdata2:
 
@@ -1633,7 +1658,7 @@ Trigger Info (``tinfo``)
 
 CSR Address: 0x7A4
 
-Reset Value: 0x0000_0060
+Reset Value: 0x0000_8060
 
 Detailed:
 
@@ -1646,8 +1671,7 @@ Detailed:
   +=======+============+==================================================================+
   | 31:16 | WARL (0x0) | Hardwired to 0.                                                  |
   +-------+------------+------------------------------------------------------------------+
-  | 15:0  | R (0x20,   | **INFO**. Type 5 and 6 are supported.                            |
-  |       | 0x40)      |                                                                  |
+  | 15:0  | R (0x8060) | **INFO**. Types 0x5, 0x6 and 0xF are supported.                  |
   +-------+------------+------------------------------------------------------------------+
 
 The **info** field contains one bit for each possible `type` enumerated in
