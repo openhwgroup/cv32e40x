@@ -47,6 +47,9 @@ halfword load/store for address ``A`` uses ``A`` and ``A+1`` as compare values; 
 
 A trigger match will cause debug entry if ``tdata1.ACTION`` is 1.
 
+.. note::
+  Hardware triggers and breakpoints are not supported for the table fetch used in table jump instructions and CLIC hardware vectored interrupts. 
+
 The |corev| will not support the optional debug features 10, 11, & 12 listed in Section 4.1 of [RISC-V-DEBUG]_. Specifically, a control transfer instruction's destination location being in or out of the Program Buffer and instructions depending on PC value shall **not** cause an illegal instruction.
 
 |corev| prioritizes debug mode entry below NMIs, but above regular interrupts and synchronous exceptions.

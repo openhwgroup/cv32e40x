@@ -4,8 +4,8 @@ Exceptions and Interrupts
 =========================
 
 |corev| supports one of two interrupt architectures.
-If the ``SMCLIC`` parameter is set to 0, then the basic interrupt architecture is supported (see :ref:`basic_interrupt_architecture`).
-If the ``SMCLIC`` parameter is set to 1, then the CLIC interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
+If the ``SMCLIC`` parameter is set to 0, then the CLINT mode interrupt architecture is supported (see :ref:`clint_interrupt_architecture`).
+If the ``SMCLIC`` parameter is set to 1, then the CLIC mode interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
 
 Exceptions
 ----------
@@ -68,12 +68,12 @@ Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` simil
    ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
    specified at a future date, then we will reconsider our implementation.
 
-NMIs have higher priority than other interrupts for both the basic interrupt architecture and the CLIC interrupt architecture.
+NMIs have higher priority than other interrupts for both the CLINT mode interrupt architecture and the CLIC mode interrupt architecture.
 
 If ``SMCLIC`` == 0, then the NMI vector location is as follows:
 
-* Upon an NMI in non-vectored basic mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
-* Upon an NMI in vectored basic mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b00} (i.e. index 15).
+* Upon an NMI in non-vectored CLINT mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
+* Upon an NMI in vectored CLINT mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b00} (i.e. index 15).
 
 If ``SMCLIC`` == 1, then the NMI vector location is as follows:
 
@@ -96,19 +96,19 @@ When the NMI handler is entered, new data bus faults may be latched.
 
 While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only accessible from debug mode, and is thus not visible for machine mode code.
 
-.. _basic_interrupt_architecture:
+.. _clint_interrupt_architecture:
 
-Basic Interrupt Architecture
-----------------------------
+CLINT Mode Interrupt Architecture
+---------------------------------
 
-If ``SMCLIC`` == 0, then |corev| supports the basic interrupt architecture as defined in [RISC-V-PRIV]_. In this configuration only the
-basic interrupt handling modes (non-vectored basic mode and vectored basic mode) can be used. The ``irq_i[31:16]`` interrupts are a custom extension
-that can be used with the basic interrupt architecture.
+If ``SMCLIC`` == 0, then |corev| supports the CLINT mode interrupt architecture as defined in [RISC-V-PRIV]_. In this configuration only the
+CLINT mode interrupt handling modes (non-vectored CLINT mode and vectored CLINT mode) can be used. The ``irq_i[31:16]`` interrupts are a custom extension
+that can be used with the CLINT mode interrupt architecture.
 
 When entering an interrupt/exception handler, the core sets the ``mepc`` CSR to the current program counter and saves ``mstatus``.MIE to ``mstatus``.MPIE.
 All exceptions cause the core to jump to the base address of the vector table in the ``mtvec`` CSR.
-Interrupts are handled in either non-vectored basic mode or vectored basic mode depending on the value of ``mtvec``.MODE. In non-vectored basic mode the core
-jumps to the base address of the vector table in the ``mtvec`` CSR. In vectored basic mode the core jumps to the base address
+Interrupts are handled in either non-vectored CLINT mode or vectored CLINT mode depending on the value of ``mtvec``.MODE. In non-vectored CLINT mode the core
+jumps to the base address of the vector table in the ``mtvec`` CSR. In vectored CLINT mode the core jumps to the base address
 plus four times the interrupt ID. Upon executing an MRET instruction, the core jumps to the program counter previously saved in the
 ``mepc`` CSR and restores ``mstatus``.MPIE to ``mstatus``.MIE.
 
@@ -118,10 +118,10 @@ by writing to the ``mtvec`` CSR (see :ref:`csr-mtvec`).
 Interrupt Interface
 ~~~~~~~~~~~~~~~~~~~
 
-:numref:`Basic interrupt architecture interface signals` describes the interrupt interface used for the basic interrupt architecture.
+:numref:`CLINT mode interrupt architecture interface signals` describes the interrupt interface used for the CLINT mode interrupt architecture.
 
-.. table:: Basic interrupt architecture interface signals
-  :name: Basic interrupt architecture interface signals
+.. table:: CLINT mode interrupt architecture interface signals
+  :name: CLINT mode interrupt architecture interface signals
   :widths: 10 10 80
   :class: no-scrollbar-table
 
@@ -157,13 +157,13 @@ Interrupt Interface
 
 .. note::
 
-  The ``clic_*_i`` pins are ignored in basic mode and should be tied to 0.
+  The ``clic_*_i`` pins are ignored in CLINT mode and should be tied to 0.
 
 Interrupts
 ~~~~~~~~~~
 
 The ``irq_i[31:0]`` interrupts are controlled via the ``mstatus``, ``mie`` and ``mip`` CSRs. |corev| uses the upper 16 bits of ``mie`` and ``mip`` for custom interrupts (``irq_i[31:16]``),
-which reflects an intended custom extension in the RISC-V basic (a.k.a. CLINT) interrupt architecture.
+which reflects an intended custom extension in the RISC-V CLINT mode interrupt architecture.
 After reset, all interrupts, except for NMIs, are disabled.
 To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
 
@@ -216,12 +216,12 @@ In Debug Mode, all interrupts are ignored independent of ``mstatus.MIE`` and the
 
 .. note::
 
-   The NMI vector location is at index 15 of the machine trap vector table for both non-vectored basic mode and vectored basic mode (i.e. at {**mtvec[31:7]**, 5'hF, 2'b00}).
+   The NMI vector location is at index 15 of the machine trap vector table for both non-vectored CLINT mode and vectored CLINT mode (i.e. at {**mtvec[31:7]**, 5'hF, 2'b00}).
    The NMI vector location therefore does **not** match its exception code.
 
 Nested Interrupt Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-Within the basic interrupt architecture there is no hardware support for nested interrupt handling. Nested interrupt handling can however still be supported via software.
+Within the CLINT mode interrupt architecture there is no hardware support for nested interrupt handling. Nested interrupt handling can however still be supported via software.
 
 The hardware automatically disables interrupts upon entering an interrupt/exception handler.
 Otherwise, interrupts during the critical part of the handler, i.e. before software has saved the ``mepc`` and ``mstatus`` CSRs, would cause those CSRs to be overwritten.
@@ -233,8 +233,8 @@ To allow higher priority interrupts only, the handler must configure ``mie`` acc
 
 .. _clic_interrupt_architecture:
 
-CLIC Interrupt Architecture
----------------------------
+CLIC Mode Interrupt Architecture
+--------------------------------
 
 If ``SMCLIC`` == 1, then |corev| supports the Core-Local Interrupt Controller (CLIC) Privileged Architecture Extension defined in [RISC-V-SMCLIC]_. In this
 configuration only the CLIC interrupt handling mode can be used (i.e. ``mtvec[1:0]`` = 0x3).
@@ -247,10 +247,10 @@ provides the core internal part of CLIC. The external part can be added on the i
 Interrupt Interface
 ~~~~~~~~~~~~~~~~~~~
 
-:numref:`CLIC interrupt architecture interface signals` describes the interrupt interface used for the CLIC interrupt architecture.
+:numref:`CLIC mode interrupt architecture interface signals` describes the interrupt interface used for the CLIC interrupt architecture.
 
-.. table:: CLIC interrupt architecture interface signals
-  :name: CLIC interrupt architecture interface signals
+.. table:: CLIC mode interrupt architecture interface signals
+  :name: CLIC mode interrupt architecture interface signals
   :widths: 20 10 70
   :class: no-scrollbar-table
 
