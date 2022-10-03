@@ -30,7 +30,8 @@ Instantiation Template
       .PMA_NUM_REGIONS            (         1 ),
       .PMA_CFG                    ( PMA_CFG[] ),
       .SMCLIC                     (         0 ),
-      .SMCLIC_ID_WIDTH            (         5 )
+      .SMCLIC_ID_WIDTH            (         5 ),
+      .SMCLIC_INTTHRESHBITS       (         8 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -175,12 +176,14 @@ Parameters
   | ``PMA_CFG[]``                  | pma_cfg_t      | PMA_R_DEFAULT | PMA configuration.                                                 |
   |                                |                |               | Array of pma_cfg_t with PMA_NUM_REGIONS entries, see :ref:`pma`    |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-  | ``SMCLIC``                     | int (0..1 )    | 0             | Is Smclic supported?                                               |
+  | ``SMCLIC``                     | int (0..1)     | 0             | Is Smclic supported?                                               |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-  | ``SMCLIC_ID_WIDTH``            | int (1..10 )   | 5             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
+  | ``SMCLIC_ID_WIDTH``            | int (1..10)    | 5             | Width of ``clic_irq_id_i`` and ``clic_irq_id_o``. The maximum      |
   |                                |                |               | number of supported interrupts in CLIC mode is                     |
   |                                |                |               | ``2^SMCLIC_ID_WIDTH``. Trap vector table alignment is restricted   |
   |                                |                |               | as described in :ref:`csr-mtvt`.                                   |
+  +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+  | ``SMCLIC_INTTHRESHBITS``       | int (1..8)     | 8             | Number of bits actually implemented in ``mintthresh.th`` field.    |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
 
 Interfaces
