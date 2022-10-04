@@ -74,11 +74,7 @@ module cv32e40x_rvfi_sva
   property p_every_ack_followed_by_rvfi_intr;
     irq_ack ##1 rvfi_valid[->1]
       |->
-        rvfi_intr.intr
-    or
-        rvfi_trap.debug
-    or
-        rvfi_trap.exception;
+        rvfi_intr.intr;
   endproperty : p_every_ack_followed_by_rvfi_intr
 
   a_every_ack_followed_by_rvfi_intr: assert property (p_every_ack_followed_by_rvfi_intr)
