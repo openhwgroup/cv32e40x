@@ -393,9 +393,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
   // single step becomes pending when the last operation of an instruction is done in WB, or we ack a non-shv interrupt.
+  // If a CLIC SHV interrupt is taken during single step, the flag 'pending_single_step_ptr' will be used once the pointer
+  // reaches the ID stage. If the pointer fetch fails, an exception will be taken from WB and debug mode is entered with dpc
+  // pointing at the first instruction of the exception handler.
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack)) && !pending_debug;
 
-  // Separate flag for pending single step when doing CLIC SHV, evaluated while in POINTER_FETCH stage
+  // Separate flag for pending single step when doing CLIC SHV.
+  // When a successfully fetched pointer reaches the ID stage, the controller will perform the pc_set of the target instruction,
+  // and then go to the DEBUG_TAKEN state with single step as the cause. The dpc CSR will point at the first instruction
+  // of the interrupt handler. No instruction will be retired during the step.
   assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
 
 

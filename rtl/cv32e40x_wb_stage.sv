@@ -146,7 +146,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
                      ( ex_wb_pipe_i.lsu_en && lsu_valid_i)        // LSU instructions have valid result based on data_rvalid_i
                                                                   // todo: ideally a similar line is added here that delays signaling wb_valid until a WFI really retires.
                                                                   // This should be checked for bad timing paths. Currently RVFI contains a wb_valid_adjusted signal/hack to achieve the same
-                    ) && !ex_wb_pipe_i.instr_meta.clic_ptr && instr_valid;
+                    ) && instr_valid;
 
   // Letting all suboperations signal wb_valid
   assign wb_valid_o = wb_valid;
