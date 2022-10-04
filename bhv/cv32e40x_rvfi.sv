@@ -42,6 +42,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         prefetch_addr_if_i,
    input logic                                prefetch_compressed_if_i,
    input inst_resp_t                          prefetch_instr_if_i,
+   input logic                                clic_ptr_if_i,
 
    // ID probes
    input logic                                id_valid_i,
@@ -867,7 +868,12 @@ module cv32e40x_rvfi
         debug_cause[STAGE_ID] <= debug_cause[STAGE_IF];
 
         // Clear captured events when last operation exits IF
-        if (last_op_if_i || abort_op_if_i) begin
+        // Exception for clic pointers:
+        //   - CLIC pointers are seen as single operation (first_op && last_op),
+        //     but we still need the in_trap attached to the pointer target, which is
+        //     only fetched when the CLIC pointer is in ID. Thus we must not clear in_trap
+        //     when the pointer goes from IF to ID.
+        if ((last_op_if_i || abort_op_if_i) && !clic_ptr_if_i) begin
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end

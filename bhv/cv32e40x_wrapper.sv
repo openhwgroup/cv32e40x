@@ -423,6 +423,7 @@ endgenerate
          .prefetch_addr_if_i       ( core_i.if_stage_i.prefetch_unit_i.prefetch_addr_o                    ),
          .prefetch_compressed_if_i ( core_i.if_stage_i.instr_compressed                                   ),
          .prefetch_instr_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_instr_o                   ),
+         .clic_ptr_if_i            ( core_i.if_stage_i.prefetch_is_clic_ptr                               ),
 
          // ID Probes
          .id_valid_i               ( core_i.id_stage_i.id_valid_o                                         ),
