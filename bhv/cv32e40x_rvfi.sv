@@ -92,6 +92,7 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
+   input logic                                clic_ptr_wb_i,
 
    // PC
    input logic [31:0]                         branch_addr_n_i,
@@ -789,8 +790,9 @@ module cv32e40x_rvfi
   // WFI instructions retire when their wake-up condition is present.
   // The wake-up condition is only checked in the SLEEP state of the controller FSM.
   // Other instructions retire when their last suboperation is done in WB.
-  assign wb_valid_subop    = wb_valid_i;
-  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i);
+  // CLIC pointers set wb_valid, but are not instructions and shall not cause rvfi_valid.
+  assign wb_valid_subop    = wb_valid_i && !clic_ptr_wb_i;
+  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !clic_ptr_wb_i;
 
 
   // Pipeline stage model //
