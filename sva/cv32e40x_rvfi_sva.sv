@@ -72,6 +72,7 @@ module cv32e40x_rvfi_sva
 
   // Every irq_ack shall cause rvfi_intr on next rvfi_valid
   property p_every_ack_followed_by_rvfi_intr;
+    @(posedge clk_i) disable iff (!rst_ni)
     irq_ack ##1 rvfi_valid[->1]
       |->
         rvfi_intr.intr;
