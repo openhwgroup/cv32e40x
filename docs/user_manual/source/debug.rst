@@ -74,7 +74,7 @@ Interface
   +-------------------------------+-----------+--------------------------------------------+
   | ``debug_pc_valid_o``          | output    | Valid signal for ``debug_pc_o``            |
   +-------------------------------+-----------+--------------------------------------------+
-  | ``debug_pc_o``                | output    | PC of last completed instruction           |
+  | ``debug_pc_o``                | output    | PC of last retired instruction             |
   +-------------------------------+-----------+--------------------------------------------+
   | ``dm_halt_addr_i[31:0]``      | input     | Address for debugger entry                 |
   +-------------------------------+-----------+--------------------------------------------+
@@ -93,8 +93,7 @@ cleared low a few (unspecified) cycles after ``rst_ni`` has been deasserted **an
 
 ``debug_halted_o`` is used to signal that the |corev| is in debug mode.
 
-``debug_pc_o`` is the PC of the last completed instruction. An instruction is considered to be completed when it retires or when it causes a synchronous trap.
-This signal is only valid when ``debug_pc_valid_o`` = 1.
+``debug_pc_o`` is the PC of the last retired instruction. This signal is only valid when ``debug_pc_valid_o`` = 1.
 
 ``dm_halt_addr_i`` is the address where the PC jumps to for a debug entry event. When in Debug Mode, an ebreak instruction will also cause the PC to jump back to this address without affecting status registers. (see :ref:`ebreak_behavior` below)
 
