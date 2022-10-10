@@ -1586,7 +1586,7 @@ Reset Value: Not applicable
   +-------+--------------+----------------------------------------------------------------+
   | 11    | WARL (0x0)   | **VU**. Hardwired to 0.                                        |
   +-------+--------------+----------------------------------------------------------------+
-  | 10    | WARL         | **NMI**. Set to enable trigger on NMI.                         |
+  | 10    | WARL (0x0)   | Hardwired to 0.                                                |
   +-------+--------------+----------------------------------------------------------------+
   | 9     | WARL         | **M**. Match in machine mode.                                  |
   +-------+--------------+----------------------------------------------------------------+
@@ -1623,7 +1623,6 @@ Reset Value: Not applicable
   | 26:0  | WARL (0x0)  | **DATA**.                                                      |
   +-------+-------------+----------------------------------------------------------------+
 
-
 .. _csr-tdata2:
 
 Trigger Data Register 2 (``tdata2``)
@@ -1646,7 +1645,7 @@ Detailed:
   +-------+------+------------------------------------------------------------------+
 
 Accessible in Debug Mode or M-Mode, depending on **tdata1.dmode**.
-This register stores the instruction address to match against for a breakpoint trigger or the currently selected exception codes for an exception trigger.
+This register stores the instruction address, load address or store address to match against for a breakpoint trigger or the currently selected exception codes for an exception trigger.
 
 .. _csr-tdata3:
 
