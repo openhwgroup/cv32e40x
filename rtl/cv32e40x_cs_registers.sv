@@ -1400,6 +1400,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_wr_in_wb = ex_wb_pipe_i.csr_en &&
                         ex_wb_pipe_i.instr_valid &&
                         ((csr_op == CSR_OP_WRITE) ||
+                         (csr_op == CSR_OP_CSRRW) ||
                          (csr_op == CSR_OP_SET)   ||
                          (csr_op == CSR_OP_CLEAR));
 
