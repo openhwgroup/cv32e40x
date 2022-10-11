@@ -363,7 +363,14 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           // instr_rdata_i[19:14] = rs or immediate value
           // If set or clear with rs==x0 or imm==0, then do not perform a write action
           unique case (instr_rdata_i[13:12])
-            2'b01:   decoder_ctrl_o.csr_op = CSR_OP_WRITE;
+            2'b01: begin
+              // Detect true CSRRW with rd != x0 for use with mscratchcsw[l] accesses
+              if ((instr_rdata_i[14] != 1'b1) && (instr_rdata_i[11:7] != 5'b0)) begin
+                decoder_ctrl_o.csr_op = CSR_OP_CSRRW;
+              end else begin
+                decoder_ctrl_o.csr_op = CSR_OP_WRITE;
+              end
+            end
             2'b10:   decoder_ctrl_o.csr_op = (instr_rdata_i[19:15] == 5'b0) ? CSR_OP_READ : CSR_OP_SET;
             2'b11:   decoder_ctrl_o.csr_op = (instr_rdata_i[19:15] == 5'b0) ? CSR_OP_READ : CSR_OP_CLEAR;
             default: decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
