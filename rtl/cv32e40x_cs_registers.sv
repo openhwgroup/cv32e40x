@@ -1077,6 +1077,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       csr_we_int    = 1'b0;
     end else begin
       csr_we_int    = 1'b1;
+      csr_wdata_int = csr_wdata;
       case (csr_op)
         CSR_OP_WRITE,
         CSR_OP_CSRRW: csr_wdata_int = csr_wdata;
