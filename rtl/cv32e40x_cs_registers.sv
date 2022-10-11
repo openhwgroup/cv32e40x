@@ -128,6 +128,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   logic                         illegal_csr_read;                               // Current CSR cannot be read
   logic                         illegal_csr_write;                              // Current CSR cannot be written
+  logic                         illegal_csr_instr;                              // Current CSR cannot be accessed with the current instruction (mscratchcsw[l] with non-csrrw)
 
   logic                         instr_valid;                                    // Local instr_valid
 
@@ -285,7 +286,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                              (id_ex_pipe_i.csr_en) &&
                              (csr_raddr[11:10] == 2'b11); // Priv spec section 2.1
 
-  assign csr_illegal_o = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ? illegal_csr_write || illegal_csr_read : 1'b0;
+  // Flag illegal instruction if accessing mscratchcsw[l] with non-csrrw instruction or csrrw with rd==x0
+
+  assign illegal_csr_instr = ((csr_raddr == CSR_MSCRATCHCSW) || (csr_raddr == CSR_MSCRATCHCSWL)) && !(id_ex_pipe_i.csr_op == CSR_OP_CSRRW);
+  assign csr_illegal_o = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.csr_en) ? illegal_csr_write || illegal_csr_read || illegal_csr_instr: 1'b0;
 
 
   ////////////////////////////////////////////
@@ -1073,8 +1077,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       csr_we_int    = 1'b0;
     end else begin
       csr_we_int    = 1'b1;
+      csr_wdata_int = csr_wdata;
       case (csr_op)
-        CSR_OP_WRITE: csr_wdata_int = csr_wdata;
+        CSR_OP_WRITE,
+        CSR_OP_CSRRW: csr_wdata_int = csr_wdata;
         CSR_OP_SET:   csr_wdata_int = csr_wdata | ex_wb_pipe_i.rf_wdata;
         CSR_OP_CLEAR: csr_wdata_int = (~csr_wdata) & ex_wb_pipe_i.rf_wdata;
 
@@ -1394,6 +1400,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign csr_wr_in_wb = ex_wb_pipe_i.csr_en &&
                         ex_wb_pipe_i.instr_valid &&
                         ((csr_op == CSR_OP_WRITE) ||
+                         (csr_op == CSR_OP_CSRRW) ||
                          (csr_op == CSR_OP_SET)   ||
                          (csr_op == CSR_OP_CLEAR));
 
