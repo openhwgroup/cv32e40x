@@ -1385,7 +1385,7 @@ Scratch swap register for multiple privilege modes.
 
 .. note::
   Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcsw``.
-  The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** on ``mscratchcsw`` are implementation-defined.
+  The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcsw`` are implementation-defined.
   |corev| will treat such instructions as illegal instructions.
 
 .. _csr-mscratchcswl:
@@ -1415,7 +1415,7 @@ Scratch swap register for multiple interrupt levels.
 
 .. note::
   Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcswl``.
-  The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** on ``mscratchcswl`` are implementation-defined.
+  The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcswl`` are implementation-defined.
   |corev| will treat such instructions as illegal instructions.
 
 .. _csr-mclicbase:
