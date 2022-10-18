@@ -29,17 +29,18 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter bit          A_EXT            = 0,
-  parameter m_ext_e      M_EXT            = M,
-  parameter bit          X_EXT            = 0,
-  parameter logic [31:0] X_MISA           =  32'h00000000,
-  parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
-  parameter bit          ZC_EXT           = 0,
-  parameter bit          SMCLIC           = 0,
-  parameter int          SMCLIC_ID_WIDTH  = 5,
-  parameter int          NUM_MHPMCOUNTERS = 1,
-  parameter int          DBG_NUM_TRIGGERS = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
-  parameter int unsigned MTVT_ADDR_WIDTH  = 26
+  parameter bit          A_EXT                = 0,
+  parameter m_ext_e      M_EXT                = M,
+  parameter bit          X_EXT                = 0,
+  parameter logic [31:0] X_MISA               =  32'h00000000,
+  parameter logic [1:0]  X_ECS_XS             =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
+  parameter bit          ZC_EXT               = 0,
+  parameter bit          SMCLIC               = 0,
+  parameter int          SMCLIC_ID_WIDTH      = 5,
+  parameter int          SMCLIC_INTTHRESHBITS = 8,
+  parameter int          NUM_MHPMCOUNTERS     = 1,
+  parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
+  parameter int unsigned MTVT_ADDR_WIDTH      = 26
 )
 (
   // Clock and Reset
@@ -114,6 +115,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     (32'(MXL)        << 30); // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
+
+  // Set mask for minththresh based on number of bits implemented (SMCLIC_INTTHRESHBITS)
+  localparam CSR_MINTTHRESH_MASK = ((2 ** SMCLIC_INTTHRESHBITS )-1) << (8 - SMCLIC_INTTHRESHBITS);
 
   // CSR update logic
   logic [31:0]                  csr_wdata_int;
@@ -1353,7 +1357,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_rdata        = mtvec_q;
   assign mtvt_rdata         = mtvt_q;
   assign mintstatus_rdata   = mintstatus_q;
-  assign mintthresh_rdata   = mintthresh_q;
+  // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
+  assign mintthresh_rdata   = {mintthresh_q[31:(7-(SMCLIC_INTTHRESHBITS-1))], {(8-SMCLIC_INTTHRESHBITS) {1'b1}}};
   assign mclicbase_rdata    = mclicbase_q;
   assign mie_rdata          = mie_q;
 

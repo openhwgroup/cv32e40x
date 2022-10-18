@@ -63,6 +63,7 @@ module cv32e40x_wrapper
   parameter int          NUM_MHPMCOUNTERS             = 1,
   parameter bit          SMCLIC                       = 0,
   parameter int          SMCLIC_ID_WIDTH              = 5,
+  parameter int          SMCLIC_INTTHRESHBITS         = 8,
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
@@ -675,6 +676,7 @@ endgenerate
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
           .SMCLIC                ( SMCLIC                ),
           .SMCLIC_ID_WIDTH       ( SMCLIC_ID_WIDTH       ),
+          .SMCLIC_INTTHRESHBITS  ( SMCLIC_INTTHRESHBITS  ),
           .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
