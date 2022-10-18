@@ -213,8 +213,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mscratchcswl_n, mscratchcswl_rdata;
   logic                         mscratchcswl_we;
 
-  logic [31:0]                  mclicbase_q, mclicbase_n, mclicbase_rdata;
-  logic                         mclicbase_we;
+  logic [31:0]                  mclicbase_n, mclicbase_rdata;                   // No CSR module instance
+  logic                         mclicbase_we;                                   // Not used in RTL (used by RVFI)
 
   logic [31:0]                  mip_n, mip_rdata;                               // No CSR module instance
   logic                         mip_we;                                         // Not used in RTL (used by RVFI)
@@ -1288,19 +1288,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mintthresh_q          )
       );
 
-      cv32e40x_csr
-      #(
-        .WIDTH      (32),
-        .RESETVALUE (32'h0)
-      )
-      mclicbase_csr_i
-      (
-        .clk            ( clk                   ),
-        .rst_n          ( rst_n                 ),
-        .wr_data_i      ( mclicbase_n           ),
-        .wr_en_i        ( mclicbase_we          ),
-        .rd_data_o      ( mclicbase_q           )
-      );
 
     end else begin : basic_mode_csrs
 
@@ -1338,8 +1325,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       assign mintthresh_q        = 32'h0;
 
-      assign mclicbase_q         = 32'h0;
-
     end
   endgenerate
 
@@ -1359,7 +1344,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mintstatus_rdata   = mintstatus_q;
   // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
   assign mintthresh_rdata   = {mintthresh_q[31:(7-(SMCLIC_INTTHRESHBITS-1))], {(8-SMCLIC_INTTHRESHBITS) {1'b1}}};
-  assign mclicbase_rdata    = mclicbase_q;
+  assign mclicbase_rdata    = 32'h00000000;
   assign mie_rdata          = mie_q;
 
   // mnxti_rdata breaks the regular convension for CSRs. The read data used for read-modify-write is the mstatus_rdata,
@@ -1771,6 +1756,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign unused_signals = tselect_we | tinfo_we | tcontrol_we | mstatush_we | misa_we | mip_we | mvendorid_we |
     marchid_we | mimpid_we | mhartid_we | mconfigptr_we | mtval_we | (|mnxti_n) | mscratchcsw_we | mscratchcswl_we |
-    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n);
+    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n) | (|mclicbase_n) | mclicbase_we;
 
 endmodule
