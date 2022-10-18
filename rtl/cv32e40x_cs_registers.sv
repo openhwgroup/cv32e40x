@@ -656,9 +656,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
 
-    mtvec_n.addr  = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
-    mtvec_n.zero0 = mtvec_rdata.zero0;
-    mtvec_we      = csr_mtvec_init_i;
+    mtvec_n.addr    = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
+    mtvec_n.zero0   = mtvec_rdata.zero0;
+    mtvec_n.submode = mtvec_rdata.submode;
+    mtvec_we        = csr_mtvec_init_i;
 
     if (SMCLIC) begin
       mtvec_n.mode             = mtvec_rdata.mode; // mode is WARL 0x3 when using CLIC

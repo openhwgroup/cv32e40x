@@ -585,7 +585,8 @@ typedef struct packed {
 
 typedef struct packed {
   logic [31:7] addr;
-  logic [ 6:2] zero0;
+  logic        zero0;
+  logic [ 5:2] submode;
   logic [ 1:0] mode;
 } mtvec_t;
 
@@ -611,11 +612,13 @@ parameter dcsr_t DCSR_RESET_VAL = '{
 parameter mtvec_t MTVEC_BASIC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
+  submode: 'd0,
   mode:  MTVEC_MODE_BASIC};
 
 parameter mtvec_t MTVEC_CLIC_RESET_VAL = '{
   addr: 'd0,
   zero0: 'd0,
+  submode: 'd0,
   mode:  MTVEC_MODE_CLIC};
 
 parameter mtvt_t MTVT_RESET_VAL = '{
