@@ -418,7 +418,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // Safe to use mcause_rdata here (EX timing), as there is a generic stall of the ID stage
           // whenever a CSR instruction follows another CSR instruction. Alternative implementation using
           // a local forward of mcause_rdata is identical (SEC).
-          if (mcause_rdata.mpp != PRIV_LVL_M) begin
+          if (mstatus_rdata.mpp != PRIV_LVL_M) begin
             // Return mscratch for writing to GPR
             csr_rdata_int = mscratch_rdata;
           end else begin
