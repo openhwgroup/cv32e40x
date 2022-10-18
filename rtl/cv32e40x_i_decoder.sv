@@ -29,7 +29,8 @@
 
 module cv32e40x_i_decoder import cv32e40x_pkg::*;
   #(
-    parameter DEBUG_TRIGGER_EN  = 1
+    parameter     DEBUG_TRIGGER_EN  = 1,
+    parameter bit SMCLIC            = 1
     )
   (
    // from IF/ID pipeline
@@ -375,6 +376,16 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
             2'b11:   decoder_ctrl_o.csr_op = (instr_rdata_i[19:15] == 5'b0) ? CSR_OP_READ : CSR_OP_CLEAR;
             default: decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
           endcase
+
+          if (SMCLIC) begin
+            // Detect special case of CSR instruction using immediate values accessing mnxti
+            // Instruction is illegal if immediate bits 0, 2 or 4 are set.
+            if ((instr_rdata_i[31:20] == CSR_MNXTI) && instr_rdata_i[14]) begin
+              if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
+                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+              end
+            end
+          end // SMCLIC
         end
       end
 
