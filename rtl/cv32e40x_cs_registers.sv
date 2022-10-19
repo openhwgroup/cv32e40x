@@ -29,17 +29,18 @@
 
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
-  parameter bit          A_EXT            = 0,
-  parameter m_ext_e      M_EXT            = M,
-  parameter bit          X_EXT            = 0,
-  parameter logic [31:0] X_MISA           =  32'h00000000,
-  parameter logic [1:0]  X_ECS_XS         =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
-  parameter bit          ZC_EXT           = 0,
-  parameter bit          SMCLIC           = 0,
-  parameter int          SMCLIC_ID_WIDTH  = 5,
-  parameter int          NUM_MHPMCOUNTERS = 1,
-  parameter int          DBG_NUM_TRIGGERS = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
-  parameter int unsigned MTVT_ADDR_WIDTH  = 26
+  parameter bit          A_EXT                = 0,
+  parameter m_ext_e      M_EXT                = M,
+  parameter bit          X_EXT                = 0,
+  parameter logic [31:0] X_MISA               =  32'h00000000,
+  parameter logic [1:0]  X_ECS_XS             =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
+  parameter bit          ZC_EXT               = 0,
+  parameter bit          SMCLIC               = 0,
+  parameter int          SMCLIC_ID_WIDTH      = 5,
+  parameter int          SMCLIC_INTTHRESHBITS = 8,
+  parameter int          NUM_MHPMCOUNTERS     = 1,
+  parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
+  parameter int unsigned MTVT_ADDR_WIDTH      = 26
 )
 (
   // Clock and Reset
@@ -114,6 +115,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     (32'(MXL)        << 30); // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
+
+  // Set mask for minththresh based on number of bits implemented (SMCLIC_INTTHRESHBITS)
+  localparam CSR_MINTTHRESH_MASK = ((2 ** SMCLIC_INTTHRESHBITS )-1) << (8 - SMCLIC_INTTHRESHBITS);
 
   // CSR update logic
   logic [31:0]                  csr_wdata_int;
@@ -209,8 +213,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mscratchcswl_n, mscratchcswl_rdata;
   logic                         mscratchcswl_we;
 
-  logic [31:0]                  mclicbase_q, mclicbase_n, mclicbase_rdata;
-  logic                         mclicbase_we;
+  logic [31:0]                  mclicbase_n, mclicbase_rdata;                   // No CSR module instance
+  logic                         mclicbase_we;                                   // Not used in RTL (used by RVFI)
 
   logic [31:0]                  mip_n, mip_rdata;                               // No CSR module instance
   logic                         mip_we;                                         // Not used in RTL (used by RVFI)
@@ -418,7 +422,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // Safe to use mcause_rdata here (EX timing), as there is a generic stall of the ID stage
           // whenever a CSR instruction follows another CSR instruction. Alternative implementation using
           // a local forward of mcause_rdata is identical (SEC).
-          if (mcause_rdata.mpp != PRIV_LVL_M) begin
+          if (mstatus_rdata.mpp != PRIV_LVL_M) begin
             // Return mscratch for writing to GPR
             csr_rdata_int = mscratch_rdata;
           end else begin
@@ -656,9 +660,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
 
-    mtvec_n.addr  = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
-    mtvec_n.zero0 = mtvec_rdata.zero0;
-    mtvec_we      = csr_mtvec_init_i;
+    mtvec_n.addr    = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
+    mtvec_n.zero0   = mtvec_rdata.zero0;
+    mtvec_n.submode = mtvec_rdata.submode;
+    mtvec_we        = csr_mtvec_init_i;
 
     if (SMCLIC) begin
       mtvec_n.mode             = mtvec_rdata.mode; // mode is WARL 0x3 when using CLIC
@@ -1283,19 +1288,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         .rd_data_o      ( mintthresh_q          )
       );
 
-      cv32e40x_csr
-      #(
-        .WIDTH      (32),
-        .RESETVALUE (32'h0)
-      )
-      mclicbase_csr_i
-      (
-        .clk            ( clk                   ),
-        .rst_n          ( rst_n                 ),
-        .wr_data_i      ( mclicbase_n           ),
-        .wr_en_i        ( mclicbase_we          ),
-        .rd_data_o      ( mclicbase_q           )
-      );
 
     end else begin : basic_mode_csrs
 
@@ -1333,8 +1325,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       assign mintthresh_q        = 32'h0;
 
-      assign mclicbase_q         = 32'h0;
-
     end
   endgenerate
 
@@ -1352,8 +1342,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_rdata        = mtvec_q;
   assign mtvt_rdata         = mtvt_q;
   assign mintstatus_rdata   = mintstatus_q;
-  assign mintthresh_rdata   = mintthresh_q;
-  assign mclicbase_rdata    = mclicbase_q;
+  // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
+  assign mintthresh_rdata   = {mintthresh_q[31:(7-(SMCLIC_INTTHRESHBITS-1))], {(8-SMCLIC_INTTHRESHBITS) {1'b1}}};
+  assign mclicbase_rdata    = 32'h00000000;
   assign mie_rdata          = mie_q;
 
   // mnxti_rdata breaks the regular convension for CSRs. The read data used for read-modify-write is the mstatus_rdata,
@@ -1765,6 +1756,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign unused_signals = tselect_we | tinfo_we | tcontrol_we | mstatush_we | misa_we | mip_we | mvendorid_we |
     marchid_we | mimpid_we | mhartid_we | mconfigptr_we | mtval_we | (|mnxti_n) | mscratchcsw_we | mscratchcswl_we |
-    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n);
+    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n) | (|mclicbase_n) | mclicbase_we;
 
 endmodule

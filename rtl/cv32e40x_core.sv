@@ -41,6 +41,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter pma_cfg_t                   PMA_CFG[PMA_NUM_REGIONS-1:0]            = '{default:PMA_R_DEFAULT},
   parameter bit                         SMCLIC                                  = 0,
   parameter int                         SMCLIC_ID_WIDTH                         = 5,
+  parameter int                         SMCLIC_INTTHRESHBITS                    = 8,
   parameter bit                         X_EXT                                   = 0,
   parameter int                         X_NUM_RS                                = 2,
   parameter int                         X_ID_WIDTH                              = 4,
@@ -481,7 +482,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .B_EXT                        ( B_EXT                     ),
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
-    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
+    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    ),
+    .SMCLIC                       ( SMCLIC                    )
   )
   id_stage_i
   (
@@ -722,6 +724,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ZC_EXT                     ( ZC_EXT                 ),
     .SMCLIC                     ( SMCLIC                 ),
     .SMCLIC_ID_WIDTH            ( SMCLIC_ID_WIDTH        ),
+    .SMCLIC_INTTHRESHBITS       ( SMCLIC_INTTHRESHBITS   ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       ),
     .MTVT_ADDR_WIDTH            ( MTVT_ADDR_WIDTH        )
