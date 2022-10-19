@@ -1054,7 +1054,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         priv_lvl_n = dcsr_rdata.prv;
         priv_lvl_we = 1'b1;
 
-// todo: Section 4.6 of debug spec: If the new privilege mode is less privileged than M-mode, MPRV in mstatus is cleared.
+        // Section 4.6 of debug spec: If the new privilege mode is less privileged than M-mode, MPRV in mstatus is cleared.
+        mstatus_n      = mstatus_rdata;
+        mstatus_n.mprv = (privlvl_t'(dcsr_rdata.prv) == PRIV_LVL_M) ? mstatus_rdata.mprv : 1'b0;
+        mstatus_we     = 1'b1;
+
       end //ctrl_fsm_i.csr_restore_dret
 
       // mcause.minhv shall be cleared if vector fetch is successful
