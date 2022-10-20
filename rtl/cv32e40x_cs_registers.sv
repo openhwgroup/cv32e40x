@@ -1518,7 +1518,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Calculate mask for MHPMCOUNTERS depending on how many that are implemented.
   localparam bit [28:0] MHPMCOUNTERS_MASK = (2 ** NUM_MHPMCOUNTERS) -1;
-  // Set mask for mcountinhibit, includ always included counters for mcycle and minstret.
+  // Set mask for mcountinhibit, include always included counters for mcycle and minstret.
   localparam bit [31:0] MCOUNTINHIBIT_MASK = (MHPMCOUNTERS_MASK << 3) | 3'b101;
 
 
