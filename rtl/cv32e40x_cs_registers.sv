@@ -1346,10 +1346,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_rdata        = mtvec_q;
   assign mtvt_rdata         = mtvt_q;
   assign mintstatus_rdata   = mintstatus_q;
-  // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
-  assign mintthresh_rdata   = {mintthresh_q[31:(7-(SMCLIC_INTTHRESHBITS-1))], {(8-SMCLIC_INTTHRESHBITS) {1'b1}}};
   assign mclicbase_rdata    = 32'h00000000;
   assign mie_rdata          = mie_q;
+
+  // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
+  // Special case when all 8 bits are implemented to avoid zero-replication
+  generate
+    if (SMCLIC_INTTHRESHBITS < 8) begin : gen_partial_thresh
+      // Unimplemented bits within [7:0] are tied to 1. Bits 31:8 always tied to 0.
+      assign mintthresh_rdata   = {mintthresh_q[31:(7-(SMCLIC_INTTHRESHBITS-1))], {(8-SMCLIC_INTTHRESHBITS) {1'b1}}};
+    end else begin : gen_full_thresh
+      // Bits 31:8 tied to 0, all bits within [7:0] are implemented in flipflops.
+      assign mintthresh_rdata   = mintthresh_q[31:0];
+    end
+  endgenerate
 
   // mnxti_rdata breaks the regular convension for CSRs. The read data used for read-modify-write is the mstatus_rdata,
   // while the value read and written back to the GPR is a pointer address if an interrupt is pending, or zero
@@ -1509,7 +1519,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Flop certain events to ease timing
   localparam bit [15:0] HPM_EVENT_FLOP     = 16'b1111_1111_1100_0000;
-  localparam bit [31:0] MCOUNTINHIBIT_MASK = {{(29-NUM_MHPMCOUNTERS){1'b0}},{(NUM_MHPMCOUNTERS){1'b1}},3'b101};
+
+  // Calculate mask for MHPMCOUNTERS depending on how many that are implemented.
+  localparam bit [28:0] MHPMCOUNTERS_MASK = (2 ** NUM_MHPMCOUNTERS) -1;
+  // Set mask for mcountinhibit, include always included counters for mcycle and minstret.
+  localparam bit [31:0] MCOUNTINHIBIT_MASK = (MHPMCOUNTERS_MASK << 3) | 3'b101;
+
 
   logic [15:0]          hpm_events_raw;
   logic                 all_counters_disabled;
