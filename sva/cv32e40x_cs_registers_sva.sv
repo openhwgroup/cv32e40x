@@ -164,7 +164,7 @@ module cv32e40x_cs_registers_sva
     (  ctrl_fsm_i.csr_clear_minhv
        -> !id_ex_pipe_i.instr_valid       // No valid instruction in EX
        or
-          (id_ex_pipe_i.instr_valid && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn && id_ex_pipe_i.last_op)); // Last part of hardened mret in EX
+          (id_ex_pipe_i.instr_valid && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn && id_ex_pipe_i.last_op)); // mret in EX
   endproperty;
 
   a_ex_empty_minhv_clear: assert property(p_ex_empty_minhv_clear)
@@ -176,7 +176,7 @@ module cv32e40x_cs_registers_sva
     (  ctrl_fsm_i.csr_clear_minhv
         -> !ex_wb_pipe_i.instr_valid       // No valid instruction in WB
         or
-          (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)); // Any part of hardened mret in WB
+          (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)); // mret in WB
   endproperty;
 
   a_wb_empty_minhv_clear: assert property(p_wb_empty_minhv_clear)

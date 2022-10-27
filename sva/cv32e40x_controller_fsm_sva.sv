@@ -94,7 +94,9 @@ module cv32e40x_controller_fsm_sva
   input mcause_t        mcause_i,
   input logic           lsu_trans_valid_i,
   input logic           irq_wu_ctrl_i,
-  input logic           wu_wfe_i
+  input logic           wu_wfe_i,
+  input logic           sys_en_id_i,
+  input logic           sys_mret_id_i
 );
 
 
