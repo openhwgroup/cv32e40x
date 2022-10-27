@@ -123,7 +123,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   //TODO:OK:low This CSR stall check is very restrictive
   //         Should only check EX vs WB, and also CSR/rd addr
   //         Also consider whether ID or EX should be stalled
-  // Detect when a CSR insn is in ID
+  // The controller mechanism for checking mcause.mpp/mcause.minhv when an mret is in the ID stage depends on this stall.
+  // Detect when a CSR insn is in ID (including WFI which reads mstatus.tw and priv level)
   // Note that hazard detection uses the registered instr_valid signals. Usage of the local
   // instr_valid signals would lead to a combinatorial loop via the halt signal.
 

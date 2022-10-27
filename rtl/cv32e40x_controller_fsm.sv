@@ -424,6 +424,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
   // Once the first part of a table jump has finished in WB, we are not allowed to take debug before the last part finishes. This can be detected when the last
   // part of a table jump is in either EX or WB. // todo: update comments related to table jump (explain general concept and to which instructions it applies)
+  // todo: why is clic_ptr_in_pipeline included here (and not in interrupt_allowed)
   assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // Debug pending for any other reason than single step
@@ -565,6 +566,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.csr_save_cause   = 1'b0;
     ctrl_fsm_o.csr_cause        = 32'h0;
+
     ctrl_fsm_o.csr_clear_minhv  = 1'b0;
 
     pipe_pc_mux_ctrl            = PC_WB;
@@ -618,6 +620,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
           ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
 
+          // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
+          ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
             pipe_pc_mux_ctrl = PC_WB;
@@ -656,6 +661,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
+
+          // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
+          ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
 
 
           if (SMCLIC) begin
@@ -705,6 +713,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             pipe_pc_mux_ctrl = PC_WB;
             ctrl_fsm_o.csr_save_cause = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
+
+            // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
+            ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+
           // Special insn
           end else if (wfi_in_wb || wfe_in_wb) begin
             // Halt the entire pipeline
@@ -807,13 +819,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
 
             if (sys_mret_id) begin
-              // When mcause.minhv is set, it signals that the previous pointer fetch faulted in IF.
-              // When the mret it execured with mcause.minhv set, the pointer fetch should be restarted
-              // instead of returning to the address in mepc.
+              // If the xcause.minhv bit is set for the previous privilege level (mcause.mpp) when an mret is in ID,
+              // the mret should restart the CLIC pointer fetch using mepc as a pointer to the pointer instead of jumping to
+              // the address in mepc. If mpp==PRIV_LVL_U, the (not existing) ucause.uinhv bit is assumed to be 0.
               // This is done below by signalling pc_set_clicv along with pc_mux=PC_MRET. This will
-              // treat the mepc as an address of a CLIC pointer. The minhv flag will only be cleaned
+              // treat the mepc as an address to a CLIC pointer. The minhv flag will only be cleaned
               // when a pointer reaches the ID stage with no faults from fetching.
-              if (mcause_i.minhv) begin
+              // ID stage is halted while it contains an mret and at the same time there are CSR writes EX or WB, hence it is safe to use mcause here.
+              if (mcause_i.minhv && (mcause_i.mpp == PRIV_LVL_M)) begin
                 // mcause.minhv set, exception occured during last pointer fetch (or SW wrote it)
                 // Must wait until EX and WB are empty as they can cause exceptions
                 if (!(id_ex_pipe_i.instr_valid || ex_wb_pipe_i.instr_valid)) begin
@@ -831,7 +844,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                   ctrl_fsm_o.halt_id = 1'b1;
                 end
               end else begin
-                // mcause.minhv not set, do regular mret
+                // xcause.xinhv not set for the previous privilege level, do regular mret
                 ctrl_fsm_o.pc_mux = PC_MRET;
                 ctrl_fsm_o.pc_set = 1'b1;
 
@@ -955,7 +968,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         debug_mode_n = 1'b1;
         ctrl_fsm_ns = FUNCTIONAL;
       end
-      // State for CLIC vectoring (and Zc table jumps)
+      // State for CLIC vectoring
       // In this state a fetch has been ordered, and the controller
       // is waiting for the pointer to arrive in the decode stage.
       POINTER_FETCH: begin
