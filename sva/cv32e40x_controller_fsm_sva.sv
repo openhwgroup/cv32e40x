@@ -94,7 +94,9 @@ module cv32e40x_controller_fsm_sva
   input mcause_t        mcause_i,
   input logic           lsu_trans_valid_i,
   input logic           irq_wu_ctrl_i,
-  input logic           wu_wfe_i
+  input logic           wu_wfe_i,
+  input logic           sys_en_id_i,
+  input logic           sys_mret_id_i
 );
 
 
@@ -593,14 +595,34 @@ if (SMCLIC) begin
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
 
-  // Check that EX and WB are empty when an mret does it's jump when mcause.minhv is set
-  a_minhv_ex_wb_pipeline_empty:
+  // Check that EX and WB does not contain any instruction with possible exceptions when a mret which restarts a pointer fetch is performed
+  a_jump_no_exceptions:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  (ctrl_fsm_o.pc_set && ctrl_fsm_o.pc_mux == PC_MRET) && mcause_i.minhv
-                  |-> !(id_ex_pipe_i.instr_valid || ex_wb_pipe_i.instr_valid))
-    else `uvm_error("controller", "EX and WB not empty on mret with mcause.minhv set")
+                  (ctrl_fsm_o.pc_set && ctrl_fsm_o.pc_mux == PC_MRET) && ctrl_fsm_o.pc_set_clicv
+                  |->
+                  !(id_ex_pipe_i.instr_valid && (id_ex_pipe_i.abort_op)) &&
+                  !(ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.abort_op || lsu_err_wb_i || (lsu_mpu_status_wb_i != MPU_OK))))
+    else `uvm_error("controller", "EX and WB may cause exceptions when mret with mcause.minhv is performed")
 
-end // SMCLIC
+end else begin // SMCLIC
+  // Check that CLIC related signals are inactive when CLIC is not configured.
+  a_clic_inactive:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  1'b1
+                  |->
+                  (ctrl_fsm_cs != POINTER_FETCH)    &&
+                  !ctrl_fsm_o.csr_cause.minhv       &&
+                  !ctrl_fsm_o.csr_clear_minhv       &&
+                  !mcause_i.minhv                   &&
+                  !if_id_pipe_i.instr_meta.clic_ptr &&
+                  !id_ex_pipe_i.instr_meta.clic_ptr &&
+                  !ex_wb_pipe_i.instr_meta.clic_ptr &&
+                  !ctrl_fsm_o.pc_set_clicv          &&
+                  !(|ctrl_fsm_o.irq_level)          &&
+                  !ctrl_fsm_o.irq_shv               &&
+                  !(|ctrl_fsm_o.irq_priv) )
+    else `uvm_error("controller", "CLIC signals active when CLIC is not configured.")
+end
 
 
 
@@ -737,5 +759,29 @@ end // SMCLIC
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) |-> !ctrl_byp_i.irq_enable_stall)
     else `uvm_error("controller", "irq_enable_stall while SLEEPING should not happen.")
+
+  // Handling of mret in ID requires mcause.minhv to be stable
+  // This assertion checks that both operations of secure mrets in ID see the same mcause.minhv.
+  a_mret_id_ex_minhv_stable:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (id_valid_i && ex_ready_i && sys_en_id_i && sys_mret_id_i)
+                    |=>
+                    $stable(mcause_i.minhv))
+    else `uvm_error("controller", "mcause.minhv not stable when mret goes from ID to EX")
+
+/* todo: Fix or remove assertion. Will fail for the following scenario:
+    1: mret (1/2) in ID restarts pointer fetch due to mpp and minhv conditions.
+    2: mret (1/2) ID->EX, mret (2/2) in ID  [pointer may be in IF]
+    3: mret (1/2) EX->WB, mret (2/2) in EX  [pointer may be in ID, if successful minhv is cleared]
+    4: mret (2/2) EX->WB, minhv not stable due to clearing by pointer in previous cycle.
+    The not stable minhv is a side effect of the mret itself, so it could be considered a self-stall which
+    normally will not cause halts.
+  a_mret_ex_wb_minhv_stable:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (ex_valid_i && wb_ready_i && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn)
+                    |=>
+                    $stable(mcause_i.minhv))
+    else `uvm_error("controller", "mcause.minhv not stable when mret goes from EX to WB")
+*/
 endmodule
 

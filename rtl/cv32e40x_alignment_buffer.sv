@@ -100,7 +100,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // resp_valid gated while flushing
   logic resp_valid_gated;
 
-  // CLIC vectoring (and Zc table jumps)
+  // CLIC vectoring
   // Flag for signalling that results is a CLIC function pointer
   logic is_clic_ptr_q;
   // Flag for table jump pointer
