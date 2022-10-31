@@ -769,19 +769,21 @@ end
                     $stable(mcause_i.minhv))
     else `uvm_error("controller", "mcause.minhv not stable when mret goes from ID to EX")
 
-/* todo: Fix or remove assertion. Will fail for the following scenario:
-    1: mret (1/2) in ID restarts pointer fetch due to mpp and minhv conditions.
-    2: mret (1/2) ID->EX, mret (2/2) in ID  [pointer may be in IF]
-    3: mret (1/2) EX->WB, mret (2/2) in EX  [pointer may be in ID, if successful minhv is cleared]
-    4: mret (2/2) EX->WB, minhv not stable due to clearing by pointer in previous cycle.
-    The not stable minhv is a side effect of the mret itself, so it could be considered a self-stall which
-    normally will not cause halts.
+
   a_mret_ex_wb_minhv_stable:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ex_valid_i && wb_ready_i && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn)
                     |=>
                     $stable(mcause_i.minhv))
     else `uvm_error("controller", "mcause.minhv not stable when mret goes from EX to WB")
-*/
+
+
+
+a_mret_restore_halt:
+assert property (@(posedge clk) disable iff (!rst_n)
+                  ctrl_fsm_o.csr_restore_mret
+                  |->
+                  !ctrl_fsm_o.halt_wb)
+  else `uvm_error("controller", "csr_restore_mret when WB is halted")
 endmodule
 

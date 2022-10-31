@@ -80,6 +80,7 @@ module cv32e40x_core_sva
   input logic        ctrl_interrupt_allowed,
   input logic        ctrl_pending_interrupt,
   input ctrl_byp_t   ctrl_byp,
+  input logic [2:0]  ctrl_debug_cause_n,
   // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
@@ -346,18 +347,26 @@ if (SMCLIC) begin
       else `uvm_error("core", "Assertion a_single_step_with_irq_nonshv failed")
 
   // An SHV CLIC interrupt will first do one fetch to get a function pointer,
-  // then a second fetch to the actual interrupt handler. If this second fetch has
-  // no faults, debug is entered with dpc pointing to the handler entry.
-  // Otherwise, if the pointer fetch failed, we will eventually end up in debug mode
-  // with dpc pointing to the respective exception/NMI handler.
-  // In any way, wb_valid shall remain low until we retire the first instruction in debug mode.
+  // then a second fetch to the actual interrupt handler. If the first fetch has
+  // no faults, debug is entered with dpc pointing to the handler entry when the pointer reaches the WB stage.
+  // Otherwise, if the pointer fetch failed, we will start fetching the appropriate exception handler
+  // before entering debug with DPC pointing to the first exception handler instruction.
+  // Once the second fetch has been performed, an external debug request may cause debug entry before
+  // the pointer reaches WB, or when it is in WB (debug_req has higher priority than single step.)
+  /*
+      todo: Reintroduce (and update) when debug single step logic has been updated.
+             -should likely flop the event that causes single step entry to evaluate all debug reasons
+              when the pipeline is guaranteed to not disallow any debug reason to enter debug.
   a_single_step_with_irq_shv :
     assert property (@(posedge clk) disable iff (!rst_ni)
                       (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && irq_clic_shv)
                       |->
-                      !wb_valid until (wb_valid && ctrl_fsm.debug_mode && dcsr.step))
+                         (!wb_valid until (wb_valid && ex_wb_pipe.instr_meta.clic_ptr) // CLIC pointer in WB, enter DEBUG_TAKEN
+                         ##1 ctrl_debug_mode_n)   // Debug mode from next cycle
+                      or
+                         (!wb_valid until (ctrl_debug_mode_n && (ctrl_debug_cause_n == DBG_CAUSE_HALTREQ)))) // external debug happened before pointer reached WB
       else `uvm_error("core", "Assertion a_single_step_with_irq_shv failed")
-
+*/
 
 end else begin
   // Interrupt taken during single stepping.
