@@ -1060,27 +1060,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_we     = 1'b1;
 
       end //ctrl_fsm_i.csr_restore_dret
+
+      ctrl_fsm_i.csr_clear_minhv: begin
+        if (SMCLIC) begin
+          // Keep mcause values, only clear minhv bit.
+          mcause_n = mcause_rdata;
+          mcause_n.minhv = 1'b0;
+          mcause_we = 1'b1;
+        end // SMCLIC
+      end // ctrl_fsm_i.csr_clear_minhv
       default:;
     endcase
 
-    // mcause.minhv shall be cleared if vector fetch is successful
-    // Not part of the above unique case, as csr_clear_minv and csr_restore_mret
-    // may happen at the same time when an mret is executed when mcause.minhv==1
-    // -- In this case, the mret may be in WB while the controller FSM is in POINTER state
-    //    and a successful pointer fetch is in the ID stage (clears mcause.minhv).
-    // The fields mstatus.mpp and mstatus.mpie er aliased between mcause and mstatus. The mcause write
-    // due to csr_celar_minhv will however only write to mcause.minhv, and no updates to mstatus.mpp/mpie.
-    if (SMCLIC) begin
-      if (ctrl_fsm_i.csr_clear_minhv) begin
-        // Keep mcause values, only clear minhv bit.
-        // Note that mcause_rdata may have the wrong values for mpp and mpie if an mret is also in WB.
-        //  - This is ok as the aliased mpp/mpie bits are stored in mstatus and not mcause, and the clearing
-        //    of minhv does not attempt to change mcause.mpp/mpie.
-        mcause_n = mcause_rdata;
-        mcause_n.minhv = 1'b0;
-        mcause_we = 1'b1;
-      end
-    end
+
   end
 
   // Mirroring mstatus_n to mnxti_n for RVFI

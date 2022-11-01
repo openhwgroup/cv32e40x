@@ -280,6 +280,7 @@ module cv32e40x_wrapper
                 .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
                 .ctrl_pending_interrupt           (core_i.controller_i.controller_fsm_i.pending_interrupt),
                 .ctrl_interrupt_allowed           (core_i.controller_i.controller_fsm_i.interrupt_allowed),
+                .ctrl_debug_cause_n               (core_i.controller_i.controller_fsm_i.debug_cause_n),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
 
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid_o),
@@ -484,7 +485,6 @@ endgenerate
          .ctrl_fsm_cs_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_cs                     ),
          .ctrl_fsm_ns_i            ( core_i.controller_i.controller_fsm_i.ctrl_fsm_ns                     ),
          .pending_single_step_i    ( core_i.controller_i.controller_fsm_i.pending_single_step             ),
-         .pending_single_step_ptr_i( core_i.controller_i.controller_fsm_i.pending_single_step_ptr         ),
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),

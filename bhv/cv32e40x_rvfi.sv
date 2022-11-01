@@ -104,7 +104,6 @@ module cv32e40x_rvfi
    input ctrl_state_e                         ctrl_fsm_cs_i,
    input ctrl_state_e                         ctrl_fsm_ns_i,
    input logic                                pending_single_step_i,
-   input logic                                pending_single_step_ptr_i,
    input logic                                single_step_allowed_i,
    input logic                                nmi_pending_i,          // regular NMI pending
    input logic                                nmi_is_store_i,         // regular NMI type
@@ -775,7 +774,7 @@ module cv32e40x_rvfi
 
     end
 
-    if((pending_single_step_i || pending_single_step_ptr_i) && single_step_allowed_i) begin
+    if(pending_single_step_i && single_step_allowed_i) begin
       // The timing of the single step debug entry does not allow using pc_mux for detection
       rvfi_trap_next.debug       = 1'b1;
       rvfi_trap_next.debug_cause = DBG_CAUSE_STEP;

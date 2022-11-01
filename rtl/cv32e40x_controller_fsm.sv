@@ -172,12 +172,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
   logic xif_in_wb;
+  logic clic_ptr_in_wb;
 
   logic pending_nmi;
   logic pending_nmi_early;
   logic pending_debug;
   logic pending_single_step;
-  logic pending_single_step_ptr;
   logic pending_interrupt;
 
   // Flags for allowing interrupt and debug
@@ -349,6 +349,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // An offloaded instruction is in WB
   assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
 
+  assign clic_ptr_in_wb = (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid);
+
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   assign pending_nmi = nmi_pending_q;
@@ -385,28 +387,23 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   For any interruptible instructions (non-LSU), at any stage, we would kill the instruction and jump
   to debug mode without executing any instructions. Interrupt handler's first instruction will be in dpc.
 
-  For LSU instructions that may not be killed (if they reach WB of stay in EX for >1 cycles),
+  For LSU instructions that may not be killed (if they reach WB or stay in EX for >1 cycles),
   we are not allowed to take interrupts, and we will re-enter debug mode after finishing the LSU.
   Interrupt will then be taken when we enter the next step.
   */
 
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
-  // single step becomes pending when the last operation of an instruction is done in WB, or we ack a non-shv interrupt.
-  // If a CLIC SHV interrupt is taken during single step, the flag 'pending_single_step_ptr' will be used once the pointer
-  // reaches the ID stage. If the pointer fetch fails, an exception will be taken from WB and debug mode is entered with dpc
-  // pointing at the first instruction of the exception handler.
+  // single step becomes pending when the last operation of an instruction is done in WB (including CLIC pointers), or we ack a non-shv interrupt.
+  // If a CLIC SHV interrupt is taken during single step, a pointer that reaches WB will trigger the debug entry.
+  //   - For un-faulted pointer fetches, the second fetch of the CLIC vectoring took place in ID, and the final SHV handler target address will be available from IF.
+  //   - A faulted pointer fetch does not perform the second fetch. Instead the exception handler fetch will occur before entering debug due to stepping.
+  // todo: Likely flop the wb_valid/last_op/abort_op to be able to evaluate all debug reasons (debug_req when pointer is in WB is not allowed, while single step is allowed)
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack)) && !pending_debug;
-
-  // Separate flag for pending single step when doing CLIC SHV.
-  // When a successfully fetched pointer reaches the ID stage, the controller will perform the pc_set of the target instruction,
-  // and then go to the DEBUG_TAKEN state with single step as the cause. The dpc CSR will point at the first instruction
-  // of the interrupt handler. No instruction will be retired during the step.
-  assign pending_single_step_ptr = !debug_mode_q && dcsr_i.step && (wb_valid_i || 1'b1) && !pending_debug;
 
 
   // Detect if there is a live CLIC pointer in the pipeline
-  // This should block debug
+  // This should block debug and interrupts
   generate
     if (SMCLIC) begin : gen_clic_pointer_flag
       // We only need to check EX and WB, as the FSM will only be in FUNCTIONAL state
@@ -422,9 +419,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  // Once the first part of a table jump has finished in WB, we are not allowed to take debug before the last part finishes. This can be detected when the last
-  // part of a table jump is in either EX or WB. // todo: update comments related to table jump (explain general concept and to which instructions it applies)
-  // todo: why is clic_ptr_in_pipeline included here (and not in interrupt_allowed)
+  // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
+  //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
+  // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
+  //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
   assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // Debug pending for any other reason than single step
@@ -436,8 +434,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Determine cause of debug
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
+  // todo: update priority according to updated debug spec
   assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
-                         pending_single_step_ptr ? DBG_CAUSE_STEP :
                          trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
                          (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
@@ -456,13 +454,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // will be interruptable as they were converted to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
-  // Once the first part of a table jump has finished in WB, we are not allowed to take interrupts before the last part finishes. This can be detected when the last
-  // part of a table jump is in either EX or WB.
+  // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
+  //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
+  // When a CLIC pointer is in the pipeline stages EX or WB, we must block interrupts.
+  //   - Interrupt would otherwise kill the pointer and use the address of the pointer for mepc. A following mret would then return to the mtvt table, losing program progress.
 
-  assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible && !interrupt_blanking_q;
+  assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !interrupt_blanking_q;
 
   // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
-  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible;
+  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
@@ -874,6 +874,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
             ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
+
+          // CLIC pointer in WB
+          if(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb) begin
+            // Clear minhv if no exceptions are associated with the pointer
+            // todo: deal with integrity related faults for E40S.
+            if(!((ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.instr.bus_resp.err)) begin
+              ctrl_fsm_o.csr_clear_minhv = 1'b1;
+            end
+          end
         end // !debug or interrupts
 
         // Single step debug entry
@@ -901,7 +910,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
           // Keep IF/ID halted while waking up (EX contains a bubble)
-          // Any jump/tablejump/mret which is in ID in this cycle must also remain in ID
+          // Any jump/table jump/mret which is in ID in this cycle must also remain in ID
           // the next cycle for their side effects to be taken during the FUNCTIONAL state in case the interrupt is not actually taken.
           ctrl_fsm_o.halt_id = 1'b1;
 
@@ -973,33 +982,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // is waiting for the pointer to arrive in the decode stage.
       POINTER_FETCH: begin
         if (if_id_pipe_i.instr_meta.clic_ptr && if_id_pipe_i.instr_valid) begin
-          // Function pointer reached ID stage, do another jump
-          // if no faults happened during pointer fetch. (mcause.minhv will stay high for faults)
+          // Function pointer reached ID stage, do another jump if no faults happened during pointer fetch.
           // todo: deal with integrity related faults for E40S.
           if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
             ctrl_fsm_o.pc_set = 1'b1;
             ctrl_fsm_o.pc_mux = PC_POINTER;
             ctrl_fsm_o.kill_if = 1'b1;
-            ctrl_fsm_o.csr_clear_minhv = 1'b1;
-
-            // Jump to debug taken in case of a pending single step.
-            // We should enter debug without executing any instruction, and let dpc
-            // point to the first instruction in the handler
-            ctrl_fsm_ns = pending_single_step_ptr ? DEBUG_TAKEN : FUNCTIONAL;
-          end else begin
-            // If the pointer fetch faulted, we don't jump to the target and return to FUNCTIONAL.
-            // Any pending single step will not be taken (the irq handler instruction fetch faulted),
-            // and the associated exception or NMI will be taken in FUNCTIONAL along with the single step once
-            // the pointer reaches WB. Dpc will then point to the first instruction in the exception/NMI handler.
-            ctrl_fsm_ns = FUNCTIONAL;
           end
-          // Note: If the pointer fetch faulted (pma/pmp/bus error), an exception or NMI will
-          // be taken once the pointer fetch reachces WB (two cycles after the current)
-          // The FSM must be in the FUNCTIONAL state to take the exception or NMI.
-          // A faulted pointer (in ID) should not cause debug entry either,
+          // Return to FUNCTIONAL once the pointer reaches the ID stage.
+          // If the pointer has any exceptions, the exception will be handled from the WB stage in the FUNCTIONAL state.
+          // If single stepping with dcsr.stepie, the single step debug entry will happen from FUNCTIONAL once the
+          //   pointer reaches the WB stage.
+          ctrl_fsm_ns = FUNCTIONAL;
         end
 
         // Mret in WB restores CSR regs
+        // If the pointer fetch was (re)started by an mret with mcause.minhv set, the mret may
+        // be in the WB stage while in the POINTER_FETCH stage. The CSR side effects of the mret
+        // must still take place.
         if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
           ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
         end

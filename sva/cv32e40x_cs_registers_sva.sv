@@ -158,28 +158,5 @@ module cv32e40x_cs_registers_sva
     else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
 
 
-  // Check EX is empty or contains last part of mret when minhv is cleared
-  property p_ex_empty_minhv_clear;
-    @(posedge clk) disable iff (!rst_n)
-    (  ctrl_fsm_i.csr_clear_minhv
-       -> !id_ex_pipe_i.instr_valid       // No valid instruction in EX
-       or
-          (id_ex_pipe_i.instr_valid && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn && id_ex_pipe_i.last_op)); // mret in EX
-  endproperty;
-
-  a_ex_empty_minhv_clear: assert property(p_ex_empty_minhv_clear)
-    else `uvm_error("cs_registers", "EX not empty when csr_clear_minhv is active.");
-
-  // Check WB is empty or contains any part of mret when minhv is cleared
-  property p_wb_empty_minhv_clear;
-    @(posedge clk) disable iff (!rst_n)
-    (  ctrl_fsm_i.csr_clear_minhv
-        -> !ex_wb_pipe_i.instr_valid       // No valid instruction in WB
-        or
-          (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)); // mret in WB
-  endproperty;
-
-  a_wb_empty_minhv_clear: assert property(p_wb_empty_minhv_clear)
-    else `uvm_error("cs_registers", "WB not empty when csr_clear_minhv is active.");
 endmodule
 

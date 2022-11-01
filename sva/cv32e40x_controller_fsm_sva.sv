@@ -96,7 +96,8 @@ module cv32e40x_controller_fsm_sva
   input logic           irq_wu_ctrl_i,
   input logic           wu_wfe_i,
   input logic           sys_en_id_i,
-  input logic           sys_mret_id_i
+  input logic           sys_mret_id_i,
+  input logic           clic_ptr_in_wb
 );
 
 
@@ -604,6 +605,13 @@ if (SMCLIC) begin
                   !(ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.abort_op || lsu_err_wb_i || (lsu_mpu_status_wb_i != MPU_OK))))
     else `uvm_error("controller", "EX and WB may cause exceptions when mret with mcause.minhv is performed")
 
+  a_clic_ptr_functional_only:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  ((ctrl_fsm_cs != FUNCTIONAL)
+                  |->
+                  !(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb)))
+    else `uvm_error("controller", "clic_ptr_in_wb && !kill_wb while not in FUNCTIONAL state.")
+
 end else begin // SMCLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.
   a_clic_inactive:
@@ -769,19 +777,22 @@ end
                     $stable(mcause_i.minhv))
     else `uvm_error("controller", "mcause.minhv not stable when mret goes from ID to EX")
 
-/* todo: Fix or remove assertion. Will fail for the following scenario:
-    1: mret (1/2) in ID restarts pointer fetch due to mpp and minhv conditions.
-    2: mret (1/2) ID->EX, mret (2/2) in ID  [pointer may be in IF]
-    3: mret (1/2) EX->WB, mret (2/2) in EX  [pointer may be in ID, if successful minhv is cleared]
-    4: mret (2/2) EX->WB, minhv not stable due to clearing by pointer in previous cycle.
-    The not stable minhv is a side effect of the mret itself, so it could be considered a self-stall which
-    normally will not cause halts.
+
   a_mret_ex_wb_minhv_stable:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ex_valid_i && wb_ready_i && id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn)
                     |=>
                     $stable(mcause_i.minhv))
     else `uvm_error("controller", "mcause.minhv not stable when mret goes from EX to WB")
-*/
+
+
+  //  mret CSR restores are done in parallell with other events in the controller except for nmi/interrupt/debug entries.
+  // Check that CSR restores for mret cannot happen while the WB stage is halted.
+  a_mret_restore_halt:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  ctrl_fsm_o.csr_restore_mret
+                  |->
+                  !ctrl_fsm_o.halt_wb)
+  else `uvm_error("controller", "csr_restore_mret when WB is halted")
 endmodule
 
