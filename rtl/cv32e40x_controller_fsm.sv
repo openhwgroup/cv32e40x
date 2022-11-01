@@ -395,7 +395,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
   // single step becomes pending when the last operation of an instruction is done in WB (including CLIC pointers), or we ack a non-shv interrupt.
-  // If a CLIC SHV interrupt is taken during single step, a pointer that reaches WB will trig the debug entry.
+  // If a CLIC SHV interrupt is taken during single step, a pointer that reaches WB will trigger the debug entry.
   //   - For un-faulted pointer fetches, the second fetch of the CLIC vectoring took place in ID, and the final SHV handler target address will be available from IF.
   //   - A faulted pointer fetch does not perform the second fetch. Instead the exception handler fetch will occur before entering debug due to stepping.
   // todo: Likely flop the wb_valid/last_op/abort_op to be able to evaluate all debug reasons (debug_req when pointer is in WB is not allowed, while single step is allowed)
@@ -419,7 +419,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
-  // Any multi operation instruction (tablejumps, push/pop and doublemoves) may not be interrupted once the first operation has completed its operation in WB.
+  // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
   //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
@@ -454,7 +454,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // will be interruptable as they were converted to NOP in ID stage.
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
-  // Any multi operation instruction (tablejumps, push/pop and doublemoves) may not be interrupted once the first operation has completed its operation in WB.
+  // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block interrupts.
   //   - Interrupt would otherwise kill the pointer and use the address of the pointer for mepc. A following mret would then return to the mtvt table, losing program progress.
@@ -462,7 +462,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !interrupt_blanking_q;
 
   // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
-  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && sequence_interruptible;
+  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
@@ -878,6 +878,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // CLIC pointer in WB
           if(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb) begin
             // Clear minhv if no exceptions are associated with the pointer
+            // todo: deal with integrity related faults for E40S.
             if(!((ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.instr.bus_resp.err)) begin
               ctrl_fsm_o.csr_clear_minhv = 1'b1;
             end
@@ -909,7 +910,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_ns = FUNCTIONAL;
           ctrl_fsm_o.ctrl_busy = 1'b1;
           // Keep IF/ID halted while waking up (EX contains a bubble)
-          // Any jump/tablejump/mret which is in ID in this cycle must also remain in ID
+          // Any jump/table jump/mret which is in ID in this cycle must also remain in ID
           // the next cycle for their side effects to be taken during the FUNCTIONAL state in case the interrupt is not actually taken.
           ctrl_fsm_o.halt_id = 1'b1;
 
@@ -982,6 +983,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       POINTER_FETCH: begin
         if (if_id_pipe_i.instr_meta.clic_ptr && if_id_pipe_i.instr_valid) begin
           // Function pointer reached ID stage, do another jump if no faults happened during pointer fetch.
+          // todo: deal with integrity related faults for E40S.
           if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
             ctrl_fsm_o.pc_set = 1'b1;
             ctrl_fsm_o.pc_mux = PC_POINTER;

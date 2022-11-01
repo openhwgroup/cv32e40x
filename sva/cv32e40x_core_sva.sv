@@ -351,8 +351,9 @@ if (SMCLIC) begin
   // no faults, debug is entered with dpc pointing to the handler entry when the pointer reaches the WB stage.
   // Otherwise, if the pointer fetch failed, we will start fetching the appropriate exception handler
   // before entering debug with DPC pointing to the first exception handler instruction.
-  // Once the second fetch has been performed, an external debug request may cause debug entry before
-  // the pointer reaches WB, or when it is in WB (debug_req has higher priority than single step.)
+  // External debug entry and interrupts (including NMIs) are not allowed to be taken while there is
+  // a live pointer in WB (IF-ID: guarded by POINTER_FETCH STATE, EX-WB: guarded by clic_ptr_in_pipeline).
+  //   - this could cause the address of the pointer to end up in DPC, making dret jumping to a mtvt entry instead of an instruction.
   /*
       todo: Reintroduce (and update) when debug single step logic has been updated.
              -should likely flop the event that causes single step entry to evaluate all debug reasons
