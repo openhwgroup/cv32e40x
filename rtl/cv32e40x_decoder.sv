@@ -27,6 +27,8 @@
 
 module cv32e40x_decoder import cv32e40x_pkg::*;
 #(
+  parameter rv32_e       RV32                   = RV32I,
+  parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
   parameter bit          A_EXT                  = 0,
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
@@ -84,6 +86,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          rf_we_o,                // Write enable for register file
   output logic [1:0]    rf_re_o,
 
+  input rf_addr_t                           rf_raddr_i[REGFILE_NUM_READ_PORTS],
+  input rf_addr_t                           rf_waddr_i,
+  output logic [REGFILE_NUM_READ_PORTS-1:0] rf_illegal_raddr_o,
+
   // Mux selects
   output op_c_mux_e     op_c_mux_sel_o,         // Operand c selection: reg value or jump target
   output imm_a_mux_e    imm_a_mux_sel_o,        // Immediate selection for operand a
@@ -107,6 +113,9 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   logic       sys_en;
 
   logic [31:0] instr_rdata;
+
+  logic rf_illegal_addr;
+  logic rf_illegal_waddr;
 
   decoder_ctrl_t decoder_i_ctrl;
   decoder_ctrl_t decoder_m_ctrl;
@@ -186,9 +195,24 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
     endcase
   end
 
-  // Take illegal compressed instruction into account
+  // Check for illegal GPR address if using RV32E
+  genvar rf_rport_idx;
+  generate
+    for (rf_rport_idx = 0; rf_rport_idx < REGFILE_NUM_READ_PORTS; rf_rport_idx++) begin: gen_rf_raddr_illegal
+      assign rf_illegal_raddr_o[rf_rport_idx] = (RV32 == RV32I) ? 1'b0 : rf_raddr_i[rf_rport_idx][4];
+    end
+  endgenerate
+
+  assign rf_illegal_waddr = (RV32 == RV32I) ? 1'b0 : rf_waddr_i[4];
+
+  assign rf_illegal_addr = (decoder_ctrl_mux_subdec.rf_re[0] && rf_illegal_raddr_o[0]) ||
+                           (decoder_ctrl_mux_subdec.rf_re[1] && rf_illegal_raddr_o[1]) ||
+                           (decoder_ctrl_mux_subdec.rf_we    && rf_illegal_waddr);
+
+
+  // Take illegal compressed instruction and illegal RV32E GPR address into account
   always_comb begin
-    if (if_id_pipe_i.illegal_c_insn) begin
+    if (if_id_pipe_i.illegal_c_insn || rf_illegal_addr) begin
       decoder_ctrl_mux = DECODER_CTRL_ILLEGAL_INSN;
     end
     else begin

@@ -683,9 +683,6 @@ parameter REGFILE_DATA_WIDTH = 32;
 // Word width of register file memory
 parameter REGFILE_WORD_WIDTH = REGFILE_DATA_WIDTH;
 
-// Number of regfile integer registers
-parameter REGFILE_NUM_WORDS = 2**(REGFILE_ADDR_WIDTH);
-
 // Register file address type
 typedef logic [REGFILE_ADDR_WIDTH-1:0] rf_addr_t;
 

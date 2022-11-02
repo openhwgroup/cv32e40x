@@ -34,6 +34,7 @@
   `include "cv32e40x_rvfi_sva.sv"
   `include "cv32e40x_sequencer_sva.sv"
   `include "cv32e40x_clic_int_controller_sva.sv"
+  `include "cv32e40x_register_file_sva.sv"
 `endif
 
 `include "cv32e40x_wrapper.vh"
@@ -166,7 +167,7 @@ module cv32e40x_wrapper
     );
 
   bind cv32e40x_id_stage:
-    core_i.id_stage_i cv32e40x_id_stage_sva id_stage_sva
+    core_i.id_stage_i cv32e40x_id_stage_sva #(.RV32(RV32)) id_stage_sva
     (
       .jmp_taken_id_ctrl_i (core_i.controller_i.controller_fsm_i.jump_taken_id),
       .*
@@ -195,6 +196,11 @@ module cv32e40x_wrapper
                  .rf_waddr      (core_i.id_stage_i.rf_waddr        ),
                  .illegal_insn  (core_i.id_stage_i.illegal_insn    ),
                  .*);
+
+  bind cv32e40x_register_file:
+    core_i.register_file_wrapper_i.register_file_i cv32e40x_register_file_sva #(.RV32(RV32))
+  register_file_sva
+      (.*);
 
   generate
     if(M_EXT != M_NONE) begin: mul_sva

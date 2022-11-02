@@ -32,6 +32,7 @@
 
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
+  parameter rv32_e       RV32                   = RV32I,
   parameter bit          A_EXT                  = 0,
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
@@ -119,6 +120,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic                 rf_we;
   logic                 rf_we_dec;
   rf_addr_t             rf_waddr;
+  logic [REGFILE_NUM_READ_PORTS-1:0] rf_illegal_raddr;
 
   // ALU Control
   logic                 alu_en;
@@ -404,6 +406,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   cv32e40x_decoder
   #(
+    .RV32                            ( RV32                      ),
+    .REGFILE_NUM_READ_PORTS          ( REGFILE_NUM_READ_PORTS    ),
     .A_EXT                           ( A_EXT                     ),
     .B_EXT                           ( B_EXT                     ),
     .M_EXT                           ( M_EXT                     ),
@@ -462,6 +466,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     // Register file control signals
     .rf_re_o                         ( rf_re                     ),
     .rf_we_o                         ( rf_we_dec                 ),
+    .rf_raddr_i                      ( rf_raddr_o                ),
+    .rf_waddr_i                      ( rf_waddr                  ),
+    .rf_illegal_raddr_o              ( rf_illegal_raddr          ),
 
     // Mux selects
     .imm_a_mux_sel_o                 ( imm_a_mux_sel             ),
@@ -739,16 +746,20 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         xif_issue_if.issue_req.rs_valid = '0;
         if (xif_issue_if.X_NUM_RS > 0) begin
           xif_issue_if.issue_req.rs      [0] = operand_a_fw;
-          xif_issue_if.issue_req.rs_valid[0] = 1'b1;
+          xif_issue_if.issue_req.rs_valid[0] = (ctrl_byp_i.operand_a_fw_mux_sel == SEL_REGFILE) ?
+                                               !rf_illegal_raddr[0] :
+                                               1'b1;
         end
         if (xif_issue_if.X_NUM_RS > 1) begin
           xif_issue_if.issue_req.rs      [1] = operand_b_fw;
-          xif_issue_if.issue_req.rs_valid[1] = 1'b1;
+          xif_issue_if.issue_req.rs_valid[1] = (ctrl_byp_i.operand_b_fw_mux_sel == SEL_REGFILE) ?
+                                               !rf_illegal_raddr[1] :
+                                               1'b1;
         end
         // TODO: implement forwarding for other operands than rs1 and rs2
         for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
           xif_issue_if.issue_req.rs      [i] = rf_rdata_i[i];
-          xif_issue_if.issue_req.rs_valid[i] = 1'b1;
+          xif_issue_if.issue_req.rs_valid[i] = !rf_illegal_raddr[i];
         end
       end
 

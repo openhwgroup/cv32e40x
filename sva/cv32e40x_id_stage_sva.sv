@@ -25,12 +25,19 @@
 module cv32e40x_id_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+#(
+  parameter rv32_e RV32   = RV32I
+)
 (
   input logic           clk,
   input logic           rst_n,
 
   input logic [31:0]    instr,
+  input logic [1:0]     rf_re,
+  input rf_addr_t       rf_raddr_o[2],
   input logic           rf_we,
+  input logic           rf_we_dec,
+  input rf_addr_t       rf_waddr,
   input logic           alu_en,
   input logic           div_en,
   input logic           mul_en,
@@ -160,6 +167,27 @@ module cv32e40x_id_stage_sva
   a_jmp_target_stable: assert property (p_jmp_target_stable)
     else `uvm_error("id_stage", "Jump target not stable")
 
+
+    generate
+      if(RV32 == RV32E) begin: a_rv32e
+
+        a_rf_we_illegal :
+          assert property (@(posedge clk) disable iff (!rst_n)
+                           rf_we_dec |-> (rf_waddr < 16))
+            else `uvm_error("decoder", "Write to GPR > 15")
+
+        a_rf_re_illegal_0 :
+          assert property (@(posedge clk) disable iff (!rst_n)
+                           rf_re[0] |-> (rf_raddr_o[0] < 16))
+            else `uvm_error("decoder", "Read from to GPR > 15")
+
+        a_rf_re_illegal_1 :
+          assert property (@(posedge clk) disable iff (!rst_n)
+                           rf_re[1] |-> (rf_raddr_o[1] < 16))
+            else `uvm_error("decoder", "Read from GPR > 15")
+
+      end
+    endgenerate
 
 endmodule // cv32e40x_id_stage_sva
 

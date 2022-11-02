@@ -32,7 +32,7 @@
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter                             LIB                                     = 0,
-  parameter rv32_e                      RV32                                    = RV32I, // todo: Add support for RV32E
+  parameter rv32_e                      RV32                                    = RV32I,
   parameter bit                         A_EXT                                   = 0,
   parameter b_ext_e                     B_EXT                                   = B_NONE,
   parameter m_ext_e                     M_EXT                                   = M,
@@ -414,6 +414,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   cv32e40x_if_stage
   #(
+    .RV32                ( RV32                     ),
     .A_EXT               ( A_EXT                    ),
     .B_EXT               ( B_EXT                    ),
     .X_EXT               ( X_EXT                    ),
@@ -478,6 +479,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   cv32e40x_id_stage
   #(
+    .RV32                         ( RV32                      ),
     .A_EXT                        ( A_EXT                     ),
     .B_EXT                        ( B_EXT                     ),
     .M_EXT                        ( M_EXT                     ),
@@ -716,6 +718,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   cv32e40x_cs_registers
   #(
+    .RV32                       ( RV32                   ),
     .A_EXT                      ( A_EXT                  ),
     .M_EXT                      ( M_EXT                  ),
     .X_EXT                      ( X_EXT                  ),
@@ -1014,7 +1017,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   cv32e40x_register_file_wrapper
   #(
-    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    )
+    .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS ),
+    .RV32                         ( RV32                   )
   )
   register_file_wrapper_i
   (
