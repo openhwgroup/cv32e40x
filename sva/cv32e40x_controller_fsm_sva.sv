@@ -97,7 +97,8 @@ module cv32e40x_controller_fsm_sva
   input logic           wu_wfe_i,
   input logic           sys_en_id_i,
   input logic           sys_mret_id_i,
-  input logic           clic_ptr_in_wb
+  input logic           clic_ptr_in_wb,
+  input logic           csr_en_id_i
 );
 
 
@@ -794,5 +795,15 @@ end
                   |->
                   !ctrl_fsm_o.halt_wb)
   else `uvm_error("controller", "csr_restore_mret when WB is halted")
+
+  // CSR instructions should be stalled in ID if there is a CLIC pointer in EX or WB (RAW hazard)
+  a_csr_stall_on_ptr:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_en_id_i && if_id_pipe_i.instr_valid) &&
+                  ((id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.instr_valid) ||
+                  (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid))
+                  |->
+                  !id_valid_i)
+  else `uvm_error("controller", "CSR* not stalled in ID when CLIC pointer is in EX or WB")
 endmodule
 
