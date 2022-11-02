@@ -221,6 +221,7 @@ module cv32e40x_wrapper
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
                               .lsu_trans_valid_i            (core_i.load_store_unit_i.trans_valid),
+                              .csr_en_id_i                  (core_i.id_stage_i.csr_en),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
