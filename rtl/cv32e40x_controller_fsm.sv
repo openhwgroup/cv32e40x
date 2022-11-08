@@ -169,6 +169,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic wfe_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
+  logic mret_pointer_in_wb;
   logic dret_in_wb;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
@@ -342,8 +343,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
 
-  // mret in wb
-  assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid;
+  // mret in wb - only valid when last_op_wb_i == 1 (which means only mret that did now cause a CLIC pointer fetch)
+  // Restricts CSR updates due to mret to not happen if the mret caused a CLIC pointer fetch, such CSR updates
+  // should only happen once the instruction fully completes (pointer arrives in WB).
+  assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid && last_op_wb_i;
+
+  // CLIC pointer (caused by mret) in WB. Only set when the pointer does not have any associated exceptions to prevent CSR updates for the mret.
+  assign mret_pointer_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && !ex_wb_pipe_i.first_op && !exception_in_wb;
 
   // dret in wb
   assign dret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_dret_insn && ex_wb_pipe_i.instr_valid;
@@ -572,6 +578,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.kill_wb          = 1'b0;
 
     ctrl_fsm_o.csr_restore_mret = 1'b0;
+    ctrl_fsm_o.csr_restore_mret_pointer = 1'b0;
     ctrl_fsm_o.csr_restore_dret = 1'b0;
 
     ctrl_fsm_o.csr_save_cause   = 1'b0;
@@ -901,10 +908,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             clic_ptr_fetching_n = 1'b0;
           end
 
-          // Mret in WB restores CSR regs
-          //
+          // Regular mret in WB restores CSR regs
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
             ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
+          end
+
+          // For mret that caused a CLIC pointer fetch, CSR updates will happen once the pointer reaches WB.
+          // If the pointer has associated exceptions, the csr_restore_mret_pointer will not happen
+          if (mret_pointer_in_wb && !ctrl_fsm_o.kill_wb) begin
+            ctrl_fsm_o.csr_restore_mret_pointer  = !debug_mode_q;
           end
 
           // CLIC pointer in WB

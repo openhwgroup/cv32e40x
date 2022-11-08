@@ -1033,7 +1033,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end //ctrl_fsm_i.csr_save_cause
 
-      ctrl_fsm_i.csr_restore_mret: begin // MRET
+      ctrl_fsm_i.csr_restore_mret,
+      ctrl_fsm_i.csr_restore_mret_pointer: begin // MRET
         priv_lvl_n     = privlvl_t'(mstatus_rdata.mpp);
         priv_lvl_we    = 1'b1;
 
@@ -1060,19 +1061,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_we     = 1'b1;
 
       end //ctrl_fsm_i.csr_restore_dret
-
-      ctrl_fsm_i.csr_clear_minhv: begin
-        if (SMCLIC) begin
-          // Keep mcause values, only clear minhv bit.
-          mcause_n = mcause_rdata;
-          mcause_n.minhv = 1'b0;
-          mcause_we = 1'b1;
-        end // SMCLIC
-      end // ctrl_fsm_i.csr_clear_minhv
       default:;
     endcase
 
-
+    // Keep clear_minhv out of unique case as it may happen at the same time as csr_restore_mret
+    if (SMCLIC) begin
+      if (ctrl_fsm_i.csr_clear_minhv) begin
+        // Keep mcause values, only clear minhv bit.
+        mcause_n = mcause_rdata;
+        mcause_n.minhv = 1'b0;
+        mcause_we = 1'b1;
+      end
+    end
   end
 
   // Mirroring mstatus_n to mnxti_n for RVFI

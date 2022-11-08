@@ -51,7 +51,7 @@ module cv32e40x_prefetcher_sva import cv32e40x_pkg::*;
   input  logic        fetch_valid_i,
 
   input  prefetch_state_e  state_q,
-  input  logic        prefetch_is_clic_ptr
+  input  logic [1:0]  prefetch_is_clic_ptr
 
 
 );
@@ -179,7 +179,7 @@ if (SMCLIC) begin
   //   For this case, the PC of the tablejump instruction is available in the pipeline.
 
   property p_data_q_no_branch;
-    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) && prefetch_is_clic_ptr |-> !fetch_branch_i);
+    @(posedge clk) disable iff (!rst_n) (((state_q == BRANCH_WAIT) && trans_ptr_access_q) && prefetch_is_clic_ptr[0] |-> !fetch_branch_i);
   endproperty
 
   a_p_data_q_no_branch:
