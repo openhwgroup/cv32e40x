@@ -153,6 +153,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic jmp_id;                  // JAL, JALR in ID
   logic jump_in_id;
   logic jump_taken_id;
+  logic clic_ptr_in_id;
 
   // EX signals
   logic branch_in_ex;
@@ -237,9 +238,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Flag that is high during the cycle after an LSU instruction finishes in WB
   logic       interrupt_blanking_q;
 
+  // Flop for tracking when a pointer fetch is in progress
+  logic       clic_ptr_fetching_n;
+  logic       clic_ptr_fetching_q;
+
   assign sequence_interruptible = !sequence_in_progress_wb;
 
-  assign id_stage_haltable = !sequence_in_progress_id;
+  assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_fetching_q);
 
   assign fencei_ready = !lsu_busy_i;
 
@@ -283,6 +288,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Blocking on branch_taken_q, as a jump has already been taken
   assign jump_taken_id = jump_in_id && !branch_taken_q;
+
+  // Detect clic pointers in ID
+  assign clic_ptr_in_id = if_id_pipe_i.instr_valid && if_id_pipe_i.instr_meta.clic_ptr;
+
 
   // Note: RVFI does not use jump_taken_id (which is not in itself an issue); An assertion in id_stage_sva checks that the jump target remains stable;
   // todo: Do we need a similar stability check for branches?
@@ -409,7 +418,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // We only need to check EX and WB, as the FSM will only be in FUNCTIONAL state
       // one cycle after the target CLIC jump has been performed from ID
       assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
-                                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr);
+                                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr) ||
+                                    clic_ptr_fetching_q;
     end else begin : gen_basic_pointer_flag
       assign clic_ptr_in_pipeline = 1'b0;
     end
@@ -590,6 +600,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     csr_flush_ack_n             = 1'b0;
 
+    clic_ptr_fetching_n         = clic_ptr_fetching_q;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
@@ -673,7 +685,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.irq_shv = irq_clic_shv_i;
             if (irq_clic_shv_i) begin
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
-              ctrl_fsm_ns = POINTER_FETCH;
+              clic_ptr_fetching_n = 1'b1;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
               ctrl_fsm_o.csr_cause.minhv = 1'b1;
             end else begin
@@ -834,11 +846,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                   ctrl_fsm_o.pc_set = 1'b1;
                   ctrl_fsm_o.pc_set_clicv = 1'b1; // Treat mepc as a pointer fetch
                   ctrl_fsm_o.pc_mux = PC_MRET;
-                  ctrl_fsm_ns = POINTER_FETCH;
+                  clic_ptr_fetching_n = 1'b1;
 
                   // Set flag to avoid further jumps to the same target
                   // if we are stalled
                   branch_taken_n = 1'b1;
+
+                  // Clear flag for halting IF in case of single stepping
+                  // For the single step to complete, both the mret and the pointer must reach WB.
+                  // If no unhalt is done here, the pointer will never reach WB.
+                  single_step_halt_if_n = 1'b0;
                 end else begin
                   ctrl_fsm_o.halt_if = 1'b1;
                   ctrl_fsm_o.halt_id = 1'b1;
@@ -867,6 +884,21 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               // if we are stalled
               branch_taken_n = 1'b1;
             end
+          end else if (clic_ptr_in_id) begin
+            // todo e40s: Factor in integrity related errors
+            if (!(if_id_pipe_i.instr.bus_resp.err || (if_id_pipe_i.instr.mpu_status != MPU_OK))) begin
+              if (!branch_taken_q) begin
+                ctrl_fsm_o.pc_set = 1'b1;
+                ctrl_fsm_o.pc_mux = PC_POINTER;
+                ctrl_fsm_o.kill_if = 1'b1;
+                branch_taken_n = 1'b1;
+              end
+            end
+          end
+
+          // CLIC pointer in ID clears pointer fetch flag
+          if (clic_ptr_in_id && id_valid_i && ex_ready_i) begin
+            clic_ptr_fetching_n = 1'b0;
           end
 
           // Mret in WB restores CSR regs
@@ -977,34 +1009,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         debug_mode_n = 1'b1;
         ctrl_fsm_ns = FUNCTIONAL;
       end
-      // State for CLIC vectoring
-      // In this state a fetch has been ordered, and the controller
-      // is waiting for the pointer to arrive in the decode stage.
-      POINTER_FETCH: begin
-        if (if_id_pipe_i.instr_meta.clic_ptr && if_id_pipe_i.instr_valid) begin
-          // Function pointer reached ID stage, do another jump if no faults happened during pointer fetch.
-          // todo: deal with integrity related faults for E40S.
-          if(!((if_id_pipe_i.instr.mpu_status != MPU_OK) || if_id_pipe_i.instr.bus_resp.err)) begin
-            ctrl_fsm_o.pc_set = 1'b1;
-            ctrl_fsm_o.pc_mux = PC_POINTER;
-            ctrl_fsm_o.kill_if = 1'b1;
-          end
-          // Return to FUNCTIONAL once the pointer reaches the ID stage.
-          // If the pointer has any exceptions, the exception will be handled from the WB stage in the FUNCTIONAL state.
-          // If single stepping with dcsr.stepie, the single step debug entry will happen from FUNCTIONAL once the
-          //   pointer reaches the WB stage.
-          ctrl_fsm_ns = FUNCTIONAL;
-        end
 
-        // Mret in WB restores CSR regs
-        // If the pointer fetch was (re)started by an mret with mcause.minhv set, the mret may
-        // be in the WB stage while in the POINTER_FETCH stage. The CSR side effects of the mret
-        // must still take place.
-        if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
-          ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
-        end
-
-      end
       default: begin
         // should never happen
         ctrl_fsm_o.instr_req = 1'b0;
@@ -1092,10 +1097,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
       csr_flush_ack_q       <= 1'b0;
+      clic_ptr_fetching_q   <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
       csr_flush_ack_q       <= csr_flush_ack_n;
+      clic_ptr_fetching_q   <= clic_ptr_fetching_n;
     end
   end
 
@@ -1144,8 +1151,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // i.e halt_wb due to debug will result in killed WB, while for fence.i it will retire.
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
-      // CLIC: Exluding pointer fetches as they are not instructions
-      if (ex_valid_i && wb_ready_i && last_op_ex_i && !ex_wb_pipe_i.instr_meta.clic_ptr) begin
+      // CLIC: Exluding pointer fetches as they are not instructions, except for CLIC pointers with first_op == 1'b0.
+      //       These are the final part of an mret which restarted pointer fetch, and must increment the minstret counter.
+      if (ex_valid_i && wb_ready_i /*&& last_op_ex_i && !(id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.first_op)) */) begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet

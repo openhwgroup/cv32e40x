@@ -506,6 +506,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_byp_i                   ( ctrl_byp                  ),
     .ctrl_fsm_i                   ( ctrl_fsm                  ),
 
+    .mcause_i                     ( mcause                    ),
+
     // Register file write back and forwards
     .rf_wdata_ex_i                ( rf_wdata_ex               ),
     .rf_wdata_wb_i                ( rf_wdata_wb               ),

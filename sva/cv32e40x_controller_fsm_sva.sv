@@ -90,6 +90,7 @@ module cv32e40x_controller_fsm_sva
   input logic           id_stage_haltable,
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
+  input logic [1:0]     prefetch_is_clic_ptr_if_i,
   input logic           abort_op_id_i,
   input mcause_t        mcause_i,
   input logic           lsu_trans_valid_i,
@@ -98,7 +99,8 @@ module cv32e40x_controller_fsm_sva
   input logic           sys_en_id_i,
   input logic           sys_mret_id_i,
   input logic           clic_ptr_in_wb,
-  input logic           csr_en_id_i
+  input logic           csr_en_id_i,
+  input logic           clic_ptr_fetching_n
 );
 
 
@@ -619,7 +621,7 @@ end else begin // SMCLIC
   assert property (@(posedge clk) disable iff (!rst_n)
                   1'b1
                   |->
-                  (ctrl_fsm_cs != POINTER_FETCH)    &&
+                  (clic_ptr_fetching_n != 1'b1)     &&
                   !ctrl_fsm_o.csr_cause.minhv       &&
                   !ctrl_fsm_o.csr_clear_minhv       &&
                   !mcause_i.minhv                   &&
@@ -651,8 +653,9 @@ end
       sequence_interruptible_alt = first_op_if_i;
     end else begin
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
-      // and we should safely be able to interrupt unless the IF stage is waiting for a table jump pointer
-      sequence_interruptible_alt = !prefetch_is_tbljmp_ptr_if_i;
+      // and we should safely be able to interrupt unless the IF stage is waiting for a table jump pointer or
+      // a CLIC pointer that is a side effect of an mret.
+      sequence_interruptible_alt = !(prefetch_is_tbljmp_ptr_if_i || (prefetch_is_clic_ptr_if_i == 2'b11));
     end
   end
 
@@ -671,8 +674,9 @@ end
       id_stage_haltable_alt = first_op_if_i;
     end else begin
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
-      // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer
-      id_stage_haltable_alt = !prefetch_is_tbljmp_ptr_if_i;
+      // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer or
+      // a CLIC pointer that is a side effect of an mret
+      id_stage_haltable_alt = !(prefetch_is_tbljmp_ptr_if_i || (prefetch_is_clic_ptr_if_i == 2'b11));
     end
   end
 

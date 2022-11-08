@@ -169,7 +169,7 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, POINTER_FETCH} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
