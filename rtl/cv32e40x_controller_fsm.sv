@@ -343,7 +343,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
 
-  // mret in wb - only valid when last_op_wb_i == 1 (which means only mret that did now cause a CLIC pointer fetch)
+  // mret in wb - only valid when last_op_wb_i == 1 (which means only mret that did not cause a CLIC pointer fetch)
   // Restricts CSR updates due to mret to not happen if the mret caused a CLIC pointer fetch, such CSR updates
   // should only happen once the instruction fully completes (pointer arrives in WB).
   assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid && last_op_wb_i;
@@ -421,8 +421,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // This should block debug and interrupts
   generate
     if (SMCLIC) begin : gen_clic_pointer_flag
-      // We only need to check EX and WB, as the FSM will only be in FUNCTIONAL state
-      // one cycle after the target CLIC jump has been performed from ID
+      // A CLIC pointer may be in the pipeline from the moment we start fetching (clic_ptr_fetching_q == 1)
+      // or while a pointer is in the EX or WB stages.
       assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
                                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr) ||
                                     clic_ptr_fetching_q;
@@ -1165,7 +1165,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // other conditions prevent counting.
       // CLIC: Exluding pointer fetches as they are not instructions, except for CLIC pointers with first_op == 1'b0.
       //       These are the final part of an mret which restarted pointer fetch, and must increment the minstret counter.
-      if (ex_valid_i && wb_ready_i /*&& last_op_ex_i && !(id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.first_op)) */) begin
+      if (ex_valid_i && wb_ready_i && last_op_ex_i && !(id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.first_op))  begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet

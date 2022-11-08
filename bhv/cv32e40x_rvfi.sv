@@ -1043,8 +1043,7 @@ module cv32e40x_rvfi
         rvfi_rd_wdata   <= mret_clic_pointer_wb ? rd_wdata_wb_past : rd_wdata_wb;
 
         // Read/Write CSRs
-        // mret with CLIC pointer: If pointer has no exceptions, original mret CSR r/w must be used.
-        //                         If pointer has exceptions, CSR r/w for exception must be used
+        // No clic pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
         rvfi_csr_wmask  <= rvfi_csr_wmask_d;
@@ -1070,17 +1069,17 @@ module cv32e40x_rvfi
       // Update state for suboperations - also valid for the last operation
       if (wb_valid_subop) begin
         // Set entries in *[STAGE_WB_PAST]
-        in_trap  [STAGE_WB_PAST] <= in_trap  [STAGE_WB];
-        rs1_addr [STAGE_WB_PAST] <= rs1_addr [STAGE_WB];
-        rs2_addr [STAGE_WB_PAST] <= rs1_addr [STAGE_WB];
-        rs1_rdata[STAGE_WB_PAST] <= rs1_rdata[STAGE_WB];
-        rs2_rdata[STAGE_WB_PAST] <= rs1_rdata[STAGE_WB];
+        in_trap  [STAGE_WB_PAST]    <= in_trap  [STAGE_WB];
+        rs1_addr [STAGE_WB_PAST]    <= rs1_addr [STAGE_WB];
+        rs2_addr [STAGE_WB_PAST]    <= rs1_addr [STAGE_WB];
+        rs1_rdata[STAGE_WB_PAST]    <= rs1_rdata[STAGE_WB];
+        rs2_rdata[STAGE_WB_PAST]    <= rs1_rdata[STAGE_WB];
         debug_cause [STAGE_WB_PAST] <= debug_cause [STAGE_WB];
-        debug_mode [STAGE_WB_PAST] <= debug_mode[STAGE_WB];
-        pc_wb_past               <= pc_wb_i;
-        instr_rdata_wb_past      <= instr_rdata_wb_i;
-        rd_addr_wb_past          <= rd_addr_wb;
-        rd_wdata_wb_past          <= rd_wdata_wb;
+        debug_mode [STAGE_WB_PAST]  <= debug_mode[STAGE_WB];
+        pc_wb_past                  <= pc_wb_i;
+        instr_rdata_wb_past         <= instr_rdata_wb_i;
+        rd_addr_wb_past             <= rd_addr_wb;
+        rd_wdata_wb_past            <= rd_wdata_wb;
 
         // Clear rvfi_mem and rvfi_gpr on first op
         if (first_op_wb_i) begin
