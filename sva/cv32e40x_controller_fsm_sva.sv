@@ -98,7 +98,8 @@ module cv32e40x_controller_fsm_sva
   input logic           wu_wfe_i,
   input logic           sys_en_id_i,
   input logic           sys_mret_id_i,
-  input logic           clic_ptr_in_wb,
+  input logic           mret_clic_ptr_in_wb,
+  input logic           non_mret_clic_ptr_in_wb,
   input logic           csr_en_id_i,
   input logic           clic_ptr_fetching_n
 );
@@ -612,7 +613,7 @@ if (SMCLIC) begin
   assert property (@(posedge clk) disable iff (!rst_n)
                   ((ctrl_fsm_cs != FUNCTIONAL)
                   |->
-                  !(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb)))
+                  !((mret_clic_ptr_in_wb || non_mret_clic_ptr_in_wb) && !ctrl_fsm_o.kill_wb)))
     else `uvm_error("controller", "clic_ptr_in_wb && !kill_wb while not in FUNCTIONAL state.")
 
 end else begin // SMCLIC

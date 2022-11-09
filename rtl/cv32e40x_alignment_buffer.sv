@@ -56,6 +56,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic                       instr_ready_i,
   output inst_resp_t                 instr_instr_o,
   output logic [31:0]                instr_addr_o,
+  // instr_is_clic_ptr_o[0] is always high when a CLIC pointer is being output
+  // instr_is_clic_ptr_o[1] will only be high when a CLIC pointer is a result of an mret
   output logic [1:0]                 instr_is_clic_ptr_o,
   output logic                       instr_is_tbljmp_ptr_o,
   output logic [ALBUF_CNT_WIDTH-1:0] outstnd_cnt_q_o
@@ -102,6 +104,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // CLIC vectoring
   // Flag for signalling that results is a CLIC function pointer
+  // is_clic_ptr_q[0] is always high when a CLIC pointer is being output
+  // is_clic_ptr_q[1] will only be high when a CLIC pointer is a result of an mret
   logic [1:0] is_clic_ptr_q;
   // Flag for table jump pointer
   logic is_tbljmp_ptr_q;

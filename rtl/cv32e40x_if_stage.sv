@@ -97,6 +97,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_valid;
   logic              prefetch_ready;
   inst_resp_t        prefetch_instr;
+
+  // prefetch_is_clic_ptr[0] is always high when a CLIC pointer is being output
+  // prefetch_is_clic_ptr[1] will only be high when a CLIC pointer is a result of an mret
   logic [1:0]        prefetch_is_clic_ptr;
   logic              prefetch_is_tbljmp_ptr;
 

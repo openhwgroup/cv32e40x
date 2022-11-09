@@ -153,7 +153,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic jmp_id;                  // JAL, JALR in ID
   logic jump_in_id;
   logic jump_taken_id;
-  logic clic_ptr_in_id;
+  logic clic_ptr_in_id; // Any type of CLIC pointer in ID
 
   // EX signals
   logic branch_in_ex;
@@ -169,12 +169,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic wfe_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
-  logic mret_pointer_in_wb;
+  logic mret_clic_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
   logic xif_in_wb;
-  logic clic_ptr_in_wb;
+  logic non_mret_clic_ptr_in_wb;   // CLIC pointer caused by directly acking an SHV is in WB (no mret)
 
   logic pending_nmi;
   logic pending_nmi_early;
@@ -348,8 +348,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // should only happen once the instruction fully completes (pointer arrives in WB).
   assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid && last_op_wb_i;
 
-  // CLIC pointer (caused by mret) in WB. Only set when the pointer does not have any associated exceptions to prevent CSR updates for the mret.
-  assign mret_pointer_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && !ex_wb_pipe_i.first_op && !exception_in_wb;
+  // CLIC pointer (caused by mret) in WB.
+  assign mret_clic_ptr_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && !ex_wb_pipe_i.first_op;
 
   // dret in wb
   assign dret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_dret_insn && ex_wb_pipe_i.instr_valid;
@@ -364,7 +364,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // An offloaded instruction is in WB
   assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
 
-  assign clic_ptr_in_wb = (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid);
+  // Regular CLIC pointer in WB (not caused by mret)
+  assign non_mret_clic_ptr_in_wb = (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.first_op);
 
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
@@ -915,17 +916,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // For mret that caused a CLIC pointer fetch, CSR updates will happen once the pointer reaches WB.
           // If the pointer has associated exceptions, the csr_restore_mret_pointer will not happen
-          if (mret_pointer_in_wb && !ctrl_fsm_o.kill_wb) begin
+          if (mret_clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
             ctrl_fsm_o.csr_restore_mret_pointer  = !debug_mode_q;
           end
 
           // CLIC pointer in WB
-          if(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb) begin
+          if(non_mret_clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
             // Clear minhv if no exceptions are associated with the pointer
-            // todo: deal with integrity related faults for E40S.
-            if(!((ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.instr.bus_resp.err)) begin
-              ctrl_fsm_o.csr_clear_minhv = 1'b1;
-            end
+            ctrl_fsm_o.csr_clear_minhv = 1'b1;
           end
         end // !debug or interrupts
 
