@@ -305,14 +305,16 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Sequenced instructions set last_op from the sequencer.
   // Any other instruction will be single operation, and gets last_op=1.
-  // CLIC pointers are single operation with first_op == last_op == 1
+  // Regular CLIC pointers are single operation with first_op == last_op == 1
+  // CLIC pointers that are a side effect of mret instructions will have first_op == 0 and last_op == 1
   assign last_op_o = prefetch_is_clic_ptr[1] ? 1'b1 :           // clic pointer caused by mret, must be !first && last
                      seq_valid               ? seq_last : 1'b1; // Any other regular instructions are single operation.
 
   // Flag first operation of a sequence.
   // Any sequenced instructions use the seq_first from the sequencer.
   // Any other instruction will be single operation, and gets first_op=1.
-  // CLIC pointers are single operation with first_op == last_op == 1
+  // Regular CLIC pointers are single operation with first_op == last_op == 1
+  // CLIC pointers that are a side effect of mret instructions will have first_op == 0 and last_op == 1
   assign first_op_o =  prefetch_is_clic_ptr[1] ? 1'b0 :            // clic pointer caused by mret, must be !first && last
                        seq_valid               ? seq_first : 1'b1; // Any other regular instructions are single operation.
 
