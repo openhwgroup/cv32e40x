@@ -64,8 +64,6 @@ import cv32e40x_pkg::*;
 
   // Trigger match output
   output logic        trigger_match_o
-
-
 );
 
   // CSR write data
@@ -76,12 +74,11 @@ import cv32e40x_pkg::*;
   logic [31:0] tinfo_n;
   logic [31:0] tcontrol_n;
 
-  // CSR read data
-  logic [31:0] tdata1_rdata;
-  logic [31:0] tdata2_rdata;
+  // CSR instance outputs
+  logic [31:0] tdata1_q;
+  logic [31:0] tdata2_q;
 
   logic unused_signals;
-
 
   // Write data
   always_comb begin
@@ -121,8 +118,8 @@ import cv32e40x_pkg::*;
   //   could be missed since we must write in debug mode, then dret to machine mode (kills pipeline) before
   //   returning to dpc.
   //   Todo: There is no CLIC spec for trigger matches for pointers.
-  assign trigger_match_o = tdata1_rdata[2] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
-                          (pc_if_i[31:0] == tdata2_rdata[31:0]);
+  assign trigger_match_o = tdata1_rdata_o[2] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
+                          (pc_if_i[31:0] == tdata2_rdata_o[31:0]);
 
 
   cv32e40x_csr
@@ -136,7 +133,7 @@ import cv32e40x_pkg::*;
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( tdata1_n              ),
     .wr_en_i            ( tdata1_we_i           ),
-    .rd_data_o          ( tdata1_rdata          )
+    .rd_data_o          ( tdata1_q              )
   );
 
   cv32e40x_csr
@@ -150,12 +147,12 @@ import cv32e40x_pkg::*;
     .rst_n              ( rst_n                 ),
     .wr_data_i          ( tdata2_n              ),
     .wr_en_i            ( tdata2_we_i           ),
-    .rd_data_o          ( tdata2_rdata          )
+    .rd_data_o          ( tdata2_q              )
   );
 
   // Assign CSR read data outputs
-  assign tdata1_rdata_o   = tdata1_rdata;
-  assign tdata2_rdata_o   = tdata2_rdata;
+  assign tdata1_rdata_o   = tdata1_q;
+  assign tdata2_rdata_o   = tdata2_q;
   assign tdata3_rdata_o   = 32'h00000000;
   assign tselect_rdata_o  = 32'h00000000;
   assign tinfo_rdata_o    = 32'h4;
