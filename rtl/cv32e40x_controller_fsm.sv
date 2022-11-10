@@ -682,7 +682,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
 
-          // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
+          // Default to keeping mcause.minhv. It will only be set to 1 when taking a CLIC SHV interrupt (or by a CSR write).
+          // For all other cases it keeps its value.
           ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
 
 
@@ -695,6 +696,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
               clic_ptr_fetching_n = 1'b1;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
+              // When taking an SHV interrupt, always set minhv.
+              // Mcause.minhv will only be cleared when a successful pointer fetch is done, or when it is cleared by a CSR write.
               ctrl_fsm_o.csr_cause.minhv = 1'b1;
             end else begin
               ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
