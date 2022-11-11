@@ -1208,15 +1208,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           sequence_in_progress_id <= 1'b1;
         end
       end else begin
-        // sequence_in_progress_id is set, clear when last_op retires
-        if (id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) begin
+        // sequence_in_progress_id is set, clear when last_op retires or ID stage is killed
+        if ((id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) || ctrl_fsm_o.kill_id) begin
           sequence_in_progress_id <= 1'b0;
         end
-      end
-
-      // Reset flag if ID stage is killed
-      if (ctrl_fsm_o.kill_id) begin
-        sequence_in_progress_id <= 1'b0;
       end
     end
   end
