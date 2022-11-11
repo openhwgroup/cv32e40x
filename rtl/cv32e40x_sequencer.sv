@@ -31,8 +31,10 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module cv32e40x_sequencer
-import cv32e40x_pkg::*;
+module cv32e40x_sequencer import cv32e40x_pkg::*;
+ #(
+   parameter rv32_e    RV32 = RV32I
+ )
  (
     input  logic       clk,
     input  logic       rst_n,
@@ -78,6 +80,8 @@ import cv32e40x_pkg::*;
 
   logic                ready_fsm;
 
+  logic                dmove_legal_dest;
+  logic                pushpop_legal_rlist;
 
   assign instr = instr_i.bus_resp.rdata;
   assign rlist = instr[7:4];
@@ -118,6 +122,17 @@ import cv32e40x_pkg::*;
   ///////////////////////////////////
   // Decode sequenced instructions //
   ///////////////////////////////////
+
+  // rlist values 0 to 3 are reserved for a future EABI variant called cm.popret.e
+  // For RV32E, S2-S11 are not present (i.e. rlist must be < 7)
+  assign pushpop_legal_rlist = (RV32 == RV32I) ? (rlist > 4'h3) :
+                               (rlist < 4'h7) && (rlist > 4'h3);
+
+  // rs1 must be different from rs2
+  // For RV32E, S2-S11 are not present
+  assign dmove_legal_dest = (RV32 == RV32I) ? (instr[9:7] != instr[4:2]) :
+                            (instr[9:7] != instr[4:2]) && (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
+
   always_comb
   begin
     seq_instr    = INVALID_INST;
@@ -138,8 +153,7 @@ import cv32e40x_pkg::*;
             end
 
             3'b011: begin
-              // rs1 must be different from rs2
-              if (instr[9:7] != instr[4:2]) begin
+              if (dmove_legal_dest) begin
                 if (instr[6:5] == 2'b11) begin
                   // cm.mva01s
                   seq_instr = MVA01S;
@@ -154,13 +168,13 @@ import cv32e40x_pkg::*;
             3'b110: begin
               if (instr[9:8] == 2'b00) begin
                 // cm.push
-                if (rlist > 3) begin
+                if (pushpop_legal_rlist) begin
                   seq_instr = PUSH;
                   seq_store = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.pop
-                if (rlist > 3) begin
+                if (pushpop_legal_rlist) begin
                   seq_instr = POP;
                   seq_load = 1'b1;
                 end
@@ -169,13 +183,13 @@ import cv32e40x_pkg::*;
             3'b111: begin
               if (instr[9:8] == 2'b00) begin
                 // cm.popretz
-                if (rlist > 3) begin
+                if (pushpop_legal_rlist) begin
                   seq_instr = POPRETZ;
                   seq_load = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.popret
-                if (rlist > 3) begin
+                if (pushpop_legal_rlist) begin
                   seq_instr = POPRET;
                   seq_load = 1'b1;
                 end
