@@ -35,6 +35,7 @@ ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_csr.sv
+${DESIGN_RTL_DIR}/cv32e40x_debug_triggers.sv
 ${DESIGN_RTL_DIR}/cv32e40x_cs_registers.sv
 ${DESIGN_RTL_DIR}/cv32e40x_register_file.sv
 ${DESIGN_RTL_DIR}/cv32e40x_register_file_wrapper.sv

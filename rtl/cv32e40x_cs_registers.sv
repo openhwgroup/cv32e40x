@@ -143,23 +143,25 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic                         mepc_we;
 
   // Trigger
-  logic [31:0]                  tselect_q, tselect_n, tselect_rdata;
-  logic                         tselect_we;                                     // Not used in RTL (used by RVFI)
+  // Trigger CSR write enables are decoded in cs_registers, all other (WARL behavior, write data and trigger matches)
+  // are handled within cv32e40x_debug_triggers
+  logic [31:0]                  tselect_rdata;
+  logic                         tselect_we;
 
-  logic [31:0]                  tdata1_q, tdata1_n, tdata1_rdata;
+  logic [31:0]                  tdata1_rdata;
   logic                         tdata1_we;
 
-  logic [31:0]                  tdata2_q, tdata2_n, tdata2_rdata;
+  logic [31:0]                  tdata2_rdata;
   logic                         tdata2_we;
 
-  logic [31:0]                  tdata3_n, tdata3_rdata;                         // No CSR module instance
+  logic [31:0]                  tdata3_rdata;
   logic                         tdata3_we;
 
-  logic [31:0]                  tinfo_q, tinfo_n, tinfo_rdata;
-  logic                         tinfo_we;                                       // Not used in RTL (used by RVFI)
+  logic [31:0]                  tinfo_rdata;
+  logic                         tinfo_we;
 
-  logic [31:0]                  tcontrol_n, tcontrol_rdata;                     // No CSR module instance
-  logic                         tcontrol_we;                                    // Not used in RTL (used by RVFI)
+  logic [31:0]                  tcontrol_rdata;
+  logic                         tcontrol_we;
 
   // Debug
   dcsr_t                        dcsr_q, dcsr_n, dcsr_rdata;
@@ -604,40 +606,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dscratch1_n   = csr_wdata_int;
     dscratch1_we  = 1'b0;
 
-    tselect_n     = tselect_rdata; // todo
     tselect_we    = 1'b0;
 
-    tdata1_n      = {
-                     TTYPE_MCONTROL,        // type    : address/data match
-                     1'b1,                  // dmode   : access from D mode only
-                     6'h00,                 // maskmax : exact match only
-                     1'b0,                  // hit     : not supported
-                     1'b0,                  // select  : address match only
-                     1'b0,                  // timing  : match before execution
-                     2'b00,                 // sizelo  : match any access
-                     4'h1,                  // action  : enter debug mode
-                     1'b0,                  // chain   : not supported
-                     4'h0,                  // match   : simple match
-                     1'b1,                  // m       : match in m-mode
-                     1'b0,                  // 0       : zero
-                     1'b0,                  // s       : not supported
-                     1'b0,                  // u       : match in u-mode
-                     csr_wdata_int[2],      // execute : match instruction address
-                     1'b0,                  // store   : not supported
-                     1'b0                   // load    : not supported
-                     };
     tdata1_we     = 1'b0;
 
-    tdata2_n      = csr_wdata_int;
     tdata2_we     = 1'b0;
 
-    tdata3_n      = tdata3_rdata; // Read only
     tdata3_we     = 1'b0;
 
-    tinfo_n       = tinfo_rdata; // Read only
     tinfo_we      = 1'b0;
 
-    tcontrol_n    = tcontrol_rdata; // Read only
     tcontrol_we   = 1'b0;
 
     // TODO: add support for SD/XS/FS/VS
@@ -1454,59 +1432,44 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //                         |___/               |___/ |___/            //
   ////////////////////////////////////////////////////////////////////////
 
-  assign tselect_q = 32'h0; // todo
-  assign tselect_rdata = tselect_q;
+  cv32e40x_debug_triggers
+    #(
+        .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS)
+    )
+    debug_triggers_i
+    (
+      .clk              ( clk    ),
+      .rst_n            ( rst_n  ),
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (TDATA1_RST_VAL)
-  )
-  tdata1_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( tdata1_n              ),
-    .wr_en_i            ( tdata1_we             ),
-    .rd_data_o          ( tdata1_q              )
-  );
+      // CSR inputs write inputs
+      .csr_wdata_i      ( csr_wdata_int),
+      .tselect_we_i     ( tselect_we ),
+      .tdata1_we_i      ( tdata1_we  ),
+      .tdata2_we_i      ( tdata2_we  ),
+      .tdata3_we_i      ( tdata3_we  ),
+      .tinfo_we_i       ( tinfo_we   ),
+      .tcontrol_we_i    ( tcontrol_we ),
 
-  assign tdata1_rdata = tdata1_q;
+      // CSR read data outputs
+      .tselect_rdata_o  ( tselect_rdata ),
+      .tdata1_rdata_o   ( tdata1_rdata  ),
+      .tdata2_rdata_o   ( tdata2_rdata  ),
+      .tdata3_rdata_o   ( tdata3_rdata  ),
+      .tinfo_rdata_o    ( tinfo_rdata   ),
+      .tcontrol_rdata_o ( tcontrol_rdata),
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
-  )
-  tdata2_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( tdata2_n              ),
-    .wr_en_i            ( tdata2_we             ),
-    .rd_data_o          ( tdata2_q              )
-  );
+      // IF stage inputs
+      .pc_if_i          ( pc_if_i       ),
+      .ptr_in_if_i      ( ptr_in_if_i   ),
 
-  assign tdata2_rdata = tdata2_q;
+      // Controller inputs
+      .ctrl_fsm_i       ( ctrl_fsm_i    ),
 
-  assign tdata3_rdata = 32'h0;
+      // Trigger match output
+      .trigger_match_o  ( trigger_match_o )
 
-  // All supported trigger types
-  assign tinfo_q = 32'h4; // todo: needs update with new trigger types
-  assign tinfo_rdata = tinfo_q;
 
-  assign tcontrol_rdata = 32'h0;
-
-  // Breakpoint matching
-  // We match against the next address, as the breakpoint must be taken before execution
-  // Matching is disabled when ctrl_fsm_i.debug_mode == 1'b1
-  // Trigger CSRs can only be written from debug mode, writes from any other privilege level are ignored.
-  //   Thus we do not have an issue where a write to the tdata2 CSR immediately before the matched instruction
-  //   could be missed since we must write in debug mode, then dret to machine mode (kills pipeline) before
-  //   returning to dpc.
-  //   Todo: There is no CLIC spec for trigger matches for pointers.
-  assign trigger_match_o = tdata1_rdata[2] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
-                           (pc_if_i[31:0] == tdata2_q[31:0]);
+    );
 
 
   /////////////////////////////////////////////////////////////////
@@ -1774,7 +1737,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   // Some signals are unused on purpose (typically they are used by RVFI code). Use them here for easier LINT waiving.
 
-  assign unused_signals = tselect_we | tinfo_we | tcontrol_we | mstatush_we | misa_we | mip_we | mvendorid_we |
+  assign unused_signals = mstatush_we | misa_we | mip_we | mvendorid_we |
     marchid_we | mimpid_we | mhartid_we | mconfigptr_we | mtval_we | (|mnxti_n) | mscratchcsw_we | mscratchcswl_we |
     (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n) | (|mclicbase_n) | mclicbase_we;
 
