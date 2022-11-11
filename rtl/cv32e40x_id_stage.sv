@@ -746,15 +746,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
         xif_issue_if.issue_req.rs_valid = '0;
         if (xif_issue_if.X_NUM_RS > 0) begin
           xif_issue_if.issue_req.rs      [0] = operand_a_fw;
-          xif_issue_if.issue_req.rs_valid[0] = (ctrl_byp_i.operand_a_fw_mux_sel == SEL_REGFILE) ?
-                                               !rf_illegal_raddr[0] :
-                                               1'b1;
+          xif_issue_if.issue_req.rs_valid[0] = !rf_illegal_raddr[0];
         end
         if (xif_issue_if.X_NUM_RS > 1) begin
           xif_issue_if.issue_req.rs      [1] = operand_b_fw;
-          xif_issue_if.issue_req.rs_valid[1] = (ctrl_byp_i.operand_b_fw_mux_sel == SEL_REGFILE) ?
-                                               !rf_illegal_raddr[1] :
-                                               1'b1;
+          xif_issue_if.issue_req.rs_valid[1] = !rf_illegal_raddr[1];
         end
         // TODO: implement forwarding for other operands than rs1 and rs2
         for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin

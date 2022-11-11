@@ -179,6 +179,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
                               decoder_a_ctrl_int;
 
     end else begin: no_a_decoder
+      assign dec_a_rf_illegal_addr = 1'b0;
       assign decoder_a_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
@@ -204,6 +205,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
                               decoder_b_ctrl_int;
 
     end else begin: no_b_decoder
+      assign dec_b_rf_illegal_addr = 1'b0;
       assign decoder_b_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
@@ -229,6 +231,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
                               decoder_m_ctrl_int;
 
     end else begin: no_m_decoder
+      assign dec_m_rf_illegal_addr = 1'b0;
       assign decoder_m_ctrl = DECODER_CTRL_ILLEGAL_INSN;
     end
 
