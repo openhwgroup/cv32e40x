@@ -133,8 +133,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // Detect when a CSR insn  in in EX or WB
   // mret, dret and CLIC pointers implicitly writes to CSR. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.
   assign csr_write_in_ex_wb = (
-                              (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn) || id_ex_pipe_i.instr_meta.clic_ptr)) ||
-                              (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn) || ex_wb_pipe_i.instr_meta.clic_ptr))
+                              (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn) || id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr)) ||
+                              (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn) || ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr))
                               );
 
   // Stall ID when WFI or WFE is active in EX.
@@ -184,7 +184,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
     // CLIC pointer fetches go through the pipeline, but no write enables should be active.
     if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || if_id_pipe_i.trigger_match ||
-        if_id_pipe_i.instr_meta.clic_ptr) begin
+        if_id_pipe_i.instr_meta.clic_ptr || if_id_pipe_i.instr_meta.mret_ptr) begin
       ctrl_byp_o.deassert_we = 1'b1;
     end
 

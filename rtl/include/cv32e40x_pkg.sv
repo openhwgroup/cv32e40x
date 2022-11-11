@@ -1032,7 +1032,8 @@ typedef struct packed {
 typedef struct packed
 {
   logic        compressed;
-  logic        clic_ptr;
+  logic        clic_ptr;   // "True" CLIC pointer due to taking a CLIC SHV interrupt
+  logic        mret_ptr;   // CLIC pointer due to an mret restarting pointer fetch
   logic        tbljmp;
 } instr_meta_t;
 
@@ -1263,7 +1264,7 @@ typedef struct packed {
   logic [31:0] pipe_pc;             // PC from pipeline
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
-  logic        csr_restore_mret_pointer; // Restore CSR due to mret followed by CLIC
+  logic        csr_restore_mret_ptr; // Restore CSR due to mret followed by CLIC
   logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
   logic        csr_clear_minhv;     // Clear the mcause.minhv field

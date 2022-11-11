@@ -54,10 +54,10 @@ module cv32e40x_decoder_sva
 
   // Check that the two LSB of the incoming instructions word is always 2'b11
   // Predecoder should always emit uncompressed instructions
-  // Exclude CLIC pointers
+  // Exclude CLIC and mret pointers
   property p_uncompressed_lsb;
     @(posedge clk) disable iff(!rst_n)
-      !if_id_pipe.instr_meta.clic_ptr |-> (instr_rdata[1:0] == 2'b11);
+      !(if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr) |-> (instr_rdata[1:0] == 2'b11);
   endproperty
 
   a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
@@ -104,17 +104,17 @@ module cv32e40x_decoder_sva
       else `uvm_error("decoder", "Unexpected C operand usage")
 
   // Ensure that functional unit enables are one-hot (including illegal)
-  // CLIC pointers in ID will deassert all write enables.
+  // CLIC and mret pointers in ID will deassert all write enables.
   // This deassert is using the decoder_ctrl_mux as inputs, and deasserting
   // the decoder outputs instead. Disregarding the case of clic_ptr for now, but
   // could make the $onehot look at the decoder outputs instead and include the clic_ptr in $onehot
   a_functional_unit_enable_onehot :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !if_id_pipe.instr_meta.clic_ptr
+                     !(if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr)
                      |->
                      $onehot({decoder_ctrl_mux.alu_en, decoder_ctrl_mux.div_en, decoder_ctrl_mux.mul_en,
                               decoder_ctrl_mux.csr_en, decoder_ctrl_mux.sys_en, decoder_ctrl_mux.lsu_en,
-                              decoder_ctrl_mux.illegal_insn, if_id_pipe.instr_meta.clic_ptr}))
+                              decoder_ctrl_mux.illegal_insn, if_id_pipe.instr_meta.clic_ptr, if_id_pipe.instr_meta.mret_ptr}))
       else `uvm_error("decoder", "Multiple functional units enabled")
 
 

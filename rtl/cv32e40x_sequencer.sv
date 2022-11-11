@@ -39,6 +39,7 @@ import cv32e40x_pkg::*;
 
     input  inst_resp_t instr_i,               // Instruction from prefetch unit
     input  logic       instr_is_clic_ptr_i,   // CLIC pointer flag, instr_i does not contain an instruction
+    input  logic       instr_is_mret_ptr_i,   // mret pointer flag, instr_i does not contain an instruction
     input  logic       instr_is_tbljmp_ptr_i, // Tablejump pointer flag, instr_i does not contain an instruction
 
     input  logic       valid_i,               // valid input from if stage
@@ -82,7 +83,7 @@ import cv32e40x_pkg::*;
   assign instr = instr_i.bus_resp.rdata;
   assign rlist = instr[7:4];
 
-  assign instr_is_pointer = instr_is_clic_ptr_i || instr_is_tbljmp_ptr_i;
+  assign instr_is_pointer = instr_is_clic_ptr_i || instr_is_mret_ptr_i || instr_is_tbljmp_ptr_i;
 
   // Count number of instructions emitted and set next state for FSM.
   always_ff @(posedge clk, negedge rst_n) begin

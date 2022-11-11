@@ -58,14 +58,14 @@ module cv32e40x_rvfi_sva
    input inst_resp_t       prefetch_instr_if_i,
    input logic             prefetch_compressed_if_i,
    input rvfi_obi_instr_t  obi_instr_if,
-   input logic             mret_clic_pointer_wb,
+   input logic             mret_ptr_wb,
    input logic [31:0]      instr_rdata_wb_past
 );
 
-  a_mret_clic_pointer :
+  a_mret_pointer :
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                  (mret_clic_pointer_wb |-> (instr_rdata_wb_past == 32'h30200073)))
-    else `uvm_error("rvfi", "mret not in STAGE_WB_PAST when CLIC pointer arrived in WB")
+                  (mret_ptr_wb |-> (instr_rdata_wb_past == 32'h30200073)))
+    else `uvm_error("rvfi", "mret not in STAGE_WB_PAST when mret pointer arrived in WB")
 
   // Check that irq_ack results in RVFI capturing a trap
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,

@@ -153,7 +153,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic jmp_id;                  // JAL, JALR in ID
   logic jump_in_id;
   logic jump_taken_id;
-  logic clic_ptr_in_id; // Any type of CLIC pointer in ID
+  logic clic_ptr_in_id; // CLIC pointer in ID
+  logic mret_ptr_in_id; // mret pointer in ID
 
   // EX signals
   logic branch_in_ex;
@@ -169,12 +170,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic wfe_in_wb;
   logic fencei_in_wb;
   logic mret_in_wb;
-  logic mret_clic_ptr_in_wb; // CLIC pointer caused by mret is in WB
+  logic mret_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
   logic ebreak_in_wb;
   logic trigger_match_in_wb;
   logic xif_in_wb;
-  logic non_mret_clic_ptr_in_wb;   // CLIC pointer caused by directly acking an SHV is in WB (no mret)
+  logic clic_ptr_in_wb;   // CLIC pointer caused by directly acking an SHV is in WB (no mret)
 
   logic pending_nmi;
   logic pending_nmi_early;
@@ -193,7 +194,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic debug_interruptible;
 
   // Flag indicating there is a 'live' CLIC pointer in the pipeline
-  // Used to block debug until pointer
+  // Used to block debug and interrupts until pointer fetch is done and the final ISR instruction PC is available.
   logic clic_ptr_in_pipeline;
 
   // Internal irq_ack for use when a (clic) pointer reaches ID stage and
@@ -240,12 +241,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       interrupt_blanking_q;
 
   // Flop for tracking when a pointer fetch is in progress
-  logic       clic_ptr_fetching_n;
-  logic       clic_ptr_fetching_q;
+  logic       clic_ptr_in_progress_id;
+  logic       clic_ptr_in_progress_id_set;
+  logic       clic_ptr_in_progress_id_clear;
 
   assign sequence_interruptible = !sequence_in_progress_wb;
 
-  assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_fetching_q);
+  assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_in_progress_id);
 
   assign fencei_ready = !lsu_busy_i;
 
@@ -293,6 +295,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Detect clic pointers in ID
   assign clic_ptr_in_id = if_id_pipe_i.instr_valid && if_id_pipe_i.instr_meta.clic_ptr;
 
+  // Detect mret pointers in ID
+  assign mret_ptr_in_id = if_id_pipe_i.instr_valid && if_id_pipe_i.instr_meta.mret_ptr;
 
   // Note: RVFI does not use jump_taken_id (which is not in itself an issue); An assertion in id_stage_sva checks that the jump target remains stable;
   // todo: Do we need a similar stability check for branches?
@@ -349,7 +353,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign mret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn && ex_wb_pipe_i.instr_valid && last_op_wb_i;
 
   // CLIC pointer (caused by mret) in WB.
-  assign mret_clic_ptr_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && !ex_wb_pipe_i.first_op;
+  assign mret_ptr_in_wb = ex_wb_pipe_i.instr_meta.mret_ptr && ex_wb_pipe_i.instr_valid;
 
   // dret in wb
   assign dret_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_dret_insn && ex_wb_pipe_i.instr_valid;
@@ -365,7 +369,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
 
   // Regular CLIC pointer in WB (not caused by mret)
-  assign non_mret_clic_ptr_in_wb = (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.first_op);
+  assign clic_ptr_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid;
 
   // Pending NMI
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
@@ -422,11 +426,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // This should block debug and interrupts
   generate
     if (SMCLIC) begin : gen_clic_pointer_flag
-      // A CLIC pointer may be in the pipeline from the moment we start fetching (clic_ptr_fetching_q == 1)
+      // A CLIC pointer may be in the pipeline from the moment we start fetching (clic_ptr_in_progress_id == 1)
       // or while a pointer is in the EX or WB stages.
       assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
                                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr) ||
-                                    clic_ptr_fetching_q;
+                                    clic_ptr_in_progress_id;
     end else begin : gen_basic_pointer_flag
       assign clic_ptr_in_pipeline = 1'b0;
     end
@@ -579,7 +583,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.kill_wb          = 1'b0;
 
     ctrl_fsm_o.csr_restore_mret = 1'b0;
-    ctrl_fsm_o.csr_restore_mret_pointer = 1'b0;
+    ctrl_fsm_o.csr_restore_mret_ptr = 1'b0;
     ctrl_fsm_o.csr_restore_dret = 1'b0;
 
     ctrl_fsm_o.csr_save_cause   = 1'b0;
@@ -608,7 +612,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     csr_flush_ack_n             = 1'b0;
 
-    clic_ptr_fetching_n         = clic_ptr_fetching_q;
+    clic_ptr_in_progress_id_set   = 1'b0;
+    clic_ptr_in_progress_id_clear = 1'b0;
 
     unique case (ctrl_fsm_cs)
       RESET: begin
@@ -694,7 +699,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.irq_shv = irq_clic_shv_i;
             if (irq_clic_shv_i) begin
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
-              clic_ptr_fetching_n = 1'b1;
+              clic_ptr_in_progress_id_set = 1'b1;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
               // When taking an SHV interrupt, always set minhv.
               // Mcause.minhv will only be cleared when a successful pointer fetch is done, or when it is cleared by a CSR write.
@@ -846,31 +851,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               // the mret should restart the CLIC pointer fetch using mepc as a pointer to the pointer instead of jumping to
               // the address in mepc. If mpp==PRIV_LVL_U, the (not existing) ucause.uinhv bit is assumed to be 0.
               // This is done below by signalling pc_set_clicv along with pc_mux=PC_MRET. This will
-              // treat the mepc as an address to a CLIC pointer. The minhv flag will only be cleaned
-              // when a pointer reaches the ID stage with no faults from fetching.
-              // ID stage is halted while it contains an mret and at the same time there are CSR writes EX or WB, hence it is safe to use mcause here.
+              // treat the mepc as an address to a CLIC pointer. The minhv flag will only be cleared
+              // when a pointer reaches the WB stage with no faults from fetching.
+              // ID stage is halted while it contains an mret and at the same time there are CSR writes (including CLIC pointers) EX or WB, hence it is safe to use mcause here.
               if (mcause_i.minhv && (mcause_i.mpp == PRIV_LVL_M)) begin
                 // mcause.minhv set, exception occured during last pointer fetch (or SW wrote it)
-                // Must wait until EX and WB are empty as they can cause exceptions
-                if (!(id_ex_pipe_i.instr_valid || ex_wb_pipe_i.instr_valid)) begin
-                  // Do another pointer fetch from the address stored in mepc.
-                  ctrl_fsm_o.pc_set = 1'b1;
-                  ctrl_fsm_o.pc_set_clicv = 1'b1; // Treat mepc as a pointer fetch
-                  ctrl_fsm_o.pc_mux = PC_MRET;
-                  clic_ptr_fetching_n = 1'b1;
+                // Do another pointer fetch from the address stored in mepc.
+                ctrl_fsm_o.pc_set = 1'b1;
+                ctrl_fsm_o.pc_set_clicv = 1'b1; // Treat mepc as a pointer fetch
+                ctrl_fsm_o.pc_mux = PC_MRET;
 
-                  // Set flag to avoid further jumps to the same target
-                  // if we are stalled
-                  branch_taken_n = 1'b1;
+                // Set flag to avoid further jumps to the same target
+                // if we are stalled
+                branch_taken_n = 1'b1;
 
-                  // Clear flag for halting IF in case of single stepping
-                  // For the single step to complete, both the mret and the pointer must reach WB.
-                  // If no unhalt is done here, the pointer will never reach WB.
-                  single_step_halt_if_n = 1'b0;
-                end else begin
-                  ctrl_fsm_o.halt_if = 1'b1;
-                  ctrl_fsm_o.halt_id = 1'b1;
-                end
+                // Clear flag for halting IF in case of single stepping
+                // For the single step to complete, both the mret and the pointer must reach WB.
+                // If no unhalt is done here, the pointer will never reach WB.
+                single_step_halt_if_n = 1'b0;
               end else begin
                 // xcause.xinhv not set for the previous privilege level, do regular mret
                 ctrl_fsm_o.pc_mux = PC_MRET;
@@ -895,7 +893,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               // if we are stalled
               branch_taken_n = 1'b1;
             end
-          end else if (clic_ptr_in_id) begin
+          end else if (clic_ptr_in_id || mret_ptr_in_id) begin
             // todo e40s: Factor in integrity related errors
             if (!(if_id_pipe_i.instr.bus_resp.err || (if_id_pipe_i.instr.mpu_status != MPU_OK))) begin
               if (!branch_taken_q) begin
@@ -907,9 +905,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
           end
 
-          // CLIC pointer in ID clears pointer fetch flag
-          if (clic_ptr_in_id && id_valid_i && ex_ready_i) begin
-            clic_ptr_fetching_n = 1'b0;
+          // CLIC/mret pointer in ID clears pointer fetch flag
+          if ((clic_ptr_in_id || mret_ptr_in_id) && id_valid_i && ex_ready_i) begin
+            clic_ptr_in_progress_id_clear = 1'b1;
           end
 
           // Regular mret in WB restores CSR regs
@@ -918,13 +916,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
 
           // For mret that caused a CLIC pointer fetch, CSR updates will happen once the pointer reaches WB.
-          // If the pointer has associated exceptions, the csr_restore_mret_pointer will not happen
-          if (mret_clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
-            ctrl_fsm_o.csr_restore_mret_pointer  = !debug_mode_q;
+          // If the pointer has associated exceptions, the csr_restore_mret_ptr will not happen
+          if (mret_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
+            ctrl_fsm_o.csr_restore_mret_ptr  = !debug_mode_q;
           end
 
           // CLIC pointer in WB
-          if(non_mret_clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
+          if(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) begin
             // Clear minhv if no exceptions are associated with the pointer
             ctrl_fsm_o.csr_clear_minhv = 1'b1;
           end
@@ -1110,12 +1108,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
       csr_flush_ack_q       <= 1'b0;
-      clic_ptr_fetching_q   <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
       csr_flush_ack_q       <= csr_flush_ack_n;
-      clic_ptr_fetching_q   <= clic_ptr_fetching_n;
     end
   end
 
@@ -1164,9 +1160,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // i.e halt_wb due to debug will result in killed WB, while for fence.i it will retire.
       // Note that this event bit is further gated before sent to the actual counters in case
       // other conditions prevent counting.
-      // CLIC: Exluding pointer fetches as they are not instructions, except for CLIC pointers with first_op == 1'b0.
-      //       These are the final part of an mret which restarted pointer fetch, and must increment the minstret counter.
-      if (ex_valid_i && wb_ready_i && last_op_ex_i && !(id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.first_op))  begin
+      // CLIC: Exluding pointer fetches as they are not instructions.
+      //       mret pointers will finish the mret->ptr sequence and will update wb_counter_event (instr_meta.mret_ptr is 1)
+      if (ex_valid_i && wb_ready_i && last_op_ex_i && id_ex_pipe_i.instr_meta.clic_ptr)  begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet
@@ -1221,6 +1217,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // Reset flag if ID stage is killed
       if (ctrl_fsm_o.kill_id) begin
         sequence_in_progress_id <= 1'b0;
+      end
+    end
+  end
+
+  // Flag for tracking CLIC pointer fetches. Only done when acking an SHV interrupt, not when an mret restarts a pointer fetch.
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      clic_ptr_in_progress_id <= 1'b0;
+    end else begin
+      if (!clic_ptr_in_progress_id) begin
+        if (clic_ptr_in_progress_id_set) begin
+          clic_ptr_in_progress_id <= 1'b1;
+        end
+      end else begin
+        // clic_ptr_in_progress_id is set, clear when controller assert the clear-bit or ID stage is killed
+        if (clic_ptr_in_progress_id_clear || ctrl_fsm_o.kill_id) begin
+          clic_ptr_in_progress_id <= 1'b0;
+        end
       end
     end
   end

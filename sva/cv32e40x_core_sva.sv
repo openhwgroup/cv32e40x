@@ -128,7 +128,10 @@ end else begin
   // Assert that no pointer can be in any pipeline stage when SMCLIC == 0
   property p_clic_noptr_in_pipeline;
     @(posedge clk) disable iff (!rst_ni)
-      1'b1 |-> (!if_id_pipe.instr_meta.clic_ptr && !id_ex_pipe.instr_meta.clic_ptr && !ex_wb_pipe.instr_meta.clic_ptr);
+      1'b1
+      |->
+      (!if_id_pipe.instr_meta.clic_ptr && !id_ex_pipe.instr_meta.clic_ptr && !ex_wb_pipe.instr_meta.clic_ptr &&
+       !if_id_pipe.instr_meta.mret_ptr && !id_ex_pipe.instr_meta.mret_ptr && !ex_wb_pipe.instr_meta.mret_ptr);
   endproperty
 
   a_clic_noptr_in_pipeline : assert property(p_clic_noptr_in_pipeline) else `uvm_error("core", "CLIC pointer in pipeline when CLIC is not configured.")
@@ -356,7 +359,7 @@ if (SMCLIC) begin
   // a live pointer in WB (IF-ID: guarded by POINTER_FETCH STATE, EX-WB: guarded by clic_ptr_in_pipeline).
   //   - this could cause the address of the pointer to end up in DPC, making dret jumping to a mtvt entry instead of an instruction.
   /*
-      todo: Reintroduce (and update) when debug single step logic has been updated.
+      todo: Reintroduce (and update) when debug single step logic has been updated and POINTER_FETCH state removed.
              -should likely flop the event that causes single step entry to evaluate all debug reasons
               when the pipeline is guaranteed to not disallow any debug reason to enter debug.
   a_single_step_with_irq_shv :

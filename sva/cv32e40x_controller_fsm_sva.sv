@@ -90,7 +90,7 @@ module cv32e40x_controller_fsm_sva
   input logic           id_stage_haltable,
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
-  input logic [1:0]     prefetch_is_clic_ptr_if_i,
+  input logic           prefetch_is_mret_ptr_if_i,
   input logic           abort_op_id_i,
   input mcause_t        mcause_i,
   input logic           lsu_trans_valid_i,
@@ -98,10 +98,12 @@ module cv32e40x_controller_fsm_sva
   input logic           wu_wfe_i,
   input logic           sys_en_id_i,
   input logic           sys_mret_id_i,
-  input logic           mret_clic_ptr_in_wb,
-  input logic           non_mret_clic_ptr_in_wb,
+  input logic           mret_ptr_in_wb,
+  input logic           clic_ptr_in_wb,
   input logic           csr_en_id_i,
-  input logic           clic_ptr_fetching_n
+  input logic           clic_ptr_in_progress_id_set,
+  input pipe_pc_mux_e   pipe_pc_mux_ctrl,
+  input logic           ptr_in_if_i
 );
 
 
@@ -600,20 +602,12 @@ if (SMCLIC) begin
                                                                       (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Illegal pc_mux after pointer fetch")
 
-  // Check that EX and WB does not contain any instruction with possible exceptions when a mret which restarts a pointer fetch is performed
-  a_jump_no_exceptions:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (ctrl_fsm_o.pc_set && ctrl_fsm_o.pc_mux == PC_MRET) && ctrl_fsm_o.pc_set_clicv
-                  |->
-                  !(id_ex_pipe_i.instr_valid && (id_ex_pipe_i.abort_op)) &&
-                  !(ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.abort_op || lsu_err_wb_i || (lsu_mpu_status_wb_i != MPU_OK))))
-    else `uvm_error("controller", "EX and WB may cause exceptions when mret with mcause.minhv is performed")
 
   a_clic_ptr_functional_only:
   assert property (@(posedge clk) disable iff (!rst_n)
                   ((ctrl_fsm_cs != FUNCTIONAL)
                   |->
-                  !((mret_clic_ptr_in_wb || non_mret_clic_ptr_in_wb) && !ctrl_fsm_o.kill_wb)))
+                  !(mret_ptr_in_wb || clic_ptr_in_wb)))
     else `uvm_error("controller", "clic_ptr_in_wb && !kill_wb while not in FUNCTIONAL state.")
 
 end else begin // SMCLIC
@@ -622,13 +616,16 @@ end else begin // SMCLIC
   assert property (@(posedge clk) disable iff (!rst_n)
                   1'b1
                   |->
-                  (clic_ptr_fetching_n != 1'b1)     &&
+                  (clic_ptr_in_progress_id_set != 1'b1)     &&
                   !ctrl_fsm_o.csr_cause.minhv       &&
                   !ctrl_fsm_o.csr_clear_minhv       &&
                   !mcause_i.minhv                   &&
                   !if_id_pipe_i.instr_meta.clic_ptr &&
                   !id_ex_pipe_i.instr_meta.clic_ptr &&
                   !ex_wb_pipe_i.instr_meta.clic_ptr &&
+                  !if_id_pipe_i.instr_meta.mret_ptr &&
+                  !id_ex_pipe_i.instr_meta.mret_ptr &&
+                  !ex_wb_pipe_i.instr_meta.mret_ptr &&
                   !ctrl_fsm_o.pc_set_clicv          &&
                   !(|ctrl_fsm_o.irq_level)          &&
                   !ctrl_fsm_o.irq_shv               &&
@@ -656,7 +653,7 @@ end
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
       // and we should safely be able to interrupt unless the IF stage is waiting for a table jump pointer or
       // a CLIC pointer that is a side effect of an mret.
-      sequence_interruptible_alt = !(prefetch_is_tbljmp_ptr_if_i || (prefetch_is_clic_ptr_if_i == 2'b11));
+      sequence_interruptible_alt = !(prefetch_is_tbljmp_ptr_if_i || prefetch_is_mret_ptr_if_i);
     end
   end
 
@@ -677,7 +674,7 @@ end
       // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
       // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer or
       // a CLIC pointer that is a side effect of an mret
-      id_stage_haltable_alt = !(prefetch_is_tbljmp_ptr_if_i || (prefetch_is_clic_ptr_if_i == 2'b11));
+      id_stage_haltable_alt = !(prefetch_is_tbljmp_ptr_if_i || prefetch_is_mret_ptr_if_i);
     end
   end
 
@@ -801,14 +798,25 @@ end
                   !ctrl_fsm_o.halt_wb)
   else `uvm_error("controller", "csr_restore_mret when WB is halted")
 
-  // CSR instructions should be stalled in ID if there is a CLIC pointer in EX or WB (RAW hazard)
+  // CSR instructions should be stalled in ID if there is a CLIC or mret pointer in EX or WB (RAW hazard)
   a_csr_stall_on_ptr:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (csr_en_id_i && if_id_pipe_i.instr_valid) &&
-                  ((id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.instr_valid) ||
-                  (ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid))
+                  (((id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr) && id_ex_pipe_i.instr_valid) ||
+                  ((ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) && ex_wb_pipe_i.instr_valid))
                   |->
                   !id_valid_i)
   else `uvm_error("controller", "CSR* not stalled in ID when CLIC pointer is in EX or WB")
+
+  // When interrupts or debug is taken, the PC stored to dpc or mepc cannot come from a pointer
+  a_no_context_from_pointer:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_o.dbg_ack || ctrl_fsm_o.irq_ack || (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI)))
+                  |->
+                  !(((pipe_pc_mux_ctrl == PC_WB) && (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr || (ex_wb_pipe_i.instr_meta.tbljmp && ex_wb_pipe_i.last_op))) ||
+                    ((pipe_pc_mux_ctrl == PC_EX) && (id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr || (id_ex_pipe_i.instr_meta.tbljmp && id_ex_pipe_i.last_op))) ||
+                    ((pipe_pc_mux_ctrl == PC_ID) && (if_id_pipe_i.instr_meta.clic_ptr || if_id_pipe_i.instr_meta.mret_ptr || (if_id_pipe_i.instr_meta.tbljmp && last_op_id_i))) ||
+                    ((pipe_pc_mux_ctrl == PC_IF) && ptr_in_if_i)))
+  else `uvm_error("controller", "Pointer used for context storage")
 endmodule
 

@@ -42,7 +42,8 @@ module cv32e40x_rvfi
    input logic [31:0]                         prefetch_addr_if_i,
    input logic                                prefetch_compressed_if_i,
    input inst_resp_t                          prefetch_instr_if_i,
-   input logic [1:0]                          clic_ptr_if_i,
+   input logic                                clic_ptr_if_i,
+   input logic                                mret_ptr_if_i,
 
    // ID probes
    input logic                                id_valid_i,
@@ -92,6 +93,7 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
+   input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
 
    // PC
@@ -688,9 +690,9 @@ module cv32e40x_rvfi
   rvfi_obi_instr_t obi_instr_if;
 
   // Detect mret initiated CLIC pointer in WB
-  logic         mret_clic_pointer_wb;
+  logic         mret_ptr_wb;
 
-  assign        mret_clic_pointer_wb = clic_ptr_wb_i && !first_op_wb_i;
+  assign        mret_ptr_wb = mret_ptr_wb_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
@@ -797,15 +799,11 @@ module cv32e40x_rvfi
     rvfi_trap_next.trap = rvfi_trap_next.exception || rvfi_trap_next.debug;
   end
 
-  // WFI instructions retire when their wake-up condition is present.
-  // The wake-up condition is only checked in the SLEEP state of the controller FSM.
-  // Other instructions retire when their last suboperation is done in WB.
-  // CLIC pointers set wb_valid, but are not instructions and shall not cause rvfi_valid.
-  //   - Exception for CLIC pointers that come as a side effect of mret with mcause.minhv set
-  //     In this case the mret is first_op && !last_op, while the pointer is !first_op && last_op.
-  //     CLIC pointers will as such signal the completion of the mret, and must set rvfi_valid.
-  assign wb_valid_subop    = wb_valid_i && !(clic_ptr_wb_i);
-  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !(clic_ptr_wb_i && first_op_wb_i);
+  // All instructions retire when wb_valid is high and it either is a last_op or an abort_op.
+  // CLIC pointers are excluded as they are not instructions.
+  // CLIC pointers that are a result of an mret (instr_meta.mret_ptr) finish the sequence mret->ptr, and shall raise rvfi_valid_* to retire the mret.
+  assign wb_valid_subop    = wb_valid_i && !clic_ptr_wb_i;
+  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !clic_ptr_wb_i;
 
 
   // Pipeline stage model //
@@ -893,7 +891,7 @@ module cv32e40x_rvfi
         //     but we still need the in_trap attached to the pointer target, which is
         //     only fetched when the CLIC pointer is in ID. Thus we must not clear in_trap
         //     when the pointer goes from IF to ID.
-        if ((last_op_if_i || abort_op_if_i) && !clic_ptr_if_i[0]) begin
+        if ((last_op_if_i || abort_op_if_i) && !(clic_ptr_if_i || mret_ptr_if_i)) begin
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end
@@ -1032,32 +1030,32 @@ module cv32e40x_rvfi
       if (wb_valid_lastop) begin
 
         rvfi_order      <= rvfi_order + 64'b1;
-        rvfi_pc_rdata   <= mret_clic_pointer_wb ? pc_wb_past          : pc_wb_i;
-        rvfi_insn       <= mret_clic_pointer_wb ? instr_rdata_wb_past : instr_rdata_wb_i;
+        rvfi_pc_rdata   <= mret_ptr_wb ? pc_wb_past          : pc_wb_i;
+        rvfi_insn       <= mret_ptr_wb ? instr_rdata_wb_past : instr_rdata_wb_i;
 
         // No muxing in past value here. If an mret has any exceptions, it will not cause a pointer fetch and it will
         // signal rvfi_valid when it reaches WB. If it causes a pointer fetch, we need the updated trap value for that fetch reported.
         rvfi_trap       <= rvfi_trap_next;
 
-        rvfi_rd_addr    <= mret_clic_pointer_wb ? rd_addr_wb_past  : rd_addr_wb;
-        rvfi_rd_wdata   <= mret_clic_pointer_wb ? rd_wdata_wb_past : rd_wdata_wb;
+        rvfi_rd_addr    <= mret_ptr_wb ? rd_addr_wb_past  : rd_addr_wb;
+        rvfi_rd_wdata   <= mret_ptr_wb ? rd_wdata_wb_past : rd_wdata_wb;
 
         // Read/Write CSRs
-        // No clic pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
+        // No mret pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
         rvfi_csr_wmask  <= rvfi_csr_wmask_d;
 
-        rvfi_intr      <= mret_clic_pointer_wb ? in_trap  [STAGE_WB_PAST] : in_trap   [STAGE_WB];
-        rvfi_rs1_addr  <= mret_clic_pointer_wb ? rs1_addr [STAGE_WB_PAST] : rs1_addr  [STAGE_WB];
-        rvfi_rs2_addr  <= mret_clic_pointer_wb ? rs2_addr [STAGE_WB_PAST] : rs2_addr  [STAGE_WB];
-        rvfi_rs1_rdata <= mret_clic_pointer_wb ? rs1_rdata[STAGE_WB_PAST] : rs1_rdata [STAGE_WB];
-        rvfi_rs2_rdata <= mret_clic_pointer_wb ? rs2_rdata[STAGE_WB_PAST] : rs2_rdata [STAGE_WB];
+        rvfi_intr      <= mret_ptr_wb ? in_trap  [STAGE_WB_PAST] : in_trap   [STAGE_WB];
+        rvfi_rs1_addr  <= mret_ptr_wb ? rs1_addr [STAGE_WB_PAST] : rs1_addr  [STAGE_WB];
+        rvfi_rs2_addr  <= mret_ptr_wb ? rs2_addr [STAGE_WB_PAST] : rs2_addr  [STAGE_WB];
+        rvfi_rs1_rdata <= mret_ptr_wb ? rs1_rdata[STAGE_WB_PAST] : rs1_rdata [STAGE_WB];
+        rvfi_rs2_rdata <= mret_ptr_wb ? rs2_rdata[STAGE_WB_PAST] : rs2_rdata [STAGE_WB];
 
         rvfi_mode      <= priv_lvl_i;
 
-        rvfi_dbg       <= mret_clic_pointer_wb ? debug_cause[STAGE_WB_PAST] : debug_cause[STAGE_WB];
-        rvfi_dbg_mode  <= mret_clic_pointer_wb ? debug_mode [STAGE_WB_PAST] : debug_mode[STAGE_WB];
+        rvfi_dbg       <= mret_ptr_wb ? debug_cause[STAGE_WB_PAST] : debug_cause[STAGE_WB];
+        rvfi_dbg_mode  <= mret_ptr_wb ? debug_mode [STAGE_WB_PAST] : debug_mode[STAGE_WB];
 
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
