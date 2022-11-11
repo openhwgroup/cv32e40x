@@ -1071,7 +1071,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       // Clear mcause.minhv on successful CLIC pointer fetches
       // This only happens for CLIC pointer that did not originate from an mret.
-      // In the case of mret restarting CLIC pointer fetchces, minhv is cleared while
+      // In the case of mret restarting CLIC pointer fetches, minhv is cleared while
       // ctrl_fsm_i.csr_restore_mret_ptr is asserted.
       ctrl_fsm_i.csr_clear_minhv: begin
         if (SMCLIC) begin

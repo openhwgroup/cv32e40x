@@ -891,7 +891,7 @@ module cv32e40x_rvfi
         //     but we still need the in_trap attached to the pointer target, which is
         //     only fetched when the CLIC pointer is in ID. Thus we must not clear in_trap
         //     when the pointer goes from IF to ID.
-        if ((last_op_if_i || abort_op_if_i) && !(clic_ptr_if_i || mret_ptr_if_i)) begin
+        if ((last_op_if_i || abort_op_if_i) && !clic_ptr_if_i) begin
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end

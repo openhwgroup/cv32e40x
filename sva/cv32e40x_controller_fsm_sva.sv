@@ -102,6 +102,7 @@ module cv32e40x_controller_fsm_sva
   input logic           clic_ptr_in_wb,
   input logic           csr_en_id_i,
   input logic           clic_ptr_in_progress_id_set,
+  input logic           clic_ptr_in_progress_id,
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i
 );
@@ -608,7 +609,15 @@ if (SMCLIC) begin
                   ((ctrl_fsm_cs != FUNCTIONAL)
                   |->
                   !(mret_ptr_in_wb || clic_ptr_in_wb)))
-    else `uvm_error("controller", "clic_ptr_in_wb && !kill_wb while not in FUNCTIONAL state.")
+    else `uvm_error("controller", "clic_ptr_in_wb or mret_ptr_in_wb while not in FUNCTIONAL state.")
+
+  // Killing the ID stage should never happen if the ID stage is waiting for a CLIC pointer
+  a_clic_ptr_in_progress_no_kill:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  clic_ptr_in_progress_id
+                  |->
+                  !ctrl_fsm_o.kill_id)
+    else `uvm_error("controller", "ID stage killed while clic_ptr_in_progress_id is high")
 
 end else begin // SMCLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.

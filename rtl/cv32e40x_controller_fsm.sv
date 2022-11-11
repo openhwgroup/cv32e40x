@@ -905,8 +905,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
           end
 
-          // CLIC/mret pointer in ID clears pointer fetch flag
-          if ((clic_ptr_in_id || mret_ptr_in_id) && id_valid_i && ex_ready_i) begin
+          // CLIC pointer in ID clears pointer fetch flag
+          if (clic_ptr_in_id && id_valid_i && ex_ready_i) begin
             clic_ptr_in_progress_id_clear = 1'b1;
           end
 
@@ -1191,6 +1191,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
         // No need to reset this flag on kill_wb.
         // When flag is high, there should be no reason to kill WB as they are blocked by the flag itself.
+        // This is checked by an assertion, no killing while !sequence_interruptible
       end
     end
   end
@@ -1209,9 +1210,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end else begin
         // sequence_in_progress_id is set, clear when last_op retires or ID stage is killed
-        if ((id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) || ctrl_fsm_o.kill_id) begin
+        if (id_valid_i && ex_ready_i && (last_op_id_i || abort_op_id_i)) begin
           sequence_in_progress_id <= 1'b0;
         end
+      end
+
+      // Reset flag on a kill_id. May happen before sequence_in_progress_wb gets set, or if a sequence gets an exception in the middle
+      if (ctrl_fsm_o.kill_id) begin
+        sequence_in_progress_id <= 1'b0;
       end
     end
   end
@@ -1227,10 +1233,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end else begin
         // clic_ptr_in_progress_id is set, clear when controller assert the clear-bit or ID stage is killed
-        if (clic_ptr_in_progress_id_clear || ctrl_fsm_o.kill_id) begin
+        if (clic_ptr_in_progress_id_clear) begin
           clic_ptr_in_progress_id <= 1'b0;
         end
       end
+
+      // When clic_ptr_in_progress_id is high, the ID stage can never be killed and thus no reset on kill_id is needed.
+      // This is checked by an assertion. Taking an SHV interrupt killes the pipeline ensuring no exceptions may happen, and
+      // the flag itself keeps debug or interrupts from killing the pipeline.
     end
   end
 
