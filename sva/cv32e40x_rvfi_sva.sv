@@ -49,16 +49,23 @@ module cv32e40x_rvfi_sva
    input logic             irq_ack,
    input logic             dbg_ack,
    input logic             ebreak_in_wb_i,
-   input rvfi_intr_t [3:0] in_trap,
-   input logic [3:0] [2:0] debug_cause,
+   input rvfi_intr_t [4:0] in_trap,
+   input logic [4:0] [2:0] debug_cause,
 
    input logic             if_valid_i,
    input logic             id_ready_i,
    input logic [31:0]      pc_if_i,
    input inst_resp_t       prefetch_instr_if_i,
    input logic             prefetch_compressed_if_i,
-   input rvfi_obi_instr_t  obi_instr_if
+   input rvfi_obi_instr_t  obi_instr_if,
+   input logic             mret_ptr_wb,
+   input logic [31:0]      instr_rdata_wb_past
 );
+
+  a_mret_pointer :
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  (mret_ptr_wb |-> (instr_rdata_wb_past == 32'h30200073)))
+    else `uvm_error("rvfi", "mret not in STAGE_WB_PAST when mret pointer arrived in WB")
 
   // Check that irq_ack results in RVFI capturing a trap
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,

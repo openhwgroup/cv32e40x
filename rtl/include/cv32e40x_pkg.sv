@@ -169,7 +169,7 @@ typedef enum logic [DIV_OP_WIDTH-1:0]
  } div_opcode_e;
 
 // FSM state encoding
-typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN, POINTER_FETCH} ctrl_state_e;
+typedef enum logic [2:0] { RESET, BOOT_SET, FUNCTIONAL, SLEEP, DEBUG_TAKEN} ctrl_state_e;
 
 // Debug FSM state encoding
 // State encoding done one-hot to ensure that debug_havereset_o, debug_running_o, debug_halted_o
@@ -1029,7 +1029,8 @@ typedef struct packed {
 typedef struct packed
 {
   logic        compressed;
-  logic        clic_ptr;
+  logic        clic_ptr;   // "True" CLIC pointer due to taking a CLIC SHV interrupt
+  logic        mret_ptr;   // CLIC pointer due to an mret restarting pointer fetch
   logic        tbljmp;
 } instr_meta_t;
 
@@ -1260,6 +1261,7 @@ typedef struct packed {
   logic [31:0] pipe_pc;             // PC from pipeline
   mcause_t     csr_cause;           // CSR cause (saves to mcause CSR)
   logic        csr_restore_mret;    // Restore CSR due to mret
+  logic        csr_restore_mret_ptr; // Restore CSR due to mret followed by CLIC
   logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
   logic        csr_clear_minhv;     // Clear the mcause.minhv field

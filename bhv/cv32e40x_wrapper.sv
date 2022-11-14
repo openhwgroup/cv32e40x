@@ -221,13 +221,14 @@ module cv32e40x_wrapper
                               .csr_illegal_i                (core_i.cs_registers_i.csr_illegal_o),
                               .xif_commit_kill              (core_i.xif_commit_if.commit.commit_kill),
                               .xif_commit_valid             (core_i.xif_commit_if.commit_valid),
-                              .last_op_id_i                 (core_i.if_id_pipe.last_op),
                               .first_op_if_i                (core_i.first_op_if),
                               .first_op_ex_i                (core_i.first_op_ex),
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
+                              .prefetch_is_mret_ptr_if_i    (core_i.if_stage_i.prefetch_is_mret_ptr),
                               .lsu_trans_valid_i            (core_i.load_store_unit_i.trans_valid),
                               .csr_en_id_i                  (core_i.id_stage_i.csr_en),
+                              .ptr_in_if_i                  (core_i.if_stage_i.ptr_in_if_o),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
@@ -433,6 +434,7 @@ endgenerate
          .prefetch_compressed_if_i ( core_i.if_stage_i.instr_compressed                                   ),
          .prefetch_instr_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_instr_o                   ),
          .clic_ptr_if_i            ( core_i.if_stage_i.prefetch_is_clic_ptr                               ),
+         .mret_ptr_if_i            ( core_i.if_stage_i.prefetch_is_mret_ptr                               ),
 
          // ID Probes
          .id_valid_i               ( core_i.id_stage_i.id_valid_o                                         ),
@@ -484,6 +486,7 @@ endgenerate
          .lsu_rdata_wb_i           ( core_i.load_store_unit_i.lsu_rdata_1_o                               ),
          .abort_op_wb_i            ( core_i.wb_stage_i.abort_op_o                                         ),
          .clic_ptr_wb_i            ( core_i.wb_stage_i.ex_wb_pipe_i.instr_meta.clic_ptr                   ),
+         .mret_ptr_wb_i            ( core_i.wb_stage_i.ex_wb_pipe_i.instr_meta.mret_ptr                   ),
 
          .branch_addr_n_i          ( core_i.if_stage_i.branch_addr_n                                      ),
 

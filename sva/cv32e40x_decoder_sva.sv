@@ -38,7 +38,14 @@ module cv32e40x_decoder_sva
   input decoder_ctrl_t  decoder_b_ctrl,
   input decoder_ctrl_t  decoder_ctrl_mux,
   input logic [31:0]    instr_rdata,
-  input if_id_pipe_t    if_id_pipe
+  input if_id_pipe_t    if_id_pipe,
+  input logic           alu_en_o,
+  input logic           div_en_o,
+  input logic           mul_en_o,
+  input logic           csr_en_o,
+  input logic           sys_en_o,
+  input logic           lsu_en_o,
+  input logic           illegal_insn_o
 );
 
   // Check sub decoders have their outputs idle when there is no instruction match
@@ -54,10 +61,10 @@ module cv32e40x_decoder_sva
 
   // Check that the two LSB of the incoming instructions word is always 2'b11
   // Predecoder should always emit uncompressed instructions
-  // Exclude CLIC pointers
+  // Exclude CLIC and mret pointers
   property p_uncompressed_lsb;
     @(posedge clk) disable iff(!rst_n)
-      !if_id_pipe.instr_meta.clic_ptr |-> (instr_rdata[1:0] == 2'b11);
+      !(if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr) |-> (instr_rdata[1:0] == 2'b11);
   endproperty
 
   a_uncompressed_lsb: assert property(p_uncompressed_lsb) else `uvm_error("decoder", "2 LSBs not 2'b11")
@@ -103,21 +110,25 @@ module cv32e40x_decoder_sva
                       |-> ((decoder_ctrl_mux.alu_en || (decoder_ctrl_mux.lsu_en && decoder_ctrl_mux.lsu_we))))
       else `uvm_error("decoder", "Unexpected C operand usage")
 
-  // Ensure that functional unit enables are one-hot (including illegal)
-  // CLIC pointers in ID will deassert all write enables.
-  // This deassert is using the decoder_ctrl_mux as inputs, and deasserting
-  // the decoder outputs instead. Disregarding the case of clic_ptr for now, but
-  // could make the $onehot look at the decoder outputs instead and include the clic_ptr in $onehot
-  a_functional_unit_enable_onehot :
+  // Ensure that functional unit enables are one-hot (including illegal) when no pointer is in the ID stage
+  a_functional_unit_enable_onehot_noptr :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     !if_id_pipe.instr_meta.clic_ptr
+                     !(if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr)
                      |->
                      $onehot({decoder_ctrl_mux.alu_en, decoder_ctrl_mux.div_en, decoder_ctrl_mux.mul_en,
                               decoder_ctrl_mux.csr_en, decoder_ctrl_mux.sys_en, decoder_ctrl_mux.lsu_en,
-                              decoder_ctrl_mux.illegal_insn, if_id_pipe.instr_meta.clic_ptr}))
+                              decoder_ctrl_mux.illegal_insn}))
       else `uvm_error("decoder", "Multiple functional units enabled")
 
-
+  // Check that all functional units are disabled when a pointer is in the ID stage
+  a_functional_unit_disable_ptr :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr)
+                      |->
+                      !(|{alu_en_o, div_en_o, mul_en_o,
+                         csr_en_o, sys_en_o, lsu_en_o,
+                         illegal_insn_o}))
+      else `uvm_error("decoder", "Functional units enable when a pointer is in the ID stage")
 
   // Check that branch/jump related signals can be used from I decoder directly (bypassing other decoders)
   a_branch_jump_decode :

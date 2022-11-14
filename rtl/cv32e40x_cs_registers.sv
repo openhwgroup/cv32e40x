@@ -1013,7 +1013,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end //ctrl_fsm_i.csr_save_cause
 
-      ctrl_fsm_i.csr_restore_mret: begin // MRET
+      ctrl_fsm_i.csr_restore_mret,
+      ctrl_fsm_i.csr_restore_mret_ptr: begin // MRET
         priv_lvl_n     = privlvl_t'(mstatus_rdata.mpp);
         priv_lvl_we    = 1'b1;
 
@@ -1026,6 +1027,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (SMCLIC) begin
           mintstatus_n.mil = mcause_rdata.mpil;
           mintstatus_we = 1'b1;
+
+          if (ctrl_fsm_i.csr_restore_mret_ptr) begin
+            // Clear mcause.minhv if the mret also caused a successful CLIC pointer fetch
+            mcause_n = mcause_rdata;
+            mcause_n.minhv = 1'b0;
+            mcause_we = 1'b1;
+          end
         end
       end //ctrl_fsm_i.csr_restore_mret
 
@@ -1041,17 +1049,20 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       end //ctrl_fsm_i.csr_restore_dret
 
+      // Clear mcause.minhv on successful CLIC pointer fetches
+      // This only happens for CLIC pointer that did not originate from an mret.
+      // In the case of mret restarting CLIC pointer fetches, minhv is cleared while
+      // ctrl_fsm_i.csr_restore_mret_ptr is asserted.
       ctrl_fsm_i.csr_clear_minhv: begin
         if (SMCLIC) begin
           // Keep mcause values, only clear minhv bit.
           mcause_n = mcause_rdata;
           mcause_n.minhv = 1'b0;
           mcause_we = 1'b1;
-        end // SMCLIC
-      end // ctrl_fsm_i.csr_clear_minhv
+        end
+      end
       default:;
     endcase
-
 
   end
 

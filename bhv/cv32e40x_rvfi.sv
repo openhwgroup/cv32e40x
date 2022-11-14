@@ -43,6 +43,7 @@ module cv32e40x_rvfi
    input logic                                prefetch_compressed_if_i,
    input inst_resp_t                          prefetch_instr_if_i,
    input logic                                clic_ptr_if_i,
+   input logic                                mret_ptr_if_i,
 
    // ID probes
    input logic                                id_valid_i,
@@ -92,6 +93,7 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
+   input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
 
    // PC
@@ -580,16 +582,16 @@ module cv32e40x_rvfi
 
   // Propagating from ID stage
   logic [3:0] [31:0] pc_wdata;
-  logic [3:0]        debug_mode;
-  logic [3:0] [ 2:0] debug_cause;
-  logic [3:0]        instr_pmp_err;
-  rvfi_intr_t [3:0]  in_trap;
-  logic [3:0] [ 4:0] rs1_addr;
-  logic [3:0] [ 4:0] rs2_addr;
-  logic [3:0] [31:0] rs1_rdata;
-  logic [3:0] [31:0] rs2_rdata;
-  logic [3:0] [ 3:0] mem_rmask;
-  logic [3:0] [ 3:0] mem_wmask;
+  logic [4:0]        debug_mode;
+  logic [4:0] [ 2:0] debug_cause;
+  logic [4:0]        instr_pmp_err;
+  rvfi_intr_t [4:0]  in_trap;
+  logic [4:0] [ 4:0] rs1_addr;
+  logic [4:0] [ 4:0] rs2_addr;
+  logic [4:0] [31:0] rs1_rdata;
+  logic [4:0] [31:0] rs2_rdata;
+  logic [4:0] [ 3:0] mem_rmask;
+  logic [4:0] [ 3:0] mem_wmask;
 
   // Propagate from ID stage on all suboperations.
   logic [3:0] [ 4:0] rs1_addr_subop;
@@ -598,6 +600,12 @@ module cv32e40x_rvfi
   logic [3:0] [31:0] rs2_rdata_subop;
   logic [3:0]        rs1_re_subop;
   logic [3:0]        rs2_re_subop;
+
+  // Remember last instruction in WB
+  logic [31:0]       instr_rdata_wb_past;
+  logic [31:0]       pc_wb_past;
+  logic [4:0]        rd_addr_wb_past;
+  logic [31:0]       rd_wdata_wb_past;
 
 
   //Propagating from EX stage
@@ -680,6 +688,11 @@ module cv32e40x_rvfi
   logic [6:0]   memop_cnt;
 
   rvfi_obi_instr_t obi_instr_if;
+
+  // Detect mret initiated CLIC pointer in WB
+  logic         mret_ptr_wb;
+
+  assign        mret_ptr_wb = mret_ptr_wb_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
@@ -786,10 +799,9 @@ module cv32e40x_rvfi
     rvfi_trap_next.trap = rvfi_trap_next.exception || rvfi_trap_next.debug;
   end
 
-  // WFI instructions retire when their wake-up condition is present.
-  // The wake-up condition is only checked in the SLEEP state of the controller FSM.
-  // Other instructions retire when their last suboperation is done in WB.
-  // CLIC pointers set wb_valid, but are not instructions and shall not cause rvfi_valid.
+  // All instructions retire when wb_valid is high and it either is a last_op or an abort_op.
+  // CLIC pointers are excluded as they are not instructions.
+  // CLIC pointers that are a result of an mret (instr_meta.mret_ptr) finish the sequence mret->ptr, and shall raise rvfi_valid_* to retire the mret.
   assign wb_valid_subop    = wb_valid_i && !clic_ptr_wb_i;
   assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !clic_ptr_wb_i;
 
@@ -853,6 +865,11 @@ module cv32e40x_rvfi
       rs2_re_subop       <= '0;
 
       lsu_mem_split_wb   <= '0;
+
+      pc_wb_past          <= '0;
+      instr_rdata_wb_past <= '0;
+      rd_addr_wb_past     <= '0;
+      rd_wdata_wb_past    <= '0;
 
     end else begin
 
@@ -1013,29 +1030,32 @@ module cv32e40x_rvfi
       if (wb_valid_lastop) begin
 
         rvfi_order      <= rvfi_order + 64'b1;
-        rvfi_pc_rdata   <= pc_wb_i;
-        rvfi_insn       <= instr_rdata_wb_i;
+        rvfi_pc_rdata   <= mret_ptr_wb ? pc_wb_past          : pc_wb_i;
+        rvfi_insn       <= mret_ptr_wb ? instr_rdata_wb_past : instr_rdata_wb_i;
 
+        // No muxing in past value here. If an mret has any exceptions, it will not cause a pointer fetch and it will
+        // signal rvfi_valid when it reaches WB. If it causes a pointer fetch, we need the updated trap value for that fetch reported.
         rvfi_trap       <= rvfi_trap_next;
 
-        rvfi_rd_addr    <= rd_addr_wb;
-        rvfi_rd_wdata   <= rd_wdata_wb;
+        rvfi_rd_addr    <= mret_ptr_wb ? rd_addr_wb_past  : rd_addr_wb;
+        rvfi_rd_wdata   <= mret_ptr_wb ? rd_wdata_wb_past : rd_wdata_wb;
 
         // Read/Write CSRs
+        // No mret pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
         rvfi_csr_wmask  <= rvfi_csr_wmask_d;
 
-        rvfi_intr      <= in_trap   [STAGE_WB];
-        rvfi_rs1_addr  <= rs1_addr  [STAGE_WB];
-        rvfi_rs2_addr  <= rs2_addr  [STAGE_WB];
-        rvfi_rs1_rdata <= rs1_rdata [STAGE_WB];
-        rvfi_rs2_rdata <= rs2_rdata [STAGE_WB];
+        rvfi_intr      <= mret_ptr_wb ? in_trap  [STAGE_WB_PAST] : in_trap   [STAGE_WB];
+        rvfi_rs1_addr  <= mret_ptr_wb ? rs1_addr [STAGE_WB_PAST] : rs1_addr  [STAGE_WB];
+        rvfi_rs2_addr  <= mret_ptr_wb ? rs2_addr [STAGE_WB_PAST] : rs2_addr  [STAGE_WB];
+        rvfi_rs1_rdata <= mret_ptr_wb ? rs1_rdata[STAGE_WB_PAST] : rs1_rdata [STAGE_WB];
+        rvfi_rs2_rdata <= mret_ptr_wb ? rs2_rdata[STAGE_WB_PAST] : rs2_rdata [STAGE_WB];
 
         rvfi_mode      <= priv_lvl_i;
 
-        rvfi_dbg       <= debug_cause[STAGE_WB];
-        rvfi_dbg_mode  <= debug_mode [STAGE_WB];
+        rvfi_dbg       <= mret_ptr_wb ? debug_cause[STAGE_WB_PAST] : debug_cause[STAGE_WB];
+        rvfi_dbg_mode  <= mret_ptr_wb ? debug_mode [STAGE_WB_PAST] : debug_mode[STAGE_WB];
 
         // Set expected next PC, half-word aligned
         // Predict synchronous exceptions and synchronous debug entry in WB to include all causes
@@ -1046,6 +1066,19 @@ module cv32e40x_rvfi
 
       // Update state for suboperations - also valid for the last operation
       if (wb_valid_subop) begin
+        // Set entries in *[STAGE_WB_PAST]
+        in_trap  [STAGE_WB_PAST]    <= in_trap  [STAGE_WB];
+        rs1_addr [STAGE_WB_PAST]    <= rs1_addr [STAGE_WB];
+        rs2_addr [STAGE_WB_PAST]    <= rs1_addr [STAGE_WB];
+        rs1_rdata[STAGE_WB_PAST]    <= rs1_rdata[STAGE_WB];
+        rs2_rdata[STAGE_WB_PAST]    <= rs1_rdata[STAGE_WB];
+        debug_cause [STAGE_WB_PAST] <= debug_cause [STAGE_WB];
+        debug_mode [STAGE_WB_PAST]  <= debug_mode[STAGE_WB];
+        pc_wb_past                  <= pc_wb_i;
+        instr_rdata_wb_past         <= instr_rdata_wb_i;
+        rd_addr_wb_past             <= rd_addr_wb;
+        rd_wdata_wb_past            <= rd_wdata_wb;
+
         // Clear rvfi_mem and rvfi_gpr on first op
         if (first_op_wb_i) begin
           rvfi_mem_addr      <= '0;

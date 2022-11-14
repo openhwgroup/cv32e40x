@@ -98,7 +98,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_valid;
   logic              prefetch_ready;
   inst_resp_t        prefetch_instr;
+
   logic              prefetch_is_clic_ptr;
+  logic              prefetch_is_mret_ptr;
   logic              prefetch_is_tbljmp_ptr;
 
   logic              illegal_c_insn;
@@ -194,6 +196,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .prefetch_instr_o         ( prefetch_instr              ),
     .prefetch_addr_o          ( pc_if_o                     ),
     .prefetch_is_clic_ptr_o   ( prefetch_is_clic_ptr        ),
+    .prefetch_is_mret_ptr_o   ( prefetch_is_mret_ptr        ),
     .prefetch_is_tbljmp_ptr_o ( prefetch_is_tbljmp_ptr      ),
 
     .trans_valid_o            ( prefetch_trans_valid        ),
@@ -295,7 +298,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   assign if_busy_o = prefetch_busy;
 
-  assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_tbljmp_ptr;
+  assign ptr_in_if_o = prefetch_is_clic_ptr || prefetch_is_mret_ptr || prefetch_is_tbljmp_ptr;
 
   // Acknowledge prefetcher when IF stage is ready. This factors in seq_ready to avoid ack'ing the
   // prefetcher in the middle of a Zc sequence.
@@ -303,14 +306,20 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Sequenced instructions set last_op from the sequencer.
   // Any other instruction will be single operation, and gets last_op=1.
-  // CLIC pointers are single operation with first_op == last_op == 1
-  assign last_op_o = seq_valid ? seq_last : 1'b1; // Any other regular instructions are single operation.
+  // Regular CLIC pointers are single operation with first_op == last_op == 1
+  // CLIC pointers that are a side effect of mret instructions will have first_op == 0 and last_op == 1
+  assign last_op_o = seq_valid               ? seq_last :  // Sequencer controls last_op for sequenced instructions
+                     prefetch_is_mret_ptr    ? 1'b1     :  // clic pointer caused by mret, must be !first && last
+                                               1'b1;       // Any other regular instructions are single operation.
 
   // Flag first operation of a sequence.
   // Any sequenced instructions use the seq_first from the sequencer.
   // Any other instruction will be single operation, and gets first_op=1.
-  // CLIC pointers are single operation with first_op == last_op == 1
-  assign first_op_o = seq_valid ? seq_first : 1'b1; // Any other regular instructions are single operation.
+  // Regular CLIC pointers are single operation with first_op == last_op == 1
+  // CLIC pointers that are a side effect of mret instructions will have first_op == 0 and last_op == 1
+  assign first_op_o = seq_valid                ? seq_first :  // Sequencer controls first_op for sequenced instructions
+                      prefetch_is_mret_ptr     ? 1'b0      :  // clic pointer caused by mret, must be !first && last
+                                                 1'b1;        // Any other regular instructions are single operation.
 
 
   // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
@@ -326,6 +335,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     instr_meta_n = '0;
     instr_meta_n.compressed    = if_id_pipe_o.instr_meta.compressed;
     instr_meta_n.clic_ptr      = prefetch_is_clic_ptr;
+    instr_meta_n.mret_ptr      = prefetch_is_mret_ptr;
     instr_meta_n.tbljmp        = if_id_pipe_o.instr_meta.tbljmp;
   end
 
@@ -433,6 +443,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
         .instr_i              ( prefetch_instr          ),
         .instr_is_clic_ptr_i  ( prefetch_is_clic_ptr    ),
+        .instr_is_mret_ptr_i  ( prefetch_is_mret_ptr    ),
         .instr_is_tbljmp_ptr_i( prefetch_is_tbljmp_ptr  ),
 
         .valid_i              ( seq_instr_valid         ),

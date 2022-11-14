@@ -56,7 +56,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic                       instr_ready_i,
   output inst_resp_t                 instr_instr_o,
   output logic [31:0]                instr_addr_o,
-  output logic                       instr_is_clic_ptr_o,
+  output logic                       instr_is_clic_ptr_o, // True CLIC pointer after taking a CLIC SHV interrupt
+  output logic                       instr_is_mret_ptr_o, // CLIC pointer due to restarting pionter fetch during mret
   output logic                       instr_is_tbljmp_ptr_o,
   output logic [ALBUF_CNT_WIDTH-1:0] outstnd_cnt_q_o
 );
@@ -103,6 +104,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // CLIC vectoring
   // Flag for signalling that results is a CLIC function pointer
   logic is_clic_ptr_q;
+  logic is_mret_ptr_q;
+
   // Flag for table jump pointer
   logic is_tbljmp_ptr_q;
   logic ptr_fetch_accepted_q;
@@ -495,6 +498,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       wptr              <= 'd0;
       pop_q             <= 1'b0;
       is_clic_ptr_q     <= 1'b0;
+      is_mret_ptr_q     <= 1'b0;
       is_tbljmp_ptr_q   <= 1'b0;
       ptr_fetch_accepted_q  <= 1'b0;
     end
@@ -525,7 +529,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // Reset pointers on branch
         wptr <= 'd0;
         rptr <= 'd0;
-        is_clic_ptr_q   <= ctrl_fsm_i.pc_set_clicv;
+        is_clic_ptr_q <= ctrl_fsm_i.pc_set_clicv && (ctrl_fsm_i.pc_mux == PC_TRAP_CLICV);
+        is_mret_ptr_q <= ctrl_fsm_i.pc_set_clicv && (ctrl_fsm_i.pc_mux == PC_MRET); // Only set when an mret restarts pointer fetch. Used to manipulate first_op/last_op
         is_tbljmp_ptr_q <= ctrl_fsm_i.pc_set_tbljmp;
       end else begin
         // Update write pointer on a valid response
@@ -566,6 +571,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Signal that result is a CLIC pointer
   assign instr_is_clic_ptr_o   = is_clic_ptr_q;
+
+  // Signal that result is an mret pointer
+  assign instr_is_mret_ptr_o   = is_mret_ptr_q;
 
   // Signal that result is a table jump pointer
   assign instr_is_tbljmp_ptr_o = is_tbljmp_ptr_q;

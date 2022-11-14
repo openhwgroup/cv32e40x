@@ -59,6 +59,7 @@ module cv32e40x_core_sva
   input logic [31:0]   operand_a_id_i,
   input logic [31:0]   operand_b_id_i,
   input logic [31:0]   jalr_fw_id_i,
+  input logic          last_op_id,
   input logic [31:0]   rf_wdata_wb,
   input logic          rf_we_wb,
 
@@ -127,7 +128,10 @@ end else begin
   // Assert that no pointer can be in any pipeline stage when SMCLIC == 0
   property p_clic_noptr_in_pipeline;
     @(posedge clk) disable iff (!rst_ni)
-      1'b1 |-> (!if_id_pipe.instr_meta.clic_ptr && !id_ex_pipe.instr_meta.clic_ptr && !ex_wb_pipe.instr_meta.clic_ptr);
+      1'b1
+      |->
+      (!if_id_pipe.instr_meta.clic_ptr && !id_ex_pipe.instr_meta.clic_ptr && !ex_wb_pipe.instr_meta.clic_ptr &&
+       !if_id_pipe.instr_meta.mret_ptr && !id_ex_pipe.instr_meta.mret_ptr && !ex_wb_pipe.instr_meta.mret_ptr);
   endproperty
 
   a_clic_noptr_in_pipeline : assert property(p_clic_noptr_in_pipeline) else `uvm_error("core", "CLIC pointer in pipeline when CLIC is not configured.")
@@ -301,7 +305,7 @@ always_ff @(posedge clk , negedge rst_ni)
   // For checking single step, ID stage is used as it contains a 'multi_cycle_id_stall' signal.
   // This makes it easy to count misaligned LSU ins as one instruction instead of two.
   logic inst_taken;
-  assign inst_taken = id_stage_id_valid && ex_ready && if_id_pipe.last_op && !id_stage_multi_cycle_id_stall; // todo: the && !id_stage_multi_cycle_id_stall signal should now no longer be needed
+  assign inst_taken = id_stage_id_valid && ex_ready && last_op_id && !id_stage_multi_cycle_id_stall; // todo: the && !id_stage_multi_cycle_id_stall signal should now no longer be needed
 
   // Support for single step assertion
   // In case of single step + taken interrupt, the first instruction
@@ -355,7 +359,7 @@ if (SMCLIC) begin
   // a live pointer in WB (IF-ID: guarded by POINTER_FETCH STATE, EX-WB: guarded by clic_ptr_in_pipeline).
   //   - this could cause the address of the pointer to end up in DPC, making dret jumping to a mtvt entry instead of an instruction.
   /*
-      todo: Reintroduce (and update) when debug single step logic has been updated.
+      todo: Reintroduce (and update) when debug single step logic has been updated and POINTER_FETCH state removed.
              -should likely flop the event that causes single step entry to evaluate all debug reasons
               when the pipeline is guaranteed to not disallow any debug reason to enter debug.
   a_single_step_with_irq_shv :

@@ -45,6 +45,7 @@ module cv32e40x_sequencer_sva
   input  seq_instr_e     seq_instr,
   input  logic           instr_is_tbljmp_ptr_i,
   input  logic           instr_is_clic_ptr_i,
+  input  logic           instr_is_mret_ptr_i,
   input  logic           seq_tbljmp_o
 );
 
@@ -159,7 +160,7 @@ module cv32e40x_sequencer_sva
   // Check that the sequencer does not decode any instructions from pointers
   a_ptr_illegal:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    (instr_is_tbljmp_ptr_i || instr_is_clic_ptr_i)
+                    (instr_is_tbljmp_ptr_i || instr_is_clic_ptr_i || instr_is_mret_ptr_i)
                     |->
                     (seq_instr == INVALID_INST))
         else `uvm_error("sequencer", "Instruction should not be decoded from a pointer")
