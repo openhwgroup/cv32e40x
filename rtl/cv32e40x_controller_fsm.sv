@@ -1162,7 +1162,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // other conditions prevent counting.
       // CLIC: Exluding pointer fetches as they are not instructions.
       //       mret pointers will finish the mret->ptr sequence and will update wb_counter_event (instr_meta.mret_ptr is 1)
-      if (ex_valid_i && wb_ready_i && last_op_ex_i && id_ex_pipe_i.instr_meta.clic_ptr)  begin
+      if (ex_valid_i && wb_ready_i && last_op_ex_i && !id_ex_pipe_i.instr_meta.clic_ptr)  begin
         wb_counter_event <= 1'b1;
       end else begin
         // Keep event flag high while WB is halted, as we don't know if it will retire yet
