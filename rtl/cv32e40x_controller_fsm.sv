@@ -1215,7 +1215,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         end
       end
 
-      // Reset flag on a kill_id. May happen before sequence_in_progress_wb gets set, or if a sequence gets an exception in the middle
+      // Reset flag on a kill_id. May happen before sequence_in_progress_id gets set, or if a sequence gets an exception in the middle
       if (ctrl_fsm_o.kill_id) begin
         sequence_in_progress_id <= 1'b0;
       end
@@ -1239,7 +1239,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       end
 
       // When clic_ptr_in_progress_id is high, the ID stage can never be killed and thus no reset on kill_id is needed.
-      // This is checked by an assertion. Taking an SHV interrupt killes the pipeline ensuring no exceptions may happen, and
+      // This is checked by an assertion. Taking an SHV interrupt kills the pipeline ensuring no exceptions may happen, and
       // the flag itself keeps debug or interrupts from killing the pipeline.
     end
   end
