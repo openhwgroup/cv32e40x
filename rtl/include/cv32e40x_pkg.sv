@@ -545,10 +545,9 @@ typedef enum logic[3:0] {
 
 // Trigger types
 typedef enum logic [3:0] {
-  TTYPE_MCONTROL = 4'h2,
-  TTYPE_ICOUNT = 4'h3,
-  TTYPE_ITRIGGER = 4'h4,
-  TTYPE_ETRIGGER = 4'h5
+  TTYPE_ETRIGGER  = 4'h5,
+  TTYPE_MCONTROL6 = 4'h6,
+  TTYPE_DISABLED  = 4'hF
 } trigger_type_e;
 
 typedef struct packed {
@@ -643,24 +642,23 @@ parameter mstatus_t MSTATUS_RESET_VAL = '{
   default : 'b0};
 
 parameter logic [31:0] TDATA1_RST_VAL = {
-  TTYPE_MCONTROL,        // type    : address/data match
+  TTYPE_MCONTROL6,       // type    : address/data match
   1'b1,                  // dmode   : access from D mode only
-  6'h00,                 // maskmax : exact match only
-  1'b0,                  // hit     : not supported
-  1'b0,                  // select  : address match only
-  1'b0,                  // timing  : match before execution
-  2'b00,                 // sizelo  : match any access
-  4'h1,                  // action  : enter debug mode
-  1'b0,                  // chain   : not supported
-  4'h0,                  // match   : simple match
-  1'b1,                  // m       : match in m-mode
-  1'b0,                  // 0       : zero
-  1'b0,                  // s       : not supported
-  1'b0,                  // u       : match in u-mode
-  1'b0,                  // execute : match instruction address
-  1'b0,                  // store   : not supported
-  1'b0};                 // load    : not supported
-
+  2'b00,                 // zero  26:25
+  3'b000,                // zero, vs, vu, hit 24:22
+  1'b0,                  // zero, select 21
+  1'b0,                  // zero, timing 20
+  4'b0000,               // zero, size (match any sie) 19:16
+  4'b0001,               // action, WARL(1), enter debug 15:12
+  1'b0,                  // zero, chain 11
+  4'b0000,               // match, WARL(0,2,3) 10:7
+  1'b0,                  // M  6
+  1'b0,                  // zero 5
+  1'b0,                  // zero, S 4
+  1'b0,                  // zero, U 3
+  1'b0,                  // EXECUTE 2
+  1'b0,                  // STORE 1
+  1'b0};                 // LOAD 0
 
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //

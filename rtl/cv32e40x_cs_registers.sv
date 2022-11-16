@@ -470,17 +470,59 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end
 
-      CSR_TSELECT: csr_rdata_int = tselect_rdata;
+      CSR_TSELECT: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tselect_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA1: csr_rdata_int = tdata1_rdata;
+      CSR_TDATA1: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata1_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA2: csr_rdata_int = tdata2_rdata;
+      CSR_TDATA2: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata2_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA3: csr_rdata_int = tdata3_rdata;
+      CSR_TDATA3: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata3_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TINFO: csr_rdata_int = tinfo_rdata;
+      CSR_TINFO: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tinfo_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TCONTROL: csr_rdata_int = tcontrol_rdata;
+      CSR_TCONTROL: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tcontrol_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
       CSR_DCSR: begin
         csr_rdata_int = dcsr_rdata;
@@ -1444,45 +1486,54 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // |____/ \___|_.__/ \__,_|\__, |   |_||_|  |_|\__, |\__, |\___|_|    //
   //                         |___/               |___/ |___/            //
   ////////////////////////////////////////////////////////////////////////
+  generate
+    if (DBG_NUM_TRIGGERS > 0) begin : triggers
+      cv32e40x_debug_triggers
+        #(
+            .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS)
+        )
+        debug_triggers_i
+        (
+          .clk              ( clk    ),
+          .rst_n            ( rst_n  ),
 
-  cv32e40x_debug_triggers
-    #(
-        .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS)
-    )
-    debug_triggers_i
-    (
-      .clk              ( clk    ),
-      .rst_n            ( rst_n  ),
+          // CSR inputs write inputs
+          .csr_wdata_i      ( csr_wdata_int),
+          .tselect_we_i     ( tselect_we ),
+          .tdata1_we_i      ( tdata1_we  ),
+          .tdata2_we_i      ( tdata2_we  ),
+          .tdata3_we_i      ( tdata3_we  ),
+          .tinfo_we_i       ( tinfo_we   ),
+          .tcontrol_we_i    ( tcontrol_we ),
 
-      // CSR inputs write inputs
-      .csr_wdata_i      ( csr_wdata_int),
-      .tselect_we_i     ( tselect_we ),
-      .tdata1_we_i      ( tdata1_we  ),
-      .tdata2_we_i      ( tdata2_we  ),
-      .tdata3_we_i      ( tdata3_we  ),
-      .tinfo_we_i       ( tinfo_we   ),
-      .tcontrol_we_i    ( tcontrol_we ),
+          // CSR read data outputs
+          .tselect_rdata_o  ( tselect_rdata ),
+          .tdata1_rdata_o   ( tdata1_rdata  ),
+          .tdata2_rdata_o   ( tdata2_rdata  ),
+          .tdata3_rdata_o   ( tdata3_rdata  ),
+          .tinfo_rdata_o    ( tinfo_rdata   ),
+          .tcontrol_rdata_o ( tcontrol_rdata),
 
-      // CSR read data outputs
-      .tselect_rdata_o  ( tselect_rdata ),
-      .tdata1_rdata_o   ( tdata1_rdata  ),
-      .tdata2_rdata_o   ( tdata2_rdata  ),
-      .tdata3_rdata_o   ( tdata3_rdata  ),
-      .tinfo_rdata_o    ( tinfo_rdata   ),
-      .tcontrol_rdata_o ( tcontrol_rdata),
+          // IF stage inputs
+          .pc_if_i          ( pc_if_i       ),
+          .ptr_in_if_i      ( ptr_in_if_i   ),
 
-      // IF stage inputs
-      .pc_if_i          ( pc_if_i       ),
-      .ptr_in_if_i      ( ptr_in_if_i   ),
+          // Controller inputs
+          .ctrl_fsm_i       ( ctrl_fsm_i    ),
 
-      // Controller inputs
-      .ctrl_fsm_i       ( ctrl_fsm_i    ),
-
-      // Trigger match output
-      .trigger_match_o  ( trigger_match_o )
-
-
-    );
+          // Trigger match output
+          .trigger_match_o  ( trigger_match_o )
+        );
+    end else begin : notriggers
+      assign trigger_match_o = 1'b0;
+      assign tselect_rdata = '0;
+      assign tdata1_rdata = '0;
+      assign tdata2_rdata = '0;
+      assign tdata3_rdata = '0;
+      assign tinfo_rdata = '0;
+      assign tcontrol_rdata = '0;
+    end
+endgenerate
 
 
   /////////////////////////////////////////////////////////////////
