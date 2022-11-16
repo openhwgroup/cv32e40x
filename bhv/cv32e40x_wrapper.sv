@@ -67,7 +67,8 @@ module cv32e40x_wrapper
   parameter int          SMCLIC_INTTHRESHBITS         = 8,
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
-  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT}
+  parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
+  parameter bit          CORE_LOG_ENABLE              = 1
 )
 (
   // Clock and Reset
@@ -405,7 +406,9 @@ endgenerate
 
     cv32e40x_core_log
      #(
-          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ))
+          .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
+          .ENABLE                ( CORE_LOG_ENABLE       )
+     )
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
           .ex_wb_pipe_i       ( core_i.ex_wb_pipe                  ),
