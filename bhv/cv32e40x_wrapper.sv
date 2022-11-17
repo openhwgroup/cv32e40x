@@ -566,6 +566,9 @@ endgenerate
          .csr_tdata2_n_i           ( core_i.cs_registers_i.debug_triggers_i.tdata2_n                      ),
          .csr_tdata2_q_i           ( core_i.cs_registers_i.tdata2_rdata                                   ),
          .csr_tdata2_we_i          ( core_i.cs_registers_i.tdata2_we                                      ),
+         .csr_tdata3_n_i           ( core_i.cs_registers_i.debug_triggers_i.tdata3_n                      ),
+         .csr_tdata3_q_i           ( core_i.cs_registers_i.tdata3_rdata                                   ),
+         .csr_tdata3_we_i          ( core_i.cs_registers_i.tdata3_we                                      ),
          .csr_tinfo_n_i            ( core_i.cs_registers_i.debug_triggers_i.tinfo_n                       ),
          .csr_tinfo_q_i            ( core_i.cs_registers_i.tinfo_rdata                                    ),
          .csr_tinfo_we_i           ( core_i.cs_registers_i.tinfo_we                                       ),
@@ -595,7 +598,9 @@ endgenerate
          .csr_tcontrol_n_i         ( core_i.cs_registers_i.debug_triggers_i.tcontrol_n                    ),
          .csr_tcontrol_q_i         ( core_i.cs_registers_i.tcontrol_rdata                                 ),
          .csr_tcontrol_we_i        ( core_i.cs_registers_i.tcontrol_we                                    ),
-//todo: add tselect, tdata3
+         .csr_tselect_n_i          ( core_i.cs_registers_i.debug_triggers_i.tselect_n                     ),
+         .csr_tselect_q_i          ( core_i.cs_registers_i.tselect_rdata                                  ),
+         .csr_tselect_we_i         ( core_i.cs_registers_i.tselect_we                                     ),
 
          .csr_mcounteren_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),

@@ -470,17 +470,59 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end
 
-      CSR_TSELECT: csr_rdata_int = tselect_rdata;
+      CSR_TSELECT: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tselect_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA1: csr_rdata_int = tdata1_rdata;
+      CSR_TDATA1: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata1_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA2: csr_rdata_int = tdata2_rdata;
+      CSR_TDATA2: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata2_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TDATA3: csr_rdata_int = tdata3_rdata;
+      CSR_TDATA3: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tdata3_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TINFO: csr_rdata_int = tinfo_rdata;
+      CSR_TINFO: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tinfo_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
-      CSR_TCONTROL: csr_rdata_int = tcontrol_rdata;
+      CSR_TCONTROL: begin
+        if (DBG_NUM_TRIGGERS > 0) begin
+          csr_rdata_int = tcontrol_rdata;
+        end else begin
+          csr_rdata_int = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
 
       CSR_DCSR: begin
         csr_rdata_int = dcsr_rdata;
@@ -1480,9 +1522,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       // Trigger match output
       .trigger_match_o  ( trigger_match_o )
-
-
     );
+
 
 
   /////////////////////////////////////////////////////////////////

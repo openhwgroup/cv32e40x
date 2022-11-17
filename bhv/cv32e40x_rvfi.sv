@@ -181,12 +181,18 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_tdata2_n_i,
    input logic [31:0]                         csr_tdata2_q_i,
    input logic                                csr_tdata2_we_i,
+   input logic [31:0]                         csr_tdata3_n_i,
+   input logic [31:0]                         csr_tdata3_q_i,
+   input logic                                csr_tdata3_we_i,
    input logic [31:0]                         csr_tinfo_n_i,
    input logic [31:0]                         csr_tinfo_q_i,
    input logic                                csr_tinfo_we_i,
    input logic [31:0]                         csr_tcontrol_n_i,
    input logic [31:0]                         csr_tcontrol_q_i,
    input logic                                csr_tcontrol_we_i,
+   input logic [31:0]                         csr_tselect_n_i,
+   input logic [31:0]                         csr_tselect_q_i,
+   input logic                                csr_tselect_we_i,
    input                                      dcsr_t csr_dcsr_n_i,
    input                                      dcsr_t csr_dcsr_q_i,
    input logic                                csr_dcsr_we_i,
@@ -1307,9 +1313,9 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.mclicbase          = csr_mclicbase_we_i ? '1 : '0;
 
   // Trigger
-  assign rvfi_csr_rdata_d.tselect            = '0;
-  assign rvfi_csr_wdata_d.tselect            = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.tselect            = '0;
+  assign rvfi_csr_rdata_d.tselect            = csr_tselect_q_i;
+  assign rvfi_csr_wdata_d.tselect            = csr_tselect_n_i;
+  assign rvfi_csr_wmask_d.tselect            = csr_tselect_we_i;
 
   assign rvfi_csr_rdata_d.tdata[0]           = 'Z;
   assign rvfi_csr_wdata_d.tdata[0]           = 'Z; // Does not exist
@@ -1323,9 +1329,9 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.tdata[2]           = csr_tdata2_n_i;
   assign rvfi_csr_wmask_d.tdata[2]           = csr_tdata2_we_i ? '1 : '0;
 
-  assign rvfi_csr_rdata_d.tdata[3]           = '0;
-  assign rvfi_csr_wdata_d.tdata[3]           = '0; // Not implemented, read 0
-  assign rvfi_csr_wmask_d.tdata[3]           = '0;
+  assign rvfi_csr_rdata_d.tdata[3]           = csr_tdata3_q_i;
+  assign rvfi_csr_wdata_d.tdata[3]           = csr_tdata3_n_i;
+  assign rvfi_csr_wmask_d.tdata[3]           = csr_tdata3_we_i;
 
   assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
   assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
