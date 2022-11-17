@@ -39,30 +39,36 @@
 module cv32e40x_core_log import cv32e40x_pkg::*;
 #(
 // todo: log all parameters
-  parameter int NUM_MHPMCOUNTERS =  1
+  parameter int NUM_MHPMCOUNTERS =  1,
+  parameter bit ENABLE           =  1
 )
 (
   input logic        clk_i,
   input ex_wb_pipe_t ex_wb_pipe_i,
   input logic [31:0] mhartid_i
-  
+
 );
 
 `ifndef FORMAL
-  // Log top level parameter values
-  initial
-  begin
-    $display("[cv32e40x_core]: NUM_MHPMCOUNTERS %d", NUM_MHPMCOUNTERS);
-  end
+  generate begin
+    if (ENABLE == 1'b1) begin
+      // Log top level parameter values
+      initial
+      begin
+        $display("[cv32e40x_core]: NUM_MHPMCOUNTERS %d", NUM_MHPMCOUNTERS);
+      end
 
-  // Log illegal instructions
-  always_ff @(negedge clk_i)
-  begin
-    // print warning in case of decoding errors
-    if (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.illegal_insn) begin
-      $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, mhartid_i[3:0], ex_wb_pipe_i.pc);
+      // Log illegal instructions
+      always_ff @(negedge clk_i)
+      begin
+        // print warning in case of decoding errors
+        if (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.illegal_insn) begin
+          $display("%t: Illegal instruction (core %0d) at PC 0x%h:", $time, mhartid_i[3:0], ex_wb_pipe_i.pc);
+        end
+      end
     end
   end
+  endgenerate
 `endif
 
 endmodule // cv32e40x_core_log
