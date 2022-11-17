@@ -560,16 +560,16 @@ endgenerate
          .csr_mclicbase_n_i        ( core_i.cs_registers_i.mclicbase_n                                    ),
          .csr_mclicbase_q_i        ( core_i.cs_registers_i.mclicbase_rdata                                ),
          .csr_mclicbase_we_i       ( core_i.cs_registers_i.mclicbase_we                                   ),
-         .csr_tdata1_n_i           ( core_i.cs_registers_i.triggers.debug_triggers_i.tdata1_n             ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tdata1_n_i           ( core_i.cs_registers_i.debug_triggers_i.tdata1_n                      ),
          .csr_tdata1_q_i           ( core_i.cs_registers_i.tdata1_rdata                                   ),
          .csr_tdata1_we_i          ( core_i.cs_registers_i.tdata1_we                                      ),
-         .csr_tdata2_n_i           ( core_i.cs_registers_i.triggers.debug_triggers_i.tdata2_n             ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tdata2_n_i           ( core_i.cs_registers_i.debug_triggers_i.tdata2_n                      ),
          .csr_tdata2_q_i           ( core_i.cs_registers_i.tdata2_rdata                                   ),
          .csr_tdata2_we_i          ( core_i.cs_registers_i.tdata2_we                                      ),
-         .csr_tdata3_n_i           ( core_i.cs_registers_i.triggers.debug_triggers_i.tdata3_n             ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tdata3_n_i           ( core_i.cs_registers_i.debug_triggers_i.tdata3_n                      ),
          .csr_tdata3_q_i           ( core_i.cs_registers_i.tdata3_rdata                                   ),
          .csr_tdata3_we_i          ( core_i.cs_registers_i.tdata3_we                                      ),
-         .csr_tinfo_n_i            ( core_i.cs_registers_i.triggers.debug_triggers_i.tinfo_n              ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tinfo_n_i            ( core_i.cs_registers_i.debug_triggers_i.tinfo_n                       ),
          .csr_tinfo_q_i            ( core_i.cs_registers_i.tinfo_rdata                                    ),
          .csr_tinfo_we_i           ( core_i.cs_registers_i.tinfo_we                                       ),
          .csr_dcsr_n_i             ( core_i.cs_registers_i.dcsr_n                                         ),
@@ -595,10 +595,10 @@ endgenerate
          .csr_mstatush_n_i         ( core_i.cs_registers_i.mstatush_n                                     ),
          .csr_mstatush_q_i         ( core_i.cs_registers_i.mstatush_rdata                                 ),
          .csr_mstatush_we_i        ( core_i.cs_registers_i.mstatush_we                                    ),
-         .csr_tcontrol_n_i         ( core_i.cs_registers_i.triggers.debug_triggers_i.tcontrol_n           ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tcontrol_n_i         ( core_i.cs_registers_i.debug_triggers_i.tcontrol_n                    ),
          .csr_tcontrol_q_i         ( core_i.cs_registers_i.tcontrol_rdata                                 ),
          .csr_tcontrol_we_i        ( core_i.cs_registers_i.tcontrol_we                                    ),
-         .csr_tselect_n_i          ( core_i.cs_registers_i.triggers.debug_triggers_i.tselect_n            ), // If DBG_NUM_TRIGGERS=0 this connection will fail
+         .csr_tselect_n_i          ( core_i.cs_registers_i.debug_triggers_i.tselect_n                     ),
          .csr_tselect_q_i          ( core_i.cs_registers_i.tselect_rdata                                  ),
          .csr_tselect_we_i         ( core_i.cs_registers_i.tselect_we                                     ),
 
