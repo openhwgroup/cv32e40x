@@ -203,7 +203,7 @@ import cv32e40x_pkg::*;
 
       assign tdata3_rdata_o   = 32'h00000000;
       assign tselect_rdata_o  = tselect_q;
-      assign tinfo_rdata_o    = 32'h4;
+      assign tinfo_rdata_o    = 32'h4; // todo: update
       assign tcontrol_rdata_o = 32'h00000000;
 
       // Set trigger match for IF
