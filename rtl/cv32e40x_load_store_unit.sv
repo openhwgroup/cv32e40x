@@ -59,7 +59,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        lsu_last_op_0_o,          // Last operation is active in EX
 
   // outputs to trigger module
-  output logic        lsu_valid_o,
   output logic [31:0] lsu_addr_o,
   output logic        lsu_we_o,
   output logic [1:0]  lsu_size_o,
@@ -180,7 +179,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // Set outputs for trigger module
-  assign lsu_valid_o = valid_0_i;
   assign lsu_addr_o = trans.addr;
   assign lsu_we_o   = trans.we;
   assign lsu_size_o = trans.size;
