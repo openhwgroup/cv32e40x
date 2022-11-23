@@ -442,9 +442,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
+  //   - Exception if a LSU trigger match happens during push or pop, then we must abort the sequence and enter debug mode.
+  //   - If trigger_match_in_wb is caused by instruction address match, then no side effects will happen for a sequence, and debug mode is entered when the first operation is in WB.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
   //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
-  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
+  assign debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && (sequence_interruptible || trigger_match_in_wb);
 
   // Debug pending for any other reason than single step
   assign pending_debug = (trigger_match_in_wb) ||

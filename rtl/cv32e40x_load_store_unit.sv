@@ -50,10 +50,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        busy_o,
   output logic        interruptible_o,
 
+  // Trigger match input
+  input logic         trigger_match_i,
+
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
   output logic        lsu_first_op_0_o,         // First operation is active in EX
   output logic        lsu_last_op_0_o,          // Last operation is active in EX
+
+  // outputs to trigger module
+  output logic        lsu_valid_o,
+  output logic [31:0] lsu_addr_o,
+  output logic        lsu_we_o,
+  output logic [1:0]  lsu_size_o,
 
   // Stage 1 outputs (WB)
   output logic [1:0]  lsu_err_1_o,
@@ -80,6 +89,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction request (before aligner)
   trans_req_t     trans;
+
+  // Gated version of valid_0_i, suppressed on trigger matches
+  logic           valid_0_gated;
 
   // Aligned transaction request (to cv32e40x_mpu)
   logic           trans_valid; // todo: consider renaming to align_trans_valid, align_trans_ready (if so, do we need trans_valid, trans_ready as well?)
@@ -151,6 +163,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign xif_req = X_EXT && xif_mem_if.mem_valid;
 
+  assign valid_0_gated = valid_0_i && !trigger_match_i;
+
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
   always_comb begin
@@ -164,6 +178,12 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     trans.atop  = id_ex_pipe_i.lsu_atop;
     trans.sext  = id_ex_pipe_i.lsu_sext;
   end
+
+  // Set outputs for trigger module
+  assign lsu_valid_o = valid_0_i;
+  assign lsu_addr_o = trans.addr;
+  assign lsu_we_o   = trans.we;
+  assign lsu_size_o = trans.size;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
@@ -268,7 +288,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Tracking split (misaligned) state
   // This signals has EX timing, and indicates that the second
   // address phase of a split transfer is taking place
-  // Reset/killed on !valid_0_i to ensure it is zero for the
+  // Reset/killed on !valid_0_gated to ensure it is zero for the
   // first phase of the next instruction. Otherwise it could stick at 1 after a killed
   // split, causing next LSU instruction to calculate wrong _be.
   // todo: add assertion that it is zero for the first phase (regardless of alignment)
@@ -276,7 +296,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       split_q    <= 1'b0;
     end else begin
-      if(!valid_0_i && !xif_req) begin
+      if(!valid_0_gated && !xif_req) begin
         split_q <= 1'b0; // Reset split_st when no valid instructions
       end else if (ctrl_update) begin // EX done, update split_q for next address phase
         split_q <= lsu_split_0_o;
@@ -374,7 +394,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   begin
     lsu_split_0_o = 1'b0;
     misaligned_halfword = 1'b0;
-    if (valid_0_i && !xif_req && !split_q)
+    if (valid_0_gated && !xif_req && !split_q)
     begin
       case (trans.size)
         2'b10: // word
@@ -396,7 +416,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Set flags for first and last op
   // Only valid when id_ex_pipe.lsu_en == 1
-  assign lsu_last_op_0_o = !lsu_split_0_o;
+  assign lsu_last_op_0_o  = !lsu_split_0_o;
   assign lsu_first_op_0_o = !split_q;
 
   // Busy if there are ongoing (or potentially outstanding) transfers
@@ -440,7 +460,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
   // issued (and accepted) before a response (resp_*) is received.
-  assign trans_valid = (valid_0_i || xif_req) && (cnt_q < DEPTH);
+  assign trans_valid = (valid_0_gated || xif_req) && (cnt_q < DEPTH);
 
   // LSU second stage is ready if it is not being used (i.e. no outstanding transfers, cnt_q = 0),
   // or if it is being used and the awaited response arrives (resp_rvalid).
@@ -468,7 +488,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Indicates that address phase in EX is complete.
   // XIF request bypasses pipeline, ignores ready_0_i but requires xif_ready_1 instead.
   assign done_0    = (
-                      !(valid_0_i || xif_req) ? 1'b1 :
+                      !(valid_0_gated || xif_req) ? 1'b1 :
                       (cnt_q == 2'b00)        ? (trans_valid && trans_ready) :
                       (cnt_q == 2'b01)        ? (trans_valid && trans_ready) :
                       1'b1
@@ -480,7 +500,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
                        (cnt_q == 2'b00) ? (trans_valid && trans_ready) :
                        (cnt_q == 2'b01) ? (trans_valid && trans_ready) :
                        1'b1
-                      ) && valid_0_i && !xif_req;
+                      ) && valid_0_gated && !xif_req;
 
 
   // External (EX) ready only when not handling multi cycle split accesses
@@ -500,7 +520,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_mpu_status_1_o = resp.mpu_status;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
-  assign ctrl_update = done_0 && (valid_0_i || xif_req);
+  assign ctrl_update = done_0 && (valid_0_gated || xif_req);
 
 
   //////////////////////////////////////////////////////////////////////////////

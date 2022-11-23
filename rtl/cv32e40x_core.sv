@@ -257,6 +257,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
 
+  // LSU signals to trigger module
+  logic [31:0] lsu_addr_ex;
+  logic        lsu_we_ex;
+  logic [1:0]  lsu_size_ex;
+
   logic        data_stall_wb;
 
   // Stage ready signals
@@ -283,8 +288,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // From cs_registers
   dcsr_t       dcsr;
 
-  // trigger match detected in cs_registers (using ID timing)
+  // trigger match detected in trigger module (using IF timing)
   logic        trigger_match_if;
+  // trigger match detected in trigger module (using EX/LSU timing)
+  logic        trigger_match_ex;
 
   // Controller <-> decoder
   logic        alu_jmp_id;
@@ -573,6 +580,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_illegal_i              ( csr_illegal                  ),
     .csr_mnxti_read_i           ( csr_mnxti_read               ),
 
+    // trigger input
+    .trigger_match_i            ( trigger_match_ex             ),
+
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
     .branch_target_o            ( branch_target_ex             ),
@@ -634,10 +644,18 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .busy_o                ( lsu_busy           ),
     .interruptible_o       ( lsu_interruptible  ),
 
+    // Trigger match
+    .trigger_match_i       ( trigger_match_ex   ),
+
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
     .lsu_first_op_0_o      ( lsu_first_op_ex    ),
     .lsu_last_op_0_o       ( lsu_last_op_ex     ),
+
+    // Outputs to trigger module
+    .lsu_addr_o            ( lsu_addr_ex        ),
+    .lsu_we_o              ( lsu_we_ex          ),
+    .lsu_size_o            ( lsu_size_ex        ),
 
     // Stage 1 outputs (WB)
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
@@ -792,9 +810,14 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_wr_in_wb_flush_o       ( csr_wr_in_wb_flush     ),
 
     // Debug
-    .trigger_match_o            ( trigger_match_if       ),
+    .trigger_match_if_o         ( trigger_match_if       ),
+    .trigger_match_ex_o         ( trigger_match_ex       ),
     .pc_if_i                    ( pc_if                  ),
-    .ptr_in_if_i                ( ptr_in_if              )
+    .ptr_in_if_i                ( ptr_in_if              ),
+    .lsu_valid_ex_i             ( lsu_valid_ex           ),
+    .lsu_addr_ex_i              ( lsu_addr_ex            ),
+    .lsu_we_ex_i                ( lsu_we_ex              ),
+    .lsu_size_ex_i              ( lsu_size_ex            )
   );
 
   ////////////////////////////////////////////////////////////////////
