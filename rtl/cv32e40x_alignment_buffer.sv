@@ -175,8 +175,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign valid = valid_q[rptr] || resp_valid_gated;
 
   // unaligned_is_compressed and aligned_is_compressed are only defined when valid = 1 (which implies that instr_valid_o will be 1)
-  assign unaligned_is_compressed = instr[17:16] != 2'b11;
-  assign aligned_is_compressed   = instr[1:0] != 2'b11;
+  // Pointers must be interpreted as uncompressed
+  assign unaligned_is_compressed = (instr[17:16] != 2'b11) && !ptr_fetch_accepted_q;
+  assign aligned_is_compressed   = (instr[1:0]   != 2'b11) && !ptr_fetch_accepted_q;
 
 
   // Set mpu_status and bus error for unaligned instructions
