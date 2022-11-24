@@ -132,7 +132,7 @@ import cv32e40x_pkg::*;
                           4'b0000,               // zero, size (match any size) 19:16
                           4'b0001,               // action, WARL(1), enter debug 15:12
                           1'b0,                  // zero, chain 11
-                          mcontrol6_match_resolve(tdata1_rdata_o[MCONTROL6_MATCH_H:MCONTROL6_MATCH_L], csr_wdata_i[MCONTROL6_MATCH_H:7]), // match, WARL(0,2,3) 10:7
+                          mcontrol6_match_resolve(csr_wdata_i[MCONTROL6_MATCH_H:MCONTROL6_MATCH_L]), // match, WARL(0,2,3) 10:7
                           csr_wdata_i[6],        // M  6
                           1'b0,                  // zero 5
                           1'b0,                  // zero, S 4
