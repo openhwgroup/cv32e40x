@@ -645,7 +645,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .interruptible_o       ( lsu_interruptible  ),
 
     // Trigger match
-    .trigger_match_i       ( trigger_match_ex   ),
+    .trigger_match_0_i     ( trigger_match_ex   ),
 
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),

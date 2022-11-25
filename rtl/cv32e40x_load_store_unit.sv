@@ -51,7 +51,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        interruptible_o,
 
   // Trigger match input
-  input logic         trigger_match_i,
+  input logic         trigger_match_0_i,
 
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
@@ -162,7 +162,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   assign xif_req = X_EXT && xif_mem_if.mem_valid;
 
-  assign valid_0_gated = valid_0_i && !trigger_match_i;
+  assign valid_0_gated = valid_0_i && !trigger_match_0_i;
 
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)

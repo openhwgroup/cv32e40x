@@ -661,13 +661,13 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   1'b0};                 // LOAD 0
 
   // Bit position parameters for MCONTROL6
-  parameter MCONTROL6_MATCH_H = 10;
-  parameter MCONTROL6_MATCH_L = 7;
-  parameter MCONTROL6_M       = 6;
-  parameter MCONTROL6_U       = 3;
-  parameter MCONTROL6_EXECUTE = 2;
-  parameter MCONTROL6_STORE   = 1;
-  parameter MCONTROL6_LOAD    = 0;
+  parameter MCONTROL6_MATCH_HIGH = 10;
+  parameter MCONTROL6_MATCH_LOW  = 7;
+  parameter MCONTROL6_M          = 6;
+  parameter MCONTROL6_U          = 3;
+  parameter MCONTROL6_EXECUTE    = 2;
+  parameter MCONTROL6_STORE      = 1;
+  parameter MCONTROL6_LOAD       = 0;
 
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //

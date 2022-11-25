@@ -97,6 +97,10 @@ import cv32e40x_pkg::*;
       logic [31:0] tdata2_q[DBG_NUM_TRIGGERS];
       logic [31:0] tselect_q;
 
+      // CSR read data, possibly WARL resolved
+      logic [31:0] tdata1_rdata[DBG_NUM_TRIGGERS];
+      logic [31:0] tdata2_rdata[DBG_NUM_TRIGGERS];
+
       // IF and EX stages trigger match
       logic [DBG_NUM_TRIGGERS-1 : 0] trigger_match_if;
       logic [DBG_NUM_TRIGGERS-1 : 0] trigger_match_ex;
@@ -113,7 +117,7 @@ import cv32e40x_pkg::*;
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_ex;
 
       // Lower boundary of LSU address match checks, calculated for each trigger
-      logic [31:0] tdata2_q_low[DBG_NUM_TRIGGERS];
+      logic [31:0] tdata2_rdata_low[DBG_NUM_TRIGGERS];
 
 
       // Write data
@@ -132,7 +136,7 @@ import cv32e40x_pkg::*;
                           4'b0000,               // zero, size (match any size) 19:16
                           4'b0001,               // action, WARL(1), enter debug 15:12
                           1'b0,                  // zero, chain 11
-                          mcontrol6_match_resolve(csr_wdata_i[MCONTROL6_MATCH_H:MCONTROL6_MATCH_L]), // match, WARL(0,2,3) 10:7
+                          mcontrol6_match_resolve(csr_wdata_i[MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
                           csr_wdata_i[6],        // M  6
                           1'b0,                  // zero 5
                           1'b0,                  // zero, S 4
@@ -167,21 +171,22 @@ import cv32e40x_pkg::*;
         //   No instruction address match on any pointer type (CLIC and Zc tablejumps).
 
         // Check for address match using tdata2.match for checking rule
-        assign if_addr_match[idx] = (tdata1_q[idx][MCONTROL6_MATCH_H:MCONTROL6_MATCH_L] == 4'h0) ? (pc_if_i == tdata2_q[idx]) :
-                                    (tdata1_q[idx][MCONTROL6_MATCH_H:MCONTROL6_MATCH_L] == 4'h2) ? (pc_if_i >= tdata2_q[idx]) : (pc_if_i < tdata2_q[idx]);
+        assign if_addr_match[idx] = (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h0) ? (pc_if_i == tdata2_rdata[idx]) :
+                                    (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h2) ? (pc_if_i >= tdata2_rdata[idx]) : (pc_if_i < tdata2_rdata[idx]);
 
         // Check if matching is enabled for the current privilege level from IF
-        assign priv_lvl_match_en_if[idx] = (tdata1_q[idx][MCONTROL6_M] && (priv_lvl_if_i == PRIV_LVL_M)) ||
-                                           (tdata1_q[idx][MCONTROL6_U] && (priv_lvl_if_i == PRIV_LVL_U));
+        assign priv_lvl_match_en_if[idx] = (tdata1_rdata[idx][MCONTROL6_M] && (priv_lvl_if_i == PRIV_LVL_M)) ||
+                                           (tdata1_rdata[idx][MCONTROL6_U] && (priv_lvl_if_i == PRIV_LVL_U));
 
         // Check for trigger match from IF
-        assign trigger_match_if[idx] = tdata1_q[idx][MCONTROL6_EXECUTE] && priv_lvl_match_en_if[idx] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
+        assign trigger_match_if[idx] = tdata1_rdata[idx][MCONTROL6_EXECUTE] && priv_lvl_match_en_if[idx] && !ctrl_fsm_i.debug_mode && !ptr_in_if_i &&
                                        if_addr_match[idx];
 
         ///////////////////////////////////////
         // Load/Store address match (EX)
         ///////////////////////////////////////
 
+        // todo: LSU address matching must be revisited once the atomics are implemented
         // As for instruction address match, the load/store address match happens before the instruction is executed.
         // Matching is detected from the EX stage, and upon a trigger match the corresponding bus request and
         // register file write (for loads) are suppressed.
@@ -191,21 +196,21 @@ import cv32e40x_pkg::*;
         // and words check {A, A+1, A+2, A+3}.
         // For timing reasons we check A vs (tdata_q - N) instead of (A+N) vs tdata_q. This avoids two adders (one in the LSU and one here) in the critical path.
         //   - This comes at the cost of DBG_NUM_TRIGGERS adders instead of one common for all triggers.
-        assign tdata2_q_low[idx] = (lsu_size_ex_i == 2'b10) ? tdata2_q[idx] - 32'h3 :
-                                   (lsu_size_ex_i == 2'b01) ? tdata2_q[idx] - 32'h1 : tdata2_q[idx];
+        assign tdata2_rdata_low[idx] = (lsu_size_ex_i == 2'b10) ? tdata2_rdata[idx] - 32'h3 :
+                                 (lsu_size_ex_i == 2'b01) ? tdata2_rdata[idx] - 32'h1 : tdata2_rdata[idx];
 
 
         // Check if matching is enabled for the current privilege level from EX
-        assign priv_lvl_match_en_ex[idx] = (tdata1_q[idx][MCONTROL6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) ||
-                                           (tdata1_q[idx][MCONTROL6_U] && (priv_lvl_ex_i == PRIV_LVL_U));
+        assign priv_lvl_match_en_ex[idx] = (tdata1_rdata[idx][MCONTROL6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) ||
+                                           (tdata1_rdata[idx][MCONTROL6_U] && (priv_lvl_ex_i == PRIV_LVL_U));
 
         // Enable LSU address matching
         assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_q[idx][MCONTROL6_LOAD] && !lsu_we_ex_i) || (tdata1_q[idx][MCONTROL6_STORE] && lsu_we_ex_i));
 
         // LSU address matching
-        assign lsu_addr_match[idx] = (tdata1_q[idx][MCONTROL6_MATCH_H:MCONTROL6_MATCH_L] == 4'h2) ? (lsu_addr_ex_i >= tdata2_q[idx])    :
-                                     (tdata1_q[idx][MCONTROL6_MATCH_H:MCONTROL6_MATCH_L] == 4'h3) ? (lsu_addr_ex_i < tdata2_q_low[idx]) :
-                                     (lsu_addr_ex_i >= tdata2_q_low[idx]) && (lsu_addr_ex_i <= tdata2_q[idx]);
+        assign lsu_addr_match[idx] = (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h0) ? (lsu_addr_ex_i >= tdata2_rdata_low[idx]) && (lsu_addr_ex_i <= tdata2_rdata[idx]) :
+                                     (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h2) ? (lsu_addr_ex_i >= tdata2_rdata_low[idx])                                         :
+                                     (lsu_addr_ex_i < tdata2_rdata_low[idx]);
 
         assign trigger_match_ex[idx] = priv_lvl_match_en_ex[idx] &&  lsu_addr_match_en[idx] && lsu_addr_match[idx] && !ctrl_fsm_i.debug_mode;
 
@@ -241,6 +246,11 @@ import cv32e40x_pkg::*;
         // Set write enables
         assign tdata1_we_int[idx] = tdata1_we_i && (tselect_q == idx);
         assign tdata2_we_int[idx] = tdata2_we_i && (tselect_q == idx);
+
+        // Assign read data
+        // todo: WARL
+        assign tdata1_rdata[idx] = tdata1_q[idx];
+        assign tdata2_rdata[idx] = tdata2_q[idx];
       end // for
 
       // CSR instance for tselect
@@ -260,14 +270,14 @@ import cv32e40x_pkg::*;
 
       // Assign CSR read data outputs
       always_comb begin
-        tdata1_rdata_o = tdata1_q[0];
-        tdata2_rdata_o = tdata2_q[0];
+        tdata1_rdata_o = tdata1_rdata[0];
+        tdata2_rdata_o = tdata2_rdata[0];
 
         // Iterate through triggers and set tdata1/tdata2 rdata for the currently selected trigger
         for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
           if(tselect_q == i) begin
-            tdata1_rdata_o = tdata1_q[i];
-            tdata2_rdata_o = tdata2_q[i];
+            tdata1_rdata_o = tdata1_rdata[i];
+            tdata2_rdata_o = tdata2_rdata[i];
           end
         end
       end
