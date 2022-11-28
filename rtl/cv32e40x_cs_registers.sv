@@ -103,7 +103,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Debug
   input  logic [31:0]                   pc_if_i,
   input  logic                          ptr_in_if_i,
-  output logic                          trigger_match_o
+  output logic                          trigger_match_if_o,
+  output logic                          trigger_match_ex_o,
+  input  logic                          lsu_valid_ex_i,
+  input  logic [31:0]                   lsu_addr_ex_i,
+  input  logic                          lsu_we_ex_i,
+  input  logic [3:0]                    lsu_be_ex_i
 );
 
   localparam logic [31:0] CORE_MISA =
@@ -1516,12 +1521,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       // IF stage inputs
       .pc_if_i          ( pc_if_i       ),
       .ptr_in_if_i      ( ptr_in_if_i   ),
+      .priv_lvl_if_i    ( PRIV_LVL_M    ),
+
+      // LSU inputs
+      .lsu_valid_ex_i   ( lsu_valid_ex_i),
+      .lsu_addr_ex_i    ( lsu_addr_ex_i ),
+      .lsu_we_ex_i      ( lsu_we_ex_i   ),
+      .lsu_be_ex_i      ( lsu_be_ex_i   ),
+      .priv_lvl_ex_i    ( PRIV_LVL_M    ),
 
       // Controller inputs
       .ctrl_fsm_i       ( ctrl_fsm_i    ),
 
-      // Trigger match output
-      .trigger_match_o  ( trigger_match_o )
+      // Trigger match outputs
+      .trigger_match_if_o  ( trigger_match_if_o ),
+      .trigger_match_ex_o  ( trigger_match_ex_o )
     );
 
 

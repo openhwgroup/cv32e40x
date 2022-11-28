@@ -660,6 +660,15 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   1'b0,                  // STORE 1
   1'b0};                 // LOAD 0
 
+  // Bit position parameters for MCONTROL6
+  parameter MCONTROL6_MATCH_HIGH = 10;
+  parameter MCONTROL6_MATCH_LOW  = 7;
+  parameter MCONTROL6_M          = 6;
+  parameter MCONTROL6_U          = 3;
+  parameter MCONTROL6_EXECUTE    = 2;
+  parameter MCONTROL6_STORE      = 1;
+  parameter MCONTROL6_LOAD       = 0;
+
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //
 //  |_ _|  _ \  / ___|| |_ __ _  __ _  ___   //
@@ -1309,6 +1318,12 @@ typedef struct packed {
     return PRIV_LVL_M;
   endfunction
 
+  function automatic logic [3:0] mcontrol6_match_resolve
+  (
+    logic [3:0] next_value
+  );
+    return ((next_value != 4'h0) && (next_value != 4'h2) && (next_value != 4'h3)) ? 4'h0 : next_value;
+  endfunction
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //
