@@ -119,7 +119,9 @@ import cv32e40x_pkg::*;
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_if;
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_ex;
 
+      logic [1:0]  lsu_addr_low_lsb;  // Lower two bits of the lowest accessed address
       logic [1:0]  lsu_addr_high_lsb; // Lower two bits of the highest accessed address
+      logic [31:0] lsu_addr_low;      // The lowest accessed address of an LSU transaction
       logic [31:0] lsu_addr_high;     // The highest accessed address of an LSU transaction
 
       // Write data
@@ -153,16 +155,27 @@ import cv32e40x_pkg::*;
         tcontrol_n    = tcontrol_rdata_o; // Read only
       end
 
-      // Calculate highest value of address[1:0] based on lsu_be_ex_i
+      // Calculate highest and lowest value of address[1:0] based on lsu_be_ex_i
       always_comb begin
-        for (int b=0; b<4; b++) begin : gen_byte_checks
+        lsu_addr_high_lsb = 2'b00;
+        lsu_addr_low_lsb  = 2'b00;
+        // Find highest accessed byte
+        for (int b=0; b<4; b++) begin : gen_high_byte_checks
           if (lsu_be_ex_i[b]) begin
             lsu_addr_high_lsb = 2'(b);
+          end // if
+        end // for
+
+        // Find lowest accessed byte
+        for (int b=3; b>=0; b--) begin : gen_low_byte_checks
+          if (lsu_be_ex_i[b]) begin
+            lsu_addr_low_lsb = 2'(b);
           end // if
         end // for
       end // always
 
       assign lsu_addr_high = {lsu_addr_ex_i[31:2], lsu_addr_high_lsb};
+      assign lsu_addr_low =  {lsu_addr_ex_i[31:2], lsu_addr_low_lsb};
 
       // Generate DBG_NUM_TRIGGERS instances of tdata1, tdata2 and match checks
       for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin : tmatch_csr
@@ -219,18 +232,18 @@ import cv32e40x_pkg::*;
 
         // Check address matches for (==), (>=) and (<)
         // For ==, check that we match the 32-bit aligned word and that any of the accessed bytes matches tdata2[1:0]
-        // For >=, check that the highest accessed address is greater than or equal to tdata2
-        // For <, check that the highest accessed address is less than tdata2
+        // For >=, check that the highest accessed address is greater than or equal to tdata2. If this fails, no bytes within the access are >= tdata2
+        // For <, check that the lowest accessed address is less than tdata2. If this fails, no bytes within the access are < tdata2.
         assign lsu_addr_match[idx] = (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h0) ? ((lsu_addr_ex_i[31:2] == tdata2_rdata[idx][31:2]) && (|lsu_byte_addr_match[idx])) :
                                      (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h2) ? (lsu_addr_high >= tdata2_rdata[idx]) :
-                                                                                                             (lsu_addr_high <  tdata2_rdata[idx]) ;
+                                                                                                             (lsu_addr_low  <  tdata2_rdata[idx]) ;
 
         // Check if matching is enabled for the current privilege level from EX
         assign priv_lvl_match_en_ex[idx] = (tdata1_rdata[idx][MCONTROL6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) ||
                                            (tdata1_rdata[idx][MCONTROL6_U] && (priv_lvl_ex_i == PRIV_LVL_U));
 
         // Enable LSU address matching
-        assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_q[idx][MCONTROL6_LOAD] && !lsu_we_ex_i) || (tdata1_q[idx][MCONTROL6_STORE] && lsu_we_ex_i));
+        assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_rdata[idx][MCONTROL6_LOAD] && !lsu_we_ex_i) || (tdata1_rdata[idx][MCONTROL6_STORE] && lsu_we_ex_i));
 
         // Signal trigger match for LSU address
         assign trigger_match_ex[idx] = priv_lvl_match_en_ex[idx] &&  lsu_addr_match_en[idx] && lsu_addr_match[idx] && !ctrl_fsm_i.debug_mode;
@@ -265,8 +278,8 @@ import cv32e40x_pkg::*;
         );
 
         // Set write enables
-        assign tdata1_we_int[idx] = tdata1_we_i && (tselect_q == idx);
-        assign tdata2_we_int[idx] = tdata2_we_i && (tselect_q == idx);
+        assign tdata1_we_int[idx] = tdata1_we_i && (tselect_rdata_o == idx);
+        assign tdata2_we_int[idx] = tdata2_we_i && (tselect_rdata_o == idx);
 
         // Assign read data
         // todo: WARL
@@ -296,7 +309,7 @@ import cv32e40x_pkg::*;
 
         // Iterate through triggers and set tdata1/tdata2 rdata for the currently selected trigger
         for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
-          if(tselect_q == i) begin
+          if(tselect_rdata_o == i) begin
             tdata1_rdata_o = tdata1_rdata[i];
             tdata2_rdata_o = tdata2_rdata[i];
           end
