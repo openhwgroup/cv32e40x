@@ -399,6 +399,9 @@ endgenerate
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
                .mtvec_addr_i(core_i.mtvec_addr),
+               .obi_instr_fifo_q(rvfi_i.rvfi_instr_obi_i.fifo_q),
+               .obi_instr_rptr_q_inc(rvfi_i.rvfi_instr_obi_i.rptr_q_inc),
+               .obi_instr_rptr_q(rvfi_i.rvfi_instr_obi_i.rptr_q),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
@@ -437,6 +440,10 @@ endgenerate
          .prefetch_instr_if_i      ( core_i.if_stage_i.prefetch_unit_i.prefetch_instr_o                   ),
          .clic_ptr_if_i            ( core_i.if_stage_i.prefetch_is_clic_ptr                               ),
          .mret_ptr_if_i            ( core_i.if_stage_i.prefetch_is_mret_ptr                               ),
+         .mpu_status_i             ( core_i.if_stage_i.mpu_i.core_resp_o.mpu_status                       ),
+         .prefetch_trans_valid_i   ( core_i.if_stage_i.prefetch_trans_valid                               ),
+         .prefetch_trans_ready_i   ( core_i.if_stage_i.prefetch_trans_ready                               ),
+         .prefetch_resp_valid_i    ( core_i.if_stage_i.prefetch_resp_valid                                ),
 
          // ID Probes
          .id_valid_i               ( core_i.id_stage_i.id_valid_o                                         ),
@@ -467,8 +474,7 @@ endgenerate
          .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma (no expressions allowed in module hookup)
                                     !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
          .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
-         .buffer_trans_addr_ex_i   ( core_i.load_store_unit_i.buffer_trans.addr                           ),
-         .buffer_trans_wdata_ex_i  ( core_i.load_store_unit_i.buffer_trans.wdata                          ),
+         .buffer_trans             ( core_i.load_store_unit_i.buffer_trans                                ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
          // WB Probes

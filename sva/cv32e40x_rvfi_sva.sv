@@ -57,7 +57,13 @@ module cv32e40x_rvfi_sva
    input logic [31:0]      pc_if_i,
    input inst_resp_t       prefetch_instr_if_i,
    input logic             prefetch_compressed_if_i,
+   input  logic [31:0]     prefetch_addr_if_i,
+   input  logic            prefetch_valid_if_i,
+   input  logic            prefetch_ready_if_i,
    input rvfi_obi_instr_t  obi_instr_if,
+   input rvfi_obi_instr_t [0:3] obi_instr_fifo_q,
+   input logic [1:0]       obi_instr_rptr_q_inc,
+   input logic [1:0]       obi_instr_rptr_q,
    input logic             mret_ptr_wb,
    input logic [31:0]      instr_rdata_wb_past
 );
@@ -203,32 +209,52 @@ module cv32e40x_rvfi_sva
                      ((rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")
 
-  /* todo: add back in
+
+  /* TODO: Add back in.
+     Currently, the alignment buffer can interpret pointers as compressed instructions and pass on two "instructions" from the IF stage.
+     cv32e40x_rvfi_instr_obi will not be in sync with the alignment buffer until this is fixed. See https://github.com/openhwgroup/cv32e40x/issues/704
+   
   // Check that cv32e40x_rvfi_instr_obi tracks alignment buffer
   a_rvfi_instr_obi_addr:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     if_valid_i && id_ready_i |->
+                     if_valid_i && id_ready_i && (obi_instr_if.resp_payload.mpu_status == MPU_OK) |->
                      (pc_if_i[31:2] == obi_instr_if.req_payload.addr[31:2]))
       else `uvm_error("rvfi", "rvfi_instr_obi addr does not track alignment buffer")
 
   a_rvfi_instr_obi_rdata_compressed:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     if_valid_i && id_ready_i && prefetch_compressed_if_i |->
-                     (prefetch_instr_if_i.bus_resp.rdata[15:0] == obi_instr_if.resp_payload.rdata[15:0]))
+                     if_valid_i && id_ready_i && prefetch_compressed_if_i && (obi_instr_if.resp_payload.mpu_status == MPU_OK) |->
+                     (prefetch_instr_if_i.bus_resp.rdata[15:0] == obi_instr_if.resp_payload.bus_resp.rdata[15:0]))
       else `uvm_error("rvfi", "rvfi_instr_obi compressed rdata does not track alignment buffer")
 
   a_rvfi_instr_obi_rdata_uncompressed:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     if_valid_i && id_ready_i && !prefetch_compressed_if_i |->
-                     (prefetch_instr_if_i.bus_resp.rdata[31:0] == obi_instr_if.resp_payload.rdata[31:0]))
+                     if_valid_i && id_ready_i && !prefetch_compressed_if_i && (obi_instr_if.resp_payload.mpu_status == MPU_OK) |->
+                     (prefetch_instr_if_i.bus_resp.rdata[31:0] == obi_instr_if.resp_payload.bus_resp.rdata[31:0]))
       else `uvm_error("rvfi", "rvfi_instr_obi uncompressed rdata does not track alignment buffer")
 
   a_rvfi_instr_obi_err:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     if_valid_i && id_ready_i |->
-                     (prefetch_instr_if_i.bus_resp.err == obi_instr_if.resp_payload.err))
+                     if_valid_i && id_ready_i && (obi_instr_if.resp_payload.mpu_status == MPU_OK) |->
+                     (prefetch_instr_if_i.bus_resp.err == obi_instr_if.resp_payload.bus_resp.err))
       else `uvm_error("rvfi", "rvfi_instr_obi err does not track alignment buffer")
+
+  a_rvfi_instr_mpu_status:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     if_valid_i && id_ready_i |->
+                     (prefetch_instr_if_i.mpu_status == obi_instr_if.resp_payload.mpu_status))
+      else `uvm_error("rvfi", "rvfi_instr_obi mpu_status does not track alignment buffer")
+
+  // Check that instructions fetched over two OBI transfers have the same OBI prot.
+  // Ideally, this should be checked with a design assertion, but that is cumbersome since the aligmnent buffer interprets rdata to decide if an instruction is compressed or not.
+  // By this time, the obi.prot for the given transfer(s) is no longer available.
+  a_rvfi_instr_split_transfer_obi_prot:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                     prefetch_valid_if_i && prefetch_ready_if_i && !prefetch_compressed_if_i && (prefetch_addr_if_i[1:0] != 2'b00 && (obi_instr_if.resp_payload.mpu_status == MPU_OK)) |->
+                     obi_instr_fifo_q[obi_instr_rptr_q].req_payload.prot == obi_instr_fifo_q[obi_instr_rptr_q_inc].req_payload.prot)
+      else `uvm_error("rvfi", "rvfi_instr_obi prot not the same for split transfers")
   */
+   
 endmodule
 
 
