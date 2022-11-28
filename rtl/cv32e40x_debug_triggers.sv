@@ -64,7 +64,7 @@ import cv32e40x_pkg::*;
   input  logic        lsu_valid_ex_i,
   input  logic [31:0] lsu_addr_ex_i,
   input  logic        lsu_we_ex_i,
-  input  logic [1:0]  lsu_size_ex_i,
+  input  logic [3:0]  lsu_be_ex_i,
   input  privlvl_t    priv_lvl_ex_i,
 
   // Controller inputs
@@ -85,6 +85,8 @@ import cv32e40x_pkg::*;
 
   // Signal for or'ing unused signals for easier lint
   logic unused_signals;
+
+
 
   generate
     if (DBG_NUM_TRIGGERS > 0) begin : gen_triggers
@@ -111,14 +113,14 @@ import cv32e40x_pkg::*;
       // LSU address match signals
       logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match_en;
       logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match;
+      logic [3:0]                    lsu_byte_addr_match[DBG_NUM_TRIGGERS];
 
       // Enable matching based on privilege level per trigger
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_if;
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_ex;
 
-      // Lower boundary of LSU address match checks, calculated for each trigger
-      logic [31:0] tdata2_rdata_low[DBG_NUM_TRIGGERS];
-
+      logic [1:0]  lsu_addr_high_lsb; // Lower two bits of the highest accessed address
+      logic [31:0] lsu_addr_high;     // The highest accessed address of an LSU transaction
 
       // Write data
       always_comb begin
@@ -150,6 +152,17 @@ import cv32e40x_pkg::*;
         tinfo_n       = tinfo_rdata_o;    // Read only
         tcontrol_n    = tcontrol_rdata_o; // Read only
       end
+
+      // Calculate highest value of address[1:0] based on lsu_be_ex_i
+      always_comb begin
+        for (int b=0; b<4; b++) begin : gen_byte_checks
+          if (lsu_be_ex_i[b]) begin
+            lsu_addr_high_lsb = 2'(b);
+          end // if
+        end // for
+      end // always
+
+      assign lsu_addr_high = {lsu_addr_ex_i[31:2], lsu_addr_high_lsb};
 
       // Generate DBG_NUM_TRIGGERS instances of tdata1, tdata2 and match checks
       for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin : tmatch_csr
@@ -187,18 +200,30 @@ import cv32e40x_pkg::*;
         ///////////////////////////////////////
 
         // todo: LSU address matching must be revisited once the atomics are implemented
-        // As for instruction address match, the load/store address match happens before the instruction is executed.
-        // Matching is detected from the EX stage, and upon a trigger match the corresponding bus request and
-        // register file write (for loads) are suppressed.
+        // As for instruction address match, the load/store address match happens before the a bus transaction is visible on the OBI bus.
+        // For split misaligned transfers, each transfer is checked separately. This means that half a store may be visible externally even if
+        // the second part matches tdata2 and debug is entered. For loads the RF write will not happen until the last part finished anyway, so no state update
+        // will happen regardless of which transaction matches.
+        // The BE of the transaction is used to determine which bytes of a word is being accessed.
 
-        // Calculate lower boundary of address checks from tdata2
-        // Needed for LSU address matching, where halfwords check {A, A+1}
-        // and words check {A, A+1, A+2, A+3}.
-        // For timing reasons we check A vs (tdata_q - N) instead of (A+N) vs tdata_q. This avoids two adders (one in the LSU and one here) in the critical path.
-        //   - This comes at the cost of DBG_NUM_TRIGGERS adders instead of one common for all triggers.
-        assign tdata2_rdata_low[idx] = (lsu_size_ex_i == 2'b10) ? tdata2_rdata[idx] - 32'h3 :
-                                 (lsu_size_ex_i == 2'b01) ? tdata2_rdata[idx] - 32'h1 : tdata2_rdata[idx];
+        // Check if any accessed byte matches the lower two bits of tdata2
+        always_comb begin
+          for (int b=0; b<4; b++) begin
+            if (lsu_be_ex_i[b] && (2'(b) == tdata2_rdata[idx][1:0])) begin
+              lsu_byte_addr_match[idx][b] = 1'b1;
+            end else begin
+              lsu_byte_addr_match[idx][b] = 1'b0;
+            end
+          end
+        end
 
+        // Check address matches for (==), (>=) and (<)
+        // For ==, check that we match the 32-bit aligned word and that any of the accessed bytes matches tdata2[1:0]
+        // For >=, check that the highest accessed address is greater than or equal to tdata2
+        // For <, check that the highest accessed address is less than tdata2
+        assign lsu_addr_match[idx] = (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h0) ? ((lsu_addr_ex_i[31:2] == tdata2_rdata[idx][31:2]) && (|lsu_byte_addr_match[idx])) :
+                                     (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h2) ? (lsu_addr_high >= tdata2_rdata[idx]) :
+                                                                                                             (lsu_addr_high <  tdata2_rdata[idx]) ;
 
         // Check if matching is enabled for the current privilege level from EX
         assign priv_lvl_match_en_ex[idx] = (tdata1_rdata[idx][MCONTROL6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) ||
@@ -207,11 +232,7 @@ import cv32e40x_pkg::*;
         // Enable LSU address matching
         assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_q[idx][MCONTROL6_LOAD] && !lsu_we_ex_i) || (tdata1_q[idx][MCONTROL6_STORE] && lsu_we_ex_i));
 
-        // LSU address matching
-        assign lsu_addr_match[idx] = (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h0) ? (lsu_addr_ex_i >= tdata2_rdata_low[idx]) && (lsu_addr_ex_i <= tdata2_rdata[idx]) :
-                                     (tdata1_rdata[idx][MCONTROL6_MATCH_HIGH:MCONTROL6_MATCH_LOW] == 4'h2) ? (lsu_addr_ex_i >= tdata2_rdata_low[idx])                                         :
-                                     (lsu_addr_ex_i < tdata2_rdata_low[idx]);
-
+        // Signal trigger match for LSU address
         assign trigger_match_ex[idx] = priv_lvl_match_en_ex[idx] &&  lsu_addr_match_en[idx] && lsu_addr_match[idx] && !ctrl_fsm_i.debug_mode;
 
 

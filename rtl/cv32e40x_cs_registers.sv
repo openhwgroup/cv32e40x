@@ -108,7 +108,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                          lsu_valid_ex_i,
   input  logic [31:0]                   lsu_addr_ex_i,
   input  logic                          lsu_we_ex_i,
-  input  logic [1:0]                    lsu_size_ex_i
+  input  logic [3:0]                    lsu_be_ex_i
 );
 
   localparam logic [31:0] CORE_MISA =
@@ -1527,7 +1527,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       .lsu_valid_ex_i   ( lsu_valid_ex_i),
       .lsu_addr_ex_i    ( lsu_addr_ex_i ),
       .lsu_we_ex_i      ( lsu_we_ex_i   ),
-      .lsu_size_ex_i    ( lsu_size_ex_i ),
+      .lsu_be_ex_i      ( lsu_be_ex_i   ),
       .priv_lvl_ex_i    ( PRIV_LVL_M    ),
 
       // Controller inputs

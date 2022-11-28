@@ -260,7 +260,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // LSU signals to trigger module
   logic [31:0] lsu_addr_ex;
   logic        lsu_we_ex;
-  logic [1:0]  lsu_size_ex;
+  logic [3:0]  lsu_be_ex;
 
   logic        data_stall_wb;
 
@@ -655,7 +655,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Outputs to trigger module
     .lsu_addr_o            ( lsu_addr_ex        ),
     .lsu_we_o              ( lsu_we_ex          ),
-    .lsu_size_o            ( lsu_size_ex        ),
+    .lsu_be_o              ( lsu_be_ex          ),
 
     // Stage 1 outputs (WB)
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
@@ -817,7 +817,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_ex_i             ( lsu_valid_ex           ),
     .lsu_addr_ex_i              ( lsu_addr_ex            ),
     .lsu_we_ex_i                ( lsu_we_ex              ),
-    .lsu_size_ex_i              ( lsu_size_ex            )
+    .lsu_be_ex_i                ( lsu_be_ex              )
   );
 
   ////////////////////////////////////////////////////////////////////

@@ -61,7 +61,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // outputs to trigger module
   output logic [31:0] lsu_addr_o,
   output logic        lsu_we_o,
-  output logic [1:0]  lsu_size_o,
+  output logic [3:0]  lsu_be_o,
 
   // Stage 1 outputs (WB)
   output logic [1:0]  lsu_err_1_o,
@@ -179,9 +179,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // Set outputs for trigger module
-  assign lsu_addr_o = trans.addr;
-  assign lsu_we_o   = trans.we;
-  assign lsu_size_o = trans.size;
+  assign lsu_addr_o = align_trans.addr;
+  assign lsu_we_o   = align_trans.we;
+  assign lsu_be_o = be;
 
   ///////////////////////////////// BE generation ////////////////////////////////
   always_comb
