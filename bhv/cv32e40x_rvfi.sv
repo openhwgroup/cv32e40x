@@ -721,9 +721,9 @@ module cv32e40x_rvfi
     .prefetch_compressed_i      ( prefetch_compressed_if_i      ),
     .kill_if_i                  ( ctrl_fsm_i.kill_if            ),
     .mpu_status_i               ( mpu_status_i                  ),
-    .prefetch_trans_valid_i     ( prefetch_trans_valid_i ),
-    .prefetch_trans_ready_i     ( prefetch_trans_ready_i ),
-    .prefetch_resp_valid_i      ( prefetch_resp_valid_i ),
+    .prefetch_trans_valid_i     ( prefetch_trans_valid_i        ),
+    .prefetch_trans_ready_i     ( prefetch_trans_ready_i        ),
+    .prefetch_resp_valid_i      ( prefetch_resp_valid_i         ),
     .m_c_obi_instr_if           ( m_c_obi_instr_if              ),
 
     .obi_instr                  ( obi_instr_if                  )

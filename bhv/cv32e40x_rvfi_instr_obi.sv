@@ -29,9 +29,9 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   input  logic                          prefetch_compressed_i,
   input  logic                          kill_if_i,
   input  mpu_status_e                   mpu_status_i,
-  input logic prefetch_trans_valid_i,
-  input logic prefetch_trans_ready_i,
-  input logic prefetch_resp_valid_i,
+  input logic                           prefetch_trans_valid_i,
+  input logic                           prefetch_trans_ready_i,
+  input logic                           prefetch_resp_valid_i,
 
   if_c_obi.monitor                      m_c_obi_instr_if,
 
