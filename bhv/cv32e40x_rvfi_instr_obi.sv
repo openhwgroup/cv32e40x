@@ -15,6 +15,11 @@
 // SPDX-License-Identifier: Apache-2.0 WITH SHL-2.0
 
 // CV32E40X RVFI instruction OBI interface (aligns instruction OBI signals to IF timing)
+// In order to take MPU faults into account, the control signals are sampled on the core side
+// of the MPU, while the transaction payloads (obi_instr.req_payload, obi_instr.resp_payload)
+// are taken directly from the instruction OBI bus.
+// In case of an MPU fault, the transaction payloads are undefined,
+// with the exception of resp_payload.mpu_status.
 //
 // Contributors: Arjan Bink <arjan.bink@silabs.com>
 
@@ -53,8 +58,8 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   logic [PTR_WIDTH-1:0]         wptr_resp_q, wptr_resp_n;                       // Pointer to FIFO (response phase) entry to be written
   logic [PTR_WIDTH:0]           cnt_q, cnt_n;                                   // Number of FIFO entries including incoming entries
 
-  logic                         fifo_req_push;                                  // Push FIFO when receiving OBI address phase signals
-  logic                         fifo_resp_push;                                 // Push FIFO when receiving OBI response phase signals
+  logic                         fifo_req_push;                                  // Push FIFO when transaction is accepted
+  logic                         fifo_resp_push;                                 // Push FIFO when response is valid
   logic                         fifo_pop;                                       // Pop FIFO when entry has been fully used
 
   // Outstanding transactions
@@ -65,11 +70,12 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   logic                         response_valid;
   logic                         trans_accepted;
 
+  // Use control signals from the core side of the MPU in order to take MPU faults into account
   assign response_valid = prefetch_resp_valid_i;
   assign trans_accepted = prefetch_trans_valid_i && prefetch_trans_ready_i;
 
   //////////////////////////////////////////////////////////////////////////////
-  // Count number of outstanding OBI transactions
+  // Count number of outstanding transactions
   //////////////////////////////////////////////////////////////////////////////
 
   assign outstanding_count_up   = trans_accepted;
@@ -100,10 +106,19 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   // the address phase acceptance, the address phase FIFO push will always be
   // to a different FIFO entry than the response phase FIFO push.
 
-  // Push OBI address phase signals into FIFO when OBI address phase is accepted
+  // Push OBI address phase signals into FIFO when transaction in accepted.
+  // trans_accepted is based on the core side control signals from the MPU.
+  // When there is no MPU fault, trans_accepted will have the same timing as
+  // m_c_obi_instr_if.s_req.req, since the control signals are passed directly through the MPU,
+  // and cv32e40x_instr_obi_interface will be in TRANSPARENT mode (trans_ready_o == 1'b1).
+  // Upon MPU fault, req_payload will be undefined.
   assign fifo_req_push = trans_accepted;
 
-  // Push OBI response phase signals into FIFO when OBI response phase is accepted
+  // Push OBI response phase signals into FIFO when response is valid.
+  // response_valid is based on the core side control signal from the MPU.
+  // When there is no MPU fault, response_valid will have the same timing as
+  // m_c_obi_instr_if.s_rvalid.rvalid, since this signal is passed directly through cv32e40x_instr_obi_interface and the MPU.
+  // Upon MPU fault, resp_payload will be undefined, with the exception of resp_payload.mpu_status
   assign fifo_resp_push = response_valid;
 
   // Pop FIFO when reading word or when reading upper halfword
@@ -174,7 +189,7 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
         wptr_resp_q         <= wptr_resp_n;
       end
 
-      // OBI transaction outstanding
+      // Outstanding transactions
       outstanding_cnt_q     <= outstanding_cnt_n;
 
     end

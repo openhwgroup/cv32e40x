@@ -134,15 +134,15 @@ module cv32e40x_load_store_unit_sva
     else `uvm_error("load_store_unit", "XIF transaction result despite X_EXT being disabled")
 
 
-   // Helper logic to remember OBI prot for the first part of a split transfer
-  logic [2:0] trans_0_prot;
+  // Helper logic to remember OBI prot for the previous transfer
+  logic [2:0] trans_prot_prev;
   always_ff @(posedge clk, negedge rst_n) begin
     if (!rst_n) begin
-      trans_0_prot <= '0;
+      trans_prot_prev <= '0;
     end
     else begin
-      if(m_c_obi_data_if.s_req.req && lsu_split_0_o) begin
-        trans_0_prot <= m_c_obi_data_if.req_payload.prot;
+      if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+        trans_prot_prev <= m_c_obi_data_if.req_payload.prot;
       end
     end
   end
@@ -150,8 +150,8 @@ module cv32e40x_load_store_unit_sva
   // Assert that OBI prot is equal for both parts of a split transfer
   a_lsu_split_prot:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (split_q && m_c_obi_data_if.s_req.req) |->
-                     (m_c_obi_data_if.req_payload.prot == trans_0_prot))
+                     (split_q && (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt)) |->
+                     (m_c_obi_data_if.req_payload.prot == trans_prot_prev))
       else `uvm_error("load_store_unit", "OBI prot not equal for both parts of a split transfer")
 
 endmodule // cv32e40x_load_store_unit_sva
