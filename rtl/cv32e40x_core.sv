@@ -813,7 +813,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Debug
     .trigger_match_if_o         ( trigger_match_if       ),
     .trigger_match_ex_o         ( trigger_match_ex       ),
-    .etrigger_wb_o              ( etrigger_wb       ),
+    .etrigger_wb_o              ( etrigger_wb            ),
     .pc_if_i                    ( pc_if                  ),
     .ptr_in_if_i                ( ptr_in_if              ),
     .lsu_valid_ex_i             ( lsu_valid_ex           ),

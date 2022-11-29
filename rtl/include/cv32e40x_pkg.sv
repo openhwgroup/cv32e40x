@@ -670,7 +670,7 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   parameter MCONTROL6_LOAD       = 0;
 
   parameter ETRIGGER_M = 9;
-  parameter ETRIGGER_U = 7;
+  parameter ETRIGGER_U = 6;
 
   // Bit position parameters for trigger type within tdata1
   parameter TDATA1_TTYPE_HIGH = 31;

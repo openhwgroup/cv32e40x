@@ -178,13 +178,14 @@ module cv32e40x_cs_registers_sva
 
   // Exception trigger shall cause dpc to point to first handler instruction and no instruction shall signal wb_valid the cycle after (while in DEBUG_TAKEN state)
   // Excluding external debug and interrupts (halt_wb, kill_wb) as they (currently) both take priority over etrigger
+  // Also checking that WB stage is empty after an exception trigger has been taken.
   // todo: update when debug causes are updated, trigger match will not be highest priority
   property p_etrigger_dpc_write;
     logic [24:0] mtvec_at_trap;
     @(posedge clk) disable iff (!rst_n)
     (  ((ctrl_fsm_cs == FUNCTIONAL) && etrigger_wb_o && !(ctrl_fsm_i.halt_wb || ctrl_fsm_i.kill_wb), mtvec_at_trap = mtvec_addr_o)
         |=>
-        (!wb_valid_i && dpc_we && (dpc_n == {mtvec_at_trap, {7'd0}}) && (ctrl_fsm_cs == DEBUG_TAKEN)));
+        (!wb_valid_i && !ex_wb_pipe_i.instr_valid && dpc_we && (dpc_n == {mtvec_at_trap, {7'd0}}) && (ctrl_fsm_cs == DEBUG_TAKEN)));
   endproperty;
 
   a_etrigger_dpc_write: assert property(p_etrigger_dpc_write)
