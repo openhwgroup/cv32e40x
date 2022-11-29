@@ -669,6 +669,14 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   parameter MCONTROL6_STORE      = 1;
   parameter MCONTROL6_LOAD       = 0;
 
+  parameter ETRIGGER_M = 9;
+  parameter ETRIGGER_U = 6;
+
+  // Bit position parameters for trigger type within tdata1
+  parameter TDATA1_TTYPE_HIGH = 31;
+  parameter TDATA1_TTYPE_LOW  = 28;
+
+
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //
 //  |_ _|  _ \  / ___|| |_ __ _  __ _  ___   //
@@ -878,6 +886,9 @@ parameter EXC_CAUSE_LOAD_FAULT      = 11'h05;
 parameter EXC_CAUSE_STORE_FAULT     = 11'h07;
 parameter EXC_CAUSE_ECALL_MMODE     = 11'h0B;
 parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h30;
+
+parameter logic [31:0] ETRIGGER_TDATA2_MASK = (1 << EXC_CAUSE_INSTR_BUS_FAULT) | (1 << EXC_CAUSE_ECALL_MMODE) | (1 << EXC_CAUSE_STORE_FAULT) |
+                                              (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT);
 
 parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
 parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
@@ -1295,6 +1306,7 @@ typedef struct packed {
 
   // Signal that an exception is in WB
   logic        exception_in_wb;
+  logic [10:0] exception_cause_wb;
 } ctrl_fsm_t;
 
   ////////////////////////////////////////

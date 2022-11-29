@@ -104,7 +104,8 @@ module cv32e40x_controller_fsm_sva
   input logic           clic_ptr_in_progress_id_set,
   input logic           clic_ptr_in_progress_id,
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
-  input logic           ptr_in_if_i
+  input logic           ptr_in_if_i,
+  input logic           etrigger_in_wb
 );
 
 
@@ -827,5 +828,11 @@ end
                     ((pipe_pc_mux_ctrl == PC_ID) && (if_id_pipe_i.instr_meta.clic_ptr || if_id_pipe_i.instr_meta.mret_ptr || (if_id_pipe_i.instr_meta.tbljmp && last_op_id_i))) ||
                     ((pipe_pc_mux_ctrl == PC_IF) && ptr_in_if_i)))
   else `uvm_error("controller", "Pointer used for context storage")
+
+  // etrigger_in_wb shall only be set when there is an exception in wb
+  a_etrig_exception:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    etrigger_in_wb |-> exception_in_wb)
+    else `uvm_error("controller", "etrigger_in_wb when there is no exception in WB")
 endmodule
 

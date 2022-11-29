@@ -96,6 +96,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  dcsr_t       dcsr_i,
   input  mcause_t     mcause_i,
 
+  // Trigger module
+  input  logic        etrigger_wb_i,              // Trigger module detected match in WB (etrigger)
+
   // Toplevel input
   input  logic        debug_req_i,                // External debug request
 
@@ -173,7 +176,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic mret_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
   logic ebreak_in_wb;
-  logic trigger_match_in_wb;
+  logic trigger_match_in_wb;   // mcontrol6 trigger in WB
+  logic etrigger_in_wb;        // exception trigger in WB
   logic xif_in_wb;
   logic clic_ptr_in_wb;   // CLIC pointer caused by directly acking an SHV is in WB (no mret)
 
@@ -182,6 +186,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic pending_debug;
   logic pending_single_step;
   logic pending_interrupt;
+
 
   // Flags for allowing interrupt and debug
   logic exception_allowed;
@@ -330,6 +335,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               (lsu_mpu_status_wb_i == MPU_WR_FAULT)                      ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (lsu_mpu_status_wb_i == MPU_RE_FAULT)
 
+  assign ctrl_fsm_o.exception_cause_wb = exception_cause_wb;
+
   // For now we are always allowed to take exceptions once they arrive in WB.
   // For a misaligned load/store with MPU error on the first half, the second half
   // will arrive in EX when the first half (with error) arrives in WB. The exception will
@@ -364,6 +371,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Trigger match in wb
   // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
   assign trigger_match_in_wb = (ex_wb_pipe_i.trigger_match && ex_wb_pipe_i.instr_valid);
+
+  // Only set the etrigger_in_wb flag when wb_valid is true (WB is not halted or killed).
+  // If a higher priority event than taking an exception (NMI, external debug or interrupts) are present, wb_valid_i will be
+  // suppressed by either halt_wb followed by kill_wb (debug), or kill_wb (NMI/interrupt).
+  assign etrigger_in_wb = etrigger_wb_i && wb_valid_i;
 
   // An offloaded instruction is in WB
   assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
@@ -458,8 +470,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // pending_single_step may only happen if no other causes for debug are true.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   // todo: update priority according to updated debug spec
-  assign debug_cause_n = pending_single_step ? DBG_CAUSE_STEP :
-                         trigger_match_in_wb ? DBG_CAUSE_TRIGGER :
+  assign debug_cause_n = pending_single_step                               ? DBG_CAUSE_STEP :
+                         (trigger_match_in_wb || etrigger_wb_i)            ? DBG_CAUSE_TRIGGER :
                          (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
                          DBG_CAUSE_HALTREQ;
 
@@ -481,7 +493,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block interrupts.
   //   - Interrupt would otherwise kill the pointer and use the address of the pointer for mepc. A following mret would then return to the mtvt table, losing program progress.
-
   assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !interrupt_blanking_q;
 
   // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
@@ -930,11 +941,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
         end // !debug or interrupts
 
-        // Single step debug entry
+        // Single step debug entry or etrigger debug entry
           // Need to be after (in parallell with) exception/interrupt handling
-          // to ensure mepc and if_pc set correctly for use in dpc,
+          // to ensure mepc and if_pc are set correctly for use in dpc,
           // and to ensure only one instruction can retire during single step
-        if (pending_single_step) begin
+        if (pending_single_step || etrigger_in_wb) begin
           if (single_step_allowed) begin
             ctrl_fsm_ns = DEBUG_TAKEN;
           end
@@ -988,6 +999,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_ex = 1'b1;
           // Ebreak that causes debug entry should not be killed, otherwise RVFI will skip it
           // Trigger match should also be signalled as not killed (all write enables are suppressed in ID), otherwise RVFI/ISS will not attempt to execute and detect trigger
+          // Exception trigger match should have nothing in WB, excepted instruction finished the previous cycle and set mepc and mcause due to the exception.
           // Ebreak during debug_mode restarts from dm_halt_addr, without CSR updates. Not killing ebreak due to the same RVFI/ISS reasons.
           // Neither ebreak nor trigger match have any state updates in WB. For trigger match, all write enables are suppressed in the ID stage.
           //   Thus this change is not visible to core state, only for RVFI use.

@@ -105,6 +105,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                          ptr_in_if_i,
   output logic                          trigger_match_if_o,
   output logic                          trigger_match_ex_o,
+  output logic                          etrigger_wb_o,
   input  logic                          lsu_valid_ex_i,
   input  logic [31:0]                   lsu_addr_ex_i,
   input  logic                          lsu_we_ex_i,
@@ -1530,12 +1531,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       .lsu_be_ex_i      ( lsu_be_ex_i   ),
       .priv_lvl_ex_i    ( PRIV_LVL_M    ),
 
+      // WB inputs
+      .priv_lvl_wb_i    ( PRIV_LVL_M    ),
+
       // Controller inputs
       .ctrl_fsm_i       ( ctrl_fsm_i    ),
 
       // Trigger match outputs
       .trigger_match_if_o  ( trigger_match_if_o ),
-      .trigger_match_ex_o  ( trigger_match_ex_o )
+      .trigger_match_ex_o  ( trigger_match_ex_o ),
+      .etrigger_wb_o       ( etrigger_wb_o      )
     );
 
 
