@@ -317,8 +317,7 @@ import cv32e40x_pkg::*;
         assign priv_lvl_match_en_wb[idx] = (tdata1_rdata[idx][ETRIGGER_M] && (priv_lvl_wb_i == PRIV_LVL_M)) ||
                                            (tdata1_rdata[idx][ETRIGGER_U] && (priv_lvl_wb_i == PRIV_LVL_U));
 
-        assign etrigger_wb[idx] = (tdata1_rdata[idx][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_ETRIGGER) && tdata1_rdata[idx][ETRIGGER_M] &&
-                                  priv_lvl_match_en_wb[idx] &&
+        assign etrigger_wb[idx] = (tdata1_rdata[idx][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_ETRIGGER) && priv_lvl_match_en_wb[idx] &&
                                   (|exception_match[idx]) && !ctrl_fsm_i.debug_mode;
 
 
