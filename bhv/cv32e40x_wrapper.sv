@@ -235,7 +235,8 @@ module cv32e40x_wrapper
     core_i.cs_registers_i
       cv32e40x_cs_registers_sva
         #(.SMCLIC(SMCLIC))
-        cs_registers_sva (.wb_valid_i (core_i.wb_valid),
+        cs_registers_sva (.wb_valid_i  (core_i.wb_valid                                 ),
+                          .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
                           .*);
 
   bind cv32e40x_load_store_unit:

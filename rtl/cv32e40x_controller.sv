@@ -97,6 +97,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input logic  [1:0]  mtvec_mode_i,
   input  mcause_t     mcause_i,
 
+  input  logic        etrigger_wb_i,
+
   input  logic        csr_wr_in_wb_flush_i,
 
   // Debug Signal
@@ -205,6 +207,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wu_wfe_i                    ( wu_wfe_i                 ),
 
     .mtvec_mode_i                ( mtvec_mode_i             ),
+
+    .etrigger_wb_i               ( etrigger_wb_i            ),
 
     // Debug Signal
     .debug_req_i                 ( debug_req_i              ),

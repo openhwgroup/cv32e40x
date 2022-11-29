@@ -291,6 +291,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        trigger_match_if;
   // trigger match detected in trigger module (using EX/LSU timing)
   logic        trigger_match_ex;
+  // trigger match detected in trigger module (using WB timing, etrigger)
+  logic        etrigger_wb;
 
   // Controller <-> decoder
   logic        alu_jmp_id;
@@ -811,6 +813,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // Debug
     .trigger_match_if_o         ( trigger_match_if       ),
     .trigger_match_ex_o         ( trigger_match_ex       ),
+    .etrigger_wb_o              ( etrigger_wb       ),
     .pc_if_i                    ( pc_if                  ),
     .ptr_in_if_i                ( ptr_in_if              ),
     .lsu_valid_ex_i             ( lsu_valid_ex           ),
@@ -902,6 +905,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
     .mcause_i                       ( mcause                 ),
+
+    // Trigger module
+    .etrigger_wb_i                  ( etrigger_wb            ),
 
     // CSR write strobes
     .csr_wr_in_wb_flush_i           ( csr_wr_in_wb_flush     ),
