@@ -286,20 +286,16 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Tracking split (misaligned) state
   // This signals has EX timing, and indicates that the second
   // address phase of a split transfer is taking place
-  // Reset/killed on !valid_0_gated when no trigger match is present to ensure it is zero for the
+  // Reset/killed on !valid_0_gated to ensure it is zero for the
   // first phase of the next instruction. Otherwise it could stick at 1 after a killed
   // split, causing next LSU instruction to calculate wrong _be.
-  // If reset due to valid_0_gated being pulled low by trigger_match_0_i, the change from 1 to 0 in split_q
-  // would cause the align_trans.addr to change, possibly changing the value of trigger_match_0_i before the
-  // instruction goes from EX to WB.
-  // When a trigger match occurs, the split_q flag will be reset to 0 once ready_0_i goes high. (lsu_split_0_o is 0 when valid_0_gated == 0).
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       split_q    <= 1'b0;
     end else begin
-      if(!valid_0_gated && !trigger_match_0_i && !xif_req) begin
+      if(!valid_0_gated && !xif_req) begin
         split_q <= 1'b0; // Reset split_st when no valid instructions
-      end else if (ctrl_update || (trigger_match_0_i && ready_0_i)) begin // EX done, update split_q for next address phase
+      end else if (ctrl_update) begin // EX done, update split_q for next address phase
         split_q <= lsu_split_0_o;
       end
     end
