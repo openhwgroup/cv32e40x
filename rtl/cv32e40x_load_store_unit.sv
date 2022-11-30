@@ -132,6 +132,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic [31:0]    wdata;
 
   logic           split_q;              // Currently performing the second address phase of a split misaligned load/store
+                                        // Note that in the presence of a write buffer, split_q will align with acceptance of the second
+                                        // transfer by the write buffer. This may not align with the OBI address phase.
   logic           misaligned_halfword;  // Halfword is not naturally aligned, but no split is needed
   logic           misaligned_access;    // Access is not naturally aligned
 

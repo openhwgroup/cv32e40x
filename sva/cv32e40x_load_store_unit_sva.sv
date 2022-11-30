@@ -135,14 +135,39 @@ module cv32e40x_load_store_unit_sva
 
 
   // Helper logic to remember OBI prot for the previous transfer
+  // Also keep track of remainig parts of a split transfer
   logic [2:0] trans_prot_prev;
+  logic [1:0] split_rem_cnt;
   always_ff @(posedge clk, negedge rst_n) begin
     if (!rst_n) begin
       trans_prot_prev <= '0;
+      split_rem_cnt <= '0;
     end
     else begin
       if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+        // Keep track of prot for the previous transfer
         trans_prot_prev <= m_c_obi_data_if.req_payload.prot;
+      end
+
+      // Keep track of remaining parts of split transfers
+      if(ctrl_fsm_i.kill_ex) begin
+        // EX was killed, clear counter
+        split_rem_cnt <= 2'h0;
+      end
+      else if (lsu_split_0_o) begin
+        // New split transfer
+        if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+          // 1st transfer accepted immediately, one remaining
+          split_rem_cnt <= 2'h1;
+        end
+        else begin
+          // 1st transfer not accepted immediately, two remaining
+          split_rem_cnt <= 2'h2;
+        end
+      end
+      else if (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+        // Transfer accepted, decrement counter
+        split_rem_cnt <= (split_rem_cnt > 2'h0) ? split_rem_cnt - 2'h1 : 2'h0;
       end
     end
   end
@@ -150,7 +175,7 @@ module cv32e40x_load_store_unit_sva
   // Assert that OBI prot is equal for both parts of a split transfer
   a_lsu_split_prot:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (split_q && (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt)) |->
+                     ((split_rem_cnt == 2'h1) && (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt)) |->
                      (m_c_obi_data_if.req_payload.prot == trans_prot_prev))
       else `uvm_error("load_store_unit", "OBI prot not equal for both parts of a split transfer")
 
