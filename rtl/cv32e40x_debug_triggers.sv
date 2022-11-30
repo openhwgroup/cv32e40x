@@ -141,7 +141,10 @@ import cv32e40x_pkg::*;
         tdata2_n  = tdata2_rdata_o;
 
         if (tdata1_we_i) begin
-          if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) begin
+          if (csr_wdata_i == 32'd0) begin
+            // Writing zero to tdata1 disables the currently selected trigger
+            tdata1_n = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
+          end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) begin
             // Mcontrol6 supports any value in tdata2, no need to check tdata2 before writing tdata1
             tdata1_n = {
                         TTYPE_MCONTROL6,       // type    : address/data match
