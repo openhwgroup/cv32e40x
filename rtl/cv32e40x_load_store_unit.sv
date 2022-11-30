@@ -289,7 +289,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Reset/killed on !valid_0_gated to ensure it is zero for the
   // first phase of the next instruction. Otherwise it could stick at 1 after a killed
   // split, causing next LSU instruction to calculate wrong _be.
-  // todo: add assertion that it is zero for the first phase (regardless of alignment)
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       split_q    <= 1'b0;

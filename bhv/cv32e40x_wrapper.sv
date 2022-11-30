@@ -244,6 +244,9 @@ module cv32e40x_wrapper
       // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
       .m_c_obi_data_if(core_i.m_c_obi_data_if),
       .ex_wb_pipe_i   (core_i.ex_wb_pipe),
+      .id_valid       (core_i.id_valid),
+      .ex_ready       (core_i.ex_ready),
+      .lsu_en_id      (core_i.id_stage_i.lsu_en),
       .*);
 
   bind cv32e40x_prefetch_unit:

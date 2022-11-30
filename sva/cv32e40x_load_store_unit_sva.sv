@@ -38,7 +38,14 @@ module cv32e40x_load_store_unit_sva
    input ex_wb_pipe_t ex_wb_pipe_i,
    if_c_obi.monitor  m_c_obi_data_if,
    input logic       xif_req,
-   input logic       xif_res_q
+   input logic       xif_res_q,
+   input logic       id_valid,
+   input logic       ex_ready,
+   input logic       lsu_en_id,
+   input logic       lsu_first_op_0_o,
+   input logic       valid_0_i,
+   input logic       ready_0_i,
+   input logic       trigger_match_0_i
   );
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -131,6 +138,22 @@ module cv32e40x_load_store_unit_sva
   assert property (@(posedge clk) disable iff (!rst_n)
                   !X_EXT |-> !xif_res_q)
     else `uvm_error("load_store_unit", "XIF transaction result despite X_EXT being disabled")
+
+  // split_q must be 0 when a new LSU instruction enters the LSU
+  a_clear_splitq:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (id_valid && ex_ready && lsu_en_id)
+                  |=>
+                  !split_q && lsu_first_op_0_o)
+    else `uvm_error("load_store_unit", "split_q not zero for a new LSU instruction")
+
+  // trigger_match_0_i must remain stable while the instruction is in EX
+  a_stable_tmatch:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (valid_0_i && !ready_0_i)
+                  |=>
+                  $stable(trigger_match_0_i) until_with(ready_0_i))
+    else `uvm_error("load_store_unit", "trigger_match_0_i changed before ready_0_i became 1")
 
 endmodule // cv32e40x_load_store_unit_sva
 
