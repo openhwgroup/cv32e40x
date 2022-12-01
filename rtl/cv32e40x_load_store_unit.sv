@@ -88,14 +88,21 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction request (before aligner)
   trans_req_t     trans;
+  logic           trans_valid;
+  logic           trans_ready;
 
   // Gated version of valid_0_i, suppressed on trigger matches
   logic           valid_0_gated;
 
-  // Aligned transaction request (to cv32e40x_mpu)
-  logic           trans_valid; // todo: consider renaming to align_trans_valid, align_trans_ready (if so, do we need trans_valid, trans_ready as well?)
-  logic           trans_ready;
-  obi_data_req_t  align_trans;
+  // Aligned transaction request (to cv32e40x_wpt)
+  logic           wpt_trans_valid;
+  logic           wpt_trans_ready;
+  obi_data_req_t  wpt_trans;
+
+  // Transaction request to cv32e40x_mpu
+  logic           mpu_trans_valid;
+  logic           mpu_trans_ready;
+  obi_data_req_t  mpu_trans;
 
   // Transaction response interface (from cv32e40x_mpu)
   logic           resp_valid;
@@ -179,8 +186,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   end
 
   // Set outputs for trigger module
-  assign lsu_addr_o = align_trans.addr;
-  assign lsu_we_o   = align_trans.we;
+  assign lsu_addr_o = wpt_trans.addr;
+  assign lsu_we_o   = wpt_trans.we;
   assign lsu_be_o = be;
 
   ///////////////////////////////// BE generation ////////////////////////////////
@@ -431,28 +438,32 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   always_comb begin
     if (xif_req) begin
-      align_trans.addr    = xif_mem_if.mem_req.addr;
-      align_trans.we      = xif_mem_if.mem_req.we;
-      align_trans.be      = xif_mem_if.mem_req.be;
-      align_trans.wdata   = xif_mem_if.mem_req.wdata;
-      align_trans.atop    = '0;
-      align_trans.prot    = {xif_mem_if.mem_req.mode, 1'b1}; // XIF transfers are data transfers
-      align_trans.dbg     = '0;                              // TODO setup debug triggers
-      align_trans.memtype = 2'b00;                           // Memory type is assigned in MPU
+      wpt_trans.addr    = xif_mem_if.mem_req.addr;
+      wpt_trans.we      = xif_mem_if.mem_req.we;
+      wpt_trans.be      = xif_mem_if.mem_req.be;
+      wpt_trans.wdata   = xif_mem_if.mem_req.wdata;
+      wpt_trans.atop    = '0;
+      wpt_trans.prot    = {xif_mem_if.mem_req.mode, 1'b1}; // XIF transfers are data transfers
+      wpt_trans.dbg     = '0;                              // TODO setup debug triggers
+      wpt_trans.memtype = 2'b00;                           // Memory type is assigned in MPU
     end else begin
       // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
       // todo: As part of the fix for https://github.com/openhwgroup/cv32e40x/issues/388 the following should be used as well:
-      // align_trans.addr   = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
-      align_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
-      align_trans.we      = trans.we;
-      align_trans.be      = be;
-      align_trans.wdata   = wdata;
-      align_trans.atop    = trans.atop;
-      align_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
-      align_trans.dbg     = trans.dbg;
-      align_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
+      // wpt_trans.addr   = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
+      wpt_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
+      wpt_trans.we      = trans.we;
+      wpt_trans.be      = be;
+      wpt_trans.wdata   = wdata;
+      wpt_trans.atop    = trans.atop;
+      wpt_trans.prot    = {trans.mode, 1'b1};      // Transfers from LSU are data transfers
+      wpt_trans.dbg     = trans.dbg;
+      wpt_trans.memtype = 2'b00;                   // Memory type is assigned in MPU
     end
   end
+
+  // Set handshake signals for wpt_trans (same as for trans, but kept separate for clean naming)
+  assign wpt_trans_valid = trans_valid;
+  assign trans_ready       = wpt_trans_ready;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
@@ -615,6 +626,14 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   assign lsu_err_1_o = xif_res_q ? '0 : filter_err;
 
   //////////////////////////////////////////////////////////////////////////////
+  // WPT
+  //////////////////////////////////////////////////////////////////////////////
+  // Placeholder assignmenst before introducing the watchpoint trigger module
+  assign mpu_trans = wpt_trans;
+  assign mpu_trans_valid = wpt_trans_valid;
+  assign wpt_trans_ready = mpu_trans_ready;
+
+  //////////////////////////////////////////////////////////////////////////////
   // MPU
   //////////////////////////////////////////////////////////////////////////////
 
@@ -638,9 +657,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
     .core_mpu_err_wait_i  ( !xif_req           ),
     .core_mpu_err_o       ( xif_mpu_err        ),
-    .core_trans_valid_i   ( trans_valid        ),
-    .core_trans_ready_o   ( trans_ready        ),
-    .core_trans_i         ( align_trans        ),
+    .core_trans_valid_i   ( mpu_trans_valid    ),
+    .core_trans_ready_o   ( mpu_trans_ready    ),
+    .core_trans_i         ( mpu_trans          ),
     .core_resp_valid_o    ( resp_valid         ),
     .core_resp_o          ( resp               ),
 
