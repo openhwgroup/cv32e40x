@@ -948,6 +948,9 @@ typedef enum logic [1:0] {
 
 typedef enum logic [2:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT} mpu_state_e;
 
+// WPT state machine
+typedef enum logic [1:0] {WPT_IDLE, WPT_MATCH_WAIT, WPT_MATCH_RESP} wpt_state_e;
+
 // OBI bus and internal data types
 
 parameter INSTR_ADDR_WIDTH = 32;
@@ -1018,10 +1021,11 @@ parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
   dbg     : 1'b0
 };
 
-// Data transfer bundeled with MPU status
+// Data transfer bundeled with MPU status and watchpoint trigger match
 typedef struct packed {
   obi_data_resp_t             bus_resp;
   mpu_status_e                mpu_status;
+  logic                       wpt_match;
 } data_resp_t;
 
 // LSU transaction

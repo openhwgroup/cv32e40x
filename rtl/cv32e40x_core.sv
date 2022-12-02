@@ -243,6 +243,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_first_op_ex;
   logic        lsu_last_op_ex;
   mpu_status_e lsu_mpu_status_wb;
+  logic        lsu_wpt_match_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
 
@@ -581,9 +582,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_illegal_i              ( csr_illegal                  ),
     .csr_mnxti_read_i           ( csr_mnxti_read               ),
 
-    // trigger input
-    .trigger_match_i            ( trigger_match_ex             ),
-
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
     .branch_target_o            ( branch_target_ex             ),
@@ -662,6 +660,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
+    .lsu_wpt_match_1_o     ( lsu_wpt_match_wb   ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
@@ -698,6 +697,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // LSU
     .lsu_rdata_i                ( lsu_rdata_wb                 ),
     .lsu_mpu_status_i           ( lsu_mpu_status_wb            ),
+    .lsu_wpt_match_i            ( lsu_wpt_match_wb             ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
@@ -888,6 +888,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
     .lsu_valid_wb_i                 ( lsu_valid_wb           ),
+    .lsu_wpt_match_wb_i             ( lsu_wpt_match_wb       ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

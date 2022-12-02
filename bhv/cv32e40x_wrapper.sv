@@ -247,6 +247,8 @@ module cv32e40x_wrapper
       .id_valid       (core_i.id_valid),
       .ex_ready       (core_i.ex_ready),
       .lsu_en_id      (core_i.id_stage_i.lsu_en),
+      .ctrl_fsm_cs    (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
+      .ctrl_fsm_ns    (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
       .*);
 
   bind cv32e40x_prefetch_unit:
@@ -289,8 +291,10 @@ module cv32e40x_wrapper
                 .exc_cause                        (core_i.controller_i.controller_fsm_i.exc_cause),
                 // probed controller signals
                 .ctrl_debug_mode_n                (core_i.controller_i.controller_fsm_i.debug_mode_n),
-                .ctrl_pending_debug               (core_i.controller_i.controller_fsm_i.pending_debug),
-                .ctrl_debug_allowed               (core_i.controller_i.controller_fsm_i.debug_allowed),
+                .ctrl_pending_async_debug         (core_i.controller_i.controller_fsm_i.pending_async_debug),
+                .ctrl_async_debug_allowed         (core_i.controller_i.controller_fsm_i.async_debug_allowed),
+                .ctrl_pending_sync_debug          (core_i.controller_i.controller_fsm_i.pending_sync_debug),
+                .ctrl_sync_debug_allowed          (core_i.controller_i.controller_fsm_i.sync_debug_allowed),
                 .ctrl_pending_interrupt           (core_i.controller_i.controller_fsm_i.pending_interrupt),
                 .ctrl_interrupt_allowed           (core_i.controller_i.controller_fsm_i.interrupt_allowed),
                 .ctrl_debug_cause_n               (core_i.controller_i.controller_fsm_i.debug_cause_n),
@@ -504,7 +508,6 @@ endgenerate
          .single_step_allowed_i    ( core_i.controller_i.controller_fsm_i.single_step_allowed             ),
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
-         .pending_debug_i          ( core_i.controller_i.controller_fsm_i.pending_debug                   ),
          .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
          .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),
          .irq_wu_ctrl_i            ( core_i.irq_wu_ctrl                                                   ),
