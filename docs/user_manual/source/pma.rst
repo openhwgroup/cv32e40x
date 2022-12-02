@@ -51,18 +51,11 @@ load access fault (exception code 5). An attempt to perform a modifiable/modifie
    Modifiable transactions are transactions which allow transformations as for example merging or splitting. For example, a misaligned store word instruction that
    is handled as two subword transactions on the data interface is considered to use modified transactions.
 
-.. note::
-   As execution based debug is used, the Debug Module (with code entry points defined by ``dm_halt_addr_i`` and ``dm_exception_addr_i``) needs to be located
-   in a memory region that supports code execution, i.e. in a region defined as main.
-
 Bufferable and Cacheable
 ~~~~~~~~~~~~~~~~~~~~~~~~
 Accesses to regions marked as bufferable (``bufferable=1``) will result in the OBI ``mem_type[0]`` bit being set, except if the access was an instruction fetch, a load, or part of an atomic memory operation. Bufferable stores will utilize the write buffer, see :ref:`Write buffer <write_buffer>`.
 
 Accesses to regions marked as cacheable (``cacheable=1``) will result in the OBI ``mem_type[1]`` bit being set.
-
-.. note::
-   The PMA must be configured such that accesses to the external debug module are non-cacheable, to enable its program buffer to function correctly.
 
 Atomic operations
 ~~~~~~~~~~~~~~~~~
@@ -70,6 +63,7 @@ Regions supporting atomic operations can be defined by setting ``atomic=1``.
 An attempt to perform a Load-Reserved to a region in which Atomic operations are not allowed will cause a precise load access fault (exception code 5).
 An attempt to perform a Store-Conditional or Atomic Memory Operation (AMO) to a region in which Atomic operations are not allowed will cause a precise store/AMO access fault (exception code 7).
 Note that the ``atomic`` attribute is only used when the RV32A extension is included.
+
 
 Default attribution
 ~~~~~~~~~~~~~~~~~~~
@@ -79,3 +73,13 @@ If the PMA is configured (``PMA_NUM_REGIONS > 0``), memory regions not covered b
 
 Every instruction fetch, load and store will be subject to PMA checks and failed checks will result in an exception. PMA checks cannot be disabled.
 See :ref:`exceptions-interrupts` for details.
+
+Debug mode
+~~~~~~~~~~
+Accesses to the Debug Module region, as defined by the ``DM_REGION_START`` and ``DM_REGION_END`` parameters, while in debug mode are treated specially.
+For such accesses the PMA configuration and default attribution rules are ignored and the following applies instead:
+
+ * The access is treated as a main memory access.
+ * The access is treated as a non-bufferable access.
+ * The access is treated as a non-cacheable access.
+ * The access is treated as an access to a region without support for atomic operations.

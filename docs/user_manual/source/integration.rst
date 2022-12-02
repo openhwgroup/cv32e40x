@@ -12,26 +12,28 @@ Instantiation Template
 .. code-block:: verilog
 
   cv32e40x_core #(
-      .LIB                        (         0 ),
-      .RV32                       (     RV32I ),
-      .A_EXT                      (         0 ),
-      .B_EXT                      (    B_NONE ),
-      .M_EXT                      (         M ),
-      .X_EXT                      (         0 ),
-      .X_NUM_RS                   (         2 ),
-      .X_ID_WIDTH                 (         4 ),
-      .X_MEM_WIDTH                (        32 ),
-      .X_RFR_WIDTH                (        32 ),
-      .X_RFW_WIDTH                (        32 ),
-      .X_MISA                     (     32'h0 ),
-      .X_ECS_XS                   (      2'b0 ),
-      .DBG_NUM_TRIGGERS           (         1 ),
-      .NUM_MHPMCOUNTERS           (         1 ),
-      .PMA_NUM_REGIONS            (         1 ),
-      .PMA_CFG                    ( PMA_CFG[] ),
-      .SMCLIC                     (         0 ),
-      .SMCLIC_ID_WIDTH            (         5 ),
-      .SMCLIC_INTTHRESHBITS       (         8 )
+      .LIB                        (            0 ),
+      .RV32                       (        RV32I ),
+      .A_EXT                      (            0 ),
+      .B_EXT                      (       B_NONE ),
+      .M_EXT                      (            M ),
+      .X_EXT                      (            0 ),
+      .X_NUM_RS                   (            2 ),
+      .X_ID_WIDTH                 (            4 ),
+      .X_MEM_WIDTH                (           32 ),
+      .X_RFR_WIDTH                (           32 ),
+      .X_RFW_WIDTH                (           32 ),
+      .X_MISA                     (        32'h0 ),
+      .X_ECS_XS                   (         2'b0 ),
+      .DM_REGION_START            ( 32'hF0000000 ),
+      .DM_REGION_END              ( 32'hF0003FFF ),
+      .DBG_NUM_TRIGGERS           (            1 ),
+      .NUM_MHPMCOUNTERS           (            1 ),
+      .PMA_NUM_REGIONS            (            1 ),
+      .PMA_CFG                    (    PMA_CFG[] ),
+      .SMCLIC                     (            0 ),
+      .SMCLIC_ID_WIDTH            (            5 ),
+      .SMCLIC_INTTHRESHBITS       (            8 )
   ) u_core (
       // Clock and reset
       .clk_i                    (),
@@ -168,6 +170,10 @@ Parameters
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``NUM_MHPMCOUNTERS``           | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
   |                                |                |               | :ref:`performance-counters`                                        |
+  +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+  | ``DM_REGION_START``            | logic [31:0]   | 32'hF0000000  | Start address of Debug Module region, see :ref:`debug-support`     |
+  +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+  | ``DM_REGION_END``              | logic [31:0]   | 32'hF0003FFF  | End address of Debug Module region, see :ref:`debug-support`       |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``DBG_NUM_TRIGGERS``           | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`                 |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
