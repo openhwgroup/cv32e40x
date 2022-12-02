@@ -48,7 +48,9 @@ module cv32e40x_load_store_unit_sva
    input logic       valid_0_i,
    input logic       ready_0_i,
    input logic       trigger_match_0_i,
-   input logic       lsu_wpt_match_1_o
+   input logic       lsu_wpt_match_1_o,
+   input mpu_state_e mpu_state,
+   input wpt_state_e wpt_state
   );
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -167,6 +169,16 @@ module cv32e40x_load_store_unit_sva
                   |=>
                   $stable(trigger_match_0_i) until_with(ready_0_i))
     else `uvm_error("load_store_unit", "trigger_match_0_i changed before ready_0_i became 1")
+
+  // WPT and MPU cannot both wait for a response at the sime time
+  // If they could both wait for a response, then they would need separate counters for the
+  // "one-transaction-left" inputs - otherwise they may share the counter.
+  a_wpt_mpu_cnt_share:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  ((wpt_state == WPT_MATCH_WAIT) || (mpu_state == MPU_RE_ERR_WAIT) || (mpu_state == MPU_WR_ERR_WAIT))
+                  |->
+                  (wpt_state == WPT_MATCH_WAIT) != ((mpu_state == MPU_RE_ERR_WAIT) || (mpu_state == MPU_WR_ERR_WAIT)))
+    else `uvm_error("load_store_unit", "WPT and MPU both wait for responses")
 
 endmodule // cv32e40x_load_store_unit_sva
 

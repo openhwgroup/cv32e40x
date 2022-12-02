@@ -464,7 +464,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Set handshake signals for wpt_trans (same as for trans, but kept separate for clean naming)
   assign wpt_trans_valid = trans_valid;
-  assign trans_ready       = wpt_trans_ready;
+  assign trans_ready     = wpt_trans_ready;
 
   // Transaction request generation
   // OBI compatible (avoids combinatorial path from data_rvalid_i to data_req_o). Multiple trans_* transactions can be
@@ -542,7 +542,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   assign count_up = trans_valid && trans_ready;         // Increment upon accepted transfer request
-  assign count_down = wpt_resp_valid;                       // Decrement upon accepted transfer response
+  assign count_down = wpt_resp_valid;                   // Decrement upon accepted transfer response
 
   always_comb begin
     case ({count_up, count_down})

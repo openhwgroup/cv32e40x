@@ -249,6 +249,8 @@ module cv32e40x_wrapper
       .lsu_en_id      (core_i.id_stage_i.lsu_en),
       .ctrl_fsm_cs    (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
       .ctrl_fsm_ns    (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+      .mpu_state      (core_i.load_store_unit_i.mpu_i.state_q),
+      .wpt_state      (core_i.load_store_unit_i.wpt_i.state_q),
       .*);
 
   bind cv32e40x_prefetch_unit:
