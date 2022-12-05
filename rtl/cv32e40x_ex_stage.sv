@@ -47,8 +47,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic        csr_illegal_i,
   input  logic        csr_mnxti_read_i,
 
-  input  logic        trigger_match_i,
-
   // EX/WB pipeline
   output ex_wb_pipe_t ex_wb_pipe_o,
 
@@ -366,12 +364,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         ex_wb_pipe_o.last_op     <= last_op_o;
         ex_wb_pipe_o.first_op    <= first_op_o;
-        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op || trigger_match_i; // MPU exceptions have WB timing and will not impact ex_wb_pipe.abort_op
-        // Deassert rf_we in case of illegal csr instruction,
-        // when the first half of a misaligned/split LSU goes to WB or when there is a trigger match on the LSU address.
+        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op; // MPU exceptions and watchpoint triggers have WB timing and will not impact ex_wb_pipe.abort_op
+        // Deassert rf_we in case of illegal csr instruction or when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
-        ex_wb_pipe_o.rf_we       <= (csr_is_illegal || lsu_split_i || trigger_match_i) ? 1'b0 : id_ex_pipe_i.rf_we;
-        ex_wb_pipe_o.lsu_en      <= trigger_match_i ? 1'b0 : id_ex_pipe_i.lsu_en;
+        ex_wb_pipe_o.rf_we       <= (csr_is_illegal || lsu_split_i) ? 1'b0 : id_ex_pipe_i.rf_we;
+        ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
 
         if (id_ex_pipe_i.rf_we) begin
           ex_wb_pipe_o.rf_waddr <= id_ex_pipe_i.rf_waddr;
@@ -413,7 +410,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-        ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match || trigger_match_i;
+        ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface
         ex_wb_pipe_o.xif_en         <= ctrl_fsm_i.kill_xif ? 1'b0 : id_ex_pipe_i.xif_en;
@@ -457,7 +454,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                        (id_ex_pipe_i.mul_en && mul_valid)       ||
                        (id_ex_pipe_i.div_en && div_valid)       ||
                        (id_ex_pipe_i.lsu_en && lsu_valid_i)     ||
-                       (id_ex_pipe_i.lsu_en && trigger_match_i) || // LSU trigger match causes no side effects in EX, raise ex_valid
                        (id_ex_pipe_i.xif_en && xif_valid)       ||
                        (id_ex_pipe_i.instr_meta.clic_ptr)       || // todo: Should this instead have it's own _valid?
                        (id_ex_pipe_i.instr_meta.mret_ptr)       || // todo: Should this instead have it's own _valid?

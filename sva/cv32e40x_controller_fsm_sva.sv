@@ -64,8 +64,9 @@ module cv32e40x_controller_fsm_sva
   input logic           fencei_flush_req_o,
   input logic           fencei_flush_ack_i,
   input logic           fencei_req_and_ack_q,
-  input logic           pending_debug,
-  input logic           debug_allowed,
+  input logic           pending_async_debug,
+  input logic           async_debug_allowed,
+  input logic           sync_debug_allowed,
   input logic           pending_interrupt,
   input logic           interrupt_allowed,
   input logic           pending_nmi,
@@ -105,7 +106,8 @@ module cv32e40x_controller_fsm_sva
   input logic           clic_ptr_in_progress_id,
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i,
-  input logic           etrigger_in_wb
+  input logic           etrigger_in_wb,
+  input logic           lsu_wpt_match_wb_i
 );
 
 
@@ -243,7 +245,7 @@ module cv32e40x_controller_fsm_sva
   // Assert that the fencei request is set the cycle after fencei instruction enters WB (if fencei_ready=1 and there are no higher priority events)
   a_fencei_hndshk_req_when_fencei_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-           $rose(fencei_in_wb && fencei_ready) && !(pending_nmi || (pending_debug && debug_allowed) || (pending_interrupt && interrupt_allowed))
+           $rose(fencei_in_wb && fencei_ready) && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
                      |=> $rose(fencei_flush_req_o))
       else `uvm_error("controller", "Fencei in WB did not result in fencei_flush_req_o")
 
@@ -426,12 +428,21 @@ generate;
 endgenerate
 
   // Assert that debug is not allowed when WB stage has an LSU
-  // instruction (cnt_q != 0)
+  // instruction (cnt_q != 0) with no watchpoint match attached to it.
+
   a_block_debug:
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) |-> !debug_allowed)
+                     (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) && (ctrl_fsm_cs == FUNCTIONAL)
+                     |->
+                     !async_debug_allowed)
       else `uvm_error("controller", "debug_allowed high while LSU is in WB")
 
+  a_lsu_wp_debug:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == DEBUG_TAKEN) && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid)
+                    |->
+                    $past(lsu_wpt_match_wb_i))
+      else `uvm_error("conroller", "LSU active in WB during DEBUG_TAKEN with no preceeding watchpoint trigger")
   // Ensure bubble in EX while in SLEEP mode.
   // WFI or WFE instruction will be in WB
   // Bubble is needed to avoid any LSU instructions to go on the bus while handling the WFI, as this
@@ -471,7 +482,7 @@ endgenerate
   a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
-                    !irq_wu_ctrl_i && wu_wfe_i && !pending_debug
+                    !irq_wu_ctrl_i && wu_wfe_i && !pending_async_debug
                     |=>
                     (ctrl_fsm_cs == SLEEP))
     else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
@@ -481,7 +492,7 @@ endgenerate
   a_wfe_wakeup:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn &&
-                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_debug
+                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_async_debug
                     |->
                     (ctrl_fsm_ns == FUNCTIONAL))
     else `uvm_error("controller", "WFE must wake up to interuppts or wu_wfe_i")
@@ -651,7 +662,13 @@ end
   // Used to determine if we are allowed to take debug or interrupts
   logic sequence_interruptible_alt;
   always_comb begin
-    if (ex_wb_pipe_i.instr_valid) begin
+    // Excluding the case of the current state being DEBUG_TAKEN. In this state, we may have a
+    // lsu instruction in WB with !first_op if this instruction caused a watchpoint trigger.
+    // The controller will reset the flop based flag when this is detected and the code below
+    // would not match if not detecting the same case.
+    if (ex_wb_pipe_i.instr_valid && (ctrl_fsm_cs == DEBUG_TAKEN)) begin
+      sequence_interruptible_alt = 1'b1;
+    end else if (ex_wb_pipe_i.instr_valid) begin
       sequence_interruptible_alt = ex_wb_pipe_i.first_op;
     end else if (id_ex_pipe_i.instr_valid) begin
       sequence_interruptible_alt = first_op_ex_i;
@@ -834,5 +851,22 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                     etrigger_in_wb |-> exception_in_wb)
     else `uvm_error("controller", "etrigger_in_wb when there is no exception in WB")
+
+  // Only halt LSU instruction in WB for watchpoint trigger matches
+  a_halt_lsu_wb:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) && ctrl_fsm_o.halt_wb
+                  |->
+                  lsu_wpt_match_wb_i)
+    else `uvm_error("controller", "LSU in WB halted without watchpoint trigger match")
+
+
+  // Check that debug is always taken when a watchpoint trigger is arrives in WB
+  a_wpt_debug_entry:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ex_wb_pipe_i.instr_valid && lsu_wpt_match_wb_i)
+                  |->
+                  (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
+    else `uvm_error("controller", "Debug not entered on a WPT match")
 endmodule
 

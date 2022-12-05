@@ -48,6 +48,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // LSU
   input  logic [31:0]   lsu_rdata_i,
   input  mpu_status_e   lsu_mpu_status_i,
+  input  logic          lsu_wpt_match_i,
 
   // Register file interface
   output logic          rf_we_wb_o,     // Register file write enable
@@ -110,7 +111,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
   // TODO: Could use result interface.we into account if out of order completion is allowed.
-  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && instr_valid;
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && !lsu_wpt_match_i && instr_valid;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
@@ -156,7 +157,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Append any MPU exception to abort_op
   // An abort_op_o = 1 will terminate a sequence, either to take an exception or debug due to trigger match.
-  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception);
+  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception) || (ex_wb_pipe_i.lsu_en && lsu_wpt_match_i);
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = ex_wb_pipe_i.lsu_en && !lsu_valid_i && instr_valid;
