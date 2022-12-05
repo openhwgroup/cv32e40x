@@ -364,9 +364,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         ex_wb_pipe_o.last_op     <= last_op_o;
         ex_wb_pipe_o.first_op    <= first_op_o;
-        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op; // MPU exceptions have WB timing and will not impact ex_wb_pipe.abort_op
-        // Deassert rf_we in case of illegal csr instruction,
-        // when the first half of a misaligned/split LSU goes to WB or when there is a trigger match on the LSU address.
+        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op; // MPU exceptions and watchpoint triggers have WB timing and will not impact ex_wb_pipe.abort_op
+        // Deassert rf_we in case of illegal csr instruction or when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
         ex_wb_pipe_o.rf_we       <= (csr_is_illegal || lsu_split_i) ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;

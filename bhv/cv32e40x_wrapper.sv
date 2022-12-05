@@ -35,6 +35,7 @@
   `include "cv32e40x_sequencer_sva.sv"
   `include "cv32e40x_clic_int_controller_sva.sv"
   `include "cv32e40x_register_file_sva.sv"
+  `include "cv32e40x_wpt_sva.sv"
 `endif
 
 `include "cv32e40x_wrapper.vh"
@@ -249,10 +250,17 @@ module cv32e40x_wrapper
       .lsu_en_id      (core_i.id_stage_i.lsu_en),
       .ctrl_fsm_cs    (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
       .ctrl_fsm_ns    (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-      .mpu_state      (core_i.load_store_unit_i.mpu_i.state_q),
-      .wpt_state      (core_i.load_store_unit_i.wpt_i.state_q),
       .*);
 
+  generate
+    if (DBG_NUM_TRIGGERS > 0) begin : wpt_sva
+      bind cv32e40x_wpt:
+        core_i.load_store_unit_i.gen_wpt.wpt_i
+          cv32e40x_wpt_sva wpt_sva(
+            .mpu_state (core_i.load_store_unit_i.mpu_i.state_q),
+            .*);
+    end
+  endgenerate
   bind cv32e40x_prefetch_unit:
     core_i.if_stage_i.prefetch_unit_i
       cv32e40x_prefetch_unit_sva

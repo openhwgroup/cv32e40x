@@ -452,15 +452,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       assign clic_ptr_in_pipeline = 1'b0;
     end
   endgenerate
-  // Regular debug will kill insn in WB, do not allow if LSU is not interruptible, a fence.i handshake is taking place
+  // External debug will kill insn in WB, do not allow if LSU is not interruptible, a fence.i handshake is taking place
   // or if an offloaded instruction is in WB.
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
-  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing debug.
+  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing external debug.
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
-  //   - Exception if a LSU trigger match happens during push or pop, then we must abort the sequence and enter debug mode.
-  //   - If trigger_match_in_wb is caused by instruction address match, then no side effects will happen for a sequence, and debug mode is entered when the first operation is in WB.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
   //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
   assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
@@ -1232,11 +1230,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // When flag is high, there should be no reason to kill WB as they are blocked by the flag itself.
         // This is checked by an assertion, no killing while !sequence_interruptible
 
-        // If debug entry is caused by a watchpoint address trigger, then abort_op_wb_i will be 1 and the
-        // fsm goes to DEBUG_TAKEN the next cycle. This must also cause the sequence_in_progress_wb to be reset
-        // as the sequence is effectively terminated, although the instruction itself is not killed or completed
-        // in a normal manner. While ctrl_fsm_ns == DEBUG_TAKEN, the WB stage is halted and thus wb_valid_i is zero.
-        if (ex_wb_pipe_i.instr_valid && lsu_wpt_match_wb_i && abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)) begin
+        // If debug entry is caused by a watchpoint address trigger, then abort_op_wb_i will be 1 and a debug entry is initiated.
+        // This must also cause the sequence_in_progress_wb to be reset as the sequence is effectively terminated, although the instruction itself is not killed or completed
+        // in a normal manner. As the WB stage is halted for debug entry on a watchcpoint trigger, wb_valid_i is zero.
+        if (ex_wb_pipe_i.instr_valid && lsu_wpt_match_wb_i && abort_op_wb_i) begin
           sequence_in_progress_wb <= 1'b0;
         end
       end

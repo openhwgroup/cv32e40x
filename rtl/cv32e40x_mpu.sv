@@ -78,6 +78,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   logic        core_trans_we;
   logic        instr_fetch_access;
   logic        load_access;
+  logic        wpt_match;
 
   // FSM that will "consume" transfers failing PMA checks.
   // Upon failing checks, this FSM will prevent the transfer from going out on the bus
@@ -207,9 +208,10 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       assign core_trans_we      = 1'b0;
     end
     else begin: mpu_lsu
-      assign instr_fetch_access = 1'b0;
-      assign load_access        = !core_trans_i.we;
-      assign core_trans_we      = core_trans_i.we;
+      assign instr_fetch_access    = 1'b0;
+      assign load_access           = !core_trans_i.we;
+      assign core_trans_we         = core_trans_i.we;
+      assign core_resp_o.wpt_match = 1'b0; // Will be set by upstream wpt-module within load_store_unit
     end
   endgenerate
 

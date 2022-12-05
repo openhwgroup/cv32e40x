@@ -623,7 +623,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT                 (X_EXT               ),
     .X_ID_WIDTH            (X_ID_WIDTH          ),
     .PMA_NUM_REGIONS       (PMA_NUM_REGIONS     ),
-    .PMA_CFG               (PMA_CFG             )
+    .PMA_CFG               (PMA_CFG             ),
+    .DBG_NUM_TRIGGERS      (DBG_NUM_TRIGGERS    )
   )
   load_store_unit_i
   (

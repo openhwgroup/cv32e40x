@@ -67,7 +67,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   logic        wpt_block_bus;
   logic        wpt_trans_valid;
   logic        wpt_trans_ready;
-  logic        wpt_match_resp;
+  logic        wpt_match;
   wpt_state_e  state_q, state_n;
 
   // FSM that will "consume" transfers with firing watchpoint triggers.
@@ -85,7 +85,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
     wpt_block_bus   = 1'b0;
     wpt_trans_valid = 1'b0;
     wpt_trans_ready = 1'b0;
-    wpt_match_resp  = 1'b0;
+    wpt_match       = 1'b0;
 
     case(state_q)
       WPT_IDLE: begin
@@ -121,7 +121,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
 
         // Set up WPT response towards the core
         wpt_trans_valid = 1'b1;
-        wpt_match_resp = 1'b1;
+        wpt_match       = 1'b1;
 
         // Go back to IDLE uncoditionally.
         // The core is expected to always be ready for the response
@@ -150,7 +150,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   assign core_resp_valid_o      = mpu_resp_valid_i || wpt_trans_valid;
   assign core_resp_o.bus_resp   = mpu_resp_i.bus_resp;
   assign core_resp_o.mpu_status = mpu_resp_i.mpu_status;
-  assign core_resp_o.wpt_match  = wpt_match_resp;
+  assign core_resp_o.wpt_match  = wpt_match;
 
 
   // Report WPT matches to the core immediatly

@@ -859,5 +859,14 @@ end
                   |->
                   lsu_wpt_match_wb_i)
     else `uvm_error("controller", "LSU in WB halted without watchpoint trigger match")
+
+
+  // Check that debug is always taken when a watchpoint trigger is arrives in WB
+  a_wpt_debug_entry:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ex_wb_pipe_i.instr_valid && lsu_wpt_match_wb_i)
+                  |->
+                  (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
+    else `uvm_error("controller", "Debug not entered on a WPT match")
 endmodule
 
