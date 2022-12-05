@@ -103,6 +103,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Debug
   input  logic [31:0]                   pc_if_i,
   input  logic                          ptr_in_if_i,
+  input  privlvl_t                      priv_lvl_if_i,
   output logic                          trigger_match_if_o,
   output logic                          trigger_match_ex_o,
   output logic                          etrigger_wb_o,
@@ -1499,48 +1500,48 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     )
     debug_triggers_i
     (
-      .clk              ( clk    ),
-      .rst_n            ( rst_n  ),
+      .clk                 ( clk                   ),
+      .rst_n               ( rst_n                 ),
 
       // CSR inputs write inputs
-      .csr_wdata_i      ( csr_wdata_int),
-      .tselect_we_i     ( tselect_we ),
-      .tdata1_we_i      ( tdata1_we  ),
-      .tdata2_we_i      ( tdata2_we  ),
-      .tdata3_we_i      ( tdata3_we  ),
-      .tinfo_we_i       ( tinfo_we   ),
-      .tcontrol_we_i    ( tcontrol_we ),
+      .csr_wdata_i         ( csr_wdata_int         ),
+      .tselect_we_i        ( tselect_we            ),
+      .tdata1_we_i         ( tdata1_we             ),
+      .tdata2_we_i         ( tdata2_we             ),
+      .tdata3_we_i         ( tdata3_we             ),
+      .tinfo_we_i          ( tinfo_we              ),
+      .tcontrol_we_i       ( tcontrol_we           ),
 
       // CSR read data outputs
-      .tselect_rdata_o  ( tselect_rdata ),
-      .tdata1_rdata_o   ( tdata1_rdata  ),
-      .tdata2_rdata_o   ( tdata2_rdata  ),
-      .tdata3_rdata_o   ( tdata3_rdata  ),
-      .tinfo_rdata_o    ( tinfo_rdata   ),
-      .tcontrol_rdata_o ( tcontrol_rdata),
+      .tselect_rdata_o     ( tselect_rdata         ),
+      .tdata1_rdata_o      ( tdata1_rdata          ),
+      .tdata2_rdata_o      ( tdata2_rdata          ),
+      .tdata3_rdata_o      ( tdata3_rdata          ),
+      .tinfo_rdata_o       ( tinfo_rdata           ),
+      .tcontrol_rdata_o    ( tcontrol_rdata        ),
 
       // IF stage inputs
-      .pc_if_i          ( pc_if_i       ),
-      .ptr_in_if_i      ( ptr_in_if_i   ),
-      .priv_lvl_if_i    ( PRIV_LVL_M    ),
+      .pc_if_i             ( pc_if_i               ),
+      .ptr_in_if_i         ( ptr_in_if_i           ),
+      .priv_lvl_if_i       ( priv_lvl_if_i         ),
 
       // LSU inputs
-      .lsu_valid_ex_i   ( lsu_valid_ex_i),
-      .lsu_addr_ex_i    ( lsu_addr_ex_i ),
-      .lsu_we_ex_i      ( lsu_we_ex_i   ),
-      .lsu_be_ex_i      ( lsu_be_ex_i   ),
-      .priv_lvl_ex_i    ( PRIV_LVL_M    ),
+      .lsu_valid_ex_i      ( lsu_valid_ex_i        ),
+      .lsu_addr_ex_i       ( lsu_addr_ex_i         ),
+      .lsu_we_ex_i         ( lsu_we_ex_i           ),
+      .lsu_be_ex_i         ( lsu_be_ex_i           ),
+      .priv_lvl_ex_i       ( id_ex_pipe_i.priv_lvl ),
 
       // WB inputs
-      .priv_lvl_wb_i    ( PRIV_LVL_M    ),
+      .priv_lvl_wb_i       ( ex_wb_pipe_i.priv_lvl ),
 
       // Controller inputs
-      .ctrl_fsm_i       ( ctrl_fsm_i    ),
+      .ctrl_fsm_i          ( ctrl_fsm_i            ),
 
       // Trigger match outputs
-      .trigger_match_if_o  ( trigger_match_if_o ),
-      .trigger_match_ex_o  ( trigger_match_ex_o ),
-      .etrigger_wb_o       ( etrigger_wb_o      )
+      .trigger_match_if_o  ( trigger_match_if_o    ),
+      .trigger_match_ex_o  ( trigger_match_ex_o    ),
+      .etrigger_wb_o       ( etrigger_wb_o         )
     );
 
 

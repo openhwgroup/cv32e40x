@@ -70,6 +70,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic          csr_mtvec_init_o,       // Tell CS regfile to init mtvec
   output logic          if_busy_o,              // Is the IF stage busy fetching instructions?
   output logic          ptr_in_if_o,            // The IF stage currently holds a pointer
+  output privlvl_t      priv_lvl_if_o,          // Privilege level of the instruction currently in IF
 
   output logic          first_op_o,
   output logic          last_op_o,
@@ -98,6 +99,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              prefetch_valid;
   logic              prefetch_ready;
   inst_resp_t        prefetch_instr;
+  privlvl_t          prefetch_priv_lvl;
 
   logic              prefetch_is_clic_ptr;
   logic              prefetch_is_mret_ptr;
@@ -195,6 +197,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .prefetch_valid_o         ( prefetch_valid              ),
     .prefetch_instr_o         ( prefetch_instr              ),
     .prefetch_addr_o          ( pc_if_o                     ),
+    .prefetch_priv_lvl_o      ( prefetch_priv_lvl           ),
     .prefetch_is_clic_ptr_o   ( prefetch_is_clic_ptr        ),
     .prefetch_is_mret_ptr_o   ( prefetch_is_mret_ptr        ),
     .prefetch_is_tbljmp_ptr_o ( prefetch_is_tbljmp_ptr      ),
@@ -219,7 +222,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   assign core_trans.addr      = prefetch_trans_addr;
   assign core_trans.dbg       = ctrl_fsm_i.debug_mode_if;
   assign core_trans.prot[0]   = 1'b0;                     // Transfers from IF stage all instruction fetches
-  assign core_trans.prot[2:1] = PRIV_LVL_M;               // Machine mode
+  assign core_trans.prot[2:1] = prefetch_priv_lvl;        // Machine mode
   assign core_trans.memtype   = 2'b00;                    // memtype is assigned in the MPU, tie off.
 
   cv32e40x_mpu
@@ -325,6 +328,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
   assign abort_op_o = instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK) || trigger_match_i;
 
+  // Signal current privilege level of IF
+  assign priv_lvl_if_o = prefetch_priv_lvl;
+
   // Populate instruction meta data
   // Fields 'compressed' and 'tbljmp' keep their old value by default.
   //   - In case of a table jump we need the fields to stay as 'compressed=1' and 'tbljmp=1'
@@ -350,6 +356,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.pc               <= '0;
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
       if_id_pipe_o.compressed_instr <= '0;
+      if_id_pipe_o.priv_lvl         <= PRIV_LVL_M;
       if_id_pipe_o.trigger_match    <= 1'b0;
       if_id_pipe_o.xif_id           <= '0;
       if_id_pipe_o.ptr              <= '0;
@@ -362,11 +369,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if (if_valid_o && id_ready_i) begin
         if_id_pipe_o.instr_valid      <= 1'b1;
         if_id_pipe_o.instr_meta       <= instr_meta_n;
+
         // seq_valid implies no illegal instruction, sequencer successfully decoded an instruction.
         // compressed decoder will still raise illegal_c_insn as it doesn't (currently) recognize Zc push/pop/dmove
         if_id_pipe_o.illegal_c_insn   <= seq_valid ? 1'b0 : illegal_c_insn;
 
-
+        if_id_pipe_o.priv_lvl         <= prefetch_priv_lvl;
         if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
         if_id_pipe_o.last_op          <= last_op_o;

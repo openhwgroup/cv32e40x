@@ -551,6 +551,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.xif_en                 <= 1'b0;
       id_ex_pipe_o.xif_meta               <= '0;
 
+      id_ex_pipe_o.priv_lvl               <= PRIV_LVL_M;
       id_ex_pipe_o.illegal_insn           <= 1'b0;
 
       id_ex_pipe_o.rf_we                  <= 1'b0;
@@ -568,6 +569,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     end else begin
       // normal pipeline unstall case
       if (id_valid_o && ex_ready_i) begin
+        id_ex_pipe_o.priv_lvl     <= if_id_pipe_i.priv_lvl;
         id_ex_pipe_o.instr_valid  <= 1'b1;
         id_ex_pipe_o.last_op      <= last_op_o;
         id_ex_pipe_o.first_op     <= first_op_o;
