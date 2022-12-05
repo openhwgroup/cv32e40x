@@ -686,12 +686,19 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign lsu_wpt_match_1_o = resp.wpt_match;
     end else begin : gen_no_wpt
       // Bypass WPT in case DBG_NUM_TRIGGERS is zero
-      assign mpu_trans_valid = wpt_trans_valid;
-      assign mpu_trans       = wpt_trans;
-      assign wpt_trans_ready = mpu_trans_ready;
-      assign wpt_resp_valid  = mpu_resp_valid;
-      assign wpt_resp        = mpu_resp;
-      assign xif_wpt_match   = 1'b0;
+      assign lsu_wpt_match_1_o = resp.wpt_match;
+      assign mpu_trans_valid   = wpt_trans_valid;
+      assign mpu_trans         = wpt_trans;
+      assign wpt_trans_ready   = mpu_trans_ready;
+      assign wpt_resp_valid    = mpu_resp_valid;
+      assign wpt_resp          = mpu_resp;
+      assign xif_wpt_match     = 1'b0;
+
+      assign wpt_resp_rdata = wpt_resp.bus_resp.rdata;
+
+      assign resp_valid = wpt_resp_valid;
+      assign resp_rdata = wpt_resp_rdata;
+      assign resp       = wpt_resp;
     end
   endgenerate
   //////////////////////////////////////////////////////////////////////////////
