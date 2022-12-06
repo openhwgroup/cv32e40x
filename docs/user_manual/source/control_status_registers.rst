@@ -1498,6 +1498,8 @@ Reset Value: 0x6800_1000
   +-------+-------------+----------------------------------------------------------------+
 
 .. note::
+   Writing 0x0 to ``tdata1`` disables the trigger and changes the value of ``tdata1`` to
+   0xF800_0000, which is the only supported value for a disabled trigger.
    The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described in
    :ref:`csr-mcontrol6`, :ref:`csr-etrigger` and :ref:`csr-tdata1_disabled`.
 
@@ -1622,6 +1624,10 @@ Reset Value: Not applicable
   +-------+-------------+----------------------------------------------------------------+
   | 26:0  | WARL (0x0)  | **DATA**.                                                      |
   +-------+-------------+----------------------------------------------------------------+
+
+.. note::
+   Writing 0x0 to ``tdata1`` disables the trigger and changes the value of ``tdata1`` to
+   0xF800_0000, which is the only supported value for a disabled trigger.
 
 .. _csr-tdata2:
 

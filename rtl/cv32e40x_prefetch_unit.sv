@@ -44,6 +44,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   output logic        prefetch_valid_o,
   output inst_resp_t  prefetch_instr_o,
   output logic [31:0] prefetch_addr_o,
+  output privlvl_t    prefetch_priv_lvl_o,
   output logic        prefetch_is_clic_ptr_o,
   output logic        prefetch_is_mret_ptr_o,
   output logic        prefetch_is_tbljmp_ptr_o,
@@ -70,6 +71,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   logic [31:0] fetch_branch_addr;
   logic        fetch_ptr_access;
   logic        fetch_ptr_resp;
+  privlvl_t    fetch_priv_lvl_access;
+  privlvl_t    fetch_priv_lvl_resp;
 
 
 
@@ -92,7 +95,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .fetch_ready_o            ( fetch_ready          ),
     .fetch_ptr_access_i       ( fetch_ptr_access     ),
     .fetch_ptr_access_o       ( fetch_ptr_resp       ),
-
+    .fetch_priv_lvl_access_i  ( fetch_priv_lvl_access),
+    .fetch_priv_lvl_access_o  ( fetch_priv_lvl_resp  ),
     .trans_valid_o            ( trans_valid_o        ),
     .trans_ready_i            ( trans_ready_i        ),
     .trans_addr_o             ( trans_addr_o         )
@@ -121,6 +125,8 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .fetch_branch_addr_o   ( fetch_branch_addr       ),
     .fetch_ptr_access_o    ( fetch_ptr_access        ),
     .fetch_ptr_access_i    ( fetch_ptr_resp          ),
+    .fetch_priv_lvl_o      ( fetch_priv_lvl_access   ),
+    .fetch_priv_lvl_i      ( fetch_priv_lvl_resp     ),
 
     .resp_valid_i          ( resp_valid_i            ),
     .resp_i                ( resp_i                  ),
@@ -132,6 +138,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .instr_ready_i         ( prefetch_ready_i        ),
     .instr_instr_o         ( prefetch_instr_o        ),
     .instr_addr_o          ( prefetch_addr_o         ),
+    .instr_priv_lvl_o      ( prefetch_priv_lvl_o     ),
     .instr_is_clic_ptr_o   ( prefetch_is_clic_ptr_o  ),
     .instr_is_mret_ptr_o   ( prefetch_is_mret_ptr_o  ),
     .instr_is_tbljmp_ptr_o ( prefetch_is_tbljmp_ptr_o)

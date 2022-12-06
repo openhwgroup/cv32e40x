@@ -150,6 +150,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [31:0]  pc_if;                  // Program counter in IF stage
   logic         ptr_in_if;              // IF stage contains a pointer
+  privlvl_t     priv_lvl_if;            // IF stage privilege level
 
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id;
@@ -243,6 +244,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_first_op_ex;
   logic        lsu_last_op_ex;
   mpu_status_e lsu_mpu_status_wb;
+  logic        lsu_wpt_match_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
 
@@ -255,6 +257,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_ready_wb;
   logic        lsu_valid_wb;
   logic        lsu_ready_1;
+
+  // LSU signals to trigger module
+  logic [31:0] lsu_addr_ex;
+  logic        lsu_we_ex;
+  logic [3:0]  lsu_be_ex;
 
   logic        data_stall_wb;
 
@@ -282,8 +289,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // From cs_registers
   dcsr_t       dcsr;
 
-  // trigger match detected in cs_registers (using ID timing)
+  // trigger match detected in trigger module (using IF timing)
   logic        trigger_match_if;
+  // trigger match detected in trigger module (using EX/LSU timing)
+  logic        trigger_match_ex;
+  // trigger match detected in trigger module (using WB timing, etrigger)
+  logic        etrigger_wb;
 
   // Controller <-> decoder
   logic        alu_jmp_id;
@@ -453,6 +464,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_mtvec_init_o    ( csr_mtvec_init_if        ),
     .if_busy_o           ( if_busy                  ),
     .ptr_in_if_o         ( ptr_in_if                ),
+    .priv_lvl_if_o       ( priv_lvl_if              ),
 
     .first_op_o          ( first_op_if              ),
     .last_op_o           ( last_op_if               ),
@@ -613,7 +625,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .X_EXT                 (X_EXT               ),
     .X_ID_WIDTH            (X_ID_WIDTH          ),
     .PMA_NUM_REGIONS       (PMA_NUM_REGIONS     ),
-    .PMA_CFG               (PMA_CFG             )
+    .PMA_CFG               (PMA_CFG             ),
+    .DBG_NUM_TRIGGERS      (DBG_NUM_TRIGGERS    )
   )
   load_store_unit_i
   (
@@ -633,15 +646,24 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .busy_o                ( lsu_busy           ),
     .interruptible_o       ( lsu_interruptible  ),
 
+    // Trigger match
+    .trigger_match_0_i     ( trigger_match_ex   ),
+
     // Stage 0 outputs (EX)
     .lsu_split_0_o         ( lsu_split_ex       ),
     .lsu_first_op_0_o      ( lsu_first_op_ex    ),
     .lsu_last_op_0_o       ( lsu_last_op_ex     ),
 
+    // Outputs to trigger module
+    .lsu_addr_o            ( lsu_addr_ex        ),
+    .lsu_we_o              ( lsu_we_ex          ),
+    .lsu_be_o              ( lsu_be_ex          ),
+
     // Stage 1 outputs (WB)
     .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
+    .lsu_wpt_match_1_o     ( lsu_wpt_match_wb   ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
@@ -678,6 +700,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // LSU
     .lsu_rdata_i                ( lsu_rdata_wb                 ),
     .lsu_mpu_status_i           ( lsu_mpu_status_wb            ),
+    .lsu_wpt_match_i            ( lsu_wpt_match_wb             ),
 
     // Write back to register file
     .rf_we_wb_o                 ( rf_we_wb                     ),
@@ -791,9 +814,16 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_wr_in_wb_flush_o       ( csr_wr_in_wb_flush     ),
 
     // Debug
-    .trigger_match_o            ( trigger_match_if       ),
+    .trigger_match_if_o         ( trigger_match_if       ),
+    .trigger_match_ex_o         ( trigger_match_ex       ),
+    .etrigger_wb_o              ( etrigger_wb            ),
     .pc_if_i                    ( pc_if                  ),
-    .ptr_in_if_i                ( ptr_in_if              )
+    .ptr_in_if_i                ( ptr_in_if              ),
+    .priv_lvl_if_i              ( priv_lvl_if            ),
+    .lsu_valid_ex_i             ( lsu_valid_ex           ),
+    .lsu_addr_ex_i              ( lsu_addr_ex            ),
+    .lsu_we_ex_i                ( lsu_we_ex              ),
+    .lsu_be_ex_i                ( lsu_be_ex              )
   );
 
   ////////////////////////////////////////////////////////////////////
@@ -862,6 +892,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
     .lsu_valid_wb_i                 ( lsu_valid_wb           ),
+    .lsu_wpt_match_wb_i             ( lsu_wpt_match_wb       ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
@@ -879,6 +910,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
     .mcause_i                       ( mcause                 ),
+
+    // Trigger module
+    .etrigger_wb_i                  ( etrigger_wb            ),
 
     // CSR write strobes
     .csr_wr_in_wb_flush_i           ( csr_wr_in_wb_flush     ),

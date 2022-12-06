@@ -356,17 +356,18 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.first_op           <= 1'b0;
       ex_wb_pipe_o.last_op            <= 1'b0;
       ex_wb_pipe_o.abort_op           <= 1'b0;
+
+      ex_wb_pipe_o.priv_lvl           <= PRIV_LVL_M;
     end
     else
     begin
       if (ex_valid_o && wb_ready_i) begin
         ex_wb_pipe_o.instr_valid <= 1'b1;
-
+        ex_wb_pipe_o.priv_lvl    <= id_ex_pipe_i.priv_lvl;
         ex_wb_pipe_o.last_op     <= last_op_o;
         ex_wb_pipe_o.first_op    <= first_op_o;
-        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op; // MPU exceptions have WB timing and will not impact ex_wb_pipe.abort_op
-        // Deassert rf_we in case of illegal csr instruction or
-        // when the first half of a misaligned/split LSU goes to WB.
+        ex_wb_pipe_o.abort_op    <= id_ex_pipe_i.abort_op; // MPU exceptions and watchpoint triggers have WB timing and will not impact ex_wb_pipe.abort_op
+        // Deassert rf_we in case of illegal csr instruction or when the first half of a misaligned/split LSU goes to WB.
         // Also deassert if CSR was accepted both by eXtension if and pipeline
         ex_wb_pipe_o.rf_we       <= (csr_is_illegal || lsu_split_i) ? 1'b0 : id_ex_pipe_i.rf_we;
         ex_wb_pipe_o.lsu_en      <= id_ex_pipe_i.lsu_en;
@@ -425,6 +426,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   end
 
   // LSU inputs are valid when LSU is enabled; LSU outputs need to remain valid until downstream stage is ready
+  // If a trigger matches LSU address, this valid will be gated off inside the load_store_unit to prevent the instruction
+  // from accessing the bus.
   assign lsu_valid_o = lsu_en_gated;
   assign lsu_ready_o = wb_ready_i;
 
@@ -447,15 +450,15 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && sys_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
 
   // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)   ||
-                       (id_ex_pipe_i.csr_en && csr_valid)   ||
-                       (id_ex_pipe_i.sys_en && sys_valid)   ||
-                       (id_ex_pipe_i.mul_en && mul_valid)   ||
-                       (id_ex_pipe_i.div_en && div_valid)   ||
-                       (id_ex_pipe_i.lsu_en && lsu_valid_i) ||
-                       (id_ex_pipe_i.xif_en && xif_valid)   ||
-                       (id_ex_pipe_i.instr_meta.clic_ptr)   || // todo: Should this instead have it's own _valid?
-                       (id_ex_pipe_i.instr_meta.mret_ptr)   || // todo: Should this instead have it's own _valid?
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)       ||
+                       (id_ex_pipe_i.csr_en && csr_valid)       ||
+                       (id_ex_pipe_i.sys_en && sys_valid)       ||
+                       (id_ex_pipe_i.mul_en && mul_valid)       ||
+                       (id_ex_pipe_i.div_en && div_valid)       ||
+                       (id_ex_pipe_i.lsu_en && lsu_valid_i)     ||
+                       (id_ex_pipe_i.xif_en && xif_valid)       ||
+                       (id_ex_pipe_i.instr_meta.clic_ptr)       || // todo: Should this instead have it's own _valid?
+                       (id_ex_pipe_i.instr_meta.mret_ptr)       || // todo: Should this instead have it's own _valid?
                        previous_exception // todo:ab:remove
                       ) && instr_valid;
 

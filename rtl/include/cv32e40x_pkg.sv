@@ -660,6 +660,23 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   1'b0,                  // STORE 1
   1'b0};                 // LOAD 0
 
+  // Bit position parameters for MCONTROL6
+  parameter MCONTROL6_MATCH_HIGH = 10;
+  parameter MCONTROL6_MATCH_LOW  = 7;
+  parameter MCONTROL6_M          = 6;
+  parameter MCONTROL6_U          = 3;
+  parameter MCONTROL6_EXECUTE    = 2;
+  parameter MCONTROL6_STORE      = 1;
+  parameter MCONTROL6_LOAD       = 0;
+
+  parameter ETRIGGER_M = 9;
+  parameter ETRIGGER_U = 6;
+
+  // Bit position parameters for trigger type within tdata1
+  parameter TDATA1_TTYPE_HIGH = 31;
+  parameter TDATA1_TTYPE_LOW  = 28;
+
+
 ///////////////////////////////////////////////
 //   ___ ____    ____  _                     //
 //  |_ _|  _ \  / ___|| |_ __ _  __ _  ___   //
@@ -868,7 +885,10 @@ parameter EXC_CAUSE_BREAKPOINT      = 11'h03;
 parameter EXC_CAUSE_LOAD_FAULT      = 11'h05;
 parameter EXC_CAUSE_STORE_FAULT     = 11'h07;
 parameter EXC_CAUSE_ECALL_MMODE     = 11'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h30;
+parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h18;
+
+parameter logic [31:0] ETRIGGER_TDATA2_MASK = (1 << EXC_CAUSE_INSTR_BUS_FAULT) | (1 << EXC_CAUSE_ECALL_MMODE) | (1 << EXC_CAUSE_STORE_FAULT) |
+                                              (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT);
 
 parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
 parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
@@ -927,6 +947,9 @@ typedef enum logic [1:0] {
                           } mpu_status_e;
 
 typedef enum logic [2:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT} mpu_state_e;
+
+// WPT state machine
+typedef enum logic [1:0] {WPT_IDLE, WPT_MATCH_WAIT, WPT_MATCH_RESP} wpt_state_e;
 
 // OBI bus and internal data types
 
@@ -998,10 +1021,11 @@ parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
   dbg     : 1'b0
 };
 
-// Data transfer bundeled with MPU status
+// Data transfer bundeled with MPU status and watchpoint trigger match
 typedef struct packed {
   obi_data_resp_t             bus_resp;
   mpu_status_e                mpu_status;
+  logic                       wpt_match;
 } data_resp_t;
 
 // LSU transaction
@@ -1050,6 +1074,7 @@ typedef struct packed {
   logic [31:0] pc;
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
+  privlvl_t    priv_lvl;
   logic        trigger_match;
   logic [31:0] xif_id;           // ID of offloaded instruction
   logic [31:0] ptr;              // Flops to hold 32-bit pointer
@@ -1119,6 +1144,8 @@ typedef struct packed {
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in EX is valid
 
+  privlvl_t     priv_lvl;
+
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
   xif_meta_t    xif_meta;         // xif meta struct
@@ -1159,6 +1186,8 @@ typedef struct packed {
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
+
+  privlvl_t     priv_lvl;
 
   logic         sys_en;
   logic         sys_dret_insn;
@@ -1286,6 +1315,7 @@ typedef struct packed {
 
   // Signal that an exception is in WB
   logic        exception_in_wb;
+  logic [10:0] exception_cause_wb;
 } ctrl_fsm_t;
 
   ////////////////////////////////////////
@@ -1309,6 +1339,12 @@ typedef struct packed {
     return PRIV_LVL_M;
   endfunction
 
+  function automatic logic [3:0] mcontrol6_match_resolve
+  (
+    logic [3:0] next_value
+  );
+    return ((next_value != 4'h0) && (next_value != 4'h2) && (next_value != 4'h3)) ? 4'h0 : next_value;
+  endfunction
   ///////////////////////////
   //                       //
   //    /\/\ (_)___  ___   //

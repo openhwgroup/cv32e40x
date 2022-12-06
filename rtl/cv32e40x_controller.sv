@@ -80,6 +80,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted
   input  logic        lsu_valid_wb_i,             // LSU is valid in WB (factors in rvalid from either OBI bus or write buffer)
+  input  logic        lsu_wpt_match_wb_i,         // LSU watchpoint trigger in WB
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -96,6 +97,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input logic  [1:0]  mtvec_mode_i,
   input  mcause_t     mcause_i,
+
+  input  logic        etrigger_wb_i,
 
   input  logic        csr_wr_in_wb_flush_i,
 
@@ -188,6 +191,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .last_op_wb_i                ( last_op_wb_i             ),
     .abort_op_wb_i               ( abort_op_wb_i            ),
     .lsu_valid_wb_i              ( lsu_valid_wb_i           ),
+    .lsu_wpt_match_wb_i          ( lsu_wpt_match_wb_i       ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
 
@@ -205,6 +209,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .wu_wfe_i                    ( wu_wfe_i                 ),
 
     .mtvec_mode_i                ( mtvec_mode_i             ),
+
+    .etrigger_wb_i               ( etrigger_wb_i            ),
 
     // Debug Signal
     .debug_req_i                 ( debug_req_i              ),

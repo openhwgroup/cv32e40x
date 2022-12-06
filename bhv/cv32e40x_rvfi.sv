@@ -112,7 +112,6 @@ module cv32e40x_rvfi
    input logic                                single_step_allowed_i,
    input logic                                nmi_pending_i,          // regular NMI pending
    input logic                                nmi_is_store_i,         // regular NMI type
-   input logic                                pending_debug_i,
    input logic                                debug_mode_q_i,
 
    // Interrupt Controller probes
