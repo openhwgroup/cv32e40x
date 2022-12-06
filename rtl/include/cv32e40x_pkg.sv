@@ -1074,6 +1074,7 @@ typedef struct packed {
   logic [31:0] pc;
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
+  privlvl_t    priv_lvl;
   logic        trigger_match;
   logic [31:0] xif_id;           // ID of offloaded instruction
   logic [31:0] ptr;              // Flops to hold 32-bit pointer
@@ -1143,6 +1144,8 @@ typedef struct packed {
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in EX is valid
 
+  privlvl_t     priv_lvl;
+
   // eXtension interface
   logic         xif_en;           // Instruction has been offloaded via eXtension interface
   xif_meta_t    xif_meta;         // xif meta struct
@@ -1183,6 +1186,8 @@ typedef struct packed {
   instr_meta_t  instr_meta;
   logic         instr_valid;      // instruction in WB is valid
   logic         illegal_insn;
+
+  privlvl_t     priv_lvl;
 
   logic         sys_en;
   logic         sys_dret_insn;

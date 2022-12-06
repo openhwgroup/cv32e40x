@@ -45,6 +45,8 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   output logic [31:0]    fetch_branch_addr_o,
   output logic           fetch_ptr_access_o,
   input  logic           fetch_ptr_access_i,
+  output privlvl_t       fetch_priv_lvl_o,
+  input  privlvl_t       fetch_priv_lvl_i,
 
   // Resp interface
   input  logic           resp_valid_i,
@@ -56,6 +58,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   input  logic                       instr_ready_i,
   output inst_resp_t                 instr_instr_o,
   output logic [31:0]                instr_addr_o,
+  output privlvl_t                   instr_priv_lvl_o,
   output logic                       instr_is_clic_ptr_o, // True CLIC pointer after taking a CLIC SHV interrupt
   output logic                       instr_is_mret_ptr_o, // CLIC pointer due to restarting pionter fetch during mret
   output logic                       instr_is_tbljmp_ptr_o,
@@ -580,4 +583,10 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Signal that a pointer is about to be fetched
   assign fetch_ptr_access_o = (ctrl_fsm_i.pc_set && (ctrl_fsm_i.pc_set_clicv || ctrl_fsm_i.pc_set_tbljmp));
+
+  // Set privilege level to prefetcher
+  assign fetch_priv_lvl_o = PRIV_LVL_M;
+
+  // Set privilege level to IF stage
+  assign instr_priv_lvl_o = fetch_priv_lvl_i;
 endmodule

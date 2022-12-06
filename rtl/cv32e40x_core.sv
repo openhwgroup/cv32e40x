@@ -150,6 +150,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [31:0]  pc_if;                  // Program counter in IF stage
   logic         ptr_in_if;              // IF stage contains a pointer
+  privlvl_t     priv_lvl_if;            // IF stage privilege level
 
   // Jump and branch target and decision (EX->IF)
   logic [31:0] jump_target_id;
@@ -463,6 +464,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_mtvec_init_o    ( csr_mtvec_init_if        ),
     .if_busy_o           ( if_busy                  ),
     .ptr_in_if_o         ( ptr_in_if                ),
+    .priv_lvl_if_o       ( priv_lvl_if              ),
 
     .first_op_o          ( first_op_if              ),
     .last_op_o           ( last_op_if               ),
@@ -817,6 +819,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .etrigger_wb_o              ( etrigger_wb            ),
     .pc_if_i                    ( pc_if                  ),
     .ptr_in_if_i                ( ptr_in_if              ),
+    .priv_lvl_if_i              ( priv_lvl_if            ),
     .lsu_valid_ex_i             ( lsu_valid_ex           ),
     .lsu_addr_ex_i              ( lsu_addr_ex            ),
     .lsu_we_ex_i                ( lsu_we_ex              ),
