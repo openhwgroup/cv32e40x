@@ -34,6 +34,7 @@ module cv32e40x_load_store_unit_sva
    input ctrl_fsm_t  ctrl_fsm_i,
    input logic       trans_valid,
    input logic       lsu_split_0_o,
+   input write_buffer_state_e write_buffer_state_i,
    input logic       split_q,
    input mpu_status_e lsu_mpu_status_1_o, // WB mpu status
    input ex_wb_pipe_t ex_wb_pipe_i,
@@ -133,7 +134,6 @@ module cv32e40x_load_store_unit_sva
                   !X_EXT |-> !xif_res_q)
     else `uvm_error("load_store_unit", "XIF transaction result despite X_EXT being disabled")
 
-
   // Helper logic to remember OBI prot for the previous transfer
   // Also keep track of remainig parts of a split transfer
   logic [2:0] trans_prot_prev;
@@ -154,15 +154,23 @@ module cv32e40x_load_store_unit_sva
         // EX was killed, clear counter
         split_rem_cnt <= 2'h0;
       end
-      else if (lsu_split_0_o) begin
+      else if (lsu_split_0_o && !(|split_rem_cnt)) begin
         // New split transfer
+        // lsu_split_0_o has the same timing as the transfer going into the write buffer,
+        // but if the write buffer is full, it will not have the same timing as the OBI transfer.
+
+        // Determine number of expected OBI transfers to be accepted before the last part of the split transfer
         if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
-          // 1st transfer accepted immediately, one remaining
-          split_rem_cnt <= 2'h1;
+          // OBI transfer was accepted in this cycle.
+          // If the write buffer is full, the accepted transfer is not part of the split transfer
+          // If the write buffer is not full, the accepted transfer is the first part of the split transfer
+          split_rem_cnt <= (write_buffer_state_i == WBUF_FULL) ? 2'h2 : 2'h1;
         end
         else begin
-          // 1st transfer not accepted immediately, two remaining
-          split_rem_cnt <= 2'h2;
+          // OBI transfer was not accepted in this cycle
+          // If the write buffer is full, the buffered transfer must be accepted before the split transfer can go on the OBI bus
+          // If the write buffer is not full, the next accepted OBI transfer will be the first part of the split transfer
+          split_rem_cnt <= (write_buffer_state_i == WBUF_FULL) ? 2'h3 : 2'h2;
         end
       end
       else if (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
