@@ -48,6 +48,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_alu import cv32e40x_pkg::*;
+#(
+  parameter b_ext_e B_EXT  = B_NONE
+)
 (
   input  alu_opcode_e       operator_i,
   input  logic [31:0]       operand_a_i,
@@ -281,28 +284,39 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   //                       |___/                                       |_|                                     //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-  logic [31:0] clmul_op_a;
-  logic [31:0] clmul_op_b;
-
   logic [31:0] clmul_result;
   logic [31:0] clmulr_result;
   logic [31:0] clmulh_result;
 
-  assign clmul_op_a = (operator_i != ALU_B_CLMUL) ? operand_a_rev : operand_a_i;
-  assign clmul_op_b = (operator_i != ALU_B_CLMUL) ? operand_b_rev : operand_b_i;
+  generate
+    if (B_EXT == ZBA_ZBB_ZBC_ZBS) begin: clmul
 
-  always_comb begin
-    clmul_result ='0;
-    for (integer i = 0; i < 32; i++) begin
-      for (integer j = 0; j < i+1; j++) begin
-        clmul_result[i] = clmul_result[i] ^ (clmul_op_a[i-j] & clmul_op_b[j]);
+      logic [31:0] clmul_op_a;
+      logic [31:0] clmul_op_b;
+
+      assign clmul_op_a = (operator_i != ALU_B_CLMUL) ? operand_a_rev : operand_a_i;
+      assign clmul_op_b = (operator_i != ALU_B_CLMUL) ? operand_b_rev : operand_b_i;
+
+      always_comb begin
+        clmul_result ='0;
+        for (integer i = 0; i < 32; i++) begin
+          for (integer j = 0; j < i+1; j++) begin
+            clmul_result[i] = clmul_result[i] ^ (clmul_op_a[i-j] & clmul_op_b[j]);
+          end
+        end
       end
-    end
-  end
 
-  assign clmulr_result = {<<{clmul_result}}; // Reverse for clmulr
-  assign clmulh_result = {1'b0, clmulr_result[31:1]};
+      assign clmulr_result = {<<{clmul_result}}; // Reverse for clmulr
+      assign clmulh_result = {1'b0, clmulr_result[31:1]};
+
+    end else begin: no_clmul
+
+      assign clmul_result  = 32'h0;
+      assign clmulr_result = 32'h0;
+      assign clmulh_result = 32'h0;
+
+    end
+  endgenerate
 
   ////////////////////////////////////////////////////////
   //   ____                 _ _     __  __              //
