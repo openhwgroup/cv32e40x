@@ -53,7 +53,7 @@ module cv32e40x_prefetcher import cv32e40x_pkg::*;
   input  logic                     fetch_ptr_access_i,            // Access is data access (CLIC) // todo: add similar for table jump
   output logic                     fetch_ptr_access_o,            // Handshake is for a pointer access (CLIC and Zc)
   input  privlvl_t                 fetch_priv_lvl_access_i,       // Priv level of access
-  output privlvl_t                 fetch_priv_lvl_access_o,       // Priv level for handshake
+  output privlvl_t                 fetch_priv_lvl_access_o,       // Priv level for the (fetch_valid_i && fetch_ready_o) handshake, indicating privilege level of the requested instruction.
 
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
