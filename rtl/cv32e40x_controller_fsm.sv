@@ -461,6 +461,15 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
   //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
+  //
+  // Debug entry because of haltreq is disallowed when the LSU is busy and therefore
+  // haltreq can only cause debug entry on the instruction following a load or store that
+  // keep the LSU busy. If such load or store however is being single stepped or has an
+  // associated breakpoint or watchpoint, then debug will be entered because of that
+  // lower priority reason even though haltreq is asserted. This is okay because if instruction
+  // timing is considered haltreq should be considered only asserted on the following
+  // instruction (i.e. the asynchronous haltreq signal is considered asserted too late to
+  // impact the current instruction in the pipeline).
   assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // synchronous debug entry have far fewer restrictions than asynchronous entries. In principle synchronous debug entry should have the same

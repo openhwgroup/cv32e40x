@@ -64,17 +64,16 @@ module cv32e40x_clic_int_controller_sva
   a_clic_enable: assert property(p_clic_enable)
     else `uvm_error("core", "Interrupt not taken soon enough after enabling");
 
-  // Check that only NMI and external debug take presedence over interrupts
+  // Check that only NMI and external debug take presedence over interrupts after being enabled by mret or CSR writes
   property p_irq_pri;
     @(posedge clk) disable iff (!rst_n)
-    ( (ctrl_fsm_cs == FUNCTIONAL) &&
-      !irq_req_ctrl_o
-      ##1
-      (ctrl_fsm_cs == FUNCTIONAL) &&
-      irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie)) &&
-      !(ctrl_pending_nmi || ctrl_pending_async_debug)
+    ( !irq_req_ctrl_o            // No interrupt pending
+      ##1                        // Next cycle
+      irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie)) && // Interrupt pending but irq inputs are unchanged
+      (ctrl_fsm_cs != DEBUG_TAKEN) &&  // Make sure we are not handling a debug entry already (could be a single stepped mret enabling interrupts for instance)
+      !(ctrl_pending_nmi || ctrl_pending_async_debug)   // No pending events with higher priority than interrupts are taking place
       |->
-      ctrl_fsm.irq_ack
+      ctrl_fsm.irq_ack  // We must take the interrupt if enabled (mret or CSR write) and no NMI or external debug is pending
     );
   endproperty;
 
