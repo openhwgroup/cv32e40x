@@ -493,6 +493,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                          (pending_async_debug && async_debug_allowed)      ? DBG_CAUSE_HALTREQ :
                          (pending_single_step && single_step_allowed)      ? DBG_CAUSE_STEP    : DBG_CAUSE_NONE;
 
+
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
 
@@ -692,10 +693,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             pipe_pc_mux_ctrl = PC_IF;
           end
 
-        // Debug entry (except single step which is handled later)
-        // todo: may split this into two separate if's, and then prioritize synchronous debug entry below interrupts.
-        end else if ((pending_async_debug && async_debug_allowed) ||
-                     (pending_sync_debug && sync_debug_allowed)) begin
+        // External debug entry (async)
+        end else if (pending_async_debug && async_debug_allowed) begin
           // Halt the whole pipeline
           // Halting makes sure instructions stay in the pipeline stage without propagating to the next.
           //  This is needed by the debug entry code in the DEBUG_STAKEN state to pick the correct PC for storing in dpc.
@@ -762,7 +761,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // instruction to be issued from IF to ID.
             pipe_pc_mux_ctrl = PC_IF;
           end
+        // Synchronous debug entry (ebreak, trigger match)
+        end else if (pending_sync_debug && sync_debug_allowed) begin
+          // Halt the whole pipeline
+          // Halting makes sure instructions stay in the pipeline stage without propagating to the next.
+          //  This is needed by the debug entry code in the DEBUG_STAKEN state to pick the correct PC for storing in dpc.
+          //  Note that signals like lsu_wpt_match_wb_i and lsu_mpu_status_wb_i will not be constant while WB is halted as
+          //  these behave as an rvalid. In general LSU instruction shall not be allowed to be halted, unless there is a
+          //  watchpoint address match.
+          ctrl_fsm_o.halt_if = 1'b1;
+          ctrl_fsm_o.halt_id = 1'b1;
+          ctrl_fsm_o.halt_ex = 1'b1;
+          ctrl_fsm_o.halt_wb = 1'b1;
 
+          ctrl_fsm_ns = DEBUG_TAKEN;
         end else begin
           if (exception_in_wb && exception_allowed) begin
             // Kill all stages

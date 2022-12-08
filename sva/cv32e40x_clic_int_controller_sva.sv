@@ -42,6 +42,9 @@ module cv32e40x_clic_int_controller_sva
 
    input logic        ctrl_pending_interrupt,
    input logic        ctrl_interrupt_allowed,
+   input logic        ctrl_pending_nmi,
+   input logic        ctrl_pending_async_debug,
+   input ctrl_state_e ctrl_fsm_cs,
 
    input ctrl_fsm_t   ctrl_fsm,
    input dcsr_t       dcsr
@@ -60,6 +63,23 @@ module cv32e40x_clic_int_controller_sva
 
   a_clic_enable: assert property(p_clic_enable)
     else `uvm_error("core", "Interrupt not taken soon enough after enabling");
+
+  // Check that only NMI and external debug take presedence over interrupts
+  property p_irq_pri;
+    @(posedge clk) disable iff (!rst_n)
+    ( (ctrl_fsm_cs == FUNCTIONAL) &&
+      !irq_req_ctrl_o
+      ##1
+      (ctrl_fsm_cs == FUNCTIONAL) &&
+      irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie)) &&
+      !(ctrl_pending_nmi || ctrl_pending_async_debug)
+      |->
+      ctrl_fsm.irq_ack
+    );
+  endproperty;
+
+  a_irq_pri: assert property(p_irq_pri)
+    else `uvm_error("core", "Interrupt not taken soon enough after enabling")
 
   // Check a pending interrupt that is disabled is actually not taken
   property p_clic_disable;
