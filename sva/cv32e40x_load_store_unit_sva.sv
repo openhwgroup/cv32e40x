@@ -35,6 +35,8 @@ module cv32e40x_load_store_unit_sva
    input ctrl_state_e ctrl_fsm_ns,
    input ctrl_state_e ctrl_fsm_cs,
    input logic       trans_valid,
+   input logic       lsu_split_0_o,
+   input write_buffer_state_e write_buffer_state_i,
    input logic       split_q,
    input mpu_status_e lsu_mpu_status_1_o, // WB mpu status
    input ex_wb_pipe_t ex_wb_pipe_i,
@@ -152,6 +154,7 @@ module cv32e40x_load_store_unit_sva
                   !X_EXT |-> !xif_res_q)
     else `uvm_error("load_store_unit", "XIF transaction result despite X_EXT being disabled")
 
+
   // split_q must be 0 when a new LSU instruction enters the LSU
   a_clear_splitq:
   assert property (@(posedge clk) disable iff (!rst_n)
@@ -169,6 +172,57 @@ module cv32e40x_load_store_unit_sva
     else `uvm_error("load_store_unit", "trigger_match_0_i changed before ready_0_i became 1")
 
 
+  // Helper logic to remember OBI prot for the previous transfer
+  // Also keep track of remainig parts of a split transfer
+  logic [2:0] trans_prot_prev;
+  logic [1:0] split_rem_cnt;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      trans_prot_prev <= '0;
+      split_rem_cnt <= '0;
+    end
+    else begin
+      if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+        // Keep track of prot for the previous transfer
+        trans_prot_prev <= m_c_obi_data_if.req_payload.prot;
+      end
+
+      // Keep track of remaining parts of split transfers
+      if(ctrl_fsm_i.kill_ex) begin
+        // EX was killed, clear counter
+        split_rem_cnt <= 2'h0;
+      end
+      else if (lsu_split_0_o && !(|split_rem_cnt)) begin
+        // New split transfer
+        // lsu_split_0_o has the same timing as the transfer going into the write buffer,
+        // but if the write buffer is full, it will not have the same timing as the OBI transfer.
+
+        // Determine number of expected OBI transfers to be accepted before the last part of the split transfer
+        if(m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+          // OBI transfer was accepted in this cycle.
+          // If the write buffer is full, the accepted transfer is not part of the split transfer
+          // If the write buffer is not full, the accepted transfer is the first part of the split transfer
+          split_rem_cnt <= (write_buffer_state_i == WBUF_FULL) ? 2'h2 : 2'h1;
+        end
+        else begin
+          // OBI transfer was not accepted in this cycle
+          // If the write buffer is full, the buffered transfer must be accepted before the split transfer can go on the OBI bus
+          // If the write buffer is not full, the next accepted OBI transfer will be the first part of the split transfer
+          split_rem_cnt <= (write_buffer_state_i == WBUF_FULL) ? 2'h3 : 2'h2;
+        end
+      end
+      else if (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt) begin
+        // Transfer accepted, decrement counter
+        split_rem_cnt <= (split_rem_cnt > 2'h0) ? split_rem_cnt - 2'h1 : 2'h0;
+      end
+    end
+  end
+
+  // Assert that OBI prot is equal for both parts of a split transfer
+  a_lsu_split_prot:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     ((split_rem_cnt == 2'h1) && (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt)) |->
+                     (m_c_obi_data_if.req_payload.prot == trans_prot_prev))
+      else `uvm_error("load_store_unit", "OBI prot not equal for both parts of a split transfer")
 
 endmodule // cv32e40x_load_store_unit_sva
-

@@ -15,6 +15,11 @@
 // SPDX-License-Identifier: Apache-2.0 WITH SHL-2.0
 
 // CV32E40X RVFI instruction OBI interface (aligns instruction OBI signals to IF timing)
+// In order to take MPU faults into account, the control signals are sampled on the core side
+// of the MPU, while the transaction payloads (obi_instr.req_payload, obi_instr.resp_payload)
+// are taken directly from the instruction OBI bus.
+// In case of an MPU fault, the transaction payloads are undefined,
+// with the exception of resp_payload.mpu_status.
 //
 // Contributors: Arjan Bink <arjan.bink@silabs.com>
 
@@ -28,6 +33,10 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   input  logic [31:0]                   prefetch_addr_i,
   input  logic                          prefetch_compressed_i,
   input  logic                          kill_if_i,
+  input  mpu_status_e                   mpu_status_i,
+  input logic                           prefetch_trans_valid_i,
+  input logic                           prefetch_trans_ready_i,
+  input logic                           prefetch_resp_valid_i,
 
   if_c_obi.monitor                      m_c_obi_instr_if,
 
@@ -49,25 +58,28 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   logic [PTR_WIDTH-1:0]         wptr_resp_q, wptr_resp_n;                       // Pointer to FIFO (response phase) entry to be written
   logic [PTR_WIDTH:0]           cnt_q, cnt_n;                                   // Number of FIFO entries including incoming entries
 
-  logic                         fifo_req_push;                                  // Push FIFO when receiving OBI address phase signals
-  logic                         fifo_resp_push;                                 // Push FIFO when receiving OBI response phase signals
+  logic                         fifo_req_push;                                  // Push FIFO when transaction is accepted
+  logic                         fifo_resp_push;                                 // Push FIFO when response is valid
   logic                         fifo_pop;                                       // Pop FIFO when entry has been fully used
 
-  // Outstanding and started OBI transactions
+  // Outstanding transactions
   logic [PTR_WIDTH-1:0]         outstanding_cnt_n, outstanding_cnt_q;
   logic                         outstanding_count_up;
   logic                         outstanding_count_down;
 
-  logic                         started_q, started_n;                           // OBI transaction started (but not yet outstanding)
+  logic                         response_valid;
+  logic                         trans_accepted;
 
-  logic [PTR_WIDTH-1:0]         flush_cnt;                                      // Number of FIFO entries to be flushed upon IF kill
+  // Use control signals from the core side of the MPU in order to take MPU faults into account
+  assign response_valid = prefetch_resp_valid_i;
+  assign trans_accepted = prefetch_trans_valid_i && prefetch_trans_ready_i;
 
   //////////////////////////////////////////////////////////////////////////////
-  // Count number of outstanding OBI transactions
+  // Count number of outstanding transactions
   //////////////////////////////////////////////////////////////////////////////
 
-  assign outstanding_count_up   = m_c_obi_instr_if.s_req.req && m_c_obi_instr_if.s_gnt.gnt;
-  assign outstanding_count_down = m_c_obi_instr_if.s_rvalid.rvalid;
+  assign outstanding_count_up   = trans_accepted;
+  assign outstanding_count_down = response_valid;
 
   always_comb begin
     outstanding_cnt_n = outstanding_cnt_q;
@@ -86,20 +98,7 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
         outstanding_cnt_n = outstanding_cnt_q;
       end
     endcase
-
-    started_n = (m_c_obi_instr_if.s_req.req && !m_c_obi_instr_if.s_gnt.gnt) ? 1'b1 : 1'b0;
   end
-
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Number of FIFO entries to be flushed
-  //////////////////////////////////////////////////////////////////////////////
-
-  // If an OBI transavyion has been started (req = 1), but not yet acceppted (gnt = 1),
-  // then it is not yet counted as outstanding, but it should be flushed nonetheless upon
-  // an IF kill.
-  
-  assign flush_cnt = started_q ? outstanding_cnt_q + 1'b1 : outstanding_cnt_q;
 
   // The RVFI instruction OBI FIFO tracks reads, writes and flushes of the alignment
   // buffer. As its size is at least the size of the alignment buffer, this FIFO
@@ -107,11 +106,20 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   // the address phase acceptance, the address phase FIFO push will always be
   // to a different FIFO entry than the response phase FIFO push.
 
-  // Push OBI address phase signals into FIFO when OBI address phase is accepted
-  assign fifo_req_push = m_c_obi_instr_if.s_req.req && m_c_obi_instr_if.s_gnt.gnt;
+  // Push OBI address phase signals into FIFO when transaction in accepted.
+  // trans_accepted is based on the core side control signals from the MPU.
+  // When there is no MPU fault, trans_accepted will have the same timing as
+  // m_c_obi_instr_if.s_req.req, since the control signals are passed directly through the MPU,
+  // and cv32e40x_instr_obi_interface will be in TRANSPARENT mode (trans_ready_o == 1'b1).
+  // Upon MPU fault, req_payload will be undefined.
+  assign fifo_req_push = trans_accepted;
 
-  // Push OBI response phase signals into FIFO when OBI response phase is accepted
-  assign fifo_resp_push = m_c_obi_instr_if.s_rvalid.rvalid;
+  // Push OBI response phase signals into FIFO when response is valid.
+  // response_valid is based on the core side control signal from the MPU.
+  // When there is no MPU fault, response_valid will have the same timing as
+  // m_c_obi_instr_if.s_rvalid.rvalid, since this signal is passed directly through cv32e40x_instr_obi_interface and the MPU.
+  // Upon MPU fault, resp_payload will be undefined, with the exception of resp_payload.mpu_status
+  assign fifo_resp_push = response_valid;
 
   // Pop FIFO when reading word or when reading upper halfword
   always_comb
@@ -142,8 +150,9 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   always_comb
   begin
     fifo_resp_n = fifo_q[wptr_resp_q];
-    fifo_resp_n.resp_payload = m_c_obi_instr_if.resp_payload;
-    wptr_resp_n = wptr_resp_q + 1'b1; 
+    fifo_resp_n.resp_payload.bus_resp   = m_c_obi_instr_if.resp_payload;
+    fifo_resp_n.resp_payload.mpu_status = mpu_status_i;
+    wptr_resp_n = wptr_resp_q + 1'b1;
   end
 
   //////////////////////////////////////////////////////////////////////////////
@@ -159,12 +168,11 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
       wptr_resp_q             <= 'b0;
       fifo_q                  <= 'b0;
       outstanding_cnt_q       <= 'b0;
-      started_q               <= 1'b0;
     end else begin
       // FIFO reads
       if (kill_if_i) begin
         cnt_q                 <= '0;                                    // No more entries in FIFO
-        rptr_q                <= PTR_WIDTH'(wptr_resp_q + flush_cnt);   // Flush/skip existing + incoming entries (assumes rptr_q is power of 2)
+        rptr_q                <= PTR_WIDTH'(wptr_resp_q + outstanding_cnt_q);   // Flush/skip existing + incoming entries (assumes rptr_q is power of 2)
       end else begin
         if (fifo_pop) begin
           rptr_q              <= rptr_n;
@@ -181,9 +189,8 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
         wptr_resp_q         <= wptr_resp_n;
       end
 
-      // OBI transaction outstanding or started
+      // Outstanding transactions
       outstanding_cnt_q     <= outstanding_cnt_n;
-      started_q             <= started_n;
 
     end
   end
@@ -205,30 +212,35 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
       if (prefetch_addr_i[1:0] == 2'b00) begin
         // Compressed instruction in LSBs of 1 rdata item
         obi_instr.req_payload               =  fifo_q[rptr_q].req_payload;
-        obi_instr.resp_payload.rdata[31:16] =  16'h0;
-        obi_instr.resp_payload.rdata[15:0]  =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.rdata[15:0]  : fifo_q[rptr_q].resp_payload.rdata[15:0];
-        obi_instr.resp_payload.err          =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.err          : fifo_q[rptr_q].resp_payload.err;
+        obi_instr.resp_payload.bus_resp.rdata[31:16] =  16'h0;
+        obi_instr.resp_payload.bus_resp.rdata[15:0]  =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.rdata[15:0]  : fifo_q[rptr_q].resp_payload.bus_resp.rdata[15:0];
+        obi_instr.resp_payload.bus_resp.err          =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.err          : fifo_q[rptr_q].resp_payload.bus_resp.err;
+        obi_instr.resp_payload.mpu_status            =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.mpu_status            : fifo_q[rptr_q].resp_payload.mpu_status;
       end else begin
         // Compressed instruction in MSBs of 1 rdata item
-        obi_instr.req_payload               =  fifo_q[rptr_q].req_payload;
-        obi_instr.resp_payload.rdata[31:16] =  16'h0;
-        obi_instr.resp_payload.rdata[15:0]  =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.rdata[31:16] : fifo_q[rptr_q].resp_payload.rdata[31:16];
-        obi_instr.resp_payload.err          =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.err          : fifo_q[rptr_q].resp_payload.err;
+        obi_instr.req_payload                        = fifo_q[rptr_q].req_payload;
+        obi_instr.resp_payload.bus_resp.rdata[31:16] = 16'h0;
+        obi_instr.resp_payload.bus_resp.rdata[15:0]  = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.rdata[31:16] : fifo_q[rptr_q].resp_payload.bus_resp.rdata[31:16];
+        obi_instr.resp_payload.bus_resp.err          = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.err          : fifo_q[rptr_q].resp_payload.bus_resp.err;
+        obi_instr.resp_payload.mpu_status            = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.mpu_status            : fifo_q[rptr_q].resp_payload.mpu_status;
       end
     end else begin
       if (prefetch_addr_i[1:0] == 2'b00) begin
         // Uncompressed instruction (or pointer) in 1 rdata item
-        obi_instr.req_payload               =  fifo_q[rptr_q].req_payload;
-        obi_instr.resp_payload.rdata[31:16] =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.rdata[31:16] : fifo_q[rptr_q].resp_payload.rdata[31:16];
-        obi_instr.resp_payload.rdata[15:0]  =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.rdata[15:0]  : fifo_q[rptr_q].resp_payload.rdata[15:0];
-        obi_instr.resp_payload.err          =  (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.err          : fifo_q[rptr_q].resp_payload.err;
+        obi_instr.req_payload                        = fifo_q[rptr_q].req_payload;
+        obi_instr.resp_payload.bus_resp.rdata[31:16] = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.rdata[31:16] : fifo_q[rptr_q].resp_payload.bus_resp.rdata[31:16];
+        obi_instr.resp_payload.bus_resp.rdata[15:0]  = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.rdata[15:0]  : fifo_q[rptr_q].resp_payload.bus_resp.rdata[15:0];
+        obi_instr.resp_payload.bus_resp.err          = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.err          : fifo_q[rptr_q].resp_payload.bus_resp.err;
+        obi_instr.resp_payload.mpu_status            = (rptr_q     == wptr_resp_q) ? fifo_resp_n.resp_payload.mpu_status            : fifo_q[rptr_q].resp_payload.mpu_status;
       end else begin
         // Uncompressed instruction (or pointer) in 2 rdata items
-        obi_instr.req_payload               =  fifo_q[rptr_q].req_payload;
-        obi_instr.resp_payload.rdata[31:16] =  (rptr_q_inc == wptr_resp_q) ? fifo_resp_n.resp_payload.rdata[15:0]  : fifo_q[rptr_q_inc].resp_payload.rdata[15:0];
-        obi_instr.resp_payload.rdata[15:0]  =                                                                        fifo_q[rptr_q].resp_payload.rdata[31:16];
-        obi_instr.resp_payload.err          = ((rptr_q_inc == wptr_resp_q) ? fifo_resp_n.resp_payload.err          : fifo_q[rptr_q_inc].resp_payload.err) ||
-                                                                                                                     fifo_q[rptr_q].resp_payload.err;
+        obi_instr.req_payload                        = fifo_q[rptr_q].req_payload;
+        obi_instr.resp_payload.bus_resp.rdata[31:16] = (rptr_q_inc == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.rdata[15:0]  : fifo_q[rptr_q_inc].resp_payload.bus_resp.rdata[15:0];
+        obi_instr.resp_payload.bus_resp.rdata[15:0]  = fifo_q[rptr_q].resp_payload.bus_resp.rdata[31:16];
+        obi_instr.resp_payload.bus_resp.err          = ((rptr_q_inc == wptr_resp_q) ? fifo_resp_n.resp_payload.bus_resp.err         : fifo_q[rptr_q_inc].resp_payload.bus_resp.err) ||
+                                                       fifo_q[rptr_q].resp_payload.bus_resp.err;
+        obi_instr.resp_payload.mpu_status            = (((rptr_q_inc == wptr_resp_q) ? fifo_resp_n.resp_payload.mpu_status : fifo_q[rptr_q_inc].resp_payload.mpu_status) != MPU_OK) ? MPU_RE_FAULT :
+                                                       fifo_q[rptr_q].resp_payload.mpu_status;
       end
     end
   end

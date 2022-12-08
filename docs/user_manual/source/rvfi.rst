@@ -223,11 +223,13 @@ For |corev|, the ``rvfi_mem`` interface has been expanded to support multiple me
    output [NRET * NMEM * XLEN/8 - 1 : 0] rvfi_mem_wmask
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_rdata
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_wdata
+   output [NRET * NMEM * 3    - 1 : 0]   rvfi_mem_prot
 
 Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, starting at ``NMEM=1``.
 
 Instructions with a single memory operation (e.g. all RV32I instructions), including split misaligned transfers, will only use NMEM = 1.
 Instructions with multiple memory operations (e.g. the push and pop instructions from Zcmp) use NMEM > 1 in case multiple memory operations actually occur.
+``rvfi_mem_prot`` indicates the value of OBI prot used for the memory access or accesses. Note that this will be undefined upon access faults.
 
 
 For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
@@ -312,6 +314,10 @@ The ``rvfi_halt`` signal is meant for liveness properties of cores that can halt
 **Mode Signal**
 
 The ``rvfi_mode`` signal shows the *current* privilege mode as opposed to the *effective* privilege mode of the instruction. I.e. for load and store instructions the reported privilege level will therefore not depend on ``mstatus.mpp`` and ``mstatus.mprv``.
+
+**OBI prot Signal**
+
+``rvfi_instr_prot`` indicates the value of OBI prot used for fetching the retired instruction. Note that this will be undefined upon access faults.
 
 Trace output file
 -----------------

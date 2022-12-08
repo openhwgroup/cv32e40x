@@ -44,6 +44,10 @@ module cv32e40x_rvfi
    input inst_resp_t                          prefetch_instr_if_i,
    input logic                                clic_ptr_if_i,
    input logic                                mret_ptr_if_i,
+   input mpu_status_e                         mpu_status_i,
+   input logic                                prefetch_trans_valid_i,
+   input logic                                prefetch_trans_ready_i,
+   input logic                                prefetch_resp_valid_i,
 
    // ID probes
    input logic                                id_valid_i,
@@ -73,8 +77,7 @@ module cv32e40x_rvfi
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_atomic_ex_i,
    input logic [31:0]                         branch_target_ex_i,
-   input logic [31:0]                         buffer_trans_addr_ex_i,
-   input logic [31:0]                         buffer_trans_wdata_ex_i,
+   input obi_data_req_t                       buffer_trans,
    input logic                                lsu_split_q_ex_i,
 
    // WB probes
@@ -290,6 +293,7 @@ module cv32e40x_rvfi
    output logic [ 0:0]                        rvfi_valid,
    output logic [63:0]                        rvfi_order,
    output logic [31:0]                        rvfi_insn,
+   output logic [2:0]                         rvfi_instr_prot,
    output rvfi_trap_t                         rvfi_trap,
    output logic [ 0:0]                        rvfi_halt,
    output rvfi_intr_t                         rvfi_intr,
@@ -315,6 +319,7 @@ module cv32e40x_rvfi
    output logic [ 4*NMEM-1:0]                 rvfi_mem_wmask,
    output logic [32*NMEM-1:0]                 rvfi_mem_rdata,
    output logic [32*NMEM-1:0]                 rvfi_mem_wdata,
+   output logic [ 3*NMEM-1:0]                 rvfi_mem_prot,
 
    output logic [32*32-1:0]                   rvfi_gpr_rdata,
    output logic [31:0]                        rvfi_gpr_rmask,
@@ -590,6 +595,7 @@ module cv32e40x_rvfi
   logic [4:0]        debug_mode;
   logic [4:0] [ 2:0] debug_cause;
   logic [4:0]        instr_pmp_err;
+  logic [4:0] [2:0]  instr_prot;
   rvfi_intr_t [4:0]  in_trap;
   logic [4:0] [ 4:0] rs1_addr;
   logic [4:0] [ 4:0] rs2_addr;
@@ -614,8 +620,7 @@ module cv32e40x_rvfi
 
 
   //Propagating from EX stage
-  logic [31:0]       ex_mem_addr;
-  logic [31:0]       ex_mem_wdata;
+  obi_data_req_t     ex_mem_trans;
   mem_err_t [3:0]    mem_err;
 
   logic              lsu_mem_split_wb;
@@ -624,8 +629,6 @@ module cv32e40x_rvfi
 
   logic [ 3:0] rvfi_mem_mask_int;
   logic [31:0] rvfi_mem_rdata_d;
-  logic [31:0] rvfi_mem_wdata_d;
-  logic [31:0] rvfi_mem_addr_d;
 
 
   logic [ 4:0] rd_addr_wb;
@@ -666,9 +669,6 @@ module cv32e40x_rvfi
   logic [31:0]       mhpmcounter_l_during_wb;
   logic [31:0]       mhpmcounter_h_during_wb;
 
-
-  logic [63:0] buffer_trans_wdata_ror; // Intermediate rotate signal, as direct part-select not supported in all tools
-
   logic         wb_valid_lastop;
   logic         wb_valid_subop;
 
@@ -693,6 +693,7 @@ module cv32e40x_rvfi
   logic [6:0]   memop_cnt;
 
   rvfi_obi_instr_t obi_instr_if;
+  obi_data_req_t   lsu_data_trans;
 
   // Detect mret initiated CLIC pointer in WB
   logic         mret_ptr_wb;
@@ -718,7 +719,10 @@ module cv32e40x_rvfi
     .prefetch_addr_i            ( prefetch_addr_if_i            ),
     .prefetch_compressed_i      ( prefetch_compressed_if_i      ),
     .kill_if_i                  ( ctrl_fsm_i.kill_if            ),
-
+    .mpu_status_i               ( mpu_status_i                  ),
+    .prefetch_trans_valid_i     ( prefetch_trans_valid_i        ),
+    .prefetch_trans_ready_i     ( prefetch_trans_ready_i        ),
+    .prefetch_resp_valid_i      ( prefetch_resp_valid_i         ),
     .m_c_obi_instr_if           ( m_c_obi_instr_if              ),
 
     .obi_instr                  ( obi_instr_if                  )
@@ -727,8 +731,10 @@ module cv32e40x_rvfi
   cv32e40x_rvfi_data_obi
   rvfi_data_obi_i
   (
-    .clk                        ( clk_i                 ),
-    .rst_n                      ( rst_ni                )
+    .clk                        ( clk_i          ),
+    .rst_n                      ( rst_ni         ),
+    .buffer_trans               ( buffer_trans   ),
+    .lsu_data_trans             ( lsu_data_trans )
   );
 
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
@@ -820,14 +826,14 @@ module cv32e40x_rvfi
       debug_mode         <= '0;
       debug_cause        <= '0;
       instr_pmp_err      <= '0;
+      instr_prot         <= '0;
       rs1_addr           <= '0;
       rs2_addr           <= '0;
       rs1_rdata          <= '0;
       rs2_rdata          <= '0;
       mem_rmask          <= '0;
       mem_wmask          <= '0;
-      ex_mem_addr        <= '0;
-      ex_mem_wdata       <= '0;
+      ex_mem_trans       <= '0;
       mem_err            <= {4{MEM_ERR_IO_ALIGN}};
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
@@ -835,6 +841,7 @@ module cv32e40x_rvfi
       rvfi_valid         <= 1'b0;
       rvfi_order         <= '0;
       rvfi_insn          <= '0;
+      rvfi_instr_prot    <= '0;
       rvfi_pc_rdata      <= '0;
       rvfi_pc_wdata      <= '0;
       rvfi_trap          <= '0;
@@ -854,6 +861,7 @@ module cv32e40x_rvfi
       rvfi_mem_rdata     <= '0;
       rvfi_mem_wmask     <= '0;
       rvfi_mem_wdata     <= '0;
+      rvfi_mem_prot      <= '0;
       rvfi_gpr_rdata     <= '0;
       rvfi_gpr_rmask     <= '0;
       rvfi_gpr_wdata     <= '0;
@@ -900,6 +908,9 @@ module cv32e40x_rvfi
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end
+
+        // Capture OBI prot for the instruction fetch
+        instr_prot[STAGE_ID] <= obi_instr_if.req_payload.prot;
 
       end else begin
         if (in_trap_clr) begin
@@ -955,6 +966,8 @@ module cv32e40x_rvfi
         debug_mode [STAGE_EX] <= debug_mode [STAGE_ID];
         debug_cause[STAGE_EX] <= debug_cause[STAGE_ID];
         instr_pmp_err[STAGE_EX] <= instr_pmp_err[STAGE_ID];
+        instr_prot[STAGE_EX]    <= instr_prot[STAGE_ID];
+
         // Only update rs1/rs2 on the first part of a multi operation instruction.
         // Jumps may actually use rs1 before (id_valid && ex_ready), an assertion exists to check that
         // the jump target is stable and it should be safe to use rs1/2_rdata at the time of the pipeline handshake.
@@ -992,6 +1005,7 @@ module cv32e40x_rvfi
         debug_mode [STAGE_WB] <= debug_mode         [STAGE_EX];
         debug_cause[STAGE_WB] <= debug_cause        [STAGE_EX];
         instr_pmp_err[STAGE_WB] <= instr_pmp_err    [STAGE_EX];
+        instr_prot [STAGE_WB] <= instr_prot         [STAGE_EX];
         rs1_addr   [STAGE_WB] <= rs1_addr           [STAGE_EX];
         rs2_addr   [STAGE_WB] <= rs2_addr           [STAGE_EX];
         rs1_rdata  [STAGE_WB] <= rs1_rdata          [STAGE_EX];
@@ -1011,8 +1025,7 @@ module cv32e40x_rvfi
         if (!lsu_split_q_ex_i) begin
           // The second part of the split misaligned acess is suppressed to keep
           // the start address and data for the whole misaligned transfer
-          ex_mem_addr         <= rvfi_mem_addr_d;
-          ex_mem_wdata        <= rvfi_mem_wdata_d;
+          ex_mem_trans <= lsu_data_trans;
         end
 
         mem_err   [STAGE_WB]  <= lsu_pmp_err_ex_i        ? MEM_ERR_PMP :
@@ -1056,6 +1069,7 @@ module cv32e40x_rvfi
         rvfi_rs2_addr  <= mret_ptr_wb ? rs2_addr [STAGE_WB_PAST] : rs2_addr  [STAGE_WB];
         rvfi_rs1_rdata <= mret_ptr_wb ? rs1_rdata[STAGE_WB_PAST] : rs1_rdata [STAGE_WB];
         rvfi_rs2_rdata <= mret_ptr_wb ? rs2_rdata[STAGE_WB_PAST] : rs2_rdata [STAGE_WB];
+        rvfi_instr_prot<= mret_ptr_wb ? instr_prot[STAGE_WB_PAST] : instr_prot[STAGE_WB];
 
         rvfi_mode      <= priv_lvl_i;
 
@@ -1079,6 +1093,7 @@ module cv32e40x_rvfi
         rs2_rdata[STAGE_WB_PAST]    <= rs1_rdata[STAGE_WB];
         debug_cause [STAGE_WB_PAST] <= debug_cause [STAGE_WB];
         debug_mode [STAGE_WB_PAST]  <= debug_mode[STAGE_WB];
+        instr_prot[STAGE_WB_PAST]   <= instr_prot[STAGE_WB];
         pc_wb_past                  <= pc_wb_i;
         instr_rdata_wb_past         <= instr_rdata_wb_i;
         rd_addr_wb_past             <= rd_addr_wb;
@@ -1091,6 +1106,7 @@ module cv32e40x_rvfi
           rvfi_mem_rdata     <= '0;
           rvfi_mem_wmask     <= '0;
           rvfi_mem_wdata     <= '0;
+          rvfi_mem_prot      <= '0;
 
           rvfi_gpr_rdata     <= '0;
           rvfi_gpr_rmask     <= '0;
@@ -1103,8 +1119,9 @@ module cv32e40x_rvfi
           rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
           rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
           rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
-          rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_addr;
-          rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_wdata;
+          rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.addr;
+          rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.wdata;
+          rvfi_mem_prot [ (3*(memop_cnt+1))-1 -:  3] <= ex_mem_trans.prot;
         end
 
         // Update rvfi_gpr for writes to RF
@@ -1191,13 +1208,6 @@ module cv32e40x_rvfi
       default: rvfi_mem_mask_int = 4'b0000;
     endcase
   end
-
-  // Memory adddress
-  assign rvfi_mem_addr_d = buffer_trans_addr_ex_i;
-
-  // Align Memory write data
-  assign rvfi_mem_wdata_d       = buffer_trans_wdata_ror[31:0];
-  assign buffer_trans_wdata_ror = {buffer_trans_wdata_ex_i, buffer_trans_wdata_ex_i} >> (8*rvfi_mem_addr_d[1:0]); // Rotate right
 
   // Destination Register
   // The rd_addr signal in rtl can contain contain unused non-zero values when not reading

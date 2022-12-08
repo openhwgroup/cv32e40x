@@ -30,6 +30,7 @@
 .rvfi_valid(),\
 .rvfi_order(),\
 .rvfi_insn(),\
+.rvfi_instr_prot(),\
 .rvfi_trap(),\
 .rvfi_halt(),\
 .rvfi_intr(),\
@@ -55,6 +56,7 @@
 .rvfi_mem_wmask(),\
 .rvfi_mem_rdata(),\
 .rvfi_mem_wdata(),\
+.rvfi_mem_prot(),\
 \
 .rvfi_gpr_rdata(),\
 .rvfi_gpr_rmask(),\

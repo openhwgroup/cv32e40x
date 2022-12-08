@@ -129,7 +129,7 @@ package cv32e40x_rvfi_pkg;
 
   typedef struct packed {
     obi_inst_req_t  req_payload;
-    obi_inst_resp_t resp_payload;
+    inst_resp_t     resp_payload;
   } rvfi_obi_instr_t;
 
 endpackage // cv32e40x_rvfi_pkg
