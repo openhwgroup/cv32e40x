@@ -645,7 +645,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                       ebreakm   : csr_wdata_int[15],
                       stepie    : csr_wdata_int[11],
                       stopcount : csr_wdata_int[10],
-                      mprven    : 1'b1,
+                      mprven    : dcsr_rdata.mprven,
                       step      : csr_wdata_int[2],
                       prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[1:0]),
                       cause     : dcsr_rdata.cause,
@@ -1013,7 +1013,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             ebreakm   : dcsr_rdata.ebreakm,
             stepie    : dcsr_rdata.stepie,
             stopcount : dcsr_rdata.stopcount,
-            mprven    : 1'b1,
+            mprven    : dcsr_rdata.mprven,
             step      : dcsr_rdata.step,
             prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
             cause     : ctrl_fsm_i.debug_cause,
