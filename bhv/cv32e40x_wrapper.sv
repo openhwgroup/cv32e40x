@@ -519,6 +519,7 @@ endgenerate
          .nmi_pending_i            ( core_i.controller_i.controller_fsm_i.nmi_pending_q                   ),
          .nmi_is_store_i           ( core_i.controller_i.controller_fsm_i.nmi_is_store_q                  ),
          .debug_mode_q_i           ( core_i.controller_i.controller_fsm_i.debug_mode_q                    ),
+         .debug_cause_n_i          ( core_i.controller_i.controller_fsm_i.debug_cause_n                   ),
          .irq_i                    ( core_i.irq_i & IRQ_MASK                                              ),
          .irq_wu_ctrl_i            ( core_i.irq_wu_ctrl                                                   ),
          .irq_id_ctrl_i            ( core_i.irq_id_ctrl                                                   ),

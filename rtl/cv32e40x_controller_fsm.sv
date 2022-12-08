@@ -436,7 +436,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //   - A faulted pointer fetch does not perform the second fetch. Instead the exception handler fetch will occur before entering debug due to stepping.
   // todo: Likely flop the wb_valid/last_op/abort_op to be able to evaluate all debug reasons (debug_req when pointer is in WB is not allowed, while single step is allowed)
   // todo: can this be merged with pending_sync_debug in the future?
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack)) && !(pending_async_debug || pending_sync_debug);
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack));
 
 
   // Detect if there is a live CLIC pointer in the pipeline
@@ -476,8 +476,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug pending for external debug request
   assign pending_async_debug = ((debug_req_i || debug_req_q) && !debug_mode_q);
 
-  // Determine cause of debug
-  // pending_single_step may only happen if no other causes for debug are true.
+  // Determine cause of debug. Set for all causes of debug entry.
+  // In case of ebreak during debug mode, the entry code in DEBUG_TAKEN will
+  // make sure not to update any CSRs.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
   // todo: update priority according to updated debug spec
   // 1: resethaltreq (0x5)
@@ -486,10 +487,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // 4: trigger match (0x2)
   // 5: ebreak (0x1)
   // 6: single step (0x4)
-  assign debug_cause_n = pending_single_step                               ? DBG_CAUSE_STEP :
-                         (trigger_match_in_wb || etrigger_wb_i)            ? DBG_CAUSE_TRIGGER :
-                         (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
-                         DBG_CAUSE_HALTREQ;
+  assign debug_cause_n = (trigger_match_in_wb || etrigger_wb_i)            ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
+                         (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK  :    // Ebreak during machine mode
+                         (ebreak_in_wb && debug_mode_q)                    ? DBG_CAUSE_EBREAK  :    // Ebreak during debug mode
+                         (pending_async_debug && async_debug_allowed)      ? DBG_CAUSE_HALTREQ :
+                         (pending_single_step && single_step_allowed)      ? DBG_CAUSE_STEP    : DBG_CAUSE_NONE;
 
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
@@ -1027,8 +1029,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Neither ebreak nor trigger match have any state updates in WB. For trigger match, all write enables are suppressed in the ID stage.
           //   Thus this change is not visible to core state, only for RVFI use.
           // todo: Move some logic to RVFI instead?
-          ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER) ||
-                                (debug_mode_q && ebreak_in_wb));
+          ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER));
+
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
