@@ -113,6 +113,7 @@ module cv32e40x_rvfi
    input logic                                nmi_pending_i,          // regular NMI pending
    input logic                                nmi_is_store_i,         // regular NMI type
    input logic                                debug_mode_q_i,
+   input logic [2:0]                          debug_cause_n_i,
 
    // Interrupt Controller probes
    input logic [31:0]                         irq_i,
@@ -798,7 +799,9 @@ module cv32e40x_rvfi
 
     end
 
-    if(pending_single_step_i && single_step_allowed_i) begin
+    // Check for single step debug entry, need to include the actual debug_cause_n, as single step has the lowest priority
+    // to enter debug and any higher priority cause could be active at the same time.
+    if((pending_single_step_i && single_step_allowed_i) && (debug_cause_n_i == DBG_CAUSE_STEP)) begin
       // The timing of the single step debug entry does not allow using pc_mux for detection
       rvfi_trap_next.debug       = 1'b1;
       rvfi_trap_next.debug_cause = DBG_CAUSE_STEP;
