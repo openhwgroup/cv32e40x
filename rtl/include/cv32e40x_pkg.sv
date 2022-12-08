@@ -602,8 +602,10 @@ typedef struct packed {
 
 
 parameter dcsr_t DCSR_RESET_VAL = '{
-  xdebugver : XDEBUGVER_STD,
+  xdebugver:  XDEBUGVER_STD,
+  stopcount:  1'b1,
   cause:      DBG_CAUSE_NONE,
+  mprven:     1'b1,
   prv:        PRIV_LVL_M,
   default:    '0};
 
