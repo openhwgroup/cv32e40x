@@ -482,17 +482,17 @@ endgenerate
   a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
-                    !irq_wu_ctrl_i && wu_wfe_i && !pending_async_debug
+                    !(irq_wu_ctrl_i || pending_nmi) && wu_wfe_i && !pending_async_debug
                     |=>
                     (ctrl_fsm_cs == SLEEP))
     else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
 
-  // WFE wakes up to either interrupts or wu_wfe_i
+  // WFE wakes up to either interrupts (including NMI) or wu_wfe_i
   // Disregarding debug related reasons to wake up
   a_wfe_wakeup:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn &&
-                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_async_debug
+                    (irq_wu_ctrl_i || wu_wfe_i || pending_nmi) && !pending_async_debug
                     |->
                     (ctrl_fsm_ns == FUNCTIONAL))
     else `uvm_error("controller", "WFE must wake up to interuppts or wu_wfe_i")
