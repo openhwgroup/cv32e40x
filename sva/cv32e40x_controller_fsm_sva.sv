@@ -70,6 +70,7 @@ module cv32e40x_controller_fsm_sva
   input logic           pending_interrupt,
   input logic           interrupt_allowed,
   input logic           pending_nmi,
+  input logic           nmi_allowed,
   input logic           fencei_ready,
   input logic           xif_commit_kill,
   input logic           xif_commit_valid,
@@ -210,14 +211,14 @@ module cv32e40x_controller_fsm_sva
     else `uvm_error("controller", "LSU instruction follows WFI or WFE")
 
   // Check that no new instructions (first_op=1) are valid in ID or EX when a single step is taken
-  // In case of interrupt during step, the instruction being stepped could be in any stage, and will get killed.
+  // In case of interrupt (including NMI) during step, the instruction being stepped could be in any stage, and will get killed.
   // Aborted instructions may cause early termination of sequences. Either we jump to the exception handler before debug entry,
   // or straight to debug in case of a trigger match.
   a_single_step_pipecheck :
     assert property (@(posedge clk) disable iff (!rst_n)
             (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN)
             |-> ((!(id_ex_pipe_i.instr_valid && first_op_ex_i) && !(if_id_pipe_i.instr_valid && if_id_pipe_i.first_op))) ||
-                (ctrl_fsm_o.irq_ack && ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_wb)))
+                ((ctrl_fsm_o.irq_ack || (pending_nmi && nmi_allowed)) && ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_wb)))
 
       else `uvm_error("controller", "ID and EX not empty when when single step is taken")
 
