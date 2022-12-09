@@ -309,6 +309,8 @@ module cv32e40x_wrapper
                 .ctrl_pending_interrupt           (core_i.controller_i.controller_fsm_i.pending_interrupt),
                 .ctrl_interrupt_allowed           (core_i.controller_i.controller_fsm_i.interrupt_allowed),
                 .ctrl_debug_cause_n               (core_i.controller_i.controller_fsm_i.debug_cause_n),
+                .ctrl_pending_nmi                 (core_i.controller_i.controller_fsm_i.pending_nmi),
+                .ctrl_fsm_cs                      (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
                 .id_stage_multi_cycle_id_stall    (core_i.id_stage_i.multi_cycle_id_stall),
 
                 .id_stage_id_valid                (core_i.id_stage_i.id_valid_o),
@@ -330,6 +332,9 @@ if (SMCLIC) begin : clic_asserts
       cv32e40x_clic_int_controller_sva
         clic_int_controller_sva (.ctrl_pending_interrupt  (core_i.controller_i.controller_fsm_i.pending_interrupt),
                                  .ctrl_interrupt_allowed  (core_i.controller_i.controller_fsm_i.interrupt_allowed),
+                                 .ctrl_pending_nmi        (core_i.controller_i.controller_fsm_i.pending_nmi),
+                                 .ctrl_pending_async_debug(core_i.controller_i.controller_fsm_i.pending_async_debug),
+                                 .ctrl_fsm_cs             (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
                                  .ctrl_fsm                (core_i.ctrl_fsm),
                                  .dcsr                    (core_i.dcsr),
                                  .*);
