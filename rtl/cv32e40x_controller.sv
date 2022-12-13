@@ -38,7 +38,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 )
 (
   input  logic        clk,                        // Gated clock
-  input  logic        clk_ungated_i,              // Ungated clock
   input  logic        rst_n,
 
   input  logic        fetch_enable_i,             // Start the decoding
@@ -150,7 +149,6 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   (
     // Clocks and reset
     .clk                         ( clk                      ),
-    .clk_ungated_i               ( clk_ungated_i            ),
     .rst_n                       ( rst_n                    ),
 
     .fetch_enable_i              ( fetch_enable_i           ),

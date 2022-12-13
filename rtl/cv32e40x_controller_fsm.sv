@@ -38,7 +38,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 (
   // Clocks and reset
   input  logic        clk,                        // Gated clock
-  input  logic        clk_ungated_i,              // Ungated clock
   input  logic        rst_n,
 
   input  logic        fetch_enable_i,             // Start executing
@@ -136,9 +135,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug state
   debug_state_e debug_fsm_cs, debug_fsm_ns;
-
-  // Sticky version of debug_req_i
-  logic debug_req_q;
 
   // Sticky version of lsu_err_wb_i
   logic nmi_pending_q;
@@ -482,8 +478,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
                               (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
-  // Debug pending for external debug request
-  assign pending_async_debug = ((debug_req_i || debug_req_q) && !debug_mode_q);
+  // Debug pending for external debug request, only if not already in debug mode
+  // Ideally the !debug_mode_q below should be factored into async_debug_allowed, but
+  // that can currently cause a deadlock if debug_req_i gets asserted while in debug mode, as
+  // a pending but not allowed async debug will cause the ID stage to halt forever while trying
+  // to get to an interruptible state.
+  assign pending_async_debug = debug_req_i && !debug_mode_q;
 
   // Determine cause of debug. Set for all causes of debug entry.
   // In case of ebreak during debug mode, the entry code in DEBUG_TAKEN will
@@ -1129,18 +1129,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_mode_if = debug_mode_n;
   assign ctrl_fsm_o.debug_mode    = debug_mode_q;
 
-  // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
-  always_ff @(posedge clk_ungated_i, negedge rst_n) begin
-    if (rst_n == 1'b0) begin
-      debug_req_q <= 1'b0;
-    end else begin
-      if (debug_req_i) begin
-        debug_req_q <= 1'b1;
-      end else if (debug_mode_q) begin
-        debug_req_q <= 1'b0;
-      end
-    end
-  end
 
   // Sticky version of lsu_err_wb_i
   always_ff @(posedge clk, negedge rst_n) begin

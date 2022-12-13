@@ -244,9 +244,10 @@ module cv32e40x_controller_fsm_sva
       else `uvm_error("controller", "Fencei request when no fencei in writeback")
 
   // Assert that the fencei request is set the cycle after fencei instruction enters WB (if fencei_ready=1 and there are no higher priority events)
+  // Only check when no higher priority event is pending (nmi, async debug or interrupts) and WB stage is not killed
   a_fencei_hndshk_req_when_fencei_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-           $rose(fencei_in_wb && fencei_ready) && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
+           $rose(fencei_in_wb && fencei_ready) && !ctrl_fsm_o.kill_wb && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
                      |=> $rose(fencei_flush_req_o))
       else `uvm_error("controller", "Fencei in WB did not result in fencei_flush_req_o")
 
