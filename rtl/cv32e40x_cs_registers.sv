@@ -1570,8 +1570,16 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   logic [15:0]          hpm_events_raw;
   logic                 all_counters_disabled;
+  logic                 debug_stopcount;
 
   assign all_counters_disabled = &(mcountinhibit_n | ~MCOUNTINHIBIT_MASK);
+
+  // dcsr.stopcount == 1: Don’t increment any counters while in Debug Mode.
+  // The debug spec states that we should also not increment counters "on ebreak instructions that cause entry into debug mode",
+  // but this implementation does not take ebreak instructions into account.
+  // This is considered OK since most counter events (except wb_invalid and cycle) will be suppressed (in ctrl_fsm_i.mhpmevent) when we
+  // have an ebreak causing debug mode entry in WB.
+  assign debug_stopcount = dcsr_rdata.stopcount && ctrl_fsm_i.debug_mode;
 
   genvar                hpm_idx;
   generate
@@ -1693,18 +1701,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mcycle = mhpmcounter[0] : count every cycle (if not inhibited)
         assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
                                                         !mhpmcounter_write_upper[wcnt_gidx] &&
-                                                        !mcountinhibit_rdata[wcnt_gidx];
+                                                        !mcountinhibit_rdata[wcnt_gidx] &&
+                                                        !debug_stopcount;
       end else if (wcnt_gidx == 2) begin : gen_mhpmcounter_minstret
         // minstret = mhpmcounter[2]  : count every retired instruction (if not inhibited)
         assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
                                                         !mhpmcounter_write_upper[wcnt_gidx] &&
                                                         !mcountinhibit_rdata[wcnt_gidx] &&
+                                                        !debug_stopcount &&
                                                         hpm_events[1];
       end else if( (wcnt_gidx>2) && (wcnt_gidx<(NUM_MHPMCOUNTERS+3))) begin : gen_mhpmcounter
         // add +1 if any event is enabled and active
         assign mhpmcounter_write_increment[wcnt_gidx] = !mhpmcounter_write_lower[wcnt_gidx] &&
                                                         !mhpmcounter_write_upper[wcnt_gidx] &&
                                                         !mcountinhibit_rdata[wcnt_gidx] &&
+                                                        !debug_stopcount &&
                                                         |(hpm_events & mhpmevent_rdata[wcnt_gidx][NUM_HPM_EVENTS-1:0]);
       end else begin : gen_mhpmcounter_not_implemented
         assign mhpmcounter_write_increment[wcnt_gidx] = 1'b0;
