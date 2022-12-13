@@ -384,11 +384,25 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               end
             end
 
-            // Detect special case of CSR instruction using immediate values accessing mnxti
-            // Instruction is illegal if immediate bits 0, 2 or 4 are set.
-            if ((instr_rdata_i[31:20] == CSR_MNXTI) && instr_rdata_i[14]) begin
-              if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
-                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+            // Mnxti is only accessible using CSRR (CSRRS rd, csr, x0), CSRRSI or CSRRCI
+            // In addition, when using CSRRSI, if immediate bits 0, 2 or 4 is set the instruction is reserved (illegal in cv32e40x case)
+            if ((instr_rdata_i[31:20] == CSR_MNXTI)) begin
+              if (instr_rdata_i[14:12] == 3'b010) begin // CSRRS
+                // Only legal if rs1 == x0
+                if (instr_rdata_i[19:15] != 5'b0) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else if (instr_rdata_i[14:12] == 2'b110) begin // CSRRSI
+                // Only legal if immediate 0,2 and 4 is zero
+                if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else begin
+                // Not CSRR or CSRRSI
+                // Illegal unless instruction is CSRRCI
+                if (instr_rdata_i[14:12] != 3'b111) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
               end
             end
           end // SMCLIC
