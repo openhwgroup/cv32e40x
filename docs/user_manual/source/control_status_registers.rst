@@ -86,8 +86,6 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x349         | ``mscratchcswl``  | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on level change                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x34A         | ``mclicbase``     | MRW       | ``SMCLIC`` = 1           | CLIC Base Register                                      |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A0         | ``tselect``       | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Select Register                                 |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A1         | ``tdata1``        | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Data Register 1                                 |
@@ -1417,41 +1415,6 @@ Scratch swap register for multiple interrupt levels.
   Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcswl``.
   The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcswl`` are implementation-defined.
   |corev| will treat such instructions as illegal instructions.
-
-.. _csr-mclicbase:
-
-CLIC Base (``mclicbase``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x34A
-
-.. note::
-   The address for the ``mclicbase`` CSR has not been defined yet in [RISC-V-SMCLIC]_. The used address is therefore
-   likely to change. Also it is likely that the ``mclicbase`` CSR will be removed all together.
-
-Reset Value: 0x0000_0000
-
-Include Condition: ``SMCLIC`` = 1
-
-Detailed:
-
-.. table::
-  :widths: 10 20 70
-  :class: no-scrollbar-table
-
-  +-------------+------------+-------------------------------------------------------------------------+
-  |   Bit #     |   R/W      |           Description                                                   |
-  +=============+============+=========================================================================+
-  | 31:12       |   R (0x0)  | **MCLICBASE**: CLIC Base                                                |
-  +-------------+------------+-------------------------------------------------------------------------+
-  | 11: 0       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
-  +-------------+------------+-------------------------------------------------------------------------+
-
-CLIC base register.
-
-.. note::
-   Currently ``mclicbase`` CSR is simply hardwired to 0x0 and will therefore likely not reflect the actual CLIC base.
-   This CSR will likely be removed. The [RISC-V-SMCLIC]_ specification does not specify its address yet and therefore no further attempt is made to further implement this in |corev|.
 
 .. _csr-tselect:
 
