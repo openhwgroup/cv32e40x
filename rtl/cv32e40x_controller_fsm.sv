@@ -174,6 +174,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic wfi_in_wb;
   logic wfe_in_wb;
   logic fencei_in_wb;
+  logic fence_in_wb;
   logic mret_in_wb;
   logic mret_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
@@ -233,9 +234,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not count if halted or killed
   logic       wb_counter_event_gated;
 
-  // Flop for acking flush requests due to CSR writes
-  logic       csr_flush_ack_n;
-  logic       csr_flush_ack_q;
+  // Flop for acking flush requests
+  logic       flush_ack_n;
+  logic       flush_ack_q;
 
   // Flag for checking if multi op instructions are in an interruptible state
   logic       sequence_in_progress_wb;
@@ -357,6 +358,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
+
+  // fence in wb
+  assign fence_in_wb  = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fence_insn && ex_wb_pipe_i.instr_valid;
 
   // mret in wb - only valid when last_op_wb_i == 1 (which means only mret that did not cause a CLIC pointer fetch)
   // Restricts CSR updates due to mret to not happen if the mret caused a CLIC pointer fetch, such CSR updates
@@ -651,7 +655,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.pc_set_clicv     = 1'b0;
     ctrl_fsm_o.pc_set_tbljmp    = 1'b0;
 
-    csr_flush_ack_n             = 1'b0;
+    flush_ack_n                 = 1'b0;
 
     clic_ptr_in_progress_id_set   = 1'b0;
     clic_ptr_in_progress_id_clear = 1'b0;
@@ -811,7 +815,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_wb = 1'b1;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
-          end else if (fencei_in_wb) begin
+
+          end else if (fencei_in_wb || fence_in_wb) begin
 
             // Halt the pipeline
             ctrl_fsm_o.halt_if = 1'b1;
@@ -819,12 +824,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
-            if (fencei_ready) begin
-              // Set fencei_flush_req_o in the next cycle
-              fencei_flush_req_set = 1'b1;
+            if (fencei_in_wb) begin
+              if (fencei_ready) begin
+                // Set fencei_flush_req_o in the next cycle
+                fencei_flush_req_set = 1'b1;
+              end
             end
-            if (fencei_req_and_ack_q) begin
-              // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_WB_PLUS4
+            else begin
+              // fence_in_wb
+              // Set flush_ack_q in the next cycle when we're ready for a fence
+              // fencei_ready cannot be used directly, as it will introduce a combinatorial loop
+              flush_ack_n = fencei_ready;
+            end
+
+            if (fencei_in_wb ? fencei_req_and_ack_q : flush_ack_q) begin
 
               // Unhalt wb, kill if,id,ex
               ctrl_fsm_o.kill_if   = 1'b1;
@@ -844,6 +857,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.pc_set    = 1'b1;
               ctrl_fsm_o.pc_mux    = PC_WB_PLUS4;
 
+              // Clear handshake and flush_ack
+              flush_ack_n          = 1'b0;
               fencei_flush_req_set = 1'b0;
             end
           end else if (dret_in_wb) begin
@@ -868,8 +883,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_ex = 1'b1;
 
             // Set flop input to get ack in the next cycle when the write is done.
-            csr_flush_ack_n    = 1'b1;
-          end else if (csr_flush_ack_q) begin
+            flush_ack_n    = 1'b1;
+          end else if (flush_ack_q) begin
             // Flush pipeline because of CSR update in the previous cycle
             ctrl_fsm_o.kill_if   = 1'b1;
             ctrl_fsm_o.kill_id   = 1'b1;
@@ -1167,11 +1182,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
-      csr_flush_ack_q       <= 1'b0;
+      flush_ack_q           <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
-      csr_flush_ack_q       <= csr_flush_ack_n;
+      flush_ack_q           <= flush_ack_n;
     end
   end
 

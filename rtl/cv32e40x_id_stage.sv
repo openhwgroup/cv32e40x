@@ -154,6 +154,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // SYS
   logic                 sys_en;
+  logic                 sys_fence_insn;
   logic                 sys_fencei_insn;
   logic                 sys_ecall_insn;
   logic                 sys_ebrk_insn;
@@ -430,6 +431,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .sys_ecall_insn_o                ( sys_ecall_insn            ),
     .sys_wfi_insn_o                  ( sys_wfi_insn              ),
     .sys_wfe_insn_o                  ( sys_wfe_insn              ),
+    .sys_fence_insn_o                ( sys_fence_insn            ),
     .sys_fencei_insn_o               ( sys_fencei_insn           ),
 
     // from IF/ID pipeline
@@ -543,6 +545,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.sys_dret_insn         <= 1'b0;
       id_ex_pipe_o.sys_ebrk_insn         <= 1'b0;
       id_ex_pipe_o.sys_ecall_insn        <= 1'b0;
+      id_ex_pipe_o.sys_fence_insn        <= 1'b0;
       id_ex_pipe_o.sys_fencei_insn       <= 1'b0;
       id_ex_pipe_o.sys_mret_insn         <= 1'b0;
       id_ex_pipe_o.sys_wfi_insn          <= 1'b0;
@@ -632,6 +635,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.sys_dret_insn        <= sys_dret_insn;
           id_ex_pipe_o.sys_ebrk_insn        <= sys_ebrk_insn;
           id_ex_pipe_o.sys_ecall_insn       <= sys_ecall_insn;
+          id_ex_pipe_o.sys_fence_insn       <= sys_fence_insn;
           id_ex_pipe_o.sys_fencei_insn      <= sys_fencei_insn;
           id_ex_pipe_o.sys_mret_insn        <= sys_mret_insn;
           id_ex_pipe_o.sys_wfi_insn         <= sys_wfi_insn;

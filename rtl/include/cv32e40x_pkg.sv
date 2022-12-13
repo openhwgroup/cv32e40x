@@ -810,6 +810,7 @@ typedef struct packed {
   logic                              sys_dret_insn;
   logic                              sys_ebrk_insn;
   logic                              sys_ecall_insn;
+  logic                              sys_fence_insn;
   logic                              sys_fencei_insn;
   logic                              sys_mret_insn;
   logic                              sys_wfi_insn;
@@ -847,6 +848,7 @@ typedef struct packed {
                                                           sys_dret_insn                : 1'b0,
                                                           sys_ebrk_insn                : 1'b0,
                                                           sys_ecall_insn               : 1'b0,
+                                                          sys_fence_insn               : 1'b0,
                                                           sys_fencei_insn              : 1'b0,
                                                           sys_mret_insn                : 1'b0,
                                                           sys_wfi_insn                 : 1'b0,
@@ -1126,6 +1128,7 @@ typedef struct packed {
   logic         sys_dret_insn;
   logic         sys_ebrk_insn;
   logic         sys_ecall_insn;
+  logic         sys_fence_insn;
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
@@ -1195,6 +1198,7 @@ typedef struct packed {
   logic         sys_dret_insn;
   logic         sys_ebrk_insn;
   logic         sys_ecall_insn;
+  logic         sys_fence_insn;
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
