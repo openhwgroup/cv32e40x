@@ -431,15 +431,14 @@ parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
 
 // CSR operations
 
-parameter CSR_OP_WIDTH = 3;
+parameter CSR_OP_WIDTH = 2;
 
 typedef enum logic [CSR_OP_WIDTH-1:0]
 {
- CSR_OP_READ  = 3'b000,
- CSR_OP_WRITE = 3'b001,
- CSR_OP_SET   = 3'b010,
- CSR_OP_CLEAR = 3'b011,
- CSR_OP_CSRRW = 3'b100
+ CSR_OP_READ  = 2'b00,
+ CSR_OP_WRITE = 2'b01,
+ CSR_OP_SET   = 2'b10,
+ CSR_OP_CLEAR = 2'b11
 } csr_opcode_e;
 
 // CSR interrupt pending/enable bits
