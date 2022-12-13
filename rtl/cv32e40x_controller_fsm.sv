@@ -38,7 +38,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 (
   // Clocks and reset
   input  logic        clk,                        // Gated clock
-  input  logic        clk_ungated_i,              // Ungated clock
   input  logic        rst_n,
 
   input  logic        fetch_enable_i,             // Start executing
