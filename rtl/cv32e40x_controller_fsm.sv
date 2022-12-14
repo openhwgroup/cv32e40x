@@ -475,7 +475,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug pending for any other synchronous reason than single step
   assign pending_sync_debug = (trigger_match_in_wb) ||
-                              (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
+                              (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1 // todo: add check for WB stage priv level
                               (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
   // Debug pending for external debug request, only if not already in debug mode
