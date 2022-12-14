@@ -1289,8 +1289,9 @@ This register can be used by the software to service the next interrupt when it 
 without incurring the full cost of an interrupt pipeline flush and context save/restore.
 
 .. note::
-  Use of ``mnxti`` with non-zero ``uimm`` values for bits 0, 2, and 4 are reserved for future use.
-  |corev| will treat such instructions as illegal instructions.
+  The ``mnxti`` CSR is only designed to be used with the CSRR (CSRRS rd,csr,x0), CSRRSI, and CSRRCI instructions.
+  Accessing the ``mnxti`` CSR using any other CSR instruction form is reserved and |corev| will treat such instruction as illegal instructions.
+  In addition, use of ``mnxti`` with CSRRSI with non-zero uimm values for bits 0, 2, and 4 are reserved for future use and will also be treated as illegal instructions.
 
 .. _csr-mintthresh:
 
