@@ -160,7 +160,7 @@ import cv32e40x_pkg::*;
                         csr_wdata_i[6],        // M  6
                         1'b0,                  // zero 5
                         1'b0,                  // zero, S 4
-                        1'b0,                  // zero, U 3
+                        mcontrol6_u_resolve(csr_wdata_i[MCONTROL6_U]),     // zero, U 3
                         csr_wdata_i[2],        // EXECUTE 2
                         csr_wdata_i[1],        // STORE 1
                         csr_wdata_i[0]         // LOAD 0
@@ -185,7 +185,7 @@ import cv32e40x_pkg::*;
                           csr_wdata_i[9],        // m     : Match in machine mode 9
                           1'b0,                  // zero  : tied to zero 8
                           1'b0,                  // s     : WARL(0) 7
-                          1'b0,                  // u     : Match in user mode 7
+                          etrigger_u_resolve(csr_wdata_i[ETRIGGER_U]), // u     : Match in user mode 6
                           6'b000001              // action : WARL(1), enter debug on match
               };
             end

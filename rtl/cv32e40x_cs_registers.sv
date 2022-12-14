@@ -639,11 +639,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     dcsr_n        = '{
                       xdebugver : dcsr_rdata.xdebugver,
                       ebreakm   : csr_wdata_int[15],
+                      ebreaku   : dcsr_ebreaku_resolve(dcsr_rdata.ebreaku, csr_wdata_int[DCSR_EBREAKU_BIT]),
                       stepie    : csr_wdata_int[11],
                       stopcount : csr_wdata_int[10],
                       mprven    : dcsr_rdata.mprven,
                       step      : csr_wdata_int[2],
-                      prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[1:0]),
+                      prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[DCSR_PRV_BIT_HIGH:DCSR_PRV_BIT_LOW]),
                       cause     : dcsr_rdata.cause,
                       default   : 'd0
                      };
@@ -670,7 +671,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     // TODO: add support for SD/XS/FS/VS
     mstatus_n     = '{
                                   tw:   1'b0,
-                                  mprv: 1'b0,
+                                  mprv: mstatus_mprv_resolve(mstatus_rdata.mprv, csr_wdata_int[MSTATUS_MPRV_BIT]),
                                   mpp:  mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
                                   mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
                                   mie:  csr_wdata_int[MSTATUS_MIE_BIT],
@@ -693,7 +694,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mtvec_we        = csr_mtvec_init_i;
 
     if (SMCLIC) begin
-      mtvec_n.mode             = mtvec_rdata.mode; // mode is WARL 0x3 when using CLIC
+      mtvec_n.mode             = mtvec_mode_clic_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]); // mode is WARL 0x3 when using CLIC
 
       mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
       mtvt_we                  = 1'b0;
@@ -730,7 +731,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   };
       mcause_we                = 1'b0;
     end else begin // !SMCLIC
-      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : {1'b0, csr_wdata_int[0]};
+      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]);
 
       mtvt_n                   = '0;
       mtvt_we                  = 1'b0;
@@ -1007,6 +1008,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           dcsr_n         = '{
             xdebugver : dcsr_rdata.xdebugver,
             ebreakm   : dcsr_rdata.ebreakm,
+            ebreaku   : dcsr_rdata.ebreaku,
             stepie    : dcsr_rdata.stepie,
             stopcount : dcsr_rdata.stopcount,
             mprven    : dcsr_rdata.mprven,

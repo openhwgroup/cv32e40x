@@ -392,7 +392,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
                 if (instr_rdata_i[19:15] != 5'b0) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end
-              end else if (instr_rdata_i[14:12] == 2'b110) begin // CSRRSI
+              end else if (instr_rdata_i[14:12] == 3'b110) begin // CSRRSI
                 // Only legal if immediate 0,2 and 4 is zero
                 if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
