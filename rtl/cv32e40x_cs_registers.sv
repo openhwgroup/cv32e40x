@@ -731,7 +731,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   };
       mcause_we                = 1'b0;
     end else begin // !SMCLIC
-      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]);;
+      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]);
 
       mtvt_n                   = '0;
       mtvt_we                  = 1'b0;
