@@ -81,8 +81,8 @@ Interface
   | ``dm_exception_addr_i[31:0]`` | input     | Address for debugger exception entry       |
   +-------------------------------+-----------+--------------------------------------------+
 
-``debug_req_i`` is the "debug interrupt", issued by the debug module when the core should enter Debug Mode. The ``debug_req_i`` is synchronous to ``clk_i``, level sensitive and requires a minimum assertion of one clock period to enter Debug Mode.
-It is not guaranteed that a short pulse on ``debug_req_i`` will cause |corev| to enter debug mode if |corev| is in a state where debug mode cannot be entered while ``debug_req_i`` is high.
+``debug_req_i`` is the "debug interrupt", issued by the debug module when the core should enter Debug Mode. The ``debug_req_i`` signal is synchronous to ``clk_i`` and it is level sensitive.
+It is not guaranteed that a short pulse on ``debug_req_i`` will cause |corev| to enter debug mode.
 
 ``debug_havereset_o``, ``debug_running_o``, and ``debug_mode_o`` signals provide the operational status of the core to the debug module. The assertion of these
 signals is mutually exclusive.
