@@ -71,7 +71,7 @@ module cv32e40x_controller_fsm_sva
   input logic           interrupt_allowed,
   input logic           pending_nmi,
   input logic           nmi_allowed,
-  input logic           fencei_ready,
+  input logic           lsu_busy_i,
   input logic           xif_commit_kill,
   input logic           xif_commit_valid,
   input logic           nmi_is_store_q,
@@ -243,11 +243,11 @@ module cv32e40x_controller_fsm_sva
            fencei_flush_req_o |-> fencei_in_wb)
       else `uvm_error("controller", "Fencei request when no fencei in writeback")
 
-  // Assert that the fencei request is set the cycle after fencei instruction enters WB (if fencei_ready=1 and there are no higher priority events)
+  // Assert that the fencei request is set the cycle after fencei instruction enters WB (if lsu_busy_i=0 and there are no higher priority events)
   // Only check when no higher priority event is pending (nmi, async debug or interrupts) and WB stage is not killed
   a_fencei_hndshk_req_when_fencei_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-           $rose(fencei_in_wb && fencei_ready) && !ctrl_fsm_o.kill_wb && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
+           $rose(fencei_in_wb && !lsu_busy_i) && !ctrl_fsm_o.kill_wb && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
                      |=> $rose(fencei_flush_req_o))
       else `uvm_error("controller", "Fencei in WB did not result in fencei_flush_req_o")
 
@@ -277,11 +277,11 @@ module cv32e40x_controller_fsm_sva
                      $rose(fencei_in_wb) |-> !(fencei_flush_req_o || fencei_req_and_ack_q))
       else `uvm_error("controller", "Fencei handshake not idle when fencei instruction entered writeback")
 
-  // assert that the fencei_ready signal (i.e. write buffer empty) is always set when fencei handshake is active
-  a_fencei_ready :
+  // assert that the lsu_busy_i signal (i.e. write buffer empty) is always cleared when fencei handshake is active
+  a_fencei_lsu_busy :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     fencei_flush_req_o |-> fencei_ready)
-      else `uvm_error("controller", "Fencei handshake active while fencei_ready = 0")
+                     fencei_flush_req_o |-> !lsu_busy_i)
+      else `uvm_error("controller", "Fencei handshake active while lsu_busy_o = 1")
 
   // assert that NMI's are not reported on irq_ack
   a_irq_ack_no_nmi :
