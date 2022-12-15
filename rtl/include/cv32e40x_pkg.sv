@@ -1402,8 +1402,8 @@ typedef struct packed {
 
   function automatic logic[1:0] mtvec_mode_clic_resolve
   (
-    logic current_value,
-    logic next_value
+    logic [1:0] current_value,
+    logic [1:0] next_value
   );
     // mtvec.mode is WARL(0x3) in CLIC mode
     return 2'b11;
