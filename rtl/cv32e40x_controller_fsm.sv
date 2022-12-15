@@ -217,8 +217,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic [10:0] exc_cause; // id of taken interrupt. Max width, unused bits are tied off.
 
-  logic       fencei_ready;
-  logic       fencei_flush_req_set;
+  logic       fence_req_set;
+  logic       fence_req_clr;
+  logic       fence_req_q;
   logic       fencei_req_and_ack_q;
   logic       fencei_ongoing;
 
@@ -234,9 +235,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not count if halted or killed
   logic       wb_counter_event_gated;
 
-  // Flop for acking flush requests
-  logic       flush_ack_n;
-  logic       flush_ack_q;
+  // Flop for acking flush requests due to CSR writes
+  logic       csr_flush_ack_n;
+  logic       csr_flush_ack_q;
 
   // Flag for checking if multi op instructions are in an interruptible state
   logic       sequence_in_progress_wb;
@@ -258,8 +259,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign sequence_interruptible = !sequence_in_progress_wb;
 
   assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_in_progress_id);
-
-  assign fencei_ready = !lsu_busy_i;
 
   // Once the fencei handshake is initiated, it must complete and the instruction must retire.
   // The instruction retires when fencei_req_and_ack_q = 1
@@ -460,7 +459,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or if an offloaded instruction is in WB.
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
-  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing external debug.
+  // When a fencei is present in WB and the LSU has completed all tranfers, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing external debug.
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
@@ -519,7 +518,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were converted to NOP in ID stage.
-  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
+  // When a fencei is present in WB and the LSU has completed all tranfers, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
@@ -650,12 +649,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Ensure jumps and branches are taken only once
     branch_taken_n              = branch_taken_q;
 
-    fencei_flush_req_set        = 1'b0;
+    fence_req_set               = 1'b0;
+    fence_req_clr               = 1'b1;
 
     ctrl_fsm_o.pc_set_clicv     = 1'b0;
     ctrl_fsm_o.pc_set_tbljmp    = 1'b0;
 
-    flush_ack_n                 = 1'b0;
+    csr_flush_ack_n             = 1'b0;
 
     clic_ptr_in_progress_id_set   = 1'b0;
     clic_ptr_in_progress_id_clear = 1'b0;
@@ -818,26 +818,33 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           end else if (fencei_in_wb || fence_in_wb) begin
 
+            // fence.i behavior:
+            //
+            // - Can be killed due to interrupts and debug at any time before fencei_flush_req_o is asserted (so even after initial cycle in WB).
+            // - Initially halt entire pipeline, making sure that possibly following loads/stores do not initiate transactions.
+            // - Wait until the LSU is ready (i.e. write buffer must also be empty and possible NMIs will have been raised).
+            // - Once the LSU is ready take the NMI if present or otherwise continue fence.i handling by initiating the fencei_flush_req_o handshake.
+            // - Once the fencei_flush_req_o handshake is complete flush the entire pipeline (branch to next instruction) and retire the fence.i.
+
+            // fence behavior:
+            //
+            // - Can be killed due to interrupts and debug at any time (so even after initial cycle in WB).
+            // - Initially halt entire pipeline, making sure that possibly following loads/stores do not initiate transactions.
+            // - Wait until the LSU is ready (i.e. write buffer must also be empty and possible NMIs will have been raised).
+            // - Once the LSU is ready take the NMI if present or otherwise continue fence handling.
+            // - Flush the entire pipeline (branch to next instruction) and retire the fence.
+
             // Halt the pipeline
             ctrl_fsm_o.halt_if = 1'b1;
             ctrl_fsm_o.halt_id = 1'b1;
             ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
-            if (fencei_in_wb) begin
-              if (fencei_ready) begin
-                // Set fencei_flush_req_o in the next cycle
-                fencei_flush_req_set = 1'b1;
-              end
-            end
-            else begin
-              // fence_in_wb
-              // Set flush_ack_q in the next cycle when we're ready for a fence
-              // fencei_ready cannot be used directly, as it will introduce a combinatorial loop
-              flush_ack_n = fencei_ready;
-            end
+            // Set fence_req_q when the LSU is no longer busy
+            fence_req_set = !lsu_busy_i;
+            fence_req_clr = 1'b0;
 
-            if (fencei_in_wb ? fencei_req_and_ack_q : flush_ack_q) begin
+            if (fencei_in_wb ? fencei_req_and_ack_q : fence_req_q) begin
 
               // Unhalt wb, kill if,id,ex
               ctrl_fsm_o.kill_if   = 1'b1;
@@ -857,9 +864,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.pc_set    = 1'b1;
               ctrl_fsm_o.pc_mux    = PC_WB_PLUS4;
 
-              // Clear handshake and flush_ack
-              flush_ack_n          = 1'b0;
-              fencei_flush_req_set = 1'b0;
+              // Clear fence_req_q
+              fence_req_set = 1'b0;
+              fence_req_clr = 1'b1;
             end
           end else if (dret_in_wb) begin
             // dret takes jump from WB stage
@@ -883,8 +890,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_ex = 1'b1;
 
             // Set flop input to get ack in the next cycle when the write is done.
-            flush_ack_n    = 1'b1;
-          end else if (flush_ack_q) begin
+            csr_flush_ack_n    = 1'b1;
+          end else if (csr_flush_ack_q) begin
             // Flush pipeline because of CSR update in the previous cycle
             ctrl_fsm_o.kill_if   = 1'b1;
             ctrl_fsm_o.kill_id   = 1'b1;
@@ -1182,11 +1189,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (rst_n == 1'b0) begin
       single_step_halt_if_q <= 1'b0;
       branch_taken_q        <= 1'b0;
-      flush_ack_q           <= 1'b0;
+      csr_flush_ack_q       <= 1'b0;
     end else begin
       single_step_halt_if_q <= single_step_halt_if_n;
       branch_taken_q        <= branch_taken_n;
-      flush_ack_q           <= flush_ack_n;
+      csr_flush_ack_q       <= csr_flush_ack_n;
     end
   end
 
@@ -1205,7 +1212,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Flops for fencei handshake request
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
-      fencei_flush_req_o   <= 1'b0;
+      fence_req_q          <= 1'b0;
       fencei_req_and_ack_q <= 1'b0;
     end else begin
 
@@ -1213,15 +1220,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // fencei_flush_ack_i must be qualified with fencei_flush_req_o
       fencei_req_and_ack_q <= fencei_flush_req_o && fencei_flush_ack_i;
 
-      // Set fencei_flush_req_o based on FSM output. Clear upon req&&ack.
-      if (fencei_flush_req_o && fencei_flush_ack_i) begin
-        fencei_flush_req_o <= 1'b0;
+      // Set and clear fence_req_q based on FSM output. Also clear when fence.i handshake is completed
+      if (fence_req_clr || (fencei_flush_req_o && fencei_flush_ack_i)) begin
+        fence_req_q <= 1'b0;
       end
-      else if (fencei_flush_req_set) begin
-        fencei_flush_req_o <= 1'b1;
+      else if (fence_req_set) begin
+        fence_req_q <= 1'b1;
       end
     end
   end
+
+  // Set flush request if we have a fence.i
+  assign fencei_flush_req_o = fencei_in_wb ? fence_req_q : 1'b0;
 
   // minstret event
   always_ff @(posedge clk, negedge rst_n) begin
