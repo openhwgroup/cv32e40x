@@ -1269,13 +1269,15 @@ typedef struct packed {
   logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
   logic        pc_set_tbljmp;         // Signal pc_set is for Zc* cm.jt / cm.jalt pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
-
-  // To WB stage
-  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
   logic [4:0]  mtvec_pc_mux;          // Id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
   logic [9:0]  mtvt_pc_mux;           // Id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
   logic [7:0]  jvt_pc_mux;            // Index for table jumps
+  logic [4:0]  nmi_mtvec_index;       // Offset into mtvec when taking an NMI
+
+  // To WB stage
+  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+
 
   logic        irq_ack;               // Irq has been taken
   logic [9:0]  irq_id;                // Id of taken irq. Max width (1024 interrupts), unused bits will be tied off

@@ -271,6 +271,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // index for table jumps taken from instruction word in ID stage.
   assign ctrl_fsm_o.jvt_pc_mux = if_id_pipe_i.instr.bus_resp.rdata[19:12];
 
+  // Set which mtvec index to jump to when an NMI is taken
+  // index 0 for non-vectored CLINT mode and CLIC mode, 0xF for vectored CLINT mode
+  assign ctrl_fsm_o.nmi_mtvec_index = (mtvec_mode_i == 2'b01) ? 5'hF : 5'h0;
+
+
 
   ////////////////////////////////////////////////////////////////////
   // ID stage
