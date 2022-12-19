@@ -205,7 +205,7 @@ module cv32e40x_rvfi_sva
     assert property (@(posedge clk_i) disable iff (!rst_ni)
                      (no_debug && $stable(mtvec_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
                      rvfi_intr.intr &&
-                     (rvfi_pc_rdata == {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00}) &&
+                     (rvfi_pc_rdata == {mtvec_addr_i, ctrl_fsm_i.nmi_mtvec_index, 2'b00}) &&
                      ((rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_STORE_FAULT)))
       else `uvm_error("rvfi", "dcsr.nmip not followed by rvfi_intr and NMI handler")
 
@@ -213,7 +213,7 @@ module cv32e40x_rvfi_sva
   /* TODO: Add back in.
      Currently, the alignment buffer can interpret pointers as compressed instructions and pass on two "instructions" from the IF stage.
      cv32e40x_rvfi_instr_obi will not be in sync with the alignment buffer until this is fixed. See https://github.com/openhwgroup/cv32e40x/issues/704
-   
+
   // Check that cv32e40x_rvfi_instr_obi tracks alignment buffer
   a_rvfi_instr_obi_addr:
     assert property (@(posedge clk_i) disable iff (!rst_ni)
@@ -254,7 +254,7 @@ module cv32e40x_rvfi_sva
                      obi_instr_fifo_q[obi_instr_rptr_q].req_payload.prot == obi_instr_fifo_q[obi_instr_rptr_q_inc].req_payload.prot)
       else `uvm_error("rvfi", "rvfi_instr_obi prot not the same for split transfers")
   */
-   
+
 endmodule
 
 

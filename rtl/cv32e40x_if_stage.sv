@@ -163,7 +163,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_IRQ:   branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.mtvec_pc_mux, 2'b00};     // interrupts are vectored
       PC_TRAP_DBD:   branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE:   branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
-      PC_TRAP_NMI:   branch_addr_n = {mtvec_addr_i, NMI_MTVEC_INDEX, 2'b00};
+      PC_TRAP_NMI:   branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.nmi_mtvec_index, 2'b00};
       PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[SMCLIC_ID_WIDTH-1:0], 2'b00};
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
