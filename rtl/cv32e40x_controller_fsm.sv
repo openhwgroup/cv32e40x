@@ -492,7 +492,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // In case of ebreak during debug mode, the entry code in DEBUG_TAKEN will
   // make sure not to update any CSRs.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
-  // todo: update priority according to updated debug spec
+  // For this core, the three top priorities are covered by pending_async_debug.
   // 1: resethaltreq (0x5)
   // 2: halt group (0x6)
   // 3: haltreq (0x3)
