@@ -499,10 +499,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // 4: trigger match (0x2)
   // 5: ebreak (0x1)
   // 6: single step (0x4)
-  assign debug_cause_n = (trigger_match_in_wb || etrigger_wb_i)                                                     ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
+  assign debug_cause_n = (pending_async_debug && async_debug_allowed)                                               ? DBG_CAUSE_HALTREQ :
+                         (trigger_match_in_wb || etrigger_wb_i)                                                     ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
                          (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) ? DBG_CAUSE_EBREAK  :    // Ebreak during machine mode
                          (ebreak_in_wb && debug_mode_q)                                                             ? DBG_CAUSE_EBREAK  :    // Ebreak during debug mode
-                         (pending_async_debug && async_debug_allowed)                                               ? DBG_CAUSE_HALTREQ :
                          (pending_single_step && single_step_allowed)                                               ? DBG_CAUSE_STEP    : DBG_CAUSE_NONE;
 
 
