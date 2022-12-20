@@ -155,8 +155,8 @@ module cv32e40x_cs_registers_sva
       (
         1'b1
         |->
-        (mstatus_rdata.mpp == mcause_rdata.mpp) &&
-        (mstatus_rdata.mpie == mcause_rdata.mpie)
+        (mstatus_q.mpp == mcause_q.mpp) &&
+        (mstatus_q.mpie == mcause_q.mpie)
       );
     endproperty;
     a_mcause_mstatus_alias: assert property(p_mcause_mstatus_alias)
