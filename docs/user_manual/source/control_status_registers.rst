@@ -1412,7 +1412,37 @@ Trigger Data 1 (``tdata1``)
 
 CSR Address: 0x7A1
 
-Reset Value: 0x6800_1000
+Reset Value: 0x2800_1000
+
+.. table::
+  :widths: 10 20 70
+  :class: no-scrollbar-table
+
+  +-------+-----------------+----------------------------------------------------------------+
+  | Bit#  | R/W             | Description                                                    |
+  +=======+=================+================================================================+
+  | 31:28 | WARL (0x2, 0x5, | **TYPE**. 0x2 (``mcontrol``), 0x5 (``etrigger``),              |
+  |       | 0x6, 0xF)       | 0x6 (``mcontrol6``), 0xF (``disabled``).                       |
+  +-------+-----------------+----------------------------------------------------------------+
+  | 27    | WARL (0x1)      | **DMODE**. Only debug mode can write ``tdata`` registers.      |
+  +-------+-----------------+----------------------------------------------------------------+
+  | 26:0  | WARL            | **DATA**. Trigger data depending on type                       |
+  +-------+-----------------+----------------------------------------------------------------+
+
+.. note::
+   Writing 0x0 to ``tdata1`` disables the trigger and changes the value of ``tdata1`` to
+   0xF800_0000, which is the only supported value for a disabled trigger.
+   The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described in
+   :ref:`csr-mcontrol`, :ref:`csr-mcontrol6`, :ref:`csr-etrigger` and :ref:`csr-tdata1_disabled`.
+
+.. _csr-mcontrol:
+
+Match Control Type 2 (``mcontrol``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0x7A1 (``mcontrol`` is accessible as ``tdata1`` when ``tdata1.TYPE`` is 0x2)
+
+Reset Value: Not applicable
 
 .. table::
   :widths: 10 20 70
@@ -1421,19 +1451,42 @@ Reset Value: 0x6800_1000
   +-------+-------------+----------------------------------------------------------------+
   | Bit#  | R/W         | Description                                                    |
   +=======+=============+================================================================+
-  | 31:28 | WARL (0x5,  | **TYPE**. 0x5 (``etrigger``), 0x6 (``mcontrol6``),             |
-  |       | 0x6, 0xF*)  | 0xF (``disabled``).                                            |
+  | 31:28 | WARL (0x2)  | **TYPE**. 2 = Address match trigger (legacy).                  |
   +-------+-------------+----------------------------------------------------------------+
   | 27    | WARL (0x1)  | **DMODE**. Only debug mode can write ``tdata`` registers.      |
   +-------+-------------+----------------------------------------------------------------+
-  | 26:0  | WARL        | **DATA**. Trigger data depending on type                       |
+  | 26:21 | WARL (0x0)  | **MASKMAX**. Hardwired to 0.                                   |
   +-------+-------------+----------------------------------------------------------------+
-
-.. note::
-   Writing 0x0 to ``tdata1`` disables the trigger and changes the value of ``tdata1`` to
-   0xF800_0000, which is the only supported value for a disabled trigger.
-   The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described in
-   :ref:`csr-mcontrol6`, :ref:`csr-etrigger` and :ref:`csr-tdata1_disabled`.
+  | 20    | WARL (0x0)  | **HIT**. Hardwired to 0.                                       |
+  +-------+-------------+----------------------------------------------------------------+
+  | 19    | WARL (0x0)  | **SELECT**. Only address matching is supported.                |
+  +-------+-------------+----------------------------------------------------------------+
+  | 18    | WARL (0x0)  | **TIMING**. Break before the instruction at the specified      |
+  |       |             | address.                                                       |
+  +-------+-------------+----------------------------------------------------------------+
+  | 17:16 | WARL (0x0)  | **SIZELO**. Match accesses of any size.                        |
+  +-------+-------------+----------------------------------------------------------------+
+  | 15:12 | WARL (0x1)  | **ACTION**. Enter debug mode on match.                         |
+  +-------+-------------+----------------------------------------------------------------+
+  | 11    | WARL (0x0)  | **CHAIN**. Hardwired to 0.                                     |
+  +-------+-------------+----------------------------------------------------------------+
+  | 10:7  | WARL (0x0*, | **MATCH**. 0: Address matches `tdata2`, 2: Address is greater  |
+  |       | 0x2, 0x3)   | than or equal to `tdata2`, 3: Address is less than `tdata2`.   |
+  +-------+-------------+----------------------------------------------------------------+
+  | 6     | WARL        | **M**. Match in machine mode.                                  |
+  +-------+-------------+----------------------------------------------------------------+
+  | 5     | WARL (0x0)  | Hardwired to 0.                                                |
+  +-------+-------------+----------------------------------------------------------------+
+  | 4     | WARL (0x0)  | **S**. Hardwired to 0.                                         |
+  +-------+-------------+----------------------------------------------------------------+
+  | 3     | WARL (0x0)  | **U**. Hardwired to 0.                                         |
+  +-------+-------------+----------------------------------------------------------------+
+  | 2     | WARL        | **EXECUTE**. Enable matching on instruction address.           |
+  +-------+-------------+----------------------------------------------------------------+
+  | 1     | WARL        | **STORE**. Enable matching on store address.                   |
+  +-------+-------------+----------------------------------------------------------------+
+  | 0     | WARL        | **LOAD**. Enable matching on load address.                     |
+  +-------+-------------+----------------------------------------------------------------+
 
 .. _csr-mcontrol6:
 
@@ -1616,7 +1669,7 @@ Trigger Info (``tinfo``)
 
 CSR Address: 0x7A4
 
-Reset Value: 0x0000_8060
+Reset Value: 0x0000_8064
 
 Detailed:
 
@@ -1629,7 +1682,7 @@ Detailed:
   +=======+============+==================================================================+
   | 31:16 | WARL (0x0) | Hardwired to 0.                                                  |
   +-------+------------+------------------------------------------------------------------+
-  | 15:0  | R (0x8060) | **INFO**. Types 0x5, 0x6 and 0xF are supported.                  |
+  | 15:0  | R (0x8064) | **INFO**. Types 0x2, 0x5, 0x6 and 0xF are supported.             |
   +-------+------------+------------------------------------------------------------------+
 
 The **info** field contains one bit for each possible `type` enumerated in
