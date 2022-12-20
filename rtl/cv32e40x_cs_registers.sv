@@ -258,6 +258,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic                         csr_wr_in_wb;
   logic                         jvt_wr_in_wb;
 
+  // Special we signal for aliased writes between mstatus and mcause.
+  // Only used for explicit writes to either mcause or mstatus, to signal that
+  // mpp and mpie of the aliased CSR should be written.
+  // All implicit writes (upon taking exceptions etc) handle the aliasing by also
+  // writing mcause.mpp/mpie to mstatus and vice versa.
+  logic                         mcause_alias_we;
+  logic                         mstatus_alias_we;
+
+
   // Performance Counter Signals
   logic [31:0] [63:0]           mhpmcounter_q;                                  // Performance counters
   logic [31:0] [63:0]           mhpmcounter_n;                                  // Performance counters next value
@@ -681,6 +690,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     mstatush_n    = mstatush_rdata; // Read only
     mstatush_we   = 1'b0;
+    mstatus_alias_we = 1'b0;
 
     misa_n        = misa_rdata; // Read only
     misa_we       = 1'b0;
@@ -725,11 +735,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mcause_n                 = '{
                                     irq:            csr_wdata_int[31],
                                     minhv:          csr_wdata_int[30],
+                                    mpp:            mcause_mpp_resolve(mcause_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]),
+                                    mpie:           csr_wdata_int[MCAUSE_MPIE_BIT],
                                     mpil:           csr_wdata_int[23:16],
                                     exception_code: csr_wdata_int[10:0],
                                     default:        'b0
                                   };
       mcause_we                = 1'b0;
+      mcause_alias_we          = 1'b0;
     end else begin // !SMCLIC
       mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]);
 
@@ -765,6 +778,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                     default:        'b0
                                   };
       mcause_we                = 1'b0;
+      mcause_alias_we          = 1'b0;
     end
 
     mtval_n         = mtval_rdata;                // Read-only
@@ -799,6 +813,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         // mstatus
         CSR_MSTATUS: begin
           mstatus_we = 1'b1;
+          // CLIC mode is assumed when SMCLIC = 1
+          // For CLIC, a write to mstatus.mpp or mstatus.mpie will write to the
+          // corresponding bits in mstatus as well.
+          if (SMCLIC) begin
+            mcause_alias_we = 1'b1;
+          end
         end
 
         CSR_MISA: begin
@@ -843,7 +863,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // For CLIC, a write to mcause.mpp or mcause.mpie will write to the
           // corresponding bits in mstatus as well.
           if (SMCLIC) begin
-            mstatus_we = 1'b1;
+            mstatus_alias_we = 1'b1;
           end
         end
 
@@ -860,16 +880,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           if (SMCLIC) begin
             mnxti_we = 1'b1;
 
-            // Writes to mnxti also writes to mstatus
+            // Writes to mnxti also writes to mstatus (uses mstatus in the RMW operation)
+            // Also writing to mcause to ensure we can assert mstatus_we == mcause_we and similar for mpp/mpie.
             mstatus_we = 1'b1;
+            mcause_we  = 1'b1;
 
             // Writes to mintstatus.mil and mcause depend on the current state of
             // clic interrupts AND the type of CSR instruction used.
+            // Mcause is written unconditionally for aliasing purposes, but the mcause_n
+            // is modified to reflect the side effects in case mnxti_irq_pending_i i set.
             // Side effects occur when there is an actual write to the mstatus CSR
             // This is already coded into the csr_we_int/mnxti_we
             if (mnxti_irq_pending_i) begin
               mintstatus_we = 1'b1;
-              mcause_we     = 1'b1;
             end
           end
         end
@@ -963,30 +986,44 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     end
 
     // CSR side effects from other CSRs
-    // All write enables are already calculated at this point
 
     // CLIC mode is assumed when SMCLIC = 1
     if (SMCLIC) begin
       if (mnxti_we) begin
+        // Mstatus is written as part of an mnxti access
+        // Make sure we alias the mpp/mpie to mcause
+        mcause_n = mcause_rdata;
+        mcause_n.mpie = mstatus_n.mpie;
+        mcause_n.mpp = mstatus_n.mpp;
+
         // mintstatus and mcause are updated if an actual mstatus write happens and
         // a higher level non-shv interrupt is pending.
         // This is already decoded into the respective _we signals below.
         if (mintstatus_we) begin
           mintstatus_n.mil = mnxti_irq_level_i;
         end
-        if (mcause_we) begin
-          mcause_n = mcause_rdata;
+        if (mnxti_irq_pending_i) begin
           mcause_n.irq = 1'b1;
           mcause_n.exception_code = {1'b0, 10'(mnxti_irq_id_i)};
         end
-      end else if (mcause_we) begin
+      end else if (mstatus_alias_we) begin
         // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
         // All other mstatus bits are preserved
         mstatus_n      = mstatus_rdata; // Preserve all fields
 
         // Write mpie and mpp as aliased through mcause
-        mstatus_n.mpie = csr_wdata_int[MCAUSE_MPIE_BIT];
-        mstatus_n.mpp  = mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]);
+        mstatus_n.mpie = mcause_n.mpie;
+        mstatus_n.mpp  = mcause_n.mpp;
+
+        mstatus_we = 1'b1;
+      end else if (mcause_alias_we) begin
+        // In CLIC mode, writes to mstatus.mpp/mpie is aliased to mcause.mpp/mpie
+        // All other mcause bits are preserved
+        mcause_n = mcause_rdata;
+        mcause_n.mpie = mstatus_n.mpie;
+        mcause_n.mpp = mstatus_n.mpp;
+
+        mcause_we = 1'b1;
       end
       // The CLIC pointer address should always be output for an access to MNXTI,
       // but will only contain a nonzero value if a CLIC interrupt is actually pending
@@ -1037,12 +1074,23 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           mepc_n         = ctrl_fsm_i.pipe_pc;
           mepc_we        = 1'b1;
 
-          mcause_n       = ctrl_fsm_i.csr_cause;
+          // Save relevant fields from controller to mcause
+          mcause_n.irq            = ctrl_fsm_i.csr_cause.irq;
+          mcause_n.exception_code = ctrl_fsm_i.csr_cause.exception_code;
+
+
+          mcause_we = 1'b1;
 
 
           if (SMCLIC) begin
             // mpil is saved from mintstatus
             mcause_n.mpil = mintstatus_rdata.mil;
+
+            // Save minhv from controller
+            mcause_n.minhv          = ctrl_fsm_i.csr_cause.minhv;
+            // Save aliased values for mpp and mpie
+            mcause_n.mpp            = mstatus_n.mpp;
+            mcause_n.mpie           = mstatus_n.mpie;
 
             // Save new interrupt level to mintstatus
             // Horizontal synchronous exception traps do not change the interrupt level.
@@ -1059,8 +1107,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           end else begin
             mcause_n.mpil = '0;
           end
-          mcause_we = 1'b1;
-
         end
       end //ctrl_fsm_i.csr_save_cause
 
@@ -1079,11 +1125,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           mintstatus_n.mil = mcause_rdata.mpil;
           mintstatus_we = 1'b1;
 
+          // Save aliased values for mpp and mpie
+          mcause_n = mcause_rdata;
+          mcause_n.mpp = mstatus_n.mpp;
+          mcause_n.mpie = mstatus_n.mpie;
+          mcause_we = 1'b1;
+
           if (ctrl_fsm_i.csr_restore_mret_ptr) begin
             // Clear mcause.minhv if the mret also caused a successful CLIC pointer fetch
-            mcause_n = mcause_rdata;
             mcause_n.minhv = 1'b0;
-            mcause_we = 1'b1;
           end
         end
       end //ctrl_fsm_i.csr_restore_mret
@@ -1098,6 +1148,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_n.mprv = (privlvl_t'(dcsr_rdata.prv) == PRIV_LVL_M) ? mstatus_rdata.mprv : 1'b0;
         mstatus_we     = 1'b1;
 
+        if (SMCLIC) begin
+          // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
+          mcause_n       = mcause_rdata;
+          mcause_we      = 1'b1;
+        end
+
       end //ctrl_fsm_i.csr_restore_dret
 
       // Clear mcause.minhv on successful CLIC pointer fetches
@@ -1110,6 +1166,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           mcause_n = mcause_rdata;
           mcause_n.minhv = 1'b0;
           mcause_we = 1'b1;
+
+          // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
+          mstatus_n  = mstatus_rdata;
+          mstatus_we = 1'b1;
         end
       end
       default:;
@@ -1260,23 +1320,25 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( mstatus_q             )
   );
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
-  )
-  mcause_csr_i (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( mcause_n              ),
-    .wr_en_i            ( mcause_we             ),
-    .rd_data_o          ( mcause_q              )
-  );
+
 
   generate
     if (SMCLIC) begin : smclic_csrs
 
       assign mie_q = 32'h0;                                                     // CLIC mode is assumed when SMCLIC = 1
+
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (MCAUSE_CLIC_RESET_VAL)
+      )
+      mcause_csr_i (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( mcause_n              ),
+        .wr_en_i            ( mcause_we             ),
+        .rd_data_o          ( mcause_q              )
+      );
 
       cv32e40x_csr
       #(
@@ -1336,6 +1398,19 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
     end else begin : basic_mode_csrs
+
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (MCAUSE_BASIC_RESET_VAL)
+      )
+      mcause_csr_i (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( mcause_n              ),
+        .wr_en_i            ( mcause_we             ),
+        .rd_data_o          ( mcause_q              )
+      );
 
       cv32e40x_csr
       #(
@@ -1432,14 +1507,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
   assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
 
-  generate
-    if (SMCLIC) begin : smclic_rdata
-        // mcause.mpp is alias of mstatus.mpp, mcause.mpie is alias of mstatus.mpie
-        assign mcause_rdata = {mcause_q[31:30], mstatus_q.mpp, mstatus_q.mpie, mcause_q[26:0]};
-    end else begin : basic_mode_rdata
-       assign mcause_rdata = mcause_q;
-    end
-  endgenerate
+
+  assign mcause_rdata = mcause_q;
+
 
   assign csr_rdata_o = csr_rdata_int;
 
