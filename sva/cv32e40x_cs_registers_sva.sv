@@ -45,12 +45,12 @@ module cv32e40x_cs_registers_sva
    input logic        mcause_we,
    input logic [31:0] clic_pa_o,
    input logic        clic_pa_valid_o,
-   input mintstatus_t mintstatus_rdata,
+   input mintstatus_t mintstatus_q,
    input privlvl_t    priv_lvl_n,
-   input privlvl_t    priv_lvl_rdata,
-   input logic [31:0] mscratch_rdata,
-   input mcause_t     mcause_rdata,
-   input mstatus_t    mstatus_rdata,
+   input privlvl_t    priv_lvl_q,
+   input logic [31:0] mscratch_q,
+   input mcause_t     mcause_q,
+   input mstatus_t    mstatus_q,
    csr_num_e          csr_waddr,
    input logic        mscratch_we,
    input logic        instr_valid,
@@ -99,9 +99,9 @@ module cv32e40x_cs_registers_sva
     // Check that horizontal traps keep the current interrupt level
     property p_htrap_interrupt_level;
       @(posedge clk) disable iff (!rst_n)
-      (  ctrl_fsm_i.csr_save_cause && !ctrl_fsm_i.debug_csr_save && !ctrl_fsm_i.csr_cause.irq && (priv_lvl_n == priv_lvl_rdata)
+      (  ctrl_fsm_i.csr_save_cause && !ctrl_fsm_i.debug_csr_save && !ctrl_fsm_i.csr_cause.irq && (priv_lvl_n == priv_lvl_q)
          |=>
-         $stable(mintstatus_rdata.mil));
+         $stable(mintstatus_q.mil));
 
     endproperty;
 
@@ -111,8 +111,8 @@ module cv32e40x_cs_registers_sva
     // Check that mscratch do not update due to mscratchcsw if the conditions are not right
     property p_mscratchcsw_mscratch;
       @(posedge clk) disable iff (!rst_n)
-      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW) && (mcause_rdata.mpp == PRIV_LVL_M)
-        |=> $stable(mscratch_rdata));
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW) && (mstatus_q.mpp == PRIV_LVL_M)
+        |=> $stable(mscratch_q));
     endproperty;
 
     a_mscratchcsw_mscratch: assert property(p_mscratchcsw_mscratch)
@@ -121,8 +121,8 @@ module cv32e40x_cs_registers_sva
     // Check that mscratch do not update due to mscratchcswl if the conditions are not right
     property p_mscratchcswl_mscratch;
       @(posedge clk) disable iff (!rst_n)
-      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && !((mcause_rdata.mpil == '0) != (mintstatus_rdata.mil == '0))
-        |=> $stable(mscratch_rdata));
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && !((mcause_q.mpil == '0) != (mintstatus_q.mil == '0))
+        |=> $stable(mscratch_q));
     endproperty;
 
     a_mscratchcswl_mscratch: assert property(p_mscratchcswl_mscratch)
@@ -131,7 +131,7 @@ module cv32e40x_cs_registers_sva
     // Check that mscratch is written by mscratchcswl when the conditions are right
     property p_mscratchcswl_mscratch_we;
       @(posedge clk) disable iff (!rst_n)
-      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && ((mcause_rdata.mpil == '0) != (mintstatus_rdata.mil == '0))
+      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL) && ((mcause_q.mpil == '0) != (mintstatus_q.mil == '0))
          && (csr_op != CSR_OP_READ) && instr_valid
         |-> mscratch_we);
     endproperty;

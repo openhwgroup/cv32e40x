@@ -127,6 +127,10 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // Detect when a CSR insn is in ID (including WFI which reads mstatus.tw and priv level)
   // Note that hazard detection uses the registered instr_valid signals. Usage of the local
   // instr_valid signals would lead to a combinatorial loop via the halt signal.
+  //
+  // For handling of mscratchcsw[l], the cs_registers depend on this stall to be able to read mstatus.mpp, mcause.mpil and mintstatus.
+  //   - The hazard here is really between EX (CSR read) and WB (CSR write). This stall works by creating a bubble in EX while the the
+  //     'offending' write moves to WB (mscratchcsw[l] stays in ID.) Since we don't squash bubbles this should be safe.
 
   // todo:low:Above loop reasoning only applies to halt_id; for other pipeline stages a local instr_valid signal can maybe be used.
 

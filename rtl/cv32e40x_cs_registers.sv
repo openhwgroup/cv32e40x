@@ -434,10 +434,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MSCRATCHCSW: begin
         if (SMCLIC) begin
           // CLIC spec 13.2
-          // Depending on MPP, we return either mscratch_rdata or rs1 to rd.
-          // Safe to use mcause_rdata here (EX timing), as there is a generic stall of the ID stage
+          // Depending on mstatus.MPP, we return either mscratch_rdata or rs1 to rd.
+          // Safe to use mstatus_rdata here (EX timing), as there is a generic stall of the ID stage
           // whenever a CSR instruction follows another CSR instruction. Alternative implementation using
-          // a local forward of mcause_rdata is identical (SEC).
+          // a local forward of mstatus_rdata is identical (SEC).
           if (mstatus_rdata.mpp != PRIV_LVL_M) begin
             // Return mscratch for writing to GPR
             csr_rdata_int = mscratch_rdata;
@@ -912,8 +912,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         CSR_MSCRATCHCSW: begin
           if (SMCLIC) begin
             // mscratchcsw operates on mscratch
-            // Writing only when mcause.mpp != PRIV_LVL_M
-            if (mcause_rdata.mpp != PRIV_LVL_M) begin
+            // Writing only when mstatus.mpp != PRIV_LVL_M
+            if (mstatus_rdata.mpp != PRIV_LVL_M) begin
               mscratchcsw_we = 1'b1;
               mscratch_we    = 1'b1;
             end
@@ -1483,8 +1483,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // if no interrupt is pending.
   assign mnxti_rdata        = mnxti_irq_pending_i ? {mtvt_addr_o, mnxti_irq_id_i, 2'b00} : 32'h00000000;
 
-  // mscratchcsw_rdata breaks the regular convension for CSrs. Read data depend on mcause.mpp
-  // mscratch_rdata is returned if mcause.mpp differs from PRIV_LVL_M, otherwise rs1 is returned.
+  // mscratchcsw_rdata breaks the regular convension for CSRs. Read data depends on mstatus.mpp
+  // mscratch_rdata is returned if mstatus.mpp differs from PRIV_LVL_M, otherwise rs1 is returned.
   // This signal is only used by RVFI, and has WB timing (rs1 comes from ex_wb_pipe_i.csr_wdata, flopped version of id_ex_pipe.alu_operand_a)
   assign mscratchcsw_rdata  = (mcause_rdata.mpp != PRIV_LVL_M) ? mscratch_rdata : ex_wb_pipe_i.csr_wdata;
 
