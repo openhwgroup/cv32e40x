@@ -50,6 +50,7 @@ module cv32e40x_cs_registers_sva
    input privlvl_t    priv_lvl_rdata,
    input logic [31:0] mscratch_rdata,
    input mcause_t     mcause_rdata,
+   input mstatus_t    mstatus_rdata,
    csr_num_e          csr_waddr,
    input logic        mscratch_we,
    input logic        instr_valid,
@@ -59,7 +60,10 @@ module cv32e40x_cs_registers_sva
    input logic [31:0] mepc_n,
    input logic [24:0] mtvec_addr_o,
    input logic [31:0] dpc_n,
-   input logic        dpc_we
+   input logic        dpc_we,
+   input mstatus_t    mstatus_n,
+   input mcause_t     mcause_n,
+   input logic        mstatus_we
 
    );
 
@@ -135,6 +139,29 @@ module cv32e40x_cs_registers_sva
     a_mscratchcswl_mscratch_we: assert property(p_mscratchcswl_mscratch_we)
       else `uvm_error("cs_registers", "Mscratch not written by mscratchcswl");
 
+    property p_mstatus_mcause_we;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        1'b1
+        |->
+        mstatus_we == mcause_we
+      );
+    endproperty;
+    a_mstatus_mcause_we: assert property(p_mstatus_mcause_we)
+      else `uvm_error("cs_registers", "Mstatus.mpp and mstatus.mpie not written at the same time")
+
+    property p_mcause_mstatus_alias;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        1'b1
+        |->
+        (mstatus_rdata.mpp == mcause_rdata.mpp) &&
+        (mstatus_rdata.mpie == mcause_rdata.mpie)
+      );
+    endproperty;
+    a_mcause_mstatus_alias: assert property(p_mcause_mstatus_alias)
+      else `uvm_error("cs_registers", "mcause.mpp and mcause.mpie not aliased correctly")
+
   end
 
   // Check that no csr instruction can be in WB during sleep when ctrl_fsm.halt_limited_wb is set
@@ -146,14 +173,6 @@ module cv32e40x_cs_registers_sva
   a_halt_limited_wb: assert property(p_halt_limited_wb)
     else `uvm_error("cs_registers", "CSR in WB while halt_limited_wb is set");
 
-  // Check that mcause is not written when an mret or dret is in WB
-  property p_mret_dret_wb_mcause_write;
-    @(posedge clk) disable iff (!rst_n)
-    (  (ctrl_fsm_i.csr_restore_mret || ctrl_fsm_i.csr_restore_dret) && !ctrl_fsm_i.csr_clear_minhv |-> !mcause_we);
-  endproperty;
-
-  a_mret_dret_wb_mcause_write: assert property(p_mret_dret_wb_mcause_write)
-    else `uvm_error("cs_registers", "mcause written when MRET or DRET is in WB.");
 
   // Check csr_clear_minhv cannot happen at the same time as csr_save_cause or csr_restore_dret (would cause mcause_we conflict)
   property p_minhv_unique;
