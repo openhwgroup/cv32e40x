@@ -84,6 +84,8 @@ module cv32e40x_core_sva
   input logic        ctrl_pending_interrupt,
   input ctrl_byp_t   ctrl_byp,
   input logic [2:0]  ctrl_debug_cause_n,
+  input logic        ctrl_pending_nmi,
+  input ctrl_state_e ctrl_fsm_cs,
   // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
@@ -510,6 +512,21 @@ if (!SMCLIC) begin
   endproperty;
 
   a_mip_mie_write_enable: assert property(p_mip_mie_write_enable)
+    else `uvm_error("core", "Interrupt not taken soon enough after enabling");
+
+  // Check that only NMI and external debug take presedence over interrupts after being enabled by mret or CSR writes
+  property p_irq_pri;
+    @(posedge clk) disable iff (!rst_ni)
+    ( !irq_req_ctrl  // No interrupt pending
+       ##1          // Next cycle
+       irq_req_ctrl && $stable(mip) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie)) && // Interrupt pending but irq inputs are unchanged
+       (ctrl_fsm_cs != DEBUG_TAKEN) &&  // Make sure we are not handling a debug entry already (could be a single stepped mret enabling interrupts for instance)
+       !(ctrl_pending_nmi || ctrl_pending_async_debug)   // No pending events with higher priority than interrupts are taking place
+       |->
+       ctrl_fsm.irq_ack);  // We must take the interrupt if enabled (mret or CSR write) and no NMI or external debug is pending
+  endproperty;
+
+  a_irq_pri: assert property(p_irq_pri)
     else `uvm_error("core", "Interrupt not taken soon enough after enabling");
 
   // Check a pending interrupt that is disabled is actually not taken

@@ -274,11 +274,10 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
       OPCODE_FENCE: begin
         decoder_ctrl_o.sys_en = 1'b1;
-        // todo: We may not want the fence handshake for regular (none .i) fences
         unique case (instr_rdata_i[14:12])
-          3'b000: begin // FENCE (FENCE.I instead, a bit more conservative)
+          3'b000: begin // FENCE
             // Flush pipeline
-            decoder_ctrl_o.sys_fencei_insn = 1'b1;
+            decoder_ctrl_o.sys_fence_insn = 1'b1;
           end
 
           3'b001: begin // FENCE.I
@@ -364,25 +363,45 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           // instr_rdata_i[19:14] = rs or immediate value
           // If set or clear with rs==x0 or imm==0, then do not perform a write action
           unique case (instr_rdata_i[13:12])
-            2'b01: begin
-              // Detect true CSRRW with rd != x0 for use with mscratchcsw[l] accesses
-              if ((instr_rdata_i[14] != 1'b1) && (instr_rdata_i[11:7] != 5'b0) && (instr_rdata_i[19:15] != 5'b0)) begin
-                decoder_ctrl_o.csr_op = CSR_OP_CSRRW;
-              end else begin
-                decoder_ctrl_o.csr_op = CSR_OP_WRITE;
-              end
-            end
+            2'b01:   decoder_ctrl_o.csr_op = CSR_OP_WRITE;
             2'b10:   decoder_ctrl_o.csr_op = (instr_rdata_i[19:15] == 5'b0) ? CSR_OP_READ : CSR_OP_SET;
             2'b11:   decoder_ctrl_o.csr_op = (instr_rdata_i[19:15] == 5'b0) ? CSR_OP_READ : CSR_OP_CLEAR;
             default: decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
           endcase
 
           if (SMCLIC) begin
-            // Detect special case of CSR instruction using immediate values accessing mnxti
-            // Instruction is illegal if immediate bits 0, 2 or 4 are set.
-            if ((instr_rdata_i[31:20] == CSR_MNXTI) && instr_rdata_i[14]) begin
-              if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
+            // The mscratchcsw[l] CSRs are only accessible using CSRRW with neither rd nor rs1 set to x0
+            if ((instr_rdata_i[31:20] == CSR_MSCRATCHCSW) || (instr_rdata_i[31:20] == CSR_MSCRATCHCSWL)) begin
+              if (instr_rdata_i[14:12] == 3'b001) begin // CSRRW
+                if ((instr_rdata_i[11:7] == 5'b0) || (instr_rdata_i[19:15] == 5'b0)) begin
+                  // rd or rs1 is zero, flag instruction as illegal
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else begin
+                // Not a CSRRW instruction, flag illegal
                 decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+              end
+            end
+
+            // Mnxti is only accessible using CSRR (CSRRS rd, csr, x0), CSRRSI or CSRRCI
+            // In addition, when using CSRRSI, if immediate bits 0, 2 or 4 is set the instruction is reserved (illegal in cv32e40x case)
+            if ((instr_rdata_i[31:20] == CSR_MNXTI)) begin
+              if (instr_rdata_i[14:12] == 3'b010) begin // CSRRS
+                // Only legal if rs1 == x0
+                if (instr_rdata_i[19:15] != 5'b0) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else if (instr_rdata_i[14:12] == 3'b110) begin // CSRRSI
+                // Only legal if immediate 0,2 and 4 is zero
+                if (instr_rdata_i[19] || instr_rdata_i[17] || instr_rdata_i[15]) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else begin
+                // Not CSRR or CSRRSI
+                // Illegal unless instruction is CSRRCI
+                if (instr_rdata_i[14:12] != 3'b111) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
               end
             end
           end // SMCLIC

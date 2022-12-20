@@ -431,15 +431,14 @@ parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
 
 // CSR operations
 
-parameter CSR_OP_WIDTH = 3;
+parameter CSR_OP_WIDTH = 2;
 
 typedef enum logic [CSR_OP_WIDTH-1:0]
 {
- CSR_OP_READ  = 3'b000,
- CSR_OP_WRITE = 3'b001,
- CSR_OP_SET   = 3'b010,
- CSR_OP_CLEAR = 3'b011,
- CSR_OP_CSRRW = 3'b100
+ CSR_OP_READ  = 2'b00,
+ CSR_OP_WRITE = 2'b01,
+ CSR_OP_SET   = 2'b10,
+ CSR_OP_CLEAR = 2'b11
 } csr_opcode_e;
 
 // CSR interrupt pending/enable bits
@@ -478,10 +477,19 @@ parameter MSTATUS_MIE_BIT      = 3;
 parameter MSTATUS_MPIE_BIT     = 7;
 parameter MSTATUS_MPP_BIT_LOW  = 11;
 parameter MSTATUS_MPP_BIT_HIGH = 12;
+parameter MSTATUS_MPRV_BIT     = 17;
 
 parameter MCAUSE_MPIE_BIT      = 27;
 parameter MCAUSE_MPP_BIT_LOW   = 28;
 parameter MCAUSE_MPP_BIT_HIGH  = 29;
+
+parameter MTVEC_MODE_BIT_HIGH  = 1;
+parameter MTVEC_MODE_BIT_LOW   = 0;
+
+parameter DCSR_EBREAKU_BIT     = 12;
+parameter DCSR_PRV_BIT_HIGH    = 1;
+parameter DCSR_PRV_BIT_LOW     = 0;
+
 
 // misa
 parameter logic [1:0] MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
@@ -602,8 +610,10 @@ typedef struct packed {
 
 
 parameter dcsr_t DCSR_RESET_VAL = '{
-  xdebugver : XDEBUGVER_STD,
+  xdebugver:  XDEBUGVER_STD,
+  stopcount:  1'b1,
   cause:      DBG_CAUSE_NONE,
+  mprven:     1'b1,
   prv:        PRIV_LVL_M,
   default:    '0};
 
@@ -808,6 +818,7 @@ typedef struct packed {
   logic                              sys_dret_insn;
   logic                              sys_ebrk_insn;
   logic                              sys_ecall_insn;
+  logic                              sys_fence_insn;
   logic                              sys_fencei_insn;
   logic                              sys_mret_insn;
   logic                              sys_wfi_insn;
@@ -845,6 +856,7 @@ typedef struct packed {
                                                           sys_dret_insn                : 1'b0,
                                                           sys_ebrk_insn                : 1'b0,
                                                           sys_ecall_insn               : 1'b0,
+                                                          sys_fence_insn               : 1'b0,
                                                           sys_fencei_insn              : 1'b0,
                                                           sys_mret_insn                : 1'b0,
                                                           sys_wfi_insn                 : 1'b0,
@@ -1124,6 +1136,7 @@ typedef struct packed {
   logic         sys_dret_insn;
   logic         sys_ebrk_insn;
   logic         sys_ecall_insn;
+  logic         sys_fence_insn;
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
@@ -1193,6 +1206,7 @@ typedef struct packed {
   logic         sys_dret_insn;
   logic         sys_ebrk_insn;
   logic         sys_ecall_insn;
+  logic         sys_fence_insn;
   logic         sys_fencei_insn;
   logic         sys_mret_insn;
   logic         sys_wfi_insn;
@@ -1255,13 +1269,15 @@ typedef struct packed {
   logic        pc_set_clicv;          // Signal pc_set it for CLIC vectoring pointer load
   logic        pc_set_tbljmp;         // Signal pc_set is for Zc* cm.jt / cm.jalt pointer load
   pc_mux_e     pc_mux;                // Selector in the Fetch stage to select the rigth PC (normal, jump ...)
-
-  // To WB stage
-  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
   logic [4:0]  mtvec_pc_mux;          // Id of taken basic mode irq (to IF, EXC_PC_MUX, zeroed if mtvec_mode==0)
   logic [9:0]  mtvt_pc_mux;           // Id of taken CLIC irq (to IF, EXC_PC_MUX, zeroed if not shv)
                                       // Setting to 11 bits (max), unused bits will be tied off
   logic [7:0]  jvt_pc_mux;            // Index for table jumps
+  logic [4:0]  nmi_mtvec_index;       // Offset into mtvec when taking an NMI
+
+  // To WB stage
+  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
+
 
   logic        irq_ack;               // Irq has been taken
   logic [9:0]  irq_id;                // Id of taken irq. Max width (1024 interrupts), unused bits will be tied off
@@ -1321,6 +1337,7 @@ typedef struct packed {
   ////////////////////////////////////////
   // Resolution functions
 
+
   function automatic privlvl_t dcsr_prv_resolve
   (
     privlvl_t   current_value,
@@ -1328,6 +1345,15 @@ typedef struct packed {
   );
     // dcsr.prv is WARL(0x3)
     return PRIV_LVL_M;
+  endfunction
+
+  function automatic logic dcsr_ebreaku_resolve
+  (
+    logic       current_value,
+    logic       next_value
+  );
+    // dcsr.ebreaku is WARL(0x0)
+    return 1'b0;
   endfunction
 
   function automatic logic [1:0] mstatus_mpp_resolve
@@ -1339,11 +1365,54 @@ typedef struct packed {
     return PRIV_LVL_M;
   endfunction
 
+  function automatic logic mstatus_mprv_resolve
+  (
+    logic current_value,
+    logic next_value
+  );
+    // mstatus.mprv is WARL(0x0)
+    return 1'b0;
+  endfunction
+
   function automatic logic [3:0] mcontrol6_match_resolve
   (
     logic [3:0] next_value
   );
     return ((next_value != 4'h0) && (next_value != 4'h2) && (next_value != 4'h3)) ? 4'h0 : next_value;
+  endfunction
+
+  function automatic logic mcontrol6_u_resolve
+  (
+    logic next_value
+  );
+    // mcontrol6.u is WARL(0x0)
+    return 1'b0;
+  endfunction
+
+  function automatic logic etrigger_u_resolve
+  (
+    logic next_value
+  );
+    // etrigger.u is WARL(0x0)
+    return 1'b0;
+  endfunction
+
+  function automatic logic[1:0] mtvec_mode_clint_resolve
+  (
+    logic [1:0] current_value,
+    logic [1:0] next_value
+  );
+    // mtvec.mode is WARL(0,1) in CLINT mode
+    return ((next_value != 2'b00) && (next_value != 1'b01)) ? current_value : next_value;
+  endfunction
+
+  function automatic logic[1:0] mtvec_mode_clic_resolve
+  (
+    logic [1:0] current_value,
+    logic [1:0] next_value
+  );
+    // mtvec.mode is WARL(0x3) in CLIC mode
+    return 2'b11;
   endfunction
   ///////////////////////////
   //                       //

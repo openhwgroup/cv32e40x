@@ -47,6 +47,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   output logic          sys_ecall_insn_o,       // Environment call (syscall) instruction encountered
   output logic          sys_wfi_insn_o,
   output logic          sys_wfe_insn_o,
+  output logic          sys_fence_insn_o,       // fence instruction
   output logic          sys_fencei_insn_o,      // fence.i instruction
 
   // from IF/ID pipeline
@@ -281,6 +282,7 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   assign sys_ecall_insn_o   = decoder_i_ctrl.sys_ecall_insn;                    // Only I decoder handles ECALL
   assign sys_wfi_insn_o     = decoder_i_ctrl.sys_wfi_insn;                      // Only I decoder handles WFI
   assign sys_wfe_insn_o     = decoder_i_ctrl.sys_wfe_insn;                      // Only I decoder handles WFE
+  assign sys_fence_insn_o   = decoder_i_ctrl.sys_fence_insn;                    // Only I decoder handles FENCE
   assign sys_fencei_insn_o  = decoder_i_ctrl.sys_fencei_insn;                   // Only I decoder handles FENCE.I
 
   // Suppress control signals

@@ -70,7 +70,8 @@ module cv32e40x_controller_fsm_sva
   input logic           pending_interrupt,
   input logic           interrupt_allowed,
   input logic           pending_nmi,
-  input logic           fencei_ready,
+  input logic           nmi_allowed,
+  input logic           lsu_busy_i,
   input logic           xif_commit_kill,
   input logic           xif_commit_valid,
   input logic           nmi_is_store_q,
@@ -210,14 +211,14 @@ module cv32e40x_controller_fsm_sva
     else `uvm_error("controller", "LSU instruction follows WFI or WFE")
 
   // Check that no new instructions (first_op=1) are valid in ID or EX when a single step is taken
-  // In case of interrupt during step, the instruction being stepped could be in any stage, and will get killed.
+  // In case of interrupt (including NMI) during step, the instruction being stepped could be in any stage, and will get killed.
   // Aborted instructions may cause early termination of sequences. Either we jump to the exception handler before debug entry,
   // or straight to debug in case of a trigger match.
   a_single_step_pipecheck :
     assert property (@(posedge clk) disable iff (!rst_n)
             (pending_single_step && (ctrl_fsm_ns == DEBUG_TAKEN)
             |-> ((!(id_ex_pipe_i.instr_valid && first_op_ex_i) && !(if_id_pipe_i.instr_valid && if_id_pipe_i.first_op))) ||
-                (ctrl_fsm_o.irq_ack && ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_wb)))
+                ((ctrl_fsm_o.irq_ack || (pending_nmi && nmi_allowed)) && ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id && ctrl_fsm_o.kill_ex && ctrl_fsm_o.kill_wb)))
 
       else `uvm_error("controller", "ID and EX not empty when when single step is taken")
 
@@ -242,10 +243,11 @@ module cv32e40x_controller_fsm_sva
            fencei_flush_req_o |-> fencei_in_wb)
       else `uvm_error("controller", "Fencei request when no fencei in writeback")
 
-  // Assert that the fencei request is set the cycle after fencei instruction enters WB (if fencei_ready=1 and there are no higher priority events)
+  // Assert that the fencei request is set the cycle after fencei instruction enters WB (if lsu_busy_i=0 and there are no higher priority events)
+  // Only check when no higher priority event is pending (nmi, async debug or interrupts) and WB stage is not killed
   a_fencei_hndshk_req_when_fencei_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-           $rose(fencei_in_wb && fencei_ready) && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
+           $rose(fencei_in_wb && !lsu_busy_i) && !ctrl_fsm_o.kill_wb && !(pending_nmi || (pending_async_debug && async_debug_allowed) || (pending_interrupt && interrupt_allowed))
                      |=> $rose(fencei_flush_req_o))
       else `uvm_error("controller", "Fencei in WB did not result in fencei_flush_req_o")
 
@@ -275,11 +277,11 @@ module cv32e40x_controller_fsm_sva
                      $rose(fencei_in_wb) |-> !(fencei_flush_req_o || fencei_req_and_ack_q))
       else `uvm_error("controller", "Fencei handshake not idle when fencei instruction entered writeback")
 
-  // assert that the fencei_ready signal (i.e. write buffer empty) is always set when fencei handshake is active
-  a_fencei_ready :
+  // assert that the lsu_busy_i signal (i.e. write buffer empty) is always cleared when fencei handshake is active
+  a_fencei_lsu_busy :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     fencei_flush_req_o |-> fencei_ready)
-      else `uvm_error("controller", "Fencei handshake active while fencei_ready = 0")
+                     fencei_flush_req_o |-> !lsu_busy_i)
+      else `uvm_error("controller", "Fencei handshake active while lsu_busy_o = 1")
 
   // assert that NMI's are not reported on irq_ack
   a_irq_ack_no_nmi :
@@ -482,17 +484,17 @@ endgenerate
   a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
-                    !irq_wu_ctrl_i && wu_wfe_i && !pending_async_debug
+                    !(irq_wu_ctrl_i || pending_nmi) && wu_wfe_i && !pending_async_debug
                     |=>
                     (ctrl_fsm_cs == SLEEP))
     else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
 
-  // WFE wakes up to either interrupts or wu_wfe_i
+  // WFE wakes up to either interrupts (including NMI) or wu_wfe_i
   // Disregarding debug related reasons to wake up
   a_wfe_wakeup:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfe_insn &&
-                    (irq_wu_ctrl_i || wu_wfe_i) && !pending_async_debug
+                    (irq_wu_ctrl_i || wu_wfe_i || pending_nmi) && !pending_async_debug
                     |->
                     (ctrl_fsm_ns == FUNCTIONAL))
     else `uvm_error("controller", "WFE must wake up to interuppts or wu_wfe_i")

@@ -38,7 +38,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 (
   // Clocks and reset
   input  logic        clk,                        // Gated clock
-  input  logic        clk_ungated_i,              // Ungated clock
   input  logic        rst_n,
 
   input  logic        fetch_enable_i,             // Start executing
@@ -137,9 +136,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug state
   debug_state_e debug_fsm_cs, debug_fsm_ns;
 
-  // Sticky version of debug_req_i
-  logic debug_req_q;
-
   // Sticky version of lsu_err_wb_i
   logic nmi_pending_q;
   logic nmi_is_store_q; // 1 for store, 0 for load
@@ -174,6 +170,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic wfi_in_wb;
   logic wfe_in_wb;
   logic fencei_in_wb;
+  logic fence_in_wb;
   logic mret_in_wb;
   logic mret_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
@@ -216,8 +213,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic [10:0] exc_cause; // id of taken interrupt. Max width, unused bits are tied off.
 
-  logic       fencei_ready;
-  logic       fencei_flush_req_set;
+  logic       fence_req_set;
+  logic       fence_req_clr;
+  logic       fence_req_q;
   logic       fencei_req_and_ack_q;
   logic       fencei_ongoing;
 
@@ -258,8 +256,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_in_progress_id);
 
-  assign fencei_ready = !lsu_busy_i;
-
   // Once the fencei handshake is initiated, it must complete and the instruction must retire.
   // The instruction retires when fencei_req_and_ack_q = 1
   assign fencei_ongoing = fencei_flush_req_o || fencei_req_and_ack_q;
@@ -274,6 +270,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Mux selector for table jumps
   // index for table jumps taken from instruction word in ID stage.
   assign ctrl_fsm_o.jvt_pc_mux = if_id_pipe_i.instr.bus_resp.rdata[19:12];
+
+  // Set which mtvec index to jump to when an NMI is taken
+  // index 0 for non-vectored CLINT mode and CLIC mode, 0xF for vectored CLINT mode
+  assign ctrl_fsm_o.nmi_mtvec_index = (mtvec_mode_i == 2'b01) ? 5'hF : 5'h0;
+
 
 
   ////////////////////////////////////////////////////////////////////
@@ -358,6 +359,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // fencei in wb
   assign fencei_in_wb = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fencei_insn && ex_wb_pipe_i.instr_valid;
 
+  // fence in wb
+  assign fence_in_wb  = ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_fence_insn && ex_wb_pipe_i.instr_valid;
+
   // mret in wb - only valid when last_op_wb_i == 1 (which means only mret that did not cause a CLIC pointer fetch)
   // Restricts CSR updates due to mret to not happen if the mret caused a CLIC pointer fetch, such CSR updates
   // should only happen once the instruction fully completes (pointer arrives in WB).
@@ -430,13 +434,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   assign non_shv_irq_ack = ctrl_fsm_o.irq_ack && !irq_clic_shv_i;
 
-  // single step becomes pending when the last operation of an instruction is done in WB (including CLIC pointers), or we ack a non-shv interrupt.
+  // single step becomes pending when the last operation of an instruction is done in WB (including CLIC pointers), or we ack a non-shv interrupt (including NMI).
   // If a CLIC SHV interrupt is taken during single step, a pointer that reaches WB will trigger the debug entry.
   //   - For un-faulted pointer fetches, the second fetch of the CLIC vectoring took place in ID, and the final SHV handler target address will be available from IF.
   //   - A faulted pointer fetch does not perform the second fetch. Instead the exception handler fetch will occur before entering debug due to stepping.
   // todo: Likely flop the wb_valid/last_op/abort_op to be able to evaluate all debug reasons (debug_req when pointer is in WB is not allowed, while single step is allowed)
   // todo: can this be merged with pending_sync_debug in the future?
-  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack)) && !(pending_async_debug || pending_sync_debug);
+  assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack || (pending_nmi && nmi_allowed)));
 
 
   // Detect if there is a live CLIC pointer in the pipeline
@@ -456,11 +460,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // or if an offloaded instruction is in WB.
   // LSU will not be interruptible if the outstanding counter != 0, or
   // a trans_valid has been clocked without ex_valid && wb_ready handshake.
-  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing external debug.
+  // When a fencei is present in WB and the LSU has completed all tranfers, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing external debug.
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block debug.
   //   - Debug would otherwise kill the pointer and use the address of the pointer for dpc. A following dret would then return to the mtvt table, losing program progress.
+  //
+  // Debug entry because of haltreq is disallowed when the LSU is busy and therefore
+  // haltreq can only cause debug entry on the instruction following a load or store that
+  // keep the LSU busy. If such load or store however is being single stepped or has an
+  // associated breakpoint or watchpoint, then debug will be entered because of that
+  // lower priority reason even though haltreq is asserted. This is okay because if instruction
+  // timing is considered haltreq should be considered only asserted on the following
+  // instruction (i.e. the asynchronous haltreq signal is considered asserted too late to
+  // impact the current instruction in the pipeline).
   assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
 
   // synchronous debug entry have far fewer restrictions than asynchronous entries. In principle synchronous debug entry should have the same
@@ -470,26 +483,33 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug pending for any other synchronous reason than single step
   assign pending_sync_debug = (trigger_match_in_wb) ||
-                              (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1
+                              (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
                               (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
-  // Debug pending for external debug request
-  assign pending_async_debug = ((debug_req_i || debug_req_q) && !debug_mode_q);
+  // Debug pending for external debug request, only if not already in debug mode
+  // Ideally the !debug_mode_q below should be factored into async_debug_allowed, but
+  // that can currently cause a deadlock if debug_req_i gets asserted while in debug mode, as
+  // a pending but not allowed async debug will cause the ID stage to halt forever while trying
+  // to get to an interruptible state.
+  assign pending_async_debug = debug_req_i && !debug_mode_q;
 
-  // Determine cause of debug
-  // pending_single_step may only happen if no other causes for debug are true.
+  // Determine cause of debug. Set for all causes of debug entry.
+  // In case of ebreak during debug mode, the entry code in DEBUG_TAKEN will
+  // make sure not to update any CSRs.
   // The flopped version of this is checked during DEBUG_TAKEN state (one cycle delay)
-  // todo: update priority according to updated debug spec
+  // For this core, the three top priorities are covered by pending_async_debug.
   // 1: resethaltreq (0x5)
   // 2: halt group (0x6)
   // 3: haltreq (0x3)
   // 4: trigger match (0x2)
   // 5: ebreak (0x1)
   // 6: single step (0x4)
-  assign debug_cause_n = pending_single_step                               ? DBG_CAUSE_STEP :
-                         (trigger_match_in_wb || etrigger_wb_i)            ? DBG_CAUSE_TRIGGER :
-                         (ebreak_in_wb && dcsr_i.ebreakm && !debug_mode_q) ? DBG_CAUSE_EBREAK :
-                         DBG_CAUSE_HALTREQ;
+  assign debug_cause_n = (pending_async_debug && async_debug_allowed)                                               ? DBG_CAUSE_HALTREQ :
+                         (trigger_match_in_wb || etrigger_wb_i)                                                     ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
+                         (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) ? DBG_CAUSE_EBREAK  :    // Ebreak during machine mode
+                         (ebreak_in_wb && debug_mode_q)                                                             ? DBG_CAUSE_EBREAK  :    // Ebreak during debug mode
+                         (pending_single_step && single_step_allowed)                                               ? DBG_CAUSE_STEP    : DBG_CAUSE_NONE;
+
 
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
@@ -503,7 +523,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Offloaded instructions in WB also block, as they cannot be killed after commit_kill=0 (EX stage)
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were converted to NOP in ID stage.
-  // The cycle after fencei enters WB, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
+  // When a fencei is present in WB and the LSU has completed all tranfers, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
   // TODO:OK:low May allow interuption of Zce to idempotent memories
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
@@ -634,7 +654,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Ensure jumps and branches are taken only once
     branch_taken_n              = branch_taken_q;
 
-    fencei_flush_req_set        = 1'b0;
+    fence_req_set               = 1'b0;
+    fence_req_clr               = 1'b1;
 
     ctrl_fsm_o.pc_set_clicv     = 1'b0;
     ctrl_fsm_o.pc_set_tbljmp    = 1'b0;
@@ -690,10 +711,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             pipe_pc_mux_ctrl = PC_IF;
           end
 
-        // Debug entry (except single step which is handled later)
-        // todo: may split this into two separate if's, and then prioritize synchronous debug entry below interrupts.
-        end else if ((pending_async_debug && async_debug_allowed) ||
-                     (pending_sync_debug && sync_debug_allowed)) begin
+        // External debug entry (async)
+        end else if (pending_async_debug && async_debug_allowed) begin
           // Halt the whole pipeline
           // Halting makes sure instructions stay in the pipeline stage without propagating to the next.
           //  This is needed by the debug entry code in the DEBUG_STAKEN state to pick the correct PC for storing in dpc.
@@ -760,7 +779,20 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             // instruction to be issued from IF to ID.
             pipe_pc_mux_ctrl = PC_IF;
           end
+        // Synchronous debug entry (ebreak, trigger match)
+        end else if (pending_sync_debug && sync_debug_allowed) begin
+          // Halt the whole pipeline
+          // Halting makes sure instructions stay in the pipeline stage without propagating to the next.
+          //  This is needed by the debug entry code in the DEBUG_STAKEN state to pick the correct PC for storing in dpc.
+          //  Note that signals like lsu_wpt_match_wb_i and lsu_mpu_status_wb_i will not be constant while WB is halted as
+          //  these behave as an rvalid. In general LSU instruction shall not be allowed to be halted, unless there is a
+          //  watchpoint address match.
+          ctrl_fsm_o.halt_if = 1'b1;
+          ctrl_fsm_o.halt_id = 1'b1;
+          ctrl_fsm_o.halt_ex = 1'b1;
+          ctrl_fsm_o.halt_wb = 1'b1;
 
+          ctrl_fsm_ns = DEBUG_TAKEN;
         end else begin
           if (exception_in_wb && exception_allowed) begin
             // Kill all stages
@@ -788,7 +820,24 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_wb = 1'b1;
             ctrl_fsm_o.instr_req = 1'b0;
             ctrl_fsm_ns = SLEEP;
-          end else if (fencei_in_wb) begin
+
+          end else if (fencei_in_wb || fence_in_wb) begin
+
+            // fence.i behavior:
+            //
+            // - Can be killed due to interrupts and debug at any time before fencei_flush_req_o is asserted (so even after initial cycle in WB).
+            // - Initially halt entire pipeline, making sure that possibly following loads/stores do not initiate transactions.
+            // - Wait until the LSU is ready (i.e. write buffer must also be empty and possible NMIs will have been raised).
+            // - Once the LSU is ready take the NMI if present or otherwise continue fence.i handling by initiating the fencei_flush_req_o handshake.
+            // - Once the fencei_flush_req_o handshake is complete flush the entire pipeline (branch to next instruction) and retire the fence.i.
+
+            // fence behavior:
+            //
+            // - Can be killed due to interrupts and debug at any time (so even after initial cycle in WB).
+            // - Initially halt entire pipeline, making sure that possibly following loads/stores do not initiate transactions.
+            // - Wait until the LSU is ready (i.e. write buffer must also be empty and possible NMIs will have been raised).
+            // - Once the LSU is ready take the NMI if present or otherwise continue fence handling.
+            // - Flush the entire pipeline (branch to next instruction) and retire the fence.
 
             // Halt the pipeline
             ctrl_fsm_o.halt_if = 1'b1;
@@ -796,12 +845,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.halt_ex = 1'b1;
             ctrl_fsm_o.halt_wb = 1'b1;
 
-            if (fencei_ready) begin
-              // Set fencei_flush_req_o in the next cycle
-              fencei_flush_req_set = 1'b1;
-            end
-            if (fencei_req_and_ack_q) begin
-              // fencei req and ack were set at in the same cycle, complete handshake and jump to PC_WB_PLUS4
+            // Set fence_req_q when the LSU is no longer busy
+            fence_req_set = !lsu_busy_i;
+            fence_req_clr = 1'b0;
+
+            if (fencei_in_wb ? fencei_req_and_ack_q : fence_req_q) begin
 
               // Unhalt wb, kill if,id,ex
               ctrl_fsm_o.kill_if   = 1'b1;
@@ -821,7 +869,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.pc_set    = 1'b1;
               ctrl_fsm_o.pc_mux    = PC_WB_PLUS4;
 
-              fencei_flush_req_set = 1'b0;
+              // Clear fence_req_q
+              fence_req_set = 1'b0;
+              fence_req_clr = 1'b1;
             end
           end else if (dret_in_wb) begin
             // dret takes jump from WB stage
@@ -1027,8 +1077,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Neither ebreak nor trigger match have any state updates in WB. For trigger match, all write enables are suppressed in the ID stage.
           //   Thus this change is not visible to core state, only for RVFI use.
           // todo: Move some logic to RVFI instead?
-          ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER) ||
-                                (debug_mode_q && ebreak_in_wb));
+          ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER));
+
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
@@ -1079,7 +1129,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign ctrl_fsm_o.wake_from_sleep        = irq_wu_ctrl_i || pending_async_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
+  assign ctrl_fsm_o.wake_from_sleep        = pending_nmi || irq_wu_ctrl_i || pending_async_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
   assign ctrl_fsm_o.debug_wfi_wfe_no_sleep = debug_mode_q || dcsr_i.step;
 
   ////////////////////
@@ -1106,18 +1156,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_mode_if = debug_mode_n;
   assign ctrl_fsm_o.debug_mode    = debug_mode_q;
 
-  // sticky version of debug_req (must be on clk_ungated_i such that incoming pulse before core is enabled is not missed)
-  always_ff @(posedge clk_ungated_i, negedge rst_n) begin
-    if (rst_n == 1'b0) begin
-      debug_req_q <= 1'b0;
-    end else begin
-      if (debug_req_i) begin
-        debug_req_q <= 1'b1;
-      end else if (debug_mode_q) begin
-        debug_req_q <= 1'b0;
-      end
-    end
-  end
 
   // Sticky version of lsu_err_wb_i
   always_ff @(posedge clk, negedge rst_n) begin
@@ -1167,7 +1205,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Flops for fencei handshake request
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
-      fencei_flush_req_o   <= 1'b0;
+      fence_req_q          <= 1'b0;
       fencei_req_and_ack_q <= 1'b0;
     end else begin
 
@@ -1175,15 +1213,18 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       // fencei_flush_ack_i must be qualified with fencei_flush_req_o
       fencei_req_and_ack_q <= fencei_flush_req_o && fencei_flush_ack_i;
 
-      // Set fencei_flush_req_o based on FSM output. Clear upon req&&ack.
-      if (fencei_flush_req_o && fencei_flush_ack_i) begin
-        fencei_flush_req_o <= 1'b0;
+      // Set and clear fence_req_q based on FSM output. Also clear when fence.i handshake is completed
+      if (fence_req_clr || (fencei_flush_req_o && fencei_flush_ack_i)) begin
+        fence_req_q <= 1'b0;
       end
-      else if (fencei_flush_req_set) begin
-        fencei_flush_req_o <= 1'b1;
+      else if (fence_req_set) begin
+        fence_req_q <= 1'b1;
       end
     end
   end
+
+  // Set flush request if we have a fence.i
+  assign fencei_flush_req_o = fencei_in_wb ? fence_req_q : 1'b0;
 
   // minstret event
   always_ff @(posedge clk, negedge rst_n) begin

@@ -78,15 +78,11 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x345         | ``mnxti``         | MRW       | ``SMCLIC`` = 1           | Interrupt handler address and enable modifier           |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x346         | ``mintstatus``    | MRW       | ``SMCLIC`` = 1           | Current interrupt levels                                |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x347         | ``mintthresh``    | MRW       | ``SMCLIC`` = 1           | Interrupt-level threshold                               |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x348         | ``mscratchcsw``   | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on priv mode change            |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x349         | ``mscratchcswl``  | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on level change                |
-  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x34A         | ``mclicbase``     | MRW       | ``SMCLIC`` = 1           | CLIC Base Register                                      |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A0         | ``tselect``       | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Select Register                                 |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
@@ -137,6 +133,8 @@ instruction exception.
   | 0xF14         | ``mhartid``       | MRO       |                          | Hardware Thread ID                                      |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0xF15         | ``mconfigptr``    | MRO       |                          | Machine Configuration Pointer                           |
+  +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
+  | 0xF46         | ``mintstatus``    | MRO       | ``SMCLIC`` = 1           | Current interrupt levels                                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
 
 .. table:: Control and Status Register Map (Unprivileged and User-Level CSRs)
@@ -1291,40 +1289,9 @@ This register can be used by the software to service the next interrupt when it 
 without incurring the full cost of an interrupt pipeline flush and context save/restore.
 
 .. note::
-  Use of ``mnxti`` with non-zero ``uimm`` values for bits 0, 2, and 4 are reserved for future use.
-  |corev| will treat such instructions as illegal instructions.
-
-.. _csr-mintstatus:
-
-Machine Interrupt Status (``mintstatus``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x346
-
-Reset Value: 0x0000_0000
-
-Include Condition: ``SMCLIC`` = 1
-
-Detailed:
-
-.. table::
-  :widths: 10 20 70
-  :class: no-scrollbar-table
-
-  +-------------+------------+-------------------------------------------------------------------------+
-  |   Bit #     |   R/W      |           Description                                                   |
-  +=============+============+=========================================================================+
-  | 31:24       |   R        | **MIL**: Machine Interrupt Level                                        |
-  +-------------+------------+-------------------------------------------------------------------------+
-  | 23:16       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
-  +-------------+------------+-------------------------------------------------------------------------+
-  | 15: 8       |   R (0x0)  | **SIL**: Supervisor Interrupt Level, hardwired to 0.                    |
-  +-------------+------------+-------------------------------------------------------------------------+
-  |  7: 0       |   R (0x0)  | **UIL**: User Interrupt Level, hardwired to 0.                          |
-  +-------------+------------+-------------------------------------------------------------------------+
-
-This register holds the active interrupt level for each privilege mode.
-Only Machine Interrupt Level is supported.
+  The ``mnxti`` CSR is only designed to be used with the CSRR (CSRRS rd,csr,x0), CSRRSI, and CSRRCI instructions.
+  Accessing the ``mnxti`` CSR using any other CSR instruction form is reserved and |corev| will treat such instruction as illegal instructions.
+  In addition, use of ``mnxti`` with CSRRSI with non-zero uimm values for bits 0, 2, and 4 are reserved for future use and will also be treated as illegal instructions.
 
 .. _csr-mintthresh:
 
@@ -1417,41 +1384,6 @@ Scratch swap register for multiple interrupt levels.
   Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcswl``.
   The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcswl`` are implementation-defined.
   |corev| will treat such instructions as illegal instructions.
-
-.. _csr-mclicbase:
-
-CLIC Base (``mclicbase``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x34A
-
-.. note::
-   The address for the ``mclicbase`` CSR has not been defined yet in [RISC-V-SMCLIC]_. The used address is therefore
-   likely to change. Also it is likely that the ``mclicbase`` CSR will be removed all together.
-
-Reset Value: 0x0000_0000
-
-Include Condition: ``SMCLIC`` = 1
-
-Detailed:
-
-.. table::
-  :widths: 10 20 70
-  :class: no-scrollbar-table
-
-  +-------------+------------+-------------------------------------------------------------------------+
-  |   Bit #     |   R/W      |           Description                                                   |
-  +=============+============+=========================================================================+
-  | 31:12       |   R (0x0)  | **MCLICBASE**: CLIC Base                                                |
-  +-------------+------------+-------------------------------------------------------------------------+
-  | 11: 0       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
-  +-------------+------------+-------------------------------------------------------------------------+
-
-CLIC base register.
-
-.. note::
-   Currently ``mclicbase`` CSR is simply hardwired to 0x0 and will therefore likely not reflect the actual CLIC base.
-   This CSR will likely be removed. The [RISC-V-SMCLIC]_ specification does not specify its address yet and therefore no further attempt is made to further implement this in |corev|.
 
 .. _csr-tselect:
 
@@ -2122,6 +2054,38 @@ Detailed:
   | 31:0 | R (0x0)  | Reserved                                |
   +------+----------+-----------------------------------------+
 
+.. _csr-mintstatus:
+
+Machine Interrupt Status (``mintstatus``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CSR Address: 0xF46
+
+Reset Value: 0x0000_0000
+
+Include Condition: ``SMCLIC`` = 1
+
+Detailed:
+
+.. table::
+  :widths: 10 20 70
+  :class: no-scrollbar-table
+
+  +-------------+------------+-------------------------------------------------------------------------+
+  |   Bit #     |   R/W      |           Description                                                   |
+  +=============+============+=========================================================================+
+  | 31:24       |   R        | **MIL**: Machine Interrupt Level                                        |
+  +-------------+------------+-------------------------------------------------------------------------+
+  | 23:16       |   R (0x0)  | Reserved. Hardwired to 0.                                               |
+  +-------------+------------+-------------------------------------------------------------------------+
+  | 15: 8       |   R (0x0)  | **SIL**: Supervisor Interrupt Level, hardwired to 0.                    |
+  +-------------+------------+-------------------------------------------------------------------------+
+  |  7: 0       |   R (0x0)  | **UIL**: User Interrupt Level, hardwired to 0.                          |
+  +-------------+------------+-------------------------------------------------------------------------+
+
+This register holds the active interrupt level for each privilege mode.
+Only Machine Interrupt Level is supported.
+
 .. only:: PMP
 
   Machine Security Configuration (``mseccfg``)
@@ -2144,7 +2108,7 @@ Detailed:
     +------+-------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | 9    | R    (0x0)  | **SSEED**. Hardwired to 0.                                                                                                        |
     +------+-------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | 2    | R    (0x0)  | **USEED**. Hardwired to 0.                                                                                                        |
+    | 8    | R    (0x0)  | **USEED**. Hardwired to 0.                                                                                                        |
     +------+-------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | 7:3  | WPRI (0x0)  | Hardwired to 0.                                                                                                                   |
     +------+-------------+-----------------------------------------------------------------------------------------------------------------------------------+
