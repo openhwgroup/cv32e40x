@@ -735,7 +735,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mcause_n                 = '{
                                     irq:            csr_wdata_int[31],
                                     minhv:          csr_wdata_int[30],
-                                    mpp:            mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]),
+                                    mpp:            mcause_mpp_resolve(mcause_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]),
                                     mpie:           csr_wdata_int[MCAUSE_MPIE_BIT],
                                     mpil:           csr_wdata_int[23:16],
                                     exception_code: csr_wdata_int[10:0],
@@ -880,12 +880,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           if (SMCLIC) begin
             mnxti_we = 1'b1;
 
-            // Writes to mnxti also writes to mstatus
+            // Writes to mnxti also writes to mstatus (uses mstatus in the RMW operation)
+            // Also writing to mcause to ensure we can assert mstatus_we == mcause_we and similar for mpp/mpie.
             mstatus_we = 1'b1;
             mcause_we  = 1'b1;
 
             // Writes to mintstatus.mil and mcause depend on the current state of
             // clic interrupts AND the type of CSR instruction used.
+            // Mcause is written unconditionally for aliasing purposes, but the mcause_n
+            // is modified to reflect the side effects in case mnxti_irq_pending_i i set.
             // Side effects occur when there is an actual write to the mstatus CSR
             // This is already coded into the csr_we_int/mnxti_we
             if (mnxti_irq_pending_i) begin
@@ -1074,10 +1077,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // Save relevant fields from controller to mcause
           mcause_n.irq            = ctrl_fsm_i.csr_cause.irq;
           mcause_n.exception_code = ctrl_fsm_i.csr_cause.exception_code;
-          mcause_n.minhv          = ctrl_fsm_i.csr_cause.minhv;
-          // Save aliased values for mpp and mpie
-          mcause_n.mpp            = mstatus_n.mpp;
-          mcause_n.mpie           = mstatus_n.mpie;
+
 
           mcause_we = 1'b1;
 
@@ -1085,6 +1085,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           if (SMCLIC) begin
             // mpil is saved from mintstatus
             mcause_n.mpil = mintstatus_rdata.mil;
+
+            // Save minhv from controller
+            mcause_n.minhv          = ctrl_fsm_i.csr_cause.minhv;
+            // Save aliased values for mpp and mpie
+            mcause_n.mpp            = mstatus_n.mpp;
+            mcause_n.mpie           = mstatus_n.mpie;
 
             // Save new interrupt level to mintstatus
             // Horizontal synchronous exception traps do not change the interrupt level.
@@ -1142,9 +1148,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         mstatus_n.mprv = (privlvl_t'(dcsr_rdata.prv) == PRIV_LVL_M) ? mstatus_rdata.mprv : 1'b0;
         mstatus_we     = 1'b1;
 
-        // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
-        mcause_n       = mcause_rdata;
-        mcause_we      = 1'b1;
+        if (SMCLIC) begin
+          // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
+          mcause_n       = mcause_rdata;
+          mcause_we      = 1'b1;
+        end
 
       end //ctrl_fsm_i.csr_restore_dret
 
@@ -1322,7 +1330,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       cv32e40x_csr
       #(
         .WIDTH      (32),
-        .RESETVALUE (MCAUSE_RESET_VAL)
+        .RESETVALUE (MCAUSE_CLIC_RESET_VAL)
       )
       mcause_csr_i (
         .clk                ( clk                   ),
@@ -1394,7 +1402,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       cv32e40x_csr
       #(
         .WIDTH      (32),
-        .RESETVALUE (32'd0)
+        .RESETVALUE (MCAUSE_BASIC_RESET_VAL)
       )
       mcause_csr_i (
         .clk                ( clk                   ),
@@ -1521,7 +1529,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Signal when an interrupt may become enabled due to a CSR write
   generate
     if (SMCLIC) begin : smclic_irq_en
-      assign csr_irq_enable_write_o = (mstatus_we && !ctrl_fsm_i.csr_clear_minhv) || priv_lvl_we || mintthresh_we || mintstatus_we;
+      assign csr_irq_enable_write_o = mstatus_we || priv_lvl_we || mintthresh_we || mintstatus_we;
     end else begin : basic_irq_en
       assign csr_irq_enable_write_o = mie_we || mstatus_we || priv_lvl_we;
     end

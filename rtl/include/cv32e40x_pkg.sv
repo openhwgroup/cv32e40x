@@ -651,9 +651,12 @@ parameter mstatus_t MSTATUS_RESET_VAL = '{
   zero0   : 'b0,
   default : 'b0};
 
-parameter mcause_t MCAUSE_RESET_VAL = '{
+parameter mcause_t MCAUSE_CLIC_RESET_VAL = '{
   mpp     : PRIV_LVL_M,
   default: 'b0};
+
+parameter mcause_t MCAUSE_BASIC_RESET_VAL = '{
+    default: 'b0};
 
 parameter logic [31:0] TDATA1_RST_VAL = {
   TTYPE_MCONTROL6,       // type    : address/data match
@@ -1364,6 +1367,15 @@ typedef struct packed {
     logic [1:0] next_value
   );
     // mstatus.mpp is WARL(0x3)
+    return PRIV_LVL_M;
+  endfunction
+
+  function automatic logic [1:0] mcause_mpp_resolve
+  (
+    logic [1:0] current_value,
+    logic [1:0] next_value
+  );
+    // mcause.mpp is WARL(0x3)
     return PRIV_LVL_M;
   endfunction
 

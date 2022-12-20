@@ -148,7 +148,7 @@ module cv32e40x_cs_registers_sva
       );
     endproperty;
     a_mstatus_mcause_we: assert property(p_mstatus_mcause_we)
-      else `uvm_error("cs_registers", "Mstatus.mpp and mstatus.mpie not written at the same time")
+      else `uvm_error("cs_registers", "mcause and mstatus not written at the same time")
 
     property p_mcause_mstatus_alias;
       @(posedge clk) disable iff (!rst_n)
