@@ -98,6 +98,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         lsu_rdata_wb_i,
    input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
+   input logic                                csr_mscratchcsw_in_wb_i,
+   input logic                                csr_mscratchcswl_in_wb_i,
+   input logic                                csr_mnxti_in_wb_i,
 
    // PC
    input logic [31:0]                         branch_addr_n_i,
@@ -629,7 +632,6 @@ module cv32e40x_rvfi
   logic              branch_taken_ex;
 
   logic [ 3:0] rvfi_mem_mask_int;
-  logic [31:0] rvfi_mem_rdata_d;
 
 
   logic [ 4:0] rd_addr_wb;
@@ -642,10 +644,12 @@ module cv32e40x_rvfi
 
   // CSR inputs in struct format
   rvfi_csr_map_t rvfi_csr_rdata_d;
+  rvfi_csr_map_t rvfi_csr_rmask_d;
   rvfi_csr_map_t rvfi_csr_wdata_d;
   rvfi_csr_map_t rvfi_csr_wmask_d;
 
   rvfi_csr_map_t rvfi_csr_rdata;
+  rvfi_csr_map_t rvfi_csr_rmask;
   rvfi_csr_map_t rvfi_csr_wdata;
   rvfi_csr_map_t rvfi_csr_wmask;
 
@@ -1064,6 +1068,7 @@ module cv32e40x_rvfi
         // Read/Write CSRs
         // No mret pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
+        rvfi_csr_rmask  <= rvfi_csr_rmask_d;
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
         rvfi_csr_wmask  <= rvfi_csr_wmask_d;
 
@@ -1234,40 +1239,49 @@ module cv32e40x_rvfi
 
   // Zc* Register (Jump Vector Table)
   assign rvfi_csr_rdata_d.jvt                = csr_jvt_q_i;
+  assign rvfi_csr_rmask_d.jvt                = '1;
   assign rvfi_csr_wdata_d.jvt                = csr_jvt_n_i;
   assign rvfi_csr_wmask_d.jvt                = csr_jvt_we_i ? '1 : '0;
 
   // Machine trap setup
   assign rvfi_csr_rdata_d.mstatus            = csr_mstatus_q_i;
+  assign rvfi_csr_rmask_d.mstatus            = '1;
   assign rvfi_csr_wdata_d.mstatus            = csr_mstatus_n_i;
   assign rvfi_csr_wmask_d.mstatus            = csr_mstatus_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mstatush           = csr_mstatush_q_i;
+  assign rvfi_csr_rmask_d.mstatush           = '1;
   assign rvfi_csr_wdata_d.mstatush           = csr_mstatush_n_i;
   assign rvfi_csr_wmask_d.mstatush           = csr_mstatush_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.misa               = csr_misa_q_i;
+  assign rvfi_csr_rmask_d.misa               = '1;
   assign rvfi_csr_wdata_d.misa               = csr_misa_n_i;
   assign rvfi_csr_wmask_d.misa               = csr_misa_we_i    ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mie                = csr_mie_q_i;
+  assign rvfi_csr_rmask_d.mie                = '1;
   assign rvfi_csr_wdata_d.mie                = csr_mie_n_i;
   assign rvfi_csr_wmask_d.mie                = csr_mie_we_i     ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mtvec              = csr_mtvec_q_i;
+  assign rvfi_csr_rmask_d.mtvec              = '1;
   assign rvfi_csr_wdata_d.mtvec              = csr_mtvec_n_i;
   assign rvfi_csr_wmask_d.mtvec              = csr_mtvec_we_i   ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mtvt               = csr_mtvt_q_i;
+  assign rvfi_csr_rmask_d.mtvt               = '1;
   assign rvfi_csr_wdata_d.mtvt               = csr_mtvt_n_i;
   assign rvfi_csr_wmask_d.mtvt               = csr_mtvt_we_i   ? '1 : '0;
 
   // Performance counters
   assign rvfi_csr_rdata_d.mcountinhibit      = csr_mcountinhibit_q_i;
+  assign rvfi_csr_rmask_d.mcountinhibit      = '1;
   assign rvfi_csr_wdata_d.mcountinhibit      = csr_mcountinhibit_n_i;
   assign rvfi_csr_wmask_d.mcountinhibit      = csr_mcountinhibit_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mhpmevent          = csr_mhpmevent_q_i;
+  assign rvfi_csr_rmask_d.mhpmevent          = '1;
   assign rvfi_csr_wdata_d.mhpmevent          = csr_mhpmevent_n_i;
   assign rvfi_csr_wmask_d.mhpmevent[2:0]     = '0; // No mhpevent0-2 registers
   generate for (genvar i = 3; i < 32; i++)
@@ -1276,18 +1290,22 @@ module cv32e40x_rvfi
 
   // Machine trap handling
   assign rvfi_csr_rdata_d.mscratch           = csr_mscratch_q_i;
+  assign rvfi_csr_rmask_d.mscratch           = '1;
   assign rvfi_csr_wdata_d.mscratch           = csr_mscratch_n_i;
   assign rvfi_csr_wmask_d.mscratch           = csr_mscratch_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mepc               = csr_mepc_q_i;
+  assign rvfi_csr_rmask_d.mepc               = '1;
   assign rvfi_csr_wdata_d.mepc               = csr_mepc_n_i;
   assign rvfi_csr_wmask_d.mepc               = csr_mepc_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mcause             = csr_mcause_q_i;
+  assign rvfi_csr_rmask_d.mcause             = '1;
   assign rvfi_csr_wdata_d.mcause             = csr_mcause_n_i;
   assign rvfi_csr_wmask_d.mcause             = csr_mcause_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mtval              = '0;
+  assign rvfi_csr_rmask_d.mtval              = '1;
   assign rvfi_csr_wdata_d.mtval              = '0; // Not implemented, read 0
   assign rvfi_csr_wmask_d.mtval              = '0;
 
@@ -1297,77 +1315,96 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mip                = csr_en_wb_i                        ? ex_csr_rdata.mip :
                                                (sys_en_wb_i && sys_wfi_insn_wb_i) ?            irq_i :
                                                                                           csr_mip_q_i;
+  assign rvfi_csr_rmask_d.mip                = '1;
   assign rvfi_csr_wdata_d.mip                = csr_mip_n_i;
   assign rvfi_csr_wmask_d.mip                = csr_mip_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mnxti              = csr_mnxti_q_i;
+  assign rvfi_csr_rmask_d.mnxti              = csr_mnxti_in_wb_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mnxti              = csr_mnxti_n_i;
   assign rvfi_csr_wmask_d.mnxti              = csr_mnxti_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mintstatus         = csr_mintstatus_q_i;
+  assign rvfi_csr_rmask_d.mintstatus         = '1;
   assign rvfi_csr_wdata_d.mintstatus         = csr_mintstatus_n_i;
   assign rvfi_csr_wmask_d.mintstatus         = csr_mintstatus_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mintthresh         = csr_mintthresh_q_i;
+  assign rvfi_csr_rmask_d.mintthresh         = '1;
   assign rvfi_csr_wdata_d.mintthresh         = csr_mintthresh_n_i;
   assign rvfi_csr_wmask_d.mintthresh         = csr_mintthresh_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mscratchcsw        = csr_mscratchcsw_q_i;
+  assign rvfi_csr_rmask_d.mscratchcsw        = csr_mscratchcsw_in_wb_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mscratchcsw        = csr_mscratchcsw_n_i;
   assign rvfi_csr_wmask_d.mscratchcsw        = csr_mscratchcsw_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mscratchcswl       = csr_mscratchcswl_q_i;
+  assign rvfi_csr_rmask_d.mscratchcswl       = csr_mscratchcswl_in_wb_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mscratchcswl       = csr_mscratchcswl_n_i;
   assign rvfi_csr_wmask_d.mscratchcswl       = csr_mscratchcswl_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mclicbase          = csr_mclicbase_q_i;
+  assign rvfi_csr_rmask_d.mclicbase          = '1;
   assign rvfi_csr_wdata_d.mclicbase          = csr_mclicbase_n_i;
   assign rvfi_csr_wmask_d.mclicbase          = csr_mclicbase_we_i ? '1 : '0;
 
   // Trigger
   assign rvfi_csr_rdata_d.tselect            = csr_tselect_q_i;
+  assign rvfi_csr_rmask_d.tselect            = '1;
   assign rvfi_csr_wdata_d.tselect            = csr_tselect_n_i;
   assign rvfi_csr_wmask_d.tselect            = csr_tselect_we_i;
 
-  assign rvfi_csr_rdata_d.tdata[0]           = 'Z;
-  assign rvfi_csr_wdata_d.tdata[0]           = 'Z; // Does not exist
+  // Tdata0 does not exist, tie off to zero
+  assign rvfi_csr_rdata_d.tdata[0]           = '0;
+  assign rvfi_csr_rmask_d.tdata[0]           = '0;
+  assign rvfi_csr_wdata_d.tdata[0]           = '0;
   assign rvfi_csr_wmask_d.tdata[0]           = '0;
 
   assign rvfi_csr_rdata_d.tdata[1]           = csr_tdata1_q_i;
+  assign rvfi_csr_rmask_d.tdata[1]           = '1;
   assign rvfi_csr_wdata_d.tdata[1]           = csr_tdata1_n_i;
   assign rvfi_csr_wmask_d.tdata[1]           = csr_tdata1_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.tdata[2]           = csr_tdata2_q_i;
+  assign rvfi_csr_rmask_d.tdata[2]           = '1;
   assign rvfi_csr_wdata_d.tdata[2]           = csr_tdata2_n_i;
   assign rvfi_csr_wmask_d.tdata[2]           = csr_tdata2_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.tdata[3]           = csr_tdata3_q_i;
+  assign rvfi_csr_rmask_d.tdata[3]           = '1;
   assign rvfi_csr_wdata_d.tdata[3]           = csr_tdata3_n_i;
   assign rvfi_csr_wmask_d.tdata[3]           = csr_tdata3_we_i;
 
   assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
+  assign rvfi_csr_rmask_d.tinfo              = '1;
   assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
   assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i;
 
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
+  assign rvfi_csr_rmask_d.tcontrol           = '1;
   assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
   assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
 
   // Debug / Trace
   assign ex_csr_rdata_d.nmip                 = csr_dcsr_q_i[3]; // dcsr.nmip is autonomous. Propagate read value from EX stage
   assign rvfi_csr_rdata_d.dcsr               = {csr_dcsr_q_i[31:4], ex_csr_rdata.nmip, csr_dcsr_q_i[2:0]};
+  assign rvfi_csr_rmask_d.dcsr               = '1;
   assign rvfi_csr_wdata_d.dcsr               = csr_dcsr_n_i;
   assign rvfi_csr_wmask_d.dcsr               = csr_dcsr_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.dpc                = csr_dpc_q_i;
+  assign rvfi_csr_rmask_d.dpc                = '1;
   assign rvfi_csr_wdata_d.dpc                = csr_dpc_n_i;
   assign rvfi_csr_wmask_d.dpc                = csr_dpc_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.dscratch[0]        = csr_dscratch0_q_i;
+  assign rvfi_csr_rmask_d.dscratch[0]        = '1;
   assign rvfi_csr_wdata_d.dscratch[0]        = csr_dscratch0_n_i;
   assign rvfi_csr_wmask_d.dscratch[0]        = csr_dscratch0_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.dscratch[1]        = csr_dscratch1_q_i;
+  assign rvfi_csr_rmask_d.dscratch[1]        = '1;
   assign rvfi_csr_wdata_d.dscratch[1]        = csr_dscratch1_n_i;
   assign rvfi_csr_wmask_d.dscratch[1]        = csr_dscratch1_we_i ? '1 : '0;
 
@@ -1385,22 +1422,27 @@ module cv32e40x_rvfi
 
   assign ex_csr_rdata_d.mcycle               = csr_mhpmcounter_q_l [CSR_MCYCLE & 'hF];
   assign rvfi_csr_rdata_d.mcycle             = ex_csr_rdata.mcycle;
+  assign rvfi_csr_rmask_d.mcycle             = '1;
   assign rvfi_csr_wdata_d.mcycle             = csr_mhpmcounter_n_l [CSR_MCYCLE & 'hF];
   assign rvfi_csr_wmask_d.mcycle             = csr_mhpmcounter_we_l[CSR_MCYCLE & 'hF];
 
   // Used flopped values in case write happened before wb_valid
   assign rvfi_csr_rdata_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_q_l [CSR_MINSTRET & 'hF] : mhpmcounter_l_rdata_q[CSR_MINSTRET & 'hF];
+  assign rvfi_csr_rmask_d.minstret           = '1;
   assign rvfi_csr_wdata_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF] : mhpmcounter_l_wdata_q[CSR_MINSTRET & 'hF];
   assign rvfi_csr_wmask_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF] : '1;
 
-  assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;
-  assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = 'Z; // Does not exist
+  // mhpmcounter [2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = '0;
+  assign rvfi_csr_rmask_d.mhpmcounter[ 2:0]  = '0;
+  assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = '0;
   assign rvfi_csr_wmask_d.mhpmcounter[ 2:0]  = '0;
 
   // Used flopped values in case write happened before wb_valid
   generate
     for (genvar i = 3; i < 32; i++) begin
       assign rvfi_csr_rdata_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_q_l [i] : mhpmcounter_l_rdata_q[i];
+      assign rvfi_csr_rmask_d.mhpmcounter[i]  = '1;
       assign rvfi_csr_wdata_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_n_l [i] : mhpmcounter_l_wdata_q[i];
       assign rvfi_csr_wmask_d.mhpmcounter[i]  = !mhpmcounter_l_during_wb[i] ? csr_mhpmcounter_we_l[i] : '1;
     end
@@ -1408,22 +1450,27 @@ module cv32e40x_rvfi
 
   assign ex_csr_rdata_d.mcycleh              = csr_mhpmcounter_q_h [CSR_MCYCLEH & 'hF];
   assign rvfi_csr_rdata_d.mcycleh            = ex_csr_rdata.mcycleh;
+  assign rvfi_csr_rmask_d.mcycleh            = '1;
   assign rvfi_csr_wdata_d.mcycleh            = csr_mhpmcounter_n_h [CSR_MCYCLEH & 'hF];
   assign rvfi_csr_wmask_d.mcycleh            = csr_mhpmcounter_we_h[CSR_MCYCLEH & 'hF];
 
   // Used flopped values in case write happened before wb_valid
   assign rvfi_csr_rdata_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_q_h [CSR_MINSTRETH & 'hF] : mhpmcounter_h_rdata_q[CSR_MINSTRETH & 'hF];
+  assign rvfi_csr_rmask_d.minstreth          = '1;
   assign rvfi_csr_wdata_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF] : mhpmcounter_h_wdata_q[CSR_MINSTRETH & 'hF];
   assign rvfi_csr_wmask_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF] : '1;
 
-  assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = 'Z;
-  assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = 'Z;  // Does not exist
+  // mhpmcounterh [2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = '0;
+  assign rvfi_csr_rmask_d.mhpmcounterh[ 2:0] = '0;
+  assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = '0;
   assign rvfi_csr_wmask_d.mhpmcounterh[ 2:0] = '0;
 
   // Used flopped values in case write happened before wb_valid
   generate
     for (genvar i = 3; i < 32; i++) begin
       assign rvfi_csr_rdata_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_q_h [i] : mhpmcounter_h_rdata_q[i];
+      assign rvfi_csr_rmask_d.mhpmcounterh[i] = '1;
       assign rvfi_csr_wdata_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_n_h [i] : mhpmcounter_h_wdata_q[i];
       assign rvfi_csr_wmask_d.mhpmcounterh[i]  = !mhpmcounter_h_during_wb[i] ? csr_mhpmcounter_we_h[i] : '1;
     end
@@ -1431,55 +1478,72 @@ module cv32e40x_rvfi
 
   assign ex_csr_rdata_d.cycle                = csr_mhpmcounter_q_l [CSR_CYCLE & 'hF];
   assign rvfi_csr_rdata_d.cycle              = ex_csr_rdata.cycle;
+  assign rvfi_csr_rmask_d.cycle              = '1;
   assign rvfi_csr_wdata_d.cycle              = csr_mhpmcounter_n_l [CSR_CYCLE & 'hF];
   assign rvfi_csr_wmask_d.cycle              = csr_mhpmcounter_we_l[CSR_CYCLE & 'hF];
 
   assign rvfi_csr_rdata_d.instret            = csr_mhpmcounter_q_l [CSR_INSTRET & 'hF];
+  assign rvfi_csr_rmask_d.instret            = '1;
   assign rvfi_csr_wdata_d.instret            = csr_mhpmcounter_n_l [CSR_INSTRET & 'hF];
   assign rvfi_csr_wmask_d.instret            = csr_mhpmcounter_we_l[CSR_INSTRET & 'hF];
 
-  assign rvfi_csr_rdata_d.hpmcounter[ 2:0]   = 'Z;
-  assign rvfi_csr_wdata_d.hpmcounter[ 2:0]   = 'Z;  // Does not exist
+  // hpmcounter[2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.hpmcounter[ 2:0]   = '0;
+  assign rvfi_csr_rmask_d.hpmcounter[ 2:0]   = '0;
+  assign rvfi_csr_wdata_d.hpmcounter[ 2:0]   = '0;
   assign rvfi_csr_wmask_d.hpmcounter[ 2:0]   = '0;
+
   assign rvfi_csr_rdata_d.hpmcounter[31:3]   = csr_mhpmcounter_q_l [31:3];
+  assign rvfi_csr_rmask_d.hpmcounter[31:3]   = '1;
   assign rvfi_csr_wdata_d.hpmcounter[31:3]   = csr_mhpmcounter_n_l [31:3];
   assign rvfi_csr_wmask_d.hpmcounter[31:3]   = csr_mhpmcounter_we_l[31:3];
 
   assign ex_csr_rdata_d.cycleh               = csr_mhpmcounter_q_h [CSR_CYCLEH & 'hF];
   assign rvfi_csr_rdata_d.cycleh             = ex_csr_rdata.cycleh;
+  assign rvfi_csr_rmask_d.cycleh             = '1;
   assign rvfi_csr_wdata_d.cycleh             = csr_mhpmcounter_n_h [CSR_CYCLEH & 'hF];
   assign rvfi_csr_wmask_d.cycleh             = csr_mhpmcounter_we_h[CSR_CYCLEH & 'hF];
 
   assign rvfi_csr_rdata_d.instreth           = csr_mhpmcounter_q_h [CSR_INSTRETH & 'hF];
+  assign rvfi_csr_rmask_d.instreth           = '1;
   assign rvfi_csr_wdata_d.instreth           = csr_mhpmcounter_n_h [CSR_INSTRETH & 'hF];
   assign rvfi_csr_wmask_d.instreth           = csr_mhpmcounter_we_h[CSR_INSTRETH & 'hF];
 
-  assign rvfi_csr_rdata_d.hpmcounterh[ 2:0]  = 'Z;
-  assign rvfi_csr_wdata_d.hpmcounterh[ 2:0]  = 'Z; // Does not exist
+  // hpmcounterh[2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.hpmcounterh[ 2:0]  = '0;
+  assign rvfi_csr_rmask_d.hpmcounterh[ 2:0]  = '0;
+  assign rvfi_csr_wdata_d.hpmcounterh[ 2:0]  = '0;
   assign rvfi_csr_wmask_d.hpmcounterh[ 2:0]  = '0;
+
   assign rvfi_csr_rdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_q_h [31:3];
+  assign rvfi_csr_rmask_d.hpmcounterh[31:3]  = '1;
   assign rvfi_csr_wdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_n_h [31:3];
   assign rvfi_csr_wmask_d.hpmcounterh[31:3]  = csr_mhpmcounter_we_h[31:3];
 
   // Machine info
   assign rvfi_csr_rdata_d.mvendorid          = csr_mvendorid_i;
+  assign rvfi_csr_rmask_d.mvendorid          = '1;
   assign rvfi_csr_wdata_d.mvendorid          = '0; // Read Only
   assign rvfi_csr_wmask_d.mvendorid          = '0;
 
   assign rvfi_csr_wdata_d.marchid            = '0; // Read Only
   assign rvfi_csr_wmask_d.marchid            = '0;
   assign rvfi_csr_rdata_d.marchid            = csr_marchid_i;
+  assign rvfi_csr_rmask_d.marchid            = '1;
 
   assign rvfi_csr_wdata_d.mimpid             = '0; // Read Only
   assign rvfi_csr_wmask_d.mimpid             = '0;
   assign rvfi_csr_rdata_d.mimpid             = csr_mimpid_i;
+  assign rvfi_csr_rmask_d.mimpid             = '1;
 
   assign rvfi_csr_wdata_d.mhartid            = '0; // Read Only
   assign rvfi_csr_wmask_d.mhartid            = '0;
   assign rvfi_csr_rdata_d.mhartid            = csr_mhartid_i;
+  assign rvfi_csr_rmask_d.mhartid            = '1;
 
   // User Mode
   assign rvfi_csr_rdata_d.mcounteren         = csr_mcounteren_q_i;
+  assign rvfi_csr_rmask_d.mcounteren         = '1;
   assign rvfi_csr_wdata_d.mcounteren         = csr_mcounteren_n_i;
   assign rvfi_csr_wmask_d.mcounteren         = csr_mcounteren_we_i ? '1 : '0;
 
@@ -1490,328 +1554,351 @@ module cv32e40x_rvfi
       // 4 regions in each register
       assign rvfi_csr_wdata_d.pmpcfg[i/4][8*(i%4)+:8] = csr_pmpcfg_n_i[i];
       assign rvfi_csr_rdata_d.pmpcfg[i/4][8*(i%4)+:8] = csr_pmpcfg_q_i[i];
+      assign rvfi_csr_rmask_d.pmpcfg[i/4][8*(i%4)+:8] = '1;
       assign rvfi_csr_wmask_d.pmpcfg[i/4][8*(i%4)+:8] = csr_pmpcfg_we_i[i] ? '1 : '0;
 
       assign rvfi_csr_wdata_d.pmpaddr[i]          = csr_pmpaddr_n_i; // input shared between all registers
       assign rvfi_csr_rdata_d.pmpaddr[i]          = csr_pmpaddr_q_i[i];
+      assign rvfi_csr_rmask_d.pmpaddr[i]          = '1;
     assign rvfi_csr_wmask_d.pmpaddr[i]       = csr_pmpaddr_we_i[i] ? '1 : '0;
     end
   endgenerate
 
   assign rvfi_csr_wdata_d.mseccfg         = csr_mseccfg_n_i;
   assign rvfi_csr_rdata_d.mseccfg         = csr_mseccfg_q_i;
+  assign rvfi_csr_rmask_d.mseccfg         = '1;
   assign rvfi_csr_wmask_d.mseccfg         = csr_mseccfg_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mseccfgh        = csr_mseccfgh_n_i;
   assign rvfi_csr_rdata_d.mseccfgh        = csr_mseccfgh_q_i;
+  assign rvfi_csr_rmask_d.mseccfgh        = '1;
   assign rvfi_csr_wmask_d.mseccfgh        = csr_mseccfgh_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.mconfigptr      = csr_mconfigptr_q_i;
+  assign rvfi_csr_rmask_d.mconfigptr      = '1;
   assign rvfi_csr_wdata_d.mconfigptr      = csr_mconfigptr_n_i;
   assign rvfi_csr_wmask_d.mconfigptr      = csr_mconfigptr_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.menvcfg         = csr_menvcfg_n_i;
   assign rvfi_csr_rdata_d.menvcfg         = csr_menvcfg_q_i;
+  assign rvfi_csr_rmask_d.menvcfg         = '1;
   assign rvfi_csr_wmask_d.menvcfg         = csr_menvcfg_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.menvcfgh        = csr_menvcfgh_n_i;
   assign rvfi_csr_rdata_d.menvcfgh        = csr_menvcfgh_q_i;
+  assign rvfi_csr_rmask_d.menvcfgh        = '1;
   assign rvfi_csr_wmask_d.menvcfgh        = csr_menvcfgh_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.cpuctrl         = csr_cpuctrl_n_i;
   assign rvfi_csr_rdata_d.cpuctrl         = csr_cpuctrl_q_i;
+  assign rvfi_csr_rmask_d.cpuctrl         = '1;
   assign rvfi_csr_wmask_d.cpuctrl         = csr_cpuctrl_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.secureseed0     = csr_secureseed0_n_i;
   assign rvfi_csr_rdata_d.secureseed0     = csr_secureseed0_q_i;
+  assign rvfi_csr_rmask_d.secureseed0     = '1;
   assign rvfi_csr_wmask_d.secureseed0     = csr_secureseed0_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.secureseed1     = csr_secureseed1_n_i;
   assign rvfi_csr_rdata_d.secureseed1     = csr_secureseed1_q_i;
+  assign rvfi_csr_rmask_d.secureseed1     = '1;
   assign rvfi_csr_wmask_d.secureseed1     = csr_secureseed1_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.secureseed2     = csr_secureseed2_n_i;
   assign rvfi_csr_rdata_d.secureseed2     = csr_secureseed2_q_i;
+  assign rvfi_csr_rmask_d.secureseed2     = '1;
   assign rvfi_csr_wmask_d.secureseed2     = csr_secureseed2_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.mstateen0       = csr_mstateen0_n_i;
   assign rvfi_csr_rdata_d.mstateen0       = csr_mstateen0_q_i;
+  assign rvfi_csr_rmask_d.mstateen0       = '1;
   assign rvfi_csr_wmask_d.mstateen0       = csr_mstateen0_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen1       = csr_mstateen1_n_i;
   assign rvfi_csr_rdata_d.mstateen1       = csr_mstateen1_q_i;
+  assign rvfi_csr_rmask_d.mstateen1       = '1;
   assign rvfi_csr_wmask_d.mstateen1       = csr_mstateen1_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen2       = csr_mstateen2_n_i;
   assign rvfi_csr_rdata_d.mstateen2       = csr_mstateen2_q_i;
+  assign rvfi_csr_rmask_d.mstateen2       = '1;
   assign rvfi_csr_wmask_d.mstateen2       = csr_mstateen2_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen3       = csr_mstateen3_n_i;
   assign rvfi_csr_rdata_d.mstateen3       = csr_mstateen3_q_i;
+  assign rvfi_csr_rmask_d.mstateen3       = '1;
   assign rvfi_csr_wmask_d.mstateen3       = csr_mstateen3_we_i ? '1 : '0;
 
   assign rvfi_csr_wdata_d.mstateen0h      = csr_mstateen0h_n_i;
   assign rvfi_csr_rdata_d.mstateen0h      = csr_mstateen0h_q_i;
+  assign rvfi_csr_rmask_d.mstateen0h      = '1;
   assign rvfi_csr_wmask_d.mstateen0h      = csr_mstateen0h_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen1h      = csr_mstateen1h_n_i;
   assign rvfi_csr_rdata_d.mstateen1h      = csr_mstateen1h_q_i;
+  assign rvfi_csr_rmask_d.mstateen1h      = '1;
   assign rvfi_csr_wmask_d.mstateen1h      = csr_mstateen1h_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen2h      = csr_mstateen2h_n_i;
   assign rvfi_csr_rdata_d.mstateen2h      = csr_mstateen2h_q_i;
+  assign rvfi_csr_rmask_d.mstateen2h      = '1;
   assign rvfi_csr_wmask_d.mstateen2h      = csr_mstateen2h_we_i ? '1 : '0;
   assign rvfi_csr_wdata_d.mstateen3h      = csr_mstateen3h_n_i;
   assign rvfi_csr_rdata_d.mstateen3h      = csr_mstateen3h_q_i;
+  assign rvfi_csr_rmask_d.mstateen3h      = '1;
   assign rvfi_csr_wmask_d.mstateen3h      = csr_mstateen3h_we_i ? '1 : '0;
 
   // CSR outputs //
   assign rvfi_csr_jvt_rdata               = rvfi_csr_rdata.jvt;
-  assign rvfi_csr_jvt_rmask               = '1;
+  assign rvfi_csr_jvt_rmask               = rvfi_csr_rmask.jvt;
   assign rvfi_csr_jvt_wdata               = rvfi_csr_wdata.jvt;
   assign rvfi_csr_jvt_wmask               = rvfi_csr_wmask.jvt;
   assign rvfi_csr_mstatus_rdata           = rvfi_csr_rdata.mstatus;
-  assign rvfi_csr_mstatus_rmask           = '1;
+  assign rvfi_csr_mstatus_rmask           = rvfi_csr_rmask.mstatus;
   assign rvfi_csr_mstatus_wdata           = rvfi_csr_wdata.mstatus;
   assign rvfi_csr_mstatus_wmask           = rvfi_csr_wmask.mstatus;
   assign rvfi_csr_mstatush_rdata          = rvfi_csr_rdata.mstatush;
-  assign rvfi_csr_mstatush_rmask          = '1;
+  assign rvfi_csr_mstatush_rmask          = rvfi_csr_rmask.mstatush;
   assign rvfi_csr_mstatush_wdata          = rvfi_csr_wdata.mstatush;
   assign rvfi_csr_mstatush_wmask          = rvfi_csr_wmask.mstatush;
   assign rvfi_csr_misa_rdata              = rvfi_csr_rdata.misa;
-  assign rvfi_csr_misa_rmask              = '1;
+  assign rvfi_csr_misa_rmask              = rvfi_csr_rmask.misa;
   assign rvfi_csr_misa_wdata              = rvfi_csr_wdata.misa;
   assign rvfi_csr_misa_wmask              = rvfi_csr_wmask.misa;
   assign rvfi_csr_mie_rdata               = rvfi_csr_rdata.mie;
-  assign rvfi_csr_mie_rmask               = '1;
+  assign rvfi_csr_mie_rmask               = rvfi_csr_rmask.mie;
   assign rvfi_csr_mie_wdata               = rvfi_csr_wdata.mie;
   assign rvfi_csr_mie_wmask               = rvfi_csr_wmask.mie;
   assign rvfi_csr_mtvec_rdata             = rvfi_csr_rdata.mtvec;
-  assign rvfi_csr_mtvec_rmask             = '1;
+  assign rvfi_csr_mtvec_rmask             = rvfi_csr_rmask.mtvec;
   assign rvfi_csr_mtvec_wdata             = rvfi_csr_wdata.mtvec;
   assign rvfi_csr_mtvec_wmask             = rvfi_csr_wmask.mtvec;
   assign rvfi_csr_mtvt_rdata              = rvfi_csr_rdata.mtvt;
-  assign rvfi_csr_mtvt_rmask              = '1;
+  assign rvfi_csr_mtvt_rmask              = rvfi_csr_rmask.mtvt;
   assign rvfi_csr_mtvt_wdata              = rvfi_csr_wdata.mtvt;
   assign rvfi_csr_mtvt_wmask              = rvfi_csr_wmask.mtvt;
   assign rvfi_csr_mcountinhibit_rdata     = rvfi_csr_rdata.mcountinhibit;
-  assign rvfi_csr_mcountinhibit_rmask     = '1;
+  assign rvfi_csr_mcountinhibit_rmask     = rvfi_csr_rmask.mcountinhibit;
   assign rvfi_csr_mcountinhibit_wdata     = rvfi_csr_wdata.mcountinhibit;
   assign rvfi_csr_mcountinhibit_wmask     = rvfi_csr_wmask.mcountinhibit;
   assign rvfi_csr_mhpmevent_rdata         = rvfi_csr_rdata.mhpmevent;
-  assign rvfi_csr_mhpmevent_rmask[ 2:0]   = '1;
-  assign rvfi_csr_mhpmevent_rmask[31:3]   = '1;
+  assign rvfi_csr_mhpmevent_rmask[ 2:0]   = rvfi_csr_rmask.mhpmevent[2:0];
+  assign rvfi_csr_mhpmevent_rmask[31:3]   = rvfi_csr_rmask.mhpmevent[31:3];
   assign rvfi_csr_mhpmevent_wdata         = rvfi_csr_wdata.mhpmevent;
   assign rvfi_csr_mhpmevent_wmask         = rvfi_csr_wmask.mhpmevent;
   assign rvfi_csr_mscratch_rdata          = rvfi_csr_rdata.mscratch;
-  assign rvfi_csr_mscratch_rmask          = '1;
+  assign rvfi_csr_mscratch_rmask          = rvfi_csr_rmask.mscratch;
   assign rvfi_csr_mscratch_wdata          = rvfi_csr_wdata.mscratch;
   assign rvfi_csr_mscratch_wmask          = rvfi_csr_wmask.mscratch;
   assign rvfi_csr_mepc_rdata              = rvfi_csr_rdata.mepc;
-  assign rvfi_csr_mepc_rmask              = '1;
+  assign rvfi_csr_mepc_rmask              = rvfi_csr_rmask.mepc;
   assign rvfi_csr_mepc_wdata              = rvfi_csr_wdata.mepc;
   assign rvfi_csr_mepc_wmask              = rvfi_csr_wmask.mepc;
   assign rvfi_csr_mcause_rdata            = rvfi_csr_rdata.mcause;
-  assign rvfi_csr_mcause_rmask            = '1;
+  assign rvfi_csr_mcause_rmask            = rvfi_csr_rmask.mcause;
   assign rvfi_csr_mcause_wdata            = rvfi_csr_wdata.mcause;
   assign rvfi_csr_mcause_wmask            = rvfi_csr_wmask.mcause;
   assign rvfi_csr_mtval_rdata             = rvfi_csr_rdata.mtval;
-  assign rvfi_csr_mtval_rmask             = '1;
+  assign rvfi_csr_mtval_rmask             = rvfi_csr_rmask.mtval;
   assign rvfi_csr_mtval_wdata             = rvfi_csr_wdata.mtval;
   assign rvfi_csr_mtval_wmask             = rvfi_csr_wmask.mtval;
   assign rvfi_csr_mip_rdata               = rvfi_csr_rdata.mip;
-  assign rvfi_csr_mip_rmask               = '1;
+  assign rvfi_csr_mip_rmask               = rvfi_csr_rmask.mip;
   assign rvfi_csr_mip_wdata               = rvfi_csr_wdata.mip;
   assign rvfi_csr_mip_wmask               = rvfi_csr_wmask.mip;
-  assign rvfi_csr_mnxti_rmask             = '1;
+  assign rvfi_csr_mnxti_rmask             = rvfi_csr_rmask.mnxti;
   assign rvfi_csr_mnxti_rdata             = rvfi_csr_rdata.mnxti;
   assign rvfi_csr_mnxti_wmask             = rvfi_csr_wmask.mnxti;
   assign rvfi_csr_mnxti_wdata             = rvfi_csr_wdata.mnxti;
   assign rvfi_csr_mintstatus_rdata        = rvfi_csr_rdata.mintstatus;
-  assign rvfi_csr_mintstatus_rmask        = '1;
+  assign rvfi_csr_mintstatus_rmask        = rvfi_csr_rmask.mintstatus;
   assign rvfi_csr_mintstatus_wdata        = rvfi_csr_wdata.mintstatus;
   assign rvfi_csr_mintstatus_wmask        = rvfi_csr_wmask.mintstatus;
   assign rvfi_csr_mintthresh_rdata        = rvfi_csr_rdata.mintthresh;
-  assign rvfi_csr_mintthresh_rmask        = '1;
+  assign rvfi_csr_mintthresh_rmask        = rvfi_csr_rmask.mintthresh;
   assign rvfi_csr_mintthresh_wdata        = rvfi_csr_wdata.mintthresh;
   assign rvfi_csr_mintthresh_wmask        = rvfi_csr_wmask.mintthresh;
   assign rvfi_csr_mscratchcsw_rdata       = rvfi_csr_rdata.mscratchcsw;
-  assign rvfi_csr_mscratchcsw_rmask       = '1;
+  assign rvfi_csr_mscratchcsw_rmask       = rvfi_csr_rmask.mscratchcsw;
   assign rvfi_csr_mscratchcsw_wdata       = rvfi_csr_wdata.mscratchcsw;
   assign rvfi_csr_mscratchcsw_wmask       = rvfi_csr_wmask.mscratchcsw;
   assign rvfi_csr_mscratchcswl_rdata      = rvfi_csr_rdata.mscratchcswl;
-  assign rvfi_csr_mscratchcswl_rmask      = '1;
+  assign rvfi_csr_mscratchcswl_rmask      = rvfi_csr_rmask.mscratchcswl;
   assign rvfi_csr_mscratchcswl_wdata      = rvfi_csr_wdata.mscratchcswl;
   assign rvfi_csr_mscratchcswl_wmask      = rvfi_csr_wmask.mscratchcswl;
   assign rvfi_csr_mclicbase_rdata         = rvfi_csr_rdata.mclicbase;
-  assign rvfi_csr_mclicbase_rmask         = '1;
+  assign rvfi_csr_mclicbase_rmask         = rvfi_csr_rmask.mclicbase;
   assign rvfi_csr_mclicbase_wdata         = rvfi_csr_wdata.mclicbase;
   assign rvfi_csr_mclicbase_wmask         = rvfi_csr_wmask.mclicbase;
   assign rvfi_csr_tselect_rdata           = rvfi_csr_rdata.tselect;
-  assign rvfi_csr_tselect_rmask           = '1;
+  assign rvfi_csr_tselect_rmask           = rvfi_csr_rmask.tselect;
   assign rvfi_csr_tselect_wdata           = rvfi_csr_wdata.tselect;
   assign rvfi_csr_tselect_wmask           = rvfi_csr_wmask.tselect;
   assign rvfi_csr_tdata_rdata             = rvfi_csr_rdata.tdata;
   assign rvfi_csr_tdata_rmask[0]          = '0; // Does not exist
-  assign rvfi_csr_tdata_rmask[3:1]        = '1;
+  assign rvfi_csr_tdata_rmask[3:1]        = rvfi_csr_rmask.tdata[3:1];
   assign rvfi_csr_tdata_wdata             = rvfi_csr_wdata.tdata;
   assign rvfi_csr_tdata_wmask             = rvfi_csr_wmask.tdata;
   assign rvfi_csr_tinfo_rdata             = rvfi_csr_rdata.tinfo;
-  assign rvfi_csr_tinfo_rmask             = '1;
+  assign rvfi_csr_tinfo_rmask             = rvfi_csr_rmask.tinfo;
   assign rvfi_csr_tinfo_wdata             = rvfi_csr_wdata.tinfo;
   assign rvfi_csr_tinfo_wmask             = rvfi_csr_wmask.tinfo;
   assign rvfi_csr_tcontrol_rdata          = rvfi_csr_rdata.tcontrol;
-  assign rvfi_csr_tcontrol_rmask          = '1;
+  assign rvfi_csr_tcontrol_rmask          = rvfi_csr_rmask.tcontrol;
   assign rvfi_csr_tcontrol_wdata          = rvfi_csr_wdata.tcontrol;
   assign rvfi_csr_tcontrol_wmask          = rvfi_csr_wmask.tcontrol;
   assign rvfi_csr_dcsr_rdata              = rvfi_csr_rdata.dcsr;
-  assign rvfi_csr_dcsr_rmask              = '1;
+  assign rvfi_csr_dcsr_rmask              = rvfi_csr_rmask.dcsr;
   assign rvfi_csr_dcsr_wdata              = rvfi_csr_wdata.dcsr;
   assign rvfi_csr_dcsr_wmask              = rvfi_csr_wmask.dcsr;
   assign rvfi_csr_dpc_rdata               = rvfi_csr_rdata.dpc;
-  assign rvfi_csr_dpc_rmask               = '1;
+  assign rvfi_csr_dpc_rmask               = rvfi_csr_rmask.dpc;
   assign rvfi_csr_dpc_wdata               = rvfi_csr_wdata.dpc;
   assign rvfi_csr_dpc_wmask               = rvfi_csr_wmask.dpc;
   assign rvfi_csr_dscratch_rdata          = rvfi_csr_rdata.dscratch;
-  assign rvfi_csr_dscratch_rmask          = '1;
+  assign rvfi_csr_dscratch_rmask          = rvfi_csr_rmask.dscratch;
   assign rvfi_csr_dscratch_wdata          = rvfi_csr_wdata.dscratch;
   assign rvfi_csr_dscratch_wmask          = rvfi_csr_wmask.dscratch;
   assign rvfi_csr_mcycle_rdata            = rvfi_csr_rdata.mcycle;
-  assign rvfi_csr_mcycle_rmask            = '1;
+  assign rvfi_csr_mcycle_rmask            = rvfi_csr_rmask.mcycle;
   assign rvfi_csr_mcycle_wdata            = rvfi_csr_wdata.mcycle;
   assign rvfi_csr_mcycle_wmask            = rvfi_csr_wmask.mcycle;
   assign rvfi_csr_minstret_rdata          = rvfi_csr_rdata.minstret;
-  assign rvfi_csr_minstret_rmask          = '1;
+  assign rvfi_csr_minstret_rmask          = rvfi_csr_rmask.minstret;
   assign rvfi_csr_minstret_wdata          = rvfi_csr_wdata.minstret;
   assign rvfi_csr_minstret_wmask          = rvfi_csr_wmask.minstret;
   assign rvfi_csr_mhpmcounter_rdata       = rvfi_csr_rdata.mhpmcounter;
-  assign rvfi_csr_mhpmcounter_rmask[ 2:0] = '0;
-  assign rvfi_csr_mhpmcounter_rmask[31:3] = '1;
+  assign rvfi_csr_mhpmcounter_rmask[ 2:0] = rvfi_csr_rmask.mhpmcounter[2:0];
+  assign rvfi_csr_mhpmcounter_rmask[31:3] = rvfi_csr_rmask.mhpmcounter[31:3];
   assign rvfi_csr_mhpmcounter_wdata       = rvfi_csr_wdata.mhpmcounter;
   assign rvfi_csr_mhpmcounter_wmask       = rvfi_csr_wmask.mhpmcounter;
   assign rvfi_csr_mcycleh_rdata           = rvfi_csr_rdata.mcycleh;
-  assign rvfi_csr_mcycleh_rmask           = '1;
+  assign rvfi_csr_mcycleh_rmask           = rvfi_csr_rmask.mcycleh;
   assign rvfi_csr_mcycleh_wdata           = rvfi_csr_wdata.mcycleh;
   assign rvfi_csr_mcycleh_wmask           = rvfi_csr_wmask.mcycleh;
   assign rvfi_csr_minstreth_rdata         = rvfi_csr_rdata.minstreth;
-  assign rvfi_csr_minstreth_rmask         = '1;
+  assign rvfi_csr_minstreth_rmask         = rvfi_csr_rmask.minstreth;
   assign rvfi_csr_minstreth_wdata         = rvfi_csr_wdata.minstreth;
   assign rvfi_csr_minstreth_wmask         = rvfi_csr_wmask.minstreth;
   assign rvfi_csr_mhpmcounterh_rdata      = rvfi_csr_rdata.mhpmcounterh;
-  assign rvfi_csr_mhpmcounterh_rmask[ 2:0] = '0;
-  assign rvfi_csr_mhpmcounterh_rmask[31:3] = '1;
+  assign rvfi_csr_mhpmcounterh_rmask[ 2:0] = rvfi_csr_rmask.mhpmcounterh[2:0];
+  assign rvfi_csr_mhpmcounterh_rmask[31:3] = rvfi_csr_rmask.mhpmcounterh[31:3];
   assign rvfi_csr_mhpmcounterh_wdata      = rvfi_csr_wdata.mhpmcounterh;
   assign rvfi_csr_mhpmcounterh_wmask      = rvfi_csr_wmask.mhpmcounterh;
   assign rvfi_csr_mvendorid_rdata         = rvfi_csr_rdata.mvendorid;
-  assign rvfi_csr_mvendorid_rmask         = '1;
+  assign rvfi_csr_mvendorid_rmask         = rvfi_csr_rmask.mvendorid;
   assign rvfi_csr_mvendorid_wdata         = rvfi_csr_wdata.mvendorid;
   assign rvfi_csr_mvendorid_wmask         = rvfi_csr_wmask.mvendorid;
   assign rvfi_csr_marchid_rdata           = rvfi_csr_rdata.marchid;
-  assign rvfi_csr_marchid_rmask           = '1;
+  assign rvfi_csr_marchid_rmask           = rvfi_csr_rmask.marchid;
   assign rvfi_csr_marchid_wdata           = rvfi_csr_wdata.marchid;
   assign rvfi_csr_marchid_wmask           = rvfi_csr_wmask.marchid;
   assign rvfi_csr_mimpid_rdata            = rvfi_csr_rdata.mimpid;
-  assign rvfi_csr_mimpid_rmask            = '1;
+  assign rvfi_csr_mimpid_rmask            = rvfi_csr_rmask.mimpid;
   assign rvfi_csr_mimpid_wdata            = rvfi_csr_wdata.mimpid;
   assign rvfi_csr_mimpid_wmask            = rvfi_csr_wmask.mimpid;
   assign rvfi_csr_mhartid_rdata           = rvfi_csr_rdata.mhartid;
-  assign rvfi_csr_mhartid_rmask           = '1;
+  assign rvfi_csr_mhartid_rmask           = rvfi_csr_rmask.mhartid;
   assign rvfi_csr_mhartid_wdata           = rvfi_csr_wdata.mhartid;
   assign rvfi_csr_mhartid_wmask           = rvfi_csr_wmask.mhartid;
   assign rvfi_csr_cycle_rdata             = rvfi_csr_rdata.cycle;
-  assign rvfi_csr_cycle_rmask             = '1;
+  assign rvfi_csr_cycle_rmask             = rvfi_csr_rmask.cycle;
   assign rvfi_csr_cycle_wdata             = rvfi_csr_wdata.cycle;
   assign rvfi_csr_cycle_wmask             = rvfi_csr_wmask.cycle;
   assign rvfi_csr_instret_rdata           = rvfi_csr_rdata.instret;
-  assign rvfi_csr_instret_rmask           = '1;
+  assign rvfi_csr_instret_rmask           = rvfi_csr_rmask.instret;
   assign rvfi_csr_instret_wdata           = rvfi_csr_wdata.instret;
   assign rvfi_csr_instret_wmask           = rvfi_csr_wmask.instret;
   assign rvfi_csr_hpmcounter_rdata        = rvfi_csr_rdata.hpmcounter;
-  assign rvfi_csr_hpmcounter_rmask[ 2:0]  = '0;
-  assign rvfi_csr_hpmcounter_rmask[31:3]  = '1;
+  assign rvfi_csr_hpmcounter_rmask[ 2:0]  = rvfi_csr_rmask.hpmcounter[2:0];
+  assign rvfi_csr_hpmcounter_rmask[31:3]  = rvfi_csr_rmask.hpmcounter[31:3];
   assign rvfi_csr_hpmcounter_wdata        = rvfi_csr_wdata.hpmcounter;
   assign rvfi_csr_hpmcounter_wmask        = rvfi_csr_wmask.hpmcounter;
   assign rvfi_csr_cycleh_rdata            = rvfi_csr_rdata.cycleh;
-  assign rvfi_csr_cycleh_rmask            = '1;
+  assign rvfi_csr_cycleh_rmask            = rvfi_csr_rmask.cycleh;
   assign rvfi_csr_cycleh_wdata            = rvfi_csr_wdata.cycleh;
   assign rvfi_csr_cycleh_wmask            = rvfi_csr_wmask.cycleh;
   assign rvfi_csr_instreth_rdata          = rvfi_csr_rdata.instreth;
-  assign rvfi_csr_instreth_rmask          = '1;
+  assign rvfi_csr_instreth_rmask          = rvfi_csr_rmask.instreth;
   assign rvfi_csr_instreth_wdata          = rvfi_csr_wdata.instreth;
   assign rvfi_csr_instreth_wmask          = rvfi_csr_wmask.instreth;
   assign rvfi_csr_hpmcounterh_rdata       = rvfi_csr_rdata.hpmcounterh;
-  assign rvfi_csr_hpmcounterh_rmask[ 2:0] = '0;
-  assign rvfi_csr_hpmcounterh_rmask[31:3] = '1;
+  assign rvfi_csr_hpmcounterh_rmask[ 2:0] = rvfi_csr_rmask.hpmcounterh[2:0];
+  assign rvfi_csr_hpmcounterh_rmask[31:3] = rvfi_csr_rmask.hpmcounterh[31:3];
   assign rvfi_csr_hpmcounterh_wdata       = rvfi_csr_wdata.hpmcounterh;
   assign rvfi_csr_hpmcounterh_wmask       = rvfi_csr_wmask.hpmcounterh;
   assign rvfi_csr_mcounteren_rdata        = rvfi_csr_rdata.mcounteren;
-  assign rvfi_csr_mcounteren_rmask        = '1;
+  assign rvfi_csr_mcounteren_rmask        = rvfi_csr_rmask.mcounteren;
   assign rvfi_csr_mcounteren_wdata        = rvfi_csr_wdata.mcounteren;
   assign rvfi_csr_mcounteren_wmask        = rvfi_csr_wmask.mcounteren;
   assign rvfi_csr_pmpcfg_rdata            = rvfi_csr_rdata.pmpcfg;
-  assign rvfi_csr_pmpcfg_rmask            = '1;
+  assign rvfi_csr_pmpcfg_rmask            = rvfi_csr_rmask.pmpcfg;
   assign rvfi_csr_pmpcfg_wdata            = rvfi_csr_wdata.pmpcfg;
   assign rvfi_csr_pmpcfg_wmask            = rvfi_csr_wmask.pmpcfg;
   assign rvfi_csr_pmpaddr_rdata           = rvfi_csr_rdata.pmpaddr;
-  assign rvfi_csr_pmpaddr_rmask           = '1;
+  assign rvfi_csr_pmpaddr_rmask           = rvfi_csr_rmask.pmpaddr;
   assign rvfi_csr_pmpaddr_wdata           = rvfi_csr_wdata.pmpaddr;
   assign rvfi_csr_pmpaddr_wmask           = rvfi_csr_wmask.pmpaddr;
   assign rvfi_csr_mseccfg_rdata           = rvfi_csr_rdata.mseccfg;
-  assign rvfi_csr_mseccfg_rmask           = '1;
+  assign rvfi_csr_mseccfg_rmask           = rvfi_csr_rmask.mseccfg;
   assign rvfi_csr_mseccfg_wdata           = rvfi_csr_wdata.mseccfg;
   assign rvfi_csr_mseccfg_wmask           = rvfi_csr_wmask.mseccfg;
   assign rvfi_csr_mseccfgh_rdata          = rvfi_csr_rdata.mseccfgh;
-  assign rvfi_csr_mseccfgh_rmask          = '1;
+  assign rvfi_csr_mseccfgh_rmask          = rvfi_csr_rmask.mseccfgh;
   assign rvfi_csr_mseccfgh_wdata          = rvfi_csr_wdata.mseccfgh;
   assign rvfi_csr_mseccfgh_wmask          = rvfi_csr_wmask.mseccfgh;
   assign rvfi_csr_menvcfg_rdata           = rvfi_csr_rdata.menvcfg;
-  assign rvfi_csr_menvcfg_rmask           = '1;
+  assign rvfi_csr_menvcfg_rmask           = rvfi_csr_rmask.menvcfg;
   assign rvfi_csr_menvcfg_wdata           = rvfi_csr_wdata.menvcfg;
   assign rvfi_csr_menvcfg_wmask           = rvfi_csr_wmask.menvcfg;
   assign rvfi_csr_menvcfgh_rdata          = rvfi_csr_rdata.menvcfgh;
-  assign rvfi_csr_menvcfgh_rmask          = '1;
+  assign rvfi_csr_menvcfgh_rmask          = rvfi_csr_rmask.menvcfgh;
   assign rvfi_csr_menvcfgh_wdata          = rvfi_csr_wdata.menvcfgh;
   assign rvfi_csr_menvcfgh_wmask          = rvfi_csr_wmask.menvcfgh;
   assign rvfi_csr_cpuctrl_rdata           = rvfi_csr_rdata.cpuctrl;
-  assign rvfi_csr_cpuctrl_rmask           = '1;
+  assign rvfi_csr_cpuctrl_rmask           = rvfi_csr_rmask.cpuctrl;
   assign rvfi_csr_cpuctrl_wdata           = rvfi_csr_wdata.cpuctrl;
   assign rvfi_csr_cpuctrl_wmask           = rvfi_csr_wmask.cpuctrl;
+  assign rvfi_csr_mconfigptr_rdata        = rvfi_csr_rdata.mconfigptr;
+  assign rvfi_csr_mconfigptr_rmask        = rvfi_csr_rmask.mconfigptr;
+  assign rvfi_csr_mconfigptr_wdata        = rvfi_csr_wdata.mconfigptr;
+  assign rvfi_csr_mconfigptr_wmask        = rvfi_csr_wmask.mconfigptr;
   assign rvfi_csr_secureseed0_rdata       = rvfi_csr_rdata.secureseed0;
-  assign rvfi_csr_secureseed0_rmask       = '1;
+  assign rvfi_csr_secureseed0_rmask       = rvfi_csr_rmask.secureseed0;
   assign rvfi_csr_secureseed0_wdata       = rvfi_csr_wdata.secureseed0;
   assign rvfi_csr_secureseed0_wmask       = rvfi_csr_wmask.secureseed0;
   assign rvfi_csr_secureseed1_rdata       = rvfi_csr_rdata.secureseed1;
-  assign rvfi_csr_secureseed1_rmask       = '1;
+  assign rvfi_csr_secureseed1_rmask       = rvfi_csr_rmask.secureseed1;
   assign rvfi_csr_secureseed1_wdata       = rvfi_csr_wdata.secureseed1;
   assign rvfi_csr_secureseed1_wmask       = rvfi_csr_wmask.secureseed1;
   assign rvfi_csr_secureseed2_rdata       = rvfi_csr_rdata.secureseed2;
-  assign rvfi_csr_secureseed2_rmask       = '1;
+  assign rvfi_csr_secureseed2_rmask       = rvfi_csr_rmask.secureseed2;
   assign rvfi_csr_secureseed2_wdata       = rvfi_csr_wdata.secureseed2;
   assign rvfi_csr_secureseed2_wmask       = rvfi_csr_wmask.secureseed2;
 
   assign rvfi_csr_mstateen0_rdata       = rvfi_csr_rdata.mstateen0;
-  assign rvfi_csr_mstateen0_rmask       = '1;
+  assign rvfi_csr_mstateen0_rmask       = rvfi_csr_rmask.mstateen0;
   assign rvfi_csr_mstateen0_wdata       = rvfi_csr_wdata.mstateen0;
   assign rvfi_csr_mstateen0_wmask       = rvfi_csr_wmask.mstateen0;
   assign rvfi_csr_mstateen1_rdata       = rvfi_csr_rdata.mstateen1;
-  assign rvfi_csr_mstateen1_rmask       = '1;
+  assign rvfi_csr_mstateen1_rmask       = rvfi_csr_rmask.mstateen1;
   assign rvfi_csr_mstateen1_wdata       = rvfi_csr_wdata.mstateen1;
   assign rvfi_csr_mstateen1_wmask       = rvfi_csr_wmask.mstateen1;
   assign rvfi_csr_mstateen2_rdata       = rvfi_csr_rdata.mstateen2;
-  assign rvfi_csr_mstateen2_rmask       = '1;
+  assign rvfi_csr_mstateen2_rmask       = rvfi_csr_rmask.mstateen2;
   assign rvfi_csr_mstateen2_wdata       = rvfi_csr_wdata.mstateen2;
   assign rvfi_csr_mstateen2_wmask       = rvfi_csr_wmask.mstateen2;
   assign rvfi_csr_mstateen3_rdata       = rvfi_csr_rdata.mstateen3;
-  assign rvfi_csr_mstateen3_rmask       = '1;
+  assign rvfi_csr_mstateen3_rmask       = rvfi_csr_rmask.mstateen3;
   assign rvfi_csr_mstateen3_wdata       = rvfi_csr_wdata.mstateen3;
   assign rvfi_csr_mstateen3_wmask       = rvfi_csr_wmask.mstateen3;
   assign rvfi_csr_mstateen0h_rdata      = rvfi_csr_rdata.mstateen0h;
-  assign rvfi_csr_mstateen0h_rmask      = '1;
+  assign rvfi_csr_mstateen0h_rmask      = rvfi_csr_rmask.mstateen0h;
   assign rvfi_csr_mstateen0h_wdata      = rvfi_csr_wdata.mstateen0h;
   assign rvfi_csr_mstateen0h_wmask      = rvfi_csr_wmask.mstateen0h;
   assign rvfi_csr_mstateen1h_rdata      = rvfi_csr_rdata.mstateen1h;
-  assign rvfi_csr_mstateen1h_rmask      = '1;
+  assign rvfi_csr_mstateen1h_rmask      = rvfi_csr_rmask.mstateen1h;
   assign rvfi_csr_mstateen1h_wdata      = rvfi_csr_wdata.mstateen1h;
   assign rvfi_csr_mstateen1h_wmask      = rvfi_csr_wmask.mstateen1h;
   assign rvfi_csr_mstateen2h_rdata      = rvfi_csr_rdata.mstateen2h;
-  assign rvfi_csr_mstateen2h_rmask      = '1;
+  assign rvfi_csr_mstateen2h_rmask      = rvfi_csr_rmask.mstateen2h;
   assign rvfi_csr_mstateen2h_wdata      = rvfi_csr_wdata.mstateen2h;
   assign rvfi_csr_mstateen2h_wmask      = rvfi_csr_wmask.mstateen2h;
   assign rvfi_csr_mstateen3h_rdata      = rvfi_csr_rdata.mstateen3h;
-  assign rvfi_csr_mstateen3h_rmask      = '1;
+  assign rvfi_csr_mstateen3h_rmask      = rvfi_csr_rmask.mstateen3h;
   assign rvfi_csr_mstateen3h_wdata      = rvfi_csr_wdata.mstateen3h;
   assign rvfi_csr_mstateen3h_wmask      = rvfi_csr_wmask.mstateen3h;
 endmodule

@@ -392,6 +392,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
         // to avoid writing to CSRs inside the core.
         ex_wb_pipe_o.csr_en     <= (csr_illegal_i || xif_csr_error_o) ? 1'b0 : id_ex_pipe_i.csr_en;
         if (id_ex_pipe_i.csr_en) begin
+          // The ex_wb_pipe_o.csr_addr is used (for RVFI) even for CSR instructions that do not write to the CSR
+          // Any future clock gating improvements to ex_wb_pipe.csr_addr must take this into account.
           ex_wb_pipe_o.csr_addr         <= id_ex_pipe_i.alu_operand_b[11:0];
           ex_wb_pipe_o.csr_wdata        <= id_ex_pipe_i.alu_operand_a;
           ex_wb_pipe_o.csr_op           <= id_ex_pipe_i.csr_op;
