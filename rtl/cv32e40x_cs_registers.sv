@@ -1896,9 +1896,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mcountinhibit_rdata = mcountinhibit_q;
 
   // Assign values used for setting rmask in RVFI
-  assign mscratchcsw_in_wb = (csr_waddr == CSR_MSCRATCHCSW);
-  assign mscratchcswl_in_wb = (csr_waddr == CSR_MSCRATCHCSWL);
-  assign mnxti_in_wb = (csr_waddr == CSR_MNXTI);
+  assign mscratchcsw_in_wb  = ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW);
+  assign mscratchcswl_in_wb = ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSWL);
+  assign mnxti_in_wb        = ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MNXTI);
 
   // Some signals are unused on purpose (typically they are used by RVFI code). Use them here for easier LINT waiving.
 

@@ -632,7 +632,6 @@ module cv32e40x_rvfi
   logic              branch_taken_ex;
 
   logic [ 3:0] rvfi_mem_mask_int;
-  logic [31:0] rvfi_mem_rdata_d;
 
 
   logic [ 4:0] rd_addr_wb;
@@ -1316,6 +1315,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.mip                = csr_en_wb_i                        ? ex_csr_rdata.mip :
                                                (sys_en_wb_i && sys_wfi_insn_wb_i) ?            irq_i :
                                                                                           csr_mip_q_i;
+  assign rvfi_csr_rmask_d.mip                = '1;
   assign rvfi_csr_wdata_d.mip                = csr_mip_n_i;
   assign rvfi_csr_wmask_d.mip                = csr_mip_we_i ? '1 : '0;
 
@@ -1355,9 +1355,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.tselect            = csr_tselect_n_i;
   assign rvfi_csr_wmask_d.tselect            = csr_tselect_we_i;
 
-  assign rvfi_csr_rdata_d.tdata[0]           = 'Z;
-  assign rvfi_csr_rmask_d.tdata[0]           = 'Z;
-  assign rvfi_csr_wdata_d.tdata[0]           = 'Z; // Does not exist
+  // Tdata0 does not exist, tie off to zero
+  assign rvfi_csr_rdata_d.tdata[0]           = '0;
+  assign rvfi_csr_rmask_d.tdata[0]           = '0;
+  assign rvfi_csr_wdata_d.tdata[0]           = '0;
   assign rvfi_csr_wmask_d.tdata[0]           = '0;
 
   assign rvfi_csr_rdata_d.tdata[1]           = csr_tdata1_q_i;
@@ -1431,9 +1432,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_n_l [CSR_MINSTRET & 'hF] : mhpmcounter_l_wdata_q[CSR_MINSTRET & 'hF];
   assign rvfi_csr_wmask_d.minstret           = !mhpmcounter_l_during_wb[CSR_MINSTRET & 'hF] ? csr_mhpmcounter_we_l[CSR_MINSTRET & 'hF] : '1;
 
-  assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = 'Z;
-  assign rvfi_csr_rmask_d.mhpmcounter[ 2:0]  = 'Z;
-  assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = 'Z; // Does not exist
+  // mhpmcounter [2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.mhpmcounter[ 2:0]  = '0;
+  assign rvfi_csr_rmask_d.mhpmcounter[ 2:0]  = '0;
+  assign rvfi_csr_wdata_d.mhpmcounter[ 2:0]  = '0;
   assign rvfi_csr_wmask_d.mhpmcounter[ 2:0]  = '0;
 
   // Used flopped values in case write happened before wb_valid
@@ -1458,9 +1460,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_n_h [CSR_MINSTRETH & 'hF] : mhpmcounter_h_wdata_q[CSR_MINSTRETH & 'hF];
   assign rvfi_csr_wmask_d.minstreth          = !mhpmcounter_h_during_wb[CSR_MINSTRETH & 'hF] ? csr_mhpmcounter_we_h[CSR_MINSTRETH & 'hF] : '1;
 
-  assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = 'Z;
-  assign rvfi_csr_rmask_d.mhpmcounterh[ 2:0] = 'Z;
-  assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = 'Z;  // Does not exist
+  // mhpmcounterh [2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.mhpmcounterh[ 2:0] = '0;
+  assign rvfi_csr_rmask_d.mhpmcounterh[ 2:0] = '0;
+  assign rvfi_csr_wdata_d.mhpmcounterh[ 2:0] = '0;
   assign rvfi_csr_wmask_d.mhpmcounterh[ 2:0] = '0;
 
   // Used flopped values in case write happened before wb_valid
@@ -1484,10 +1487,12 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.instret            = csr_mhpmcounter_n_l [CSR_INSTRET & 'hF];
   assign rvfi_csr_wmask_d.instret            = csr_mhpmcounter_we_l[CSR_INSTRET & 'hF];
 
-  assign rvfi_csr_rdata_d.hpmcounter[ 2:0]   = 'Z;
-  assign rvfi_csr_rmask_d.hpmcounter[ 2:0]   = 'Z;
-  assign rvfi_csr_wdata_d.hpmcounter[ 2:0]   = 'Z;  // Does not exist
+  // hpmcounter[2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.hpmcounter[ 2:0]   = '0;
+  assign rvfi_csr_rmask_d.hpmcounter[ 2:0]   = '0;
+  assign rvfi_csr_wdata_d.hpmcounter[ 2:0]   = '0;
   assign rvfi_csr_wmask_d.hpmcounter[ 2:0]   = '0;
+
   assign rvfi_csr_rdata_d.hpmcounter[31:3]   = csr_mhpmcounter_q_l [31:3];
   assign rvfi_csr_rmask_d.hpmcounter[31:3]   = '1;
   assign rvfi_csr_wdata_d.hpmcounter[31:3]   = csr_mhpmcounter_n_l [31:3];
@@ -1504,10 +1509,12 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.instreth           = csr_mhpmcounter_n_h [CSR_INSTRETH & 'hF];
   assign rvfi_csr_wmask_d.instreth           = csr_mhpmcounter_we_h[CSR_INSTRETH & 'hF];
 
-  assign rvfi_csr_rdata_d.hpmcounterh[ 2:0]  = 'Z;
-  assign rvfi_csr_rmask_d.hpmcounterh[ 2:0]  = 'Z;
-  assign rvfi_csr_wdata_d.hpmcounterh[ 2:0]  = 'Z; // Does not exist
+  // hpmcounterh[2:0] does not exist, tie to zero
+  assign rvfi_csr_rdata_d.hpmcounterh[ 2:0]  = '0;
+  assign rvfi_csr_rmask_d.hpmcounterh[ 2:0]  = '0;
+  assign rvfi_csr_wdata_d.hpmcounterh[ 2:0]  = '0;
   assign rvfi_csr_wmask_d.hpmcounterh[ 2:0]  = '0;
+
   assign rvfi_csr_rdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_q_h [31:3];
   assign rvfi_csr_rmask_d.hpmcounterh[31:3]  = '1;
   assign rvfi_csr_wdata_d.hpmcounterh[31:3]  = csr_mhpmcounter_n_h [31:3];
@@ -1845,6 +1852,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_cpuctrl_rmask           = rvfi_csr_rmask.cpuctrl;
   assign rvfi_csr_cpuctrl_wdata           = rvfi_csr_wdata.cpuctrl;
   assign rvfi_csr_cpuctrl_wmask           = rvfi_csr_wmask.cpuctrl;
+  assign rvfi_csr_mconfigptr_rdata        = rvfi_csr_rdata.mconfigptr;
+  assign rvfi_csr_mconfigptr_rmask        = rvfi_csr_rmask.mconfigptr;
+  assign rvfi_csr_mconfigptr_wdata        = rvfi_csr_wdata.mconfigptr;
+  assign rvfi_csr_mconfigptr_wmask        = rvfi_csr_wmask.mconfigptr;
   assign rvfi_csr_secureseed0_rdata       = rvfi_csr_rdata.secureseed0;
   assign rvfi_csr_secureseed0_rmask       = rvfi_csr_rmask.secureseed0;
   assign rvfi_csr_secureseed0_wdata       = rvfi_csr_wdata.secureseed0;
