@@ -1641,8 +1641,8 @@ Detailed:
 
 .. _csr-tdata2-type-0x2:
 
-Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x2)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A2
 
@@ -1666,8 +1666,8 @@ Detailed:
 
 .. _csr-tdata2-type-0x5:
 
-Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x5)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x5
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A2
 
@@ -1715,8 +1715,8 @@ Detailed:
 
 .. _csr-tdata2-type-0x6:
 
-Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x6)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0x6
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A2
 
@@ -1740,8 +1740,8 @@ Detailed:
 
 .. _csr-tdata2-type-0xf:
 
-Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0xF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Trigger Data Register 2 (``tdata2``) - View when ``tdata1.TYPE`` is 0xF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x7A2
 
