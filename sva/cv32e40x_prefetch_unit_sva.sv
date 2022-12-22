@@ -32,7 +32,9 @@ module cv32e40x_prefetch_unit_sva import cv32e40x_pkg::*;
    input logic        prefetch_ready_i,
    input logic        trans_valid_o,
    input logic        trans_ready_i,
-   input logic        fetch_ptr_resp
+   input logic        fetch_ptr_resp,
+   input ctrl_state_e ctrl_fsm_cs,
+   input logic        debug_req_i
 
   );
 
@@ -46,8 +48,11 @@ module cv32e40x_prefetch_unit_sva import cv32e40x_pkg::*;
     else `uvm_error("prefetch_buffer", "Assertion a_branch_halfword_aligned failed")
 
   // Check that a taken branch can only occur if fetching is requested
+  // Exception while in RESET state and debug_request_i is high - in that case we want to
+  // do a pc_set to update the IF stage PC without actually fetching anything. This is to ensure
+  // that dpc gets the correct (boot) address when going from reset to debug.
   property p_branch_implies_req;
-      @(posedge clk) (ctrl_fsm_i.pc_set) |-> (ctrl_fsm_i.instr_req);
+      @(posedge clk) (ctrl_fsm_i.pc_set) && !((ctrl_fsm_cs == RESET) && debug_req_i) |-> (ctrl_fsm_i.instr_req);
     endproperty
 
   a_branch_implies_req : assert property(p_branch_implies_req)
