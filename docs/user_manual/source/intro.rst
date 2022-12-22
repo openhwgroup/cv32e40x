@@ -48,10 +48,8 @@ It follows these specifications:
 .. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
 
-.. [RISC-V-ZCA_ZCB_ZCMP_ZCMT] RISC-V Standard Extension for the **Zca**, **Zcb**, **Zcmp**, **Zcmt** subsets of **Zc**, v1.0.0-RC5.6 (not ratified yet),
-   https://github.com/riscv/riscv-code-size-reduction/blob/cd13c6b17ccb7e1b8fc8b69e76179b339bcc2b32/Zc-specification/Zc.adoc
-
-   https://github.com/riscv/riscv-code-size-reduction/releases/download/v1.0.0-RC5.6/Zc-v1.0.0-RC5.6.pdf 
+.. [RISC-V-ZCA_ZCB_ZCMP_ZCMT] RISC-V Standard Extension for the **Zca**, **Zcb**, **Zcmp**, **Zcmt** subsets of **Zc**, v1.0.0-RC5.7 (not ratified yet),
+   https://github.com/riscv/riscv-code-size-reduction/releases/download/v1.0.0-RC5.7/Zc-v1.0.0-RC5.7.pdf
 
 .. [RISC-V-CRYPTO] RISC-V Cryptography Extensions Volume I, Scalar & Entropy Source Instructions, Version v1.0.0, 2'nd December, 2021: Ratified,
    https://github.com/riscv/riscv-crypto/releases/download/v1.0.0-scalar/riscv-crypto-spec-scalar-v1.0.0.pdf
