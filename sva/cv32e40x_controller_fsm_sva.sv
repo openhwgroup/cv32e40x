@@ -108,7 +108,11 @@ module cv32e40x_controller_fsm_sva
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i,
   input logic           etrigger_in_wb,
-  input logic           lsu_wpt_match_wb_i
+  input logic           lsu_wpt_match_wb_i,
+  input logic           debug_req_i,
+  input logic           fetch_enable_i,
+  input logic           instr_req_o,
+  input logic           instr_dbg_o
 );
 
 
@@ -198,11 +202,11 @@ module cv32e40x_controller_fsm_sva
                     (ctrl_fsm_o.kill_wb) |-> (!csr_we_i) )
     else `uvm_error("controller", "csr written while kill_wb is asserted")
 
-  // Check that no stages have valid instructions using RESET or BOOT_SET
+  // Check that no stages have valid instructions using RESET
   a_reset_if_csr :
     assert property (@(posedge clk) disable iff (!rst_n)
-            ((ctrl_fsm_cs == RESET) || (ctrl_fsm_cs == BOOT_SET)) |-> (!if_valid_i && !if_id_pipe_i.instr_valid && !id_ex_pipe_i.instr_valid && !ex_wb_pipe_i.instr_valid) )
-      else `uvm_error("controller", "Instruction valid during RESET or BOOT_SET")
+            ((ctrl_fsm_cs == RESET)) |-> (!if_valid_i && !if_id_pipe_i.instr_valid && !id_ex_pipe_i.instr_valid && !ex_wb_pipe_i.instr_valid) )
+      else `uvm_error("controller", "Instruction valid during RESET")
 
   // Check that no LSU insn can be in EX when there is a WFI or WFE in WB
   a_wfi_wfe_lsu_csr :
@@ -870,5 +874,9 @@ end
                   |->
                   (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
     else `uvm_error("controller", "Debug not entered on a WPT match")
+
+
+
+
 endmodule
 

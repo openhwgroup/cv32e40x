@@ -186,16 +186,6 @@ module cv32e40x_alignment_buffer_sva
         `uvm_error("Alignment buffer SVA",
                   $sformatf("Wrong PC after branch"))
 
-  // Check that a taken branch can only occur if fetching is requested
-  property p_branch_implies_req;
-    @(posedge clk) disable iff (!rst_n) (ctrl_fsm_i.pc_set) |-> (ctrl_fsm_i.instr_req);
-  endproperty
-
-   a_branch_implies_req:
-     assert property(p_branch_implies_req)
-     else
-       `uvm_error("Alignment buffer SVA",
-                  $sformatf("Taken branch occurs while fetching is not requested"))
 
   // Check that we never exceed two outstanding transactions
   property p_max_outstanding;

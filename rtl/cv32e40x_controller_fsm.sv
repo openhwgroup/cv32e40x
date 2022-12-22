@@ -669,16 +669,19 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       RESET: begin
         ctrl_fsm_o.instr_req = 1'b0;
         if (fetch_enable_i) begin
-          ctrl_fsm_ns = BOOT_SET;
+          if (debug_req_i) begin
+            // Not raising instr_req to prevent fetching until we are in debug mode
+            ctrl_fsm_o.instr_req = 1'b0;
+            ctrl_fsm_o.pc_mux    = PC_BOOT;
+            ctrl_fsm_o.pc_set    = 1'b1; // pc_set is required for propagating boot address to dpc (from IF stage)
+            ctrl_fsm_ns          = DEBUG_TAKEN;
+          end else begin
+            ctrl_fsm_o.instr_req = 1'b1;
+            ctrl_fsm_o.pc_mux    = PC_BOOT;
+            ctrl_fsm_o.pc_set    = 1'b1;
+            ctrl_fsm_ns          = FUNCTIONAL;
+          end
         end
-      end
-      // BOOT_SET state required to prevent (timing) path from
-      // fetch_enable_i via pc_set to instruction interface outputs
-      BOOT_SET: begin
-        ctrl_fsm_o.instr_req = 1'b1;
-        ctrl_fsm_o.pc_mux    = PC_BOOT;
-        ctrl_fsm_o.pc_set    = 1'b1;
-        ctrl_fsm_ns = FUNCTIONAL;
       end
       FUNCTIONAL: begin
         // NMI
@@ -1346,7 +1349,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     case (debug_fsm_cs)
       HAVERESET: begin
-        if (debug_mode_n || (ctrl_fsm_ns == BOOT_SET)) begin
+        if (debug_mode_n || (ctrl_fsm_ns == FUNCTIONAL)) begin
           if (debug_mode_n) begin
             debug_fsm_ns = HALTED;
           end else begin

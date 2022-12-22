@@ -231,6 +231,8 @@ module cv32e40x_wrapper
                               .lsu_trans_valid_i            (core_i.load_store_unit_i.trans_valid),
                               .csr_en_id_i                  (core_i.id_stage_i.csr_en),
                               .ptr_in_if_i                  (core_i.if_stage_i.ptr_in_if_o),
+                              .instr_req_o                  (core_i.instr_req_o),
+                              .instr_dbg_o                  (core_i.instr_dbg_o),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
@@ -266,7 +268,10 @@ module cv32e40x_wrapper
     core_i.if_stage_i.prefetch_unit_i
       cv32e40x_prefetch_unit_sva
       #(.SMCLIC(SMCLIC))
-      prefetch_unit_sva (.*);
+      prefetch_unit_sva (
+                          .ctrl_fsm_cs     (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
+                          .debug_req_i     (core_i.debug_req_i),
+                          .*);
 
   generate
     if(M_EXT == M) begin: div_sva

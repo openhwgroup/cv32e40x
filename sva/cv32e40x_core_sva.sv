@@ -32,6 +32,7 @@ module cv32e40x_core_sva
   )
   (
   input logic        clk,
+  input logic        clk_i,
   input logic        rst_ni,
 
   input ctrl_fsm_t   ctrl_fsm,
@@ -54,6 +55,9 @@ module cv32e40x_core_sva
   input logic        branch_taken_in_ex,
   input logic        last_op_wb,
 
+  input logic        fetch_enable_i,
+  input logic        debug_req_i,
+
   input alu_op_a_mux_e alu_op_a_mux_sel_id_i,
   input alu_op_b_mux_e alu_op_b_mux_sel_id_i,
   input logic [31:0]   operand_a_id_i,
@@ -69,6 +73,8 @@ module cv32e40x_core_sva
   // probed OBI signals
   input logic [31:0] instr_addr_o,
   input logic [1:0]  instr_memtype_o,
+  input logic        instr_req_o,
+  input logic        instr_dbg_o,
   input logic [1:0]  data_memtype_o,
   input logic        data_req_o,
   input logic        data_we_o,
@@ -554,5 +560,29 @@ endproperty;
 
 a_no_irq_after_lsu: assert property(p_no_irq_after_lsu)
   else `uvm_error("core", "Interrupt taken after disabling");
-endmodule // cv32e40x_core_sva
 
+// If debug_req_i is asserted when fetch_enable_i gets asserted we should not execute any
+// instruction until the core is in debug mode.
+a_reset_into_debug:
+assert property (@(posedge clk_i) disable iff (!rst_ni)
+                (ctrl_fsm_cs == RESET) &&
+                fetch_enable_i &&
+                debug_req_i
+                ##1
+                debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
+                |->
+                !wb_valid until (wb_valid && ctrl_fsm.debug_mode))
+  else `uvm_error("controller", "Debug out of reset but executed instruction outside debug mode")
+
+// When entering debug out of reset, the first fetch must also flag debug on the instruction OBI interface
+a_first_fetch_debug:
+assert property (@(posedge clk_i) disable iff (!rst_ni)
+                (ctrl_fsm_cs == RESET) &&
+                fetch_enable_i &&
+                debug_req_i
+                ##1
+                debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
+                |->
+                !instr_req_o until (instr_req_o && instr_dbg_o))
+  else `uvm_error("controller", "Debug out of reset but fetched without setting instr_dbg_o")
+endmodule // cv32e40x_core_sva
