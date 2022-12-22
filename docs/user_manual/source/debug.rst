@@ -130,21 +130,6 @@ cycle(s) after ``rst_ni`` has been deasserted and ``fetch_enable_i`` has been sa
 core will transition between having its ``debug_halted_o`` or ``debug_running_o`` pin asserted depending whether the core is in debug mode or not.
 Exactly one of the ``debug_havereset_o``, ``debug_running_o``, ``debug_halted_o`` is asserted at all times.
 
-:numref:`debug-running` and show :numref:`debug-halted` show typical examples of transitioning into the ``running`` and ``halted`` states.
-
-.. figure:: ../images/debug_running.svg
-   :name: debug-running
-   :align: center
-   :alt:
-
-   Transition into debug ``running`` state
-
-.. figure:: ../images/debug_halted.svg
-   :name: debug-halted
-   :align: center
-   :alt:
-
-   Transition into debug ``halted`` state
 
 The key properties of the debug states are:
 
@@ -153,6 +138,10 @@ The key properties of the debug states are:
    is guaranteed to transition straight from its ``unavailable`` state into its ``halted`` state. If ``debug_req_i`` is asserted at a later
    point in time, then the |corev| might transition through the ``running`` state on its ways to the ``halted`` state.
  * If ``debug_req_i`` is asserted during the ``running`` state, the core will eventually transition into the ``halted`` state (typically after a couple of cycles).
+
+ .. note::
+  Due to ``debug_req_i`` being level sensitive, it is not guaranteed that a short pulse on ``debug_req_i`` will cause |corev| to enter its ``halted`` state in any of the bullets above.
+  To achieve (eventual) transition into the ``halted`` state, ``debug_req_i`` must be kept asserted until ``debug_halted_o`` has been asserted.
 
 .. _ebreak_behavior:
 
