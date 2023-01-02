@@ -112,7 +112,11 @@ module cv32e40x_controller_fsm_sva
   input logic           debug_req_i,
   input logic           fetch_enable_i,
   input logic           instr_req_o,
-  input logic           instr_dbg_o
+  input logic           instr_dbg_o,
+  input logic           wfe_in_wb,
+  input mstatus_t       mstatus_i,
+  input logic           woke_to_interrupt_q,
+  input logic           woke_to_debug_q
 );
 
 
@@ -288,9 +292,11 @@ module cv32e40x_controller_fsm_sva
       else `uvm_error("controller", "Fencei handshake active while lsu_busy_o = 1")
 
   // assert that NMI's are not reported on irq_ack
+  // Exception for the case where the core wakes from SLEEP due to an interrupt
+  //   - in that case the interrupt is honored while there may be a pending nmi.
   a_irq_ack_no_nmi :
     assert property (@(posedge clk) disable iff (!rst_n)
-                     ctrl_fsm_o.irq_ack |-> !pending_nmi)
+                     ctrl_fsm_o.irq_ack |-> !(pending_nmi && !woke_to_interrupt_q))
       else `uvm_error("controller", "irq_ack set while there's a pending NMI")
 
   // Assert that intr_taken is always single cycle. I.e. no double counting
@@ -875,8 +881,55 @@ end
                   (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
     else `uvm_error("controller", "Debug not entered on a WPT match")
 
+  // Ensure debug mode is entered if woken up by a debug request
+  a_sleep_to_debug:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_cs == SLEEP) &&
+                  (ctrl_fsm_ns == FUNCTIONAL) &&
+                  debug_req_i &&
+                  !(pending_nmi || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
+                  |=>
+                  (ctrl_fsm_ns == DEBUG_TAKEN))
+    else `uvm_error("controller", "Woke from sleep due to debug_req but debug mode not entered")
 
+  // Ensure interrupt is taken if woken up by an interrupt
+  a_sleep_to_irq:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_cs == SLEEP) &&
+                  (ctrl_fsm_ns == FUNCTIONAL) &&
+                  irq_wu_ctrl_i &&
+                  !(pending_nmi || debug_req_i || (wfe_in_wb && wu_wfe_i)) &&
+                  mstatus_i.mie
+                  |=>
+                  (ctrl_fsm_o.pc_mux == PC_TRAP_IRQ) || (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
+    else `uvm_error("controller", "Woke from sleep due to irq but irq not taken")
 
+  // Ensure NMI is taken if woken up by an NMI
+  a_sleep_to_nmi:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_cs == SLEEP) &&
+                  (ctrl_fsm_ns == FUNCTIONAL) &&
+                  pending_nmi &&
+                  !(debug_req_i || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
+                  |=>
+                  (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))
+    else `uvm_error("controller", "Woke from sleep due to NMI but NMI not taken")
+
+  // woke_to_debug_q shall only be high for a single cycle
+  a_woke_to_debug_single_cycle:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  woke_to_debug_q
+                  |=>
+                  !woke_to_debug_q)
+    else `uvm_error("controller", "woke_to_debug_q asserted for more than one cycle")
+
+  // woke_to_interrupt_q shall only be high for a single cycle
+  a_woke_to_interrupt_single_cycle:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  woke_to_interrupt_q
+                  |=>
+                  !woke_to_interrupt_q)
+    else `uvm_error("controller", "woke_to_interrupt_q asserted for more than one cycle")
 
 endmodule
 

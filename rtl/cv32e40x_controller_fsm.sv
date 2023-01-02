@@ -211,6 +211,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic [2:0] debug_cause_n;
   logic [2:0] debug_cause_q;
 
+  // Flop for remembering causes of wakeup
+  logic       woke_to_debug_q;
+  logic       woke_to_interrupt_q;
+
   logic [10:0] exc_cause; // id of taken interrupt. Max width, unused bits are tied off.
 
   logic       fence_req_set;
@@ -474,7 +478,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // timing is considered haltreq should be considered only asserted on the following
   // instruction (i.e. the asynchronous haltreq signal is considered asserted too late to
   // impact the current instruction in the pipeline).
-  assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
+  // If the core woke up from sleep due to interrupts, the wakeup reason will be honored
+  // by not allowing async debug the cycle after wakeup.
+  assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !woke_to_interrupt_q;
 
   // synchronous debug entry have far fewer restrictions than asynchronous entries. In principle synchronous debug entry should have the same
   // 'allowed' signal as exceptions - that is it should always be possible.
@@ -491,7 +497,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // that can currently cause a deadlock if debug_req_i gets asserted while in debug mode, as
   // a pending but not allowed async debug will cause the ID stage to halt forever while trying
   // to get to an interruptible state.
-  assign pending_async_debug = debug_req_i && !debug_mode_q;
+  // When the core wakes up from sleep due to debug_req_i, woke_to_debug_q will be set for exactly one cycle
+  // to allow the core to enter debug one cycle after waking up, even though debug_req_i may have been deasserted.
+  assign pending_async_debug = (debug_req_i || woke_to_debug_q) && !debug_mode_q;
 
   // Determine cause of debug. Set for all causes of debug entry.
   // In case of ebreak during debug mode, the entry code in DEBUG_TAKEN will
@@ -532,7 +540,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !interrupt_blanking_q;
 
   // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
-  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible;
+  // If the core woke up from sleep due to either debug or regular interrupts, the wakeup reason is honored by not allowing NMIs in the cycle after
+  // waking up to such an event.
+  assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible && !(woke_to_debug_q || woke_to_interrupt_q);
 
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
@@ -1332,6 +1342,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     end
   end
 
+  // Flags for remembering if the core woke up due to a debug request or interrupt.
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (rst_n == 1'b0) begin
+      woke_to_debug_q <= 1'b0;
+      woke_to_interrupt_q <= 1'b0;
+    end else begin
+      woke_to_debug_q     <= (ctrl_fsm_cs == SLEEP) && debug_req_i;
+      woke_to_interrupt_q <= (ctrl_fsm_cs == SLEEP) && irq_wu_ctrl_i;
+    end
+  end
 
   /////////////////////
   // Debug state FSM //

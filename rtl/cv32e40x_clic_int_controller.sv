@@ -151,7 +151,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   ///////////////////////////
 
   // The outputs for mnxti will only be used within cs_registers when a CSR instruction is accessing mnxti
-
+  // The mxnti path to interrupts does not take mstatus.mie or dcsr.stepie into account.
   assign mnxti_irq_pending_o = clic_irq_q &&
     (clic_irq_level_q > mcause_i.mpil) &&
     (clic_irq_level_q > mintthresh_i)  &&
