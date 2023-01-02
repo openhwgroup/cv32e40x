@@ -886,6 +886,7 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
+                  debug_req_i &&
                   !(pending_nmi || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
                   |=>
                   (ctrl_fsm_ns == DEBUG_TAKEN))
@@ -896,10 +897,11 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
+                  irq_wu_ctrl_i &&
                   !(pending_nmi || debug_req_i || (wfe_in_wb && wu_wfe_i)) &&
                   mstatus_i.mie
                   |=>
-                  (ctrl_fsm_o.irq_ack))
+                  (ctrl_fsm_o.pc_mux == PC_TRAP_IRQ) || (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
     else `uvm_error("controller", "Woke from sleep due to irq but irq not taken")
 
   // Ensure NMI is taken if woken up by an NMI
@@ -907,6 +909,7 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
+                  pending_nmi &&
                   !(debug_req_i || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
                   |=>
                   (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))
