@@ -233,6 +233,7 @@ module cv32e40x_wrapper
                               .ptr_in_if_i                  (core_i.if_stage_i.ptr_in_if_o),
                               .instr_req_o                  (core_i.instr_req_o),
                               .instr_dbg_o                  (core_i.instr_dbg_o),
+                              .mstatus_i                    (core_i.cs_registers_i.mstatus_rdata),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
