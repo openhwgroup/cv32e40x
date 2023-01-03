@@ -1391,18 +1391,18 @@ typedef struct packed {
     return 1'b0;
   endfunction
 
-  function automatic logic [3:0] mcontrol6_match_resolve
+  function automatic logic [3:0] mcontrol2_6_match_resolve
   (
     logic [3:0] next_value
   );
     return ((next_value != 4'h0) && (next_value != 4'h2) && (next_value != 4'h3)) ? 4'h0 : next_value;
   endfunction
 
-  function automatic logic mcontrol6_u_resolve
+  function automatic logic mcontrol2_6_u_resolve
   (
     logic next_value
   );
-    // mcontrol6.u is WARL(0x0)
+    // mcontrol2/6.u is WARL(0x0)
     return 1'b0;
   endfunction
 

@@ -153,11 +153,11 @@ import cv32e40x_pkg::*;
                         2'b00,                 // sizelo  : hardwired to zero, match any size
                         4'b0001,               // action  : enter debug on match
                         1'b0,                  // chain   : hardwired to zero
-                        mcontrol6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
+                        mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
                         csr_wdata_i[6],        // m       : match in machine mode
                         1'b0,                  //         : hardwired to zero
                         1'b0,                  // s       : hardwired to zer0
-                        mcontrol6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
+                        mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
                         csr_wdata_i[2],        // EXECUTE 2
                         csr_wdata_i[1],        // STORE 1
                         csr_wdata_i[0]         // LOAD 0
@@ -174,11 +174,11 @@ import cv32e40x_pkg::*;
                         4'b0000,               // zero, size (match any size) 19:16
                         4'b0001,               // action, WARL(1), enter debug 15:12
                         1'b0,                  // zero, chain 11
-                        mcontrol6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
+                        mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
                         csr_wdata_i[6],        // M  6
                         1'b0,                  // zero 5
                         1'b0,                  // zero, S 4
-                        mcontrol6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
+                        mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
                         csr_wdata_i[2],        // EXECUTE 2
                         csr_wdata_i[1],        // STORE 1
                         csr_wdata_i[0]         // LOAD 0
