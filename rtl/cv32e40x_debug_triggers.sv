@@ -146,7 +146,7 @@ import cv32e40x_pkg::*;
             tdata1_n = {
                         TTYPE_MCONTROL,        // type    : address/data match
                         1'b1,                  // dmode   : access from D mode only
-                        6'b000000,             // masmax  : hardwired to zero
+                        6'b000000,             // maskmax  : hardwired to zero
                         1'b0,                  // hit     : hardwired to zero
                         1'b0,                  // select  : hardwired to zero, only address matching
                         1'b0,                  // timing  : hardwired to zero, only 'before' timing

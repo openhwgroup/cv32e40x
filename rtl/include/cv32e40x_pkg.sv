@@ -662,7 +662,7 @@ parameter mcause_t MCAUSE_BASIC_RESET_VAL = '{
 parameter logic [31:0] TDATA1_RST_VAL = {
   TTYPE_MCONTROL,        // type    : address/data match
   1'b1,                  // dmode   : access from D mode only
-  6'b000000,             // masmax  : hardwired to zero
+  6'b000000,             // maskmax  : hardwired to zero
   1'b0,                  // hit     : hardwired to zero
   1'b0,                  // select  : hardwired to zero, only address matching
   1'b0,                  // timing  : hardwired to zero, only 'before' timing
