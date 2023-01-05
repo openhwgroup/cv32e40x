@@ -881,24 +881,24 @@ end
                   (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
     else `uvm_error("controller", "Debug not entered on a WPT match")
 
-  // Ensure debug mode is entered if woken up by a debug request
+  // Ensure debug mode is entered if woken up by a debug request (unless a higher priority NMI woke up the core)
   a_sleep_to_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
                   debug_req_i &&
-                  !(pending_nmi || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
+                  !pending_nmi
                   |=>
                   (ctrl_fsm_ns == DEBUG_TAKEN))
     else `uvm_error("controller", "Woke from sleep due to debug_req but debug mode not entered")
 
-  // Ensure interrupt is taken if woken up by an interrupt
+  // Ensure interrupt is taken if woken up by an interrupt (unless a higher priority NMI or debug request woke up the core)
   a_sleep_to_irq:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
                   irq_wu_ctrl_i &&
-                  !(pending_nmi || debug_req_i || (wfe_in_wb && wu_wfe_i)) &&
+                  !(pending_nmi || debug_req_i) &&
                   mstatus_i.mie
                   |=>
                   (ctrl_fsm_o.pc_mux == PC_TRAP_IRQ) || (ctrl_fsm_o.pc_mux == PC_TRAP_CLICV))
@@ -909,8 +909,7 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == SLEEP) &&
                   (ctrl_fsm_ns == FUNCTIONAL) &&
-                  pending_nmi &&
-                  !(debug_req_i || irq_wu_ctrl_i || (wfe_in_wb && wu_wfe_i))
+                  pending_nmi
                   |=>
                   (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))
     else `uvm_error("controller", "Woke from sleep due to NMI but NMI not taken")
