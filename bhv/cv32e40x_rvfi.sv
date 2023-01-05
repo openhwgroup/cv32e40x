@@ -920,7 +920,8 @@ module cv32e40x_rvfi
         instr_prot[STAGE_ID] <= obi_instr_if.req_payload.prot;
 
       end else begin
-        if (in_trap_clr) begin
+        // Clear in trap if trap reached rvfi outputs or we insert a bubble into the ID stage
+        if (in_trap_clr || id_ready_i) begin
           // Clear interrupt pipeline when it reaches rvfi_intr
           in_trap    [STAGE_ID] <= '0;
         end
@@ -935,10 +936,12 @@ module cv32e40x_rvfi
 
           // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr signals if it it did not reach the rvfi output.
+          // When in_trap_clr is set, the in_trap[STAGE_WB] reached the RVFI outputs and we must not propagate it back to the in_trap[STAGE_IF]
           in_trap[STAGE_IF] <= in_trap[STAGE_IF].intr ? in_trap[STAGE_IF] :
                                in_trap[STAGE_ID].intr ? in_trap[STAGE_ID] :
                                in_trap[STAGE_EX].intr ? in_trap[STAGE_EX] :
-                                                        in_trap[STAGE_WB];
+                               !in_trap_clr           ? in_trap[STAGE_WB] :
+                               '0;
         // In case the first instruction during debug mode gets an exception, if_stage will be killed and the clearing
         // of debug_cause due to last_op_if_i during (if_valid && id_ready) may never happen. This will lead to a wrong
         // value of debug_cause on RVFI outputs. To avoid this, debug_cause is cleared if IF stage is killed due to an exception.
@@ -998,8 +1001,8 @@ module cv32e40x_rvfi
         rs1_re_subop     [STAGE_EX] <= rf_re_id_i[0];
         rs2_re_subop     [STAGE_EX] <= rf_re_id_i[1];
       end else begin
-        if (in_trap_clr) begin
-          // Clear interrupt pipeline when it reaches rvfi_intr
+        if (in_trap_clr || ex_ready_i) begin
+          // Clear in trap if trap reached rvfi outputs or we insert a bubble into the EX stage
           in_trap    [STAGE_EX] <= '0;
         end
       end
@@ -1043,8 +1046,8 @@ module cv32e40x_rvfi
         ex_csr_rdata        <= ex_csr_rdata_d;
 
       end else begin
-        if (in_trap_clr) begin
-          // Clear interrupt pipeline when it reaches rvfi_intr
+        if (in_trap_clr || wb_ready_i) begin
+          // Clear in trap if trap reached rvfi outputs or we insert a bubble into the WB stage
           in_trap    [STAGE_WB] <= '0;
         end
       end
