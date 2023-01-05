@@ -1348,8 +1348,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       woke_to_debug_q <= 1'b0;
       woke_to_interrupt_q <= 1'b0;
     end else begin
-      woke_to_debug_q     <= (ctrl_fsm_cs == SLEEP) && debug_req_i;
-      woke_to_interrupt_q <= (ctrl_fsm_cs == SLEEP) && irq_wu_ctrl_i;
+      // Woke up to debug if no nmi was pending
+      woke_to_debug_q     <= (ctrl_fsm_cs == SLEEP) && debug_req_i && !(pending_nmi);
+      // Woke up to interrupts if no NMI or debug was pending
+      woke_to_interrupt_q <= (ctrl_fsm_cs == SLEEP) && irq_wu_ctrl_i && !(pending_nmi || debug_req_i);
     end
   end
 
