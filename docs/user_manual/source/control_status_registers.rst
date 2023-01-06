@@ -563,17 +563,24 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
 
 * **A** = 1 if ``A_EXT`` == 1
 * **C** = 1
+* **F** = 1 ``X_EXT`` == 1 and ``X_MISA[5]`` == 1
 * **I** = 1 if ``RV32`` == RV32I
 * **E** = 1 if ``RV32`` == RV32E
-* **M** = 1 if ``M_EXT`` == M
+* **M** = 1 if ``M_EXT`` == M or (``X_EXT`` == 1 and ``X_MISA[12]`` == 1)
 * **MXL** = 1 (i.e. XLEN = 32)
+* **P** = 1 ``X_EXT`` == 1 and ``X_MISA[15]`` == 1
+* **V** = 1 ``X_EXT`` == 1 and ``X_MISA[21]`` == 1
 * **X** = 1
-* If ``X_EXT`` == 1, then the value of ``X_MISA`` is ORed into the ``misa`` CSR.
 
 .. note::
 
-   The ``WARL`` in above table is depending on `X_EXT``. If ``X_EXT`` == 1, then some of the ``misa`` bits
-   can read values depending on the value of ``X_MISA``.
+   Some of the ``WARL`` definitions in above table are depending on the `X_EXT`` and ``X_MISA`` parameters. If ``X_EXT`` == 1, then ``X_MISA`` can be used
+   to force the P, V, F, M ``misa`` bits to 1. The value of ``X_MISA`` is effectively ORed into the ``misa`` CSR. Only the bits corresponding
+   to P, V, F, M are allowed to be set in ``X_MISA``.
+
+.. note::
+
+   None of the ``misa`` bits can be changed by writing the ``misa`` CSR.
 
 Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
