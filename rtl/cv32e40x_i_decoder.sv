@@ -35,7 +35,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
   (
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
-
+   input logic        tbljmp_i,      // instruction is a tablejump, mapped to JAL
    input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
    output decoder_ctrl_t decoder_ctrl_o
    );
@@ -71,7 +71,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_we                        = 1'b1;             // Write LR
         decoder_ctrl_o.rf_re[0]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
         decoder_ctrl_o.rf_re[1]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
-        decoder_ctrl_o.bch_jmp_mux_sel              = CT_JAL;
+        decoder_ctrl_o.bch_jmp_mux_sel              = tbljmp_i ? CT_TBLJMP : CT_JAL; // Zc tablejumps are mapped to JAL, but require its own mux selector for target computation.
       end
 
       OPCODE_JALR: begin // Jump and Link Register

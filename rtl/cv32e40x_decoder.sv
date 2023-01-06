@@ -147,9 +147,10 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   )
   i_decoder_i
   (
-    .instr_rdata_i  ( instr_rdata        ),
-    .ctrl_fsm_i     ( ctrl_fsm_i         ),
-    .decoder_ctrl_o ( decoder_i_ctrl_int )
+    .instr_rdata_i  ( instr_rdata                    ),
+    .tbljmp_i       ( if_id_pipe_i.instr_meta.tbljmp ),
+    .ctrl_fsm_i     ( ctrl_fsm_i                     ),
+    .decoder_ctrl_o ( decoder_i_ctrl_int             )
   );
 
   assign dec_i_rf_illegal_addr = (decoder_i_ctrl_int.rf_re[0] && rf_illegal_raddr_o[0]) ||

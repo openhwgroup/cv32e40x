@@ -57,8 +57,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
-  input  logic [JVT_ADDR_WIDTH-1:0]    jvt_addr_i,
-
   input ctrl_fsm_t      ctrl_fsm_i,
   input  logic          trigger_match_i,
 
@@ -168,7 +166,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
       // JVT + (index << 2)
-      PC_TBLJUMP :   branch_addr_n = {jvt_addr_i, ctrl_fsm_i.jvt_pc_mux[7:0], 2'b00};
+      PC_TBLJUMP :   branch_addr_n = jump_target_id_i; // Tablejumps reuse jump target adder in the ID stage.
 
       default:;
     endcase
