@@ -431,7 +431,7 @@ Machine Status (``mstatus``)
 
 CSR Address: 0x300
 
-Reset Value: defined (based on `X_EXT``, ``X_ECS_XS``)
+Reset Value: defined (based on ``X_EXT``, ``X_ECS_XS``)
 
 .. table::
   :widths: 10 20 70
@@ -574,7 +574,7 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
 
 .. note::
 
-   Some of the ``WARL`` definitions in above table are depending on the `X_EXT`` and ``X_MISA`` parameters. If ``X_EXT`` == 1, then ``X_MISA`` can be used
+   Some of the ``WARL`` definitions in above table are depending on the ``X_EXT`` and ``X_MISA`` parameters. If ``X_EXT`` == 1, then ``X_MISA`` can be used
    to force the P, V, F, M ``misa`` bits to 1. The value of ``X_MISA`` is effectively ORed into the ``misa`` CSR. Only the bits corresponding
    to P, V, F, M are allowed to be set in ``X_MISA``.
 
