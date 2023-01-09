@@ -62,6 +62,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   input  mcause_t     mcause_i,
+  input  logic [JVT_ADDR_WIDTH-1:0] jvt_addr_i,
 
   // Register file write data from WB stage
   input  logic [31:0] rf_wdata_wb_i,
@@ -213,6 +214,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Signal for detection of first operation (of two) of table jumps.
   logic                 tbljmp_first;
 
+  // Current index for JVT instructions
+  logic [7:0]           jvt_index;
+
   assign instr_valid = if_id_pipe_i.instr_valid && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id;
 
   assign sys_mret_insn_o = sys_mret_insn;
@@ -281,6 +285,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //                       |_|                    |___/           //
   //////////////////////////////////////////////////////////////////
 
+  assign jvt_index = if_id_pipe_i.instr.bus_resp.rdata[19:12];
+
   cv32e40x_pc_target cv32e40x_pc_target_i
   (
     .bch_jmp_mux_sel_i ( bch_jmp_mux_sel ),
@@ -289,6 +295,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .imm_sb_type_i     ( imm_sb_type     ),
     .imm_i_type_i      ( imm_i_type      ),
     .jalr_fw_i         ( jalr_fw         ),
+    .jvt_addr_i        ( jvt_addr_i      ),
+    .jvt_index_i       ( jvt_index       ),
     .bch_target_o      ( bch_target      ),
     .jmp_target_o      ( jmp_target_o    )
   );
