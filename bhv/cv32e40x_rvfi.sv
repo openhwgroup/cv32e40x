@@ -55,8 +55,8 @@ module cv32e40x_rvfi
    input logic [31:0]                         pc_id_i,
    input logic [ 1:0]                         rf_re_id_i,
    input logic                                sys_mret_id_i,
+   input logic                                tbljmp_id_i,
    input logic                                jump_in_id_i,
-   input logic [31:0]                         jump_target_id_i,
    input logic                                is_compressed_id_i,
    input logic                                lsu_en_id_i,
    input logic                                lsu_we_id_i,
@@ -66,6 +66,8 @@ module cv32e40x_rvfi
    input logic [31:0]                         operand_a_fw_id_i,
    input logic [31:0]                         operand_b_fw_id_i,
    input logic                                first_op_id_i,
+   input logic                                clic_ptr_in_id_i,
+   input logic                                mret_ptr_in_id_i,
 
    // EX probes
    input logic                                ex_ready_i,
@@ -76,7 +78,6 @@ module cv32e40x_rvfi
    input logic                                lsu_en_ex_i,
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_atomic_ex_i,
-   input logic [31:0]                         branch_target_ex_i,
    input obi_data_req_t                       buffer_trans,
    input logic                                lsu_split_q_ex_i,
 
@@ -691,6 +692,10 @@ module cv32e40x_rvfi
   logic [6:0]   insn_funct7;
   logic [11:0]  insn_csr;
 
+  // PCs for jumps from ID and branches from EX
+  logic [31:0]  pc_wdata_id_jump, pc_wdata_id_jump_q;
+  logic [31:0]  pc_wdata_ex_branch, pc_wdata_ex_branch_q;
+
   // sub operation counter
   logic [3:0]   subop_cnt;
 
@@ -741,6 +746,46 @@ module cv32e40x_rvfi
     .buffer_trans               ( buffer_trans   ),
     .lsu_data_trans             ( lsu_data_trans )
   );
+
+
+  // Generate PCs for jumps and branches taken from ID and EX stages
+  // PCs must be kept sticky, since jumps and branches are taken in the first cycle, while the RVFI pipeline is
+  // only updated when the next pipeline stage is ready (e.g. when id_valid_i && ex_ready_i)
+
+  always_comb begin
+
+    // Generate PC for jumps taken from ID
+    pc_wdata_id_jump = pc_wdata_id_jump_q;
+
+    if (ctrl_fsm_i.pc_set) begin
+      if((ctrl_fsm_i.pc_mux == PC_MRET) ||
+         (ctrl_fsm_i.pc_mux == PC_JUMP) ||
+         (ctrl_fsm_i.pc_mux == PC_POINTER) ||
+         (ctrl_fsm_i.pc_mux == PC_TBLJUMP)) begin
+        pc_wdata_id_jump = branch_addr_n_i;
+      end
+    end
+
+    // Genrate PC for branches taken from EX
+    pc_wdata_ex_branch = pc_wdata_ex_branch_q;
+
+    if (ctrl_fsm_i.pc_set) begin
+      if(ctrl_fsm_i.pc_mux == PC_BRANCH) begin
+        pc_wdata_ex_branch = branch_addr_n_i;
+      end
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      pc_wdata_id_jump_q <= '0;
+      pc_wdata_ex_branch_q <= '0;
+    end
+    else begin
+      pc_wdata_id_jump_q   <= pc_wdata_id_jump;
+      pc_wdata_ex_branch_q <= pc_wdata_ex_branch;
+    end
+  end
 
   // The pc_mux signals probe the MUX in the IF stage to extract information about events in the WB stage.
   // These signals are therefore used both in the WB stage to see effects of the executed instruction (e.g. rvfi_trap), and
@@ -964,12 +1009,14 @@ module cv32e40x_rvfi
       //// ID Stage ////
       if (id_valid_i && ex_ready_i) begin
 
-        if (jump_in_id_i) begin
-          // Predicting mret/jump explicitly instead of using branch_addr_n to
-          // avoid including asynchronous traps and debug reqs in prediction.
-          pc_wdata [STAGE_EX] <= sys_mret_id_i ? csr_mepc_q_i : jump_target_id_i;
+        if (sys_mret_id_i || jump_in_id_i || clic_ptr_in_id_i || mret_ptr_in_id_i) begin
+          // Jump from ID, update PC
+          pc_wdata [STAGE_EX] <= pc_wdata_id_jump;
         end else begin
-          pc_wdata [STAGE_EX] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
+          // No jump from ID, increment PC, but only during the first cycle in ID
+          if(first_op_id_i) begin
+            pc_wdata [STAGE_EX] <= is_compressed_id_i ?  pc_id_i + 2 : pc_id_i + 4;
+          end
         end
 
         in_trap    [STAGE_EX] <= in_trap    [STAGE_ID];
@@ -1010,8 +1057,16 @@ module cv32e40x_rvfi
 
       //// EX Stage ////
       if (ex_valid_i && wb_ready_i) begin
-        // Predicting branch target explicitly to avoid predicting asynchronous events
-        pc_wdata   [STAGE_WB] <= branch_taken_ex ? branch_target_ex_i : pc_wdata[STAGE_EX];
+
+        if (branch_taken_ex) begin
+          // Branch taken from EX, update PC to branch target
+          pc_wdata[STAGE_WB] <= pc_wdata_ex_branch;
+        end
+        else begin
+          // No branch taken from EX
+          pc_wdata[STAGE_WB] <= pc_wdata[STAGE_EX];
+        end
+
         debug_mode [STAGE_WB] <= debug_mode         [STAGE_EX];
         debug_cause[STAGE_WB] <= debug_cause        [STAGE_EX];
         instr_pmp_err[STAGE_WB] <= instr_pmp_err    [STAGE_EX];

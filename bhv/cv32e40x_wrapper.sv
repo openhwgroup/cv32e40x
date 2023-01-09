@@ -480,9 +480,9 @@ endgenerate
          .id_ready_i               ( core_i.id_stage_i.id_ready_o                                         ),
          .pc_id_i                  ( core_i.id_stage_i.if_id_pipe_i.pc                                    ),
          .rf_re_id_i               ( core_i.id_stage_i.rf_re_o                                            ),
-         .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id_i                   ),
+         .sys_mret_id_i            ( core_i.controller_i.controller_fsm_i.sys_mret_id                     ),
+         .tbljmp_id_i              ( core_i.id_stage_i.if_id_pipe_i.instr_meta.tbljmp                     ),
          .jump_in_id_i             ( core_i.controller_i.controller_fsm_i.jump_in_id                      ),
-         .jump_target_id_i         ( core_i.id_stage_i.jmp_target_o                                       ),
          .is_compressed_id_i       ( core_i.id_stage_i.if_id_pipe_i.instr_meta.compressed                 ),
          .lsu_en_id_i              ( core_i.id_stage_i.lsu_en                                             ),
          .lsu_we_id_i              ( core_i.id_stage_i.lsu_we                                             ),
@@ -492,7 +492,8 @@ endgenerate
          .operand_a_fw_id_i        ( core_i.id_stage_i.operand_a_fw                                       ),
          .operand_b_fw_id_i        ( core_i.id_stage_i.operand_b_fw                                       ),
          .first_op_id_i            ( core_i.id_stage_i.if_id_pipe_i.first_op                              ),
-
+         .clic_ptr_in_id_i         ( core_i.controller_i.controller_fsm_i.clic_ptr_in_id                  ),
+         .mret_ptr_in_id_i         ( core_i.controller_i.controller_fsm_i.mret_ptr_in_id                  ),
          // EX Probes
          .ex_ready_i               ( core_i.ex_stage_i.ex_ready_o                                         ),
          .ex_valid_i               ( core_i.ex_stage_i.ex_valid_o                                         ),
@@ -503,7 +504,6 @@ endgenerate
          .lsu_pmp_err_ex_i         ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
          .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma (no expressions allowed in module hookup)
                                     !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
-         .branch_target_ex_i       ( core_i.if_stage_i.branch_target_ex_i                                 ),
          .buffer_trans             ( core_i.load_store_unit_i.buffer_trans                                ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
