@@ -44,7 +44,7 @@ module cv32e40x_pc_target import cv32e40x_pkg::*;
 
   always_comb begin : pc_target_mux
     unique case (bch_jmp_mux_sel_i)
-      CT_TBLJMP: pc_target = {jvt_addr_i, {(32-JVT_ADDR_WIDTH){1'b0}}} + {20'd0, jvt_index_i, 2'b00};
+      CT_TBLJMP: pc_target = {jvt_addr_i, {(32-JVT_ADDR_WIDTH){1'b0}}} + {22'd0, jvt_index_i, 2'b00};
       CT_JAL:    pc_target = pc_id_i   + imm_uj_type_i;
       CT_BCH:    pc_target = pc_id_i   + imm_sb_type_i;
       CT_JALR:   pc_target = jalr_fw_i + imm_i_type_i;    // Forward from WB, but only of ALU result

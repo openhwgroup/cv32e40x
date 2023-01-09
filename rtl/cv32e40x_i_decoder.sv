@@ -71,7 +71,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
         decoder_ctrl_o.rf_we                        = 1'b1;             // Write LR
         decoder_ctrl_o.rf_re[0]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
         decoder_ctrl_o.rf_re[1]                     = 1'b0;             // Calculate jump target (= PC + UJ imm)
-        decoder_ctrl_o.bch_jmp_mux_sel              = tbljmp_i ? CT_TBLJMP : CT_JAL; // Zc tablejumps are mapped to JAL, but require its own mux selector for target computation.
+        decoder_ctrl_o.bch_jmp_mux_sel              = tbljmp_i ? CT_TBLJMP : CT_JAL; // Zc tablejumps are mapped to JAL, but require their own mux selector for target computation.
       end
 
       OPCODE_JALR: begin // Jump and Link Register
