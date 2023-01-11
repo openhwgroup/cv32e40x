@@ -51,7 +51,7 @@ module cv32e40x_cs_registers_sva
    input logic [31:0] mscratch_q,
    input mcause_t     mcause_q,
    input mstatus_t    mstatus_q,
-   csr_num_e          csr_waddr,
+   input csr_num_e    csr_waddr,
    input logic        mscratch_we,
    input logic        instr_valid,
    input csr_opcode_e csr_op,
@@ -63,8 +63,18 @@ module cv32e40x_cs_registers_sva
    input logic        dpc_we,
    input mstatus_t    mstatus_n,
    input mcause_t     mcause_n,
-   input logic        mstatus_we
-
+   input logic        mstatus_we,
+   input logic [31:0] csr_wdata,
+   input jvt_t        jvt_q,
+   input logic [31:0] dscratch0_q,
+   input logic [31:0] dscratch1_q,
+   input dcsr_t       dcsr_q,
+   input logic [31:0] dpc_q,
+   input logic [31:0] mepc_q,
+   input mtvec_t      mtvec_q,
+   input logic [31:0] mintthresh_q,
+   input logic [31:0] mie_q,
+   input mtvt_t       mtvt_q
    );
 
 
@@ -209,5 +219,153 @@ module cv32e40x_cs_registers_sva
 
   a_etrigger_dpc_write: assert property(p_etrigger_dpc_write)
     else `uvm_error("cs_registers", "dpc not written with first handler instruction when etrigger fires.");
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // Asserts to check that the CSR flops remain unchanged if a set/clear has all_zero rs1
+  /////////////////////////////////////////////////////////////////////////////////////////
+  a_set_clear_jvt_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_JVT) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(jvt_q))
+    else `uvm_error("cs_registers", "jvt_q changed after set/clear with rs1==0")
+  a_set_clear_dscratch0_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_DSCRATCH0) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(dscratch0_q))
+    else `uvm_error("cs_registers", "dscratch0_q changed after set/clear with rs1==0")
+  a_set_clear_dscratch1_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_DSCRATCH1) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(dscratch1_q))
+    else `uvm_error("cs_registers", "dscratch1_q changed after set/clear with rs1==0")
+  a_set_clear_dcsr_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_DCSR) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(dcsr_q))
+    else `uvm_error("cs_registers", "dcsr_q changed after set/clear with rs1==0")
+  a_set_clear_dpc_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_DPC) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(dpc_q))
+    else `uvm_error("cs_registers", "dpc_q changed after set/clear with rs1==0")
+  a_set_clear_mepc_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MEPC) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mepc_q))
+    else `uvm_error("cs_registers", "mepc_q changed after set/clear with rs1==0")
+  a_set_clear_mscratch_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MSCRATCH) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mscratch_q))
+    else `uvm_error("cs_registers", "mscratch_q changed after set/clear with rs1==0")
+  a_set_clear_mstatus_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MSTATUS) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mstatus_q))
+    else `uvm_error("cs_registers", "mstatus_q changed after set/clear with rs1==0")
+  a_set_clear_mcause_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MCAUSE) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mcause_q))
+    else `uvm_error("cs_registers", "mcause_q changed after set/clear with rs1==0")
+  a_set_clear_mtvec_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MTVEC) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mtvec_q))
+    else `uvm_error("cs_registers", "mtvec_q changed after set/clear with rs1==0")
+  a_set_clear_mtvt_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MTVT) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mtvt_q))
+    else `uvm_error("cs_registers", "mtvt_q changed after set/clear with rs1==0")
+  a_set_clear_mintstatus_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MINTSTATUS) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mintstatus_q))
+    else `uvm_error("cs_registers", "mintstatus_q changed after set/clear with rs1==0")
+  a_set_clear_mintthresh_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MINTTHRESH) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mintthresh_q))
+    else `uvm_error("cs_registers", "mintthresh_q changed after set/clear with rs1==0")
+  a_set_clear_mie_q:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (csr_waddr == CSR_MIE) &&
+                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                  !(|csr_wdata) &&
+                  ex_wb_pipe_i.csr_en &&
+                  !ctrl_fsm_i.kill_wb
+                  |=>
+                  $stable(mie_q))
+    else `uvm_error("cs_registers", "mie_q changed after set/clear with rs1==0")
+
+
+
+
 endmodule
 
