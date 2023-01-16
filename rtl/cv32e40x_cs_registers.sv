@@ -58,6 +58,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output dcsr_t                         dcsr_o,
   output logic [31:0]                   dpc_o,
   output logic [JVT_ADDR_WIDTH-1:0]     jvt_addr_o,
+  output logic [5:0]                    jvt_mode_o,
   output mcause_t                       mcause_o,
   output logic [63:0]                   mcycle_o,
   output logic [31:0]                   mepc_o,
@@ -1547,6 +1548,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign dcsr_o        = dcsr_rdata;
   assign dpc_o         = dpc_rdata;
   assign jvt_addr_o    = jvt_rdata.base[31:32-JVT_ADDR_WIDTH];
+  assign jvt_mode_o    = jvt_rdata.mode;
   assign mcause_o      = mcause_rdata;
   assign mcycle_o      = mhpmcounter_rdata[0];
   assign mepc_o        = mepc_rdata;
