@@ -54,6 +54,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic [31:0]   jump_target_id_i,       // Jump target address
   input  logic [31:0]   mepc_i,                 // Exception PC (restore upon return from exception/interrupt)
   input  logic [24:0]   mtvec_addr_i,           // Exception/interrupt address (MSBs)
+  input  logic [5:0]    jvt_mode_i,
 
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
@@ -446,6 +447,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       (
         .clk                  ( clk                     ),
         .rst_n                ( rst_n                   ),
+
+        .jvt_mode_i           ( jvt_mode_i              ),
 
         .instr_i              ( prefetch_instr          ),
         .instr_is_clic_ptr_i  ( prefetch_is_clic_ptr    ),
