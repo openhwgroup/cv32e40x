@@ -303,10 +303,10 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
         end else if (seq_tbljmp_o) begin
           if (instr[9:8] == 2'b00) begin
             // cm.jt -> JAL x0, index
-            instr_o.bus_resp.rdata = {13'b0000000000000, instr[7:2], 5'b00000, OPCODE_JAL};
+            instr_o.bus_resp.rdata = {15'b000000000000000, instr[6:2], 5'b00000, OPCODE_JAL};
           end else begin
             // cm.jalt -> JAL, x1, index
-            instr_o.bus_resp.rdata = {11'b00000000000, instr[9:2], 5'b00001, OPCODE_JAL};
+            instr_o.bus_resp.rdata = {12'b000000000000, instr[9:2], 5'b00001, OPCODE_JAL};
           end
           // The second half of tablejumps (pointer) will not use the FSM (the jump will kill the sequencer anyway).
           // Signalling ready here will acknowledge the prefetcher.
