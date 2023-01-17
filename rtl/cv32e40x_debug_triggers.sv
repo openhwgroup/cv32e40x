@@ -189,8 +189,8 @@ import cv32e40x_pkg::*;
 
             // Detect if any cleared bits in ETRIGGER_TDATA2_MASK are set in tdata2
             if (|(tdata2_rdata_o & (~ETRIGGER_TDATA2_MASK))) begin
-              // Unsupported exception codes enabled, keep value of tdata1
-              tdata1_n = tdata1_rdata_o;
+              // Unsupported exception codes enabled, default to disabled trigger.
+              tdata1_n = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
             end else begin
               tdata1_n = {
                           TTYPE_ETRIGGER,        // type  : exception trigger
