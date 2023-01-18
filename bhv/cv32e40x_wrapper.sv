@@ -263,7 +263,7 @@ module cv32e40x_wrapper
       bind cv32e40x_wpt:
         core_i.load_store_unit_i.gen_wpt.wpt_i
           cv32e40x_wpt_sva wpt_sva(
-            .mpu_state (core_i.load_store_unit_i.mpu_i.state_q),
+            .mpu_state  (core_i.load_store_unit_i.mpu_i.state_q),
             .*);
 
       bind cv32e40x_debug_triggers:
@@ -399,7 +399,9 @@ endgenerate
     cv32e40x_mpu_sva
       #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .PMA_CFG(PMA_CFG),
-        .IS_INSTR_SIDE(0))
+        .IS_INSTR_SIDE(0),
+        .CORE_RESP_TYPE(data_resp_t),
+        .X_EXT (X_EXT))
   mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
              .pma_cfg (pma_i.pma_cfg),
              .obi_memtype                       (core_i.data_memtype_o),

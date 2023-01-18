@@ -29,7 +29,10 @@ module cv32e40x_wpt_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        rst_n,
 
    input wpt_state_e  state_q,
-   input mpu_state_e  mpu_state
+   input mpu_state_e  mpu_state,
+   input logic        wpt_trans_valid,
+   input logic        core_resp_ready_i,
+   input data_resp_t  core_resp_o
 
    );
 
@@ -41,6 +44,17 @@ module cv32e40x_wpt_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                   ((state_q == WPT_MATCH_WAIT) || (mpu_state == MPU_RE_ERR_WAIT) || (mpu_state == MPU_WR_ERR_WAIT))
                   |->
                   (state_q == WPT_MATCH_WAIT) != ((mpu_state == MPU_RE_ERR_WAIT) || (mpu_state == MPU_WR_ERR_WAIT)))
-    else `uvm_error("load_store_unit", "WPT and MPU both wait for responses")
+    else `uvm_error("wpt", "WPT and MPU both wait for responses")
+
+  a_wpt_resp_backpressure:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  ((state_q == WPT_MATCH_RESP)) &&
+                  !core_resp_ready_i
+                  |=>
+                  $stable(state_q) &&
+                  wpt_trans_valid &&
+                  $stable(core_resp_o.mpu_status) &&
+                  $stable(core_resp_o.wpt_match))
+    else `uvm_error("wpt", "trans_valid not stable while core_resp_ready_i==0")
 endmodule
 

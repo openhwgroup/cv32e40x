@@ -665,6 +665,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         .core_trans_i        ( wpt_trans         ),
 
         .core_resp_valid_o   ( wpt_resp_valid    ),
+        .core_resp_ready_i   ( ready_0_i         ),
         .core_resp_o         ( wpt_resp          ),
 
         // Indication from the core that there will be one pending transaction in the next cycle
@@ -711,6 +712,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   #(
     .IF_STAGE           ( 0                    ),
     .A_EXT              ( A_EXT                ),
+    .X_EXT              ( X_EXT                ),
     .CORE_RESP_TYPE     ( data_resp_t          ),
     .BUS_RESP_TYPE      ( obi_data_resp_t      ),
     .CORE_REQ_TYPE      ( obi_data_req_t       ),
@@ -731,6 +733,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_trans_ready_o   ( mpu_trans_ready    ),
     .core_trans_i         ( mpu_trans          ),
     .core_resp_valid_o    ( mpu_resp_valid     ),
+    .core_resp_ready_i    ( ready_0_i          ),
     .core_resp_o          ( mpu_resp           ),
 
     .bus_trans_valid_o    ( filter_trans_valid ),
