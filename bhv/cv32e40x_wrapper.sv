@@ -400,7 +400,7 @@ endgenerate
       #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .PMA_CFG(PMA_CFG),
         .IS_INSTR_SIDE(0),
-        .CORE_RESP_TYPE(data_resp_t),
+        .CORE_RESP_TYPE(cv32e40x_pkg::data_resp_t),
         .X_EXT (X_EXT))
   mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
              .pma_cfg (pma_i.pma_cfg),

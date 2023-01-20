@@ -110,11 +110,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction response interface (from cv32e40x_wpt)
   logic           wpt_resp_valid;
+  logic           wpt_resp_ready;
   logic [31:0]    wpt_resp_rdata;
   data_resp_t     wpt_resp;
 
   // Transaction response interface (from cv32e40x_mpu)
   logic           mpu_resp_valid;
+  logic           mpu_resp_ready;
   data_resp_t     mpu_resp;
 
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
@@ -665,7 +667,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         .core_trans_i        ( wpt_trans         ),
 
         .core_resp_valid_o   ( wpt_resp_valid    ),
-        .core_resp_ready_i   ( ready_0_i         ),
+        .core_resp_ready_i   ( wpt_resp_ready    ),
         .core_resp_o         ( wpt_resp          ),
 
         // Indication from the core that there will be one pending transaction in the next cycle
@@ -733,7 +735,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_trans_ready_o   ( mpu_trans_ready    ),
     .core_trans_i         ( mpu_trans          ),
     .core_resp_valid_o    ( mpu_resp_valid     ),
-    .core_resp_ready_i    ( ready_0_i          ),
+    .core_resp_ready_i    ( mpu_resp_ready     ),
     .core_resp_o          ( mpu_resp           ),
 
     .bus_trans_valid_o    ( filter_trans_valid ),
