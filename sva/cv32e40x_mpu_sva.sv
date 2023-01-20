@@ -26,7 +26,9 @@
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   #(  parameter int PMA_NUM_REGIONS              = 0,
       parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
-      parameter int unsigned IS_INSTR_SIDE = 0)
+      parameter int unsigned IS_INSTR_SIDE = 0,
+      parameter type         CORE_RESP_TYPE = inst_resp_t,
+      parameter bit          X_EXT = 1'b0)
   (
    input logic        clk,
    input logic        rst_n,
@@ -64,7 +66,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        core_trans_valid_i,
    input logic        core_trans_ready_o,
 
-   input logic        core_resp_valid_o,
+   input logic          core_resp_valid_o,
+   input logic          core_resp_ready_i,
+   input CORE_RESP_TYPE core_resp_o,
 
    input              mpu_status_e mpu_status,
    input logic        mpu_err_trans_valid,
@@ -74,7 +78,6 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        mpu_err,
    input logic        load_access
    );
-
   // PMA assertions helper signals
 
   logic is_addr_match;
@@ -375,6 +378,33 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
           else `uvm_error("mpu", "MPU blocking OBI side when not needed")
         end
   endgenerate
+
+if (!IS_INSTR_SIDE ) begin
+  if (X_EXT) begin
+    // Check that error response and state is kept stable until downstream stage is ready to accept it.
+    // Only included for data side/LSU, as in the IF stage the prefetcher is always ready to recieve a response.
+    a_mpu_resp_backpressure:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    ((state_q == MPU_RE_ERR_RESP) || (state_q == MPU_WR_ERR_RESP)) &&
+                    !core_resp_ready_i
+                    |->
+                    $stable(state_q) &&
+                    mpu_err_trans_valid &&
+                    $stable(core_resp_o.mpu_status))
+      else `uvm_error("mpu", "mpu_err_trans_valid not stable while core_resp_ready_i==0")
+  end else begin
+
+    // Without X_EXT, the MPU should never see a situation where it is ready to give an error response
+    // and at the same time WB is not ready. IF such condition exists the controller halts or kills
+    // an LSU instruction (which is not allowed)
+    a_mpu_resp_backpressure:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    ((state_q == MPU_RE_ERR_RESP) || (state_q == MPU_WR_ERR_RESP))
+                    |->
+                    core_resp_ready_i)
+      else `uvm_error("mpu", "Downstream stage not ready to receive response")
+  end
+end
 
 endmodule : cv32e40x_mpu_sva
 

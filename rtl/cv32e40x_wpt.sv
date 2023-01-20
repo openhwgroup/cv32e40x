@@ -50,18 +50,19 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    input  obi_data_req_t  core_trans_i,
 
    output logic           core_resp_valid_o,
+   input  logic           core_resp_ready_i,
    output data_resp_t     core_resp_o,
 
    // Indication from the core that there will be one pending transaction in the next cycle
-   input logic  core_one_txn_pend_n,
+   input logic            core_one_txn_pend_n,
 
    // Indication from the core that watchpoint triggers should be reported after all in flight transactions
    // are complete (default behavior for main core requests, but not used for XIF requests)
-   input logic  core_wpt_wait_i,
+   input logic            core_wpt_wait_i,
 
    // Report watchpoint triggers to the core immediatly (used in case core_wpt_wait_i is not asserted)
-   output logic core_wpt_match_o
-   );
+   output logic           core_wpt_match_o
+  );
 
   logic        wpt_block_core;
   logic        wpt_block_bus;
@@ -123,9 +124,10 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
         wpt_trans_valid = 1'b1;
         wpt_match       = 1'b1;
 
-        // Go back to IDLE uncoditionally.
-        // The core is expected to always be ready for the response
-        state_n = WPT_IDLE;
+        // Go back to IDLE when downstream stage (WB) is ready
+        if (core_resp_ready_i) begin
+          state_n = WPT_IDLE;
+        end
 
       end
       default: ;

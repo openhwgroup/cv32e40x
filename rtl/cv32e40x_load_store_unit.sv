@@ -110,11 +110,13 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction response interface (from cv32e40x_wpt)
   logic           wpt_resp_valid;
+  logic           wpt_resp_ready;
   logic [31:0]    wpt_resp_rdata;
   data_resp_t     wpt_resp;
 
   // Transaction response interface (from cv32e40x_mpu)
   logic           mpu_resp_valid;
+  logic           mpu_resp_ready;
   data_resp_t     mpu_resp;
 
   // Transaction request (from cv32e40x_mpu to cv32e40x_write_buffer)
@@ -665,6 +667,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         .core_trans_i        ( wpt_trans         ),
 
         .core_resp_valid_o   ( wpt_resp_valid    ),
+        .core_resp_ready_i   ( wpt_resp_ready    ),
         .core_resp_o         ( wpt_resp          ),
 
         // Indication from the core that there will be one pending transaction in the next cycle
@@ -680,6 +683,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       // Extract rdata from response struct
       assign wpt_resp_rdata = wpt_resp.bus_resp.rdata;
+      assign wpt_resp_ready = ready_0_i;
 
       assign resp_valid = wpt_resp_valid;
       assign resp_rdata = wpt_resp_rdata;
@@ -711,6 +715,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   #(
     .IF_STAGE           ( 0                    ),
     .A_EXT              ( A_EXT                ),
+    .X_EXT              ( X_EXT                ),
     .CORE_RESP_TYPE     ( data_resp_t          ),
     .BUS_RESP_TYPE      ( obi_data_resp_t      ),
     .CORE_REQ_TYPE      ( obi_data_req_t       ),
@@ -731,6 +736,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .core_trans_ready_o   ( mpu_trans_ready    ),
     .core_trans_i         ( mpu_trans          ),
     .core_resp_valid_o    ( mpu_resp_valid     ),
+    .core_resp_ready_i    ( mpu_resp_ready     ),
     .core_resp_o          ( mpu_resp           ),
 
     .bus_trans_valid_o    ( filter_trans_valid ),
@@ -739,7 +745,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .bus_resp_valid_i     ( filter_resp_valid  ),
     .bus_resp_i           ( filter_resp        )
   );
-
+    assign mpu_resp_ready = ready_0_i;
 
   //////////////////////////////////////////////////////////////////////////////
   // Response Filter
