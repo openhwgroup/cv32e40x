@@ -683,6 +683,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
       // Extract rdata from response struct
       assign wpt_resp_rdata = wpt_resp.bus_resp.rdata;
+      assign wpt_resp_ready = ready_0_i;
 
       assign resp_valid = wpt_resp_valid;
       assign resp_rdata = wpt_resp_rdata;
@@ -744,7 +745,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .bus_resp_valid_i     ( filter_resp_valid  ),
     .bus_resp_i           ( filter_resp        )
   );
-
+    assign mpu_resp_ready = ready_0_i;
 
   //////////////////////////////////////////////////////////////////////////////
   // Response Filter
