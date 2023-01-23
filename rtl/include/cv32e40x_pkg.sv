@@ -551,6 +551,7 @@ typedef enum logic[3:0] {
 
 // Trigger types
 typedef enum logic [3:0] {
+  TTYPE_MCONTROL  = 4'h2,
   TTYPE_ETRIGGER  = 4'h5,
   TTYPE_MCONTROL6 = 4'h6,
   TTYPE_DISABLED  = 4'hF
@@ -657,32 +658,32 @@ parameter mcause_t MCAUSE_BASIC_RESET_VAL = '{
     default: 'b0};
 
 parameter logic [31:0] TDATA1_RST_VAL = {
-  TTYPE_MCONTROL6,       // type    : address/data match
+  TTYPE_MCONTROL,        // type    : address/data match
   1'b1,                  // dmode   : access from D mode only
-  2'b00,                 // zero  26:25
-  3'b000,                // zero, vs, vu, hit 24:22
-  1'b0,                  // zero, select 21
-  1'b0,                  // zero, timing 20
-  4'b0000,               // zero, size (match any sie) 19:16
-  4'b0001,               // action, WARL(1), enter debug 15:12
-  1'b0,                  // zero, chain 11
+  6'b000000,             // maskmax  : hardwired to zero
+  1'b0,                  // hit     : hardwired to zero
+  1'b0,                  // select  : hardwired to zero, only address matching
+  1'b0,                  // timing  : hardwired to zero, only 'before' timing
+  2'b00,                 // sizelo  : hardwired to zero, match any size
+  4'b0001,               // action  : enter debug on match
+  1'b0,                  // chain   : hardwired to zero
   4'b0000,               // match, WARL(0,2,3) 10:7
-  1'b0,                  // M  6
-  1'b0,                  // zero 5
-  1'b0,                  // zero, S 4
+  1'b0,                  // m       : match in machine mode
+  1'b0,                  //         : hardwired to zero
+  1'b0,                  // s       : hardwired to zer0
   1'b0,                  // zero, U 3
   1'b0,                  // EXECUTE 2
   1'b0,                  // STORE 1
   1'b0};                 // LOAD 0
 
-  // Bit position parameters for MCONTROL6
-  parameter MCONTROL6_MATCH_HIGH = 10;
-  parameter MCONTROL6_MATCH_LOW  = 7;
-  parameter MCONTROL6_M          = 6;
-  parameter MCONTROL6_U          = 3;
-  parameter MCONTROL6_EXECUTE    = 2;
-  parameter MCONTROL6_STORE      = 1;
-  parameter MCONTROL6_LOAD       = 0;
+  // Bit position parameters for MCONTROL and MCONTROL6
+  parameter MCONTROL2_6_MATCH_HIGH = 10;
+  parameter MCONTROL2_6_MATCH_LOW  = 7;
+  parameter MCONTROL2_6_M          = 6;
+  parameter MCONTROL2_6_U          = 3;
+  parameter MCONTROL2_6_EXECUTE    = 2;
+  parameter MCONTROL2_6_STORE      = 1;
+  parameter MCONTROL2_6_LOAD       = 0;
 
   parameter ETRIGGER_M = 9;
   parameter ETRIGGER_U = 6;
@@ -1388,18 +1389,18 @@ typedef struct packed {
     return 1'b0;
   endfunction
 
-  function automatic logic [3:0] mcontrol6_match_resolve
+  function automatic logic [3:0] mcontrol2_6_match_resolve
   (
     logic [3:0] next_value
   );
     return ((next_value != 4'h0) && (next_value != 4'h2) && (next_value != 4'h3)) ? 4'h0 : next_value;
   endfunction
 
-  function automatic logic mcontrol6_u_resolve
+  function automatic logic mcontrol2_6_u_resolve
   (
     logic next_value
   );
-    // mcontrol6.u is WARL(0x0)
+    // mcontrol2/6.u is WARL(0x0)
     return 1'b0;
   endfunction
 
