@@ -64,7 +64,8 @@ Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` simil
 
 .. note::
 
-   Specifically ``mstatus.mie`` will get cleared to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of 
+   (Unrecoverable) NMIs and regular interrupts have identical effects on the ``mstatus`` CSR". Specifically ``mstatus.mie`` will get cleared
+   to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of
    ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
    specified at a future date, then we will reconsider our implementation.
 
