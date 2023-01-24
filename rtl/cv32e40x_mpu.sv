@@ -84,10 +84,10 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   logic        instr_fetch_access;
   logic        load_access;
   logic        wpt_match;
-  logic        trans_debug_region;
+  logic        core_trans_debug_region;
 
   // Detect a debug mode transaction to the Debug Module region
-  assign trans_debug_region = (core_trans_i.addr >= DM_REGION_START) && (core_trans_i.addr <= DM_REGION_END) && core_trans_i.dbg;
+  assign core_trans_debug_region = (core_trans_i.addr >= DM_REGION_START) && (core_trans_i.addr <= DM_REGION_END) && core_trans_i.dbg;
 
   // FSM that will "consume" transfers failing PMA checks.
   // Upon failing checks, this FSM will prevent the transfer from going out on the bus
@@ -191,21 +191,21 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   // PMA - Physical Memory Attribution
   cv32e40x_pma
   #(
-    .A_EXT                      ( A_EXT                ),
-    .PMA_NUM_REGIONS            ( PMA_NUM_REGIONS      ),
-    .PMA_CFG                    ( PMA_CFG              )
+    .A_EXT                      ( A_EXT                   ),
+    .PMA_NUM_REGIONS            ( PMA_NUM_REGIONS         ),
+    .PMA_CFG                    ( PMA_CFG                 )
   )
   pma_i
     (
-    .trans_addr_i               ( core_trans_i.addr    ),
-    .trans_debug_region_i       ( trans_debug_region   ),
-    .instr_fetch_access_i       ( instr_fetch_access   ),
-    .atomic_access_i            ( atomic_access_i      ),
-    .misaligned_access_i        ( misaligned_access_i  ),
-    .load_access_i              ( load_access          ),
-    .pma_err_o                  ( pma_err              ),
-    .pma_bufferable_o           ( bus_trans_bufferable ),
-    .pma_cacheable_o            ( bus_trans_cacheable  )
+    .trans_addr_i               ( core_trans_i.addr       ),
+    .trans_debug_region_i       ( core_trans_debug_region ),
+    .instr_fetch_access_i       ( instr_fetch_access      ),
+    .atomic_access_i            ( atomic_access_i         ),
+    .misaligned_access_i        ( misaligned_access_i     ),
+    .load_access_i              ( load_access             ),
+    .pma_err_o                  ( pma_err                 ),
+    .pma_bufferable_o           ( bus_trans_bufferable    ),
+    .pma_cacheable_o            ( bus_trans_cacheable     )
   );
 
   assign mpu_err = pma_err;
