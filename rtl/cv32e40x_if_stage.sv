@@ -39,7 +39,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter bit          SMCLIC          = 1'b0,
   parameter int          SMCLIC_ID_WIDTH = 5,
   parameter bit          ZC_EXT          = 0,
-  parameter m_ext_e      M_EXT           = M_NONE
+  parameter m_ext_e      M_EXT           = M_NONE,
+  parameter logic [31:0] DM_REGION_START = 32'hF0000000,
+  parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF
 )
 (
   input  logic          clk,
@@ -232,7 +234,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .CORE_RESP_TYPE       ( inst_resp_t                 ),
     .BUS_RESP_TYPE        ( obi_inst_resp_t             ),
     .PMA_NUM_REGIONS      ( PMA_NUM_REGIONS             ),
-    .PMA_CFG              ( PMA_CFG                     )
+    .PMA_CFG              ( PMA_CFG                     ),
+    .DM_REGION_START      ( DM_REGION_START             ),
+    .DM_REGION_END        ( DM_REGION_END               )
   )
   mpu_i
   (
