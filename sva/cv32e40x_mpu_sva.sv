@@ -228,9 +228,9 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   always_comb begin
     pma_expected_cfg = NO_PMA_R_DEFAULT;
     if (PMA_NUM_REGIONS) begin
-      pma_expected_cfg = is_pma_matched ? PMA_CFG[pma_lowest_match] :
-                                          is_pma_dbg_matched  ? '{main : 1'b1,
-                                                                  default: '0} :  PMA_R_DEFAULT;
+      pma_expected_cfg = is_pma_dbg_matched ? '{main    : 1'b1, default : '0} :
+                         is_pma_matched     ? PMA_CFG[pma_lowest_match]       : PMA_R_DEFAULT;
+
     end
   end
   assign pma_expected_err = (instr_fetch_access && !pma_expected_cfg.main)  ||
@@ -322,7 +322,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (!is_addr_match && was_obi_waiting && $past(obi_req)) ||
                      // or we get an address match, but was already outputting the same address (no pma_err)
                      // but a change in debug mode causes the new transaction the same address to fail
-                     (is_addr_match && was_obi_waiting && $past(obi_req) && (pma_dbg != obi_dbg)))
+                     (is_addr_match && was_obi_waiting && $past(obi_req) && (!pma_dbg && obi_dbg)))
       else `uvm_error("mpu", "obi made request to pma-forbidden region")
 
   generate

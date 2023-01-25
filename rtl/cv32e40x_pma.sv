@@ -31,7 +31,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
 )
 (
   input  logic [31:0] trans_addr_i,
-  input  logic        trans_debug_region_i, // Transaction address is inside the debug redion
+  input  logic        trans_debug_region_i, // Transaction address is inside the debug region
   input  logic        instr_fetch_access_i, // Indicate that ongoing access is an instruction fetch
   input  logic        atomic_access_i,      // Indicate that ongoing access is atomic
   input  logic        misaligned_access_i,  // Indicate that ongoing access is part of a misaligned access
@@ -62,11 +62,11 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   generate
     if(PMA_NUM_REGIONS == 0) begin: no_pma
 
-      // PMA is deconfigured
-      assign pma_cfg = NO_PMA_R_DEFAULT;
-
       always_comb begin
-        // When core is in debug mode, use PMA_DBG as attributes for the DM range
+        // PMA is deconfigured, use NO_PMA_R_DEFAULT as default.
+        pma_cfg = NO_PMA_R_DEFAULT;
+
+        // Debug mode transactions within the Debug Module region use PMA_DBG as attributes for the DM range
         if (trans_debug_region_i) begin
           pma_cfg = PMA_DBG;
         end
@@ -78,7 +78,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       // Identify PMA region
       always_comb begin
 
-        // If no match, use default PMA config
+        // If no match, use default PMA config as default.
         pma_cfg = PMA_R_DEFAULT;
 
         for(int i = PMA_NUM_REGIONS-1; i >= 0; i--)  begin
@@ -88,7 +88,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
           end
         end
 
-        // When core is in debug mode, use PMA_DBG as attributes for the DM range
+        // Debug mode transactions within the Debug Module region use PMA_DBG as attributes for the DM range
         if (trans_debug_region_i) begin
           pma_cfg = PMA_DBG;
         end
