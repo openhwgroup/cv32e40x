@@ -690,7 +690,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign wpt_resp_ready = ready_0_i;
 
       assign resp_valid = wpt_resp_valid;
-      assign resp_ready = ready_0_i;
+      assign resp_ready = wpt_resp_ready;
       assign resp_rdata = wpt_resp_rdata;
       assign resp       = wpt_resp;
 
