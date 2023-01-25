@@ -70,7 +70,9 @@ module cv32e40x_wrapper
   parameter int          DBG_NUM_TRIGGERS             = 1,
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
-  parameter bit          CORE_LOG_ENABLE              = 1
+  parameter bit          CORE_LOG_ENABLE              = 1,
+  parameter logic [31:0] DM_REGION_START              = 32'hF0000000,
+  parameter logic [31:0] DM_REGION_END                = 32'hF0003FFF
 )
 (
   // Clock and Reset
@@ -381,13 +383,19 @@ endgenerate
     cv32e40x_mpu_sva
       #(.PMA_NUM_REGIONS                        (PMA_NUM_REGIONS),
         .PMA_CFG                                (PMA_CFG),
-        .IS_INSTR_SIDE                          (1))
+        .IS_INSTR_SIDE                          (1),
+        .CORE_RESP_TYPE                         (cv32e40x_pkg::inst_resp_t),
+        .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_inst_req_t),
+        .DM_REGION_START                        (DM_REGION_START),
+        .DM_REGION_END                          (DM_REGION_END))
   mpu_if_sva(.pma_addr                          (pma_i.trans_addr_i),
              .pma_cfg                           (pma_i.pma_cfg),
+             .pma_dbg                           (core_i.if_stage_i.mpu_i.core_trans_i.dbg),
              .obi_memtype                       (core_i.instr_memtype_o),
              .obi_addr                          (core_i.instr_addr_o),
              .obi_req                           (core_i.instr_req_o),
              .obi_gnt                           (core_i.instr_gnt_i),
+             .obi_dbg                           (core_i.instr_dbg_o),
              .write_buffer_state                (cv32e40x_pkg::WBUF_EMPTY),
              .write_buffer_valid_o              ('0),
              .write_buffer_txn_bufferable       ('0),
@@ -397,17 +405,23 @@ endgenerate
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
     cv32e40x_mpu_sva
-      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-        .PMA_CFG(PMA_CFG),
-        .IS_INSTR_SIDE(0),
-        .CORE_RESP_TYPE(cv32e40x_pkg::data_resp_t),
-        .X_EXT (X_EXT))
-  mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
-             .pma_cfg (pma_i.pma_cfg),
+      #(.PMA_NUM_REGIONS                        (PMA_NUM_REGIONS),
+        .PMA_CFG                                (PMA_CFG),
+        .IS_INSTR_SIDE                          (0),
+        .CORE_RESP_TYPE                         (cv32e40x_pkg::data_resp_t),
+        .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_data_req_t),
+        .X_EXT                                  (X_EXT),
+        .A_EXT                                  (A_EXT),
+        .DM_REGION_START                        (DM_REGION_START),
+        .DM_REGION_END                          (DM_REGION_END))
+  mpu_lsu_sva(.pma_addr                         (pma_i.trans_addr_i),
+             .pma_cfg                           (pma_i.pma_cfg),
+             .pma_dbg                           (core_i.load_store_unit_i.mpu_i.core_trans_i.dbg),
              .obi_memtype                       (core_i.data_memtype_o),
              .obi_addr                          (core_i.data_addr_o),
              .obi_req                           (core_i.data_req_o),
              .obi_gnt                           (core_i.data_gnt_i),
+             .obi_dbg                           (core_i.data_dbg_o),
              .write_buffer_state                (core_i.load_store_unit_i.write_buffer_i.state),
              .write_buffer_valid_o              (core_i.load_store_unit_i.write_buffer_i.valid_o),
              .write_buffer_txn_bufferable       (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
@@ -750,6 +764,8 @@ endgenerate
           .SMCLIC                ( SMCLIC                ),
           .SMCLIC_ID_WIDTH       ( SMCLIC_ID_WIDTH       ),
           .SMCLIC_INTTHRESHBITS  ( SMCLIC_INTTHRESHBITS  ),
+          .DM_REGION_START       ( DM_REGION_START       ),
+          .DM_REGION_END         ( DM_REGION_END         ),
           .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
           .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
           .PMA_CFG               ( PMA_CFG               ))
