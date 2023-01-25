@@ -42,6 +42,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    output obi_data_req_t  mpu_trans_o,
 
    input  logic           mpu_resp_valid_i,
+   output logic           mpu_resp_ready_o,
    input  data_resp_t     mpu_resp_i,
 
    // Interface towards core
@@ -160,6 +161,9 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
 
   // Signal ready towards core
   assign core_trans_ready_o     = (mpu_trans_ready_i && !wpt_block_core) || wpt_trans_ready;
+
+  // Send resp_ready through wpt
+  assign mpu_resp_ready_o = core_resp_ready_i;
 
 
 

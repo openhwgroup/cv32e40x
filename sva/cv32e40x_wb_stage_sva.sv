@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,13 +29,14 @@ module cv32e40x_wb_stage_sva
 (
   input logic           clk,
   input logic           rst_n,
-   
+
   input logic           wb_ready_o,
-  input logic           wb_valid,  
+  input logic           wb_valid,
   input ctrl_fsm_t      ctrl_fsm_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input mpu_status_e    lsu_mpu_status_i,
-  input logic           rf_we_wb_o
+  input logic           rf_we_wb_o,
+  input logic           lsu_filter_resp_valid_i
 );
 
   // LSU instructions should not get killed once in WB (as they commit already in EX).
@@ -73,4 +74,11 @@ module cv32e40x_wb_stage_sva
                     (ctrl_fsm_i.kill_wb || ctrl_fsm_i.halt_wb)
                     |-> !rf_we_wb_o)
       else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
+
+  // WB stage must be ready to accept a LSU response.
+  // Checking filter_resp_valid from the LSU instead of data_rvalid_i, as data_rvalid_i may come at _any_ time in case of buffered writes.
+  a_rvalid_wb_ready:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_filter_resp_valid_i  |-> wb_ready_o)
+      else `uvm_error("wb_stage", "Not ready to accept data response")
 endmodule // cv32e40x_wb_stage_sva

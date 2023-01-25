@@ -107,6 +107,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction response
   logic           resp_valid;
+  logic           resp_ready;  // Used to not decrement outstanding counter for WPT/MPU responses if WB is not ready
   logic [31:0]    resp_rdata;
   data_resp_t     resp;
 
@@ -554,7 +555,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
 
   assign count_up = trans_valid && trans_ready;         // Increment upon accepted transfer request
-  assign count_down = resp_valid;                       // Decrement upon accepted transfer response
+  assign count_down = resp_valid && resp_ready;         // Decrement upon accepted transfer response
 
   always_comb begin
     case ({count_up, count_down})
@@ -661,6 +662,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         .mpu_trans_o         ( mpu_trans         ),
 
         .mpu_resp_valid_i    ( mpu_resp_valid    ),
+        .mpu_resp_ready_o    ( mpu_resp_ready    ),
         .mpu_resp_i          ( mpu_resp          ),
 
         // Interface towards core
@@ -688,6 +690,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign wpt_resp_ready = ready_0_i;
 
       assign resp_valid = wpt_resp_valid;
+      assign resp_ready = ready_0_i;
       assign resp_rdata = wpt_resp_rdata;
       assign resp       = wpt_resp;
 
@@ -699,12 +702,15 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign mpu_trans         = wpt_trans;
       assign wpt_trans_ready   = mpu_trans_ready;
       assign wpt_resp_valid    = mpu_resp_valid;
+      assign mpu_resp_ready    = wpt_resp_ready;
+      assign wpt_resp_ready    = ready_0_i;
       assign wpt_resp          = mpu_resp;
       assign xif_wpt_match     = 1'b0;
 
       assign wpt_resp_rdata = wpt_resp.bus_resp.rdata;
 
       assign resp_valid = wpt_resp_valid;
+      assign resp_ready = wpt_resp_ready;
       assign resp_rdata = wpt_resp_rdata;
       assign resp       = wpt_resp;
     end

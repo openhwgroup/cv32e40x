@@ -188,6 +188,7 @@ module cv32e40x_wrapper
   bind cv32e40x_wb_stage:
     core_i.wb_stage_i cv32e40x_wb_stage_sva wb_stage_sva
     (
+      .lsu_filter_resp_valid_i (core_i.load_store_unit_i.filter_resp_valid),
       .*
     );
 
