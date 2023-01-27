@@ -268,6 +268,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic        data_stall_wb;
 
+  logic        wpt_match_wb;       // Sticky wpt_match from WB stage
+  mpu_status_e mpu_status_wb;      // Sticky mpu_status from WB stage
+
   // Stage ready signals
   logic        id_ready;
   logic        ex_ready;
@@ -731,6 +734,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // eXtension interface
     .xif_result_if              ( xif_result_if                ),
 
+    .wpt_match_wb_o             ( wpt_match_wb                 ),
+    .mpu_status_wb_o            ( mpu_status_wb                ),
+
     // CSR/CLIC pointer inputs
     .clic_pa_valid_i            ( csr_clic_pa_valid            ),
     .clic_pa_i                  ( csr_clic_pa                  ),
@@ -895,13 +901,13 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .first_op_id_i                  ( first_op_id            ),
 
     // LSU
-    .lsu_mpu_status_wb_i            ( lsu_mpu_status_wb      ),
+    .lsu_mpu_status_wb_i            ( mpu_status_wb          ),
     .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
     .lsu_valid_wb_i                 ( lsu_valid_wb           ),
-    .lsu_wpt_match_wb_i             ( lsu_wpt_match_wb       ),
+    .lsu_wpt_match_wb_i             ( wpt_match_wb           ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

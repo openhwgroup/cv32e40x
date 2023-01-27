@@ -1,13 +1,13 @@
 // Copyright 2021 Silicon Labs, Inc.
-//   
+//
 // This file, and derivatives thereof are licensed under the
 // Solderpad License, Version 2.0 (the "License");
 // Use of this file means you agree to the terms and conditions
 // of the license and are in full compliance with the License.
 // You may obtain a copy of the License at
-//   
+//
 //     https://solderpad.org/licenses/SHL-2.0/
-//   
+//
 // Unless required by applicable law or agreed to in writing, software
 // and hardware implementations thereof
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,13 +29,17 @@ module cv32e40x_wb_stage_sva
 (
   input logic           clk,
   input logic           rst_n,
-   
+
   input logic           wb_ready_o,
-  input logic           wb_valid,  
+  input logic           wb_valid,
   input ctrl_fsm_t      ctrl_fsm_i,
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input mpu_status_e    lsu_mpu_status_i,
-  input logic           rf_we_wb_o
+  input mpu_status_e    lsu_mpu_status_q,
+  input logic           lsu_wpt_match_i,
+  input logic           rf_we_wb_o,
+  input logic           lsu_valid_q,
+  input logic           lsu_wpt_match_q
 );
 
   // LSU instructions should not get killed once in WB (as they commit already in EX).
@@ -73,4 +77,40 @@ module cv32e40x_wb_stage_sva
                     (ctrl_fsm_i.kill_wb || ctrl_fsm_i.halt_wb)
                     |-> !rf_we_wb_o)
       else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
+
+  // A watchpoint trigger will be halted during its first cycle in WB, giving !wb_valid.
+  // During the next cycle the controller will kill the pipeline but let wb_valid==1'b1 to let RVFI
+  // know the core hit a watchpoint.
+  a_wpt_wb_halt:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_wpt_match_i
+                    |->
+                    !wb_valid && ctrl_fsm_i.halt_wb)
+      else `uvm_error("wb_stage", "WB stage not halted on a WPT match")
+
+  a_wpt_wb_valid:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_wpt_match_i
+                    |=>
+                    wb_valid)
+      else `uvm_error("wb_stage", "WB stage not setting wb_valid on a WPT")
+
+  // The WB stage will make the mpu_status sticky if wb_walid is not asserted the first cycle in WB.
+  // In practice this should never happen as the controller will not allow any halt or kill on a LSU in WB.
+  // The only exception to this is the watchpoints which are asserted separately.
+  a_no_sticky_mpu_error:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (lsu_mpu_status_q == MPU_OK))
+      else `uvm_error("wb_stage", "lsu_mpu_status_q should never see an error")
+
+  // The only cause for a sticky lsu_valid is a watchpoint trigger.
+  a_only_wpt_lsu_valid_sticky:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_valid_q
+                    |->
+                    lsu_wpt_match_q &&
+                    $past(lsu_wpt_match_i))
+      else `uvm_error("wb_stage", "LSU signal sticky for non-watchpoint cause")
+
+
 endmodule // cv32e40x_wb_stage_sva
