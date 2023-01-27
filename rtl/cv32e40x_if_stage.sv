@@ -254,7 +254,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .core_trans_ready_o   ( prefetch_trans_ready        ),
     .core_trans_i         ( core_trans                  ),
     .core_resp_valid_o    ( prefetch_resp_valid         ),
-    .core_resp_ready_i    ( 1'b1                        ), // Prefetcher is always ready to accept a response.
     .core_resp_o          ( prefetch_inst_resp          ),
 
     .bus_trans_valid_o    ( bus_trans_valid             ),

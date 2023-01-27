@@ -405,28 +405,17 @@ endgenerate
   bind cv32e40x_mpu:
     core_i.load_store_unit_i.mpu_i
     cv32e40x_mpu_sva
-<<<<<<< HEAD
       #(.PMA_NUM_REGIONS                        (PMA_NUM_REGIONS),
         .PMA_CFG                                (PMA_CFG),
         .IS_INSTR_SIDE                          (0),
         .CORE_RESP_TYPE                         (cv32e40x_pkg::data_resp_t),
         .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_data_req_t),
-        .X_EXT                                  (X_EXT),
         .A_EXT                                  (A_EXT),
         .DM_REGION_START                        (DM_REGION_START),
         .DM_REGION_END                          (DM_REGION_END))
   mpu_lsu_sva(.pma_addr                         (pma_i.trans_addr_i),
              .pma_cfg                           (pma_i.pma_cfg),
              .pma_dbg                           (core_i.load_store_unit_i.mpu_i.core_trans_i.dbg),
-=======
-      #(.PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-        .PMA_CFG(PMA_CFG),
-        .IS_INSTR_SIDE(0),
-        .CORE_RESP_TYPE(data_resp_t),
-        .X_EXT (X_EXT))
-  mpu_lsu_sva(.pma_addr(pma_i.trans_addr_i),
-             .pma_cfg (pma_i.pma_cfg),
->>>>>>> parent of f64e4b7 (Introduced 'wpt_resp_ready' and 'mpu_resp_ready' signals in the LSU.)
              .obi_memtype                       (core_i.data_memtype_o),
              .obi_addr                          (core_i.data_addr_o),
              .obi_req                           (core_i.data_req_o),

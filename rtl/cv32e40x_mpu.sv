@@ -26,7 +26,6 @@
 module cv32e40x_mpu import cv32e40x_pkg::*;
   #(  parameter bit          IF_STAGE                     = 1,
       parameter bit          A_EXT                        = 0,
-      parameter bit          X_EXT                        = 0,
       parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
       parameter type         CORE_RESP_TYPE               = inst_resp_t,
       parameter type         BUS_RESP_TYPE                = obi_inst_resp_t,
@@ -55,7 +54,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    input        CORE_REQ_TYPE core_trans_i,
 
    output logic core_resp_valid_o,
-   input  logic core_resp_ready_i,
    output       CORE_RESP_TYPE core_resp_o,
 
    // Indication from the core that there will be one pending transaction in the next cycle
@@ -67,7 +65,6 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
    // Report MPU errors to the core immediatly (used in case core_mpu_err_wait_i is not asserted)
    output logic core_mpu_err_o
-
    );
 
   logic        pma_err;
@@ -149,10 +146,9 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
         mpu_err_trans_valid = 1'b1;
         mpu_status = (state_q == MPU_RE_ERR_RESP) ? MPU_RE_FAULT : MPU_WR_FAULT;
 
-        // Go back to IDLE when downstream stage (WB) is ready
-        if (core_resp_ready_i) begin
-          state_n = MPU_IDLE;
-        end
+        // Go back to IDLE uncoditionally.
+        // The core is expected to always be ready for the response
+        state_n = MPU_IDLE;
 
       end
       default: ;
