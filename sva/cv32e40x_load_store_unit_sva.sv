@@ -144,6 +144,14 @@ module cv32e40x_load_store_unit_sva
                   $past(lsu_wpt_match_1_o) && (ctrl_fsm_cs == DEBUG_TAKEN))
       else `uvm_error("load_store_unit", "Illegal cause of cnt_q=0 while a valid LSU instruction is in WB")
 
+  // MPU errors and watchpoint triggers cannot happen at the same time
+  a_mpuerr_wpt_unique:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  lsu_wpt_match_1_o
+                  |->
+                  !(lsu_mpu_status_1_o != MPU_OK))
+      else `uvm_error("load_store_unit", "MPU error and watchpoint trigger not unique")
+
   // Check that no XIF request or result are produced if X_EXT is disabled
   a_lsu_no_xif_req_if_xext_disabled:
   assert property (@(posedge clk) disable iff (!rst_n)

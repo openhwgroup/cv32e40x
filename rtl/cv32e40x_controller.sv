@@ -65,6 +65,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  id_ex_pipe_t id_ex_pipe_i,
 
   input  ex_wb_pipe_t ex_wb_pipe_i,
+  input  mpu_status_e mpu_status_wb_i,            // MPU status (WB stage)
+  input  logic        wpt_match_wb_i,             // LSU watchpoint trigger in WB
 
   // Last operation bits
   input  logic        last_op_ex_i,               // EX contains the last operation of an instruction
@@ -73,13 +75,11 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   input  logic        abort_op_wb_i,
 
   // LSU
-  input  mpu_status_e lsu_mpu_status_wb_i,        // MPU status (WB stage)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
   input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted
   input  logic        lsu_valid_wb_i,             // LSU is valid in WB (factors in rvalid from either OBI bus or write buffer)
-  input  logic        lsu_wpt_match_wb_i,         // LSU watchpoint trigger in WB
 
   // jump/branch signals
   input  logic        branch_decision_ex_i,       // branch decision signal from EX ALU
@@ -182,14 +182,14 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     // From WB stage
     .ex_wb_pipe_i                ( ex_wb_pipe_i             ),
     .lsu_err_wb_i                ( lsu_err_wb_i             ),
-    .lsu_mpu_status_wb_i         ( lsu_mpu_status_wb_i      ),
+    .mpu_status_wb_i             ( mpu_status_wb_i          ),
     .data_stall_wb_i             ( data_stall_wb_i          ),
     .wb_ready_i                  ( wb_ready_i               ),
     .wb_valid_i                  ( wb_valid_i               ),
     .last_op_wb_i                ( last_op_wb_i             ),
     .abort_op_wb_i               ( abort_op_wb_i            ),
     .lsu_valid_wb_i              ( lsu_valid_wb_i           ),
-    .lsu_wpt_match_wb_i          ( lsu_wpt_match_wb_i       ),
+    .wpt_match_wb_i              ( wpt_match_wb_i           ),
 
     .lsu_interruptible_i         ( lsu_interruptible_i      ),
 

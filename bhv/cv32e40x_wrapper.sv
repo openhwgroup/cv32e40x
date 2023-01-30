@@ -410,7 +410,6 @@ endgenerate
         .IS_INSTR_SIDE                          (0),
         .CORE_RESP_TYPE                         (cv32e40x_pkg::data_resp_t),
         .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_data_req_t),
-        .X_EXT                                  (X_EXT),
         .A_EXT                                  (A_EXT),
         .DM_REGION_START                        (DM_REGION_START),
         .DM_REGION_END                          (DM_REGION_END))
