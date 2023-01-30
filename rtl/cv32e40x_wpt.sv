@@ -39,6 +39,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    // Interface towards mpu interface
    input  logic           mpu_trans_ready_i,
    output logic           mpu_trans_valid_o,
+   output logic           mpu_trans_pushpop_o,
    output obi_data_req_t  mpu_trans_o,
 
    input  logic           mpu_resp_valid_i,
@@ -47,6 +48,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    // Interface towards core
    input  logic           core_trans_valid_i,
    output logic           core_trans_ready_o,
+   input  logic           core_trans_pushpop_i,
    input  obi_data_req_t  core_trans_i,
 
    output logic           core_resp_valid_o,
@@ -142,8 +144,9 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   end
 
   // Forward transaction request towards MPU
-  assign mpu_trans_valid_o = core_trans_valid_i && !wpt_block_bus;
-  assign mpu_trans_o       = core_trans_i;
+  assign mpu_trans_valid_o   = core_trans_valid_i && !wpt_block_bus;
+  assign mpu_trans_o         = core_trans_i;
+  assign mpu_trans_pushpop_o = core_trans_pushpop_i;
 
 
   // Forward transaction response towards core

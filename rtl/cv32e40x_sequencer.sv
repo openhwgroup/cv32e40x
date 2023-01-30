@@ -55,7 +55,8 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
     output logic       ready_o,               // Sequencer is ready for new inputs
     output logic       seq_first_o,           // First operation is being output
     output logic       seq_last_o,            // Last operation is being output,
-    output logic       seq_tbljmp_o           // Instruction is a table jump (jt/jalt)
+    output logic       seq_tbljmp_o,          // Instruction is a table jump (jt/jalt)
+    output logic       seq_pushpop_o          // Instruction is a PUSH or POP
   );
 
   seq_t                instr_cnt_q;        // Count number of emitted uncompressed instructions
@@ -137,12 +138,13 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
 
   always_comb
   begin
-    seq_instr    = INVALID_INST;
-    seq_load     = 1'b0;
-    seq_store    = 1'b0;
-    seq_move_a2s = 1'b0;
-    seq_move_s2a = 1'b0;
-    seq_tbljmp_o = 1'b0;
+    seq_instr     = INVALID_INST;
+    seq_load      = 1'b0;
+    seq_store     = 1'b0;
+    seq_move_a2s  = 1'b0;
+    seq_move_s2a  = 1'b0;
+    seq_tbljmp_o  = 1'b0;
+    seq_pushpop_o = 1'b0;
     // Disregard all pointers, they do not contain instructions.
     if (!instr_is_pointer) begin
       // All sequenced instructions are within C2
@@ -170,6 +172,7 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
               end
             end
             3'b110: begin
+              seq_pushpop_o = 1'b1;
               if (instr[9:8] == 2'b00) begin
                 // cm.push
                 if (pushpop_legal_rlist) begin
@@ -185,6 +188,7 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
               end
             end
             3'b111: begin
+              seq_pushpop_o = 1'b1;
               if (instr[9:8] == 2'b00) begin
                 // cm.popretz
                 if (pushpop_legal_rlist) begin

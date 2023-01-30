@@ -71,6 +71,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic         core_trans_valid_i,
    input logic         core_trans_ready_o,
    input CORE_REQ_TYPE core_trans_i,
+   input logic         core_trans_pushpop_i,
 
    input logic        core_resp_valid_o,
 
@@ -233,7 +234,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   end
   assign pma_expected_err = (instr_fetch_access && !pma_expected_cfg.main)  ||
                             (misaligned_access_i && !pma_expected_cfg.main) ||
-                            (atomic_access_i && !pma_expected_cfg.atomic);
+                            (atomic_access_i && !pma_expected_cfg.atomic)   ||
+                            (core_trans_pushpop_i && !pma_expected_cfg.main);
   a_pma_expect_cfg :
     assert property (@(posedge clk) disable iff (!rst_n) pma_cfg == pma_expected_cfg)
       else `uvm_error("mpu", "RTL cfg don't match SVA expectations")

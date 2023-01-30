@@ -50,6 +50,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
    // Interface towards core
    input logic  core_trans_valid_i,
+   input logic  core_trans_pushpop_i,
    output logic core_trans_ready_o,
    input        CORE_REQ_TYPE core_trans_i,
 
@@ -195,6 +196,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     (
     .trans_addr_i               ( core_trans_i.addr       ),
     .trans_debug_region_i       ( core_trans_debug_region ),
+    .trans_pushpop_i            ( core_trans_pushpop_i    ),
     .instr_fetch_access_i       ( instr_fetch_access      ),
     .atomic_access_i            ( atomic_access_i         ),
     .misaligned_access_i        ( misaligned_access_i     ),
