@@ -43,7 +43,7 @@ module cv32e40x_controller_fsm_sva
   input ctrl_state_e    ctrl_fsm_cs,
   input ctrl_state_e    ctrl_fsm_ns,
   input logic [1:0]     lsu_outstanding_cnt,
-  input mpu_status_e    lsu_mpu_status_wb_i,
+  input mpu_status_e    mpu_status_wb_i,
   input logic           if_valid_i,
   input if_id_pipe_t    if_id_pipe_i,
   input id_ex_pipe_t    id_ex_pipe_i,
@@ -108,7 +108,7 @@ module cv32e40x_controller_fsm_sva
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i,
   input logic           etrigger_in_wb,
-  input logic           lsu_wpt_match_wb_i,
+  input logic           wpt_match_wb_i,
   input logic           debug_req_i,
   input logic           fetch_enable_i,
   input logic           instr_req_o,
@@ -453,7 +453,7 @@ endgenerate
     assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == DEBUG_TAKEN) && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid)
                     |->
-                    $past(lsu_wpt_match_wb_i))
+                    $past(wpt_match_wb_i))
       else `uvm_error("conroller", "LSU active in WB during DEBUG_TAKEN with no preceeding watchpoint trigger")
   // Ensure bubble in EX while in SLEEP mode.
   // WFI or WFE instruction will be in WB
@@ -512,7 +512,7 @@ endgenerate
   // Assert correct exception cause for mpu load faults (checks default of cause mux)
   a_mpu_re_cause_mux:
     assert property (@(posedge clk) disable iff (!rst_n)
-                      (lsu_mpu_status_wb_i == MPU_RE_FAULT) |-> (exception_cause_wb == EXC_CAUSE_LOAD_FAULT))
+                      (mpu_status_wb_i == MPU_RE_FAULT) |-> (exception_cause_wb == EXC_CAUSE_LOAD_FAULT))
       else `uvm_error("controller", "Wrong exception cause for MPU read fault")
 
 
@@ -869,7 +869,7 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) && ctrl_fsm_o.halt_wb
                   |->
-                  lsu_wpt_match_wb_i)
+                  wpt_match_wb_i)
     else `uvm_error("controller", "LSU in WB halted without watchpoint trigger match")
 
 
@@ -879,7 +879,7 @@ end
   // the controller will go back to FUNCTIONAL.
   a_wpt_debug_entry:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  (ex_wb_pipe_i.instr_valid && lsu_wpt_match_wb_i) && (ctrl_fsm_cs == FUNCTIONAL)
+                  (ex_wb_pipe_i.instr_valid && wpt_match_wb_i) && (ctrl_fsm_cs == FUNCTIONAL)
                   |->
                   (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
     else `uvm_error("controller", "Debug not entered on a WPT match")
@@ -932,6 +932,17 @@ end
                   |=>
                   !woke_to_interrupt_q)
     else `uvm_error("controller", "woke_to_interrupt_q asserted for more than one cycle")
+
+  // The register file shall never be written during DEBUG_TAKEN state
+  // Instructions in WB are generally killed during this state, with the exception of
+  // ebreak and triggers. Ebreak and triggers shall never write to the RF anyway.
+  a_debug_taken_rf_write:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == DEBUG_TAKEN)
+                    |->
+                    !rf_we_wb_i)
+    else `uvm_error("controller", "Register file written during DEBUG_TAKEN state")
+
 
 endmodule
 

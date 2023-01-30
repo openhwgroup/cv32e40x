@@ -123,10 +123,12 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
   // TODO: Could use result interface.we into account if out of order completion is allowed.
-  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && !lsu_wpt_match_i && instr_valid;
+  assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && !lsu_wpt_match && instr_valid;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
   // TODO: Could use result interface.rd into account if out of order completion is allowed.
+  // Not using any flopped/sticky version of lsu_rdata_i. The sticky bits are only needed for MPU errors and watchpoint triggers.
+  // Any true load that succeeds will write the RF and will never be halted or killed by the controller. (wb_valid during the same cycle as lsu_valid_i).
   assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i               :
                          (ex_wb_pipe_i.xif_en ? xif_result_if.result.data :
                          clic_pa_valid_i      ? clic_pa_i                 :
@@ -187,15 +189,17 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
         lsu_wpt_match_q <= 1'b0;
         lsu_mpu_status_q <= MPU_OK;
       end else begin
-        lsu_valid_q <= lsu_valid;
-        lsu_wpt_match_q <= lsu_wpt_match;
-        lsu_mpu_status_q <= lsu_mpu_status;
+        if (lsu_valid_i) begin
+          lsu_valid_q <= 1'b1;
+          lsu_wpt_match_q <= lsu_wpt_match;
+          lsu_mpu_status_q <= lsu_mpu_status;
+        end
       end
     end
   end
 
-  assign lsu_valid = lsu_valid_i || lsu_valid_q;
-  assign lsu_wpt_match = lsu_wpt_match_i || lsu_wpt_match_q;
+  assign lsu_valid      = lsu_valid_q ? lsu_valid_q      : lsu_valid_i;
+  assign lsu_wpt_match  = lsu_valid_q ? lsu_wpt_match_q  : lsu_wpt_match_i;
   assign lsu_mpu_status = lsu_valid_q ? lsu_mpu_status_q : lsu_mpu_status_i;
 
   assign wpt_match_wb_o = lsu_wpt_match;

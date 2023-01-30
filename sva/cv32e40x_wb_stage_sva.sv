@@ -39,7 +39,8 @@ module cv32e40x_wb_stage_sva
   input logic           lsu_wpt_match_i,
   input logic           rf_we_wb_o,
   input logic           lsu_valid_q,
-  input logic           lsu_wpt_match_q
+  input logic           lsu_wpt_match_q,
+  input logic           lsu_valid_i
 );
 
   // LSU instructions should not get killed once in WB (as they commit already in EX).
@@ -111,6 +112,17 @@ module cv32e40x_wb_stage_sva
                     lsu_wpt_match_q &&
                     $past(lsu_wpt_match_i))
       else `uvm_error("wb_stage", "LSU signal sticky for non-watchpoint cause")
+
+
+  // Any load or store without an MPU error or watchpoint trigger must signal wb_valid when rvalid arrives.
+  // This chekcs that there is no need for sticky rdata_q bits in the wb_stage similar to the mpu_status and wpt bits.
+  a_lsu_wb_valid:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_valid_i &&
+                    !(lsu_wpt_match_i || (lsu_mpu_status_i != MPU_OK))
+                    |->
+                    wb_valid)
+      else `uvm_error("wb_stage", "wb_valid not signaled immediately upon rvalid for LSU without WPT or MPU error")
 
 
 endmodule // cv32e40x_wb_stage_sva

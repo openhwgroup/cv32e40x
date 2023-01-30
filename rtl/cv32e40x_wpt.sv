@@ -53,14 +53,14 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    output data_resp_t     core_resp_o,
 
    // Indication from the core that there will be one pending transaction in the next cycle
-   input logic  core_one_txn_pend_n,
+   input logic            core_one_txn_pend_n,
 
    // Indication from the core that watchpoint triggers should be reported after all in flight transactions
    // are complete (default behavior for main core requests, but not used for XIF requests)
-   input logic  core_wpt_wait_i,
+   input logic            core_wpt_wait_i,
 
    // Report watchpoint triggers to the core immediatly (used in case core_wpt_wait_i is not asserted)
-   output logic core_wpt_match_o
+   output logic           core_wpt_match_o
    );
 
   logic        wpt_block_core;

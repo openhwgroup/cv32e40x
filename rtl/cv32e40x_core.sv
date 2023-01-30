@@ -672,7 +672,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_be_o              ( lsu_be_ex          ),
 
     // Stage 1 outputs (WB)
-    .lsu_err_1_o           ( lsu_err_wb         ), // To controller (has WB timing, but does not pass through WB stage)
+    // lsu_err_1_o has WB timing and is used by the controller. Does not go through the wb_stage, and does not have
+    // any sticky bits associated with it. The sticky bits for LSU related signals within the WB stage are only needed
+    // for MPU errors and watchpoint triggers. All LSU instructions that gets through the WPT and MPU will retire immediately
+    // when data_rvalid arrives. data_err_i will always come from the bus.
+    .lsu_err_1_o           ( lsu_err_wb         ),
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
     .lsu_wpt_match_1_o     ( lsu_wpt_match_wb   ),
@@ -874,6 +878,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // From EX/WB pipeline
     .ex_wb_pipe_i                   ( ex_wb_pipe             ),
+    .mpu_status_wb_i                ( mpu_status_wb          ),
+    .wpt_match_wb_i                 ( wpt_match_wb           ),
 
     // last_op bits
     .last_op_id_i                   ( last_op_id             ),
@@ -901,13 +907,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .first_op_id_i                  ( first_op_id            ),
 
     // LSU
-    .lsu_mpu_status_wb_i            ( mpu_status_wb          ),
     .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
     .lsu_valid_wb_i                 ( lsu_valid_wb           ),
-    .lsu_wpt_match_wb_i             ( wpt_match_wb           ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),
