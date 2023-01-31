@@ -55,7 +55,8 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
     output logic       ready_o,               // Sequencer is ready for new inputs
     output logic       seq_first_o,           // First operation is being output
     output logic       seq_last_o,            // Last operation is being output,
-    output logic       seq_tbljmp_o           // Instruction is a table jump (jt/jalt)
+    output logic       seq_tbljmp_o,          // Instruction is a table jump (jt/jalt)
+    output logic       seq_pushpop_o          // Instruction is a PUSH or POP
   );
 
   seq_t                instr_cnt_q;        // Count number of emitted uncompressed instructions
@@ -137,12 +138,13 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
 
   always_comb
   begin
-    seq_instr    = INVALID_INST;
-    seq_load     = 1'b0;
-    seq_store    = 1'b0;
-    seq_move_a2s = 1'b0;
-    seq_move_s2a = 1'b0;
-    seq_tbljmp_o = 1'b0;
+    seq_instr     = INVALID_INST;
+    seq_load      = 1'b0;
+    seq_store     = 1'b0;
+    seq_move_a2s  = 1'b0;
+    seq_move_s2a  = 1'b0;
+    seq_tbljmp_o  = 1'b0;
+    seq_pushpop_o = 1'b0;
     // Disregard all pointers, they do not contain instructions.
     if (!instr_is_pointer) begin
       // All sequenced instructions are within C2
@@ -175,12 +177,14 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
                 if (pushpop_legal_rlist) begin
                   seq_instr = PUSH;
                   seq_store = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.pop
                 if (pushpop_legal_rlist) begin
                   seq_instr = POP;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end
             end
@@ -190,12 +194,14 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
                 if (pushpop_legal_rlist) begin
                   seq_instr = POPRETZ;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.popret
                 if (pushpop_legal_rlist) begin
                   seq_instr = POPRET;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end
             end

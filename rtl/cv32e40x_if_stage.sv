@@ -144,6 +144,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic              seq_last;        // sequencer is outputting the last operation
   inst_resp_t        seq_instr;       // Instruction for sequenced operation
   logic              seq_tbljmp;      // Sequenced instruction is a table jump
+  logic              seq_pushpop;     // Sequenced instruction is a push or pop
 
   logic              unused_signals;
 
@@ -251,6 +252,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose
     .core_trans_valid_i   ( prefetch_trans_valid        ),
+    .core_trans_pushpop_i ( 1'b0                        ), // Prefetches are never part of a PUSH/POP sequence
     .core_trans_ready_o   ( prefetch_trans_ready        ),
     .core_trans_i         ( core_trans                  ),
     .core_resp_valid_o    ( prefetch_resp_valid         ),
@@ -346,6 +348,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     instr_meta_n.clic_ptr      = prefetch_is_clic_ptr;
     instr_meta_n.mret_ptr      = prefetch_is_mret_ptr;
     instr_meta_n.tbljmp        = if_id_pipe_o.instr_meta.tbljmp;
+    instr_meta_n.pushpop       = if_id_pipe_o.instr_meta.pushpop;
   end
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
@@ -394,6 +397,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
           // flag is still set and can be used when propagating to ID.
           if_id_pipe_o.instr_meta.compressed <= instr_compressed;
           if_id_pipe_o.instr_meta.tbljmp     <= seq_tbljmp;
+          if_id_pipe_o.instr_meta.pushpop    <= seq_pushpop;
 
           // Only update compressed_instr for compressed instructions
           if (instr_compressed) begin
@@ -470,15 +474,17 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         .ready_o              ( seq_ready               ),
         .seq_first_o          ( seq_first               ),
         .seq_last_o           ( seq_last                ),
-        .seq_tbljmp_o         ( seq_tbljmp              )
+        .seq_tbljmp_o         ( seq_tbljmp              ),
+        .seq_pushpop_o        ( seq_pushpop             )
       );
     end else begin : gen_no_seq
-      assign seq_valid  = 1'b0;
-      assign seq_last   = 1'b0;
-      assign seq_instr  = '0;
-      assign seq_ready  = 1'b1;
-      assign seq_first  = 1'b0;
-      assign seq_tbljmp = 1'b0;
+      assign seq_valid   = 1'b0;
+      assign seq_last    = 1'b0;
+      assign seq_instr   = '0;
+      assign seq_ready   = 1'b1;
+      assign seq_first   = 1'b0;
+      assign seq_tbljmp  = 1'b0;
+      assign seq_pushpop = 1'b0;
     end
   endgenerate
 

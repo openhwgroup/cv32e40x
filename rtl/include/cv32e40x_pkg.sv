@@ -1073,6 +1073,7 @@ typedef struct packed
   logic        clic_ptr;   // "True" CLIC pointer due to taking a CLIC SHV interrupt
   logic        mret_ptr;   // CLIC pointer due to an mret restarting pointer fetch
   logic        tbljmp;
+  logic        pushpop;    // Operation is part of a push/pop sequence.
 } instr_meta_t;
 
 // Struct for carrying eXtension interface information
