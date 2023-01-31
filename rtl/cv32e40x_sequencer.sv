@@ -172,34 +172,36 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
               end
             end
             3'b110: begin
-              seq_pushpop_o = 1'b1;
               if (instr[9:8] == 2'b00) begin
                 // cm.push
                 if (pushpop_legal_rlist) begin
                   seq_instr = PUSH;
                   seq_store = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.pop
                 if (pushpop_legal_rlist) begin
                   seq_instr = POP;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end
             end
             3'b111: begin
-              seq_pushpop_o = 1'b1;
               if (instr[9:8] == 2'b00) begin
                 // cm.popretz
                 if (pushpop_legal_rlist) begin
                   seq_instr = POPRETZ;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end else if (instr[9:8] == 2'b10) begin
                 // cm.popret
                 if (pushpop_legal_rlist) begin
                   seq_instr = POPRET;
                   seq_load = 1'b1;
+                  seq_pushpop_o = 1'b1;
                 end
               end
             end
