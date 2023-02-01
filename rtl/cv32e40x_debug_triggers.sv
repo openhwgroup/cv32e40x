@@ -429,10 +429,10 @@ import cv32e40x_pkg::*;
         tdata1_we_r = tdata1_we_i || tselect_we_i;
         tdata2_we_r = tdata2_we_i || tselect_we_i;
 
-        if (!tselect_we_i) begin
-          tdata1_n_r = tdata1_n;
-          tdata2_n_r = tdata2_n;
-        end else begin
+        tdata1_n_r = tdata1_n;
+        tdata2_n_r = tdata2_n;
+
+        if (tselect_we_i) begin
           for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
             if(tselect_n == i) begin
               tdata1_n_r = tdata1_rdata[i];
