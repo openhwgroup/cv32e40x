@@ -87,6 +87,13 @@ import cv32e40x_pkg::*;
   logic [31:0] tinfo_n;
   logic [31:0] tcontrol_n;
 
+  // RVFI only signals
+  logic [31:0] tdata1_n_r;
+  logic [31:0] tdata2_n_r;
+  logic        tdata1_we_r;
+  logic        tdata2_we_r;
+
+
   // Signal for or'ing unused signals for easier lint
   logic unused_signals;
 
@@ -416,6 +423,26 @@ import cv32e40x_pkg::*;
         end
       end
 
+      // RVFI only
+      // assign _we_r and wdata_n_r values
+      always_comb begin
+        tdata1_we_r = tdata1_we_i || tselect_we_i;
+        tdata2_we_r = tdata2_we_i || tselect_we_i;
+
+        tdata1_n_r = tdata1_n;
+        tdata2_n_r = tdata2_n;
+
+        if (tselect_we_i) begin
+          for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
+            if(tselect_n == i) begin
+              tdata1_n_r = tdata1_rdata[i];
+              tdata2_n_r = tdata2_rdata[i];
+            end
+          end
+        end
+      end
+
+
       assign tdata3_rdata_o   = 32'h00000000;
       assign tselect_rdata_o  = tselect_q;
       assign tinfo_rdata_o    = 32'h00008064; // Supported types 0x2, 0x5, 0x6 and 0xF
@@ -430,7 +457,8 @@ import cv32e40x_pkg::*;
       // Set trigger match for WB
       assign etrigger_wb_o = |etrigger_wb;
 
-      assign unused_signals = tinfo_we_i | tcontrol_we_i | tdata3_we_i | (|tinfo_n) | (|tdata3_n) | (|tcontrol_n);
+      assign unused_signals = tinfo_we_i | tcontrol_we_i | tdata3_we_i | (|tinfo_n) | (|tdata3_n) | (|tcontrol_n) |
+                              (|tdata1_n_r) | (|tdata2_n_r) | tdata1_we_r | tdata2_we_r;
 
     end else begin : gen_no_triggers
       // Tie off outputs
@@ -449,9 +477,14 @@ import cv32e40x_pkg::*;
       assign tselect_n = '0;
       assign tinfo_n = '0;
       assign tcontrol_n = '0;
+      assign tdata1_n_r = '0;
+      assign tdata2_n_r = '0;
+      assign tdata1_we_r = 1'b0;
+      assign tdata2_we_r = 1'b0;
 
       assign unused_signals = (|tdata1_n) | (|tdata2_n) | (|tdata3_n) | (|tselect_n) | (|tinfo_n) | (|tcontrol_n) |
-                              (|csr_wdata_i) | tdata1_we_i | tdata2_we_i | tdata3_we_i | tselect_we_i | tinfo_we_i | tcontrol_we_i;
+                              (|csr_wdata_i) | tdata1_we_i | tdata2_we_i | tdata3_we_i | tselect_we_i | tinfo_we_i | tcontrol_we_i |
+                              (|tdata1_n_r) | (|tdata2_n_r) | tdata1_we_r | tdata2_we_r;
     end
   endgenerate
 endmodule
