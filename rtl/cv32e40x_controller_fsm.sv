@@ -211,6 +211,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic [2:0] debug_cause_n;
   logic [2:0] debug_cause_q;
 
+  // Cause of synchronous debug entry
+  logic [2:0] sync_debug_cause;
+
   // Flop for remembering causes of wakeup
   logic       woke_to_debug_q;
   logic       woke_to_interrupt_q;
@@ -493,9 +496,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign sync_debug_allowed = !xif_in_wb;
 
   // Debug pending for any other synchronous reason than single step
-  assign pending_sync_debug = (trigger_match_in_wb) ||
-                              (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
-                              (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
+  // Note that the WB stage may be killed for interrupts and NMIs, thus invalidating the instruction causing the sync debug entry.
+  // Exception triggers to not set pending_sync_debug, as they need to take the single step path through the FSM.
+  assign pending_sync_debug = ((trigger_match_in_wb) ||
+                               (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
+                               (ebreak_in_wb && debug_mode_q)); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
   // Debug pending for external debug request, only if not already in debug mode
   // Ideally the !debug_mode_q below should be factored into async_debug_allowed, but
@@ -517,12 +522,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // 4: trigger match (0x2)
   // 5: ebreak (0x1)
   // 6: single step (0x4)
-  assign debug_cause_n = (pending_async_debug && async_debug_allowed)                                               ? DBG_CAUSE_HALTREQ :
-                         (trigger_match_in_wb || etrigger_wb_i)                                                     ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
-                         (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) ? DBG_CAUSE_EBREAK  :    // Ebreak during machine mode
-                         (ebreak_in_wb && debug_mode_q)                                                             ? DBG_CAUSE_EBREAK  :    // Ebreak during debug mode
-                         (pending_single_step && single_step_allowed)                                               ? DBG_CAUSE_STEP    : DBG_CAUSE_NONE;
 
+  // The synchronous causes are determined here, while the priority between haltreq, sync_debug_cause and single step is determined within the FSM.
+  assign sync_debug_cause = (trigger_match_in_wb || etrigger_wb_i )                                                    ? DBG_CAUSE_TRIGGER :    // Etrigger will enter DEBUG_TAKEN as a single step (no halting), but kill pipeline as non-stepping entries.
+                            (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) ? DBG_CAUSE_EBREAK  :    // Ebreak during machine mode
+                            (ebreak_in_wb && debug_mode_q)                                                             ? DBG_CAUSE_EBREAK  :    // Ebreak during debug mode
+                                                                                                                         DBG_CAUSE_NONE;
 
   // Debug cause to CSR from flopped version (valid during DEBUG_TAKEN)
   assign ctrl_fsm_o.debug_cause = debug_cause_q;
@@ -659,6 +664,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     exc_cause                   = 11'b0;
 
+    debug_cause_n               = DBG_CAUSE_NONE;
     debug_mode_n                = debug_mode_q;
     ctrl_fsm_o.debug_csr_save   = 1'b0;
     ctrl_fsm_o.block_data_addr  = 1'b0;
@@ -690,6 +696,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.pc_mux    = PC_BOOT;
             ctrl_fsm_o.pc_set    = 1'b1; // pc_set is required for propagating boot address to dpc (from IF stage)
             ctrl_fsm_ns          = DEBUG_TAKEN;
+            debug_cause_n        = DBG_CAUSE_HALTREQ;
           end else begin
             ctrl_fsm_o.instr_req = 1'b1;
             ctrl_fsm_o.pc_mux    = PC_BOOT;
@@ -740,6 +747,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.halt_wb = 1'b1;
 
           ctrl_fsm_ns = DEBUG_TAKEN;
+          debug_cause_n = DBG_CAUSE_HALTREQ;
         // IRQ
         end else if (pending_interrupt && interrupt_allowed) begin
           ctrl_fsm_o.kill_if = 1'b1;
@@ -805,6 +813,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.halt_wb = 1'b1;
 
           ctrl_fsm_ns = DEBUG_TAKEN;
+          debug_cause_n = sync_debug_cause;
         end else begin
           if (exception_in_wb && exception_allowed) begin
             // Kill all stages
@@ -1030,9 +1039,23 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Need to be after (in parallell with) exception/interrupt handling
           // to ensure mepc and if_pc are set correctly for use in dpc,
           // and to ensure only one instruction can retire during single step
+        // todo: etrigger_wb_i vs etrigger_in_wb
+        // the latter will be 0 while halting WB in case if an ebreak with etrigger match
         if (pending_single_step || etrigger_in_wb) begin
           if (single_step_allowed) begin
             ctrl_fsm_ns = DEBUG_TAKEN;
+            // Check if any higher priority debug cause is present at the same time as step or etrigger.
+            // Haltrequest and synchronous debug are prioritized above single step.
+            // Haltrequest is prioritized above triggers.
+            if (pending_async_debug && async_debug_allowed) begin
+              debug_cause_n = DBG_CAUSE_HALTREQ;
+            end else if (etrigger_wb_i) begin
+              debug_cause_n = DBG_CAUSE_TRIGGER;
+            end else if (pending_sync_debug) begin
+              debug_cause_n = sync_debug_cause;
+            end else begin
+              debug_cause_n = DBG_CAUSE_STEP;
+            end
           end
         end
       end

@@ -943,6 +943,34 @@ end
                     !rf_we_wb_i)
     else `uvm_error("controller", "Register file written during DEBUG_TAKEN state")
 
+  // Debug cause shall be set to 'step' if an interrupt taken during stepping
+  // CLIC pointers may raise 'pending_single_step' even though the have associated exceptions.
+  //   This is normally ok, as the exception will be taken and debug is entered with cause step.
+  //   However, if an exception trigger is enabled, the cause will be trigger instead of step, as triggers are higher priority.
+  //   Exlcuding etriggers for this check.
+  a_irq_step_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    dcsr_i.step &&               // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&    // Not in debug mode
+                    pending_single_step    &&    // Single step is pending
+                    ((ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_IRQ)) ||      // Step caused by taking a non-SHV interrupt
+                     (clic_ptr_in_wb && ex_wb_pipe_i.instr_valid && !etrigger_in_wb))  // Step caused by a CLIC pointer finishing taking a CLIC interrupt
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == DBG_CAUSE_STEP))
+      else `uvm_error("controller", "Wrong debug cause then taking an interrupt during single stepping")
+
+  // Debug cause shall be set to 'step' if an NMI is taken during stepping
+  a_nmi_step_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    dcsr_i.step &&               // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&    // Not in debug mode
+                    pending_single_step    &&    // Single step is pending
+                    (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))  // Step caused by taking an NMI
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == DBG_CAUSE_STEP))
+      else `uvm_error("controller", "Wrong debug cause then taking an NMI during single stepping")
 
 endmodule
 
