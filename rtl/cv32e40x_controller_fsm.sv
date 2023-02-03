@@ -322,21 +322,30 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Exception in WB if the following evaluates to 1
   // Not checking for ex_wb_pipe_i.last_op to enable exceptions to be taken as soon as possible for
   // split load/stores or Zc sequences.
-  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
-                             ex_wb_pipe_i.instr.bus_resp.err                                       ||
-                            ex_wb_pipe_i.illegal_insn                                              ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                   ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
+  //
+  // For ebreak instructions, the following scenarios are possible. Only one scenario could cause an exception:
+  // ebreakm | debug_mode | action
+  //---------|------------|-----------------------------------------
+  //   0     |      0     | Exception
+  //   0     |      1     | Debug entry (restart from dm_halt_addr_i)
+  //   1     |      0     | Debug entry
+  //   1     |      1     | Debug entry (restart from dm_halt_addr_i)
+  //
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                               ||
+                             ex_wb_pipe_i.instr.bus_resp.err                                                        ||
+                            ex_wb_pipe_i.illegal_insn                                                               ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ||
                             (mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
 
   // Set exception cause
-  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                  ? EXC_CAUSE_INSTR_FAULT     :
-                              ex_wb_pipe_i.instr.bus_resp.err                            ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              ex_wb_pipe_i.illegal_insn                                  ? EXC_CAUSE_ILLEGAL_INSN    :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)       ? EXC_CAUSE_ECALL_MMODE     :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)        ? EXC_CAUSE_BREAKPOINT      :
+  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                               ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err                                                         ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn                                                               ? EXC_CAUSE_ILLEGAL_INSN    :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ? EXC_CAUSE_ECALL_MMODE     :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ? EXC_CAUSE_BREAKPOINT      :
                               (mpu_status_wb_i == MPU_WR_FAULT)                      ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (mpu_status_wb_i == MPU_RE_FAULT)
 
@@ -543,14 +552,14 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
 
-  // Do not count if we have an exception in WB, trigger match in WB (we do not execute the instruction at trigger address),
+  // Do not count if we have an exception in WB, ebreak in WB, trigger match in WB (we do not execute the instruction at trigger address),
   // or WB stage is killed or halted.
   // When WB is halted, we do not know (yet) if the instruction will retire or get killed.
   // Halted WB due to debug will result in WB getting killed
   // Halted WB due to fence.i will result in fence.i retire after handshake is done and we count when WB is un-halted
   // ctrl_fsm_o.halt_limited_wb will only be set during SLEEP, and only affect the WB stage (not cs_registers)
   //  In terms of counter events, no event should be counted while either of the WB related halts are asserted.
-  assign wb_counter_event_gated = wb_counter_event && !exception_in_wb && !trigger_match_in_wb &&
+  assign wb_counter_event_gated = wb_counter_event && !exception_in_wb && !ebreak_in_wb && !trigger_match_in_wb &&
                                   !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb && !ctrl_fsm_o.halt_limited_wb;
 
   // Performance counter events
