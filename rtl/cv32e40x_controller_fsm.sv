@@ -325,7 +325,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Exception in WB if the following evaluates to 1
   // Not checking for ex_wb_pipe_i.last_op to enable exceptions to be taken as soon as possible for
   // split load/stores or Zc sequences.
-<<<<<<< HEAD
   //
   // For ebreak instructions, the following scenarios are possible. Only one scenario could cause an exception:
   // ebreakm | debug_mode | action
@@ -340,13 +339,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             ex_wb_pipe_i.illegal_insn                                                               ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ||
-=======
-  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
-                             ex_wb_pipe_i.instr.bus_resp.err                                       ||
-                            ex_wb_pipe_i.illegal_insn                                              ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                   ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
->>>>>>> b48614f (Cleanup after fixing the issue with wrong debug_cause for NMI/interrupt + single step.)
                             (mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
