@@ -325,6 +325,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Exception in WB if the following evaluates to 1
   // Not checking for ex_wb_pipe_i.last_op to enable exceptions to be taken as soon as possible for
   // split load/stores or Zc sequences.
+<<<<<<< HEAD
   //
   // For ebreak instructions, the following scenarios are possible. Only one scenario could cause an exception:
   // ebreakm | debug_mode | action
@@ -339,6 +340,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                             ex_wb_pipe_i.illegal_insn                                                               ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ||
                             (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ||
+=======
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                              ||
+                             ex_wb_pipe_i.instr.bus_resp.err                                       ||
+                            ex_wb_pipe_i.illegal_insn                                              ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                   ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn)                    ||
+>>>>>>> b48614f (Cleanup after fixing the issue with wrong debug_cause for NMI/interrupt + single step.)
                             (mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
@@ -498,10 +506,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Debug pending for any other synchronous reason than single step
   // Note that the WB stage may be killed for interrupts and NMIs, thus invalidating the instruction causing the sync debug entry.
   // Exception triggers to not set pending_sync_debug, as they need to take the single step path through the FSM.
-  assign pending_sync_debug = ((trigger_match_in_wb) ||
-                               (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
-                               (ebreak_in_wb && debug_mode_q)) && // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
-                               !ctrl_fsm_o.kill_wb;
+  assign pending_sync_debug = (trigger_match_in_wb) ||
+                              (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
+                              (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
 
   // Debug pending for external debug request, only if not already in debug mode
   // Ideally the !debug_mode_q below should be factored into async_debug_allowed, but
@@ -1013,12 +1020,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             end
           end
 
+          // The following if statements are in parallel with the main decision tree.
+          // If any of these would be part of the decision tree, they could mask jumps and branches
+          // from being taken.
           // CLIC pointer in ID clears pointer fetch flag
           if (clic_ptr_in_id && id_valid_i && ex_ready_i) begin
             clic_ptr_in_progress_id_clear = 1'b1;
           end
 
           // Regular mret in WB restores CSR regs
+          // todo: add !ctrl_fsm_o.halt_wb below (should be SEC clean)
           if (mret_in_wb && !ctrl_fsm_o.kill_wb) begin
             ctrl_fsm_o.csr_restore_mret  = !debug_mode_q;
           end
@@ -1043,16 +1054,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         if (pending_single_step || etrigger_in_wb) begin
           if (single_step_allowed) begin
             ctrl_fsm_ns = DEBUG_TAKEN;
-            // Check if any higher priority debug cause is present at the same time as step or etrigger.
-            // Haltrequest and synchronous debug are prioritized above single step.
-            // Haltrequest is prioritized above triggers.
-            // If an NMI caused a single step, any pending async debug shall be disregarded (FSM prioritized the NMI)
-            if ((pending_async_debug && async_debug_allowed) && !(pending_nmi && nmi_allowed)) begin
-              debug_cause_n = DBG_CAUSE_HALTREQ;
-            end else if (etrigger_in_wb) begin
+            // etrigger has higher priority than step.
+            // Any other higher priority cause of debug would not be pending is this context
+            //   Async and sync debug entries will halt WB, causing !wb_valid which in turn pulls pending_single_step and etrigger_in_wb low.
+            //   Any taken interrupt or NMI kills WB, also pulling wb_valid low. Pending_single_step will still be high, but any other debug entry
+            //   reason as seen from WB will be deasserted.
+            if (etrigger_in_wb) begin
               debug_cause_n = DBG_CAUSE_TRIGGER;
-            end else if (pending_sync_debug) begin
-              debug_cause_n = sync_debug_cause;
             end else begin
               debug_cause_n = DBG_CAUSE_STEP;
             end

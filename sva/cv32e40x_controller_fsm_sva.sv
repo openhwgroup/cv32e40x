@@ -806,6 +806,12 @@ end
                     (mret_in_wb && wb_valid_i) |-> ctrl_fsm_o.csr_restore_mret)
     else `uvm_error("controller", "MRET in WB did not result in csr_restore_mret.")
 
+  // MRET in WB shall not update CSRs if WB stage is halted (debug entry)
+  a_mret_in_wb_halt_csr_restore_mret:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (mret_in_wb && ctrl_fsm_o.halt_wb) |-> !ctrl_fsm_o.csr_restore_mret)
+      else `uvm_error("controller", "MRET in WB restored CSRs when WB was halted.")
+
   // No CSR should be updated during sleep, and hence no irq_enable_stall should be active.
   a_no_irq_write_during_sleep:
   assert property (@(posedge clk) disable iff (!rst_n)
@@ -1006,13 +1012,26 @@ end
       else `uvm_error("controller", "Wrong debug cause when single stepping an ebreak without dcsr.ebreakm set")
 
   // Any synchronous debug entry cause has priority over single step
+  // If a pending_sync_debug is allowed to be taken at the same time as a pending_single_step, it must be because an interupt or NMI
+  // caused the step, and thus wb_valid must not be 1.
   a_step_vs_sync_debug_cause:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    pending_sync_debug &&
+                    (pending_sync_debug && sync_debug_allowed) &&
                     (ctrl_fsm_cs == FUNCTIONAL)
                     |->
-                    !pending_single_step)
+                    !(pending_single_step && wb_valid_i))
       else `uvm_error("controller", "Flagging single step pending while there is a pending synchronous debug reason")
+
+  // Any asynchronous debug entry cause has priority over single step
+  // If a pending_async_debug is allowed to be taken at the same time as a pending_single_step, it must be because an interupt or NMI
+  // caused the step, and thus wb_valid must not be 1.
+  a_step_vs_async_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (pending_async_debug && async_debug_allowed) &&
+                    (ctrl_fsm_cs == FUNCTIONAL)
+                    |->
+                    !(pending_single_step && wb_valid_i))
+      else `uvm_error("controller", "Flagging single step pending while there is a pending asynchronous debug reason")
 
 endmodule
 
