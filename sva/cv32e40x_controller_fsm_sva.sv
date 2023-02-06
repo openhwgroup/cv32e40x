@@ -65,6 +65,7 @@ module cv32e40x_controller_fsm_sva
   input logic           fencei_flush_ack_i,
   input logic           fencei_req_and_ack_q,
   input logic           pending_async_debug,
+  input logic           pending_sync_debug,
   input logic           async_debug_allowed,
   input logic           sync_debug_allowed,
   input logic           pending_interrupt,
@@ -116,7 +117,8 @@ module cv32e40x_controller_fsm_sva
   input logic           wfe_in_wb,
   input mstatus_t       mstatus_i,
   input logic           woke_to_interrupt_q,
-  input logic           woke_to_debug_q
+  input logic           woke_to_debug_q,
+  input logic           ebreak_in_wb
 );
 
 
@@ -804,6 +806,12 @@ end
                     (mret_in_wb && wb_valid_i) |-> ctrl_fsm_o.csr_restore_mret)
     else `uvm_error("controller", "MRET in WB did not result in csr_restore_mret.")
 
+  // MRET in WB shall not update CSRs if WB stage is halted (debug entry)
+  a_mret_in_wb_halt_csr_restore_mret:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      (mret_in_wb && ctrl_fsm_o.halt_wb) |-> !ctrl_fsm_o.csr_restore_mret)
+      else `uvm_error("controller", "MRET in WB restored CSRs when WB was halted.")
+
   // No CSR should be updated during sleep, and hence no irq_enable_stall should be active.
   a_no_irq_write_during_sleep:
   assert property (@(posedge clk) disable iff (!rst_n)
@@ -943,6 +951,87 @@ end
                     !rf_we_wb_i)
     else `uvm_error("controller", "Register file written during DEBUG_TAKEN state")
 
+  // Debug cause shall be set to 'step' if an interrupt is taken during stepping
+  // Interrupt will kill any potential synchronous debug cause that is present in the WB stage.
+  a_irq_step_noetrig_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == FUNCTIONAL) &&
+                    dcsr_i.step &&               // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&    // Not in debug mode
+                    pending_single_step    &&    // Single step is pending
+                    !etrigger_in_wb        &&    // No exception trigger (would get higher priority cause 'trigger')
+                    ((ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_IRQ)) ||      // Step caused by taking a non-SHV interrupt
+                     (clic_ptr_in_wb && ex_wb_pipe_i.instr_valid))                     // or step caused by a CLIC pointer finishing taking a CLIC interrupt
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == DBG_CAUSE_STEP))
+      else `uvm_error("controller", "Wrong debug cause when taking an interrupt during single stepping")
+
+  // While single stepping, debug cause shall be set to 'trigger' if a pointer for a SHV CLIC interrupt arrives in WB
+  // with an exception and an exception trigger that matches the exception has been configured. (trigger > step)
+  a_irq_step_etrig_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == FUNCTIONAL) &&
+                    dcsr_i.step &&               // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&    // Not in debug mode
+                    pending_single_step    &&    // Single step is pending
+                    etrigger_in_wb         &&    // Exception trigger in CLIC pointer fetch
+                    (clic_ptr_in_wb && ex_wb_pipe_i.instr_valid)  // Step caused by an excepted CLIC pointer finishing taking a CLIC interrupt
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == DBG_CAUSE_TRIGGER))
+      else `uvm_error("controller", "Wrong debug cause when taking a SHV interrupt with exception trigger on the pointer fetch")
+
+  // Debug cause shall be set to 'step' if an NMI is taken during stepping
+  // Taking an NMI has priority above async debug, so in case of a debug_req_i at the same cycle debug_cause should be 'step' and not 'haltreq'.
+  a_nmi_step_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == FUNCTIONAL) &&
+                    dcsr_i.step &&               // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&    // Not in debug mode
+                    pending_single_step    &&    // Single step is pending
+                    (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))  // Step caused by taking an NMI
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == DBG_CAUSE_STEP))
+      else `uvm_error("controller", "Wrong debug cause when taking an NMI during single stepping")
+
+  // Single stepping an ebreak (that is not killed) with dcsr.ebreakm==0 shall result in either debug cause being step or
+  // trigger, depending on if an exception trigger was configured or not.
+  a_irq_step_ebreak_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (ctrl_fsm_cs == FUNCTIONAL) &&
+                    dcsr_i.step &&                      // single stepping enabled in dcsr
+                    !ctrl_fsm_o.debug_mode &&           // Not in debug mode
+                    pending_single_step    &&           // Single step is pending
+                    ebreak_in_wb && !dcsr_i.ebreakm &&  // Ebreak exception in WB
+                    !ctrl_fsm_o.kill_wb                 // Ebreak instruction not killed (by NMI or interrupt)
+                    |=>
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    (debug_cause_q == ($past(etrigger_in_wb) ? DBG_CAUSE_TRIGGER : DBG_CAUSE_STEP)))
+      else `uvm_error("controller", "Wrong debug cause when single stepping an ebreak without dcsr.ebreakm set")
+
+  // Any synchronous debug entry cause has priority over single step
+  // If a pending_sync_debug is allowed to be taken at the same time as a pending_single_step, it must be because an interupt or NMI
+  // caused the step, and thus wb_valid must not be 1.
+  a_step_vs_sync_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (pending_sync_debug && sync_debug_allowed) &&
+                    (ctrl_fsm_cs == FUNCTIONAL)
+                    |->
+                    !(pending_single_step && wb_valid_i))
+      else `uvm_error("controller", "Flagging single step pending while there is a pending synchronous debug reason")
+
+  // Any asynchronous debug entry cause has priority over single step
+  // If a pending_async_debug is allowed to be taken at the same time as a pending_single_step, it must be because an interupt or NMI
+  // caused the step, and thus wb_valid must not be 1.
+  a_step_vs_async_debug_cause:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (pending_async_debug && async_debug_allowed) &&
+                    (ctrl_fsm_cs == FUNCTIONAL)
+                    |->
+                    !(pending_single_step && wb_valid_i))
+      else `uvm_error("controller", "Flagging single step pending while there is a pending asynchronous debug reason")
 
 endmodule
 
