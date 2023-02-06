@@ -497,7 +497,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Debug pending for any other synchronous reason than single step
   // Note that the WB stage may be killed for interrupts and NMIs, thus invalidating the instruction causing the sync debug entry.
-  // Exception triggers to not set pending_sync_debug, as they need to take the single step path through the FSM.
+  // Exception triggers do not set pending_sync_debug, as they need to take the single step path through the FSM.
   assign pending_sync_debug = (trigger_match_in_wb) ||
                               (ebreak_in_wb && dcsr_i.ebreakm && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) && !debug_mode_q) || // Ebreak with dcsr.ebreakm==1  during machine mode
                               (ebreak_in_wb && debug_mode_q); // Ebreak during debug_mode restarts execution from dm_halt_addr, as a regular debug entry without CSR updates.
@@ -1043,6 +1043,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           // Need to be after (in parallell with) exception/interrupt handling
           // to ensure mepc and if_pc are set correctly for use in dpc,
           // and to ensure only one instruction can retire during single step
+        // Triggers other than exception trigger do not cause any state change before debug entry.
+        // Exception triggers do all the side effects off taking an exception (mcause, mepc etc) but without
+        // executing the first handler instruction before debug entry. If an exception trigger factored into
+        // 'pending_sync_debug' instead og the single step logic, then these side effects of taking the exception would not occur, since exceptions
+        // are prioritized below all debug entries in the FSM.
         if (pending_single_step || etrigger_in_wb) begin
           if (single_step_allowed) begin
             ctrl_fsm_ns = DEBUG_TAKEN;
