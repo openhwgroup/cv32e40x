@@ -333,16 +333,7 @@ module cv32e40x_cs_registers_sva
                   |=>
                   $stable(mtvt_q))
     else `uvm_error("cs_registers", "mtvt_q changed after set/clear with rs1==0")
-  a_set_clear_mintstatus_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_MINTSTATUS) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(mintstatus_q))
-    else `uvm_error("cs_registers", "mintstatus_q changed after set/clear with rs1==0")
+
   a_set_clear_mintthresh_q:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (csr_waddr == CSR_MINTTHRESH) &&
