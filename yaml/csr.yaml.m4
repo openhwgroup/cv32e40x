@@ -4379,7 +4379,7 @@ ifelse(eval(CLIC != 0), 1, [[[
 - csr: mintstatus
   description: >
     Machine interrupt status
-  address: 0x346
+  address: 0xF46
   privilege_mode: M
   rv32:
     - field_name: MIL

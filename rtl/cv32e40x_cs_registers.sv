@@ -224,9 +224,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mscratchcswl_n, mscratchcswl_rdata;
   logic                         mscratchcswl_we;
 
-  logic [31:0]                  mclicbase_n, mclicbase_rdata;                   // No CSR module instance
-  logic                         mclicbase_we;                                   // Not used in RTL (used by RVFI)
-
   logic [31:0]                  mip_n, mip_rdata;                               // No CSR module instance
   logic                         mip_we;                                         // Not used in RTL (used by RVFI)
 
@@ -472,16 +469,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
             // return rs1 for writing to GPR
             csr_rdata_int = id_ex_pipe_i.alu_operand_a;
           end
-        end else begin
-          csr_rdata_int    = '0;
-          illegal_csr_read = 1'b1;
-        end
-      end
-
-      // mclicbase: CLIC Base
-      CSR_MCLICBASE: begin
-        if (SMCLIC) begin
-          csr_rdata_int = mclicbase_rdata;
         end else begin
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
@@ -735,9 +722,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mip_n                    = mip_rdata; // Read only;
       mip_we                   = 1'b0;
 
-      mclicbase_n              = '0; // Read only, tieing to zero for now.
-      mclicbase_we             = 1'b0;
-
       mcause_n                 = '{
                                     irq:            csr_wdata_int[31],
                                     minhv:          csr_wdata_int[30],
@@ -774,9 +758,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       mip_n                    = mip_rdata; // Read only;
       mip_we                   = 1'b0;
-
-      mclicbase_n              = '0;
-      mclicbase_we             = 1'b0;
 
       mcause_n                 = '{
                                     irq:            csr_wdata_int[31],
@@ -933,12 +914,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
               mscratchcswl_we = 1'b1;
               mscratch_we     = 1'b1;
             end
-          end
-        end
-
-        CSR_MCLICBASE: begin
-          if (SMCLIC) begin
-            mclicbase_we = 1'b1;
           end
         end
 
@@ -1469,7 +1444,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mtvec_rdata        = mtvec_q;
   assign mtvt_rdata         = mtvt_q;
   assign mintstatus_rdata   = mintstatus_q;
-  assign mclicbase_rdata    = 32'h00000000;
   assign mie_rdata          = mie_q;
 
   // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
@@ -1906,7 +1880,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   assign unused_signals = mstatush_we | misa_we | mip_we | mvendorid_we |
     marchid_we | mimpid_we | mhartid_we | mconfigptr_we | mtval_we | (|mnxti_n) | mscratchcsw_we | mscratchcswl_we |
-    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n) | (|mclicbase_n) | mclicbase_we |
+    (|mscratchcsw_rdata) | (|mscratchcswl_rdata) | (|mscratchcsw_n) | (|mscratchcswl_n) |
     mscratchcsw_in_wb | mscratchcswl_in_wb | mnxti_in_wb;
 
 endmodule

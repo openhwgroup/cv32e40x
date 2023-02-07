@@ -64,7 +64,6 @@ package cv32e40x_rvfi_pkg;
     logic        [31:0] mintthresh;
     logic        [31:0] mscratchcsw;
     logic        [31:0] mscratchcswl;
-    logic        [31:0] mclicbase;
     logic        [31:0] tselect;
     logic [ 3:0] [31:0] tdata;
     logic        [31:0] tinfo;

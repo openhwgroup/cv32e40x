@@ -179,9 +179,6 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_mscratchcswl_n_i,
    input logic [31:0]                         csr_mscratchcswl_q_i,
    input logic                                csr_mscratchcswl_we_i,
-   input logic [31:0]                         csr_mclicbase_n_i,
-   input logic [31:0]                         csr_mclicbase_q_i,
-   input logic                                csr_mclicbase_we_i,
    input logic [31:0]                         csr_tdata1_n_i,
    input logic [31:0]                         csr_tdata1_q_i,
    input logic                                csr_tdata1_we_i,
@@ -409,10 +406,6 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_mscratchcswl_wmask,
    output logic [31:0]                        rvfi_csr_mscratchcswl_rdata,
    output logic [31:0]                        rvfi_csr_mscratchcswl_wdata,
-   output logic [31:0]                        rvfi_csr_mclicbase_rmask,
-   output logic [31:0]                        rvfi_csr_mclicbase_wmask,
-   output logic [31:0]                        rvfi_csr_mclicbase_rdata,
-   output logic [31:0]                        rvfi_csr_mclicbase_wdata,
    output logic [31:0]                        rvfi_csr_tselect_rmask,
    output logic [31:0]                        rvfi_csr_tselect_wmask,
    output logic [31:0]                        rvfi_csr_tselect_rdata,
@@ -1402,11 +1395,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mscratchcswl       = csr_mscratchcswl_n_i;
   assign rvfi_csr_wmask_d.mscratchcswl       = csr_mscratchcswl_we_i ? '1 : '0;
 
-  assign rvfi_csr_rdata_d.mclicbase          = csr_mclicbase_q_i;
-  assign rvfi_csr_rmask_d.mclicbase          = '1;
-  assign rvfi_csr_wdata_d.mclicbase          = csr_mclicbase_n_i;
-  assign rvfi_csr_wmask_d.mclicbase          = csr_mclicbase_we_i ? '1 : '0;
-
   // Trigger
   assign rvfi_csr_rdata_d.tselect            = csr_tselect_q_i;
   assign rvfi_csr_rmask_d.tselect            = '1;
@@ -1777,10 +1765,6 @@ module cv32e40x_rvfi
   assign rvfi_csr_mscratchcswl_rmask      = rvfi_csr_rmask.mscratchcswl;
   assign rvfi_csr_mscratchcswl_wdata      = rvfi_csr_wdata.mscratchcswl;
   assign rvfi_csr_mscratchcswl_wmask      = rvfi_csr_wmask.mscratchcswl;
-  assign rvfi_csr_mclicbase_rdata         = rvfi_csr_rdata.mclicbase;
-  assign rvfi_csr_mclicbase_rmask         = rvfi_csr_rmask.mclicbase;
-  assign rvfi_csr_mclicbase_wdata         = rvfi_csr_wdata.mclicbase;
-  assign rvfi_csr_mclicbase_wmask         = rvfi_csr_wmask.mclicbase;
   assign rvfi_csr_tselect_rdata           = rvfi_csr_rdata.tselect;
   assign rvfi_csr_tselect_rmask           = rvfi_csr_rmask.tselect;
   assign rvfi_csr_tselect_wdata           = rvfi_csr_wdata.tselect;
