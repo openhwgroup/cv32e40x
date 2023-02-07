@@ -39,6 +39,9 @@ It follows these specifications:
 .. [RISC-V-PRIV] RISC-V Instruction Set Manual, Volume II: Privileged Architecture, Document Version 20211105-signoff (November 5, 2021),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20211105-c30284b/riscv-privileged.pdf
 
+.. [RISC-V-RV32E] RISC-V Instruction Set Manual, Volume I: User-Level ISA, RV32E Base Integer Instruction Set, Document version 20191214-draft (January 31, 2023),
+   https://github.com/riscv/riscv-isa-manual/releases/download/draft-20230131-c0b298a/riscv-spec.pdf
+
 .. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, 246028cd719426597269b3d717c866802c58bde7,
    https://github.com/riscv/riscv-debug-spec/blob/05252da1575610e9605d882145da3f4e7f4f3cb1/riscv-debug-stable.pdf 
 
@@ -65,7 +68,7 @@ It follows these specifications:
 
 Many features in the RISC-V specification are optional, and |corev| can be parameterized to enable or disable some of them.
 
-|corev| supports one of the following base integer instruction sets from [RISC-V-UNPRIV]_.
+|corev| supports one of the following base integer instruction sets: 
 
 .. list-table:: |corev| Base Instruction Set
    :header-rows: 1
@@ -76,11 +79,11 @@ Many features in the RISC-V specification are optional, and |corev| can be param
      - Configurability
 
    * - **RV32I**: RV32I Base Integer Instruction Set
-     - 2.1
+     - 2.1 (from [RISC-V-UNPRIV]_)
      - optionally enabled with the ``RV32`` parameter
 
    * - **RV32E**: RV32E Base Integer Instruction Set
-     - 1.9 (not ratified yet)
+     - 2.0 (from [RISC-V-RV32E]_)
      - optionally enabled with the ``RV32`` parameter
 
 In addition, the following standard instruction set extensions are available from [RISC-V-UNPRIV]_, [RISC-V-ZBA_ZBB_ZBC_ZBS]_, [RISC-V-CRYPTO]_ and [RISC-V-ZCA_ZCB_ZCMP_ZCMT]_.
