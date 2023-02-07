@@ -327,29 +327,31 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // split load/stores or Zc sequences.
   //
   // For ebreak instructions, the following scenarios are possible. Only one scenario could cause an exception:
-  // ebreakm | debug_mode | action
-  //---------|------------|-----------------------------------------
-  //   0     |      0     | Exception
-  //   0     |      1     | Debug entry (restart from dm_halt_addr_i)
-  //   1     |      0     | Debug entry
-  //   1     |      1     | Debug entry (restart from dm_halt_addr_i)
+  // priv_lvl | ebreakm | debug_mode | action
+  //----------|---------|------------|-----------------------------------------
+  //   M      |   0     |      0     | Exception
+  //   M      |   0     |      1     | Debug entry (restart from dm_halt_addr_i)
+  //   M      |   1     |      0     | Debug entry
+  //   M      |   1     |      1     | Debug entry (restart from dm_halt_addr_i)
   //
-  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                               ||
-                             ex_wb_pipe_i.instr.bus_resp.err                                                        ||
-                            ex_wb_pipe_i.illegal_insn                                                               ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ||
-                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ||
+  assign exception_in_wb = ((ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                                      ||
+                             ex_wb_pipe_i.instr.bus_resp.err                                                               ||
+                             ex_wb_pipe_i.illegal_insn                                                                     ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                           ||
+                            (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) &&
+                              !dcsr_i.ebreakm && !debug_mode_q) ||
                             (mpu_status_wb_i != MPU_OK)) && ex_wb_pipe_i.instr_valid;
 
   assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
 
   // Set exception cause
-  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                               ? EXC_CAUSE_INSTR_FAULT     :
-                              ex_wb_pipe_i.instr.bus_resp.err                                                         ? EXC_CAUSE_INSTR_BUS_FAULT :
-                              ex_wb_pipe_i.illegal_insn                                                               ? EXC_CAUSE_ILLEGAL_INSN    :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                    ? EXC_CAUSE_ECALL_MMODE     :
-                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && !dcsr_i.ebreakm && !debug_mode_q) ? EXC_CAUSE_BREAKPOINT      :
-                              (mpu_status_wb_i == MPU_WR_FAULT)                      ? EXC_CAUSE_STORE_FAULT     :
+  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                                      ? EXC_CAUSE_INSTR_FAULT     :
+                              ex_wb_pipe_i.instr.bus_resp.err                                                                ? EXC_CAUSE_INSTR_BUS_FAULT :
+                              ex_wb_pipe_i.illegal_insn                                                                      ? EXC_CAUSE_ILLEGAL_INSN    :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                           ? EXC_CAUSE_ECALL_MMODE     :
+                              (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ebrk_insn && (ex_wb_pipe_i.priv_lvl == PRIV_LVL_M) &&
+                                !dcsr_i.ebreakm && !debug_mode_q)                                                            ? EXC_CAUSE_BREAKPOINT      :
+                              (mpu_status_wb_i == MPU_WR_FAULT)                                                              ? EXC_CAUSE_STORE_FAULT     :
                               EXC_CAUSE_LOAD_FAULT; // (mpu_status_wb_i == MPU_RE_FAULT)
 
   assign ctrl_fsm_o.exception_cause_wb = exception_cause_wb;
