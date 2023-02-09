@@ -250,6 +250,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_wpt_match_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
+  lsu_atomic_e lsu_atomic_wb;
 
   logic        lsu_valid_0;             // Handshake with EX
   logic        lsu_ready_ex;
@@ -680,6 +681,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
     .lsu_wpt_match_1_o     ( lsu_wpt_match_wb   ),
+    .lsu_atomic_1_o        ( lsu_atomic_wb      ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)

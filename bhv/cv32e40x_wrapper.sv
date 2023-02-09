@@ -347,6 +347,9 @@ module cv32e40x_wrapper
                 .irq_ack                          (core_i.irq_ack),
                 .mie_n                            (core_i.cs_registers_i.mie_n),
                 .mie_we                           (core_i.cs_registers_i.mie_we),
+                .lsu_exception_wb                 (core_i.wb_stage_i.lsu_exception),
+                .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
+                .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
                 .*);
 generate
 if (SMCLIC) begin : clic_asserts
