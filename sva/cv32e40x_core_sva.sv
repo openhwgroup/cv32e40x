@@ -83,6 +83,8 @@ module cv32e40x_core_sva
   input logic        instr_dbg_o,
   input logic [1:0]  data_memtype_o,
   input logic        data_req_o,
+  input logic        data_gnt_i,
+  input logic        data_rvalid_i,
   input logic        data_we_o,
   input logic [5:0]  data_atop_o,
 
@@ -439,9 +441,53 @@ end
                          (lsu_atomic_wb == AT_NONE))
           else `uvm_error("core", "Atomic operations should never occur without A-extension enabled")
 
+      a_never_atomic_stall:
+      assert property (@(posedge clk) disable iff (!rst_ni)
+                       !ctrl_byp.atomic_stall)
+          else `uvm_error("core", "Stalling for atomics without A_EXT enabled")
+
 
     end
     else begin
+      // Helper logic:
+      /////////////////////////////////////////////////////////////
+      // Count outstanding transaction on the data OBI bus
+      logic count_up;
+      logic count_down;
+      logic [1:0] next_cnt;
+      logic [1:0] cnt_q;
+      assign count_up = data_req_o && data_gnt_i;
+      assign count_down = data_rvalid_i;
+
+      always_comb begin
+        case ({count_up, count_down})
+          2'b00 : begin
+            next_cnt = cnt_q;
+          end
+          2'b01 : begin
+            next_cnt = cnt_q - 1'b1;
+          end
+          2'b10 : begin
+            next_cnt = cnt_q + 1'b1;
+          end
+          2'b11 : begin
+            next_cnt = cnt_q;
+          end
+          default:;
+        endcase
+      end
+
+      always_ff @(posedge clk, negedge rst_ni)
+      begin
+        if (rst_ni == 1'b0) begin
+          cnt_q <= '0;
+        end else begin
+          cnt_q <= next_cnt;
+        end
+      end
+
+      /////////////////////////////////////////////////////////////
+
       // Check that atomic operations are always non-bufferable
       a_atomic_non_bufferable :
         assert property (@(posedge clk) disable iff (!rst_ni)
@@ -474,6 +520,28 @@ end
                         |->
                         (lsu_rdata_wb == 32'h0))
           else `uvm_error("core", "Register file not written with 0 on SC success.")
+
+      // Do not allow any atomic address phase in EX if there are unfinished LSU instructions in WB
+      // This implies that there shall be no outstanding transactions on the OBI bus (cnt_q == 0)
+      a_no_atop_until_lsu_clear:
+        assert property (@(posedge clk) disable iff (!rst_ni)
+                        (cnt_q != 2'b00)
+                        |->
+                        !(data_atop_o[5] && data_req_o))
+          else `uvm_error("core", "Atomic instruction allowed on bus while there are outstanding transactions")
+
+      // Do not allow any memory address phase in EX if there are unfinished atomic instructions in WB
+      // This implies that if an atomic is in WB, the outstanding counter must be 1.
+      a_no_lsu_until_atop_clear:
+        assert property (@(posedge clk) disable iff (!rst_ni)
+                        (ex_wb_pipe.lsu_en && ex_wb_pipe.instr_valid) &&   // Valid LSU instruction in WB
+                        (lsu_atomic_wb != AT_NONE) &&                      // LSU instruction is atomic
+                        !(lsu_exception_wb || lsu_wpt_match_wb)            // No exception or watchpoint (it reached the bus)
+                        |->
+                        !data_req_o &&
+                        (cnt_q == 2'b01))
+            else `uvm_error("core", "Non-atomic LSU instruction allowed on bus before preceeding atomic is finished")
+
     end
   endgenerate
 
