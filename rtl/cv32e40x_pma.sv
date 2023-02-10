@@ -118,6 +118,14 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       pma_err_o = 1'b1;
     end
 
+    // Check that atomic accesses are not misaligned
+    // Not strictly at part of the PMA, but reusing the PMA logic for flagging errors
+    // and consume transactions rather than making separate logic in the LSU. Uses the same exception
+    // codes as PMA errors.
+    if (atomic_access_i && misaligned_access_i) begin
+      pma_err_o = 1'b1;
+    end
+
     // Instruction fetches only allowed in main memory
     if (instr_fetch_access_i && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
