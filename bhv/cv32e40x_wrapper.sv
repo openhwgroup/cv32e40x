@@ -149,6 +149,8 @@ module cv32e40x_wrapper
   output logic        debug_havereset_o,
   output logic        debug_running_o,
   output logic        debug_halted_o,
+  output logic        debug_pc_valid_o,
+  output logic [31:0] debug_pc_o,
 
   // CPU Control Signals
   input  logic        fetch_enable_i,

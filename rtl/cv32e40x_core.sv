@@ -128,6 +128,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   output logic                          debug_havereset_o,
   output logic                          debug_running_o,
   output logic                          debug_halted_o,
+  output logic                          debug_pc_valid_o,
+  output logic [31:0]                   debug_pc_o,
 
   // CPU control signals
   input  logic                          fetch_enable_i,
@@ -374,6 +376,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign debug_havereset_o = ctrl_fsm.debug_havereset;
   assign debug_halted_o    = ctrl_fsm.debug_halted;
   assign debug_running_o   = ctrl_fsm.debug_running;
+  assign debug_pc_valid_o  = ctrl_fsm.mhpmevent.minstret;
+  assign debug_pc_o        = ex_wb_pipe.pc;
 
   // Used (only) by verification environment
   assign irq_ack   = ctrl_fsm.irq_ack;
