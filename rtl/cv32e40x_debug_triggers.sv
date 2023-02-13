@@ -66,6 +66,7 @@ import cv32e40x_pkg::*;
   input  logic        lsu_we_ex_i,
   input  logic [3:0]  lsu_be_ex_i,
   input  privlvl_t    priv_lvl_ex_i,
+  input  lsu_atomic_e lsu_atomic_ex_i,
 
   // WB stage inputs
   input  privlvl_t    priv_lvl_wb_i,
@@ -331,7 +332,8 @@ import cv32e40x_pkg::*;
                                            (tdata1_rdata[idx][MCONTROL2_6_U] && (priv_lvl_ex_i == PRIV_LVL_U));
 
         // Enable LSU address matching
-        assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_rdata[idx][MCONTROL2_6_LOAD] && !lsu_we_ex_i) || (tdata1_rdata[idx][MCONTROL2_6_STORE] && lsu_we_ex_i));
+        // AMO transactions have lsu_we_ex_i == 1'b1, but also perform a read. Thus AMOs will also match loads regardless of the rf_we bit.
+        assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_rdata[idx][MCONTROL2_6_LOAD] && (!lsu_we_ex_i || (lsu_atomic_ex_i == AT_AMO))) || (tdata1_rdata[idx][MCONTROL2_6_STORE] && lsu_we_ex_i));
 
         // Signal trigger match for LSU address
         assign trigger_match_ex[idx] = ((tdata1_rdata[idx][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL)   ||

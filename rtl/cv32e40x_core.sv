@@ -849,7 +849,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_ex_i             ( lsu_valid_ex           ),
     .lsu_addr_ex_i              ( lsu_addr_ex            ),
     .lsu_we_ex_i                ( lsu_we_ex              ),
-    .lsu_be_ex_i                ( lsu_be_ex              )
+    .lsu_be_ex_i                ( lsu_be_ex              ),
+    .lsu_atomic_ex_i            ( lsu_atomic_ex          )
   );
 
   ////////////////////////////////////////////////////////////////////

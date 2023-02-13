@@ -279,6 +279,7 @@ module cv32e40x_wrapper
                                 .tselect_q     (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tselect_q),
                                 .tdata1_q      (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tdata1_q),
                                 .tdata2_q      (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tdata2_q),
+                                .lsu_addr_match_en (core_i.cs_registers_i.debug_triggers_i.gen_triggers.lsu_addr_match_en),
                                 .*);
     end
   endgenerate
