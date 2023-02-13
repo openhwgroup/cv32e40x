@@ -61,7 +61,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
   output logic        lsu_first_op_0_o,         // First operation is active in EX
   output logic        lsu_last_op_0_o,          // Last operation is active in EX
-  output lsu_atomic_e lsu_atomic_0_o,           // IS there an atomic in EX, and of which type
+  output lsu_atomic_e lsu_atomic_0_o,           // Is there an atomic in EX, and of which type
 
   // outputs to trigger module
   output logic [31:0] lsu_addr_o,
