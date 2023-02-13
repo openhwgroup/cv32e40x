@@ -1087,6 +1087,15 @@ typedef struct packed
   logic        accepted;  // Was the offloaded instruction accepted or not?
 } xif_meta_t;
 
+// Struct for signaling if there is an atomic LSU instruction, and of which type
+typedef enum logic [1:0]
+{
+  AT_NONE   = 2'b00,  // There is no atomic instruction
+  AT_LR     = 2'b01,  // Atomic of LR.W type
+  AT_SC     = 2'b10,  // Atomic of SC.W type
+  AT_AMO    = 2'b11   // Atomic of AMO type
+} lsu_atomic_e;
+
 // IF/ID pipeline
 typedef struct packed {
   logic        instr_valid;
@@ -1266,6 +1275,7 @@ typedef struct packed {
   logic         id_stage_abort;         // Same signal as deassert_we, with better name for use in the controller.
   logic         xif_exception_stall;    // Stall (EX) if xif insn in WB can cause an exception
   logic         irq_enable_stall;       // Stall (EX) if an interrupt may be enabled by the instruction in WB.
+  logic         atomic_stall;           // Stall (EX) if an Atomic/non-atomic LSU is in EX while an non-atomic/Atomic is in WB
 } ctrl_byp_t;
 
 // Controller FSM outputs

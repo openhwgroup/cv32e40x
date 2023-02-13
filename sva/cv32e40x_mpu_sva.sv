@@ -235,6 +235,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
   assign pma_expected_err = (instr_fetch_access && !pma_expected_cfg.main)  ||
                             (misaligned_access_i && !pma_expected_cfg.main) ||
                             (atomic_access_i && !pma_expected_cfg.atomic)   ||
+                            (misaligned_access_i && atomic_access_i)        ||
                             (core_trans_pushpop_i && !pma_expected_cfg.main);
   a_pma_expect_cfg :
     assert property (@(posedge clk) disable iff (!rst_n) pma_cfg == pma_expected_cfg)
@@ -434,6 +435,18 @@ if (A_EXT) begin
                     !bus_trans_cacheable &&
                     !bus_trans_bufferable)
         else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
+
+  // All atomic operations must be naturally aligned
+  // CV32E40X only support 32-bit accesses, and thus all atomics must be 4-byte aligned.
+  a_atomic_word_align:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  core_trans_valid_i &&
+                  atomic_access_i &&
+                  !pma_err
+                  |->
+                  (core_trans_i.addr[1:0] == 2'b00))
+        else `uvm_error("mpu", "Misaligned atomic instruction not flagged with error")
+
 end
 endmodule : cv32e40x_mpu_sva
 

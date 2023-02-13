@@ -163,7 +163,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Busy signals
   logic        if_busy;
-  logic        lsu_busy;
+  logic        lsu_busy;       // LSU is busy, outstanding OBI or new transaction being initiated
+  logic        lsu_bus_busy;   // LSU has outstanding transactions on the OBI bus
   logic        lsu_interruptible;
 
   // ID/EX pipeline
@@ -248,10 +249,12 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_split_ex;
   logic        lsu_first_op_ex;
   logic        lsu_last_op_ex;
+  lsu_atomic_e lsu_atomic_ex;
   mpu_status_e lsu_mpu_status_wb;
   logic        lsu_wpt_match_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
+  lsu_atomic_e lsu_atomic_wb;
 
   logic        lsu_valid_0;             // Handshake with EX
   logic        lsu_ready_ex;
@@ -660,6 +663,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
     // Control signals
     .busy_o                ( lsu_busy           ),
+    .bus_busy_o            ( lsu_bus_busy       ),
     .interruptible_o       ( lsu_interruptible  ),
 
     // Trigger match
@@ -669,6 +673,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_split_0_o         ( lsu_split_ex       ),
     .lsu_first_op_0_o      ( lsu_first_op_ex    ),
     .lsu_last_op_0_o       ( lsu_last_op_ex     ),
+    .lsu_atomic_0_o        ( lsu_atomic_ex      ),
 
     // Outputs to trigger module
     .lsu_addr_o            ( lsu_addr_ex        ),
@@ -684,6 +689,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_rdata_1_o         ( lsu_rdata_wb       ),
     .lsu_mpu_status_1_o    ( lsu_mpu_status_wb  ),
     .lsu_wpt_match_1_o     ( lsu_wpt_match_wb   ),
+    .lsu_atomic_1_o        ( lsu_atomic_wb      ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
@@ -847,7 +853,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_valid_ex_i             ( lsu_valid_ex           ),
     .lsu_addr_ex_i              ( lsu_addr_ex            ),
     .lsu_we_ex_i                ( lsu_we_ex              ),
-    .lsu_be_ex_i                ( lsu_be_ex              )
+    .lsu_be_ex_i                ( lsu_be_ex              ),
+    .lsu_atomic_ex_i            ( lsu_atomic_ex          )
   );
 
   ////////////////////////////////////////////////////////////////////
@@ -862,6 +869,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   cv32e40x_controller
   #(
     .X_EXT                          ( X_EXT                  ),
+    .A_EXT                          ( A_EXT                  ),
     .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS ),
     .SMCLIC                         ( SMCLIC                 ),
     .SMCLIC_ID_WIDTH                ( SMCLIC_ID_WIDTH        )
@@ -914,8 +922,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .data_stall_wb_i                ( data_stall_wb          ),
     .lsu_err_wb_i                   ( lsu_err_wb             ),
     .lsu_busy_i                     ( lsu_busy               ),
+    .lsu_bus_busy_i                 ( lsu_bus_busy           ),
     .lsu_interruptible_i            ( lsu_interruptible      ),
     .lsu_valid_wb_i                 ( lsu_valid_wb           ),
+    .lsu_atomic_ex_i                ( lsu_atomic_ex          ),
+    .lsu_atomic_wb_i                ( lsu_atomic_wb          ),
 
     // jump/branch control
     .branch_decision_ex_i           ( branch_decision_ex     ),

@@ -281,6 +281,7 @@ module cv32e40x_wrapper
                                 .tselect_q     (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tselect_q),
                                 .tdata1_q      (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tdata1_q),
                                 .tdata2_q      (core_i.cs_registers_i.debug_triggers_i.gen_triggers.tdata2_q),
+                                .lsu_addr_match_en (core_i.cs_registers_i.debug_triggers_i.gen_triggers.lsu_addr_match_en),
                                 .*);
     end
   endgenerate
@@ -349,6 +350,9 @@ module cv32e40x_wrapper
                 .irq_ack                          (core_i.irq_ack),
                 .mie_n                            (core_i.cs_registers_i.mie_n),
                 .mie_we                           (core_i.cs_registers_i.mie_we),
+                .lsu_exception_wb                 (core_i.wb_stage_i.lsu_exception),
+                .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
+                .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
                 .*);
 generate
 if (SMCLIC) begin : clic_asserts

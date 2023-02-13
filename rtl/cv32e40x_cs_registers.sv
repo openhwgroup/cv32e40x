@@ -111,7 +111,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   input  logic                          lsu_valid_ex_i,
   input  logic [31:0]                   lsu_addr_ex_i,
   input  logic                          lsu_we_ex_i,
-  input  logic [3:0]                    lsu_be_ex_i
+  input  logic [3:0]                    lsu_be_ex_i,
+  input  lsu_atomic_e                   lsu_atomic_ex_i
 );
 
   localparam logic [31:0] CORE_MISA =
@@ -1582,6 +1583,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       .lsu_we_ex_i         ( lsu_we_ex_i           ),
       .lsu_be_ex_i         ( lsu_be_ex_i           ),
       .priv_lvl_ex_i       ( id_ex_pipe_i.priv_lvl ),
+      .lsu_atomic_ex_i     ( lsu_atomic_ex_i       ),
 
       // WB inputs
       .priv_lvl_wb_i       ( ex_wb_pipe_i.priv_lvl ),

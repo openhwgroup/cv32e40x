@@ -40,7 +40,11 @@ module cv32e40x_debug_triggers_sva
    input ctrl_fsm_t   ctrl_fsm_i,
    input logic [31:0] tselect_q,
    input logic [31:0] tdata1_q[DBG_NUM_TRIGGERS],
-   input logic [31:0] tdata2_q[DBG_NUM_TRIGGERS]
+   input logic [31:0] tdata2_q[DBG_NUM_TRIGGERS],
+   input logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match_en,
+   input privlvl_t    priv_lvl_ex_i,
+   input lsu_atomic_e lsu_atomic_ex_i,
+   input logic        lsu_valid_ex_i
   );
 
 
@@ -81,6 +85,21 @@ module cv32e40x_debug_triggers_sva
                   $stable(tdata2_q)) // Checking stability of ALL tdata2, not just the one selected
     else `uvm_error("debug_triggers", "tdata2_q changed after set/clear with rs1==0")
 
+generate
+  for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin
+    // Since AMOs perform both a read and a write, it must be possible to get a trigger match on its address
+    // when any of the tdata1.LOAD or tdata1.STORE bits are set.
+    a_amo_enable_trig_on_load:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (tdata1_q[idx][MCONTROL2_6_LOAD] || tdata1_q[idx][MCONTROL2_6_STORE]) &&  // Trig on loads or stores enabled
+                      (tdata1_q[idx][MCONTROL2_6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) && // Matches privilege level
+                      (lsu_atomic_ex_i == AT_AMO)  && // An Atomic AMO instruction is in EX
+                      lsu_valid_ex_i
+                      |->
+                      lsu_addr_match_en[idx])    // Address matching must be enabled on the trigger
+        else `uvm_error("debug_triggers", "Address matching not enabled on an AMO instruction when trig on loads are configured")
+  end
+endgenerate
 
 endmodule
 

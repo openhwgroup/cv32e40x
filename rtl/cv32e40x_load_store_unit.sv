@@ -51,6 +51,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Control outputs
   output logic        busy_o,
+  output logic        bus_busy_o,        // There are outstanding OBI transactions
   output logic        interruptible_o,
 
   // Trigger match input
@@ -60,6 +61,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
   output logic        lsu_first_op_0_o,         // First operation is active in EX
   output logic        lsu_last_op_0_o,          // Last operation is active in EX
+  output lsu_atomic_e lsu_atomic_0_o,           // Is there an atomic in EX, and of which type
 
   // outputs to trigger module
   output logic [31:0] lsu_addr_o,
@@ -71,6 +73,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic [31:0] lsu_rdata_1_o,            // LSU read data
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
   output logic        lsu_wpt_match_1_o,        // Address match trigger, WB timing.
+  output lsu_atomic_e lsu_atomic_1_o,           // Is there an atomic in WB, and of which type.
 
   // Handshakes
   input  logic        valid_0_i,                // Handshakes for first LSU stage (EX)
@@ -105,6 +108,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic           mpu_trans_valid;
   logic           mpu_trans_ready;
   logic           mpu_trans_pushpop;
+  logic           mpu_trans_atomic;
   obi_data_req_t  mpu_trans;
 
   // Transaction response
@@ -392,10 +396,45 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   end
 
-  // output to register file
-  // Always rdata_ext regardless of split accesses
-  // Output will be valid (valid_1_o) only for the last phase of split access.
-  assign lsu_rdata_1_o = rdata_ext;
+  // Set rdata output and atomic type output depending on A_EXT
+  generate
+    if (A_EXT) begin : a_ext
+      lsu_atomic_e lsu_atomic_q;
+
+      always_ff @(posedge clk, negedge rst_n)
+      begin
+        if (rst_n == 1'b0) begin
+          lsu_atomic_q     <= AT_NONE;
+        end else if (ctrl_update) begin     // request was granted, we wait for rvalid and can continue to WB
+          if (xif_req) begin
+            lsu_atomic_q   <= AT_NONE;
+          end else begin
+            // Set type of atomic instruction in WB, if any.
+            lsu_atomic_q   <= lsu_atomic_0_o;
+            end
+        end
+      end
+
+      assign lsu_atomic_0_o  = !trans.atop[5]            ? AT_NONE :
+                               (trans.atop[4:0] == 5'h2) ? AT_LR   :
+                               (trans.atop[4:0] == 5'h3) ? AT_SC   :
+                                                           AT_AMO;
+      assign lsu_atomic_1_o = lsu_atomic_q;
+
+      // SC.W must write 0 to rd on success, and 1 on failure. All other instructions including AMO write the response data.
+      assign lsu_rdata_1_o = (lsu_atomic_q == AT_SC) ? {{31{1'b0}}, !resp.bus_resp.exokay} : rdata_ext;
+
+    end else begin : no_a_ext
+      // A_EXT not enabled, tie off outputs.
+      assign lsu_atomic_0_o = AT_NONE;
+      assign lsu_atomic_1_o = AT_NONE;
+
+      // output to register file
+      // Always rdata_ext regardless of split accesses
+      // Output will be valid (valid_1_o) only for the last phase of split access.
+      assign lsu_rdata_1_o = rdata_ext;
+    end
+  endgenerate
 
   // misaligned_access is high for both transfers of a misaligned transfer
   // TODO: Give MPU a separate modified_access_i input
@@ -717,6 +756,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // MPU
   //////////////////////////////////////////////////////////////////////////////
+  assign mpu_trans_atomic = mpu_trans.atop[5];
 
   cv32e40x_mpu
   #(
@@ -734,7 +774,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   (
     .clk                  ( clk                ),
     .rst_n                ( rst_n              ),
-    .atomic_access_i      ( 1'b0               ), // TODO:OE update to support atomic PMA checks
+    .atomic_access_i      ( mpu_trans_atomic   ),
     .misaligned_access_i  ( misaligned_access  ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
@@ -764,6 +804,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       (.clk          ( clk                ),
        .rst_n        ( rst_n              ),
        .busy_o       ( filter_resp_busy   ),
+       .bus_busy_o   ( bus_busy_o         ),
 
        .valid_i      ( filter_trans_valid ),
        .ready_o      ( filter_trans_ready ),
