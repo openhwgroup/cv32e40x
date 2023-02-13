@@ -332,7 +332,7 @@ import cv32e40x_pkg::*;
                                            (tdata1_rdata[idx][MCONTROL2_6_U] && (priv_lvl_ex_i == PRIV_LVL_U));
 
         // Enable LSU address matching
-        // AMO transactions have lsu_we_ex_i == 1'b1, but also perform a read. Thus AMOs will also match loads regardless of the rf_we bit.
+        // AMO transactions have lsu_we_ex_i == 1'b1, but also perform a read. Thus AMOs will also match loads regardless of the lsu_we_we bit.
         assign lsu_addr_match_en[idx] = lsu_valid_ex_i && ((tdata1_rdata[idx][MCONTROL2_6_LOAD] && (!lsu_we_ex_i || (lsu_atomic_ex_i == AT_AMO))) || (tdata1_rdata[idx][MCONTROL2_6_STORE] && lsu_we_ex_i));
 
         // Signal trigger match for LSU address

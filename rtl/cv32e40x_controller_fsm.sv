@@ -643,6 +643,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Also halting EX if an offloaded instruction in WB may cause an exception, such that a following offloaded
     // instruction can correctly receive commit_kill.
     // Halting EX when an instruction in WB may cause an interrupt to become pending.
+    // Halting while handling atomics for the following two scenarios to avoid mix of atomics and non-atomics outstanding at the same time:
+    //   - An atomic is in EX while there is an LSU instruction in WB (including atomics)
+    //   - Any LSU instruction is in EX while there is an outstanding atomic in WB
     ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_ex_stall || ctrl_byp_i.atomic_stall;
     ctrl_fsm_o.halt_wb          = 1'b0;
     ctrl_fsm_o.halt_limited_wb  = 1'b0;

@@ -87,7 +87,9 @@ module cv32e40x_debug_triggers_sva
 
 generate
   for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin
-    a_amo_hit_on_load:
+    // Since AMOs perform both a read and a write, it must be possible to get a trigger match on its address
+    // when any of the tdata1.LOAD or tdata1.STORE bits are set.
+    a_amo_enable_trig_on_load:
       assert property (@(posedge clk) disable iff (!rst_n)
                       (tdata1_q[idx][MCONTROL2_6_LOAD] || tdata1_q[idx][MCONTROL2_6_STORE]) &&  // Trig on loads or stores enabled
                       (tdata1_q[idx][MCONTROL2_6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) && // Matches privilege level

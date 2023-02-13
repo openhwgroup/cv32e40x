@@ -119,7 +119,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
     end
 
     // Check that atomic accesses are not misaligned
-    // Not strictly at part of the PMA, but reusing the PMA logic for flagging errors
+    // Not strictly a part of the PMA, but reusing the PMA logic for flagging errors
     // and consume transactions rather than making separate logic in the LSU. Uses the same exception
     // codes as PMA errors.
     if (atomic_access_i && misaligned_access_i) begin
