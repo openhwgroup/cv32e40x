@@ -2344,11 +2344,20 @@ ifelse(eval(DEBUG != 0), 1, [[[
   rv32:
     - field_name: DPC
       description: >
-        PC to return to after debug.
+        Debug PC[31:1].
       type: RW
       reset_val: 0
       msb: 31
+      lsb: 1
+    - field_name: Zero
+      description: >
+          Debug PC[0] (always zero)
+      type: WARL
+      reset_val: 0
+      msb: 0
       lsb: 0
+      warl_legalize: |
+        val_out = 0
 ]]])
 
 ifelse(eval(DEBUG != 0), 1, [[[
@@ -4074,7 +4083,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 29), 1, [[[
       lsb: 1
     - field_name: Zero
       description: >
-          Always zero
+          Exception PC[0] (always zero)
       type: WARL
       reset_val: 0
       msb: 0
