@@ -119,6 +119,9 @@ module cv32e40x_wrapper
   // Cycle Count
   output logic [63:0] mcycle_o,
 
+  // Time input
+  input  logic [63:0] time_i,
+
   // eXtension interface
   if_xif.cpu_compressed xif_compressed_if,
   if_xif.cpu_issue      xif_issue_if,
