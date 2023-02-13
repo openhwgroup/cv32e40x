@@ -98,6 +98,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]                   clic_pa_o,              // Address to CLIC function pointer
   output logic                          csr_irq_enable_write_o, // An irq enable write is being performed in WB
 
+  // Time input
+  input  logic [63:0]                   time_i,
+
   // CSR write strobes
   output logic                          csr_wr_in_wb_flush_o,
 
@@ -548,6 +551,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_DSCRATCH1: begin
         csr_rdata_int = dscratch1_rdata;
         illegal_csr_read = !ctrl_fsm_i.debug_mode;
+      end
+
+      CSR_TIME: begin
+        csr_rdata_int = time_i[31:0];
+      end
+
+      CSR_TIMEH: begin
+        csr_rdata_int = time_i[63:32];
       end
 
       // Hardware Performance Monitor

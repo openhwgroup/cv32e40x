@@ -352,6 +352,7 @@ typedef enum logic[11:0] {
   CSR_MHPMCOUNTER31H = 12'hB9F,
 
   CSR_CYCLE          = 12'hC00,
+  CSR_TIME           = 12'hC01,
   CSR_INSTRET        = 12'hC02,
   CSR_HPMCOUNTER3    = 12'hC03,
   CSR_HPMCOUNTER4    = 12'hC04,
@@ -384,6 +385,7 @@ typedef enum logic[11:0] {
   CSR_HPMCOUNTER31   = 12'hC1F,
 
   CSR_CYCLEH         = 12'hC80,
+  CSR_TIMEH          = 12'hC81,
   CSR_INSTRETH       = 12'hC82,
   CSR_HPMCOUNTER3H   = 12'hC83,
   CSR_HPMCOUNTER4H   = 12'hC84,

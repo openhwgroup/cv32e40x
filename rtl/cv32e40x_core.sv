@@ -98,6 +98,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Cycle count
   output logic [63:0]                   mcycle_o,
 
+  // Time input
+  input  logic [63:0]                   time_i,
+
   // eXtension interface
   if_xif.cpu_compressed                 xif_compressed_if,
   if_xif.cpu_issue                      xif_issue_if,
@@ -839,6 +842,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mnxti_irq_level_i          ( mnxti_irq_level        ),
     .clic_pa_valid_o            ( csr_clic_pa_valid      ),
     .clic_pa_o                  ( csr_clic_pa            ),
+
+    // Time input
+    .time_i                     ( time_i                 ),
 
     // CSR write strobes
     .csr_wr_in_wb_flush_o       ( csr_wr_in_wb_flush     ),
