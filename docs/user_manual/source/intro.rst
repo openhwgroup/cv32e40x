@@ -198,7 +198,7 @@ Most content of the RISC-V privileged specification is optional.
 
 |corev| supports the following ISA extensions from the RISC-V Debug Support specification [RISC-V-DEBUG]_:
 
-* **Sdext**: External Debug support. Always enabled.
+* **Sdext**: External Debug support. Optionally enabled with the ``DEBUG`` parameter.
 * **Sdtrig**: Trigger Module. Optionally enabled with the ``DBG_NUM_TRIGGERS`` parameter.
 
 Synthesis guidelines

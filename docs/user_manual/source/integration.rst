@@ -25,6 +25,7 @@ Instantiation Template
       .X_RFW_WIDTH                (           32 ),
       .X_MISA                     (        32'h0 ),
       .X_ECS_XS                   (         2'b0 ),
+      .DEBUG                      (            1 ),
       .DM_REGION_START            ( 32'hF0000000 ),
       .DM_REGION_END              ( 32'hF0003FFF ),
       .DBG_NUM_TRIGGERS           (            1 ),
@@ -171,11 +172,14 @@ Parameters
   | ``NUM_MHPMCOUNTERS``           | int (0..29)    | 1             | Number of MHPMCOUNTER performance counters, see                    |
   |                                |                |               | :ref:`performance-counters`                                        |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
+  | ``DEBUG``                      | int (0..1)     | 1             | Is Debug supported?                                                |
+  +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``DM_REGION_START``            | logic [31:0]   | 32'hF0000000  | Start address of Debug Module region, see :ref:`debug-support`     |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``DM_REGION_END``              | logic [31:0]   | 32'hF0003FFF  | End address of Debug Module region, see :ref:`debug-support`       |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-  | ``DBG_NUM_TRIGGERS``           | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`                 |
+  | ``DBG_NUM_TRIGGERS``           | int (0..4 )    | 1             | Number of debug triggers, see :ref:`debug-support`.                |
+  |                                |                |               | Must be 0 if ``DEBUG`` = 0.                                        |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``PMA_NUM_REGIONS``            | int (0..16)    | 0             | Number of PMA regions                                              |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+

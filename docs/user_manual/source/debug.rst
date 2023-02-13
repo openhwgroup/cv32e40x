@@ -3,7 +3,7 @@
 Debug & Trigger
 ===============
 
-|corev| offers support for execution-based debug according to [RISC-V-DEBUG]_.
+|corev| offers support for execution-based debug according to [RISC-V-DEBUG]_ (only) if ``DEBUG`` = 1.
 
 .. note::
 
@@ -105,7 +105,7 @@ Both ``dm_halt_addr_i`` and ``dm_exception_addr_i`` must be word aligned and the
 Core Debug Registers
 --------------------
 
-|corev| implements four core debug registers, namely :ref:`csr-dcsr`, :ref:`csr-dpc`, and two debug scratch registers. Access to these registers in non Debug Mode results in an illegal instruction.
+If ``DEBUG`` = 1, |corev| implements four core debug registers, namely :ref:`csr-dcsr`, :ref:`csr-dpc`, and two debug scratch registers. Access to these registers in non Debug Mode results in an illegal instruction.
 
 The trigger related CSRs (``tselect``, ``tdata1``, ``tdata2``, ``tdata3``, ``tinfo``, ``tcontrol``) are only included if ``DBG_NUM_TRIGGERS`` is
 set to a value greater than 0. Further descriptions of these CSRs can be found in :ref:`csr-tselect`, :ref:`csr-tdata1`, :ref:`csr-tdata2`, :ref:`csr-tdata3`,
