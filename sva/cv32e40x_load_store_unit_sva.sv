@@ -23,7 +23,8 @@ module cv32e40x_load_store_unit_sva
   import cv32e40x_pkg::*;
   #(
     parameter bit    X_EXT = 0,
-    parameter        DEPTH = 0
+    parameter        DEPTH = 0,
+    parameter int    DEBUG = 1
   )
   (input logic       clk,
    input logic       rst_n,
@@ -135,24 +136,7 @@ module cv32e40x_load_store_unit_sva
                     (cnt_q == 2'b00) && !(ctrl_fsm_cs == DEBUG_TAKEN) |-> !(ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid))
       else `uvm_error("load_store_unit", "cnt_q is zero when WB contains a valid LSU instruction")
 
-  // The only cause of (cnt_q==0) with a valid LSU instruction in WB is a watchpoint trigger.
-  // Assertions checks that this is the case and that a debug entry is taking place.
-  a_lsu_cnt_nonzero_wpt:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (cnt_q == 2'b00) && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid)
-                  |->
-                  $past(lsu_wpt_match_1_o) && (ctrl_fsm_cs == DEBUG_TAKEN))
-      else `uvm_error("load_store_unit", "Illegal cause of cnt_q=0 while a valid LSU instruction is in WB")
-
-  // MPU errors and watchpoint triggers cannot happen at the same time
-  a_mpuerr_wpt_unique:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  lsu_wpt_match_1_o
-                  |->
-                  !(lsu_mpu_status_1_o != MPU_OK))
-      else `uvm_error("load_store_unit", "MPU error and watchpoint trigger not unique")
-
-  // Check that no XIF request or result are produced if X_EXT is disabled
+    // Check that no XIF request or result are produced if X_EXT is disabled
   a_lsu_no_xif_req_if_xext_disabled:
   assert property (@(posedge clk) disable iff (!rst_n)
                   !X_EXT |-> !xif_req)
@@ -232,5 +216,25 @@ module cv32e40x_load_store_unit_sva
                      ((split_rem_cnt == 2'h1) && (m_c_obi_data_if.s_req.req && m_c_obi_data_if.s_gnt.gnt)) |->
                      (m_c_obi_data_if.req_payload.prot == trans_prot_prev))
       else `uvm_error("load_store_unit", "OBI prot not equal for both parts of a split transfer")
+
+
+if (DEBUG) begin
+  // The only cause of (cnt_q==0) with a valid LSU instruction in WB is a watchpoint trigger.
+  // Assertions checks that this is the case and that a debug entry is taking place.
+  a_lsu_cnt_nonzero_wpt:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (cnt_q == 2'b00) && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid)
+                  |->
+                  $past(lsu_wpt_match_1_o) && (ctrl_fsm_cs == DEBUG_TAKEN))
+      else `uvm_error("load_store_unit", "Illegal cause of cnt_q=0 while a valid LSU instruction is in WB")
+
+  // MPU errors and watchpoint triggers cannot happen at the same time
+  a_mpuerr_wpt_unique:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  lsu_wpt_match_1_o
+                  |->
+                  !(lsu_mpu_status_1_o != MPU_OK))
+      else `uvm_error("load_store_unit", "MPU error and watchpoint trigger not unique")
+end
 
 endmodule // cv32e40x_load_store_unit_sva

@@ -26,6 +26,9 @@
 module cv32e40x_wb_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+  #(
+    parameter int DEBUG  = 1
+  )
 (
   input logic           clk,
   input logic           rst_n,
@@ -79,10 +82,41 @@ module cv32e40x_wb_stage_sva
                     |-> !rf_we_wb_o)
       else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
 
-  // A watchpoint trigger will be halted during its first cycle in WB, giving !wb_valid.
-  // During the next cycle the controller will kill the pipeline but let wb_valid==1'b1 to let RVFI
-  // know the core hit a watchpoint.
-  a_wpt_wb_halt:
+
+  // The WB stage will make the mpu_status sticky if wb_walid is not asserted the first cycle in WB.
+  // In practice this should never happen as the controller will not allow any halt or kill on a LSU in WB.
+  // The only exception to this is the watchpoints which are asserted separately.
+  a_no_sticky_mpu_error:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (lsu_mpu_status_q == MPU_OK))
+      else `uvm_error("wb_stage", "lsu_mpu_status_q should never see an error")
+
+
+  // Any load or store without an MPU error or watchpoint trigger must signal wb_valid when rvalid arrives.
+  // This chekcs that there is no need for sticky rdata_q bits in the wb_stage similar to the mpu_status and wpt bits.
+  a_lsu_wb_valid:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_valid_i &&
+                    !(lsu_wpt_match_i || (lsu_mpu_status_i != MPU_OK))
+                    |->
+                    wb_valid)
+      else `uvm_error("wb_stage", "wb_valid not signaled immediately upon rvalid for LSU without WPT or MPU error")
+
+generate
+  if (DEBUG) begin
+    // The only cause for a sticky lsu_valid is a watchpoint trigger.
+    a_only_wpt_lsu_valid_sticky:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    lsu_valid_q
+                    |->
+                    lsu_wpt_match_q &&
+                    $past(lsu_wpt_match_i))
+      else `uvm_error("wb_stage", "LSU signal sticky for non-watchpoint cause")
+
+    // A watchpoint trigger will be halted during its first cycle in WB, giving !wb_valid.
+    // During the next cycle the controller will kill the pipeline but let wb_valid==1'b1 to let RVFI
+    // know the core hit a watchpoint.
+    a_wpt_wb_halt:
     assert property (@(posedge clk) disable iff (!rst_n)
                     lsu_wpt_match_i
                     |->
@@ -96,33 +130,12 @@ module cv32e40x_wb_stage_sva
                     wb_valid)
       else `uvm_error("wb_stage", "WB stage not setting wb_valid on a WPT")
 
-  // The WB stage will make the mpu_status sticky if wb_walid is not asserted the first cycle in WB.
-  // In practice this should never happen as the controller will not allow any halt or kill on a LSU in WB.
-  // The only exception to this is the watchpoints which are asserted separately.
-  a_no_sticky_mpu_error:
+  end else begin
+    // Without debug support, sticky lsu_valid shall never be set
+    a_never_lsu_valid_sticky:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    (lsu_mpu_status_q == MPU_OK))
-      else `uvm_error("wb_stage", "lsu_mpu_status_q should never see an error")
-
-  // The only cause for a sticky lsu_valid is a watchpoint trigger.
-  a_only_wpt_lsu_valid_sticky:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                    lsu_valid_q
-                    |->
-                    lsu_wpt_match_q &&
-                    $past(lsu_wpt_match_i))
-      else `uvm_error("wb_stage", "LSU signal sticky for non-watchpoint cause")
-
-
-  // Any load or store without an MPU error or watchpoint trigger must signal wb_valid when rvalid arrives.
-  // This chekcs that there is no need for sticky rdata_q bits in the wb_stage similar to the mpu_status and wpt bits.
-  a_lsu_wb_valid:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                    lsu_valid_i &&
-                    !(lsu_wpt_match_i || (lsu_mpu_status_i != MPU_OK))
-                    |->
-                    wb_valid)
-      else `uvm_error("wb_stage", "wb_valid not signaled immediately upon rvalid for LSU without WPT or MPU error")
-
-
+                    !lsu_valid_q)
+      else `uvm_error("wb_stage", "LSU signal sticky when debug support is not enabled.")
+  end
+endgenerate
 endmodule // cv32e40x_wb_stage_sva

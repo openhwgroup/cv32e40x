@@ -26,7 +26,8 @@ module cv32e40x_cs_registers_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
 #(
-    parameter bit SMCLIC = 0
+    parameter bit SMCLIC = 0,
+    parameter int DEBUG  = 1
   )
 
   (
@@ -194,32 +195,6 @@ module cv32e40x_cs_registers_sva
     else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
 
 
-  // Exception trigger shall have mepc written to oldest instruction
-  property p_etrigger_mepc_write;
-    @(posedge clk) disable iff (!rst_n)
-    (  (ctrl_fsm_cs == FUNCTIONAL) && etrigger_wb_o && !(ctrl_fsm_i.halt_wb || ctrl_fsm_i.kill_wb)
-        |->
-        (mepc_we && (mepc_n == ctrl_fsm_i.pipe_pc)));
-  endproperty;
-
-  a_etrigger_mepc_write: assert property(p_etrigger_mepc_write)
-    else `uvm_error("cs_registers", "mepc not written with ctrl_fsm.pipe_pc when etrigger fires.");
-
-  // Exception trigger shall cause dpc to point to first handler instruction and no instruction shall signal wb_valid the cycle after (while in DEBUG_TAKEN state)
-  // Excluding external debug and interrupts (halt_wb, kill_wb) as they (currently) both take priority over etrigger
-  // Also checking that WB stage is empty after an exception trigger has been taken.
-  // todo: update when debug causes are updated, trigger match will not be highest priority
-  property p_etrigger_dpc_write;
-    logic [24:0] mtvec_at_trap;
-    @(posedge clk) disable iff (!rst_n)
-    (  ((ctrl_fsm_cs == FUNCTIONAL) && etrigger_wb_o && !(ctrl_fsm_i.halt_wb || ctrl_fsm_i.kill_wb), mtvec_at_trap = mtvec_addr_o)
-        |=>
-        (!wb_valid_i && !ex_wb_pipe_i.instr_valid && dpc_we && (dpc_n == {mtvec_at_trap, {7'd0}}) && (ctrl_fsm_cs == DEBUG_TAKEN)));
-  endproperty;
-
-  a_etrigger_dpc_write: assert property(p_etrigger_dpc_write)
-    else `uvm_error("cs_registers", "dpc not written with first handler instruction when etrigger fires.");
-
   /////////////////////////////////////////////////////////////////////////////////////////
   // Asserts to check that the CSR flops remain unchanged if a set/clear has all_zero rs1
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -233,46 +208,7 @@ module cv32e40x_cs_registers_sva
                   |=>
                   $stable(jvt_q))
     else `uvm_error("cs_registers", "jvt_q changed after set/clear with rs1==0")
-  a_set_clear_dscratch0_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_DSCRATCH0) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(dscratch0_q))
-    else `uvm_error("cs_registers", "dscratch0_q changed after set/clear with rs1==0")
-  a_set_clear_dscratch1_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_DSCRATCH1) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(dscratch1_q))
-    else `uvm_error("cs_registers", "dscratch1_q changed after set/clear with rs1==0")
-  a_set_clear_dcsr_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_DCSR) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(dcsr_q))
-    else `uvm_error("cs_registers", "dcsr_q changed after set/clear with rs1==0")
-  a_set_clear_dpc_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_DPC) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(dpc_q))
-    else `uvm_error("cs_registers", "dpc_q changed after set/clear with rs1==0")
+
   a_set_clear_mepc_q:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (csr_waddr == CSR_MEPC) &&
@@ -356,7 +292,77 @@ module cv32e40x_cs_registers_sva
     else `uvm_error("cs_registers", "mie_q changed after set/clear with rs1==0")
 
 
+generate
+  if (DEBUG) begin
+    a_set_clear_dscratch0_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_DSCRATCH0) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(dscratch0_q))
+      else `uvm_error("cs_registers", "dscratch0_q changed after set/clear with rs1==0")
+    a_set_clear_dscratch1_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_DSCRATCH1) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(dscratch1_q))
+      else `uvm_error("cs_registers", "dscratch1_q changed after set/clear with rs1==0")
+    a_set_clear_dcsr_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_DCSR) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(dcsr_q))
+      else `uvm_error("cs_registers", "dcsr_q changed after set/clear with rs1==0")
+    a_set_clear_dpc_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_DPC) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(dpc_q))
+      else `uvm_error("cs_registers", "dpc_q changed after set/clear with rs1==0")
 
+    // Exception trigger shall have mepc written to oldest instruction
+    property p_etrigger_mepc_write;
+      @(posedge clk) disable iff (!rst_n)
+      (  (ctrl_fsm_cs == FUNCTIONAL) && etrigger_wb_o && !(ctrl_fsm_i.halt_wb || ctrl_fsm_i.kill_wb)
+          |->
+          (mepc_we && (mepc_n == ctrl_fsm_i.pipe_pc)));
+    endproperty;
+
+    a_etrigger_mepc_write: assert property(p_etrigger_mepc_write)
+      else `uvm_error("cs_registers", "mepc not written with ctrl_fsm.pipe_pc when etrigger fires.");
+
+    // Exception trigger shall cause dpc to point to first handler instruction and no instruction shall signal wb_valid the cycle after (while in DEBUG_TAKEN state)
+    // Excluding external debug and interrupts (halt_wb, kill_wb) as they (currently) both take priority over etrigger
+    // Also checking that WB stage is empty after an exception trigger has been taken.
+    // todo: update when debug causes are updated, trigger match will not be highest priority
+    property p_etrigger_dpc_write;
+      logic [24:0] mtvec_at_trap;
+      @(posedge clk) disable iff (!rst_n)
+      (  ((ctrl_fsm_cs == FUNCTIONAL) && etrigger_wb_o && !(ctrl_fsm_i.halt_wb || ctrl_fsm_i.kill_wb), mtvec_at_trap = mtvec_addr_o)
+          |=>
+          (!wb_valid_i && !ex_wb_pipe_i.instr_valid && dpc_we && (dpc_n == {mtvec_at_trap, {7'd0}}) && (ctrl_fsm_cs == DEBUG_TAKEN)));
+    endproperty;
+
+    a_etrigger_dpc_write: assert property(p_etrigger_dpc_write)
+      else `uvm_error("cs_registers", "dpc not written with first handler instruction when etrigger fires.");
+
+  end
+endgenerate
 
 endmodule
 

@@ -27,6 +27,7 @@ module cv32e40x_core_sva
   import cv32e40x_pkg::*;
   #(
     parameter bit A_EXT = 0,
+    parameter int DEBUG = 1,
     parameter int PMA_NUM_REGIONS = 0,
     parameter bit SMCLIC = 0
   )
@@ -87,6 +88,7 @@ module cv32e40x_core_sva
   input logic        data_rvalid_i,
   input logic        data_we_o,
   input logic [5:0]  data_atop_o,
+  input logic        data_dbg_o,
 
   // probed controller signals
   input logic        ctrl_debug_mode_n,
@@ -100,6 +102,9 @@ module cv32e40x_core_sva
   input logic [2:0]  ctrl_debug_cause_n,
   input logic        ctrl_pending_nmi,
   input ctrl_state_e ctrl_fsm_cs,
+
+  input logic        debug_halted_o,
+
   // probed cs_registers signals
   input logic [31:0] cs_registers_mie_q,
   input logic [31:0] cs_registers_mepc_n,
@@ -348,28 +353,19 @@ always_ff @(posedge clk , negedge rst_ni)
     end
 
 
-  // Single step without interrupts
-  // Should issue exactly one instruction from ID before entering debug_mode
-  a_single_step_no_irq :
-    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
-                     (inst_taken && dcsr.step && !ctrl_fsm.debug_mode)
-                     ##1 inst_taken [->1]
-                     |-> (ctrl_fsm.debug_mode && dcsr.step))
-      else `uvm_error("core", "Assertion a_single_step_no_irq failed")
-
-// todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
-
 if (SMCLIC) begin
-  // Non-SHV interrupt taken during single stepping.
-  // If this happens, no instructions should retire until the core is in debug mode.
-  // irq_ack is asserted during FUNCTIONAL state. debug_mode_n will be set during
-  // DEBUG_TAKEN one cycle later
-  a_single_step_with_irq_nonshv :
-    assert property (@(posedge clk) disable iff (!rst_ni)
-                      (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && !irq_clic_shv)
-                      |->
-                      !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
-      else `uvm_error("core", "Assertion a_single_step_with_irq_nonshv failed")
+  if (DEBUG) begin
+    // Non-SHV interrupt taken during single stepping.
+    // If this happens, no instructions should retire until the core is in debug mode.
+    // irq_ack is asserted during FUNCTIONAL state. debug_mode_n will be set during
+    // DEBUG_TAKEN one cycle later
+    a_single_step_with_irq_nonshv :
+      assert property (@(posedge clk) disable iff (!rst_ni)
+                        (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && !irq_clic_shv)
+                        |->
+                        !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
+        else `uvm_error("core", "Assertion a_single_step_with_irq_nonshv failed")
+  end // DEBUG
 
   // An SHV CLIC interrupt will first do one fetch to get a function pointer,
   // then a second fetch to the actual interrupt handler. If the first fetch has
@@ -406,13 +402,7 @@ end else begin
                       !wb_valid ##1 (!wb_valid && ctrl_debug_mode_n && dcsr.step))
       else `uvm_error("core", "Assertion a_single_step_with_irq failed")
 end
-  // Check that only a single instruction can retire during single step
-  a_single_step_retire :
-    assert property (@(posedge clk) disable iff (!rst_ni)
-                      (wb_valid && last_op_wb && dcsr.step && !ctrl_fsm.debug_mode)
-                      ##1 wb_valid [->1]
-                      |-> (ctrl_fsm.debug_mode && dcsr.step))
-      else `uvm_error("core", "Multiple instructions retired during single stepping")
+
 
   // Check that instruction fetches are always word aligned
   a_instr_addr_word_aligned :
@@ -665,28 +655,76 @@ endproperty;
 a_no_irq_after_lsu: assert property(p_no_irq_after_lsu)
   else `uvm_error("core", "Interrupt taken after disabling");
 
-// If debug_req_i is asserted when fetch_enable_i gets asserted we should not execute any
-// instruction until the core is in debug mode.
-a_reset_into_debug:
-assert property (@(posedge clk_i) disable iff (!rst_ni)
-                (ctrl_fsm_cs == RESET) &&
-                fetch_enable_i &&
-                debug_req_i
-                ##1
-                debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
-                |->
-                !wb_valid until (wb_valid && ctrl_fsm.debug_mode))
-  else `uvm_error("controller", "Debug out of reset but executed instruction outside debug mode")
 
-// When entering debug out of reset, the first fetch must also flag debug on the instruction OBI interface
-a_first_fetch_debug:
-assert property (@(posedge clk_i) disable iff (!rst_ni)
-                (ctrl_fsm_cs == RESET) &&
-                fetch_enable_i &&
-                debug_req_i
-                ##1
-                debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
-                |->
-                !instr_req_o until (instr_req_o && instr_dbg_o))
-  else `uvm_error("controller", "Debug out of reset but fetched without setting instr_dbg_o")
+
+generate
+  if (!DEBUG) begin
+    a_nodebug_never_debug:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                      !ctrl_fsm.debug_mode)
+          else `uvm_error("core", "Debug mode entered without support for debug.")
+
+    a_nodebug_never_debug_halted:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                      !debug_halted_o)
+          else `uvm_error("core", "Debug_halated_o set without support for debug.")
+
+    a_nodebug_never_instr_dbg:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                      !instr_dbg_o)
+          else `uvm_error("core", "instr_dbg_o set without support for debug.")
+
+    a_nodebug_never_data_dbg:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                      !data_dbg_o)
+          else `uvm_error("core", "data_dbg_o set without support for debug.")
+  end else begin
+    // DEBUG related assertions
+
+    // If debug_req_i is asserted when fetch_enable_i gets asserted we should not execute any
+    // instruction until the core is in debug mode.
+    a_reset_into_debug:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                    (ctrl_fsm_cs == RESET) &&
+                    fetch_enable_i &&
+                    debug_req_i
+                    ##1
+                    debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
+                    |->
+                    !wb_valid until (wb_valid && ctrl_fsm.debug_mode))
+      else `uvm_error("controller", "Debug out of reset but executed instruction outside debug mode")
+
+    // When entering debug out of reset, the first fetch must also flag debug on the instruction OBI interface
+    a_first_fetch_debug:
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+                    (ctrl_fsm_cs == RESET) &&
+                    fetch_enable_i &&
+                    debug_req_i
+                    ##1
+                    debug_req_i // Controller gets a one cycle delayed fetch enable, must keep debug_req_i asserted for two cycles
+                    |->
+                    !instr_req_o until (instr_req_o && instr_dbg_o))
+      else `uvm_error("controller", "Debug out of reset but fetched without setting instr_dbg_o")
+
+    // Check that only a single instruction can retire during single step
+    a_single_step_retire :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (wb_valid && last_op_wb && dcsr.step && !ctrl_fsm.debug_mode)
+                      ##1 wb_valid [->1]
+                      |-> (ctrl_fsm.debug_mode && dcsr.step))
+      else `uvm_error("core", "Multiple instructions retired during single stepping")
+
+    // Single step without interrupts
+    // Should issue exactly one instruction from ID before entering debug_mode
+    a_single_step_no_irq :
+    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
+                    (inst_taken && dcsr.step && !ctrl_fsm.debug_mode)
+                    ##1 inst_taken [->1]
+                    |-> (ctrl_fsm.debug_mode && dcsr.step))
+      else `uvm_error("core", "Assertion a_single_step_no_irq failed")
+
+    // todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
+
+  end
+endgenerate
 endmodule // cv32e40x_core_sva

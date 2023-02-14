@@ -71,6 +71,7 @@ module cv32e40x_wrapper
   parameter int          PMA_NUM_REGIONS              = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
   parameter bit          CORE_LOG_ENABLE              = 1,
+  parameter int          DEBUG                        = 1,
   parameter logic [31:0] DM_REGION_START              = 32'hF0000000,
   parameter logic [31:0] DM_REGION_END                = 32'hF0003FFF
 )
@@ -191,7 +192,7 @@ module cv32e40x_wrapper
     );
 
   bind cv32e40x_wb_stage:
-    core_i.wb_stage_i cv32e40x_wb_stage_sva wb_stage_sva
+    core_i.wb_stage_i cv32e40x_wb_stage_sva #(.DEBUG(DEBUG)) wb_stage_sva
     (
       .*
     );
@@ -223,6 +224,7 @@ module cv32e40x_wrapper
     core_i.controller_i.controller_fsm_i
       cv32e40x_controller_fsm_sva
         #(.X_EXT(X_EXT),
+          .DEBUG(DEBUG),
           .SMCLIC(SMCLIC))
         controller_fsm_sva   (
                               .lsu_outstanding_cnt          (core_i.load_store_unit_i.cnt_q),
@@ -246,14 +248,15 @@ module cv32e40x_wrapper
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
       cv32e40x_cs_registers_sva
-        #(.SMCLIC(SMCLIC))
+        #(.SMCLIC(SMCLIC),
+          .DEBUG (DEBUG))
         cs_registers_sva (.wb_valid_i  (core_i.wb_valid                                 ),
                           .ctrl_fsm_cs (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
                           .*);
 
 
   bind cv32e40x_load_store_unit:
-    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH)) load_store_unit_sva (
+    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH), .DEBUG(DEBUG)) load_store_unit_sva (
       // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
       .m_c_obi_data_if(core_i.m_c_obi_data_if),
       .ex_wb_pipe_i   (core_i.ex_wb_pipe),
@@ -319,6 +322,7 @@ module cv32e40x_wrapper
   bind cv32e40x_core:
     core_i cv32e40x_core_sva
       #(.A_EXT(A_EXT),
+        .DEBUG (DEBUG),
         .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
         .SMCLIC(SMCLIC))
       core_sva (// probed cs_registers signals
@@ -395,6 +399,7 @@ endgenerate
         .IS_INSTR_SIDE                          (1),
         .CORE_RESP_TYPE                         (cv32e40x_pkg::inst_resp_t),
         .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_inst_req_t),
+        .DEBUG                                  (DEBUG),
         .DM_REGION_START                        (DM_REGION_START),
         .DM_REGION_END                          (DM_REGION_END))
   mpu_if_sva(.pma_addr                          (pma_i.trans_addr_i),
@@ -420,6 +425,7 @@ endgenerate
         .CORE_RESP_TYPE                         (cv32e40x_pkg::data_resp_t),
         .CORE_REQ_TYPE                          (cv32e40x_pkg::obi_data_req_t),
         .A_EXT                                  (A_EXT),
+        .DEBUG                                  (DEBUG),
         .DM_REGION_START                        (DM_REGION_START),
         .DM_REGION_END                          (DM_REGION_END))
   mpu_lsu_sva(.pma_addr                         (pma_i.trans_addr_i),
@@ -463,7 +469,8 @@ endgenerate
   bind cv32e40x_rvfi:
     rvfi_i
     cv32e40x_rvfi_sva
-      #(.SMCLIC(SMCLIC))
+      #(.SMCLIC(SMCLIC),
+        .DEBUG (DEBUG))
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
@@ -488,7 +495,8 @@ endgenerate
       );
 
     cv32e40x_rvfi
-      #(.SMCLIC(SMCLIC))
+      #(.SMCLIC(SMCLIC),
+        .DEBUG (DEBUG))
       rvfi_i
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
@@ -769,6 +777,7 @@ endgenerate
           .SMCLIC                ( SMCLIC                ),
           .SMCLIC_ID_WIDTH       ( SMCLIC_ID_WIDTH       ),
           .SMCLIC_INTTHRESHBITS  ( SMCLIC_INTTHRESHBITS  ),
+          .DEBUG                 ( DEBUG                 ),
           .DM_REGION_START       ( DM_REGION_START       ),
           .DM_REGION_END         ( DM_REGION_END         ),
           .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
