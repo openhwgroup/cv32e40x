@@ -36,6 +36,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   parameter bit                         A_EXT                                   = 0,
   parameter b_ext_e                     B_EXT                                   = B_NONE,
   parameter m_ext_e                     M_EXT                                   = M,
+  parameter int                         DEBUG                                   = 1,
   parameter logic [31:0]                DM_REGION_START                         = 32'hF0000000,
   parameter logic [31:0]                DM_REGION_END                           = 32'hF0003FFF,
   parameter int                         DBG_NUM_TRIGGERS                        = 1,
@@ -182,6 +183,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Controller
   ctrl_byp_t   ctrl_byp;
   ctrl_fsm_t   ctrl_fsm;
+
+  // Gated debug_req_i signal depending on DEBUG parameter
+  logic        debug_req_gated;
 
   // Register File Write Back
   logic        rf_we_wb;
@@ -393,6 +397,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign irq_shv   = ctrl_fsm.irq_shv;
   assign dbg_ack   = ctrl_fsm.dbg_ack;
 
+  // Gate off the internal debug_request signal if debug support is not configured.
+  assign debug_req_gated = DEBUG ? debug_req_i : 1'b0;
+
   //////////////////////////////////////////////////////////////////////////////////////////////
   //   ____ _            _      __  __                                                   _    //
   //  / ___| | ___   ___| | __ |  \/  | __ _ _ __   __ _  __ _  ___ _ __ ___   ___ _ __ | |_  //
@@ -452,6 +459,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .SMCLIC_ID_WIDTH     ( SMCLIC_ID_WIDTH          ),
     .ZC_EXT              ( ZC_EXT                   ),
     .M_EXT               ( M_EXT                    ),
+    .DEBUG               ( DEBUG                    ),
     .DM_REGION_START     ( DM_REGION_START          ),
     .DM_REGION_END       ( DM_REGION_END            )
   )
@@ -647,6 +655,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .PMA_NUM_REGIONS       (PMA_NUM_REGIONS     ),
     .PMA_CFG               (PMA_CFG             ),
     .DBG_NUM_TRIGGERS      (DBG_NUM_TRIGGERS    ),
+    .DEBUG                 (DEBUG               ),
     .DM_REGION_START       (DM_REGION_START     ),
     .DM_REGION_END         (DM_REGION_END       )
   )
@@ -715,6 +724,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   ////////////////////////////////////////////////////////////////////////////////////////
 
   cv32e40x_wb_stage
+  #(
+      .DEBUG                    ( DEBUG                        )
+  )
   wb_stage_i
   (
     .clk                        ( clk                          ), // Not used in RTL; only used by assertions
@@ -784,6 +796,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .SMCLIC                     ( SMCLIC                 ),
     .SMCLIC_ID_WIDTH            ( SMCLIC_ID_WIDTH        ),
     .SMCLIC_INTTHRESHBITS       ( SMCLIC_INTTHRESHBITS   ),
+    .DEBUG                      ( DEBUG                  ),
     .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS       ),
     .NUM_MHPMCOUNTERS           ( NUM_MHPMCOUNTERS       ),
     .MTVT_ADDR_WIDTH            ( MTVT_ADDR_WIDTH        )
@@ -878,7 +891,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .A_EXT                          ( A_EXT                  ),
     .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS ),
     .SMCLIC                         ( SMCLIC                 ),
-    .SMCLIC_ID_WIDTH                ( SMCLIC_ID_WIDTH        )
+    .SMCLIC_ID_WIDTH                ( SMCLIC_ID_WIDTH        ),
+    .DEBUG                          ( DEBUG                  )
   )
   controller_i
   (
@@ -958,7 +972,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_wr_in_wb_flush_i           ( csr_wr_in_wb_flush     ),
 
     // Debug signals
-    .debug_req_i                    ( debug_req_i            ),
+    .debug_req_i                    ( debug_req_gated        ),
     .dcsr_i                         ( dcsr                   ),
 
     // Register File read, write back and forwards

@@ -35,6 +35,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_wb_stage import cv32e40x_pkg::*;
+#(
+    parameter int DEBUG = 1
+)
 (
   input  logic          clk,            // Not used in RTL; only used by assertions
   input  logic          rst_n,          // Not used in RTL; only used by assertions

@@ -22,7 +22,8 @@ module cv32e40x_rvfi
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
   #(
-    parameter bit SMCLIC = 0
+    parameter bit SMCLIC = 0,
+    parameter int DEBUG  = 1
   )
   (
    input logic                                clk_i,

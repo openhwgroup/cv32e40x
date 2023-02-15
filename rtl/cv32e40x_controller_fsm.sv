@@ -32,6 +32,7 @@
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 #(
   parameter bit       X_EXT           = 0,
+  parameter int       DEBUG           = 1,
   parameter bit       SMCLIC          = 0,
   parameter int       SMCLIC_ID_WIDTH = 5
 )

@@ -30,6 +30,7 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
       parameter type         CORE_RESP_TYPE = inst_resp_t,
       parameter type         CORE_REQ_TYPE  = obi_inst_req_t,
       parameter bit          A_EXT = 1'b0,
+      parameter int          DEBUG = 1,
       parameter logic [31:0] DM_REGION_START = 32'hF0000000,
       parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF)
   (
@@ -413,28 +414,21 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
     end
   endgenerate
 
-  a_dm_region_nonatomic_dbg:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  is_pma_dbg_matched &&
-                  !(|atop)
-                  |->
-                  !pma_err &&               // Always 'main' while accessing DM in debug mode
-                  !bus_trans_cacheable &&
-                  !bus_trans_bufferable)
-        else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
 
 if (A_EXT) begin
-  // Check that PMA sets correct attribution for non-atomic accesses DM during debug
-  // main, non-cacheable, non-bufferable, non-atomics
-  a_dm_region_atomic_dbg:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                    is_pma_dbg_matched &&
-                    (|atop)
-                    |->
-                    pma_err &&               // No atomics allowed to DM region
-                    !bus_trans_cacheable &&
-                    !bus_trans_bufferable)
-        else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
+  if (DEBUG) begin
+    // Check that PMA sets correct attribution for non-atomic accesses DM during debug
+    // main, non-cacheable, non-bufferable, non-atomics
+    a_dm_region_atomic_dbg:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                      is_pma_dbg_matched &&
+                      (|atop)
+                      |->
+                      pma_err &&               // No atomics allowed to DM region
+                      !bus_trans_cacheable &&
+                      !bus_trans_bufferable)
+          else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
+  end // DEBUG
 
   // All atomic operations must be naturally aligned
   // CV32E40X only support 32-bit accesses, and thus all atomics must be 4-byte aligned.
@@ -447,6 +441,18 @@ if (A_EXT) begin
                   (core_trans_i.addr[1:0] == 2'b00))
         else `uvm_error("mpu", "Misaligned atomic instruction not flagged with error")
 
+end
+
+if (DEBUG) begin
+  a_dm_region_nonatomic_dbg:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  is_pma_dbg_matched &&
+                  !(|atop)
+                  |->
+                  !pma_err &&               // Always 'main' while accessing DM in debug mode
+                  !bus_trans_cacheable &&
+                  !bus_trans_bufferable)
+        else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
 end
 endmodule : cv32e40x_mpu_sva
 

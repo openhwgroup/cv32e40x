@@ -40,6 +40,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter int          SMCLIC_ID_WIDTH      = 5,
   parameter int          SMCLIC_INTTHRESHBITS = 8,
   parameter int          NUM_MHPMCOUNTERS     = 1,
+  parameter int          DEBUG                = 1,
   parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
   parameter int unsigned MTVT_ADDR_WIDTH      = 26
 )
@@ -534,23 +535,39 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_DCSR: begin
-        csr_rdata_int = dcsr_rdata;
-        illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        if (DEBUG) begin
+          csr_rdata_int = dcsr_rdata;
+          illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        end else begin
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_DPC: begin
-        csr_rdata_int = dpc_rdata;
-        illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        if (DEBUG) begin
+          csr_rdata_int = dpc_rdata;
+          illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        end else begin
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_DSCRATCH0: begin
-        csr_rdata_int = dscratch0_rdata;
-        illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        if (DEBUG) begin
+          csr_rdata_int = dscratch0_rdata;
+          illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        end else begin
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_DSCRATCH1: begin
-        csr_rdata_int = dscratch1_rdata;
-        illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        if (DEBUG) begin
+          csr_rdata_int = dscratch1_rdata;
+          illegal_csr_read = !ctrl_fsm_i.debug_mode;
+        end else begin
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_TIME: begin
@@ -1215,61 +1232,70 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     .rd_data_o          ( jvt_q                 )
   );
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
-  )
-  dscratch0_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( dscratch0_n           ),
-    .wr_en_i            ( dscratch0_we          ),
-    .rd_data_o          ( dscratch0_q           )
-  );
+  generate
+    if (DEBUG) begin : gen_debug_csr
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (32'd0)
+      )
+      dscratch0_csr_i
+      (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( dscratch0_n           ),
+        .wr_en_i            ( dscratch0_we          ),
+        .rd_data_o          ( dscratch0_q           )
+      );
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
-  )
-  dscratch1_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( dscratch1_n           ),
-    .wr_en_i            ( dscratch1_we          ),
-    .rd_data_o          ( dscratch1_q           )
-  );
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (32'd0)
+      )
+      dscratch1_csr_i
+      (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( dscratch1_n           ),
+        .wr_en_i            ( dscratch1_we          ),
+        .rd_data_o          ( dscratch1_q           )
+      );
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (DCSR_RESET_VAL)
-  )
-  dcsr_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( dcsr_n                ),
-    .wr_en_i            ( dcsr_we               ),
-    .rd_data_o          ( dcsr_q                )
-  );
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (DCSR_RESET_VAL)
+      )
+      dcsr_csr_i
+      (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( dcsr_n                ),
+        .wr_en_i            ( dcsr_we               ),
+        .rd_data_o          ( dcsr_q                )
+      );
 
-  cv32e40x_csr
-  #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
-  )
-  dpc_csr_i
-  (
-    .clk                ( clk                   ),
-    .rst_n              ( rst_n                 ),
-    .wr_data_i          ( dpc_n                 ),
-    .wr_en_i            ( dpc_we                ),
-    .rd_data_o          ( dpc_q                 )
-  );
+      cv32e40x_csr
+      #(
+        .WIDTH      (32),
+        .RESETVALUE (32'd0)
+      )
+      dpc_csr_i
+      (
+        .clk                ( clk                   ),
+        .rst_n              ( rst_n                 ),
+        .wr_data_i          ( dpc_n                 ),
+        .wr_en_i            ( dpc_we                ),
+        .rd_data_o          ( dpc_q                 )
+      );
+    end else begin : debug_csr_tieoff
+        assign dscratch0_q = 32'h0;
+        assign dscratch1_q = 32'h0;
+        assign dpc_q       = 32'h0;
+        assign dcsr_q      = 32'h0;
+    end
+  endgenerate
 
   cv32e40x_csr
   #(
@@ -1497,7 +1523,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign priv_lvl_rdata     = PRIV_LVL_M;
 
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
-  assign dcsr_rdata = {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]};
+  assign dcsr_rdata = DEBUG ? {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]} : 32'h0;
 
 
   assign mcause_rdata = mcause_q;
@@ -1557,6 +1583,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   //                         |___/               |___/ |___/            //
   ////////////////////////////////////////////////////////////////////////
 
+  // When DEBUG==0, DBG_NUM_TRIGGERS is assumed to be 0 as well.
   cv32e40x_debug_triggers
     #(
         .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS)
