@@ -120,7 +120,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 );
 
   localparam logic [31:0] CORE_MISA =
-    (32'(A_EXT != A_NONE) <<  0) | // A - Atomic Instructions extension
+    (32'(A_EXT == A)      <<  0) | // A - Atomic Instructions extension
     (32'(1)               <<  2) | // C - Compressed extension
     (32'(RV32 == RV32E)   <<  4) | // E - RV32E/64E base ISA
     (32'(RV32 == RV32I)   <<  8) | // I - RV32I/64I/128I base ISA
