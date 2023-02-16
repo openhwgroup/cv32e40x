@@ -32,7 +32,8 @@
 module cv32e40x_debug_triggers
 import cv32e40x_pkg::*;
 #(
-  parameter int DBG_NUM_TRIGGERS = 1
+  parameter int     DBG_NUM_TRIGGERS = 1,
+  parameter a_ext_e A_EXT = A_NONE
 )
 (
   input  logic       clk,

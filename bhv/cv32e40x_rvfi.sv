@@ -22,9 +22,9 @@ module cv32e40x_rvfi
   import cv32e40x_pkg::*;
   import cv32e40x_rvfi_pkg::*;
   #(
-    parameter bit SMCLIC = 0,
-    parameter int DEBUG  = 1,
-    parameter bit A_EXT  = 0
+    parameter bit     SMCLIC = 0,
+    parameter int     DEBUG  = 1,
+    parameter a_ext_e A_EXT  = A_NONE
   )
   (
    input logic                                clk_i,
@@ -81,6 +81,7 @@ module cv32e40x_rvfi
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_ex_i,
    input logic                                lsu_pma_atomic_ex_i,
+   input logic                                lsu_misaligned_ex_i,
    input obi_data_req_t                       buffer_trans,
    input logic                                lsu_split_q_ex_i,
 
@@ -709,7 +710,9 @@ module cv32e40x_rvfi
 
   assign        mret_ptr_wb = mret_ptr_wb_i;
 
-  assign lsu_pma_err_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i;
+  // PMA error due to atomic not within an atomic region
+  // Error due to misaligned atomics shall get cause_type==0 and is excluded here.
+  assign lsu_pma_err_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i && !lsu_misaligned_ex_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];

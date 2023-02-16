@@ -282,7 +282,8 @@ module cv32e40x_wrapper
       bind cv32e40x_debug_triggers:
         core_i.cs_registers_i.debug_triggers_i
           cv32e40x_debug_triggers_sva
-            #(.DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS))
+            #(.DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS),
+              .A_EXT           (A_EXT))
             debug_triggers_sva (.csr_wdata     (core_i.cs_registers_i.csr_wdata),
                                 .csr_waddr     (core_i.cs_registers_i.csr_waddr),
                                 .csr_op        (core_i.cs_registers_i.csr_op),
@@ -484,6 +485,7 @@ endgenerate
                .obi_instr_rptr_q(rvfi_i.rvfi_instr_obi_i.rptr_q),
                .lsu_atomic_wb_i (core_i.lsu_atomic_wb),
                .lsu_en_wb_i     (core_i.ex_wb_pipe.lsu_en),
+               .lsu_split_q_wb_i (core_i.load_store_unit_i.split_q),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
@@ -558,6 +560,7 @@ endgenerate
          .lsu_pmp_err_ex_i         ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
          .lsu_pma_err_ex_i         ( core_i.load_store_unit_i.mpu_i.pma_i.pma_err_o                       ),
          .lsu_pma_atomic_ex_i      ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i                 ),
+         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.misaligned_access                           ),
          .buffer_trans             ( core_i.load_store_unit_i.buffer_trans                                ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 

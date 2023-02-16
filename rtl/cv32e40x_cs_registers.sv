@@ -1586,7 +1586,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // When DEBUG==0, DBG_NUM_TRIGGERS is assumed to be 0 as well.
   cv32e40x_debug_triggers
     #(
-        .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS)
+        .DBG_NUM_TRIGGERS (DBG_NUM_TRIGGERS),
+        .A_EXT            (A_EXT)
     )
     debug_triggers_i
     (
