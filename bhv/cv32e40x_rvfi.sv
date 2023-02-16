@@ -23,7 +23,8 @@ module cv32e40x_rvfi
   import cv32e40x_rvfi_pkg::*;
   #(
     parameter bit SMCLIC = 0,
-    parameter int DEBUG  = 1
+    parameter int DEBUG  = 1,
+    parameter bit A_EXT  = 0
   )
   (
    input logic                                clk_i,
@@ -78,7 +79,8 @@ module cv32e40x_rvfi
    input logic                                dret_in_ex_i,
    input logic                                lsu_en_ex_i,
    input logic                                lsu_pmp_err_ex_i,
-   input logic                                lsu_pma_err_atomic_ex_i,
+   input logic                                lsu_pma_err_ex_i,
+   input logic                                lsu_pma_atomic_ex_i,
    input obi_data_req_t                       buffer_trans,
    input logic                                lsu_split_q_ex_i,
 
@@ -702,7 +704,12 @@ module cv32e40x_rvfi
   // Detect mret initiated CLIC pointer in WB
   logic         mret_ptr_wb;
 
+  // Detect a PMA error due to atomics
+  logic         lsu_pma_err_atomic_ex;
+
   assign        mret_ptr_wb = mret_ptr_wb_i;
+
+  assign lsu_pma_err_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
@@ -1088,7 +1095,7 @@ module cv32e40x_rvfi
         end
 
         mem_err   [STAGE_WB]  <= lsu_pmp_err_ex_i        ? MEM_ERR_PMP :
-                                 lsu_pma_err_atomic_ex_i ? MEM_ERR_ATOMIC :
+                                 lsu_pma_err_atomic_ex   ? MEM_ERR_ATOMIC :
                                                            MEM_ERR_IO_ALIGN;
 
         // Read autonomuos CSRs from EX perspective
