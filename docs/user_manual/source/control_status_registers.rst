@@ -559,7 +559,7 @@ Detailed:
 
 All bitfields in the ``misa`` CSR read as 0 except for the following:
 
-* **A** = 1 if ``A_EXT`` == 1
+* **A** = 1 if ``A_EXT`` == A
 * **C** = 1
 * **F** = 1 ``X_EXT`` == 1 and ``X_MISA[5]`` == 1
 * **I** = 1 if ``RV32`` == RV32I

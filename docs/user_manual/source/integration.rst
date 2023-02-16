@@ -14,7 +14,7 @@ Instantiation Template
   cv32e40x_core #(
       .LIB                        (            0 ),
       .RV32                       (        RV32I ),
-      .A_EXT                      (            0 ),
+      .A_EXT                      (       A_NONE ),
       .B_EXT                      (       B_NONE ),
       .M_EXT                      (            M ),
       .X_EXT                      (            0 ),
@@ -135,7 +135,10 @@ Parameters
   |                                |                |               | ``RV32`` = RV32I: RV32I Base Integer Instruction Set.              |
   |                                |                |               | ``RV32`` = RV32E: RV32E Base Integer Instruction Set.              |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
-  | ``A_EXT``                      | bit            | 0             | Enable Atomic Instruction (A) support  (**not implemented yet**)   |
+  | ``A_EXT``                      | a_ext_e        | A_NONE        | Enable Atomic Instruction (A) support.                             |
+  |                                |                |               | ``A_EXT`` = A_NONE: No Atomic instructions supported.              |
+  |                                |                |               | ``A_EXT`` = ZALRSC: Only LR.W and SC.W instructions supported.     |
+  |                                |                |               | ``A_EXT`` = A: Full A extension supported.                         |
   +--------------------------------+----------------+---------------+--------------------------------------------------------------------+
   | ``B_EXT``                      | b_ext_e        | B_NONE        | Enable Bit Manipulation support. ``B_EXT`` = B_NONE: No Bit        |
   |                                |                |               | Manipulation instructions are supported. ``B_EXT`` = ZBA_ZBB:      |

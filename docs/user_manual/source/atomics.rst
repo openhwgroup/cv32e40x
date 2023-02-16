@@ -3,12 +3,13 @@
 Atomic instructions
 ===================
 
-|corev| supports exclusive transactions and atomic transactions if ``A_EXT`` = 1.
+|corev| supports exclusive transactions if ``A_EXT`` = ZALRSC or A.
+|corev| supports exclusive transactions and atomic transactions if ``A_EXT`` = A.
 
 Load-Reserved/Store-Conditional Instructions
 --------------------------------------------
 
-The ``lr.w`` and ``sc.w`` instructions are supported if ``A_EXT`` = 1. These instructions perform exclusive transactions via the
+The ``lr.w`` and ``sc.w`` instructions are supported if ``A_EXT`` = ZALRSC or A. These instructions perform exclusive transactions via the
 data OBI interface (i.e. ``data_atop_o[5]`` = 1). The ``data_atop_o`` signal will indicate the type of exclusive transaction
 as specified in [OPENHW-OBI]_.
 
@@ -23,10 +24,13 @@ signal for ``lr.w`` instructions and will therefore **not** detect the failure o
 a region without support for exclusive transactions, then a following ``sc.w`` will fail as well. The PMA's ``atomic`` attribute can be used to detect attempts
 to perform any type of atomic transaction (including ``lr.w`` and ``sc.w``) on regions not supporting atomic transactions.
 
+.. note::
+  An ``mret`` instruction will NOT clear the reservation set, and thus trap handlers must execute a ``sc.w`` if needed before executing ``mret``.
+
 Atomic Memory Operations
 ------------------------
 
-The ``amoswap.w``, ``amoadd.w``, ``amoand.w``, ``amoor.w``, ``amoxor.w``, ``amomax[u].w`` and ``amomin[u].w`` instructions are supported if ``A_EXT`` = 1. These instructions
+The ``amoswap.w``, ``amoadd.w``, ``amoand.w``, ``amoor.w``, ``amoxor.w``, ``amomax[u].w`` and ``amomin[u].w`` instructions are supported if ``A_EXT`` = A. These instructions
 perform atomic memory operations (AMOs).
 
 Atomic memory operation (AMO) instructions perform read-modify-write operations for multiprocessor
