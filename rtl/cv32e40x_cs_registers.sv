@@ -30,7 +30,7 @@
 module cv32e40x_cs_registers import cv32e40x_pkg::*;
 #(
   parameter rv32_e       RV32                 = RV32I,
-  parameter bit          A_EXT                = 0,
+  parameter a_ext_e      A_EXT                = A_NONE,
   parameter m_ext_e      M_EXT                = M,
   parameter bit          X_EXT                = 0,
   parameter logic [31:0] X_MISA               =  32'h00000000,
@@ -120,14 +120,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 );
 
   localparam logic [31:0] CORE_MISA =
-    (32'(A_EXT)         <<  0) | // A - Atomic Instructions extension
-    (32'(1)             <<  2) | // C - Compressed extension
-    (32'(RV32 == RV32E) <<  4) | // E - RV32E/64E base ISA
-    (32'(RV32 == RV32I) <<  8) | // I - RV32I/64I/128I base ISA
-    (32'(M_EXT == M)    << 12) | // M - Integer Multiply/Divide extension
-    (32'(0)             << 20) | // U - User mode implemented
-    (32'(1)             << 23) | // X - Non-standard extensions present
-    (32'(MXL)           << 30);  // M-XLEN
+    (32'(A_EXT == A)      <<  0) | // A - Atomic Instructions extension
+    (32'(1)               <<  2) | // C - Compressed extension
+    (32'(RV32 == RV32E)   <<  4) | // E - RV32E/64E base ISA
+    (32'(RV32 == RV32I)   <<  8) | // I - RV32I/64I/128I base ISA
+    (32'(M_EXT == M)      << 12) | // M - Integer Multiply/Divide extension
+    (32'(0)               << 20) | // U - User mode implemented
+    (32'(1)               << 23) | // X - Non-standard extensions present
+    (32'(MXL)             << 30);  // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
 

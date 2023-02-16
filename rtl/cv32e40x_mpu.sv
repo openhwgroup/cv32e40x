@@ -25,7 +25,7 @@
 
 module cv32e40x_mpu import cv32e40x_pkg::*;
   #(  parameter bit          IF_STAGE                     = 1,
-      parameter bit          A_EXT                        = 0,
+      parameter a_ext_e      A_EXT                        = A_NONE,
       parameter type         CORE_REQ_TYPE                = obi_inst_req_t,
       parameter type         CORE_RESP_TYPE               = inst_resp_t,
       parameter type         BUS_RESP_TYPE                = obi_inst_resp_t,
