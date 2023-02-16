@@ -33,7 +33,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 #(
   parameter                             LIB                                     = 0,
   parameter rv32_e                      RV32                                    = RV32I,
-  parameter bit                         A_EXT                                   = 0,
+  parameter a_ext_e                     A_EXT                                   = A_NONE,
   parameter b_ext_e                     B_EXT                                   = B_NONE,
   parameter m_ext_e                     M_EXT                                   = M,
   parameter int                         DEBUG                                   = 1,
@@ -113,8 +113,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // Basic interrupt architecture
   input  logic [31:0]                   irq_i,
 
-  // Event wakeup signal
-  input  logic                          wu_wfe_i,
+  // Event wakeup signals
+  input  logic                          wu_wfe_i,   // Wait-for-event wakeup
+  input  logic                          wu_wrs_i,   // Wait-for-reservation-set wakeup
 
   // Smclic interrupt architecture
   input  logic                          clic_irq_i,

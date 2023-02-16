@@ -27,12 +27,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_a_decoder import cv32e40x_pkg::*;
+  #(
+      parameter a_ext_e A_EXT = A
+  )
   (
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
 
    output             decoder_ctrl_t decoder_ctrl_o
    );
+
+  localparam A_LRSC = (A_EXT == A) || (A_EXT == ZALRSC);
+  localparam A_AMO  = (A_EXT == A);
 
   always_comb
   begin
@@ -56,27 +62,43 @@ module cv32e40x_a_decoder import cv32e40x_pkg::*;
 
           unique case (instr_rdata_i[31:27])
             AMO_LR: begin
-              decoder_ctrl_o.rf_re[1]     = 1'b0;
-              decoder_ctrl_o.op_c_mux_sel = OP_C_NONE;
-              decoder_ctrl_o.lsu_we       = 1'b0;
-              if (instr_rdata_i[24:20] != 5'b00000) begin
+              if (A_LRSC) begin
+                decoder_ctrl_o.rf_re[1]     = 1'b0;
+                decoder_ctrl_o.op_c_mux_sel = OP_C_NONE;
+                decoder_ctrl_o.lsu_we       = 1'b0;
+                if (instr_rdata_i[24:20] != 5'b00000) begin
+                  decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+                end
+              end else begin
                 decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end
             end
-            AMO_SC,
-              AMO_SWAP,
-              AMO_ADD,
-              AMO_XOR,
-              AMO_AND,
-              AMO_OR,
-              AMO_MIN,
-              AMO_MAX,
-              AMO_MINU,
-              AMO_MAXU: begin
+            AMO_SC: begin
+              if (A_LRSC) begin
                 decoder_ctrl_o.rf_re[1]     = 1'b1;             // Used for operand C
                 decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // Used for write data
                 decoder_ctrl_o.lsu_we       = 1'b1;
+              end else begin
+                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
               end
+            end
+            AMO_SWAP,
+            AMO_ADD,
+            AMO_XOR,
+            AMO_AND,
+            AMO_OR,
+            AMO_MIN,
+            AMO_MAX,
+            AMO_MINU,
+            AMO_MAXU: begin
+              if (A_AMO) begin
+                decoder_ctrl_o.rf_re[1]     = 1'b1;             // Used for operand C
+                decoder_ctrl_o.op_c_mux_sel = OP_C_REGB_OR_FWD; // Used for write data
+                decoder_ctrl_o.lsu_we       = 1'b1;
+              end else begin
+                decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
+              end
+            end
             default : begin
               decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
             end

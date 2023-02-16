@@ -32,7 +32,7 @@
 module cv32e40x_controller import cv32e40x_pkg::*;
 #(
   parameter bit          X_EXT                  = 0,
-  parameter bit          A_EXT                  = 0,
+  parameter a_ext_e      A_EXT                  = A_NONE,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
   parameter bit          SMCLIC                 = 0,
   parameter int          SMCLIC_ID_WIDTH        = 5,

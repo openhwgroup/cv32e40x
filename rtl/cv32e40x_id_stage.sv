@@ -33,7 +33,7 @@
 module cv32e40x_id_stage import cv32e40x_pkg::*;
 #(
   parameter rv32_e       RV32                   = RV32I,
-  parameter bit          A_EXT                  = 0,
+  parameter a_ext_e      A_EXT                  = A_NONE,
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
   parameter bit          X_EXT                  = 0,

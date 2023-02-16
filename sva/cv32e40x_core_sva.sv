@@ -26,10 +26,10 @@ module cv32e40x_core_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   #(
-    parameter bit A_EXT = 0,
-    parameter int DEBUG = 1,
-    parameter int PMA_NUM_REGIONS = 0,
-    parameter bit SMCLIC = 0
+    parameter a_ext_e A_EXT = A_NONE,
+    parameter int     DEBUG = 1,
+    parameter int     PMA_NUM_REGIONS = 0,
+    parameter bit     SMCLIC = 0
   )
   (
   input logic        clk,
@@ -424,7 +424,7 @@ end
 
 
   generate
-    if (!A_EXT) begin
+    if (A_EXT == A_NONE) begin
       a_atomic_disabled_never_atop :
         assert property (@(posedge clk) disable iff (!rst_ni)
                          (data_atop_o == 6'b0) &&
