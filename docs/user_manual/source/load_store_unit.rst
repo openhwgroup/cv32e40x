@@ -61,7 +61,7 @@ is therefore performed as two bus transactions for the following scenarios:
 
 In both cases the transfer corresponding to the lowest address is performed first. All other scenarios can be handled with a single bus transaction.
 
-Misaligned transactions are not supported in I/O regions and will result in an exception trap when attempted, see :ref:`exceptions-interrupts`. 
+Misaligned transactions are not supported in I/O regions and will result in an exception trap when attempted, see :ref:`exceptions-interrupts`.
 
 Protocol
 --------
@@ -88,7 +88,7 @@ granting a request, the memory answers with a ``data_rvalid_i`` set high
 if ``data_rdata_i`` is valid. This may happen one or more cycles after the
 request has been granted. Note that ``data_rvalid_i`` must also be set high
 to signal the end of the response phase for a write transaction (although
-the ``data_rdata_i`` has no meaning in that case). When multiple granted requests 
+the ``data_rdata_i`` has no meaning in that case). When multiple granted requests
 are outstanding, it is assumed that the memory requests will be kept in-order and
 one ``data_rvalid_i`` will be signalled for each of them, in the order they were issued.
 
@@ -149,10 +149,10 @@ The write buffer (when not full) allows |corev| to proceed executing instruction
 .. note::
 
    On the OBI interface ``data_gnt_i`` = 1 and ``data_rvalid_i`` = 1 still need to be signaled for every transfer (as specified in [OPENHW-OBI]_), also for bufferable transfers.
- 
+
 Bus transfers will occur in program order, no matter if transfers are bufferable and non-bufferable.
 Transactions in the write buffer must be completed before the |corev| is able to:
- 
+
  * Retire a ``fence`` instruction
  * Retire a ``fence.i`` instruction
  * Enter SLEEP mode
@@ -160,5 +160,5 @@ Transactions in the write buffer must be completed before the |corev| is able to
 Atomics
 -------
 
-|corev| supports exclusive transactions and atomic transactions if ``A_EXT`` = 1. For atomic transactions |corev| does however **not** provide a full implementation of the ``A`` extension as it is assumed
-that |corev| is used in combination with an external adapter that transforms the OBI transactions (see [OPENHW-OBI]_) into the required *read-modify-write* sequences. For more information about Atomic instructions, see :ref:`atomics`. 
+|corev| supports exclusive transactions if ``A_EXT`` = ZALRSC or ``A_EXT`` = A, and atomic transactions if ``A_EXT`` = A. For atomic transactions |corev| does however **not** provide a full implementation of the ``A`` extension as it is assumed
+that |corev| is used in combination with an external adapter that transforms the OBI transactions (see [OPENHW-OBI]_) into the required *read-modify-write* sequences. For more information about Atomic instructions, see :ref:`atomics`.
