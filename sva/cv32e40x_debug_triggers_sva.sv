@@ -27,7 +27,8 @@ module cv32e40x_debug_triggers_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
 #(
-    parameter int DBG_NUM_TRIGGERS = 1
+    parameter int     DBG_NUM_TRIGGERS = 1,
+    parameter a_ext_e A_EXT = A_NONE
   )
 
   (
@@ -86,18 +87,20 @@ module cv32e40x_debug_triggers_sva
     else `uvm_error("debug_triggers", "tdata2_q changed after set/clear with rs1==0")
 
 generate
-  for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin
-    // Since AMOs perform both a read and a write, it must be possible to get a trigger match on its address
-    // when any of the tdata1.LOAD or tdata1.STORE bits are set.
-    a_amo_enable_trig_on_load:
-      assert property (@(posedge clk) disable iff (!rst_n)
-                      (tdata1_q[idx][MCONTROL2_6_LOAD] || tdata1_q[idx][MCONTROL2_6_STORE]) &&  // Trig on loads or stores enabled
-                      (tdata1_q[idx][MCONTROL2_6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) && // Matches privilege level
-                      (lsu_atomic_ex_i == AT_AMO)  && // An Atomic AMO instruction is in EX
-                      lsu_valid_ex_i
-                      |->
-                      lsu_addr_match_en[idx])    // Address matching must be enabled on the trigger
-        else `uvm_error("debug_triggers", "Address matching not enabled on an AMO instruction when trig on loads are configured")
+  if (A_EXT == A) begin : gen_amo_trigger_assert
+    for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin
+      // Since AMOs perform both a read and a write, it must be possible to get a trigger match on its address
+      // when any of the tdata1.LOAD or tdata1.STORE bits are set.
+      a_amo_enable_trig_on_load:
+        assert property (@(posedge clk) disable iff (!rst_n)
+                        (tdata1_q[idx][MCONTROL2_6_LOAD] || tdata1_q[idx][MCONTROL2_6_STORE]) &&  // Trig on loads or stores enabled
+                        (tdata1_q[idx][MCONTROL2_6_M] && (priv_lvl_ex_i == PRIV_LVL_M)) && // Matches privilege level
+                        (lsu_atomic_ex_i == AT_AMO)  && // An Atomic AMO instruction is in EX
+                        lsu_valid_ex_i
+                        |->
+                        lsu_addr_match_en[idx])    // Address matching must be enabled on the trigger
+          else `uvm_error("debug_triggers", "Address matching not enabled on an AMO instruction when trig on loads are configured")
+    end
   end
 endgenerate
 

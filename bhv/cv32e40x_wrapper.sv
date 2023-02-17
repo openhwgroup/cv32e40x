@@ -282,7 +282,8 @@ module cv32e40x_wrapper
       bind cv32e40x_debug_triggers:
         core_i.cs_registers_i.debug_triggers_i
           cv32e40x_debug_triggers_sva
-            #(.DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS))
+            #(.DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS),
+              .A_EXT           (A_EXT))
             debug_triggers_sva (.csr_wdata     (core_i.cs_registers_i.csr_wdata),
                                 .csr_waddr     (core_i.cs_registers_i.csr_waddr),
                                 .csr_op        (core_i.cs_registers_i.csr_op),
@@ -473,7 +474,8 @@ endgenerate
     rvfi_i
     cv32e40x_rvfi_sva
       #(.SMCLIC(SMCLIC),
-        .DEBUG (DEBUG))
+        .DEBUG (DEBUG),
+        .A_EXT (A_EXT))
       rvfi_sva(.irq_ack(core_i.irq_ack),
                .dbg_ack(core_i.dbg_ack),
                .ebreak_in_wb_i(core_i.controller_i.controller_fsm_i.ebreak_in_wb),
@@ -481,6 +483,9 @@ endgenerate
                .obi_instr_fifo_q(rvfi_i.rvfi_instr_obi_i.fifo_q),
                .obi_instr_rptr_q_inc(rvfi_i.rvfi_instr_obi_i.rptr_q_inc),
                .obi_instr_rptr_q(rvfi_i.rvfi_instr_obi_i.rptr_q),
+               .lsu_atomic_wb_i (core_i.lsu_atomic_wb),
+               .lsu_en_wb_i     (core_i.ex_wb_pipe.lsu_en),
+               .lsu_split_q_wb_i (core_i.load_store_unit_i.split_q),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
@@ -499,7 +504,8 @@ endgenerate
 
     cv32e40x_rvfi
       #(.SMCLIC(SMCLIC),
-        .DEBUG (DEBUG))
+        .DEBUG (DEBUG),
+        .A_EXT (A_EXT))
       rvfi_i
         (.clk_i                    ( clk_i                                                                ),
          .rst_ni                   ( rst_ni                                                               ),
@@ -552,8 +558,10 @@ endgenerate
          .dret_in_ex_i             ( core_i.ex_stage_i.id_ex_pipe_i.sys_dret_insn                         ),
          .lsu_en_ex_i              ( core_i.ex_stage_i.id_ex_pipe_i.lsu_en                                ),
          .lsu_pmp_err_ex_i         ( 1'b0                          /* PMP not implemented in cv32e40x */  ),
-         .lsu_pma_err_atomic_ex_i  ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i && // Todo: Consider making this a signal in the pma (no expressions allowed in module hookup)
-                                    !core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg_atomic                 ),
+         .lsu_pma_err_ex_i         ( core_i.load_store_unit_i.mpu_i.pma_i.pma_err_o                       ),
+         .lsu_pma_atomic_ex_i      ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i                 ),
+         .lsu_pma_cfg_ex_i         ( core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg                         ),
+         .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.misaligned_access                           ),
          .buffer_trans             ( core_i.load_store_unit_i.buffer_trans                                ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
