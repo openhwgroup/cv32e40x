@@ -3,14 +3,14 @@
 Atomic instructions
 ===================
 
-|corev| supports exclusive transactions if ``A_EXT`` = ZALRSC or A.
-|corev| supports exclusive transactions and atomic transactions if ``A_EXT`` = A.
+|corev| supports Load-Reserved/Store-Conditional instructions (i.e. ``lr.w`` and ``sc.w``) if ``A_EXT`` = ZALRSC or A.
+|corev| supports Load-Reserved/Store-Conditional instructions and Atomic Memory Operations (AMOs) if ``A_EXT`` = A.
 
 Load-Reserved/Store-Conditional Instructions
 --------------------------------------------
 
-The ``lr.w`` and ``sc.w`` instructions are supported if ``A_EXT`` = ZALRSC or A. These instructions perform exclusive transactions via the
-data OBI interface (i.e. ``data_atop_o[5]`` = 1). The ``data_atop_o`` signal will indicate the type of exclusive transaction
+The ``lr.w`` and ``sc.w`` instructions are supported if ``A_EXT`` = ZALRSC or ``A_EXT`` = A. These instructions perform exclusive transactions via the
+data OBI interface. The ``data_atop_o`` signal will indicate the type of exclusive transaction
 as specified in [OPENHW-OBI]_.
 
 The definition of the related reservation set as well as registering or invalidating a reservation is outside the scope of |corev|.
@@ -25,7 +25,7 @@ a region without support for exclusive transactions, then a following ``sc.w`` w
 to perform any type of atomic transaction (including ``lr.w`` and ``sc.w``) on regions not supporting atomic transactions.
 
 .. note::
-  An ``mret`` instruction will NOT clear the reservation set, and thus trap handlers must execute a ``sc.w`` if needed before executing ``mret``.
+  An ``mret`` instruction will **not** clear the reservation set, and thus trap handlers must execute a ``sc.w`` if needed before executing ``mret``.
 
 Atomic Memory Operations
 ------------------------
