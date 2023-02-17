@@ -160,5 +160,5 @@ Transactions in the write buffer must be completed before the |corev| is able to
 Atomics
 -------
 
-|corev| supports exclusive transactions if ``A_EXT`` = ZALRSC or A, and atomic transactions if ``A_EXT`` = A. For atomic transactions |corev| does however **not** provide a full implementation of the ``A`` extension as it is assumed
+|corev| supports exclusive transactions if ``A_EXT`` = ZALRSC or ``A_EXT`` = A, and atomic transactions if ``A_EXT`` = A. For atomic transactions |corev| does however **not** provide a full implementation of the ``A`` extension as it is assumed
 that |corev| is used in combination with an external adapter that transforms the OBI transactions (see [OPENHW-OBI]_) into the required *read-modify-write* sequences. For more information about Atomic instructions, see :ref:`atomics`.
