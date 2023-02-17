@@ -81,6 +81,7 @@ module cv32e40x_rvfi
    input logic                                lsu_pmp_err_ex_i,
    input logic                                lsu_pma_err_ex_i,
    input logic                                lsu_pma_atomic_ex_i,
+   input pma_cfg_t                            lsu_pma_cfg_ex_i,
    input logic                                lsu_misaligned_ex_i,
    input obi_data_req_t                       buffer_trans,
    input logic                                lsu_split_q_ex_i,
@@ -705,14 +706,25 @@ module cv32e40x_rvfi
   // Detect mret initiated CLIC pointer in WB
   logic         mret_ptr_wb;
 
-  // Detect a PMA error due to atomics
+  // Detect a PMA error due to atomics accessing non-atomic regions
   logic         lsu_pma_err_atomic_ex;
+
+  // Detect PMA errors due to misaligned accesses
+  logic         lsu_pma_err_misaligned_ex;
+
+  // Detect LSU errors due to misaligned atomics (uses PMA logic but is not a true PMA error)
+  logic         lsu_err_misaligned_atomic_ex;
 
   assign        mret_ptr_wb = mret_ptr_wb_i;
 
   // PMA error due to atomic not within an atomic region
-  // Error due to misaligned atomics shall get cause_type==0 and is excluded here.
-  assign lsu_pma_err_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i && !lsu_misaligned_ex_i;
+  assign lsu_pma_err_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i && !lsu_pma_cfg_ex_i.atomic;
+
+  // PMA error due to misaligned accesses to I/O memory
+  assign lsu_pma_err_misaligned_ex = lsu_pma_err_ex_i && lsu_misaligned_ex_i && !lsu_pma_cfg_ex_i.main;
+
+  // Detect LSU errors due to misaligned atomic instructions
+  assign lsu_err_misaligned_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i && lsu_misaligned_ex_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
@@ -1097,9 +1109,10 @@ module cv32e40x_rvfi
           ex_mem_trans <= lsu_data_trans;
         end
 
-        mem_err   [STAGE_WB]  <= lsu_pmp_err_ex_i        ? MEM_ERR_PMP :
-                                 lsu_pma_err_atomic_ex   ? MEM_ERR_ATOMIC :
-                                                           MEM_ERR_IO_ALIGN;
+        mem_err [STAGE_WB]  = lsu_err_misaligned_atomic_ex ? MEM_ERR_MISALIGNED_ATOMIC : // Non-naturally aligned atomic
+                              lsu_pma_err_misaligned_ex    ? MEM_ERR_IO_ALIGN          : // Non-natrually aligned access to !main
+                              lsu_pma_err_atomic_ex        ? MEM_ERR_ATOMIC            : // Any atomic to non-atomic PMA region
+                                                             MEM_ERR_PMP;                // PMP error
 
         // Read autonomuos CSRs from EX perspective
         ex_csr_rdata        <= ex_csr_rdata_d;
