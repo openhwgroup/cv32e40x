@@ -24,9 +24,13 @@ Exceptions
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
   |              0 |              3 | Breakpoint                            | Environment break.                                                        |
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+  |              0 |              4 | Load address misaligned               | Non-naturally aligned Load-Reserved address.                              |
+  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
   |              0 |              5 | Load access fault                     | Non-naturally aligned load access attempt to an I/O region.               |
   |                |                |                                       | Modified load access attempt to an I/O region.                            |
   |                |                |                                       | Load-Reserved attempt to region without atomic support.                   |
+  +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
+  |              0 |              6 | Store/AMO address misaligned          | Non-naturally aligned Store-Conditional / AMO address.                    |
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
   |              0 |              7 | Store/AMO access fault                | Non-naturally aligned store access attempt to an I/O region.              |
   |                |                |                                       | Modified store access attempt to an I/O region.                           |
@@ -47,6 +51,8 @@ If an instruction raises multiple exceptions, the priority, from high to low, is
 * ``environment break (3)``
 * ``store/AMO access fault (7)``
 * ``load access fault (5)``
+* ``store/AMO address misaligned (6)``
+* ``load address misaligned (4)``
 
 Exceptions in general cannot be disabled and are always active. 
 All exceptions are precise.
@@ -56,6 +62,12 @@ illegal according to the ISA implemented by the core, as well as for any instruc
 is configured as a custom |corev| instruction for specific parameter settings as defined in (see :ref:`custom-isa-extensions`).
 An instruction bus error leads to a precise instruction interface bus fault if an attempt is made to execute the instruction that has an associated bus error.
 Similarly an instruction fetch with a failing PMA check only leads to an instruction access exception if an actual execution attempt is made for it.
+
+.. note::
+
+   The address misaligned exceptions (exception codes 4 and 6) are only triggered when Load-Reserved, Store-Conditional or AMO instructions use non-naturally aligned addresses for their data access(es)
+   and the access is not blocked by a higher priority access fault from the PMA (exception codes 5 or 7).
+   Misaligned accesses by non-Atomic instructions are either handled by hardware (no exception) or lead to access faults from the PMA (exception code 5 or 7) as explained in :ref:` misaligned-accesses`.
 
 Non Maskable Interrupts
 -----------------------
