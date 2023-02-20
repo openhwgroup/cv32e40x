@@ -48,10 +48,12 @@ supported.
   | ``data_exokay_i``         | input           | Exclusive transaction status. Only valid when ``data_rvalid_i`` is high.                                                     |
   +---------------------------+-----------------+------------------------------------------------------------------------------------------------------------------------------+
 
+.. _misaligned-accesses:
+
 Misaligned Accesses
 -------------------
 
-Misaligned transaction are supported in hardware for Main memory regions, see :ref:`pma`. For loads and stores in Main memory where the effective
+Misaligned transactions (by non-atomics instructions) are supported in hardware for Main memory regions, see :ref:`pma`. For loads and stores in Main memory where the effective
 address is not naturally aligned to the referenced datatype (i.e., on a four-byte boundary for word accesses, and a two-byte boundary for halfword
 accesses) the load/store is performed as two bus transactions in case that the data item crosses a word boundary. A single load/store instruction
 is therefore performed as two bus transactions for the following scenarios:
