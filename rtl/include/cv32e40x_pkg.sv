@@ -423,7 +423,7 @@ typedef enum logic[11:0] {
   CSR_MIMPID         = 12'hF13,
   CSR_MHARTID        = 12'hF14,
   CSR_MCONFIGPTR     = 12'hF15,
-  CSR_MINTSTATUS     = 12'hF46
+  CSR_MINTSTATUS     = 12'hFB1
 
 } csr_num_e;
 
