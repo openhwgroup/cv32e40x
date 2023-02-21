@@ -539,6 +539,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_rdata_int = dcsr_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
+          csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
       end
@@ -548,6 +549,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_rdata_int = dpc_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
+          csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
       end
@@ -557,6 +559,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_rdata_int = dscratch0_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
+          csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
       end
@@ -566,6 +569,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           csr_rdata_int = dscratch1_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
+          csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
       end
