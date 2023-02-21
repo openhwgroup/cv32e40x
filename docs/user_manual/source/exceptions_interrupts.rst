@@ -4,8 +4,8 @@ Exceptions and Interrupts
 =========================
 
 |corev| supports one of two interrupt architectures.
-If the ``SMCLIC`` parameter is set to 0, then the CLINT mode interrupt architecture is supported (see :ref:`clint_interrupt_architecture`).
-If the ``SMCLIC`` parameter is set to 1, then the CLIC mode interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
+If the ``CLIC`` parameter is set to 0, then the CLINT mode interrupt architecture is supported (see :ref:`clint_interrupt_architecture`).
+If the ``CLIC`` parameter is set to 1, then the CLIC mode interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
 
 Exceptions
 ----------
@@ -83,12 +83,12 @@ Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` simil
 
 NMIs have higher priority than other interrupts for both the CLINT mode interrupt architecture and the CLIC mode interrupt architecture.
 
-If ``SMCLIC`` == 0, then the NMI vector location is as follows:
+If ``CLIC`` == 0, then the NMI vector location is as follows:
 
 * Upon an NMI in non-vectored CLINT mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
 * Upon an NMI in vectored CLINT mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b00} (i.e. index 15).
 
-If ``SMCLIC`` == 1, then the NMI vector location is as follows:
+If ``CLIC`` == 1, then the NMI vector location is as follows:
 
 * Upon an NMI in CLIC mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
 
@@ -114,7 +114,7 @@ While an NMI is pending, ``DCSR.nmip`` will be 1. Note that this CSR is only acc
 CLINT Mode Interrupt Architecture
 ---------------------------------
 
-If ``SMCLIC`` == 0, then |corev| supports the CLINT mode interrupt architecture as defined in [RISC-V-PRIV]_. In this configuration only the
+If ``CLIC`` == 0, then |corev| supports the CLINT mode interrupt architecture as defined in [RISC-V-PRIV]_. In this configuration only the
 CLINT mode interrupt handling modes (non-vectored CLINT mode and vectored CLINT mode) can be used. The ``irq_i[31:16]`` interrupts are a custom extension
 that can be used with the CLINT mode interrupt architecture.
 
@@ -249,10 +249,10 @@ To allow higher priority interrupts only, the handler must configure ``mie`` acc
 CLIC Mode Interrupt Architecture
 --------------------------------
 
-If ``SMCLIC`` == 1, then |corev| supports the Core-Local Interrupt Controller (CLIC) Privileged Architecture Extension defined in [RISC-V-SMCLIC]_. In this
-configuration only the CLIC interrupt handling mode can be used (i.e. ``mtvec[1:0]`` = 0x3).
+If ``CLIC`` == 1, then |corev| supports the  Smclic, Smclicshv and Smclicconfig extensions defined in [RISC-V-CLIC]_. The Ssclic and Suclic extensions are not supported.
+In this configuration (i.e. ``CLIC`` == 1) only the CLIC interrupt handling mode can be used (i.e. ``mtvec[1:0]`` = 0x3).
 
-The CLIC implementation is split into a part internal to the core (containing CSRs and related logic) and a part external to the core (containing memory mapped registers and arbitration logic). |corev| only
+The CLIC implementation is however split into a part internal to the core (containing CSRs and related logic) and a part external to the core (containing memory mapped registers and arbitration logic). |corev| **only**
 provides the core internal part of CLIC. The external part can be added on the interface described in :ref:`clic-interrupt-interface`. CLIC provides low-latency, vectored, pre-emptive interrupts.
 
 .. _clic-interrupt-interface:
@@ -272,7 +272,7 @@ Interrupt Interface
   +========================================+===========+==================================================+
   | ``clic_irq_i``                         | input     | Is there any pending-and-enabled interrupt?      |
   +----------------------------------------+-----------+--------------------------------------------------+
-  | ``clic_irq_id_i[SMCLIC_ID_WIDTH-1:0]`` | input     | Index of the most urgent pending-and-enabled     |
+  | ``clic_irq_id_i[CLIC_ID_WIDTH-1:0]``   | input     | Index of the most urgent pending-and-enabled     |
   |                                        |           | interrupt.                                       |
   +----------------------------------------+-----------+--------------------------------------------------+
   | ``clic_irq_level_i[7:0]``              | input     | Interrupt level of the most urgent               |
@@ -287,7 +287,7 @@ Interrupt Interface
   +----------------------------------------+-----------+--------------------------------------------------+
 
 The term *pending-and-enabled* interrupt in above table refers to *pending-and-locally-enabled*, i.e. based on the ``CLICINTIP`` and
-``CLICINTIE`` memory mapped registers from [RISC-V-SMCLIC]_.
+``CLICINTIE`` memory mapped registers from [RISC-V-CLIC]_.
 
 .. note::
 
@@ -307,15 +307,15 @@ The term *pending-and-enabled* interrupt in above table refers to *pending-and-l
 
 Interrupts
 ~~~~~~~~~~
-Although the [RISC-V-SMCLIC]_ specification supports up to 4096 interrupts, |corev| itself supports at most 1024 interrupts. The
-maximum number of supported CLIC interrupts is equal to ``2^SMCLIC_ID_WIDTH``, which can range from 2 to 1024. The ``SMCLIC_ID_WIDTH`` parameter
+Although the [RISC-V-CLIC]_ specification supports up to 4096 interrupts, |corev| itself supports at most 1024 interrupts. The
+maximum number of supported CLIC interrupts is equal to ``2^CLIC_ID_WIDTH``, which can range from 2 to 1024. The ``CLIC_ID_WIDTH`` parameter
 also impacts the alignment requirement for the trap vector table, see :ref:`csr-mtvt`.
 
 Interrupt prioritization is mostly performed in the part of CLIC that is external to the core, with the exception that |corev| prioritizes all NMIs above interrupts received via ``clic_irq_i``.
 
 Nested Interrupt Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-|corev| offers hardware support for nested interrupt handling when ``SMCLIC`` == 1. 
+|corev| offers hardware support for nested interrupt handling when ``CLIC`` == 1. 
 
 CLIC extends interrupt preemption to support up to 256 interrupt levels for each privilege mode,
-where higher-numbered interrupt levels can preempt lower-numbered interrupt levels. See [RISC-V-SMCLIC]_ for details.
+where higher-numbered interrupt levels can preempt lower-numbered interrupt levels. See [RISC-V-CLIC]_ for details.

@@ -54,7 +54,7 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x305         | ``mtvec``         | MRW       |                          | Machine Trap-Handler Base Address                       |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x307         | ``mtvt``          | MRW       | ``SMCLIC`` = 1           | Machine Trap-Handler Vector Table Base Address          |
+  | 0x307         | ``mtvt``          | MRW       | ``CLIC`` = 1             | Machine Trap-Handler Vector Table Base Address          |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x310         | ``mstatush``      | MRW       |                          | Machine Status (upper 32 bits).                         |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
@@ -76,13 +76,13 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x344         | ``mip``           | MRW       |                          | Machine Interrupt Pending Register                      |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x345         | ``mnxti``         | MRW       | ``SMCLIC`` = 1           | Interrupt handler address and enable modifier           |
+  | 0x345         | ``mnxti``         | MRW       | ``CLIC`` = 1             | Interrupt handler address and enable modifier           |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x347         | ``mintthresh``    | MRW       | ``SMCLIC`` = 1           | Interrupt-level threshold                               |
+  | 0x347         | ``mintthresh``    | MRW       | ``CLIC`` = 1             | Interrupt-level threshold                               |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x348         | ``mscratchcsw``   | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on priv mode change            |
+  | 0x348         | ``mscratchcsw``   | MRW       | ``CLIC`` = 1             | Conditional scratch swap on priv mode change            |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0x349         | ``mscratchcswl``  | MRW       | ``SMCLIC`` = 1           | Conditional scratch swap on level change                |
+  | 0x349         | ``mscratchcswl``  | MRW       | ``CLIC`` = 1             | Conditional scratch swap on level change                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0x7A0         | ``tselect``       | MRW       | ``DBG_NUM_TRIGGERS`` > 0 | Trigger Select Register                                 |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
@@ -134,7 +134,7 @@ instruction exception.
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
   | 0xF15         | ``mconfigptr``    | MRO       |                          | Machine Configuration Pointer                           |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
-  | 0xF46         | ``mintstatus``    | MRO       | ``SMCLIC`` = 1           | Current interrupt levels                                |
+  | 0xFB1         | ``mintstatus``    | MRO       | ``CLIC`` = 1             | Current interrupt levels                                |
   +---------------+-------------------+-----------+--------------------------+---------------------------------------------------------+
 
 .. table:: Control and Status Register Map (Unprivileged and User-Level CSRs)
@@ -580,8 +580,8 @@ All bitfields in the ``misa`` CSR read as 0 except for the following:
 
    None of the ``misa`` bits can be changed by writing the ``misa`` CSR.
 
-Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 0
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Enable Register (``mie``) - ``CLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x304
 
@@ -625,8 +625,8 @@ Detailed:
   |  0          | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
   +-------------+-----------+------------------------------------------------------------------------------------------+
 
-Machine Interrupt Enable Register (``mie``) - ``SMCLIC`` == 1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Enable Register (``mie``) - ``CLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x304
 
@@ -649,8 +649,8 @@ Detailed:
 
 .. _csr-mtvec:
 
-Machine Trap-Vector Base Address (``mtvec``) - ``SMCLIC`` == 0
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Trap-Vector Base Address (``mtvec``) - ``CLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x305
 
@@ -687,10 +687,10 @@ Upon an NMI in vectored CLINT mode the core jumps to **mtvec[31:7]**, 5'hF, 2'b0
 .. note::
    Memory writes to the ``mtvec`` based vector table require an instruction barrier (``fence.i``) to guarantee that they are visible to the instruction fetch (see :ref:`fencei` and [RISC-V-UNPRIV]_).
 
-.. _csr-mtvec-smclic:
+.. _csr-mtvec-clic:
 
-Machine Trap-Vector Base Address (``mtvec``) - ``SMCLIC`` == 1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Trap-Vector Base Address (``mtvec``) - ``CLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x305
 
@@ -730,7 +730,7 @@ CSR Address: 0x307
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
@@ -742,12 +742,12 @@ Detailed:
   |   Bit #     |   R/W      |           Description                                                 |
   +=============+============+=======================================================================+
   | 31:N        | RW         | **BASE[31:N]**: Trap-handler vector table base address.               |
-  |             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
+  |             |            | N = maximum(6, 2+CLIC_ID_WIDTH).                                      |
   |             |            | See note below for alignment restrictions.                            |
   +-------------+------------+-----------------------------------------------------------------------+
   | N-1:6       | WARL (0x0) | **BASE[N-1:6]**: Trap-handler vector table base address.              |
   |             |            | This field is only defined if N > 6.                                  |
-  |             |            | N = maximum(6, 2+SMCLIC_ID_WIDTH).                                    |
+  |             |            | N = maximum(6, 2+CLIC_ID_WIDTH).                                      |
   |             |            | ``mtvt[N-1:6]`` is hardwired to 0x0.                                  |
   |             |            | See note below for  alignment restrictions.                           |
   +-------------+------------+-----------------------------------------------------------------------+
@@ -756,7 +756,7 @@ Detailed:
 
 .. note::
    The ``mtvt`` CSR holds the base address of the trap vector table, which has its alignment restricted to both at least 64-bytes and to
-   ``2^(2+SMCLIC_ID_WIDTH)`` bytes or greater power-of-two boundary. For example if ``SMCLIC_ID_WIDTH`` = 8, then 256 CLIC interrupts are supported and the trap vector table
+   ``2^(2+CLIC_ID_WIDTH)`` bytes or greater power-of-two boundary. For example if ``CLIC_ID_WIDTH`` = 8, then 256 CLIC interrupts are supported and the trap vector table
    is aligned to 1024 bytes, and therefore **BASE[9:6]** will be WARL (0x0).
 
 .. note::
@@ -1116,8 +1116,8 @@ in MEPC, and the core jumps to the exception address. When a mret
 instruction is executed, the value from MEPC replaces the current
 program counter.
 
-Machine Cause (``mcause``) - ``SMCLIC`` == 0
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Cause (``mcause``) - ``CLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x342
 
@@ -1142,8 +1142,8 @@ Reset Value: 0x0000_0000
    Software accesses to `mcause[10:0]` must be sensitive to the WLRL field specification of this CSR.  For example,
    when `mcause[31]` is set, writing 0x1 to `mcause[1]` (Supervisor software interrupt) will result in UNDEFINED behavior.
 
-Machine Cause (``mcause``) - ``SMCLIC`` == 1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Cause (``mcause``) - ``CLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x342
 
@@ -1200,8 +1200,8 @@ Detailed:
   | 31:0        | WARL (0x0) | Hardwired to 0.                                                        |
   +-------------+------------+------------------------------------------------------------------------+
 
-Machine Interrupt Pending Register (``mip``) - ``SMCLIC`` == 0
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Pending Register (``mip``) - ``CLIC`` == 0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x344
 
@@ -1245,8 +1245,8 @@ Detailed:
   |  0          | WARL (0x0)| Reserved. Hardwired to 0.                                                                |
   +-------------+-----------+------------------------------------------------------------------------------------------+
 
-Machine Interrupt Pending Register (``mip``) - ``SMCLIC`` == 1
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Machine Interrupt Pending Register (``mip``) - ``CLIC`` == 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CSR Address: 0x344
 
@@ -1276,7 +1276,7 @@ CSR Address: 0x345
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
@@ -1307,7 +1307,7 @@ CSR Address: 0x347
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
@@ -1326,7 +1326,7 @@ Detailed:
 This register holds the machine mode interrupt level threshold.
 
 .. note::
-  The ``SMCLIC_INTTHRESHBITS`` parameter specifies the number of bits actually implemented in the ``mintthresh.th`` field.
+  The ``CLIC_INTTHRESHBITS`` parameter specifies the number of bits actually implemented in the ``mintthresh.th`` field.
   The implemented bits are kept left justified in the most-significant bits of the 8-bit field, with the lower unimplemented
   bits treated as hardwired to 1.
 
@@ -1339,7 +1339,7 @@ CSR Address: 0x348
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
@@ -1369,7 +1369,7 @@ CSR Address: 0x349
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
@@ -2190,11 +2190,11 @@ Detailed:
 Machine Interrupt Status (``mintstatus``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CSR Address: 0xF46
+CSR Address: 0xFB1
 
 Reset Value: 0x0000_0000
 
-Include Condition: ``SMCLIC`` = 1
+Include Condition: ``CLIC`` = 1
 
 Detailed:
 
