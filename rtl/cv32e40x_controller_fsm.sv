@@ -31,10 +31,10 @@
 
 module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 #(
-  parameter bit       X_EXT           = 0,
-  parameter int       DEBUG           = 1,
-  parameter bit       SMCLIC          = 0,
-  parameter int       SMCLIC_ID_WIDTH = 5
+  parameter bit       X_EXT         = 0,
+  parameter int       DEBUG         = 1,
+  parameter bit       CLIC          = 0,
+  parameter int       CLIC_ID_WIDTH = 5
 )
 (
   // Clocks and reset
@@ -461,7 +461,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Detect if there is a live CLIC pointer in the pipeline
   // This should block debug and interrupts
   generate
-    if (SMCLIC) begin : gen_clic_pointer_flag
+    if (CLIC) begin : gen_clic_pointer_flag
       // A CLIC pointer may be in the pipeline from the moment we start fetching (clic_ptr_in_progress_id == 1)
       // or while a pointer is in the EX or WB stages.
       assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
@@ -776,7 +776,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
 
 
-          if (SMCLIC) begin
+          if (CLIC) begin
             ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
             ctrl_fsm_o.irq_level = irq_clic_level_i;
             ctrl_fsm_o.irq_priv = irq_clic_priv_i;

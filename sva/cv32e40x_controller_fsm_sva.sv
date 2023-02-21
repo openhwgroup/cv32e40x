@@ -30,7 +30,7 @@ module cv32e40x_controller_fsm_sva
   import cv32e40x_pkg::*;
   #(  parameter bit X_EXT     = 1'b0,
       parameter int DEBUG     = 0,
-      parameter bit SMCLIC    = 1'b0
+      parameter bit CLIC      = 1'b0
   )
 (
   input logic           clk,
@@ -594,7 +594,7 @@ endgenerate
                     (valid_cnt < (retire_at_error ? 2'b10 : 2'b11)))
     else `uvm_error("controller", "NMI handler not taken within two instruction retirements")
 
-if (SMCLIC) begin
+if (CLIC) begin
 
   // After a pc_set to PC_TRAP_CLICV, only the following jump targets are allowed:
   // PC_POINTER : Normal execution, the pointer target is being fetched
@@ -624,7 +624,7 @@ if (SMCLIC) begin
                   !ctrl_fsm_o.kill_id)
     else `uvm_error("controller", "ID stage killed while clic_ptr_in_progress_id is high")
 
-end else begin // SMCLIC
+end else begin // CLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.
   a_clic_inactive:
   assert property (@(posedge clk) disable iff (!rst_n)
