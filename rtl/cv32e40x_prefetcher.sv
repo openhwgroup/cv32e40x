@@ -39,7 +39,7 @@
 
 module cv32e40x_prefetcher import cv32e40x_pkg::*;
 #(
-    parameter bit SMCLIC = 1'b0
+    parameter bit CLIC = 1'b0
 )
 (
   input  logic                     clk,

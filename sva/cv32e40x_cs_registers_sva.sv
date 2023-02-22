@@ -26,8 +26,8 @@ module cv32e40x_cs_registers_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
 #(
-    parameter bit SMCLIC = 0,
-    parameter int DEBUG  = 1
+    parameter bit CLIC  = 0,
+    parameter int DEBUG = 1
   )
 
   (
@@ -86,7 +86,7 @@ module cv32e40x_cs_registers_sva
                   |-> !csr_we_int)
     else `uvm_error("wb_stage", "Register file written while WB is halted or killed")
 
-  if (SMCLIC) begin
+  if (CLIC) begin
     // Assert that mtvec[1:0] are always 2'b11
     a_mtvec_mode_clic:
     assert property (@(posedge clk) disable iff (!rst_n)

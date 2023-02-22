@@ -28,7 +28,7 @@
 
 module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 #(
-    parameter bit SMCLIC                   = 1'b0,
+    parameter bit CLIC                     = 1'b0,
     parameter int unsigned ALBUF_DEPTH     = 3,
     parameter int unsigned ALBUF_CNT_WIDTH = $clog2(ALBUF_DEPTH)
 )
@@ -82,7 +82,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
 
   cv32e40x_prefetcher
   #(
-      .SMCLIC  (SMCLIC)
+      .CLIC  (CLIC)
   )
   prefetcher_i
   (

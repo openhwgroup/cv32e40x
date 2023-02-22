@@ -29,7 +29,7 @@ module cv32e40x_core_sva
     parameter a_ext_e A_EXT = A_NONE,
     parameter int     DEBUG = 1,
     parameter int     PMA_NUM_REGIONS = 0,
-    parameter bit     SMCLIC = 0
+    parameter bit     CLIC = 0
   )
   (
   input logic        clk,
@@ -112,7 +112,7 @@ module cv32e40x_core_sva
   input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
   input mstatus_t    cs_registers_mstatus_q);
 
-if (SMCLIC) begin
+if (CLIC) begin
   property p_clic_mie_tieoff;
     @(posedge clk)
     |mie == 1'b0;
@@ -127,7 +127,7 @@ if (SMCLIC) begin
 
   //todo: add CLIC related assertions (level thresholds etc)
 end else begin
-  // SMCLIC == 0
+  // CLIC == 0
   // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
   // The actual mie_n value may be different from mie_q if mie is not
   // written to.
@@ -148,7 +148,7 @@ end else begin
 
   a_irq_enabled_1 : assert property(p_irq_enabled_1) else `uvm_error("core", "Assertion a_irq_enabled_1 failed")
 
-  // Assert that no pointer can be in any pipeline stage when SMCLIC == 0
+  // Assert that no pointer can be in any pipeline stage when CLIC == 0
   property p_clic_noptr_in_pipeline;
     @(posedge clk) disable iff (!rst_ni)
       1'b1
@@ -158,7 +158,7 @@ end else begin
   endproperty
 
   a_clic_noptr_in_pipeline : assert property(p_clic_noptr_in_pipeline) else `uvm_error("core", "CLIC pointer in pipeline when CLIC is not configured.")
-end // SMCLIC
+end // CLIC
 
 // First illegal instruction decoded
 logic         first_illegal_found;
@@ -353,7 +353,7 @@ always_ff @(posedge clk , negedge rst_ni)
     end
 
 
-if (SMCLIC) begin
+if (CLIC) begin
   if (DEBUG) begin
     // Non-SHV interrupt taken during single stepping.
     // If this happens, no instructions should retire until the core is in debug mode.
@@ -601,7 +601,7 @@ end
   a_tbljmp_stall: assert property(p_tbljmp_stall)
     else `uvm_error("core", "Table jump not stalled while CSR is written");
 
-if (!SMCLIC) begin
+if (!CLIC) begin
   // Check that a pending interrupt is taken as soon as possible after being enabled
   property p_mip_mie_write_enable;
     @(posedge clk) disable iff (!rst_ni)
