@@ -901,16 +901,19 @@ typedef enum logic[3:0] {
 } pc_mux_e;
 
 // Exception Cause
-parameter EXC_CAUSE_INSTR_FAULT     = 11'h01;
-parameter EXC_CAUSE_ILLEGAL_INSN    = 11'h02;
-parameter EXC_CAUSE_BREAKPOINT      = 11'h03;
-parameter EXC_CAUSE_LOAD_FAULT      = 11'h05;
-parameter EXC_CAUSE_STORE_FAULT     = 11'h07;
-parameter EXC_CAUSE_ECALL_MMODE     = 11'h0B;
-parameter EXC_CAUSE_INSTR_BUS_FAULT = 11'h18;
+parameter EXC_CAUSE_INSTR_FAULT      = 11'h01;
+parameter EXC_CAUSE_ILLEGAL_INSN     = 11'h02;
+parameter EXC_CAUSE_BREAKPOINT       = 11'h03;
+parameter EXC_CAUSE_LOAD_MISALIGNED  = 22'h04;
+parameter EXC_CAUSE_LOAD_FAULT       = 11'h05;
+parameter EXC_CAUSE_STORE_MISALIGNED = 11'h06;
+parameter EXC_CAUSE_STORE_FAULT      = 11'h07;
+parameter EXC_CAUSE_ECALL_MMODE      = 11'h0B;
+parameter EXC_CAUSE_INSTR_BUS_FAULT  = 11'h18;
 
 parameter logic [31:0] ETRIGGER_TDATA2_MASK = (1 << EXC_CAUSE_INSTR_BUS_FAULT) | (1 << EXC_CAUSE_ECALL_MMODE) | (1 << EXC_CAUSE_STORE_FAULT) |
-                                              (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT);
+                                              (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT) |
+                                              (1 << EXC_CAUSE_LOAD_MISALIGNED) | (1<<EXC_CAUSE_STORE_MISALIGNED);
 
 parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
 parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
@@ -962,13 +965,16 @@ parameter pma_cfg_t PMA_R_DEFAULT = '{word_addr_low   : 0,
                                       atomic          : 1'b0};
 
 // MPU status. Used for PMA
-typedef enum logic [1:0] {
-                          MPU_OK       = 2'h0,
-                          MPU_RE_FAULT = 2'h1,
-                          MPU_WR_FAULT = 2'h2
+typedef enum logic [2:0] {
+                          MPU_OK            = 3'h0,
+                          MPU_RE_FAULT      = 3'h1,
+                          MPU_WR_FAULT      = 3'h2,
+                          MPU_RE_MISALIGNED = 3'h3,
+                          MPU_WR_MISALIGNED = 3'h4
                           } mpu_status_e;
 
-typedef enum logic [2:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT} mpu_state_e;
+typedef enum logic [3:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_RE_MISALIGN_RESP, MPU_RE_MISALIGN_WAIT,
+                          MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT, MPU_WR_MISALIGN_RESP, MPU_WR_MISALIGN_WAIT} mpu_state_e;
 
 // WPT state machine
 typedef enum logic [1:0] {WPT_IDLE, WPT_MATCH_WAIT, WPT_MATCH_RESP} wpt_state_e;
