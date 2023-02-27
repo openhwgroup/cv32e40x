@@ -299,8 +299,14 @@ if (A_EXT == A) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  (rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_MISALIGNED))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT)))
     else `uvm_error("rvfi", "Exception on misaligned AMO* atomic instruction did not set correct cause_type in rvfi_trap")
 end
 
