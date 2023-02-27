@@ -904,7 +904,7 @@ typedef enum logic[3:0] {
 parameter EXC_CAUSE_INSTR_FAULT      = 11'h01;
 parameter EXC_CAUSE_ILLEGAL_INSN     = 11'h02;
 parameter EXC_CAUSE_BREAKPOINT       = 11'h03;
-parameter EXC_CAUSE_LOAD_MISALIGNED  = 22'h04;
+parameter EXC_CAUSE_LOAD_MISALIGNED  = 11'h04;
 parameter EXC_CAUSE_LOAD_FAULT       = 11'h05;
 parameter EXC_CAUSE_STORE_MISALIGNED = 11'h06;
 parameter EXC_CAUSE_STORE_FAULT      = 11'h07;
