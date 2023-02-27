@@ -70,6 +70,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
    );
 
   logic        pma_err;
+  logic        pma_misaligned_atomic;
   logic        mpu_err;
   logic        mpu_block_core;
   logic        mpu_block_bus;
@@ -118,27 +119,36 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
           if (core_mpu_err_wait_i) begin
             if(core_trans_we) begin
               // MPU error on write
-              state_n = core_one_txn_pend_n ? MPU_WR_ERR_RESP : MPU_WR_ERR_WAIT;
+              // PMA errors take precedence over misaligned atomics
+              state_n = core_one_txn_pend_n ? (pma_err ? MPU_WR_ERR_RESP : MPU_WR_MISALIGN_RESP) :
+                                              (pma_err ? MPU_WR_ERR_WAIT : MPU_WR_MISALIGN_WAIT);
             end
             else begin
               // MPU error on read
-              state_n = core_one_txn_pend_n ? MPU_RE_ERR_RESP : MPU_RE_ERR_WAIT;
+              // PMA errors take precedence over misaligned atomics
+              state_n = core_one_txn_pend_n ? (pma_err ? MPU_RE_ERR_RESP : MPU_RE_MISALIGN_RESP) :
+                                              (pma_err ? MPU_RE_ERR_WAIT : MPU_RE_MISALIGN_WAIT);
             end
           end
 
         end
       end
-      MPU_RE_ERR_WAIT, MPU_WR_ERR_WAIT: begin
+      MPU_RE_ERR_WAIT, MPU_WR_ERR_WAIT,
+      MPU_RE_MISALIGN_WAIT, MPU_WR_MISALIGN_WAIT: begin
 
         // Block new transfers while waiting for in flight transfers to complete
         mpu_block_bus  = 1'b1;
         mpu_block_core = 1'b1;
 
         if (core_one_txn_pend_n) begin
-          state_n = (state_q == MPU_RE_ERR_WAIT) ? MPU_RE_ERR_RESP : MPU_WR_ERR_RESP;
+          state_n = (state_q == MPU_RE_ERR_WAIT)      ? MPU_RE_ERR_RESP      :
+                    (state_q == MPU_WR_ERR_WAIT)      ? MPU_WR_ERR_RESP      :
+                    (state_q == MPU_RE_MISALIGN_WAIT) ? MPU_RE_MISALIGN_RESP :
+                                                        MPU_WR_MISALIGN_RESP;
         end
       end
-      MPU_RE_ERR_RESP, MPU_WR_ERR_RESP: begin
+      MPU_RE_ERR_RESP, MPU_WR_ERR_RESP,
+      MPU_RE_MISALIGN_RESP, MPU_WR_MISALIGN_RESP: begin
 
         // Keep blocking new transfers
         mpu_block_bus  = 1'b1;
@@ -146,7 +156,10 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
         // Set up MPU error response towards the core
         mpu_err_trans_valid = 1'b1;
-        mpu_status = (state_q == MPU_RE_ERR_RESP) ? MPU_RE_FAULT : MPU_WR_FAULT;
+        mpu_status = (state_q == MPU_RE_ERR_RESP)      ? MPU_RE_FAULT      :
+                     (state_q == MPU_WR_ERR_RESP)      ? MPU_WR_FAULT      :
+                     (state_q == MPU_RE_MISALIGN_RESP) ? MPU_RE_MISALIGNED :
+                                                         MPU_WR_MISALIGNED;
 
         // Go back to IDLE uncoditionally.
         // The core is expected to always be ready for the response
@@ -203,11 +216,12 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     .misaligned_access_i        ( misaligned_access_i     ),
     .load_access_i              ( load_access             ),
     .pma_err_o                  ( pma_err                 ),
+    .pma_misaligned_atomic_o    ( pma_misaligned_atomic   ),
     .pma_bufferable_o           ( bus_trans_bufferable    ),
     .pma_cacheable_o            ( bus_trans_cacheable     )
   );
 
-  assign mpu_err = pma_err;
+  assign mpu_err = pma_err || pma_misaligned_atomic;
 
   // Writes are only supported on the data interface
   // Tie to 1'b0 if this MPU is instantiatied in the IF stage

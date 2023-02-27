@@ -38,6 +38,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   input  logic        misaligned_access_i,  // Indicate that ongoing access is part of a misaligned access
   input  logic        load_access_i,        // Indicate that ongoing access is a load
   output logic        pma_err_o,
+  output logic        pma_misaligned_atomic_o, // Atomic instruction is misaligned
   output logic        pma_bufferable_o,
   output logic        pma_cacheable_o
 );
@@ -102,9 +103,15 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   generate
     if (A_EXT) begin: pma_atomic
       assign pma_cfg_atomic = pma_cfg.atomic;
+
+      // Check if atomic access is misaligned.
+      // If not otherwise blocked by the PMA, this will results in exception codes
+      // 4 or 6 indicating misaligned load/store atomics.
+      assign pma_misaligned_atomic_o = atomic_access_i && misaligned_access_i;
     end
     else begin: pma_no_atomic
       assign pma_cfg_atomic = 1'b0;
+      assign pma_misaligned_atomic_o = 1'b0;
     end
   endgenerate
 
@@ -115,14 +122,6 @@ module cv32e40x_pma import cv32e40x_pkg::*;
 
     // Check for atomic access
     if (atomic_access_i && !pma_cfg_atomic) begin
-      pma_err_o = 1'b1;
-    end
-
-    // Check that atomic accesses are not misaligned
-    // Not strictly a part of the PMA, but reusing the PMA logic for flagging errors
-    // and consume transactions rather than making separate logic in the LSU. Uses the same exception
-    // codes as PMA errors.
-    if (atomic_access_i && misaligned_access_i) begin
       pma_err_o = 1'b1;
     end
 

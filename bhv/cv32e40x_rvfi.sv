@@ -712,9 +712,6 @@ module cv32e40x_rvfi
   // Detect PMA errors due to misaligned accesses
   logic         lsu_pma_err_misaligned_ex;
 
-  // Detect LSU errors due to misaligned atomics (uses PMA logic but is not a true PMA error)
-  logic         lsu_err_misaligned_atomic_ex;
-
   assign        mret_ptr_wb = mret_ptr_wb_i;
 
   // PMA error due to atomic not within an atomic region
@@ -722,9 +719,6 @@ module cv32e40x_rvfi
 
   // PMA error due to misaligned accesses to I/O memory
   assign lsu_pma_err_misaligned_ex = lsu_pma_err_ex_i && lsu_misaligned_ex_i && !lsu_pma_cfg_ex_i.main;
-
-  // Detect LSU errors due to misaligned atomic instructions
-  assign lsu_err_misaligned_atomic_ex = lsu_pma_err_ex_i && lsu_pma_atomic_ex_i && lsu_misaligned_ex_i;
 
   assign insn_opcode = rvfi_insn[6:0];
   assign insn_rd     = rvfi_insn[11:7];
@@ -856,6 +850,12 @@ module cv32e40x_rvfi
         end
         EXC_CAUSE_STORE_FAULT : begin
           rvfi_trap_next.cause_type = mem_err[STAGE_WB];
+        end
+        EXC_CAUSE_LOAD_MISALIGNED : begin
+          rvfi_trap_next.cause_type = 2'h0;
+        end
+        EXC_CAUSE_STORE_MISALIGNED : begin
+          rvfi_trap_next.cause_type = 2'h0;
         end
         default : begin
           // rvfi_trap_next.cause_type is only set for exception codes that can have multiple causes
@@ -1109,8 +1109,10 @@ module cv32e40x_rvfi
           ex_mem_trans <= lsu_data_trans;
         end
 
-        mem_err [STAGE_WB]  = lsu_err_misaligned_atomic_ex ? MEM_ERR_MISALIGNED_ATOMIC : // Non-naturally aligned atomic
-                              lsu_pma_err_misaligned_ex    ? MEM_ERR_IO_ALIGN          : // Non-natrually aligned access to !main
+        // Capture cause of LSU exception for the cases that can have multiple reasons for an exception
+        // These are currently load and store access faults trigger by misaligned access to i/o regions,
+        // atomic accesses to regions not enabled for atomics or accesses blocked by PMP.
+        mem_err [STAGE_WB]  = lsu_pma_err_misaligned_ex    ? MEM_ERR_IO_ALIGN          : // Non-natrually aligned access to !main
                               lsu_pma_err_atomic_ex        ? MEM_ERR_ATOMIC            : // Any atomic to non-atomic PMA region
                                                              MEM_ERR_PMP;                // PMP error
 

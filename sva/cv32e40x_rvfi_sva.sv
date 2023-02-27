@@ -221,8 +221,14 @@ if (DEBUG) begin
 end
 
 if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
-  // A PMA error due to an aligned LR.W accessing a non-atomic region must get cause_type==MEM_ERR_ATOMIC (1)
-  // If a LR.W gets blocked due to misalignment, it must get cause_type==MEM_ERR_IO_ALIGN (0)
+  // Aligned atomics blocked by the PMA shall use the EXC_CAUSE_LOAD_FAULT or EXC_CAUSE_STORE_FAULT exception codes with
+  // cause_type MEM_ERR_ATOMIC.
+  //
+  // Misaligned atomics to a non-main PMA region shall use EXC_CAUSE_LOAD_FAULT or EXC_CAUSE_STORE_FAULT exception codes with
+  // cause_type MEM_ERR_IO_ALIGN
+  //
+  // Misaligned atomics which are otherwise not blocked by the PMA (cfg is main and atomic) shall use either
+  // EXC_CAUSE_LOAD_MISALIGNED or EXC_CAUSE_STORE_MISALIGNED with cause_type MEM_ERR_IO_ALIGN.
   a_aligned_lr_access_fault_trap:
   assert property (@(posedge clk_i) disable iff (!rst_ni)
                   pc_mux_exception && (lsu_atomic_wb_i == AT_LR) && lsu_en_wb_i &&
@@ -239,8 +245,14 @@ if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  (rvfi_trap.cause_type == MEM_ERR_MISALIGNED_ATOMIC) &&
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_MISALIGNED))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_FAULT))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_FAULT)))
     else `uvm_error("rvfi", "Exception on misaligned LR.W atomic instruction did not set correct cause_type in rvfi_trap")
 
   a_aligned_sc_access_fault_trap:
@@ -259,8 +271,14 @@ if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  (rvfi_trap.cause_type == MEM_ERR_MISALIGNED_ATOMIC) &&
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_MISALIGNED))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT)))
     else `uvm_error("rvfi", "Exception on misaligned SC.W atomic instruction did not set correct cause_type in rvfi_trap")
 end
 
@@ -281,8 +299,14 @@ if (A_EXT == A) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  (rvfi_trap.cause_type == MEM_ERR_MISALIGNED_ATOMIC) &&
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_MISALIGNED))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
+                  or
+                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT)))
     else `uvm_error("rvfi", "Exception on misaligned AMO* atomic instruction did not set correct cause_type in rvfi_trap")
 end
 
