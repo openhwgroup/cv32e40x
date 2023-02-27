@@ -119,13 +119,13 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
           if (core_mpu_err_wait_i) begin
             if(core_trans_we) begin
               // MPU error on write
-              // PMA errors take presedence over misaligned atomics
+              // PMA errors take precedence over misaligned atomics
               state_n = core_one_txn_pend_n ? (pma_err ? MPU_WR_ERR_RESP : MPU_WR_MISALIGN_RESP) :
                                               (pma_err ? MPU_WR_ERR_WAIT : MPU_WR_MISALIGN_WAIT);
             end
             else begin
               // MPU error on read
-              // PMA errors take presedence over misaligned atomics
+              // PMA errors take precedence over misaligned atomics
               state_n = core_one_txn_pend_n ? (pma_err ? MPU_RE_ERR_RESP : MPU_RE_MISALIGN_RESP) :
                                               (pma_err ? MPU_RE_ERR_WAIT : MPU_RE_MISALIGN_WAIT);
             end
