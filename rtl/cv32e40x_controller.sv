@@ -101,6 +101,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input logic  [1:0]  mtvec_mode_i,
   input  mcause_t     mcause_i,
+  input  mintstatus_t mintstatus_i,
 
   input  logic        etrigger_wb_i,
 
@@ -220,6 +221,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .debug_req_i                 ( debug_req_i              ),
     .dcsr_i                      ( dcsr_i                   ),
     .mcause_i                    ( mcause_i                 ),
+    .mintstatus_i                ( mintstatus_i             ),
 
     // Fencei flush handshake
     .fencei_flush_ack_i          ( fencei_flush_ack_i       ),

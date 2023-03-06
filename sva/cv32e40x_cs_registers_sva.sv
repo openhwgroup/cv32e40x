@@ -259,27 +259,31 @@ module cv32e40x_cs_registers_sva
                   |=>
                   $stable(mtvec_q))
     else `uvm_error("cs_registers", "mtvec_q changed after set/clear with rs1==0")
-  a_set_clear_mtvt_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_MTVT) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(mtvt_q))
-    else `uvm_error("cs_registers", "mtvt_q changed after set/clear with rs1==0")
 
-  a_set_clear_mintthresh_q:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_waddr == CSR_MINTTHRESH) &&
-                  ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
-                  !(|csr_wdata) &&
-                  ex_wb_pipe_i.csr_en &&
-                  !ctrl_fsm_i.kill_wb
-                  |=>
-                  $stable(mintthresh_q))
-    else `uvm_error("cs_registers", "mintthresh_q changed after set/clear with rs1==0")
+  if (CLIC) begin
+    a_set_clear_mtvt_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_MTVT) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(mtvt_q))
+      else `uvm_error("cs_registers", "mtvt_q changed after set/clear with rs1==0")
+
+    a_set_clear_mintthresh_q:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_waddr == CSR_MINTTHRESH) &&
+                    ((csr_op == CSR_OP_SET) || (csr_op == CSR_OP_CLEAR)) &&
+                    !(|csr_wdata) &&
+                    ex_wb_pipe_i.csr_en &&
+                    !ctrl_fsm_i.kill_wb
+                    |=>
+                    $stable(mintthresh_q))
+      else `uvm_error("cs_registers", "mintthresh_q changed after set/clear with rs1==0")
+  end
+
   a_set_clear_mie_q:
   assert property (@(posedge clk) disable iff (!rst_n)
                   (csr_waddr == CSR_MIE) &&

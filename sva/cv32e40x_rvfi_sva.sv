@@ -75,10 +75,12 @@ module cv32e40x_rvfi_sva
 
 );
 
-  a_mret_pointer :
-    assert property (@(posedge clk_i) disable iff (!rst_ni)
-                  (mret_ptr_wb |-> (instr_rdata_wb_past == 32'h30200073)))
-    else `uvm_error("rvfi", "mret not in STAGE_WB_PAST when mret pointer arrived in WB")
+  if (CLIC) begin
+    a_mret_pointer :
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                    (mret_ptr_wb |-> (instr_rdata_wb_past == 32'h30200073)))
+      else `uvm_error("rvfi", "mret not in STAGE_WB_PAST when mret pointer arrived in WB")
+  end
 
   // Check that irq_ack results in RVFI capturing a trap
   // Ideally, we should assert that every irq_ack eventually leads to rvfi_intr,
@@ -210,10 +212,10 @@ if (DEBUG) begin
     else `uvm_error("rvfi", "dcsr.cause, mcause and rvfi_intr not as expected following an exception during single step")
 
   // When dcsr.nmip is set, the next retired instruction should be the NMI handler (except in debug mode).
-  // rvfi_intr should also be set.
+  // rvfi_intr should also be set. Checking when ctrl_fsm_i.nmi_mtvec_is stable as the mtvec index may change in CLINT mode.
   a_rvfi_nmip_nmi_handler:
   assert property (@(posedge clk_i) disable iff (!rst_ni)
-                    (no_debug && $stable(mtvec_addr_i)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
+                    (no_debug && $stable(mtvec_addr_i) && $stable(ctrl_fsm_i.nmi_mtvec_index)) throughout s_goto_next_rvfi_valid(rvfi_csr_dcsr_rdata[3]) |->
                     rvfi_intr.intr &&
                     (rvfi_pc_rdata == {mtvec_addr_i, ctrl_fsm_i.nmi_mtvec_index, 2'b00}) &&
                     ((rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_LOAD_FAULT) || (rvfi_csr_mcause_rdata[10:0] == INT_CAUSE_LSU_STORE_FAULT)))

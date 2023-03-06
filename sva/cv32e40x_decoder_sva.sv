@@ -27,7 +27,8 @@ module cv32e40x_decoder_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
 #(
-  parameter a_ext_e A_EXT     = A_NONE
+  parameter a_ext_e A_EXT     = A_NONE,
+  parameter int     CLIC      = 0
 )
 (
   input logic           clk,
@@ -130,15 +131,17 @@ module cv32e40x_decoder_sva
                               decoder_ctrl_mux.illegal_insn}))
       else `uvm_error("decoder", "Multiple functional units enabled")
 
-  // Check that all functional units are disabled when a pointer is in the ID stage
-  a_functional_unit_disable_ptr :
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr)
-                      |->
-                      !(|{alu_en_o, div_en_o, mul_en_o,
-                         csr_en_o, sys_en_o, lsu_en_o,
-                         illegal_insn_o}))
-      else `uvm_error("decoder", "Functional units enable when a pointer is in the ID stage")
+  if (CLIC) begin
+    // Check that all functional units are disabled when a pointer is in the ID stage
+    a_functional_unit_disable_ptr :
+      assert property (@(posedge clk) disable iff (!rst_n)
+                        (if_id_pipe.instr_meta.clic_ptr || if_id_pipe.instr_meta.mret_ptr)
+                        |->
+                        !(|{alu_en_o, div_en_o, mul_en_o,
+                          csr_en_o, sys_en_o, lsu_en_o,
+                          illegal_insn_o}))
+        else `uvm_error("decoder", "Functional units enable when a pointer is in the ID stage")
+  end
 
   // Check that branch/jump related signals can be used from I decoder directly (bypassing other decoders)
   a_branch_jump_decode :
