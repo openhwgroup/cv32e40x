@@ -23,6 +23,9 @@
 module cv32e40x_if_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+#(
+    parameter int CLIC = 0
+)
 (
   input  logic          clk,
   input  logic          rst_n,
@@ -84,12 +87,14 @@ module cv32e40x_if_stage_sva
                       ctrl_fsm_i.kill_if |-> (seq_ready && !seq_valid))
         else `uvm_error("if_stage", "Kill should imply ready and not valid.")
 
-  // CLIC pointers and mret pointers can't both be set at the same time
-  a_clic_mret_ptr_unique:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                      (prefetch_is_mret_ptr || prefetch_is_clic_ptr)
-                      |->
-                      prefetch_is_mret_ptr != prefetch_is_clic_ptr)
-        else `uvm_error("if_stage", "prefetch_is_mret_ptr high at the same time as prefetch_is_clic_ptr.")
+  if (CLIC) begin
+    // CLIC pointers and mret pointers can't both be set at the same time
+    a_clic_mret_ptr_unique:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                        (prefetch_is_mret_ptr || prefetch_is_clic_ptr)
+                        |->
+                        prefetch_is_mret_ptr != prefetch_is_clic_ptr)
+          else `uvm_error("if_stage", "prefetch_is_mret_ptr high at the same time as prefetch_is_clic_ptr.")
+  end
 endmodule // cv32e40x_if_stage
 

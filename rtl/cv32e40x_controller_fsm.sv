@@ -97,6 +97,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic  [1:0] mtvec_mode_i,
   input  dcsr_t       dcsr_i,
   input  mcause_t     mcause_i,
+  input  mintstatus_t mintstatus_i,
 
   // Trigger module
   input  logic        etrigger_wb_i,              // Trigger module detected match in WB (etrigger)
@@ -622,9 +623,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
     ctrl_fsm_o.irq_ack          = 1'b0;
     ctrl_fsm_o.irq_id           = '0;
-    ctrl_fsm_o.irq_level        = '0;
     ctrl_fsm_o.irq_priv         = '0;
     ctrl_fsm_o.irq_shv          = '0;
+    ctrl_fsm_o.irq_level        = 8'h00;
+
     ctrl_fsm_o.dbg_ack          = 1'b0;
 
     // IF stage is halted if an instruction has been issued during single step
@@ -733,6 +735,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
           // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
           ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+
+          if (CLIC) begin
+            // Keep current interrupt level when taking NMIs
+            ctrl_fsm_o.irq_level = mintstatus_i.mil;
+          end
+
 
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin

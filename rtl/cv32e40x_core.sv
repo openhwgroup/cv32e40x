@@ -115,7 +115,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   // Event wakeup signals
   input  logic                          wu_wfe_i,   // Wait-for-event wakeup
-  input  logic                          wu_wrs_i,   // Wait-for-reservation-set wakeup
 
   // CLIC interrupt architecture
   input  logic                          clic_irq_i,
@@ -965,6 +964,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     // From CSR registers
     .mtvec_mode_i                   ( mtvec_mode             ),
     .mcause_i                       ( mcause                 ),
+    .mintstatus_i                   ( mintstatus             ),
 
     // Trigger module
     .etrigger_wb_i                  ( etrigger_wb            ),

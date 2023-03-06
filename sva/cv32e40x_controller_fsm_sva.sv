@@ -119,7 +119,8 @@ module cv32e40x_controller_fsm_sva
   input mstatus_t       mstatus_i,
   input logic           woke_to_interrupt_q,
   input logic           woke_to_debug_q,
-  input logic           ebreak_in_wb
+  input logic           ebreak_in_wb,
+  input mintstatus_t    mintstatus_i
 );
 
 
@@ -624,6 +625,13 @@ if (CLIC) begin
                   !ctrl_fsm_o.kill_id)
     else `uvm_error("controller", "ID stage killed while clic_ptr_in_progress_id is high")
 
+  a_nmi_irq_level_stable:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))
+                  |=>
+                  $stable(mintstatus_i))
+    else `uvm_error("controller", "mintstatus changed after taking an NMI")
+
 end else begin // CLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.
   a_clic_inactive:
@@ -819,15 +827,18 @@ end
                   !ctrl_fsm_o.halt_wb)
   else `uvm_error("controller", "csr_restore_mret when WB is halted")
 
-  // CSR instructions should be stalled in ID if there is a CLIC or mret pointer in EX or WB (RAW hazard)
-  a_csr_stall_on_ptr:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (csr_en_id_i && if_id_pipe_i.instr_valid) &&
-                  (((id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr) && id_ex_pipe_i.instr_valid) ||
-                  ((ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) && ex_wb_pipe_i.instr_valid))
-                  |->
-                  !id_valid_i)
-  else `uvm_error("controller", "CSR* not stalled in ID when CLIC pointer is in EX or WB")
+  if (CLIC) begin
+    // CSR instructions should be stalled in ID if there is a CLIC or mret pointer in EX or WB (RAW hazard)
+    a_csr_stall_on_ptr:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_en_id_i && if_id_pipe_i.instr_valid) &&
+                    (((id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr) && id_ex_pipe_i.instr_valid) ||
+                    ((ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) && ex_wb_pipe_i.instr_valid))
+                    |->
+                    !id_valid_i)
+    else `uvm_error("controller", "CSR* not stalled in ID when CLIC pointer is in EX or WB")
+  end
+
 
   // When interrupts or debug is taken, the PC stored to dpc or mepc cannot come from a pointer
   a_no_context_from_pointer:
@@ -974,6 +985,7 @@ generate
                       (debug_cause_q == DBG_CAUSE_STEP))
         else `uvm_error("controller", "Wrong debug cause when taking an interrupt during single stepping")
 
+if (CLIC) begin
     // While single stepping, debug cause shall be set to 'trigger' if a pointer for a SHV CLIC interrupt arrives in WB
     // with an exception and an exception trigger that matches the exception has been configured. (trigger > step)
     a_irq_step_etrig_debug_cause:
@@ -988,6 +1000,7 @@ generate
                       (ctrl_fsm_cs == DEBUG_TAKEN) &&
                       (debug_cause_q == DBG_CAUSE_TRIGGER))
         else `uvm_error("controller", "Wrong debug cause when taking a SHV interrupt with exception trigger on the pointer fetch")
+end
 
     // Debug cause shall be set to 'step' if an NMI is taken during stepping
     // Taking an NMI has priority above async debug, so in case of a debug_req_i at the same cycle debug_cause should be 'step' and not 'haltreq'.
