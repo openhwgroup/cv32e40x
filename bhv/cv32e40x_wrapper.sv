@@ -137,9 +137,6 @@ module cv32e40x_wrapper
   // WFE input
   input  logic        wu_wfe_i,
 
-  // WRS input
-  input  logic        wu_wrs_i,
-
   // CLIC Interface
   input  logic                       clic_irq_i,
   input  logic [CLIC_ID_WIDTH-1:0]   clic_irq_id_i,
