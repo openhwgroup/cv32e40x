@@ -58,7 +58,7 @@ It follows these specifications:
    https://github.com/riscv/riscv-crypto/releases/download/v1.0.0-scalar/riscv-crypto-spec-scalar-v1.0.0.pdf
 
 .. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.5.0,
-   https://github.com/openhwgroup/core-v-docs/blob/master/cores/obi/OBI-v1.5.0.pdf
+   https://github.com/openhwgroup/obi/blob/188c87089975a59c56338949f5c187c1f8841332/OBI-v1.5.0.pdf
 
 .. [OPENHW-XIF] OpenHW eXtension Interface, revision 458c8a73,
    https://docs.openhwgroup.org/projects/openhw-group-core-v-xif/
