@@ -1439,8 +1439,8 @@ Reset Value: 0x2800_1000
    0xF800_0000, which is the only supported value for a disabled trigger.
    The WARL behavior of ``tdata1.DATA`` depends on the value of ``tdata1.TYPE`` as described in
    :ref:`csr-mcontrol`, :ref:`csr-mcontrol6`, :ref:`csr-etrigger` and :ref:`csr-tdata1_disabled`.
-   ``tdata1`` will also be set to 0xF800_0000 if ``tdata1`` is attempted written with type 0x5 (etrigger) while at the same time ``tdata2``
-   contains an illegal value for exception triggers.
+   ``tdata1`` will also be set to 0xF800_0000 if ``tdata1`` is attempted to be written with type 0x5 (``etrigger``) while at the same time ``tdata2``
+   contains a value that is illegal for exception triggers.
 
 .. _csr-mcontrol:
 
