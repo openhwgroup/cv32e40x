@@ -1425,7 +1425,7 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.tselect            = csr_tselect_q_i;
   assign rvfi_csr_rmask_d.tselect            = '1;
   assign rvfi_csr_wdata_d.tselect            = csr_tselect_n_i;
-  assign rvfi_csr_wmask_d.tselect            = csr_tselect_we_i;
+  assign rvfi_csr_wmask_d.tselect            = csr_tselect_we_i ? '1 : '0;
 
   // Tdata0 does not exist, tie off to zero
   assign rvfi_csr_rdata_d.tdata[0]           = '0;
@@ -1446,12 +1446,12 @@ module cv32e40x_rvfi
   assign rvfi_csr_rdata_d.tdata[3]           = csr_tdata3_q_i;
   assign rvfi_csr_rmask_d.tdata[3]           = '1;
   assign rvfi_csr_wdata_d.tdata[3]           = csr_tdata3_n_i;
-  assign rvfi_csr_wmask_d.tdata[3]           = csr_tdata3_we_i;
+  assign rvfi_csr_wmask_d.tdata[3]           = csr_tdata3_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
   assign rvfi_csr_rmask_d.tinfo              = '1;
   assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
-  assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i;
+  assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i ? '1 : '0;
 
   assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
   assign rvfi_csr_rmask_d.tcontrol           = '1;
