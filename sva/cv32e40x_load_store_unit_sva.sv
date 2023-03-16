@@ -22,9 +22,10 @@ module cv32e40x_load_store_unit_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   #(
-    parameter bit    X_EXT = 0,
-    parameter        DEPTH = 0,
-    parameter int    DEBUG = 1
+    parameter bit     X_EXT = 0,
+    parameter         DEPTH = 0,
+    parameter int     DEBUG = 1,
+    parameter a_ext_e A_EXT = A_NONE
   )
   (input logic       clk,
    input logic       rst_n,
@@ -51,7 +52,11 @@ module cv32e40x_load_store_unit_sva
    input logic       valid_0_i,
    input logic       ready_0_i,
    input logic       trigger_match_0_i,
-   input logic       lsu_wpt_match_1_o
+   input logic       lsu_wpt_match_1_o,
+   input lsu_atomic_e lsu_atomic_0_o,
+   input logic       mpu_err,
+   input logic       mpu_block_bus,
+   input logic       mpu_trans_valid
   );
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -235,6 +240,18 @@ if (DEBUG) begin
                   |->
                   !(lsu_mpu_status_1_o != MPU_OK))
       else `uvm_error("load_store_unit", "MPU error and watchpoint trigger not unique")
+end
+
+if (A_EXT != A_NONE) begin
+  // Check that misaligned atomics never reach the bus but get blocked by the MPU
+  a_a_never_split:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (lsu_atomic_0_o != AT_NONE) &&  // Atomic instruction in first part of LSU (EX)
+                  lsu_split_0_o &&                // LSU wants to split due to misalignment
+                  mpu_trans_valid                 // Transaction not blocked by WPT
+                  |->
+                  mpu_err && mpu_block_bus)       // MPU must block the bus and flag error
+      else `uvm_error("load_store_unit", "Misaligned atomic not blocked by MPU.")
 end
 
 endmodule // cv32e40x_load_store_unit_sva
