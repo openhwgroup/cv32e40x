@@ -7,6 +7,9 @@ Exceptions and Interrupts
 If the ``CLIC`` parameter is set to 0, then the CLINT mode interrupt architecture is supported (see :ref:`clint_interrupt_architecture`).
 If the ``CLIC`` parameter is set to 1, then the CLIC mode interrupt architecture is supported (see :ref:`clic_interrupt_architecture`).
 
+CLINT and CLIC offer different trade offs with respect to cost, interrupt latency and interrupt flexibility. If more than 19 interrupts are
+required, if programmable interrupt levels are required or if hardware support for preemption is important, then CLIC should be chosen.
+
 Exceptions
 ----------
 
@@ -122,7 +125,7 @@ When entering an interrupt/exception handler, the core sets the ``mepc`` CSR to 
 All exceptions cause the core to jump to the base address of the vector table in the ``mtvec`` CSR.
 Interrupts are handled in either non-vectored CLINT mode or vectored CLINT mode depending on the value of ``mtvec``.MODE. In non-vectored CLINT mode the core
 jumps to the base address of the vector table in the ``mtvec`` CSR. In vectored CLINT mode the core jumps to the base address
-plus four times the interrupt ID. Upon executing an MRET instruction, the core jumps to the program counter previously saved in the
+plus four times the interrupt ID. Upon executing an ``mret`` instruction, the core jumps to the program counter previously saved in the
 ``mepc`` CSR and restores ``mstatus``.MPIE to ``mstatus``.MIE.
 
 The base address of the vector table must be aligned to 128 bytes and can be programmed
