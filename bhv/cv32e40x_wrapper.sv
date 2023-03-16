@@ -256,7 +256,7 @@ module cv32e40x_wrapper
 
 
   bind cv32e40x_load_store_unit:
-    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH), .DEBUG(DEBUG)) load_store_unit_sva (
+    core_i.load_store_unit_i cv32e40x_load_store_unit_sva #(.DEPTH (DEPTH), .DEBUG(DEBUG), .A_EXT(A_EXT)) load_store_unit_sva (
       // The SVA's monitor modport can't connect to a master modport, so it is connected to the interface instance directly:
       .m_c_obi_data_if(core_i.m_c_obi_data_if),
       .ex_wb_pipe_i   (core_i.ex_wb_pipe),
@@ -266,6 +266,8 @@ module cv32e40x_wrapper
       .lsu_en_id      (core_i.id_stage_i.lsu_en),
       .ctrl_fsm_cs    (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
       .ctrl_fsm_ns    (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
+      .mpu_err        (core_i.load_store_unit_i.mpu_i.mpu_err),
+      .mpu_block_bus  (core_i.load_store_unit_i.mpu_i.mpu_block_bus),
       .*);
 
   generate
