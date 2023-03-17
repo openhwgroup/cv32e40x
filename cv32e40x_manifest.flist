@@ -33,6 +33,7 @@ ${DESIGN_RTL_DIR}/if_c_obi.sv
 ${DESIGN_RTL_DIR}/if_xif.sv
 ${DESIGN_RTL_DIR}/../bhv/include/cv32e40x_rvfi_pkg.sv
 ${DESIGN_RTL_DIR}/../bhv/cv32e40x_wrapper.sv
+${DESIGN_RTL_DIR}/cv32e40x_align_check.sv
 ${DESIGN_RTL_DIR}/cv32e40x_if_stage.sv
 ${DESIGN_RTL_DIR}/cv32e40x_csr.sv
 ${DESIGN_RTL_DIR}/cv32e40x_debug_triggers.sv

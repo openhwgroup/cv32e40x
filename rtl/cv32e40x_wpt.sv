@@ -153,6 +153,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   assign core_resp_valid_o      = mpu_resp_valid_i || wpt_trans_valid;
   assign core_resp_o.bus_resp   = mpu_resp_i.bus_resp;
   assign core_resp_o.mpu_status = mpu_resp_i.mpu_status;
+  assign core_resp_o.align_status = mpu_resp_i.align_status;
   assign core_resp_o.wpt_match  = wpt_match;
 
 
@@ -160,7 +161,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   assign core_wpt_match_o = trigger_match_i;
 
   // Signal ready towards core
-  assign core_trans_ready_o     = (mpu_trans_ready_i && !wpt_block_core) || wpt_trans_ready;
+  assign core_trans_ready_o = (mpu_trans_ready_i && !wpt_block_core) || wpt_trans_ready;
 
 
 
