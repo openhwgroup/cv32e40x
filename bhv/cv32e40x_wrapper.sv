@@ -174,6 +174,7 @@ module cv32e40x_wrapper
     core_i.if_stage_i cv32e40x_if_stage_sva #(.CLIC(CLIC)) if_stage_sva
     (
       .m_c_obi_instr_if (core_i.m_c_obi_instr_if), // SVA monitor modport cannot connect to a master modport
+      .align_err_i      (core_i.if_stage_i.align_check_i.align_err),
       .*
     );
 
@@ -266,8 +267,8 @@ module cv32e40x_wrapper
       .lsu_en_id      (core_i.id_stage_i.lsu_en),
       .ctrl_fsm_cs    (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
       .ctrl_fsm_ns    (core_i.controller_i.controller_fsm_i.ctrl_fsm_ns),
-      .mpu_err        (core_i.load_store_unit_i.mpu_i.mpu_err),
-      .mpu_block_bus  (core_i.load_store_unit_i.mpu_i.mpu_block_bus),
+      .mpu_err_i      (core_i.load_store_unit_i.mpu_i.mpu_err),
+      .align_err_i    (core_i.load_store_unit_i.align_check_i.align_err),
       .*);
 
   generate

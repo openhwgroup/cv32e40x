@@ -41,7 +41,8 @@ module cv32e40x_if_stage_sva
   input  logic          prefetch_is_tbljmp_ptr,
   input  logic          prefetch_is_clic_ptr,
   input  logic          prefetch_is_mret_ptr,
-  input  logic [31:0]   branch_addr_n
+  input  logic [31:0]   branch_addr_n,
+  input  logic          align_err_i
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -108,10 +109,12 @@ module cv32e40x_if_stage_sva
     a_aligned_mret_ptr:
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.pc_set_clicv) &&
-                      (ctrl_fsm_i.pc_mux == PC_MRET)
+                      (ctrl_fsm_i.pc_mux == PC_MRET) &&
+                      (branch_addr_n[1:0] == 2'b00)
                       |->
-                      (branch_addr_n[1:0] == 2'b00))
-          else `uvm_error("if_stage", "Misaligned mret pointer")
+                      align_err_i
+                      )
+          else `uvm_error("if_stage", "Misaligned mret pointer not flagged with error")
   end
 
   a_aligned_tbljmp_ptr:

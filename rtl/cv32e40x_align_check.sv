@@ -38,16 +38,16 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
    input  logic           align_check_en_i,
    input  logic           misaligned_access_i,
 
-   // Interface towards mpu interface
-   input  logic           mpu_trans_ready_i,
-   output logic           mpu_trans_valid_o,
-   output logic           mpu_trans_pushpop_o,
-   output CORE_REQ_TYPE   mpu_trans_o,
+   // Interface towards bus interface
+   input  logic           bus_trans_ready_i,
+   output logic           bus_trans_valid_o,
+   output logic           bus_trans_pushpop_o,
+   output CORE_REQ_TYPE   bus_trans_o,
 
-   input  logic           mpu_resp_valid_i,
-   input  BUS_RESP_TYPE   mpu_resp_i,
+   input  logic           bus_resp_valid_i,
+   input  BUS_RESP_TYPE   bus_resp_i,
 
-   // Interface towards core
+   // Interface towards core (MPU)
    input  logic           core_trans_valid_i,
    output logic           core_trans_ready_o,
    input  logic           core_trans_pushpop_i,
@@ -154,14 +154,14 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
   end
 
   // Forward transaction request towards MPU
-  assign mpu_trans_valid_o   = core_trans_valid_i && !align_block_bus;
-  assign mpu_trans_o         = core_trans_i;
-  assign mpu_trans_pushpop_o = core_trans_pushpop_i;
+  assign bus_trans_valid_o   = core_trans_valid_i && !align_block_bus;
+  assign bus_trans_o         = core_trans_i;
+  assign bus_trans_pushpop_o = core_trans_pushpop_i;
 
 
   // Forward transaction response towards core
-  assign core_resp_valid_o        = mpu_resp_valid_i || align_trans_valid;
-  assign core_resp_o.bus_resp     = mpu_resp_i;
+  assign core_resp_valid_o        = bus_resp_valid_i || align_trans_valid;
+  assign core_resp_o.bus_resp     = bus_resp_i;
   assign core_resp_o.align_status = align_status;
 
   // Detect alignment error
@@ -171,13 +171,13 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
   assign core_align_err_o = align_err;
 
   // Signal ready towards core
-  assign core_trans_ready_o     = (mpu_trans_ready_i && !align_block_core) || align_trans_ready;
+  assign core_trans_ready_o     = (bus_trans_ready_i && !align_block_core) || align_trans_ready;
 
   generate
-    if (IF_STAGE) begin: mpu_if
+    if (IF_STAGE) begin: alcheck_if
       assign core_trans_we = 1'b0;
     end
-    else begin: mpu_lsu
+    else begin: alcheck_lsu
       assign core_trans_we = core_trans_i.we;
     end
   endgenerate

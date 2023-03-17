@@ -41,6 +41,7 @@ module cv32e40x_load_store_unit_sva
    input write_buffer_state_e write_buffer_state_i,
    input logic       split_q,
    input mpu_status_e lsu_mpu_status_1_o, // WB mpu status
+   input align_status_e lsu_align_status_1_o,
    input ex_wb_pipe_t ex_wb_pipe_i,
    if_c_obi.monitor  m_c_obi_data_if,
    input logic       xif_req,
@@ -53,10 +54,10 @@ module cv32e40x_load_store_unit_sva
    input logic       ready_0_i,
    input logic       trigger_match_0_i,
    input logic       lsu_wpt_match_1_o,
-   input lsu_atomic_e lsu_atomic_0_o,
-   input logic       mpu_err,
-   input logic       mpu_block_bus,
-   input logic       mpu_trans_valid
+   input trans_req_t trans,
+   input logic       bus_trans_valid,
+   input logic       mpu_err_i,
+   input logic       align_err_i
   );
 
   // Check that outstanding transaction count will not overflow DEPTH
@@ -128,10 +129,10 @@ module cv32e40x_load_store_unit_sva
 
   // Second half of a split transaction should never get killed while in EX
   // Exception: Second half of a split transaction may be killed if the first half
-  //            gets blocked by the PMA.
+  //            gets blocked by the PMA or alignment checker.
   a_lsu_no_kill_second_half_ex:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  (split_q && (lsu_mpu_status_1_o == MPU_OK)) |-> !ctrl_fsm_i.kill_ex)
+                  (split_q && (lsu_mpu_status_1_o == MPU_OK) && (lsu_align_status_1_o == ALIGN_OK)) |-> !ctrl_fsm_i.kill_ex)
     else `uvm_error("load_store_unit", "Second half of split transaction was killed")
 
   // cnt_q == 2'b00 shall be the same as !(ex_wb_pipe.lsu_en && ex_wb_pipe_i.instr_valid)
@@ -243,15 +244,16 @@ if (DEBUG) begin
 end
 
 if (A_EXT != A_NONE) begin
-  // Check that misaligned atomics never reach the bus but get blocked by the MPU
-  a_a_never_split:
+  // Check that misaligned atomics never reach the bus but get blocked by the alignment checker
+  a_misaligned_atomic_err:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  (lsu_atomic_0_o != AT_NONE) &&  // Atomic instruction in first part of LSU (EX)
-                  lsu_split_0_o &&                // LSU wants to split due to misalignment
-                  mpu_trans_valid                 // Transaction not blocked by WPT
+                  trans_valid &&                                    // Active transfer
+                  (trans.atop[5] && (trans.addr[1:0] != 2'b00)) &&  // Misaligned atomic
+                  !mpu_err_i                                        // Not blocked by MPU
                   |->
-                  mpu_err && mpu_block_bus)       // MPU must block the bus and flag error
-      else `uvm_error("load_store_unit", "Misaligned atomic not blocked by MPU.")
+                  lsu_split_0_o &&
+                  align_err_i && !bus_trans_valid)
+      else `uvm_error("load_store_unit", "Misaligned atomic not blocked by alignment checker")
 end
 
 endmodule // cv32e40x_load_store_unit_sva

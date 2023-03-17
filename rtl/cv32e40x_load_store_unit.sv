@@ -594,8 +594,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // Export mpu status to WB stage/controller
-  assign lsu_mpu_status_1_o = resp.mpu_status;
+  // Export mpu status and align check status to WB stage/controller
+  assign lsu_mpu_status_1_o   = resp.mpu_status;
+  assign lsu_align_status_1_o = resp.align_status;
 
   // Update signals for EX/WB registers (when EX has valid data itself and is ready for next)
   assign ctrl_update = done_0 && (valid_0_i || xif_req);
@@ -712,7 +713,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
         // Input from debug_triggers module
         .trigger_match_i     ( trigger_match_0_i ),
 
-        // Interface towards alignment checker interface
+        // Interface towards MPU
         .mpu_trans_ready_i   ( mpu_trans_ready   ),
         .mpu_trans_valid_o   ( mpu_trans_valid   ),
         .mpu_trans_pushpop_o ( mpu_trans_pushpop ),
@@ -828,29 +829,28 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   )
   align_check_i
   (
-    .clk                  ( clk                ),
-    .rst_n                ( rst_n              ),
-    .align_check_en_i     ( align_check_en     ),
-    .misaligned_access_i  ( misaligned_access  ),
+    .clk                  ( clk                   ),
+    .rst_n                ( rst_n                 ),
+    .align_check_en_i     ( align_check_en        ),
+    .misaligned_access_i  ( misaligned_access     ),
 
-    .core_one_txn_pend_n  ( cnt_is_one_next    ),
-    .core_align_err_wait_i( !xif_req           ),
-    .core_align_err_o     ( xif_mpu_err        ), // todo: make new signal
-    .core_trans_valid_i   ( alcheck_trans_valid),
-    .core_trans_ready_o   ( alcheck_trans_ready),
-    .core_trans_i         ( alcheck_trans      ),
-    .core_resp_valid_o    ( alcheck_resp_valid ),
-    .core_resp_o          ( alcheck_resp       ),
+    .core_one_txn_pend_n  ( cnt_is_one_next       ),
+    .core_align_err_wait_i( !xif_req              ),
+    .core_align_err_o     (                       ), // todo: Unconnected on purpose, is this needed for xif?
 
-    .mpu_trans_valid_o    ( filter_trans_valid    ),
-    .mpu_trans_ready_i    ( filter_trans_ready    ),
-    .mpu_trans_o          ( filter_trans          ),
-    .mpu_resp_valid_i     ( filter_resp_valid     ),
-    .mpu_resp_i           ( filter_resp           )
+    .core_trans_valid_i   ( alcheck_trans_valid   ),
+    .core_trans_ready_o   ( alcheck_trans_ready   ),
+    .core_trans_i         ( alcheck_trans         ),
+    .core_resp_valid_o    ( alcheck_resp_valid    ),
+    .core_resp_o          ( alcheck_resp          ),
+
+    .bus_trans_valid_o    ( filter_trans_valid    ),
+    .bus_trans_ready_i    ( filter_trans_ready    ),
+    .bus_trans_o          ( filter_trans          ),
+    .bus_resp_valid_i     ( filter_resp_valid     ),
+    .bus_resp_i           ( filter_resp           )
 
   );
-
-  assign lsu_align_status_1_o = alcheck_resp.align_status;
 
 
   //////////////////////////////////////////////////////////////////////////////
