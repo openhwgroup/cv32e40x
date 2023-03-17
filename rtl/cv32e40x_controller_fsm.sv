@@ -72,7 +72,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic          last_op_wb_i,               // WB stage contains the last operation of an instruction
   input  logic          abort_op_wb_i,              // WB stage contains an (to be) aborted instruction or sequence
   input  mpu_status_e   mpu_status_wb_i,            // MPU status (WB timing)
-  input  align_status_e align_status_wb_i,        // Aligned status (atomics and mret pointers) in WB
+  input  align_status_e align_status_wb_i,          // Aligned status (atomics) in WB
   input  logic          wpt_match_wb_i,             // LSU watchpoint trigger (WB)
 
 
@@ -349,7 +349,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.exception_in_wb = exception_in_wb;
 
   // Set exception cause
-  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                                      ? EXC_CAUSE_INSTR_FAULT      : // todo: add code from align_shim in IF
+  assign exception_cause_wb = (ex_wb_pipe_i.instr.mpu_status != MPU_OK)                                                      ? EXC_CAUSE_INSTR_FAULT      : // todo: add code from align_check in IF
                               ex_wb_pipe_i.instr.bus_resp.err                                                                ? EXC_CAUSE_INSTR_BUS_FAULT  :
                               ex_wb_pipe_i.illegal_insn                                                                      ? EXC_CAUSE_ILLEGAL_INSN     :
                               (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_ecall_insn)                                           ? EXC_CAUSE_ECALL_MMODE      :
@@ -358,7 +358,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                               (mpu_status_wb_i == MPU_WR_FAULT)                                                              ? EXC_CAUSE_STORE_FAULT      :
                               (mpu_status_wb_i == MPU_RE_FAULT)                                                              ? EXC_CAUSE_LOAD_FAULT       :
                               (align_status_wb_i == ALIGN_WR_ERR)                                                            ? EXC_CAUSE_STORE_MISALIGNED :
-                                                                                                                               EXC_CAUSE_LOAD_MISALIGNED;   // todo: will come from align_shim
+                                                                                                                               EXC_CAUSE_LOAD_MISALIGNED;
 
   assign ctrl_fsm_o.exception_cause_wb = exception_cause_wb;
 

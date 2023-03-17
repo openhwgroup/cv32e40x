@@ -434,18 +434,6 @@ if (A_EXT != A_NONE) begin
           else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
   end // DEBUG
 
-/* todo: this belons to the align_check
-  // All atomic operations must be naturally aligned
-  // CV32E40X only support 32-bit accesses, and thus all atomics must be 4-byte aligned.
-  a_atomic_word_align:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  core_trans_valid_i &&
-                  atomic_access_i &&
-                  !pma_misaligned_atomic
-                  |->
-                  (core_trans_i.addr[1:0] == 2'b00))
-        else `uvm_error("mpu", "Misaligned atomic instruction not flagged with error")
-*/
 end
 
 if (DEBUG) begin
