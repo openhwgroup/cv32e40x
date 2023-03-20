@@ -128,6 +128,12 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   obi_inst_req_t     bus_trans;
   obi_inst_req_t     core_trans;
 
+  logic              alcheck_resp_valid;
+  inst_resp_t        alcheck_resp;
+  logic              alcheck_trans_valid;
+  logic              alcheck_trans_ready;
+  obi_inst_req_t     alcheck_trans;
+
   // Local instr_valid
   logic              instr_valid;
 
@@ -234,7 +240,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .A_EXT                ( A_EXT                       ),
     .CORE_REQ_TYPE        ( obi_inst_req_t              ),
     .CORE_RESP_TYPE       ( inst_resp_t                 ),
-    .BUS_RESP_TYPE        ( obi_inst_resp_t             ),
+    .BUS_RESP_TYPE        ( inst_resp_t                 ),
     .PMA_NUM_REGIONS      ( PMA_NUM_REGIONS             ),
     .PMA_CFG              ( PMA_CFG                     ),
     .DEBUG                ( DEBUG                       ),
@@ -260,11 +266,44 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .core_resp_valid_o    ( prefetch_resp_valid         ),
     .core_resp_o          ( prefetch_inst_resp          ),
 
-    .bus_trans_valid_o    ( bus_trans_valid             ),
-    .bus_trans_ready_i    ( bus_trans_ready             ),
-    .bus_trans_o          ( bus_trans                   ),
-    .bus_resp_valid_i     ( bus_resp_valid              ),
-    .bus_resp_i           ( bus_resp                    )
+    .bus_trans_valid_o    ( alcheck_trans_valid         ),
+    .bus_trans_ready_i    ( alcheck_trans_ready         ),
+    .bus_trans_o          ( alcheck_trans               ),
+    .bus_resp_valid_i     ( alcheck_resp_valid          ),
+    .bus_resp_i           ( alcheck_resp                )
+  );
+
+
+  cv32e40x_align_check
+  #(
+    .IF_STAGE             ( 1                    ),
+    .CORE_RESP_TYPE       ( inst_resp_t          ),
+    .BUS_RESP_TYPE        ( obi_inst_resp_t      ),
+    .CORE_REQ_TYPE        ( obi_inst_req_t       )
+  )
+  align_check_i
+  (
+    .clk                  ( clk                     ),
+    .rst_n                ( rst_n                   ),
+    .align_check_en_i     ( 1'b0                    ), // todo: enable check for pointers
+    .misaligned_access_i  ( 1'b0                    ),
+
+    .core_one_txn_pend_n  ( prefetch_one_txn_pend_n ),
+    .core_align_err_wait_i( 1'b1                    ),
+    .core_align_err_o     (                         ), // Unconnected on purpose
+
+    .core_trans_valid_i   ( alcheck_trans_valid     ),
+    .core_trans_ready_o   ( alcheck_trans_ready     ),
+    .core_trans_i         ( alcheck_trans           ),
+    .core_resp_valid_o    ( alcheck_resp_valid      ),
+    .core_resp_o          ( alcheck_resp            ),
+
+    .bus_trans_valid_o    ( bus_trans_valid         ),
+    .bus_trans_ready_i    ( bus_trans_ready         ),
+    .bus_trans_o          ( bus_trans               ),
+    .bus_resp_valid_i     ( bus_resp_valid          ),
+    .bus_resp_i           ( bus_resp                )
+
   );
 
   //////////////////////////////////////////////////////////////////////////////

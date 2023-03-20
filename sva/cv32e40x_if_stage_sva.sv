@@ -40,7 +40,9 @@ module cv32e40x_if_stage_sva
   input  logic          instr_compressed,
   input  logic          prefetch_is_tbljmp_ptr,
   input  logic          prefetch_is_clic_ptr,
-  input  logic          prefetch_is_mret_ptr
+  input  logic          prefetch_is_mret_ptr,
+  input  logic [31:0]   branch_addr_n,
+  input  logic          align_err_i
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -95,6 +97,48 @@ module cv32e40x_if_stage_sva
                         |->
                         prefetch_is_mret_ptr != prefetch_is_clic_ptr)
           else `uvm_error("if_stage", "prefetch_is_mret_ptr high at the same time as prefetch_is_clic_ptr.")
+
+    a_aligned_clic_ptr:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.pc_set_clicv) &&
+                      (ctrl_fsm_i.pc_mux == PC_TRAP_CLICV)
+                      |->
+                      (branch_addr_n[1:0] == 2'b00))
+          else `uvm_error("if_stage", "Misaligned CLIC pointer")
+
+    a_aligned_mret_ptr:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.pc_set_clicv) &&
+                      (ctrl_fsm_i.pc_mux == PC_MRET) &&
+                      (branch_addr_n[1:0] == 2'b00)
+                      |->
+                      align_err_i
+                      )
+          else `uvm_error("if_stage", "Misaligned mret pointer not flagged with error")
+
+    // Aligned errors may only happen for mret pointers
+    a_aligned_err_mret_ptr:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      align_err_i
+                      |->
+                      (ctrl_fsm_i.pc_set_clicv) &&
+                      (ctrl_fsm_i.pc_mux == PC_MRET))
+          else `uvm_error("if_stage", "Alignment error withouth mret pointer")
+  end else begin
+
+    // Without CLIC support there shall never be an aligned error in the IF stage.
+    a_no_align_err:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      !align_err_i)
+          else `uvm_error("if_stage", "Alignment error withouth CLIC support.")
   end
+
+  a_aligned_tbljmp_ptr:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_i.pc_set) &&
+                      (ctrl_fsm_i.pc_mux == PC_TBLJUMP)
+                      |->
+                      (branch_addr_n[1:0] == 2'b00))
+          else `uvm_error("if_stage", "Misaligned tablejump pointer")
 endmodule // cv32e40x_if_stage
 

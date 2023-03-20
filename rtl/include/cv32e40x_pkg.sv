@@ -901,6 +901,7 @@ typedef enum logic[3:0] {
 } pc_mux_e;
 
 // Exception Cause
+parameter EXC_CAUSE_INSTR_MISALIGNED = 11'h00;
 parameter EXC_CAUSE_INSTR_FAULT      = 11'h01;
 parameter EXC_CAUSE_ILLEGAL_INSN     = 11'h02;
 parameter EXC_CAUSE_BREAKPOINT       = 11'h03;
@@ -965,16 +966,23 @@ parameter pma_cfg_t PMA_R_DEFAULT = '{word_addr_low   : 0,
                                       atomic          : 1'b0};
 
 // MPU status. Used for PMA
-typedef enum logic [2:0] {
-                          MPU_OK            = 3'h0,
-                          MPU_RE_FAULT      = 3'h1,
-                          MPU_WR_FAULT      = 3'h2,
-                          MPU_RE_MISALIGNED = 3'h3,
-                          MPU_WR_MISALIGNED = 3'h4
+typedef enum logic [1:0] {
+                          MPU_OK            = 2'h0,
+                          MPU_RE_FAULT      = 2'h1,
+                          MPU_WR_FAULT      = 2'h2
                           } mpu_status_e;
 
-typedef enum logic [3:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_RE_MISALIGN_RESP, MPU_RE_MISALIGN_WAIT,
-                          MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT, MPU_WR_MISALIGN_RESP, MPU_WR_MISALIGN_WAIT} mpu_state_e;
+
+typedef enum logic [2:0] {MPU_IDLE, MPU_RE_ERR_RESP, MPU_RE_ERR_WAIT, MPU_WR_ERR_RESP, MPU_WR_ERR_WAIT} mpu_state_e;
+
+// ALIGN status. Used when checking alignment for atomics and mret pointers
+typedef enum logic [1:0] {
+                          ALIGN_OK         = 2'h0,
+                          ALIGN_RE_ERR     = 2'h1,
+                          ALIGN_WR_ERR     = 2'h2
+                          } align_status_e;
+
+typedef enum logic [2:0] {ALIGN_IDLE, ALIGN_WR_ERR_RESP, ALIGN_WR_ERR_WAIT, ALIGN_RE_ERR_RESP, ALIGN_RE_ERR_WAIT} align_state_e;
 
 // WPT state machine
 typedef enum logic [1:0] {WPT_IDLE, WPT_MATCH_WAIT, WPT_MATCH_RESP} wpt_state_e;
@@ -1031,14 +1039,17 @@ typedef struct packed {
 typedef struct packed {
  obi_inst_resp_t             bus_resp;
  mpu_status_e                mpu_status;
+ align_status_e              align_status;   // Alignment status (for mret pointers)
 } inst_resp_t;
 
 // Reset value for the inst_resp_t type
 parameter inst_resp_t INST_RESP_RESET_VAL = '{
   // Setting rdata[1:0] to 2'b11 to easily assert that all
   // instructions in ID are uncompressed
-  bus_resp    : '{rdata: 32'h3, err: 1'b0},
-  mpu_status  : MPU_OK
+  bus_resp     : '{rdata: 32'h3, err: 1'b0},
+  mpu_status   : MPU_OK,
+  align_status : ALIGN_OK
+
 };
 
 // Reset value for the obi_inst_req_t type
@@ -1054,6 +1065,7 @@ typedef struct packed {
   obi_data_resp_t             bus_resp;
   mpu_status_e                mpu_status;
   logic                       wpt_match;
+  align_status_e              align_status;
 } data_resp_t;
 
 // LSU transaction

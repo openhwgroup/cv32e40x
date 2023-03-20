@@ -52,6 +52,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   input  logic [31:0]   lsu_rdata_i,
   input  mpu_status_e   lsu_mpu_status_i,
   input  logic          lsu_wpt_match_i,
+  input  align_status_e lsu_align_status_i,
 
   // Register file interface
   output logic          rf_we_wb_o,     // Register file write enable
@@ -77,6 +78,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Sticky WB outputs
   output logic          wpt_match_wb_o,
   output mpu_status_e   mpu_status_wb_o,
+  output align_status_e align_status_wb_o,
 
   // From cs_registers
   input logic [31:0]    clic_pa_i,
@@ -97,16 +99,18 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // Flops for making volatile LSU outputs sticky until wb_valid
   mpu_status_e          lsu_mpu_status_q;
   logic                 lsu_wpt_match_q;
+  align_status_e        lsu_align_status_q;
   logic                 lsu_valid_q;
 
   mpu_status_e          lsu_mpu_status;
   logic                 lsu_wpt_match;
+  align_status_e        lsu_align_status;
   logic                 lsu_valid;
   // WB stage has two halt sources, ctrl_fsm_i.halt_wb and ctrl_fsm_i.halt_limited_wb. The limited halt is only set during
   // the SLEEP state, and is used to prevent timing paths from interrupt inputs to obi outputs when waking up from SLEEP.
   assign instr_valid = ex_wb_pipe_i.instr_valid && !ctrl_fsm_i.kill_wb && !ctrl_fsm_i.halt_wb && !ctrl_fsm_i.halt_limited_wb;
 
-  assign lsu_exception = (lsu_mpu_status != MPU_OK);
+  assign lsu_exception = (lsu_mpu_status != MPU_OK) || (lsu_align_status != ALIGN_OK);
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -185,28 +189,33 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
       lsu_valid_q <= 1'b0;
       lsu_wpt_match_q <= 1'b0;
       lsu_mpu_status_q <= MPU_OK;
+      lsu_align_status_q <= ALIGN_OK;
     end else begin
       if (wb_valid || ctrl_fsm_i.kill_wb) begin
         // Clear sticky LSU bits when WB is done
         lsu_valid_q <= 1'b0;
         lsu_wpt_match_q <= 1'b0;
         lsu_mpu_status_q <= MPU_OK;
+        lsu_align_status_q <= ALIGN_OK;
       end else begin
         if (lsu_valid_i) begin
           lsu_valid_q <= 1'b1;
           lsu_wpt_match_q <= lsu_wpt_match;
           lsu_mpu_status_q <= lsu_mpu_status;
+          lsu_align_status_q <= lsu_align_status;
         end
       end
     end
   end
 
-  assign lsu_valid      = lsu_valid_q ? lsu_valid_q      : lsu_valid_i;
-  assign lsu_wpt_match  = lsu_valid_q ? lsu_wpt_match_q  : lsu_wpt_match_i;
-  assign lsu_mpu_status = lsu_valid_q ? lsu_mpu_status_q : lsu_mpu_status_i;
+  assign lsu_valid        = lsu_valid_q ? lsu_valid_q        : lsu_valid_i;
+  assign lsu_wpt_match    = lsu_valid_q ? lsu_wpt_match_q    : lsu_wpt_match_i;
+  assign lsu_mpu_status   = lsu_valid_q ? lsu_mpu_status_q   : lsu_mpu_status_i;
+  assign lsu_align_status = lsu_valid_q ? lsu_align_status_q : lsu_align_status_i;
 
   assign wpt_match_wb_o = lsu_wpt_match;
   assign mpu_status_wb_o = lsu_mpu_status;
+  assign align_status_wb_o = lsu_align_status;
   //---------------------------------------------------------------------------
   // eXtension interface
   //---------------------------------------------------------------------------
