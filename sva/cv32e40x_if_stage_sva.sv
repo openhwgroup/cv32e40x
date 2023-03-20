@@ -115,6 +115,22 @@ module cv32e40x_if_stage_sva
                       align_err_i
                       )
           else `uvm_error("if_stage", "Misaligned mret pointer not flagged with error")
+
+    // Aligned errors may only happen for mret pointers
+    a_aligned_err_mret_ptr:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      align_err_i
+                      |->
+                      (ctrl_fsm_i.pc_set_clicv) &&
+                      (ctrl_fsm_i.pc_mux == PC_MRET))
+          else `uvm_error("if_stage", "Alignment error withouth mret pointer")
+  end else begin
+
+    // Without CLIC support there shall never be an aligned error in the IF stage.
+    a_no_align_err:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      !align_err_i)
+          else `uvm_error("if_stage", "Alignment error withouth CLIC support.")
   end
 
   a_aligned_tbljmp_ptr:
