@@ -45,8 +45,8 @@ It follows these specifications:
 .. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, 246028cd719426597269b3d717c866802c58bde7,
    https://github.com/riscv/riscv-debug-spec/blob/05252da1575610e9605d882145da3f4e7f4f3cb1/riscv-debug-stable.pdf 
 
-.. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 2/14/2023,
-   https://github.com/riscv/riscv-fast-interrupt/blob/a371ddda849a055932fa49fe58d1fee6d9063a3c/clic.pdf 
+.. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 3/14/2023,
+   https://github.com/riscv/riscv-fast-interrupt/blob/550771f42b579776a37345894b9ca7e01e645555/clic.pdf 
 
 .. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
