@@ -901,6 +901,7 @@ typedef enum logic[3:0] {
 } pc_mux_e;
 
 // Exception Cause
+parameter EXC_CAUSE_INSTR_MISALIGNED = 11'h00;
 parameter EXC_CAUSE_INSTR_FAULT      = 11'h01;
 parameter EXC_CAUSE_ILLEGAL_INSN     = 11'h02;
 parameter EXC_CAUSE_BREAKPOINT       = 11'h03;

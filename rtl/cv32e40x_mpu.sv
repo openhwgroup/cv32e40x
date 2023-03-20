@@ -180,7 +180,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
   assign core_resp_o.mpu_status = mpu_status;
   assign core_resp_o.align_status = bus_resp_i.align_status;
 
-  // Report MPU errors to the core immediatly
+  // Report MPU errors to the core immediately
   assign core_mpu_err_o = mpu_err;
 
   // Signal ready towards core

@@ -59,11 +59,11 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
    // Indication from the core that there will be one pending transaction in the next cycle
    input logic            core_one_txn_pend_n,
 
-   // Indication from the core that watchpoint triggers should be reported after all in flight transactions
+   // Indication from the core that an alignment error should be reported after all in flight transactions
    // are complete (default behavior for main core requests, but not used for XIF requests)
    input logic            core_align_err_wait_i,
 
-   // Report watchpoint triggers to the core immediatly (used in case core_align_wait_i is not asserted)
+   // Report alignment errors to the core immediatly (used in case core_align_wait_i is not asserted)
    output logic           core_align_err_o
    );
 
@@ -163,11 +163,12 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
   assign core_resp_valid_o        = bus_resp_valid_i || align_trans_valid;
   assign core_resp_o.bus_resp     = bus_resp_i;
   assign core_resp_o.align_status = align_status;
+  assign core_resp_o.mpu_status   = MPU_OK;  // Assigned in the MPU (upstream), tied off to MPU_OK here.
 
   // Detect alignment error
   assign align_err = align_check_en_i && misaligned_access_i;
 
-  // Report align matches to the core immediatly
+  // Report align matches to the core immediately
   assign core_align_err_o = align_err;
 
   // Signal ready towards core

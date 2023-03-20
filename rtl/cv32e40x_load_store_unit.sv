@@ -201,6 +201,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic           align_check_en;        // Perform alignment checks for atomics
 
+  logic           consumer_resp_wait;    // Signal to WPT, MPU and alignment checker if they must wait with
+                                         // the response until there is one transaction left;
+
   assign xif_req = X_EXT && xif_mem_if.mem_valid;
 
   // Transaction (before aligner)
@@ -699,6 +702,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   //////////////////////////////////////////////////////////////////////////////
   // WPT
   //////////////////////////////////////////////////////////////////////////////
+  assign consumer_resp_wait = !xif_req;
 
   // Watchpint trigger "gate". If a watchpoint trigger is detected, this module will
   // consume the transaction, not letting it through to the MPU. The triger match will
@@ -736,7 +740,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
         // Indication from the core that watchpoint triggers should be reported after all in flight transactions
         // are complete (default behavior for main core requests, but not used for XIF requests)
-        .core_wpt_wait_i     ( !xif_req          ),
+        .core_wpt_wait_i     ( consumer_resp_wait),
 
         // Report watchpoint triggers to the core immediatly (used in case core_wpt_wait_i is not asserted)
         .core_wpt_match_o    ( xif_wpt_match     )
@@ -797,7 +801,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .misaligned_access_i  ( misaligned_access  ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
-    .core_mpu_err_wait_i  ( !xif_req           ),
+    .core_mpu_err_wait_i  ( consumer_resp_wait ),
     .core_mpu_err_o       ( xif_mpu_err        ),
     .core_trans_valid_i   ( mpu_trans_valid    ),
     .core_trans_pushpop_i ( mpu_trans_pushpop  ),
@@ -835,7 +839,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .misaligned_access_i  ( misaligned_access     ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next       ),
-    .core_align_err_wait_i( !xif_req              ),
+    .core_align_err_wait_i( consumer_resp_wait    ),
     .core_align_err_o     (                       ), // todo: Unconnected on purpose, is this needed for xif?
 
     .core_trans_valid_i   ( alcheck_trans_valid   ),
