@@ -75,11 +75,13 @@ Similarly an instruction fetch with a failing PMA check only leads to an instruc
 Non Maskable Interrupts
 -----------------------
 
-Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts. However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
+Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts.
+However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
+The ``minsttatus`` CSR (which exists only if ``CLIC`` == 1) is not impacted by NMIs.
 
 .. note::
 
-   (Unrecoverable) NMIs and regular interrupts have identical effects on the ``mstatus`` CSR". Specifically ``mstatus.mie`` will get cleared
+   (Unrecoverable) NMIs and regular interrupts have identical effects on the ``mstatus`` CSR. Specifically ``mstatus.mie`` will get cleared
    to 0 when an (unrecoverable) NMI is taken. [RISC-V-PRIV]_ does not specify the behavior of
    ``mstatus`` in response to NMIs, see https://github.com/riscv/riscv-isa-manual/issues/756. If this behavior is
    specified at a future date, then we will reconsider our implementation.
