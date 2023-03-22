@@ -418,6 +418,7 @@ endgenerate
              .write_buffer_valid_o              ('0),
              .write_buffer_txn_bufferable       ('0),
              .write_buffer_txn_cacheable        ('0),
+             .obi_if_state                      (core_i.if_stage_i.instruction_obi_i.state_q),
              .*);
 
   bind cv32e40x_mpu:
@@ -444,6 +445,7 @@ endgenerate
              .write_buffer_valid_o              (core_i.load_store_unit_i.write_buffer_i.valid_o),
              .write_buffer_txn_bufferable       (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
              .write_buffer_txn_cacheable        (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
+             .obi_if_state                      (cv32e40x_pkg::TRANSPARENT),
              .*);
 
   bind cv32e40x_lsu_response_filter :

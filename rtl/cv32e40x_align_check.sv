@@ -41,7 +41,6 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
    // Interface towards bus interface
    input  logic           bus_trans_ready_i,
    output logic           bus_trans_valid_o,
-   output logic           bus_trans_pushpop_o,
    output CORE_REQ_TYPE   bus_trans_o,
 
    input  logic           bus_resp_valid_i,
@@ -50,7 +49,6 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
    // Interface towards core (MPU)
    input  logic           core_trans_valid_i,
    output logic           core_trans_ready_o,
-   input  logic           core_trans_pushpop_i,
    input  CORE_REQ_TYPE   core_trans_i,
 
    output logic           core_resp_valid_o,
@@ -156,7 +154,6 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
   // Forward transaction request towards MPU
   assign bus_trans_valid_o   = core_trans_valid_i && !align_block_bus;
   assign bus_trans_o         = core_trans_i;
-  assign bus_trans_pushpop_o = core_trans_pushpop_i;
 
 
   // Forward transaction response towards core

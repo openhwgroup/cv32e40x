@@ -56,6 +56,8 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        obi_gnt,
    input logic        obi_dbg,
 
+   input obi_if_state_e obi_if_state,
+
    // Interface towards bus interface
    input logic        bus_trans_ready_i,
    input logic        bus_trans_valid_o,
@@ -323,12 +325,12 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
                      (!pma_err && is_addr_match) ||
                      // or a transaction from the write buffer is causing obi_req
                      // (a different transaction could cause pma_err in the same cycle)
-                     (write_buffer_state && write_buffer_valid_o) ||
+                     (!IS_INSTR_SIDE && (write_buffer_state && write_buffer_valid_o)) ||
                      // or we are already outputting a obi_req but a new address comes in which may cause a pma_err
-                     (!is_addr_match && was_obi_waiting && $past(obi_req)) ||
+                     (IS_INSTR_SIDE && (!is_addr_match && (obi_if_state == REGISTERED))) ||
                      // or we get an address match, but was already outputting the same address (no pma_err)
                      // but a change in debug mode causes the new transaction the same address to fail
-                     (is_addr_match && was_obi_waiting && $past(obi_req) && (!pma_dbg && obi_dbg)))
+                     (IS_INSTR_SIDE && (is_addr_match && (obi_if_state == REGISTERED) && (!pma_dbg && obi_dbg))))
       else `uvm_error("mpu", "obi made request to pma-forbidden region")
 
   generate
