@@ -270,14 +270,19 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       instr_instr_o.bus_resp.err   = bus_err_unaligned;
       instr_instr_o.mpu_status     = mpu_status_unaligned;
       instr_instr_o.align_status   = align_status_unaligned;
-      // No instruction valid
+
       if (!valid) begin
+        // No instruction valid
         instr_valid_o = 1'b0;
-      // Unaligned instruction is compressed, we only need 16 upper bits from index 0
+      end else if (instr_is_clic_ptr_o || instr_is_mret_ptr_o || instr_is_tbljmp_ptr_o) begin
+        // currently outputting a pointer, valid whenever the response arrives or we have
+        // the pointer within index 0 of the buffer.
+        instr_valid_o = valid;
       end else if (unaligned_is_compressed) begin
+        // Unaligned instruction is compressed, we only need 16 upper bits from index 0
         instr_valid_o = valid;
       end else begin
-      // Unaligned is not compressed, we need data from either index 0 and 1, or 0 and input
+        // Unaligned is not compressed, we need data from either index 0 and 1, or 0 and input
         instr_valid_o = valid_unaligned_uncompressed;
       end
     end else begin
