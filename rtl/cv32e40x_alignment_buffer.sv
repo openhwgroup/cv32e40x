@@ -199,7 +199,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           mpu_status_unaligned = MPU_RE_FAULT;
         end
 
-        if((resp_q[rptr2].align_status != MPU_OK) || (resp_q[rptr].align_status != MPU_OK)) begin
+        if((resp_q[rptr2].align_status != ALIGN_OK) || (resp_q[rptr].align_status != ALIGN_OK)) begin
           align_status_unaligned = ALIGN_RE_ERR;
         end
 
@@ -224,7 +224,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
             mpu_status_unaligned = MPU_RE_FAULT;
           end
 
-          if((resp_q[rptr].align_status != MPU_OK) || (resp_i.align_status != MPU_OK)) begin
+          if((resp_q[rptr].align_status != ALIGN_OK) || (resp_i.align_status != ALIGN_OK)) begin
             align_status_unaligned = ALIGN_RE_ERR;
           end
 
