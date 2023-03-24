@@ -37,10 +37,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter logic [1:0]  X_ECS_XS             =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
   parameter bit          ZC_EXT               = 0,
   parameter bit          CLIC                 = 0,
-  parameter int          CLIC_ID_WIDTH        = 5,
-  parameter int          CLIC_INTTHRESHBITS   = 8,
-  parameter int          NUM_MHPMCOUNTERS     = 1,
-  parameter int          DEBUG                = 1,
+  parameter int unsigned CLIC_ID_WIDTH        = 5,
+  parameter int unsigned CLIC_INTTHRESHBITS   = 8,
+  parameter int unsigned NUM_MHPMCOUNTERS     = 1,
+  parameter bit          DEBUG                = 1,
   parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
   parameter int unsigned MTVT_ADDR_WIDTH      = 26
 )

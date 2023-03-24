@@ -35,8 +35,8 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   parameter a_ext_e      A_EXT                  = A_NONE,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
   parameter bit          CLIC                   = 0,
-  parameter int          CLIC_ID_WIDTH          = 5,
-  parameter int          DEBUG                  = 1
+  parameter int unsigned CLIC_ID_WIDTH          = 5,
+  parameter bit          DEBUG                  = 1
 )
 (
   input  logic        clk,                        // Gated clock

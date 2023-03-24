@@ -27,7 +27,7 @@ module cv32e40x_cs_registers_sva
   import cv32e40x_pkg::*;
 #(
     parameter bit CLIC  = 0,
-    parameter int DEBUG = 1
+    parameter bit DEBUG = 1
   )
 
   (

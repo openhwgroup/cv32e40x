@@ -31,7 +31,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
       parameter type         BUS_RESP_TYPE                = data_resp_t,
       parameter int          PMA_NUM_REGIONS              = 0,
       parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
-      parameter int          DEBUG                        = 1,
+      parameter bit          DEBUG                        = 1,
       parameter logic [31:0] DM_REGION_START              = 32'hF0000000,
       parameter logic [31:0] DM_REGION_END                = 32'hF0003FFF)
   (

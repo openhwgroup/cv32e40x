@@ -27,7 +27,7 @@ module cv32e40x_core_sva
   import cv32e40x_pkg::*;
   #(
     parameter a_ext_e A_EXT = A_NONE,
-    parameter int     DEBUG = 1,
+    parameter bit     DEBUG = 1,
     parameter int     PMA_NUM_REGIONS = 0,
     parameter bit     CLIC = 0
   )

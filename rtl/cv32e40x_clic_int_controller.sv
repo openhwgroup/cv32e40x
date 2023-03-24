@@ -28,7 +28,7 @@
 
 module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 #(
-  parameter int CLIC_ID_WIDTH = 5
+  parameter int unsigned CLIC_ID_WIDTH = 5
 )
 (
   input  logic                       clk,

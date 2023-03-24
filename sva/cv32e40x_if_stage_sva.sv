@@ -24,7 +24,7 @@ module cv32e40x_if_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
 #(
-    parameter int CLIC = 0
+    parameter bit CLIC = 0
 )
 (
   input  logic          clk,

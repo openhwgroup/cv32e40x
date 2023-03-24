@@ -32,15 +32,15 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter a_ext_e      A_EXT           = A_NONE,
   parameter b_ext_e      B_EXT           = B_NONE,
   parameter bit          X_EXT           = 0,
-  parameter int          X_ID_WIDTH      = 4,
+  parameter int unsigned X_ID_WIDTH      = 4,
   parameter int          PMA_NUM_REGIONS = 0,
   parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
   parameter int unsigned MTVT_ADDR_WIDTH = 26,
   parameter bit          CLIC            = 1'b0,
-  parameter int          CLIC_ID_WIDTH   = 5,
+  parameter int unsigned CLIC_ID_WIDTH   = 5,
   parameter bit          ZC_EXT          = 0,
   parameter m_ext_e      M_EXT           = M_NONE,
-  parameter int          DEBUG           = 1,
+  parameter bit          DEBUG           = 1,
   parameter logic [31:0] DM_REGION_START = 32'hF0000000,
   parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF
 )

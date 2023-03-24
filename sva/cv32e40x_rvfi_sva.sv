@@ -29,7 +29,7 @@ module cv32e40x_rvfi_sva
   import cv32e40x_rvfi_pkg::*;
 #(
     parameter bit     CLIC  = 0,
-    parameter int     DEBUG = 1,
+    parameter bit     DEBUG = 1,
     parameter a_ext_e A_EXT = A_NONE
 )
 (

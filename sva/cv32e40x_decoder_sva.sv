@@ -28,7 +28,7 @@ module cv32e40x_decoder_sva
   import cv32e40x_pkg::*;
 #(
   parameter a_ext_e A_EXT     = A_NONE,
-  parameter int     CLIC      = 0
+  parameter bit     CLIC      = 0
 )
 (
   input logic           clk,

@@ -29,7 +29,7 @@ module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   #(  parameter bit X_EXT     = 1'b0,
-      parameter int DEBUG     = 0,
+      parameter bit DEBUG     = 1'b0,
       parameter bit CLIC      = 1'b0
   )
 (

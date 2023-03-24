@@ -24,7 +24,7 @@ module cv32e40x_load_store_unit_sva
   #(
     parameter bit     X_EXT = 0,
     parameter         DEPTH = 0,
-    parameter int     DEBUG = 1,
+    parameter bit     DEBUG = 1,
     parameter a_ext_e A_EXT = A_NONE
   )
   (input logic       clk,

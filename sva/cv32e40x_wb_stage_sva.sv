@@ -27,7 +27,7 @@ module cv32e40x_wb_stage_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
   #(
-    parameter int DEBUG  = 1
+    parameter bit DEBUG  = 1
   )
 (
   input logic           clk,
