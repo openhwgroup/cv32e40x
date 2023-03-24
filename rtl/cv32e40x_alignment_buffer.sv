@@ -562,6 +562,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         if(instr_valid_o && instr_ready_i) begin
           addr_q <= addr_n;
           rptr   <= rptr_n;
+
+          // Clear pointer flags when pointers are consumed.
+          is_clic_ptr_q     <= 1'b0;
+          is_mret_ptr_q     <= 1'b0;
+          is_tbljmp_ptr_q   <= 1'b0;
         end
       end
 

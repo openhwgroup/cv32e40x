@@ -43,7 +43,9 @@ module cv32e40x_if_stage_sva
   input  logic          prefetch_is_mret_ptr,
   input  logic [31:0]   branch_addr_n,
   input  logic          align_err_i,
-  input  logic          alcheck_trans_valid
+  input  logic          alcheck_trans_valid,
+  input  logic          id_ready_i,
+  input  logic          ptr_in_if_o
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -137,6 +139,7 @@ module cv32e40x_if_stage_sva
           else `uvm_error("if_stage", "Alignment error withouth CLIC support.")
   end
 
+  // Tablejump pointer shall always be aligned
   a_aligned_tbljmp_ptr:
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.pc_set) &&
@@ -144,5 +147,13 @@ module cv32e40x_if_stage_sva
                       |->
                       (branch_addr_n[1:0] == 2'b00))
           else `uvm_error("if_stage", "Misaligned tablejump pointer")
+
+  a_no_ptr_after_ptr:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (if_valid_o && id_ready_i) &&
+                    ptr_in_if_o
+                    |=>
+                    !ptr_in_if_o)
+        else `uvm_error("if_stage", "IF stage flagging pointer after pointer has progressed to ID")
 endmodule // cv32e40x_if_stage
 
