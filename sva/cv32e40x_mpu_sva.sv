@@ -24,13 +24,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
-  #(  parameter int PMA_NUM_REGIONS              = 0,
+  #(  parameter int          PMA_NUM_REGIONS              = 0,
       parameter pma_cfg_t    PMA_CFG[PMA_NUM_REGIONS-1:0] = '{default:PMA_R_DEFAULT},
       parameter int unsigned IS_INSTR_SIDE = 0,
       parameter type         CORE_RESP_TYPE = inst_resp_t,
       parameter type         CORE_REQ_TYPE  = obi_inst_req_t,
       parameter a_ext_e      A_EXT = A_NONE,
-      parameter int          DEBUG = 1,
+      parameter bit          DEBUG = 1,
       parameter logic [31:0] DM_REGION_START = 32'hF0000000,
       parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF)
   (
