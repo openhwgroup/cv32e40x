@@ -148,6 +148,10 @@ module cv32e40x_if_stage_sva
                       (branch_addr_n[1:0] == 2'b00))
           else `uvm_error("if_stage", "Misaligned tablejump pointer")
 
+  // Once a pointer exits IF, there cannot be another pointer following it.
+  // A possible case could be a SHV CLIC pointer following a tablejump pointer, but
+  // such a scenario would contain at least one bubble since acking the interrupt
+  // would kill the pipeline and redirect the prefetcher to the CLIC table.
   a_no_ptr_after_ptr:
     assert property (@(posedge clk) disable iff (!rst_n)
                     (if_valid_o && id_ready_i) &&

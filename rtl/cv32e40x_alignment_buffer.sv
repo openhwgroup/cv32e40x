@@ -181,8 +181,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign valid = valid_q[rptr] || resp_valid_gated;
 
   // unaligned_is_compressed and aligned_is_compressed are only defined when valid = 1 (which implies that instr_valid_o will be 1)
-  assign unaligned_is_compressed = instr[17:16] != 2'b11;
-  assign aligned_is_compressed   = instr[1:0] != 2'b11;
+  // Never flag a compressed instruction (aligned or misaligned) for pointers. Otherwise one could signal instr_valid_o twice for one pointer
+  // if the pointer itself looks like two compressed instructions.
+  assign unaligned_is_compressed = (instr[17:16] != 2'b11) &&
+                                   !(instr_is_clic_ptr_o || instr_is_mret_ptr_o || instr_is_tbljmp_ptr_o);
+
+  assign aligned_is_compressed   = (instr[1:0] != 2'b11) &&
+                                   !(instr_is_clic_ptr_o || instr_is_mret_ptr_o || instr_is_tbljmp_ptr_o);
 
 
   // Set mpu_status, align_status and bus error for unaligned instructions
