@@ -776,7 +776,7 @@ module cv32e40x_rvfi
       end
     end
 
-    // Genrate PC for branches taken from EX
+    // Generate PC for branches taken from EX
     pc_wdata_ex_branch = pc_wdata_ex_branch_q;
 
     if (ctrl_fsm_i.pc_set) begin
@@ -809,12 +809,12 @@ module cv32e40x_rvfi
   assign branch_taken_ex = branch_in_ex_i && branch_decision_ex_i;
 
   // Assign rvfi channels
-  assign rvfi_halt = 1'b0; // No intruction causing halt in cv32e40x
+  assign rvfi_halt = 1'b0; // No instruction causing halt in cv32e40x
   assign rvfi_ixl = 2'b01; // XLEN for current privilege level, must be 1(32) for RV32 systems
 
   logic         in_trap_clr;
   // Clear in trap pipeline when it reaches rvfi_intr
-  // This is done to avoid reporting already signaled triggers as supressed during by debug
+  // This is done to avoid reporting already signaled triggers as suppressed during by debug
   assign in_trap_clr = wb_valid_lastop && in_trap[STAGE_WB].intr;
 
   // Set rvfi_trap for instructions causing exception or debug entry.
@@ -995,7 +995,7 @@ module cv32e40x_rvfi
           // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
           debug_cause[STAGE_IF] <=  ebreak_in_wb_i ? 3'h1 : ctrl_fsm_i.debug_cause;
 
-          // If there is a trap in the pipeline when debug is taken, the trap will be supressed but the side-effects will not.
+          // If there is a trap in the pipeline when debug is taken, the trap will be suppressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr signals if it it did not reach the rvfi output.
           // When in_trap_clr is set, the in_trap[STAGE_WB] reached the RVFI outputs and we must not propagate it back to the in_trap[STAGE_IF]
           in_trap[STAGE_IF] <= in_trap[STAGE_IF].intr ? in_trap[STAGE_IF] :
@@ -1104,7 +1104,7 @@ module cv32e40x_rvfi
 
         lsu_mem_split_wb <= lsu_split_q_ex_i;
         if (!lsu_split_q_ex_i) begin
-          // The second part of the split misaligned acess is suppressed to keep
+          // The second part of the split misaligned access is suppressed to keep
           // the start address and data for the whole misaligned transfer
           ex_mem_trans <= lsu_data_trans;
         end
