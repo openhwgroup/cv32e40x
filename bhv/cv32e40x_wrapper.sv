@@ -562,7 +562,8 @@ endgenerate
          .lsu_pma_atomic_ex_i      ( core_i.load_store_unit_i.mpu_i.pma_i.atomic_access_i                 ),
          .lsu_pma_cfg_ex_i         ( core_i.load_store_unit_i.mpu_i.pma_i.pma_cfg                         ),
          .lsu_misaligned_ex_i      ( core_i.load_store_unit_i.misaligned_access                           ),
-         .buffer_trans             ( core_i.load_store_unit_i.buffer_trans                                ),
+         .buffer_trans_ex_i        ( core_i.load_store_unit_i.buffer_trans                                ),
+         .buffer_trans_valid_ex_i  ( core_i.load_store_unit_i.buffer_trans_valid                          ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
 
          // WB Probes

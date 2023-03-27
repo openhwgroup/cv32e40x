@@ -83,7 +83,8 @@ module cv32e40x_rvfi
    input logic                                lsu_pma_atomic_ex_i,
    input pma_cfg_t                            lsu_pma_cfg_ex_i,
    input logic                                lsu_misaligned_ex_i,
-   input obi_data_req_t                       buffer_trans,
+   input obi_data_req_t                       buffer_trans_ex_i,
+   input logic                                buffer_trans_valid_ex_i,
    input logic                                lsu_split_q_ex_i,
 
    // WB probes
@@ -702,6 +703,7 @@ module cv32e40x_rvfi
 
   rvfi_obi_instr_t obi_instr_if;
   obi_data_req_t   lsu_data_trans;
+  logic            lsu_data_trans_valid;
 
   // Detect mret initiated CLIC pointer in WB
   logic         mret_ptr_wb;
@@ -751,10 +753,12 @@ module cv32e40x_rvfi
   cv32e40x_rvfi_data_obi
   rvfi_data_obi_i
   (
-    .clk                        ( clk_i          ),
-    .rst_n                      ( rst_ni         ),
-    .buffer_trans               ( buffer_trans   ),
-    .lsu_data_trans             ( lsu_data_trans )
+    .clk                        ( clk_i                   ),
+    .rst_n                      ( rst_ni                  ),
+    .buffer_trans_i             ( buffer_trans_ex_i       ),
+    .buffer_trans_valid_i       ( buffer_trans_valid_ex_i ),
+    .lsu_data_trans_o           ( lsu_data_trans          ),
+    .lsu_data_trans_valid_o     ( lsu_data_trans_valid    )
   );
 
 
@@ -1091,8 +1095,8 @@ module cv32e40x_rvfi
         rs2_addr   [STAGE_WB] <= rs2_addr           [STAGE_EX];
         rs1_rdata  [STAGE_WB] <= rs1_rdata          [STAGE_EX];
         rs2_rdata  [STAGE_WB] <= rs2_rdata          [STAGE_EX];
-        mem_rmask  [STAGE_WB] <= mem_rmask          [STAGE_EX];
-        mem_wmask  [STAGE_WB] <= mem_wmask          [STAGE_EX];
+        mem_rmask  [STAGE_WB] <= lsu_data_trans_valid ? mem_rmask[STAGE_EX] : '0;
+        mem_wmask  [STAGE_WB] <= lsu_data_trans_valid ? mem_wmask[STAGE_EX] : '0;
         in_trap    [STAGE_WB] <= in_trap            [STAGE_EX];
 
         rs1_addr_subop   [STAGE_WB] <= rs1_addr_subop [STAGE_EX];
