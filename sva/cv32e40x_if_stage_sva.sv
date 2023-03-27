@@ -42,7 +42,10 @@ module cv32e40x_if_stage_sva
   input  logic          prefetch_is_clic_ptr,
   input  logic          prefetch_is_mret_ptr,
   input  logic [31:0]   branch_addr_n,
-  input  logic          align_err_i
+  input  logic          align_err_i,
+  input  logic          alcheck_trans_valid,
+  input  logic          id_ready_i,
+  input  logic          ptr_in_if_o
 );
 
   // Check that bus interface transactions are halfword aligned (will be forced word aligned at core boundary)
@@ -110,19 +113,22 @@ module cv32e40x_if_stage_sva
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.pc_set_clicv) &&
                       (ctrl_fsm_i.pc_mux == PC_MRET) &&
-                      (branch_addr_n[1:0] == 2'b00)
+                      (branch_addr_n[1:0] != 2'b00)
                       |->
                       align_err_i
                       )
           else `uvm_error("if_stage", "Misaligned mret pointer not flagged with error")
 
-    // Aligned errors may only happen for mret pointers
+    // Aligned errors may only happen for mret pointers that are not otherwise blocked by the MPU
     a_aligned_err_mret_ptr:
       assert property (@(posedge clk) disable iff (!rst_n)
-                      align_err_i
+                      align_err_i &&            // Alignment error flagged
+                      alcheck_trans_valid       // Transaction not blocked by MPU
                       |->
-                      (ctrl_fsm_i.pc_set_clicv) &&
+                      ((ctrl_fsm_i.pc_set_clicv) &&     // We have a pc_set for an mret pointer this cycle
                       (ctrl_fsm_i.pc_mux == PC_MRET))
+                      or
+                      prefetch_is_mret_ptr)             // Or the trans_valid comes after the pc_set and an mret pointer is flagged
           else `uvm_error("if_stage", "Alignment error withouth mret pointer")
   end else begin
 
@@ -133,6 +139,7 @@ module cv32e40x_if_stage_sva
           else `uvm_error("if_stage", "Alignment error withouth CLIC support.")
   end
 
+  // Tablejump pointer shall always be aligned
   a_aligned_tbljmp_ptr:
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_i.pc_set) &&
@@ -140,5 +147,17 @@ module cv32e40x_if_stage_sva
                       |->
                       (branch_addr_n[1:0] == 2'b00))
           else `uvm_error("if_stage", "Misaligned tablejump pointer")
+
+  // Once a pointer exits IF, there cannot be another pointer following it.
+  // A possible case could be a SHV CLIC pointer following a tablejump pointer, but
+  // such a scenario would contain at least one bubble since acking the interrupt
+  // would kill the pipeline and redirect the prefetcher to the CLIC table.
+  a_no_ptr_after_ptr:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (if_valid_o && id_ready_i) &&
+                    ptr_in_if_o
+                    |=>
+                    !ptr_in_if_o)
+        else `uvm_error("if_stage", "IF stage flagging pointer after pointer has progressed to ID")
 endmodule // cv32e40x_if_stage
 
