@@ -840,6 +840,7 @@ module cv32e40x_rvfi
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next.exception       = 1'b1;
       rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code[5:0]; // All synchronous exceptions fit in lower 6 bits
+      rvfi_trap_next.clicptr         = clic_ptr_wb_i;
 
       // Separate exception causes with the same ecseption cause code
       case (ctrl_fsm_i.csr_cause.exception_code)
@@ -883,10 +884,11 @@ module cv32e40x_rvfi
   end
 
   // All instructions retire when wb_valid is high and it either is a last_op or an abort_op.
-  // CLIC pointers are excluded as they are not instructions.
+  // CLIC pointers are excluded if they do not raise an exception.
+  // Faulted CLIC pointer fetches are reported with rvfi_valid and rvfi_trap.clicptr==1.
   // CLIC pointers that are a result of an mret (instr_meta.mret_ptr) finish the sequence mret->ptr, and shall raise rvfi_valid_* to retire the mret.
-  assign wb_valid_subop    = wb_valid_i && !clic_ptr_wb_i;
-  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !clic_ptr_wb_i;
+  assign wb_valid_subop    = wb_valid_i && !(clic_ptr_wb_i && !pc_mux_exception);
+  assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !(clic_ptr_wb_i && !pc_mux_exception);
 
 
   // Pipeline stage model //
