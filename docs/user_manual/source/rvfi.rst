@@ -68,7 +68,7 @@ This chapter specifies interpretations and compatibilities to the [SYMBIOTIC-RVF
 **Interface Qualification**
 
 All RVFI output signals are qualified with the ``rvfi_valid`` signal.
-Any RVFI operation (retired or trapped instruction) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
+Any RVFI operation (retired or trapped instruction or trapped CLIC pointer) will set ``rvfi_valid`` high and increment the ``rvfi_order`` field.
 When ``rvfi_valid`` is low, all other RVFI outputs can be driven to arbitrary values.
 
 **Trap Signal**
