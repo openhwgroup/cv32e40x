@@ -428,6 +428,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       end else if (wb_ready_i) begin
         // we are ready for a new instruction, but there is none available,
         // so we introduce a bubble
+        ex_wb_pipe_o.xif_en      <= 1'b0;
         ex_wb_pipe_o.instr_valid <= 1'b0;
       end
     end
