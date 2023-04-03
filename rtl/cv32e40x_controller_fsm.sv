@@ -314,7 +314,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Detect mret pointers in ID
   assign mret_ptr_in_id = if_id_pipe_i.instr_valid && if_id_pipe_i.instr_meta.mret_ptr;
 
-  // Note: RVFI does not use jump_taken_id (which is not in itself an issue); An assertion in id_stage_sva checks that the jump target remains stable;
+  // Note: RVFI does not use jump_taken_id (which is not in itself an issue). An assertion in id_stage_sva checks that the jump target remains stable.
 
   // EX stage
   // Branch taken for valid branch instructions in EX with valid decision
