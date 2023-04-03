@@ -553,7 +553,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // LSU instructions which were suppressed due to previous exceptions or trigger match
   // will be interruptable as they were converted to NOP in ID stage.
   // When a fencei is present in WB and the LSU has completed all tranfers, the fencei handshake will be initiated. This must complete and the fencei instruction must retire before allowing interrupts.
-  // TODO:OK:low May allow interuption of Zce to idempotent memories
   // Any multi operation instruction (table jumps, push/pop and double moves) may not be interrupted once the first operation has completed its operation in WB.
   //   - This is guarded with using the sequence_interruptible, which tracks sequence progress through the WB stage.
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block interrupts.
