@@ -1055,16 +1055,16 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           end
 
           // CLIC pointer in WB
-          if(clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb && !exception_in_wb) begin
+          if (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb && !exception_in_wb) begin
             // Clear minhv if no exceptions are associated with the pointer
             ctrl_fsm_o.csr_clear_minhv = 1'b1;
           end
         end // !debug or interrupts
 
         // Single step debug entry or etrigger debug entry
-          // Need to be after (in parallell with) exception/interrupt handling
-          // to ensure mepc and if_pc are set correctly for use in dpc,
-          // and to ensure only one instruction can retire during single step
+        // Need to be after (in parallell with) exception/interrupt handling
+        // to ensure mepc and if_pc are set correctly for use in dpc,
+        // and to ensure only one instruction can retire during single step
         // Triggers other than exception trigger do not cause any state change before debug entry.
         // Exception triggers do all the side effects off taking an exception (mcause, mepc etc) but without
         // executing the first handler instruction before debug entry. If an exception trigger factored into
