@@ -32,7 +32,7 @@
 
 module cv32e40x_lsu_response_filter
   import cv32e40x_pkg::*;
-  #(parameter DEPTH = 2)
+  #(parameter int unsigned DEPTH = 2)
   (
    // clock and reset
    input logic            clk,

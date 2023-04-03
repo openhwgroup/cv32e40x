@@ -29,7 +29,6 @@
 
 module cv32e40x_i_decoder import cv32e40x_pkg::*;
   #(
-    parameter     DEBUG_TRIGGER_EN  = 1,
     parameter bit CLIC              = 1
     )
   (

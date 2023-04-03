@@ -32,7 +32,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   parameter a_ext_e      A_EXT                  = A_NONE,
   parameter b_ext_e      B_EXT                  = B_NONE,
   parameter m_ext_e      M_EXT                  = M,
-  parameter              DEBUG_TRIGGER_EN       = 1,
   parameter bit          CLIC                   = 1
 )
 (
@@ -142,7 +141,6 @@ module cv32e40x_decoder import cv32e40x_pkg::*;
   // RV32I Base instruction set decoder
   cv32e40x_i_decoder
   #(
-    .DEBUG_TRIGGER_EN (DEBUG_TRIGGER_EN),
     .CLIC             (CLIC            )
   )
   i_decoder_i
