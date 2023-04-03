@@ -42,7 +42,7 @@
 
 module cv32e40x_sleep_unit import cv32e40x_pkg::*;
 #(
-  parameter LIB = 0
+  parameter int LIB = 0
 )
 (
   // Clock, reset interface

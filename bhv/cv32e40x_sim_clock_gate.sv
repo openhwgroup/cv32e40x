@@ -14,7 +14,7 @@
 
 module cv32e40x_clock_gate
 #(
-  parameter LIB = 0
+  parameter int LIB = 0
   )
 (
     input  logic clk_i,

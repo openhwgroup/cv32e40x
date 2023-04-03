@@ -31,7 +31,7 @@
 
 module cv32e40x_core import cv32e40x_pkg::*;
 #(
-  parameter                             LIB                                     = 0,
+  parameter int                         LIB                                     = 0,
   parameter rv32_e                      RV32                                    = RV32I,
   parameter a_ext_e                     A_EXT                                   = A_NONE,
   parameter b_ext_e                     B_EXT                                   = B_NONE,
