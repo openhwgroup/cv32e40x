@@ -130,7 +130,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // eXtension interface
   if_xif.cpu_commit    xif_commit_if,
-  if_xif.cpu_mem       xif_mem_if,
+  input  logic         xif_mem_valid_i,
+  input  logic         xif_mem_ready_i,
 
   input                xif_csr_error_i
 );
@@ -1494,7 +1495,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           commit_valid_q <= 1'b0;
           commit_kill_q  <= 1'b0;
         end else begin
-          if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex || (xif_mem_if.mem_valid && xif_mem_if.mem_ready)) begin
+          if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex || (xif_mem_valid_i && xif_mem_ready_i)) begin
             commit_valid_q <= 1'b0;
             commit_kill_q  <= 1'b0;
           end else begin
