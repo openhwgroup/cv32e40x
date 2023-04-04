@@ -685,10 +685,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
       end else if (ex_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
-        id_ex_pipe_o.xif_en                 <= 1'b0;
       end else if (xif_mem_valid_i && xif_mem_ready_i) begin
         id_ex_pipe_o.instr_valid            <= 1'b0;
-        id_ex_pipe_o.xif_en                 <= 1'b0;
       end
     end
   end
