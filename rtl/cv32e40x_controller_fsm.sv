@@ -423,8 +423,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // high, ID stage will be halted due to pending_nmi and !nmi_allowed.
   assign pending_nmi_early =  lsu_err_wb_i[0];
 
-  // todo: Halting ID and killing it later will not work for Zce (push/pop)
-
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
   assign ctrl_fsm_o.pending_nmi = nmi_pending_q;
