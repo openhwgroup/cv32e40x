@@ -1020,7 +1020,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               branch_taken_n = 1'b1;
             end
           end else if (clic_ptr_in_id || mret_ptr_in_id) begin
-            // todo e40s: Factor in integrity related errors
             if (!(if_id_pipe_i.instr.bus_resp.err || (if_id_pipe_i.instr.mpu_status != MPU_OK) || (if_id_pipe_i.instr.align_status != ALIGN_OK))) begin
               if (!branch_taken_q) begin
                 ctrl_fsm_o.pc_set = 1'b1;
