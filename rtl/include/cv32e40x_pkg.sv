@@ -1450,7 +1450,7 @@ typedef struct packed {
     logic [1:0] next_value
   );
     // mtvec.mode is WARL(0,1) in CLINT mode
-    return ((next_value != 2'b00) && (next_value != 1'b01)) ? current_value : next_value;
+    return ((next_value != 2'b00) && (next_value != 2'b01)) ? current_value : next_value;
   endfunction
 
   function automatic logic[1:0] mtvec_mode_clic_resolve
