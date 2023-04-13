@@ -633,18 +633,27 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // to avoid more than one instructions passing down the pipe.
     ctrl_fsm_o.halt_if          = single_step_halt_if_q;
 
-    // ID stage is halted for regular stalls (i.e. stalls for which the instruction
-    // currently in ID is not ready to be issued yet). Also halted if interrupt or debug pending
-    // but not allowed to be taken. This is to create an interruptible bubble in WB.
-    // Interrupts: Machine mode: Prevent issuing new instructions until we get an interruptible bubble.
-    //             Debug mode:   Interrupts are not allowed during debug. Cannot halt ID stage in such a case
-    //                           since the dret that brings the core out of debug mode may never get past a halted ID stage.
-    //             Sequences:    If we need to halt for debug or interrupt not allowed due to a sequence, we must check if we can
-    //                           actually halt the ID stage or not. Halting the same sequence that causes *_allowed to go to 0
-    //                           may cause a deadlock.
-    ctrl_fsm_o.halt_id          = ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_wfe_stall || ctrl_byp_i.mnxti_id_stall ||
-      (((pending_interrupt && !interrupt_allowed) || (pending_nmi && !nmi_allowed) || (pending_nmi_early)) && debug_interruptible && id_stage_haltable) ||
-      (((pending_async_debug && !async_debug_allowed) ||(pending_sync_debug && !sync_debug_allowed)) && id_stage_haltable);
+    // ID stage is halted when hazards are present (i.e. stalls for which the instruction currently in ID is not ready to be issued yet).
+    //
+    // In addition the ID stage may be halted to enable interrupts or debug to be taken.
+    //   - If an interrupt (including NMI) is present it is not guaranteed that the pipeline
+    //     can take the interrupt immediately. A LSU instruction could for instance be outstanding, causing the interrupt not to be taken.
+    //     The controller uses (pending_interrupt && interrupt_allowed) to check for these conditions.
+    //     When an interrupt (or NMI) is pending, the ID stage is halted to guarantee that an interruptible bubble eventually will
+    //     occur in the WB stage.
+    //   -- The ID stage is only halted iff debug_interruptible==1, indicating that we are not in debug mode or single step mode with interrupts disabled.
+    //   --- If halting for interrupts while in debug mode (debug_interruptible == 0), the core would deadlock waiting for interrupt_allowed, but the core
+    //       would never exit debug mode because the dret instruction could be blocked by the halted ID stage.
+    //   -- The ID stage is only halted iff also the ID stage is haltable (meaning ID stage is not currently in the middle of a sequence or waiting for a CLIC pointer)
+    //
+    //   - The ID stage is halted when any async or sync debug is pending for the same reasons as for interrupts.
+    //
+    //   - If not checking for id_stage_haltable for interrupts and debug, the core could end up in a situation where it tries to create a bubble
+    //     by halting ID, but the condition disallowing interrupt or debug will not disappear until the sequence currently handled by the ID stage
+    //     is done. This would create an unrecoverable deadlock.
+    ctrl_fsm_o.halt_id          = (ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_wfe_stall || ctrl_byp_i.mnxti_id_stall) ||
+                                  ((pending_interrupt || pending_nmi || pending_nmi_early) && debug_interruptible && id_stage_haltable)                             ||
+                                  ((pending_async_debug || pending_sync_debug) && id_stage_haltable);
 
 
     // Halting EX if minstret_stall occurs. Otherwise we would read the wrong minstret value
