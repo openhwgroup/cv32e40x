@@ -904,19 +904,23 @@ end
   assert property (@(posedge clk) disable iff (!rst_n)
                   (ctrl_fsm_cs == RESET)
                   |->
-                  !((pending_sync_debug && sync_debug_allowed) ||
-                    (exception_in_wb && exception_allowed)     ||
-                    (wfi_in_wb || wfe_in_wb)                   ||
-                    (fence_in_wb || fencei_in_wb)              ||
-                    (dret_in_wb)                               ||
-                    (csr_wr_in_wb_flush_i)                     ||
-                    (csr_flush_ack_q)                          ||
-                    (branch_taken_ex)                          ||
-                    (jump_taken_id)                            ||
-                    (clic_ptr_in_id || mret_ptr_in_id)         ||
-                    (mret_in_wb || mret_ptr_in_wb)             ||
-                    (clic_ptr_in_wb)                           ||
-                    (pending_single_step || etrigger_in_wb)))
+                  !((pending_sync_debug && sync_debug_allowed)                  ||
+                    (exception_in_wb && exception_allowed)                      ||
+                    (wfi_in_wb || wfe_in_wb)                                    ||
+                    (fence_in_wb || fencei_in_wb)                               ||
+                    (dret_in_wb)                                                ||
+                    (csr_wr_in_wb_flush_i)                                      ||
+                    (csr_flush_ack_q)                                           ||
+                    (branch_taken_ex)                                           ||
+                    (jump_taken_id)                                             ||
+                    (clic_ptr_in_id || mret_ptr_in_id)                          ||
+                    (mret_in_wb || mret_ptr_in_wb)                              ||
+                    (clic_ptr_in_wb)                                            ||
+                    (pending_single_step || etrigger_in_wb)                     ||
+                    (clic_ptr_in_id && id_valid_i && ex_ready_i)                ||
+                    (mret_in_wb && !ctrl_fsm_o.kill_wb)                         ||
+                    (mret_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) ||
+                    (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb)))
     else `uvm_error("controller", "Synchronous event during RESET")
 
   // Make sure no synchronous events are missed during SLEEP state
@@ -929,18 +933,22 @@ end
                   (ctrl_fsm_cs == SLEEP)
                   |->
                   (wfi_in_wb || wfe_in_wb) &&
-                  !((pending_sync_debug && sync_debug_allowed) ||
-                    (exception_in_wb && exception_allowed)     ||
-                    (fence_in_wb || fencei_in_wb)              ||
-                    (dret_in_wb)                               ||
-                    (csr_wr_in_wb_flush_i)                     ||
-                    (csr_flush_ack_q)                          ||
-                    (branch_taken_ex)                          ||
-                  //(jump_taken_id)                            || // Left in on purpose, see a_stable_id_sleep
-                    (clic_ptr_in_id || mret_ptr_in_id)         ||
-                    (mret_in_wb || mret_ptr_in_wb)             ||
-                    (clic_ptr_in_wb)                           ||
-                    (pending_single_step || etrigger_in_wb)))
+                  !((pending_sync_debug && sync_debug_allowed)                  ||
+                    (exception_in_wb && exception_allowed)                      ||
+                    (fence_in_wb || fencei_in_wb)                               ||
+                    (dret_in_wb)                                                ||
+                    (csr_wr_in_wb_flush_i)                                      ||
+                    (csr_flush_ack_q)                                           ||
+                    (branch_taken_ex)                                           ||
+                  //(jump_taken_id)                                             || // Left in on purpose, see a_stable_id_sleep
+                    (clic_ptr_in_id || mret_ptr_in_id)                          ||
+                    (mret_in_wb || mret_ptr_in_wb)                              ||
+                    (clic_ptr_in_wb)                                            ||
+                    (pending_single_step || etrigger_in_wb)                     ||
+                    (clic_ptr_in_id && id_valid_i && ex_ready_i)                ||
+                    (mret_in_wb && !ctrl_fsm_o.kill_wb)                         ||
+                    (mret_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) ||
+                    (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb)))
     else `uvm_error("controller", "Synchronous event during SLEEP")
 
   // Check that the if_id_pipe and jump_taken_id are stable when the FSM
@@ -974,7 +982,7 @@ end
   //   - CLIC pointer in ID: When a CLIC pointer is in the pipeline, debug is not allowed
   //   - mret or CLIC pointers in WB, debug is not allowed when these events are active.
 
-  // pending_single step may be true for the following conditions, but will not affect the debug cause:
+  // pending_single step may be true for the following conditions, but will not affect the debug cause (debug cause was decided during the previous cycle)
   //   - An NMI occured (may happen at any time, and may assert pending_single_step even though we're currently handling another debug entry)
   //   - WB is not killed during DEBUG_TAKEN. This will only happen for entries due to trigger match or ebreak
 
@@ -1000,34 +1008,45 @@ end
                     (mret_ptr_in_wb)                                                ||
                     (clic_ptr_in_wb)                                                ||
                     (pending_single_step && !pending_nmi && !(debug_cause_q == DBG_CAUSE_TRIGGER) && !(debug_cause_q == DBG_CAUSE_EBREAK)) // NMI can come at any time
-                    /*(etrigger_in_wb)*/)) // Left in on purpose, see comment above
+                    /*(etrigger_in_wb)*/                                            || // Left in on purpose, see comment above
+                    (clic_ptr_in_id && id_valid_i && ex_ready_i)                    ||
+                    (mret_in_wb && !ctrl_fsm_o.kill_wb)                             ||
+                    (mret_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb)     ||
+                    (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb)))
     else `uvm_error("controller", "Synchronous event during DEBUG_TAKEN(not single step)")
 
 
     // Make sure no synchronous events are missed during DEBUG_TAKEN state caused by single stepping
     // If the stepped instruction was a CSR write requiring pipeline flushing, the event
-    // csr_flush_ack_q will be active during DEBUG_TAKEN.
+    // csr_flush_ack_q (flush due to CSR can be done) will be active during DEBUG_TAKEN due to completing the instruction requiring flushing.
+    // In single step mode, there are no other instructions in the pipeline once an instruction completes, and
+    // execution is redirected to the debug module. This is effectively the same as a pipeline flush, and thus
+    // ignoring csr_flush_ack_q is ok.
     a_no_event_during_debug_taken_step:
     assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == DEBUG_TAKEN) &&
                     (debug_cause_q == DBG_CAUSE_STEP)
                     |->
-                    !((pending_sync_debug && sync_debug_allowed)  ||
-                      (exception_in_wb && exception_allowed)      ||
-                      ((wfi_in_wb || wfe_in_wb))                  ||
-                      ((fence_in_wb || fencei_in_wb))             ||
-                      (dret_in_wb)                                ||
-                      (csr_wr_in_wb_flush_i)                      ||
-                      //(csr_flush_ack_q)                         || // Left in on purpose, see coment above
-                      (branch_taken_ex)                           ||
-                      (jump_taken_id)                             ||
-                      (clic_ptr_in_id)                            ||
-                      (mret_ptr_in_id)                            ||
-                      (mret_in_wb)                                ||
-                      (mret_ptr_in_wb)                            ||
-                      (clic_ptr_in_wb)                            ||
-                      (pending_single_step && !pending_nmi)       ||
-                      (etrigger_in_wb)))
+                    !((pending_sync_debug && sync_debug_allowed)                  ||
+                      (exception_in_wb && exception_allowed)                      ||
+                      ((wfi_in_wb || wfe_in_wb))                                  ||
+                      ((fence_in_wb || fencei_in_wb))                             ||
+                      (dret_in_wb)                                                ||
+                      (csr_wr_in_wb_flush_i)                                      ||
+                      //(csr_flush_ack_q)                                         || // Left in on purpose, see coment above
+                      (branch_taken_ex)                                           ||
+                      (jump_taken_id)                                             ||
+                      (clic_ptr_in_id)                                            ||
+                      (mret_ptr_in_id)                                            ||
+                      (mret_in_wb)                                                ||
+                      (mret_ptr_in_wb)                                            ||
+                      (clic_ptr_in_wb)                                            ||
+                      (pending_single_step && !pending_nmi)                       ||
+                      (etrigger_in_wb)                                            ||
+                      (clic_ptr_in_id && id_valid_i && ex_ready_i)                ||
+                      (mret_in_wb && !ctrl_fsm_o.kill_wb)                         ||
+                      (mret_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb) ||
+                      (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !exception_in_wb)))
       else `uvm_error("controller", "Synchronous event during DEBUG_TAKEN(single stepping)")
 
 generate
