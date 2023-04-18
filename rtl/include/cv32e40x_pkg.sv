@@ -432,7 +432,7 @@ parameter CSR_JVT_MASK          = 32'hFFFFFFC0;
 parameter CSR_MEPC_MASK         = 32'hFFFFFFFE;
 parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
 parameter CSR_MSCRATCH_MASK     = 32'hFFFFFFFF;
-parameter CSR_DCSR_MASK         = 32'b1111_0000_0000_0000_1001_1101_1100_0111; // NMI bit taken from ctrl_fsm
+parameter CSR_DCSR_MASK         = 32'b1111_0000_0000_0000_1000_1101_1100_0111; // NMI bit taken from ctrl_fsm
 
 // CSR operations
 
