@@ -1591,7 +1591,7 @@ Reset Value: Not applicable
   +-------+-------------+----------------------------------------------------------------+
 
 .. note::
-   The ``hit1`` (MSB) and ``hit0`` (LSB) form a 2-bit bitfield together that has WARL (0x0, 0x1) behavior.
+   The ``hit1`` (MSB) and ``hit0`` (LSB) bitfields form a 2-bit bitfield together that has WARL (0x0, 0x1) behavior.
 
 .. _csr-tdata1_disabled:
 
