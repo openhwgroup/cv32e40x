@@ -659,30 +659,31 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   always_comb
   begin
 
-    jvt_n         = csr_wdata_int & CSR_JVT_MASK;
+    jvt_n         = csr_next_value(csr_wdata_int, CSR_JVT_MASK, JVT_RESET_VAL);
     jvt_we        = 1'b0;
 
-    mscratch_n    = csr_wdata_int;
+    mscratch_n    = csr_next_value(csr_wdata_int, CSR_MSCRATCH_MASK, MSCRATCH_RESET_VAL);
     mscratch_we   = 1'b0;
 
-    mepc_n        = csr_wdata_int & CSR_MEPC_MASK;
+    mepc_n        = csr_next_value(csr_wdata_int, CSR_MEPC_MASK, MEPC_RESET_VAL);
     mepc_we       = 1'b0;
 
-    dpc_n         = csr_wdata_int & CSR_DPC_MASK;
+    dpc_n         = csr_next_value(csr_wdata_int, CSR_DPC_MASK, DPC_RESET_VAL);
     dpc_we        = 1'b0;
 
-    dcsr_n        = '{
-                      xdebugver : dcsr_rdata.xdebugver,
-                      ebreakm   : csr_wdata_int[15],
-                      ebreaku   : dcsr_ebreaku_resolve(dcsr_rdata.ebreaku, csr_wdata_int[DCSR_EBREAKU_BIT]),
-                      stepie    : csr_wdata_int[11],
-                      stopcount : csr_wdata_int[10],
-                      mprven    : dcsr_rdata.mprven,
-                      step      : csr_wdata_int[2],
-                      prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[DCSR_PRV_BIT_HIGH:DCSR_PRV_BIT_LOW]),
-                      cause     : dcsr_rdata.cause,
-                      default   : 'd0
-                     };
+    dcsr_n        = csr_next_value(dcsr_t'{
+                                            xdebugver : dcsr_rdata.xdebugver,
+                                            ebreakm   : csr_wdata_int[15],
+                                            ebreaku   : dcsr_ebreaku_resolve(dcsr_rdata.ebreaku, csr_wdata_int[DCSR_EBREAKU_BIT]),
+                                            stepie    : csr_wdata_int[11],
+                                            stopcount : csr_wdata_int[10],
+                                            mprven    : dcsr_rdata.mprven,
+                                            step      : csr_wdata_int[2],
+                                            prv       : dcsr_prv_resolve(dcsr_rdata.prv, csr_wdata_int[DCSR_PRV_BIT_HIGH:DCSR_PRV_BIT_LOW]),
+                                            cause     : dcsr_rdata.cause,
+                                            default   : 'd0
+                                          },
+                                    CSR_DCSR_MASK, DCSR_RESET_VAL);
     dcsr_we       = 1'b0;
 
     dscratch0_n   = csr_wdata_int;
@@ -1224,8 +1225,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr
   #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
+    .WIDTH      (32            ),
+    .MASK       (CSR_JVT_MASK  ),
+    .RESETVALUE (JVT_RESET_VAL )
   )
   jvt_csr_i
   (
@@ -1268,7 +1270,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
+        .WIDTH      (32            ),
+        .MASK       (CSR_DCSR_MASK ),
         .RESETVALUE (DCSR_RESET_VAL)
       )
       dcsr_csr_i
@@ -1282,8 +1285,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
-        .RESETVALUE (32'd0)
+        .WIDTH      (32           ),
+        .MASK       (CSR_DPC_MASK ),
+        .RESETVALUE (DPC_RESET_VAL)
       )
       dpc_csr_i
       (
@@ -1303,8 +1307,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr
   #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
+    .WIDTH      (32            ),
+    .MASK       (CSR_MEPC_MASK ),
+    .RESETVALUE (MEPC_RESET_VAL)
   )
   mepc_csr_i
   (
@@ -1317,8 +1322,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr
   #(
-    .WIDTH      (32),
-    .RESETVALUE (32'd0)
+    .WIDTH      (32                ),
+    .MASK       (CSR_MSCRATCH_MASK ),
+    .RESETVALUE (MSCRATCH_RESET_VAL)
   )
   mscratch_csr_i
   (

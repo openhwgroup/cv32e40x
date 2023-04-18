@@ -428,9 +428,12 @@ typedef enum logic[11:0] {
 } csr_num_e;
 
 // CSR Bit Implementation Masks
+// A mask bit of '1' means a flipflop is implemented.
 parameter CSR_JVT_MASK          = 32'hFFFFFFC0;
 parameter CSR_MEPC_MASK         = 32'hFFFFFFFE;
 parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
+parameter CSR_MSCRATCH_MASK     = 32'hFFFFFFFF;
+parameter CSR_DCSR_MASK         = 32'b0000_0000_0000_0000_1000_1101_1100_0100; // NMI bit taken from ctrl_fsm
 
 // CSR operations
 
@@ -659,6 +662,11 @@ parameter mcause_t MCAUSE_CLIC_RESET_VAL = '{
 
 parameter mcause_t MCAUSE_BASIC_RESET_VAL = '{
     default: 'b0};
+
+parameter JVT_RESET_VAL      = 32'd0;
+parameter MSCRATCH_RESET_VAL = 32'd0;
+parameter MEPC_RESET_VAL     = 32'd0;
+parameter DPC_RESET_VAL      = 32'd0;
 
 parameter logic [31:0] TDATA1_RST_VAL = {
   TTYPE_MCONTROL,        // type    : address/data match
@@ -1460,6 +1468,17 @@ typedef struct packed {
   );
     // mtvec.mode is WARL(0x3) in CLIC mode
     return 2'b11;
+  endfunction
+
+  // Function for setting next-value for CSRs
+  // Uses a mask and reset value to allow nom-implemented (no flipflop) bits to be either 0 or 1.
+  function automatic logic [31:0] csr_next_value
+  (
+      logic [31:0] wdata,
+      logic [31:0] mask,
+      logic [31:0] reset_value
+  );
+      return (wdata & mask) | (reset_value & ~mask);
   endfunction
   ///////////////////////////
   //                       //
