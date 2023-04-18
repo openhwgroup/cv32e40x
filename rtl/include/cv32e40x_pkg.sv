@@ -428,11 +428,12 @@ typedef enum logic[11:0] {
 } csr_num_e;
 
 // CSR Bit Implementation Masks
+// A mask bit of '1' means a flipflop is implemented.
 parameter CSR_JVT_MASK          = 32'hFFFFFFC0;
 parameter CSR_MEPC_MASK         = 32'hFFFFFFFE;
 parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
 parameter CSR_MSCRATCH_MASK     = 32'hFFFFFFFF;
-parameter CSR_DCSR_MASK         = 32'b1111_0000_0000_0000_1000_1101_1100_0111; // NMI bit taken from ctrl_fsm
+parameter CSR_DCSR_MASK         = 32'b0000_0000_0000_0000_1000_1101_1100_0100; // NMI bit taken from ctrl_fsm
 
 // CSR operations
 
