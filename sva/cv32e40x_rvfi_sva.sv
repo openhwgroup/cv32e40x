@@ -57,6 +57,9 @@ module cv32e40x_rvfi_sva
    input logic             if_valid_i,
    input logic             id_ready_i,
    input logic [31:0]      pc_if_i,
+   input logic [31:0]      pc_id_i,
+   input logic [31:0]      pc_ex_i,
+   input logic [31:0]      pc_wb_i,
    input inst_resp_t       prefetch_instr_if_i,
    input logic             prefetch_compressed_if_i,
    input  logic [31:0]     prefetch_addr_if_i,
@@ -71,7 +74,10 @@ module cv32e40x_rvfi_sva
    input lsu_atomic_e      lsu_atomic_wb_i,
    input logic             lsu_en_wb_i,
    input logic             lsu_split_q_wb_i,
-   input logic             pc_mux_exception
+   input logic             pc_mux_exception,
+   input logic             pc_mux_debug,
+   input logic             in_trap_clr,
+   input logic             wb_valid_lastop
 
 );
 
@@ -311,6 +317,39 @@ if (A_EXT == A) begin
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT)))
     else `uvm_error("rvfi", "Exception on misaligned AMO* atomic instruction did not set correct cause_type in rvfi_trap")
 end
+
+  // An external haltrequest will kill all pipeline stages. Check that in_trap_clr is never true for such debug entries.
+  // in_trap_clr == 1 means that the rvfi_intr associated with the first instruction of an interrupt- or exception handler
+  // has reached RVFI outputs, and any internal tracking of this state within RVFI can be cleared. Killing all stages makes this
+  // tracked in_trap to not reach RVFI outputs.
+  a_no_clr_on_haltreq:
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  (pc_mux_debug) &&
+                  (ctrl_fsm_i.debug_cause == DBG_CAUSE_HALTREQ)
+                  |->
+                  !in_trap_clr)
+    else `uvm_error("rvfi", "in_trap_clr is active when going to debug due to external haltrequest")
+
+  // If the WB stage of RVFI contains an in_trap at the time of synchronous debug entry, the in_trap_clr
+  // must be 1, signaling that the trap info reached rvfi_intr and any internal tracking must be cleared.
+  a_clr_on_sync_dbg_entry:
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  (pc_mux_debug) &&
+                  in_trap[STAGE_WB].intr &&
+                  (ctrl_fsm_i.debug_cause != DBG_CAUSE_HALTREQ)
+                  |->
+                  in_trap_clr)
+    else `uvm_error("rvfi", "in_trap_clr not active when going to debug due to a synchronous cause")
+
+  // Check that no other in_trap than the one in WB can be present in the pipeline at the same time.
+  a_single_in_trap_tracked:
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  in_trap_clr
+                  |->
+                  !((in_trap[STAGE_EX] && (pc_wb_i != pc_ex_i)) ||
+                    (in_trap[STAGE_ID] && (pc_wb_i != pc_id_i)) ||
+                    (in_trap[STAGE_IF] && (pc_wb_i != pc_if_i))))
+    else `uvm_error("rvfi", "More than one in_trap at the same time")
 
   /* TODO: Add back in.
      Currently, the alignment buffer can interpret pointers as compressed instructions and pass on two "instructions" from the IF stage.

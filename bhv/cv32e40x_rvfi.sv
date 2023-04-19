@@ -978,7 +978,9 @@ module cv32e40x_rvfi
         //     but we still need the in_trap attached to the pointer target, which is
         //     only fetched when the CLIC pointer is in ID. Thus we must not clear in_trap
         //     when the pointer goes from IF to ID.
-        if ((last_op_if_i || abort_op_if_i) && !clic_ptr_if_i) begin
+        // Any aborted operation will not cause any other side effects than taking an exception, and
+        // thus that is the last part of an operation, leading to clearing in_trap and debug cause for STAGE_IF;
+        if ((last_op_if_i && !clic_ptr_if_i) || abort_op_if_i) begin
           in_trap    [STAGE_IF] <= 1'b0;
           debug_cause[STAGE_IF] <= '0;
         end
@@ -1003,12 +1005,25 @@ module cv32e40x_rvfi
 
           // If there is a trap in the pipeline when debug is taken, the trap will be suppressed but the side-effects will not.
           // The succeeding instruction therefore needs to re-trigger the intr signals if it it did not reach the rvfi output.
-          // When in_trap_clr is set, the in_trap[STAGE_WB] reached the RVFI outputs and we must not propagate it back to the in_trap[STAGE_IF]
-          in_trap[STAGE_IF] <= in_trap[STAGE_IF].intr ? in_trap[STAGE_IF] :
-                               in_trap[STAGE_ID].intr ? in_trap[STAGE_ID] :
-                               in_trap[STAGE_EX].intr ? in_trap[STAGE_EX] :
-                               !in_trap_clr           ? in_trap[STAGE_WB] :
-                               '0;
+          //
+          // in_trap is attached to the first instruction of interrupt or exception handlers. If such an instruction is killed by
+          // an external haltrequest, the above comment holds and the in_trap info from the pipeline must be backpropagated to the IF stage.
+          // If however the debug entry is due to a synchronous exception, the first handler instruction must have reached WB. For most synchronous
+          // debug entries (except single step due to acking an interrupt) rvfi_valid == 1, thus the in_trap reached RVFI outputs and does not need to backpropagate fo IF.
+          if (ctrl_fsm_i.debug_cause == DBG_CAUSE_HALTREQ) begin
+            in_trap[STAGE_IF] <= in_trap[STAGE_IF].intr ? in_trap[STAGE_IF] :
+                                 in_trap[STAGE_ID].intr ? in_trap[STAGE_ID] :
+                                 in_trap[STAGE_EX].intr ? in_trap[STAGE_EX] :
+                                                          in_trap[STAGE_WB];
+
+          end else begin
+            // Clear in_trap[STAGE_IF] if the handler instruction reached WB without being killed (trigger match, ebreak or stepping)
+            // In case of taking single step debug due to acking an interrupt or NMI, the in_trap_clr will be zero and the the trap information
+            // must be retained in the STAGE_IF to be communicated on RVFI for the first debug instruction.
+            if (in_trap_clr) begin
+              in_trap[STAGE_IF] <= '0;
+            end
+          end
         // In case the first instruction during debug mode gets an exception, if_stage will be killed and the clearing
         // of debug_cause due to last_op_if_i during (if_valid && id_ready) may never happen. This will lead to a wrong
         // value of debug_cause on RVFI outputs. To avoid this, debug_cause is cleared if IF stage is killed due to an exception.
