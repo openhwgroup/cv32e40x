@@ -238,7 +238,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .A_EXT                ( A_EXT                       ),
     .CORE_REQ_TYPE        ( obi_inst_req_t              ),
     .CORE_RESP_TYPE       ( inst_resp_t                 ),
-    .BUS_RESP_TYPE        ( inst_resp_t                 ),
+    .BUS_RESP_TYPE        ( obi_inst_resp_t             ),
     .PMA_NUM_REGIONS      ( PMA_NUM_REGIONS             ),
     .PMA_CFG              ( PMA_CFG                     ),
     .DEBUG                ( DEBUG                       ),
