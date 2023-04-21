@@ -112,7 +112,7 @@ module cv32e40x_if_stage_sva
                       (ctrl_fsm_i.pc_set_clicv) &&
                       (ctrl_fsm_i.pc_mux == PC_MRET)
                       |->
-                      (branch_addr_n[1:0] != 2'b00))
+                      (branch_addr_n[1:0] == 2'b00))
           else `uvm_error("if_stage", "Misaligned mret pointer")
 
   end

@@ -160,7 +160,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_BOOT:       branch_addr_n = {boot_addr_i[31:2], 2'b0};
       PC_JUMP:       branch_addr_n = jump_target_id_i;
       PC_BRANCH:     branch_addr_n = branch_target_ex_i;
-      PC_MRET:       branch_addr_n = mepc_i;                                                      // PC is restored when returning from IRQ/exception
+      // An mret that restarts a CLIC pointer fetch must make sure the address is aligned to XLEN/8.
+      // Clearing branch_addr_n[1] when an mepc is used as part of CLIC pointer fetch.
+      PC_MRET:       branch_addr_n = {mepc_i[31:2], (mepc_i[1] & !ctrl_fsm_i.pc_set_clicv), mepc_i[0]}; // PC is restored when returning from IRQ/exception
       PC_DRET:       branch_addr_n = dpc_i;
       PC_WB_PLUS4:   branch_addr_n = ctrl_fsm_i.pipe_pc;                                          // Jump to next instruction forces prefetch buffer reload
       PC_TRAP_EXC:   branch_addr_n = {mtvec_addr_i, 7'h0};                                        // All the exceptions go to base address
