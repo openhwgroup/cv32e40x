@@ -639,16 +639,6 @@ if (CLIC) begin
                   $stable(mintstatus_i))
     else `uvm_error("controller", "mintstatus changed after taking an NMI")
 
-  // The only possible cause for a instruction misaligned exception is an mret pointer.
-  a_mret_ptr_exception:
-  assert property (@(posedge clk) disable iff (!rst_n)
-                  (exception_cause_wb == EXC_CAUSE_INSTR_MISALIGNED) &&
-                  exception_in_wb
-                  |->
-                  mret_ptr_in_wb)
-
-    else `uvm_error("controller", "Instruction address misaligned exception without mret pointer.")
-
 end else begin // CLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.
   a_clic_inactive:

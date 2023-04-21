@@ -194,7 +194,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // Also deassert for trigger match, as with dcsr.timing==0 we do not execute before entering debug mode
     // CLIC pointer fetches go through the pipeline, but no write enables should be active.
     if (if_id_pipe_i.instr.bus_resp.err || !(if_id_pipe_i.instr.mpu_status == MPU_OK) || if_id_pipe_i.trigger_match ||
-        if_id_pipe_i.instr_meta.clic_ptr || if_id_pipe_i.instr_meta.mret_ptr || !(if_id_pipe_i.instr.align_status == ALIGN_OK)) begin
+        if_id_pipe_i.instr_meta.clic_ptr || if_id_pipe_i.instr_meta.mret_ptr) begin
       ctrl_byp_o.deassert_we = 1'b1;
     end
 
