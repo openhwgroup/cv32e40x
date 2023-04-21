@@ -1116,6 +1116,12 @@ dcsr_we        = 1'b1;
           mcause_n.mpie = mstatus_n.mpie;
           mcause_we = 1'b1;
 
+          // Mret to lower privilege mode clear mintthresh
+          if (priv_lvl_n < PRIV_LVL_M) begin
+            mintthresh_n  <= 32'h00000000;
+            mintthresh_we <= 1'b1;
+          end
+
           if (ctrl_fsm_i.csr_restore_mret_ptr) begin
             // Clear mcause.minhv if the mret also caused a successful CLIC pointer fetch
             mcause_n.minhv = 1'b0;
@@ -1137,6 +1143,12 @@ dcsr_we        = 1'b1;
           // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
           mcause_n       = mcause_rdata;
           mcause_we      = 1'b1;
+
+          // Dret to lower privilege mode clear mintthresh
+          if (priv_lvl_n < PRIV_LVL_M) begin
+            mintthresh_n  <= 32'h00000000;
+            mintthresh_we <= 1'b1;
+          end
         end
 
       end //ctrl_fsm_i.csr_restore_dret
