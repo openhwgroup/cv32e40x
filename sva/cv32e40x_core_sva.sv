@@ -214,7 +214,7 @@ always_ff @(posedge clk , negedge rst_ni)
         expected_ebrk_mepc <= ex_wb_pipe.pc;
       end
 
-      if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) && (ex_wb_pipe.instr.align_status == ALIGN_OK) && !irq_ack && !pending_debug &&
+      if (!first_instr_err_found && (ex_wb_pipe.instr.mpu_status == MPU_OK) &&!irq_ack && !pending_debug &&
          !(ctrl_fsm.pc_mux == PC_TRAP_NMI) &&
           ex_wb_pipe.instr_valid && ex_wb_pipe.instr.bus_resp.err && !ctrl_debug_mode_n ) begin
         first_instr_err_found   <= 1'b1;
