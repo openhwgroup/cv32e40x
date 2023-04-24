@@ -718,14 +718,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                   CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
     mstatus_we    = 1'b0;
 
-    mstatush_n    = csr_next_value(mstatush_rdata, CSR_MSTATUSH_MASK, MSTATUSH_RESET_VAL); // Read only
+    mstatush_n    = mstatush_rdata; // Read only
     mstatush_we   = 1'b0;
     mstatus_alias_we = 1'b0;
 
-    misa_n        = csr_next_value(misa_rdata, CSR_MISA_MASK, MISA_VALUE); // Read only
+    misa_n        = misa_rdata; // Read only
     misa_we       = 1'b0;
 
-    priv_lvl_n    = privlvl_t'(csr_next_value(priv_lvl_rdata, CSR_PRIVLVL_MASK, PRIVLVL_RESET_VAL));
+    priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
 
     if (CLIC) begin
@@ -743,7 +743,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       mnxti_we                 = 1'b0;
 
-      mintstatus_n             = csr_next_value(mintstatus_rdata, CSR_MINTSTATUS_MASK, MINTSTATUS_RESET_VAL); // Read only
+      mintstatus_n             = mintstatus_rdata; // Read only
       mintstatus_we            = 1'b0;
 
       mintthresh_n             = csr_next_value(csr_wdata_int, CSR_MINTTHRESH_MASK, MINTTHRESH_RESET_VAL);
@@ -755,10 +755,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mscratchcswl_n           = mscratch_n; // mscratchcsw operates conditionally on mscratch
       mscratchcswl_we          = 1'b0;
 
-      mie_n                    = csr_next_value('0, CSR_CLIC_MIE_MASK, MIE_CLIC_RESET_VAL);
+      mie_n                    = '0;
       mie_we                   = 1'b0;
 
-      mip_n                    = csr_next_value(mip_rdata, CSR_CLIC_MIP_MASK, MIP_CLIC_RESET_VAL); // Read only;
+      mip_n                    = mip_rdata; // Read only;
       mip_we                   = 1'b0;
 
       mcause_n                 = csr_next_value(mcause_t'{
@@ -783,15 +783,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                                 CSR_BASIC_MTVEC_MASK, MTVEC_BASIC_RESET_VAL);
       mtvec_we                 = csr_mtvec_init_i;
 
-      mtvt_n                   = csr_next_value('0, CSR_BASIC_MTVT_MASK, MTVT_BASIC_RESET_VAL);
+      mtvt_n                   = '0;
       mtvt_we                  = 1'b0;
 
       mnxti_we                 = 1'b0;
 
-      mintstatus_n             = csr_next_value('0, CSR_BASIC_MINTSTATUS_MASK, MINTSTATUS_BASIC_RESET_VAL);
+      mintstatus_n             = '0;
       mintstatus_we            = 1'b0;
 
-      mintthresh_n             = csr_next_value('0, CSR_BASIC_MINTTHRESH_MASK, MINTTHRESH_BASIC_RESET_VAL);
+      mintthresh_n             = '0;
       mintthresh_we            = 1'b0;
 
       mscratchcsw_n            = '0;
@@ -816,7 +816,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mcause_alias_we          = 1'b0;
     end
 
-    mtval_n         = csr_next_value(mtval_rdata, CSR_MTVAL_MASK, MTVAL_RESET_VAL);                // Read-only
+    mtval_n         = mtval_rdata;                // Read-only
     mtval_we        = 1'b0;
 
     // Read-only CSRS
@@ -826,7 +826,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     mimpid_n        = mimpid_rdata;               // Read-only
     mimpid_we       = 1'b0;                       // Always 0
 
-    mconfigptr_n    = csr_next_value(mconfigptr_rdata, CSR_MCONFIGPTR_MASK, MCONFIGPTR_RESET_VAL);           // Read-only
+    mconfigptr_n    = mconfigptr_rdata;           // Read-only
     mconfigptr_we   = 1'b0;                       // Always 0
 
     mvendorid_n     = mvendorid_rdata;            // Read-only
@@ -1021,7 +1021,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       if (mnxti_we) begin
         // Mstatus is written as part of an mnxti access
         // Make sure we alias the mpp/mpie to mcause
-        mcause_n = csr_next_value(mcause_rdata, CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
+        mcause_n = mcause_rdata;
         mcause_n.mpie = mstatus_n.mpie;
         mcause_n.mpp = mstatus_n.mpp;
 
@@ -1038,7 +1038,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end else if (mstatus_alias_we) begin
         // In CLIC mode, writes to mcause.mpp/mpie is aliased to mstatus.mpp/mpie
         // All other mstatus bits are preserved
-        mstatus_n      = csr_next_value(mstatus_rdata, CSR_MSTATUS_MASK, MSTATUS_RESET_VAL); // Preserve all fields
+        mstatus_n      = mstatus_rdata; // Preserve all fields
 
         // Write mpie and mpp as aliased through mcause
         mstatus_n.mpie = mcause_n.mpie;
@@ -1048,7 +1048,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end else if (mcause_alias_we) begin
         // In CLIC mode, writes to mstatus.mpp/mpie is aliased to mcause.mpp/mpie
         // All other mcause bits are preserved
-        mcause_n = csr_next_value(mcause_rdata, CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
+        mcause_n = mcause_rdata;
         mcause_n.mpie = mstatus_n.mpie;
         mcause_n.mpp = mstatus_n.mpp;
 
@@ -1071,37 +1071,36 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (ctrl_fsm_i.debug_csr_save) begin
           // All interrupts are masked, don't update mcause, mepc, mtval, dpc and mstatus
           // dcsr.nmip is not a flop, but comes directly from the controller
-          dcsr_n         = csr_next_value(dcsr_t'{
-                                                  xdebugver : dcsr_rdata.xdebugver,
-                                                  ebreakm   : dcsr_rdata.ebreakm,
-                                                  ebreaku   : dcsr_rdata.ebreaku,
-                                                  stepie    : dcsr_rdata.stepie,
-                                                  stopcount : dcsr_rdata.stopcount,
-                                                  mprven    : dcsr_rdata.mprven,
-                                                  step      : dcsr_rdata.step,
-                                                  prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
-                                                  cause     : ctrl_fsm_i.debug_cause,
-                                                  default   : 'd0
-                                                },
-                                          CSR_DCSR_MASK, DCSR_RESET_VAL);
-          dcsr_we        = 1'b1;
+          dcsr_n         = dcsr_t'{
+                                    xdebugver : dcsr_rdata.xdebugver,
+                                    ebreakm   : dcsr_rdata.ebreakm,
+                                    ebreaku   : dcsr_rdata.ebreaku,
+                                    stepie    : dcsr_rdata.stepie,
+                                    stopcount : dcsr_rdata.stopcount,
+                                    mprven    : dcsr_rdata.mprven,
+                                    step      : dcsr_rdata.step,
+                                    prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
+                                    cause     : ctrl_fsm_i.debug_cause,
+                                    default   : 'd0
+                                  };
+dcsr_we        = 1'b1;
 
-          dpc_n          = csr_next_value(ctrl_fsm_i.pipe_pc, CSR_DPC_MASK, DPC_RESET_VAL);
+          dpc_n          = ctrl_fsm_i.pipe_pc;
           dpc_we         = 1'b1;
 
-          priv_lvl_n     = privlvl_t'(csr_next_value(PRIV_LVL_M, CSR_PRIVLVL_MASK, PRIVLVL_RESET_VAL));  // Execute with machine mode privilege in debug mode
+          priv_lvl_n     = PRIV_LVL_M;  // Execute with machine mode privilege in debug mode
           priv_lvl_we    = 1'b1;
         end else begin
-          priv_lvl_n     = privlvl_t'(csr_next_value(PRIV_LVL_M, CSR_PRIVLVL_MASK, PRIVLVL_RESET_VAL));  // Trap into machine mode
+          priv_lvl_n     = PRIV_LVL_M;  // Trap into machine mode
           priv_lvl_we    = 1'b1;
 
-          mstatus_n      = csr_next_value(mstatus_rdata, CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
+          mstatus_n      = mstatus_rdata;
           mstatus_n.mie  = 1'b0;
           mstatus_n.mpie = mstatus_rdata.mie;
           mstatus_n.mpp  = priv_lvl_rdata;
           mstatus_we     = 1'b1;
 
-          mepc_n         = csr_next_value(ctrl_fsm_i.pipe_pc, CSR_MEPC_MASK, MEPC_RESET_VAL);
+          mepc_n         = ctrl_fsm_i.pipe_pc;
           mepc_we        = 1'b1;
 
           // Save relevant fields from controller to mcause
@@ -1142,10 +1141,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       ctrl_fsm_i.csr_restore_mret,
       ctrl_fsm_i.csr_restore_mret_ptr: begin // MRET
-        priv_lvl_n     = privlvl_t'(csr_next_value(mstatus_rdata.mpp, CSR_PRIVLVL_MASK, PRIVLVL_RESET_VAL));
+        priv_lvl_n     = privlvl_t'(mstatus_rdata.mpp);
         priv_lvl_we    = 1'b1;
 
-        mstatus_n      = csr_next_value(mstatus_rdata, CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
+        mstatus_n      = mstatus_rdata;
         mstatus_n.mie  = mstatus_rdata.mpie;
         mstatus_n.mpie = 1'b1;
         mstatus_n.mpp  = PRIV_LVL_LOWEST;
@@ -1156,7 +1155,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           mintstatus_we = 1'b1;
 
           // Save aliased values for mpp and mpie
-          mcause_n = csr_next_value(mcause_rdata, CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
+          mcause_n = mcause_rdata;
           mcause_n.mpp = mstatus_n.mpp;
           mcause_n.mpie = mstatus_n.mpie;
           mcause_we = 1'b1;
@@ -1170,17 +1169,17 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       ctrl_fsm_i.csr_restore_dret: begin // DRET
         // Restore to the recorded privilege level
-        priv_lvl_n = privlvl_t'(csr_next_value(dcsr_rdata.prv, CSR_PRIVLVL_MASK, PRIVLVL_RESET_VAL));
+        priv_lvl_n = dcsr_rdata.prv;
         priv_lvl_we = 1'b1;
 
         // Section 4.6 of debug spec: If the new privilege mode is less privileged than M-mode, MPRV in mstatus is cleared.
-        mstatus_n      = csr_next_value(mstatus_rdata, CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
+        mstatus_n      = mstatus_rdata;
         mstatus_n.mprv = (privlvl_t'(dcsr_rdata.prv) == PRIV_LVL_M) ? mstatus_rdata.mprv : 1'b0;
         mstatus_we     = 1'b1;
 
         if (CLIC) begin
           // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
-          mcause_n       = csr_next_value(mcause_rdata, CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
+          mcause_n       = mcause_rdata;
           mcause_we      = 1'b1;
         end
 
@@ -1193,12 +1192,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       ctrl_fsm_i.csr_clear_minhv: begin
         if (CLIC) begin
           // Keep mcause values, only clear minhv bit.
-          mcause_n = csr_next_value(mcause_rdata, CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
+          mcause_n = mcause_rdata;
           mcause_n.minhv = 1'b0;
           mcause_we = 1'b1;
 
           // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
-          mstatus_n  = csr_next_value(mstatus_rdata, CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
+          mstatus_n  = mstatus_rdata;
           mstatus_we = 1'b1;
         end
       end
