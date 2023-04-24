@@ -434,6 +434,16 @@ parameter CSR_MEPC_MASK         = 32'hFFFFFFFE;
 parameter CSR_DPC_MASK          = 32'hFFFFFFFE;
 parameter CSR_MSCRATCH_MASK     = 32'hFFFFFFFF;
 parameter CSR_DCSR_MASK         = 32'b0000_0000_0000_0000_1000_1101_1100_0100; // NMI bit taken from ctrl_fsm
+parameter CSR_DSCRATCH0_MASK    = 32'hFFFFFFFF;
+parameter CSR_DSCRATCH1_MASK    = 32'hFFFFFFFF;
+parameter CSR_MSTATUS_MASK      = 32'b0000_0000_0000_0000_0000_0000_1000_1000;
+parameter CSR_MINTSTATUS_MASK   = 32'hFF000000;
+parameter CSR_MINTTHRESH_MASK   = 32'h000000FF;
+parameter CSR_CLIC_MCAUSE_MASK  = 32'b1100_1000_1111_1111_0000_0111_1111_1111;
+parameter CSR_BASIC_MCAUSE_MASK = 32'b1000_0000_0000_0000_0000_0111_1111_1111;
+parameter CSR_CLIC_MTVEC_MASK   = 32'hFFFFFF80;
+parameter CSR_BASIC_MTVEC_MASK  = 32'hFFFFFF81;
+
 
 // CSR operations
 
@@ -663,10 +673,14 @@ parameter mcause_t MCAUSE_CLIC_RESET_VAL = '{
 parameter mcause_t MCAUSE_BASIC_RESET_VAL = '{
     default: 'b0};
 
-parameter JVT_RESET_VAL      = 32'd0;
-parameter MSCRATCH_RESET_VAL = 32'd0;
-parameter MEPC_RESET_VAL     = 32'd0;
-parameter DPC_RESET_VAL      = 32'd0;
+parameter JVT_RESET_VAL                = 32'd0;
+parameter MSCRATCH_RESET_VAL           = 32'd0;
+parameter MEPC_RESET_VAL               = 32'd0;
+parameter DPC_RESET_VAL                = 32'd0;
+parameter DSCRATCH0_RESET_VAL          = 32'd0;
+parameter DSCRATCH1_RESET_VAL          = 32'd0;
+parameter MINTTHRESH_RESET_VAL         = 8'h00;
+parameter MIE_BASIC_RESET_VAL          = 32'd0;
 
 parameter logic [31:0] TDATA1_RST_VAL = {
   TTYPE_MCONTROL,        // type    : address/data match

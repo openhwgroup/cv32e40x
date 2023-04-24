@@ -134,6 +134,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Set mask for minththresh based on number of bits implemented (CLIC_INTTHRESHBITS)
   localparam CSR_MINTTHRESH_MASK = ((2 ** CLIC_INTTHRESHBITS )-1) << (8 - CLIC_INTTHRESHBITS);
 
+  localparam logic [31:0] CSR_MTVT_MASK = {{MTVT_ADDR_WIDTH{1'b1}}, {(32-MTVT_ADDR_WIDTH){1'b0}}};
+
   // CSR update logic
   logic [31:0]                  csr_wdata_int;
   logic [31:0]                  csr_rdata_int;
@@ -686,10 +688,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                     CSR_DCSR_MASK, DCSR_RESET_VAL);
     dcsr_we       = 1'b0;
 
-    dscratch0_n   = csr_wdata_int;
+    dscratch0_n   = csr_next_value(csr_wdata_int, CSR_DSCRATCH0_MASK, DSCRATCH0_RESET_VAL);
     dscratch0_we  = 1'b0;
 
-    dscratch1_n   = csr_wdata_int;
+    dscratch1_n   = csr_next_value(csr_wdata_int, CSR_DSCRATCH1_MASK, DSCRATCH1_RESET_VAL);
     dscratch1_we  = 1'b0;
 
     tselect_we    = 1'b0;
@@ -705,14 +707,15 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     tcontrol_we   = 1'b0;
 
     // TODO: add support for SD/XS/FS/VS
-    mstatus_n     = '{
-                                  tw:   1'b0,
-                                  mprv: mstatus_mprv_resolve(mstatus_rdata.mprv, csr_wdata_int[MSTATUS_MPRV_BIT]),
-                                  mpp:  mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
-                                  mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
-                                  mie:  csr_wdata_int[MSTATUS_MIE_BIT],
-                                  default: 'b0
-                                };
+    mstatus_n     = csr_next_value(mstatus_t'{
+                                              tw:   1'b0,
+                                              mprv: mstatus_mprv_resolve(mstatus_rdata.mprv, csr_wdata_int[MSTATUS_MPRV_BIT]),
+                                              mpp:  mstatus_mpp_resolve(mstatus_rdata.mpp, csr_wdata_int[MSTATUS_MPP_BIT_HIGH:MSTATUS_MPP_BIT_LOW]),
+                                              mpie: csr_wdata_int[MSTATUS_MPIE_BIT],
+                                              mie:  csr_wdata_int[MSTATUS_MIE_BIT],
+                                              default: 'b0
+                                            },
+                                  CSR_MSTATUS_MASK, MSTATUS_RESET_VAL);
     mstatus_we    = 1'b0;
 
     mstatush_n    = mstatush_rdata; // Read only
@@ -725,15 +728,17 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
 
-    mtvec_n.addr    = csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7];
-    mtvec_n.zero0   = mtvec_rdata.zero0;
-    mtvec_n.submode = mtvec_rdata.submode;
-    mtvec_we        = csr_mtvec_init_i;
-
     if (CLIC) begin
-      mtvec_n.mode             = mtvec_mode_clic_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]); // mode is WARL 0x3 when using CLIC
+      mtvec_n       = csr_next_value(mtvec_t'{
+                                              addr:    csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7],
+                                              zero0:   mtvec_rdata.zero0,
+                                              submode: mtvec_rdata.submode,
+                                              mode:    csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clic_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW])
+                                            },
+                                      CSR_CLIC_MTVEC_MASK, MTVEC_CLIC_RESET_VAL);
+      mtvec_we        = csr_mtvec_init_i;
 
-      mtvt_n                   = {csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}};
+      mtvt_n                   = csr_next_value({csr_wdata_int[31:(32-MTVT_ADDR_WIDTH)], {(32-MTVT_ADDR_WIDTH){1'b0}}}, CSR_MTVT_MASK, MTVT_RESET_VAL);
       mtvt_we                  = 1'b0;
 
       mnxti_we                 = 1'b0;
@@ -741,13 +746,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mintstatus_n             = mintstatus_rdata; // Read only
       mintstatus_we            = 1'b0;
 
-      mintthresh_n             = csr_wdata_int & CSR_MINTTHRESH_MASK;
+      mintthresh_n             = csr_next_value(csr_wdata_int, CSR_MINTTHRESH_MASK, MINTTHRESH_RESET_VAL);
       mintthresh_we            = 1'b0;
 
       mscratchcsw_n            = mscratch_n; // mscratchcsw operates conditionally on mscratch
       mscratchcsw_we           = 1'b0;
 
-      mscratchcswl_n           = mscratch_n; // mscratchcswl operates conditionally on mscratch
+      mscratchcswl_n           = mscratch_n; // mscratchcsw operates conditionally on mscratch
       mscratchcswl_we          = 1'b0;
 
       mie_n                    = '0;
@@ -756,19 +761,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mip_n                    = mip_rdata; // Read only;
       mip_we                   = 1'b0;
 
-      mcause_n                 = '{
-                                    irq:            csr_wdata_int[31],
-                                    minhv:          csr_wdata_int[30],
-                                    mpp:            mcause_mpp_resolve(mcause_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]),
-                                    mpie:           csr_wdata_int[MCAUSE_MPIE_BIT],
-                                    mpil:           csr_wdata_int[23:16],
-                                    exception_code: csr_wdata_int[10:0],
-                                    default:        'b0
-                                  };
+      mcause_n                 = csr_next_value(mcause_t'{
+                                                          irq:            csr_wdata_int[31],
+                                                          minhv:          csr_wdata_int[30],
+                                                          mpp:            mcause_mpp_resolve(mcause_rdata.mpp, csr_wdata_int[MCAUSE_MPP_BIT_HIGH:MCAUSE_MPP_BIT_LOW]),
+                                                          mpie:           csr_wdata_int[MCAUSE_MPIE_BIT],
+                                                          mpil:           csr_wdata_int[23:16],
+                                                          exception_code: csr_wdata_int[10:0],
+                                                          default:        'b0
+                                                        },
+                                                CSR_CLIC_MCAUSE_MASK, MCAUSE_CLIC_RESET_VAL);
       mcause_we                = 1'b0;
       mcause_alias_we          = 1'b0;
     end else begin // !CLIC
-      mtvec_n.mode             = csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW]);
+      mtvec_n                  = csr_next_value(mtvec_t'{
+                                                        addr:    csr_mtvec_init_i ? mtvec_addr_i[31:7] : csr_wdata_int[31:7],
+                                                        zero0:   mtvec_rdata.zero0,
+                                                        submode: mtvec_rdata.submode,
+                                                        mode:    csr_mtvec_init_i ? mtvec_rdata.mode : mtvec_mode_clint_resolve(mtvec_rdata.mode, csr_wdata_int[MTVEC_MODE_BIT_HIGH:MTVEC_MODE_BIT_LOW])
+                                                      },
+                                                CSR_BASIC_MTVEC_MASK, MTVEC_BASIC_RESET_VAL);
+      mtvec_we                 = csr_mtvec_init_i;
 
       mtvt_n                   = '0;
       mtvt_we                  = 1'b0;
@@ -787,17 +800,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       mscratchcswl_n           = '0;
       mscratchcswl_we          = 1'b0;
 
-      mie_n                    = csr_wdata_int & IRQ_MASK;
+      mie_n                    = csr_next_value(csr_wdata_int, IRQ_MASK, MIE_BASIC_RESET_VAL);
       mie_we                   = 1'b0;
 
       mip_n                    = mip_rdata; // Read only;
       mip_we                   = 1'b0;
 
-      mcause_n                 = '{
-                                    irq:            csr_wdata_int[31],
-                                    exception_code: csr_wdata_int[10:0],
-                                    default:        'b0
-                                  };
+      mcause_n                 = csr_next_value(mcause_t'{
+                                                          irq:            csr_wdata_int[31],
+                                                          exception_code: csr_wdata_int[10:0],
+                                                          default:        'b0
+                                                        },
+                                                        CSR_BASIC_MCAUSE_MASK, MCAUSE_BASIC_RESET_VAL);
       mcause_we                = 1'b0;
       mcause_alias_we          = 1'b0;
     end
@@ -1057,27 +1071,27 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         if (ctrl_fsm_i.debug_csr_save) begin
           // All interrupts are masked, don't update mcause, mepc, mtval, dpc and mstatus
           // dcsr.nmip is not a flop, but comes directly from the controller
-          dcsr_n         = '{
-            xdebugver : dcsr_rdata.xdebugver,
-            ebreakm   : dcsr_rdata.ebreakm,
-            ebreaku   : dcsr_rdata.ebreaku,
-            stepie    : dcsr_rdata.stepie,
-            stopcount : dcsr_rdata.stopcount,
-            mprven    : dcsr_rdata.mprven,
-            step      : dcsr_rdata.step,
-            prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
-            cause     : ctrl_fsm_i.debug_cause,
-            default   : 'd0
-          };
-          dcsr_we        = 1'b1;
+          dcsr_n         = dcsr_t'{
+                                    xdebugver : dcsr_rdata.xdebugver,
+                                    ebreakm   : dcsr_rdata.ebreakm,
+                                    ebreaku   : dcsr_rdata.ebreaku,
+                                    stepie    : dcsr_rdata.stepie,
+                                    stopcount : dcsr_rdata.stopcount,
+                                    mprven    : dcsr_rdata.mprven,
+                                    step      : dcsr_rdata.step,
+                                    prv       : priv_lvl_rdata,                 // Privilege level at time of debug entry
+                                    cause     : ctrl_fsm_i.debug_cause,
+                                    default   : 'd0
+                                  };
+dcsr_we        = 1'b1;
 
           dpc_n          = ctrl_fsm_i.pipe_pc;
           dpc_we         = 1'b1;
 
-          priv_lvl_n     = PRIV_LVL_M;                  // Execute with machine mode privilege in debug mode
+          priv_lvl_n     = PRIV_LVL_M;  // Execute with machine mode privilege in debug mode
           priv_lvl_we    = 1'b1;
         end else begin
-          priv_lvl_n     = PRIV_LVL_M;                  // Trap into machine mode
+          priv_lvl_n     = PRIV_LVL_M;  // Trap into machine mode
           priv_lvl_we    = 1'b1;
 
           mstatus_n      = mstatus_rdata;
@@ -1242,8 +1256,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     if (DEBUG) begin : gen_debug_csr
       cv32e40x_csr
       #(
-        .WIDTH      (32),
-        .RESETVALUE (32'd0)
+        .WIDTH      (32                 ),
+        .MASK       (CSR_DSCRATCH0_MASK ),
+        .RESETVALUE (DSCRATCH0_RESET_VAL)
       )
       dscratch0_csr_i
       (
@@ -1256,8 +1271,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
-        .RESETVALUE (32'd0)
+        .WIDTH      (32                 ),
+        .MASK       (CSR_DSCRATCH1_MASK ),
+        .RESETVALUE (DSCRATCH1_RESET_VAL)
       )
       dscratch1_csr_i
       (
@@ -1337,7 +1353,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   cv32e40x_csr
   #(
-    .WIDTH      (32),
+    .WIDTH      (32               ),
+    .MASK       (CSR_MSTATUS_MASK ),
     .RESETVALUE (MSTATUS_RESET_VAL)
   )
   mstatus_csr_i
@@ -1358,7 +1375,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
+        .WIDTH      (32                   ),
+        .MASK       (CSR_CLIC_MCAUSE_MASK ),
         .RESETVALUE (MCAUSE_CLIC_RESET_VAL)
       )
       mcause_csr_i (
@@ -1372,6 +1390,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       cv32e40x_csr
       #(
         .WIDTH      (32),
+        .MASK       (CSR_CLIC_MTVEC_MASK ),
         .RESETVALUE (MTVEC_CLIC_RESET_VAL)
       )
       mtvec_csr_i
@@ -1385,7 +1404,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
+        .WIDTH      (32            ),
+        .MASK       (CSR_MTVT_MASK ),
         .RESETVALUE (MTVT_RESET_VAL)
       )
       mtvt_csr_i
@@ -1399,7 +1419,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
+        .WIDTH      (32                  ),
+        .MASK       (CSR_MINTSTATUS_MASK ),
         .RESETVALUE (MINTSTATUS_RESET_VAL)
       )
       mintstatus_csr_i
@@ -1413,8 +1434,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
-        .RESETVALUE (32'h0)
+        .WIDTH      (32                  ),
+        .MASK       (CSR_MINTTHRESH_MASK ),
+        .RESETVALUE (MINTTHRESH_RESET_VAL)
       )
       mintthresh_csr_i
       (
@@ -1431,6 +1453,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       cv32e40x_csr
       #(
         .WIDTH      (32),
+        .MASK       (CSR_BASIC_MCAUSE_MASK ),
         .RESETVALUE (MCAUSE_BASIC_RESET_VAL)
       )
       mcause_csr_i (
@@ -1443,7 +1466,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
+        .WIDTH      (32                   ),
+        .MASK       (CSR_BASIC_MTVEC_MASK ),
         .RESETVALUE (MTVEC_BASIC_RESET_VAL)
       )
       mtvec_csr_i
@@ -1457,8 +1481,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
       cv32e40x_csr
       #(
-        .WIDTH      (32),
-        .RESETVALUE (32'd0)
+        .WIDTH      (32                 ),
+        .MASK       (IRQ_MASK           ),
+        .RESETVALUE (MIE_BASIC_RESET_VAL)
       )
       mie_csr_i
       (
