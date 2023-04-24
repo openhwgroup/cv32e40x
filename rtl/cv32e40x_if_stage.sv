@@ -117,7 +117,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   logic                       prefetch_trans_valid;
   logic                       prefetch_trans_ready;
   logic [31:0]                prefetch_trans_addr;
-  logic                       prefetch_trans_ptr;
   inst_resp_t                 prefetch_inst_resp;
   logic                       prefetch_one_txn_pend_n;
   logic [ALBUF_CNT_WIDTH-1:0] prefetch_outstnd_cnt_q;
@@ -211,7 +210,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .trans_valid_o            ( prefetch_trans_valid        ),
     .trans_ready_i            ( prefetch_trans_ready        ),
     .trans_addr_o             ( prefetch_trans_addr         ),
-    .trans_ptr_o              ( prefetch_trans_ptr          ),
 
     .resp_valid_i             ( prefetch_resp_valid         ),
     .resp_i                   ( prefetch_inst_resp          ),
