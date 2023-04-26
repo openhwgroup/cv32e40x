@@ -107,9 +107,9 @@ Core Debug Registers
 
 If ``DEBUG`` = 1, |corev| implements four core debug registers, namely :ref:`csr-dcsr`, :ref:`csr-dpc`, and two debug scratch registers. Access to these registers in non Debug Mode results in an illegal instruction.
 
-The trigger related CSRs (``tselect``, ``tdata1``, ``tdata2``, ``tdata3``, ``tinfo``, ``tcontrol``) are only included if ``DBG_NUM_TRIGGERS`` is
-set to a value greater than 0. Further descriptions of these CSRs can be found in :ref:`csr-tselect`, :ref:`csr-tdata1`, :ref:`csr-tdata2`, :ref:`csr-tdata3`,
-:ref:`csr-tinfo`, :ref:`csr-tcontrol` and [RISC-V-DEBUG]_. The optional ``mcontext`` and ``mscontext`` CSRs are not implemented.
+The trigger related CSRs (``tselect``, ``tdata1``, ``tdata2``, ``tinfo``) are only included if ``DBG_NUM_TRIGGERS`` is
+set to a value greater than 0. Further descriptions of these CSRs can be found in :ref:`csr-tselect`, :ref:`csr-tdata1`, :ref:`csr-tdata2`,
+:ref:`csr-tinfo` and [RISC-V-DEBUG]_. The optional ``mcontext`` and ``mscontext`` CSRs are not implemented.
 
 If ``DBG_NUM_TRIGGERS`` is 0, access to the trigger registers will result in an illegal instruction exception.
 
