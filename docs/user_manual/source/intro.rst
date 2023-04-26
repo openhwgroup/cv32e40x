@@ -57,8 +57,8 @@ It follows these specifications:
 .. [RISC-V-CRYPTO] RISC-V Cryptography Extensions Volume I, Scalar & Entropy Source Instructions, Version v1.0.0, 2'nd December, 2021: Ratified,
    https://github.com/riscv/riscv-crypto/releases/download/v1.0.0-scalar/riscv-crypto-spec-scalar-v1.0.0.pdf
 
-.. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.5.0,
-   https://github.com/openhwgroup/obi/blob/188c87089975a59c56338949f5c187c1f8841332/OBI-v1.5.0.pdf
+.. [OPENHW-OBI] OpenHW Open Bus Interface (OBI) protocol, version 1.6.0,
+   https://github.com/openhwgroup/obi/blob/072d9173c1f2d79471d6f2a10eae59ee387d4c6f/OBI-v1.6.0.pdf
 
 .. [OPENHW-XIF] OpenHW eXtension Interface, revision 458c8a73,
    https://docs.openhwgroup.org/projects/openhw-group-core-v-xif/
