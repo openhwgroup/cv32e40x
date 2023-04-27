@@ -479,7 +479,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign xif_valid = 1'b1;
   assign xif_ready = wb_ready_i;
 
-  // TODO: The EX stage needs to be ready to receive a result from a single cycle offloaded
+  // TODO:XIF The EX stage needs to be ready to receive a result from a single cycle offloaded
   // instruction. In such case the result can be written into ex_wb_pipe_i.rf_wdata (as if the XIF
   // is a functional unit living in EX) and then typically a cycle later the result would get
   // written from ex_wb_pipe_i.rf_wdata into the registerfile.

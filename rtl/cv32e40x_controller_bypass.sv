@@ -97,7 +97,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign lsu_en_wb = ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid;
 
   assign rf_waddr_ex = id_ex_pipe_i.rf_waddr;
-  assign rf_waddr_wb = ex_wb_pipe_i.rf_waddr; // TODO: If XIF OoO is allowed, we need to look at WB stage outputs instead
+  assign rf_waddr_wb = ex_wb_pipe_i.rf_waddr; // TODO:XIF If XIF OoO is allowed, we need to look at WB stage outputs instead
 
   // The following unqualified signals are such that they can have a false positive (but no false negative).
   //

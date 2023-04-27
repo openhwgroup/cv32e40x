@@ -339,7 +339,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   always_comb begin: jalr_fw_mux
     case (ctrl_byp_i.jalr_fw_mux_sel)
-      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;  // todo: This won't allow forwarding from the XIF.
+      SELJ_FW_WB:   jalr_fw = ex_wb_pipe_i.rf_wdata;  // todo:XIF This won't allow forwarding from the XIF.
       SELJ_REGFILE: jalr_fw = rf_rdata_i[0];
       default:      jalr_fw = rf_rdata_i[0];
     endcase
@@ -495,7 +495,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
   // Speculatively read all source registers for illegal instr, might be required by coprocessor
   // Non-offloaded instructions will use maximum two read ports (rf_re from decoder is two bits, rf_re_o may be two or three bits wide)
-  // Todo: Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
+  // Todo:XIF Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
   //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
   //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
   //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
@@ -725,7 +725,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     if (X_EXT) begin : x_ext
 
       // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
-      // TODO: check whether this state machine should be put back in its initial state when the instruction in ID gets killed
+      // TODO:XIF check whether this state machine should be put back in its initial state when the instruction in ID gets killed
       logic xif_accepted_q, xif_rejected_q;
 
       assign xif_en = xif_insn_accept || xif_insn_reject;
@@ -771,17 +771,17 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           xif_issue_if.issue_req.rs      [1] = operand_b_fw;
           xif_issue_if.issue_req.rs_valid[1] = !rf_illegal_raddr[1];
         end
-        // TODO: implement forwarding for other operands than rs1 and rs2
+        // TODO:XIF implement forwarding for other operands than rs1 and rs2
         for (integer i = 2; i < xif_issue_if.X_NUM_RS && i < REGFILE_NUM_READ_PORTS; i++) begin
           xif_issue_if.issue_req.rs      [i] = rf_rdata_i[i];
           xif_issue_if.issue_req.rs_valid[i] = !rf_illegal_raddr[i];
         end
       end
 
-      assign xif_issue_if.issue_req.ecs       = 6'b111111; // todo: hookup to related mstatus bits (for now just reporting all state as dirty)
+      assign xif_issue_if.issue_req.ecs       = 6'b111111; // todo:XIF hookup to related mstatus bits (for now just reporting all state as dirty)
                                                            // and make sure that instruction after ecs update sees correct bits
-      assign xif_issue_if.issue_req.ecs_valid = 1'b1; // todo: needs to take into account if mstatus extension context writes are in flight
-                                                      // todo: use xif_issue_if.issue_resp.ecswrite
+      assign xif_issue_if.issue_req.ecs_valid = 1'b1; // todo:XIF needs to take into account if mstatus extension context writes are in flight
+                                                      // todo:XIF use xif_issue_if.issue_resp.ecswrite
 
       // need to wait if the coprocessor is not ready and has not already accepted or rejected the instruction
       assign xif_waiting = xif_issue_if.issue_valid && !xif_issue_if.issue_ready && !xif_accepted_q && !xif_rejected_q;
@@ -790,7 +790,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
-      // TODO: These may be missed if issue_valid retracts before ID goes to EX. Need to check for sticky accept as well
+      // TODO:XIF These may be missed if issue_valid retracts before ID goes to EX. Need to check for sticky accept as well
       assign xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
       assign xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
       assign xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;

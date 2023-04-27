@@ -514,7 +514,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       wpt_trans.wdata   = xif_mem_if.mem_req.wdata;
       wpt_trans.atop    = '0;
       wpt_trans.prot    = {xif_mem_if.mem_req.mode, 1'b1}; // XIF transfers are data transfers
-      wpt_trans.dbg     = '0;                              // TODO setup debug triggers
+      wpt_trans.dbg     = '0;                              // TODO:XIF setup debug triggers
       wpt_trans.memtype = 2'b00;                           // Memory type is assigned in MPU
     end else begin
       // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
@@ -552,7 +552,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // LSU second stage is valid when resp_valid (typically data_rvalid_i) is received. Both parts of a misaligned transfer will signal valid_1_o.
   assign valid_1_o                          = resp_valid && valid_1_i && !xif_res_q;
-  assign xif_mem_result_if.mem_result_valid = last_q && resp_valid && xif_res_q; // todo: last_q or not?
+  assign xif_mem_result_if.mem_result_valid = last_q && resp_valid && xif_res_q; // todo:XIF last_q or not?
 
   // LSU EX stage readyness requires two criteria to be met:
   //
@@ -840,7 +840,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
     .core_one_txn_pend_n  ( cnt_is_one_next       ),
     .core_align_err_wait_i( consumer_resp_wait    ),
-    .core_align_err_o     (                       ), // todo: Unconnected on purpose, is this needed for xif?
+    .core_align_err_o     (                       ), // todo:XIF Unconnected on purpose, is this needed for xif?
 
     .core_trans_valid_i   ( alcheck_trans_valid   ),
     .core_trans_ready_o   ( alcheck_trans_ready   ),
@@ -944,7 +944,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign xif_mem_result_if.mem_result.id    = xif_id_q;
       assign xif_mem_result_if.mem_result.rdata = rdata_ext;
       assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
-      assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO forward debug triggers
+      assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO:XIF forward debug triggers
     end else begin : no_x_ext
       assign xif_mem_if.mem_resp.exc            = '0;
       assign xif_mem_if.mem_resp.exccode        = '0;

@@ -34,7 +34,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter m_ext_e      M_EXT                = M,
   parameter bit          X_EXT                = 0,
   parameter logic [31:0] X_MISA               =  32'h00000000,
-  parameter logic [1:0]  X_ECS_XS             =  2'b00, // todo: implement related mstatus bitfields (but only if X_EXT = 1)
+  parameter logic [1:0]  X_ECS_XS             =  2'b00, // todo:XIF implement related mstatus bitfields (but only if X_EXT = 1)
   parameter bit          ZC_EXT               = 0,
   parameter bit          CLIC                 = 0,
   parameter int unsigned CLIC_ID_WIDTH        = 5,
@@ -706,7 +706,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     tcontrol_we   = 1'b0;
 
-    // TODO: add support for SD/XS/FS/VS
+    // TODO:XIF add support for SD/XS/FS/VS
     mstatus_n     = csr_next_value(mstatus_t'{
                                               tw:   1'b0,
                                               mprv: mstatus_mprv_resolve(mstatus_rdata.mprv, csr_wdata_int[MSTATUS_MPRV_BIT]),
