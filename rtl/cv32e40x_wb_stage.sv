@@ -129,11 +129,11 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // In case of MPU/PMA error, the register file should not be written.
   // rf_we_wb_o is deasserted if lsu_mpu_status is not equal to MPU_OK
 
-  // TODO: Could use result interface.we into account if out of order completion is allowed.
+  // TODO:XIF Could use result interface.we into account if out of order completion is allowed.
   assign rf_we_wb_o     = ex_wb_pipe_i.rf_we && !lsu_exception && !xif_waiting && !xif_exception && !lsu_wpt_match && instr_valid;
-  // TODO: Could use result interface.rd into account if out of order completion is allowed.
+  // TODO:XIF Could use result interface.rd into account if out of order completion is allowed.
   assign rf_waddr_wb_o  = ex_wb_pipe_i.rf_waddr;
-  // TODO: Could use result interface.rd into account if out of order completion is allowed.
+  // TODO:XIF Could use result interface.rd into account if out of order completion is allowed.
   // Not using any flopped/sticky version of lsu_rdata_i. The sticky bits are only needed for MPU errors and watchpoint triggers.
   // Any true load that succeeds will write the RF and will never be halted or killed by the controller. (wb_valid during the same cycle as lsu_valid_i).
   assign rf_wdata_wb_o  = ex_wb_pipe_i.lsu_en ? lsu_rdata_i               :
@@ -220,19 +220,19 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   // eXtension interface
   //---------------------------------------------------------------------------
 
-  // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_waddr and xif_result_if.result.rd?
-  // TODO: How to handle conflicting values of ex_wb_pipe_i.rf_we (based on xif_issue_if.issue_resp.writeback in ID) and xif_result_if.result.we?
-  // TODO: Check whether result IDs match the instruction IDs propagated along the pipeline
-  // TODO: Implement writeback to extension context status into mstatus (ecswe, ecsdata)
+  // TODO:XIF How to handle conflicting values of ex_wb_pipe_i.rf_waddr and xif_result_if.result.rd?
+  // TODO:XIF How to handle conflicting values of ex_wb_pipe_i.rf_we (based on xif_issue_if.issue_resp.writeback in ID) and xif_result_if.result.we?
+  // TODO:XIF Check whether result IDs match the instruction IDs propagated along the pipeline
+  // TODO:XIF Implement writeback to extension context status into mstatus (ecswe, ecsdata)
 
   // Need to wait for the result
   assign xif_waiting = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && !xif_result_if.result_valid;
 
   // Coprocessor signals a synchronous exception
-  // TODO: Maybe do something when an exception occurs (other than just inhibiting writeback)
+  // TODO:XIF Maybe do something when an exception occurs (other than just inhibiting writeback)
   assign xif_exception = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en && xif_result_if.result_valid && xif_result_if.result.exc;
 
-  // todo: Handle xif_result_if.result.err as NMI (do not factor into xif_exception as that signal is for synchronous exceptions)
+  // todo:XIF Handle xif_result_if.result.err as NMI (do not factor into xif_exception as that signal is for synchronous exceptions)
 
   assign xif_result_if.result_ready = ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.xif_en;
 

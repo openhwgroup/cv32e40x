@@ -555,11 +555,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   generate
     if (X_EXT) begin : x_ext
 
-      // TODO: implement offloading of compressed instruction
+      // TODO:XIF implement offloading of compressed instruction
       assign xif_compressed_if.compressed_valid = '0;
       assign xif_compressed_if.compressed_req   = '0;
 
-      // TODO: assert that the oustanding IDs are unique
+      // TODO:XIF assert that the oustanding IDs are unique
       assign xif_id = xif_offloading_id_i ? if_id_pipe_o.xif_id + 1 : if_id_pipe_o.xif_id;
 
     end else begin : no_x_ext

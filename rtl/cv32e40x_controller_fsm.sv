@@ -500,7 +500,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // synchronous debug entry have far fewer restrictions than asynchronous entries. In principle synchronous debug entry should have the same
   // 'allowed' signal as exceptions - that is it should always be possible.
-  // todo: When XIF is being finished, debug entry vs xif must be reevaluated.
+  // todo:XIF When XIF is being finished, debug entry vs xif must be reevaluated.
   assign sync_debug_allowed = !xif_in_wb && !(ctrl_fsm_cs == SLEEP);
 
   // Debug pending for any other synchronous reason than single step
@@ -1466,7 +1466,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       logic commit_kill_q;  // Sticky bit for commit_kill
       logic kill_rejected;  // Signal used to kill rejected xif instructions
 
-      // TODO: Add assertion to check the following:
+      // TODO:XIF Add assertion to check the following:
       // Every issue interface transaction (whether accepted or not) has an associated commit interface
       // transaction and both interfaces use a matching transaction ordering.
 
