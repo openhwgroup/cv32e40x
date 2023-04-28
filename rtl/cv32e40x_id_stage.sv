@@ -695,7 +695,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign sys_en_o     = sys_en;
 
   // stall control for multicyle ID instructions (currently only misaligned LSU)
-  assign multi_cycle_id_stall = 1'b0; //todo:ok Zce push/pop will use this
+  assign multi_cycle_id_stall = 1'b0;
 
   // Stage ready/valid
   //
@@ -703,7 +703,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   //
   // Multi-cycle instruction related stalls are different; in that case ready will be 0 (as ID already
   // contains the instruction following the multicycle instruction.
-  // todo: update when Zce is included. Currently, no multi cycle ID stalls are possible.
 
   assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id && !xif_waiting);
 
