@@ -163,11 +163,11 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   //   cannot be used to increment the minstret CSR (as that should not increment for e.g. ecall, ebreak, etc.)
   // - Will be 1 for both phases of a split misaligned load/store that completes without MPU errors.
   //   If an MPU error occurs, wb_valid will be 1 due to lsu_exception (for any phase where the error occurs)
-  // - Will be 0 for CLIC pointer fetches todo: Do we need wb_valid=1 for faulted pointer fetches for RVFI?
+  // - Will be 1 for CLIC pointer fetches. RVFI will only set rvfi_valid for CLIC pointers that caused an exception.
   assign wb_valid = ((!ex_wb_pipe_i.lsu_en && !xif_waiting) ||    // Non-LSU instructions have valid result in WB, also for exceptions, unless we are waiting for a coprocessor
                      ( ex_wb_pipe_i.lsu_en && lsu_valid   )       // LSU instructions have valid result based on data_rvalid_i or the flopped version in case of watchpoint triggers.
-                                                                  // todo: ideally a similar line is added here that delays signaling wb_valid until a WFI really retires.
-                                                                  // This should be checked for bad timing paths. Currently RVFI contains a wb_valid_adjusted signal/hack to achieve the same
+                                                                  // WFI/WFE are halted in WB until the core wakes up, this pulls instr_valid low and ensures wb_valid==0 until we
+                                                                  // actually retire the WFI/WFE.
                     ) && instr_valid;
 
   // Letting all suboperations signal wb_valid
