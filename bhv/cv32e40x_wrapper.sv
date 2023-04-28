@@ -568,6 +568,7 @@ endgenerate
          .buffer_trans_ex_i        ( core_i.load_store_unit_i.buffer_trans                                ),
          .buffer_trans_valid_ex_i  ( core_i.load_store_unit_i.buffer_trans_valid                          ),
          .lsu_split_q_ex_i         ( core_i.load_store_unit_i.split_q                                     ),
+         .lsu_split_0_ex_i         ( core_i.load_store_unit_i.lsu_split_0_o                               ),
 
          // WB Probes
          .wb_valid_i               ( core_i.wb_stage_i.wb_valid_o                                         ),
@@ -587,6 +588,9 @@ endgenerate
          .abort_op_wb_i            ( core_i.wb_stage_i.abort_op_o                                         ),
          .clic_ptr_wb_i            ( core_i.wb_stage_i.ex_wb_pipe_i.instr_meta.clic_ptr                   ),
          .mret_ptr_wb_i            ( core_i.wb_stage_i.ex_wb_pipe_i.instr_meta.mret_ptr                   ),
+         .wpt_match_wb_i           ( core_i.wb_stage_i.wpt_match_wb_o                                     ),
+         .mpu_status_wb_i          ( core_i.wb_stage_i.mpu_status_wb_o                                    ),
+         .align_status_wb_i        ( core_i.wb_stage_i.align_status_wb_o                                  ),
          .csr_mscratchcsw_in_wb_i  ( core_i.cs_registers_i.mscratchcsw_in_wb                              ),
          .csr_mscratchcswl_in_wb_i ( core_i.cs_registers_i.mscratchcswl_in_wb                             ),
          .csr_mnxti_in_wb_i        ( core_i.cs_registers_i.mnxti_in_wb                                    ),
