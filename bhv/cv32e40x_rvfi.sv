@@ -124,6 +124,7 @@ module cv32e40x_rvfi
    input logic                                nmi_is_store_i,         // regular NMI type
    input logic                                debug_mode_q_i,
    input logic [2:0]                          debug_cause_n_i,
+   input logic                                etrigger_in_wb_i,
 
    // Interrupt Controller probes
    input logic [31:0]                         irq_i,
@@ -872,11 +873,28 @@ module cv32e40x_rvfi
     // Check for single step debug entry, need to include the actual debug_cause_n, as single step has the lowest priority
     // to enter debug and any higher priority cause could be active at the same time.
     if((pending_single_step_i && single_step_allowed_i) && (debug_cause_n_i == DBG_CAUSE_STEP)) begin
-      // The timing of the single step debug entry does not allow using pc_mux for detection
+      // For single step debug entry, the pipeline is not halted. This causes wb_valid to become 1 in the cycle
+      // before DEBUG_TAKEN is entered, as opposed to other debug causes which halt the entire pipeline.
+      // To pick up the rvfi_trap.debug for single step one can thus not rely on 'pc_mux_debug' but must check the
+      // relevant signals within the controller FSM that causes a single step transition into DEBUG_TAKEN.
       rvfi_trap_next.debug       = 1'b1;
       rvfi_trap_next.debug_cause = DBG_CAUSE_STEP;
 
       // In the case of an exception in WB and pending single step, both the exception and the debug flag will be set
+    end
+
+
+    // Check for etrigger debug entry, need to include the actual debug_cause_n, as etrigger has lower priority
+    // to enter debug than for instance external debug request.
+    if((etrigger_in_wb_i && single_step_allowed_i) && (debug_cause_n_i == DBG_CAUSE_TRIGGER)) begin
+      // For etrigger debug entry, the pipeline is not halted. This causes wb_valid to become 1 in the cycle
+      // before DEBUG_TAKEN is entered, as opposed to other debug causes which halt the entire pipeline.
+      // To pick up the rvfi_trap.debug for etrigger one can thus not rely on 'pc_mux_debug' but must check the
+      // relevant signals within the controller FSM that causes a etrigger transition into DEBUG_TAKEN.
+      rvfi_trap_next.debug       = 1'b1;
+      rvfi_trap_next.debug_cause = DBG_CAUSE_TRIGGER;
+
+      // For etrigger, both exception and debug flag is set.
     end
 
     // Set trap bit if there is an exception or debug entry
