@@ -50,8 +50,8 @@ module cv32e40x_prefetcher import cv32e40x_pkg::*;
   input  logic [31:0]              fetch_branch_addr_i,           // Taken branch address (only valid when fetch_branch_i = 1), word aligned
   input  logic                     fetch_valid_i,
   output logic                     fetch_ready_o,
-  input  logic                     fetch_ptr_access_i,            // Access is data access (CLIC) // todo: add similar for table jump
-  output logic                     fetch_ptr_access_o,            // Handshake is for a pointer access (CLIC and Zc)
+  input  logic                     fetch_ptr_access_i,            // Access is for a pointer (CLIC, mret or tablejump)
+  output logic                     fetch_ptr_access_o,            // Handshake is for a pointer access (CLIC, mret or tablejump)
   input  privlvl_t                 fetch_priv_lvl_access_i,       // Priv level of access
   output privlvl_t                 fetch_priv_lvl_access_o,       // Priv level for the (fetch_valid_i && fetch_ready_o) handshake, indicating privilege level of the requested instruction.
 
