@@ -192,9 +192,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   // Branch target address
   logic [31:0]          bch_target;
 
-  // Stall for multicycle ID instructions
-  logic                 multi_cycle_id_stall;
-
   logic                 illegal_insn;
 
   // Local instruction valid qualifier
@@ -694,21 +691,13 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign alu_en_o     = alu_en;
   assign sys_en_o     = sys_en;
 
-  // stall control for multicyle ID instructions (currently only misaligned LSU)
-  assign multi_cycle_id_stall = 1'b0; //todo:ok Zce push/pop will use this
-
   // Stage ready/valid
   //
   // Most stall conditions are factored into halt_id (and will force both ready and valid to 0).
-  //
-  // Multi-cycle instruction related stalls are different; in that case ready will be 0 (as ID already
-  // contains the instruction following the multicycle instruction.
-  // todo: update when Zce is included. Currently, no multi cycle ID stalls are possible.
 
-  assign id_ready_o = ctrl_fsm_i.kill_id || (!multi_cycle_id_stall && ex_ready_i && !ctrl_fsm_i.halt_id && !xif_waiting);
+  assign id_ready_o = ctrl_fsm_i.kill_id || (ex_ready_i && !ctrl_fsm_i.halt_id && !xif_waiting);
 
-  // multi_cycle_id_stall is currently tied to 1'b0. Will be used for Zce push/pop instructions.
-  assign id_valid_o = (instr_valid && !xif_waiting) || (multi_cycle_id_stall && !ctrl_fsm_i.kill_id && !ctrl_fsm_i.halt_id);
+  assign id_valid_o = (instr_valid && !xif_waiting);
 
   assign first_op_o  = if_id_pipe_i.first_op;
   // An mret with mcause.minhv set and mcause.mpp = PRIV_LVL_M will cause a pointer fetch, and that pointer fetch is the last operation of the mret.
