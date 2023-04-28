@@ -1250,8 +1250,10 @@ module cv32e40x_rvfi
         end
 
         // Update rvfi_mem
+        // Both for single and split misaligned transfers, rvfi_mem will be updated upon the initial transfer.
+        // If the 2nd transfer in a split misaligned is blocked (by debug watchpoint, mpu or alignment check), the corresponding bits in rmask/wmaks will be cleared
         if (!lsu_split_2nd_xfer_wb) begin
-          // In case of a split misaligned transfer, rvfi_mem (except rvfi_mem_rdata) is updated upon the first transfer.
+          // 1st transfer of a split misaligned, or the only transfer in case of a single transfer
           rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_rmask [STAGE_WB];
           rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_wmask [STAGE_WB];
           rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.addr;
@@ -1259,13 +1261,13 @@ module cv32e40x_rvfi
           rvfi_mem_prot [ (3*(memop_cnt+1))-1 -:  3] <= ex_mem_trans.prot;
         end
         else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
-          // 2nd transfer of a split misaligned is blocked by debug watchpoint, mpu or alignment check. Clear related bits in rmask/wmask
+          // 2nd transfer of a split misaligned is blocked. Clear related bits in rmask/wmask
           rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] & ~split_2nd_mask(rvfi_mem_addr[1:0]);
           rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] & ~split_2nd_mask(rvfi_mem_addr[1:0]);
         end
 
         // Propagate rdata from LSU to rvfi_mem.
-        // For split transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
+        // For split misaligned transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
         rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
 
         // Update rvfi_gpr for writes to RF
