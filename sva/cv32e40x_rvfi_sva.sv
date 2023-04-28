@@ -77,7 +77,8 @@ module cv32e40x_rvfi_sva
    input logic             pc_mux_exception,
    input logic             pc_mux_debug,
    input logic             in_trap_clr,
-   input logic             wb_valid_lastop
+   input logic             wb_valid_lastop,
+   input logic             etrigger_in_wb_i
 
 );
 
@@ -201,18 +202,24 @@ if (DEBUG) begin
                     rvfi_dbg == $past(rvfi_trap.debug_cause))
     else `uvm_error("rvfi", "rvfi_trap.debug_cause not consistent with rvfi_dbg in following retired instruction")
 
-  // Check that rvfi_trap always indicate single step if rvfi_trap[2:1] == 2'b11
+  // Check that rvfi_trap always indicate single step or etrigger if rvfi_trap[2:1] == 2'b11
   a_rvfi_single_step_trap:
   assert property (@(posedge clk_i) disable iff (!rst_ni)
-                    rvfi_trap.exception && rvfi_trap.debug |-> rvfi_trap.debug_cause == DBG_CAUSE_STEP)
-    else `uvm_error("rvfi", "rvfi_trap[2:1] == 2'b11, but debug cause bits do not indicate single stepping")
+                    rvfi_valid && rvfi_trap.exception && rvfi_trap.debug
+                    |->
+                    (rvfi_trap.debug_cause == DBG_CAUSE_STEP)
+                    or
+                    (rvfi_trap.debug_cause == DBG_CAUSE_TRIGGER) && $past(etrigger_in_wb_i))
+    else `uvm_error("rvfi", "rvfi_trap[2:1] == 2'b11, but debug cause bits do not indicate single stepping or trigger")
 
   // Check that dcsr.cause and mcause exception align with rvfi_trap when rvfi_trap[2:1] == 2'b11
   // rvfi_intr should also always be set in this case
   a_rvfi_trap_step_exception:
   assert property (@(posedge clk_i) disable iff (!rst_ni)
-                    s_goto_next_rvfi_valid(rvfi_trap.exception && rvfi_trap.debug) |->
-                    (rvfi_dbg == DBG_CAUSE_STEP) && (rvfi_csr_dcsr_rdata[8:6] == DBG_CAUSE_STEP) &&
+                    s_goto_next_rvfi_valid(rvfi_trap.exception && rvfi_trap.debug)
+                    |->
+                    ((rvfi_dbg == DBG_CAUSE_STEP) && (rvfi_csr_dcsr_rdata[8:6] == DBG_CAUSE_STEP) ||
+                     (rvfi_dbg == DBG_CAUSE_TRIGGER) && (rvfi_csr_dcsr_rdata[8:6] == DBG_CAUSE_TRIGGER)) &&
                     (rvfi_csr_mcause_rdata[5:0] == $past(rvfi_trap.exception_cause)) &&
                     rvfi_intr.intr)
     else `uvm_error("rvfi", "dcsr.cause, mcause and rvfi_intr not as expected following an exception during single step")
@@ -350,6 +357,29 @@ end
                     (in_trap[STAGE_ID] && (pc_wb_i != pc_id_i)) ||
                     (in_trap[STAGE_IF] && (pc_wb_i != pc_if_i))))
     else `uvm_error("rvfi", "More than one in_trap at the same time")
+
+  // Check that rvfi_valid and rvfi_trap.debug is correctly set for single step.
+  //
+  a_single_step_rvfi_valid_trap:
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  pc_mux_debug &&                                // Debug entry (DEBUG_TAKEN)
+                  (ctrl_fsm_i.debug_cause == DBG_CAUSE_STEP) &&  // due to single step
+                  $past(wb_valid_lastop)                         // An instruction was retired previous cycle
+                  |->
+                  (rvfi_valid && rvfi_trap.debug))               // Must set rvfi_valid and trap.debug
+    else `uvm_error("rvfi", "No rvfi_valid or rvfi_trap for single step.")
+
+  // Check that rvfi_valid and rvfi_trap.debug is correctly set for etrigger.
+  //
+  a_etrigger_rvfi_valid_trap:
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+                  pc_mux_debug &&                                         // Debug entry (DEBUG_TAKEN)
+                  (ctrl_fsm_i.debug_cause == DBG_CAUSE_TRIGGER) &&        // due to trigger
+                  $past(wb_valid_lastop)                                  // Triggers other than etrigger halts pipeline, this must be etrigger
+                  |->
+                  (rvfi_valid && rvfi_trap.debug && rvfi_trap.exception)) // Must set rvfi_valid and trap.debug + trap.exception
+
+    else `uvm_error("rvfi", "No rvfi_valid or rvfi_trap for etrigger.")
 
   /* TODO: Add back in.
      Currently, the alignment buffer can interpret pointers as compressed instructions and pass on two "instructions" from the IF stage.
