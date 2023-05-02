@@ -903,15 +903,18 @@ module cv32e40x_rvfi
 
 
   // Return byte-mask for bytes that would be part of the 2nd transfer in a split transfer.
+  // Note that this function does not take transfer size into account, it only indicates
+  // the bytes that could be part of the 2nd transfer.
   function automatic logic [3:0] split_2nd_mask(logic [1:0] addr_lsb);
     logic [3:0] mask = '0;
 
     case(addr_lsb[1:0])
-      2'b00 : mask = 4'b0000;
-      2'b01 : mask = 4'b1000;
-      2'b10 : mask = 4'b1100;
-      2'b11 : mask = 4'b1110;
+      2'b00 : mask = 4'b0000; // No bytes would come from the 2nd transfer
+      2'b01 : mask = 4'b1000; // Byte 3 would come from the 2nd transfer
+      2'b10 : mask = 4'b1100; // Byte 2,3 would come from the 2nd transfer
+      2'b11 : mask = 4'b1110; // Byte 1,2,3 would com from the 2nd transfer
     endcase
+
     return mask;
   endfunction : split_2nd_mask
 
