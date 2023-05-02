@@ -86,6 +86,7 @@ module cv32e40x_rvfi
    input obi_data_req_t                       buffer_trans_ex_i,
    input logic                                buffer_trans_valid_ex_i,
    input logic                                lsu_split_q_ex_i,
+   input logic                                lsu_split_0_ex_i,
 
    // WB probes
    input logic                                wb_ready_i,
@@ -108,6 +109,9 @@ module cv32e40x_rvfi
    input logic                                csr_mscratchcsw_in_wb_i,
    input logic                                csr_mscratchcswl_in_wb_i,
    input logic                                csr_mnxti_in_wb_i,
+   input logic                                wpt_match_wb_i,
+   input mpu_status_e                         mpu_status_wb_i,
+   input align_status_e                       align_status_wb_i,
 
    // PC
    input logic [31:0]                         branch_addr_n_i,
@@ -628,7 +632,8 @@ module cv32e40x_rvfi
   obi_data_req_t     ex_mem_trans;
   mem_err_t [3:0]    mem_err;
 
-  logic              lsu_mem_split_wb;
+  logic              lsu_split_2nd_xfer_wb;
+  logic              lsu_split_xfer_wb;
 
   logic              branch_taken_ex;
 
@@ -825,6 +830,12 @@ module cv32e40x_rvfi
   // Set rvfi_trap for instructions causing exception or debug entry.
   rvfi_trap_t  rvfi_trap_next;
 
+  // Indicate that a data transfer was blocked before reaching the bus.
+  logic         mem_access_blocked_wb;
+  assign mem_access_blocked_wb   = wpt_match_wb_i ||
+                                   (mpu_status_wb_i != MPU_OK) ||
+                                   (align_status_wb_i != ALIGN_OK);
+
   always_comb begin
     rvfi_trap_next = '0;
 
@@ -909,6 +920,23 @@ module cv32e40x_rvfi
   assign wb_valid_lastop   = wb_valid_i && (last_op_wb_i || abort_op_wb_i) && !(clic_ptr_wb_i && !pc_mux_exception);
 
 
+  // Return byte-mask for bytes that would be part of the 2nd transfer in a split transfer.
+  // Note that this function does not take transfer size into account, it only indicates
+  // the bytes that could be part of the 2nd transfer.
+  function automatic logic [3:0] split_2nd_mask(logic [1:0] addr_lsb);
+    logic [3:0] mask = '0;
+
+    case(addr_lsb[1:0])
+      2'b00 : mask = 4'b0000; // No bytes would come from the 2nd transfer
+      2'b01 : mask = 4'b1000; // Byte 3 would come from the 2nd transfer
+      2'b10 : mask = 4'b1100; // Byte 2,3 would come from the 2nd transfer
+      2'b11 : mask = 4'b1110; // Byte 1,2,3 would com from the 2nd transfer
+    endcase
+
+    return mask;
+  endfunction : split_2nd_mask
+
+
   // Pipeline stage model //
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -969,7 +997,9 @@ module cv32e40x_rvfi
       rs1_re_subop       <= '0;
       rs2_re_subop       <= '0;
 
-      lsu_mem_split_wb   <= '0;
+      lsu_split_2nd_xfer_wb <= '0;
+      lsu_split_xfer_wb     <= '0;
+
 
       pc_wb_past          <= '0;
       instr_rdata_wb_past <= '0;
@@ -1130,8 +1160,8 @@ module cv32e40x_rvfi
         rs2_addr   [STAGE_WB] <= rs2_addr           [STAGE_EX];
         rs1_rdata  [STAGE_WB] <= rs1_rdata          [STAGE_EX];
         rs2_rdata  [STAGE_WB] <= rs2_rdata          [STAGE_EX];
-        mem_rmask  [STAGE_WB] <= lsu_data_trans_valid ? mem_rmask[STAGE_EX] : '0;
-        mem_wmask  [STAGE_WB] <= lsu_data_trans_valid ? mem_wmask[STAGE_EX] : '0;
+        mem_rmask  [STAGE_WB] <= mem_rmask          [STAGE_EX];
+        mem_wmask  [STAGE_WB] <= mem_wmask          [STAGE_EX];
         in_trap    [STAGE_WB] <= in_trap            [STAGE_EX];
 
         rs1_addr_subop   [STAGE_WB] <= rs1_addr_subop [STAGE_EX];
@@ -1141,7 +1171,9 @@ module cv32e40x_rvfi
         rs1_re_subop     [STAGE_WB] <= rs1_re_subop   [STAGE_EX];
         rs2_re_subop     [STAGE_WB] <= rs2_re_subop   [STAGE_EX];
 
-        lsu_mem_split_wb <= lsu_split_q_ex_i;
+        lsu_split_2nd_xfer_wb <= lsu_split_q_ex_i;
+        lsu_split_xfer_wb     <= lsu_split_0_ex_i;
+
         if (!lsu_split_q_ex_i) begin
           // The second part of the split misaligned access is suppressed to keep
           // the start address and data for the whole misaligned transfer
@@ -1238,15 +1270,26 @@ module cv32e40x_rvfi
           rvfi_gpr_wmask     <= '0;
         end
 
-        // Update rvfi_mem (first part of split misaligned do not cause update)
-        if (!lsu_mem_split_wb) begin
-          rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
-          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_rmask [STAGE_WB];
-          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_wmask [STAGE_WB];
+        // Update rvfi_mem
+        // Both for single and split misaligned transfers, rvfi_mem will be updated upon the initial transfer.
+        // If the 2nd transfer in a split misaligned is blocked (by debug watchpoint, mpu or alignment check), the corresponding bits in rmask/wmaks will be cleared
+        if (!lsu_split_2nd_xfer_wb) begin
+          // 1st transfer of a split misaligned, or the only transfer in case of a single transfer
+          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_rmask [STAGE_WB];
+          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_wmask [STAGE_WB];
           rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.addr;
           rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.wdata;
           rvfi_mem_prot [ (3*(memop_cnt+1))-1 -:  3] <= ex_mem_trans.prot;
         end
+        else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
+          // 2nd transfer of a split misaligned is blocked. Clear related bits in rmask/wmask
+          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] & ~split_2nd_mask(rvfi_mem_addr[1:0]);
+          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] & ~split_2nd_mask(rvfi_mem_addr[1:0]);
+        end
+
+        // Propagate rdata from LSU to rvfi_mem.
+        // For split misaligned transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
+        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
@@ -1274,7 +1317,9 @@ module cv32e40x_rvfi
           // Increment subop counter
           subop_cnt <= subop_cnt + 4'h1;
 
-          if (|mem_rmask [STAGE_WB] || |mem_wmask [STAGE_WB]) begin
+          // For split transfers, don't increment memop_cnt until the 2nd transfer is complete
+          if ((|mem_rmask [STAGE_WB] || |mem_wmask [STAGE_WB]) &&
+              (lsu_split_xfer_wb ? lsu_split_2nd_xfer_wb : 1'b1)) begin
             memop_cnt <= memop_cnt + 7'h1;
           end
         end
