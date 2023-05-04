@@ -1195,8 +1195,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign ctrl_fsm_o.wake_from_sleep        = pending_nmi || irq_wu_ctrl_i || pending_async_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
-  assign ctrl_fsm_o.debug_wfi_wfe_no_sleep = debug_mode_q || dcsr_i.step;
+  assign ctrl_fsm_o.wake_from_sleep = pending_nmi || irq_wu_ctrl_i || pending_async_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
+  assign ctrl_fsm_o.debug_no_sleep = debug_mode_q || dcsr_i.step;
 
   ////////////////////
   // Flops          //

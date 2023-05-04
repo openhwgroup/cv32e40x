@@ -86,7 +86,7 @@ module cv32e40x_sleep_unit import cv32e40x_pkg::*;
 
   // Sleep only in response to WFI which leads to clock disable. The controller determines the
   // scenarios for which WFI can(not) cause sleep. WFI suppression is performed in the i_decoder
-  // based on the debug_wfi_no_sleep signal from the controller.
+  // based on the debug_no_sleep signal from the controller.
   assign core_sleep_o = fetch_enable_q && !clock_en;
 
   always_ff @(posedge clk_ungated_i, negedge rst_n)
