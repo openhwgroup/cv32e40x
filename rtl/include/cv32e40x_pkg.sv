@@ -1351,7 +1351,7 @@ typedef struct packed {
   logic        debug_mode;             // Flag signalling we are in debug mode, valid for ID, EX and WB
   logic [2:0]  debug_cause;            // cause of debug entry
   logic        debug_csr_save;         // Update debug CSRs
-  logic        debug_wfi_wfe_no_sleep; // Debug prevents core from sleeping after WFI
+  logic        debug_no_sleep;         // Debug prevents core from sleeping after WFI, etc.
   logic        debug_havereset;        // Signal to external debugger that we have reset
   logic        debug_running;          // Signal to external debugger that we are running (not in debug)
   logic        debug_halted;           // Signal to external debugger that we are halted (in debug mode)
