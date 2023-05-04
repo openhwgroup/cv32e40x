@@ -1309,7 +1309,7 @@ typedef struct packed {
   logic         jalr_stall;             // Stall due to JALR hazard (JALR used result from EX or LSU result in WB)
   logic         load_stall;             // Stall due to load operation
   logic         csr_stall;
-  logic         wfi_wfe_stall;
+  logic         sleep_stall;            // Stall ID due to sleep (e.g. WFI, WFE) instruction in EX
   logic         mnxti_id_stall;         // Stall ID due to mnxti CSR access in EX
   logic         mnxti_ex_stall;         // Stall EX due to LSU instruction in WB
   logic         minstret_stall;         // Stall due to minstret/h read in EX

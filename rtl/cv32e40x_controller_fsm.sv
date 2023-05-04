@@ -21,7 +21,7 @@
 //                                                                            //
 // Additional contributions by:                                               //
 //                                                                            //
-// Design Name:    cv32e40x_controller_fsm                                 //
+// Design Name:    cv32e40x_controller_fsm                                    //
 // Project Name:   CV32E40X                                                   //
 // Language:       SystemVerilog                                              //
 //                                                                            //
@@ -651,7 +651,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     //   - If not checking for id_stage_haltable for interrupts and debug, the core could end up in a situation where it tries to create a bubble
     //     by halting ID, but the condition disallowing interrupt or debug will not disappear until the sequence currently handled by the ID stage
     //     is done. This would create an unrecoverable deadlock.
-    ctrl_fsm_o.halt_id          = (ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.wfi_wfe_stall || ctrl_byp_i.mnxti_id_stall) ||
+    ctrl_fsm_o.halt_id          = (ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.sleep_stall || ctrl_byp_i.mnxti_id_stall) ||
                                   ((pending_interrupt || pending_nmi || pending_nmi_early) && debug_interruptible && id_stage_haltable)                             ||
                                   ((pending_async_debug || pending_sync_debug) && id_stage_haltable);
 
