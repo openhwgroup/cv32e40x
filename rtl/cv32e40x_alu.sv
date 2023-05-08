@@ -71,6 +71,8 @@ module cv32e40x_alu import cv32e40x_pkg::*;
   output logic [31:0]       div_op_b_shifted_o
 );
 
+  localparam RV32B_ZBS = (B_EXT == ZBA_ZBB_ZBS) || (B_EXT == ZBA_ZBB_ZBC_ZBS);
+
   logic [31:0] operand_a_rev;
   logic [31:0] operand_b_rev;
 
@@ -159,7 +161,9 @@ module cv32e40x_alu import cv32e40x_pkg::*;
       ALU_B_BSET,
       ALU_B_BCLR,
       ALU_B_BINV : begin
-        shifter_aa = 32'h1;
+        if (RV32B_ZBS) begin
+          shifter_aa = 32'h1;
+        end
       end
       default: ;
     endcase
@@ -175,17 +179,23 @@ module cv32e40x_alu import cv32e40x_pkg::*;
     shifter_tmp = shifter_shamt[0] ? {shifter_tmp[62:0], shifter_tmp[63:63]} : shifter_tmp;
   end
 
-  always_comb begin
-    shifter_result = shifter_tmp[31:0];
+  generate
+    if (RV32B_ZBS) begin : gen_shift_zbs
+      always_comb begin
+        shifter_result = shifter_tmp[31:0];
 
-    unique case (operator_i)
-      ALU_B_BEXT : shifter_result =       32'h1 &  shifter_tmp[31:0];
-      ALU_B_BSET : shifter_result = operand_a_i |  shifter_tmp[31:0];
-      ALU_B_BCLR : shifter_result = operand_a_i & ~shifter_tmp[31:0];
-      ALU_B_BINV : shifter_result = operand_a_i ^  shifter_tmp[31:0];
-      default: ;
-    endcase
-  end
+        unique case (operator_i)
+          ALU_B_BEXT : shifter_result =       32'h1 &  shifter_tmp[31:0];
+          ALU_B_BSET : shifter_result = operand_a_i |  shifter_tmp[31:0];
+          ALU_B_BCLR : shifter_result = operand_a_i & ~shifter_tmp[31:0];
+          ALU_B_BINV : shifter_result = operand_a_i ^  shifter_tmp[31:0];
+          default: ;
+        endcase
+      end
+    end else begin : gen_shift_nozbs
+      assign shifter_result = shifter_tmp[31:0];
+    end
+  endgenerate
 
   assign div_op_b_shifted_o = shifter_tmp[31:0];
 
