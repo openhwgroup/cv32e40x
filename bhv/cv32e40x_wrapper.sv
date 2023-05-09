@@ -488,6 +488,7 @@ endgenerate
                .lsu_en_wb_i     (core_i.ex_wb_pipe.lsu_en),
                .lsu_split_q_wb_i (core_i.load_store_unit_i.split_q),
                .pc_ex_i          (core_i.id_ex_pipe.pc),
+               .m_c_obi_data_if  (core_i.m_c_obi_data_if),
                .*);
 
 `endif //  `ifndef COREV_ASSERT_OFF
