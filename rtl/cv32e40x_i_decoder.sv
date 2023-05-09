@@ -28,18 +28,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 module cv32e40x_i_decoder import cv32e40x_pkg::*;
-  #(
+#(
     parameter bit CLIC              = 1
-    )
-  (
+)
+(
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
    input logic        tbljmp_i,      // instruction is a tablejump, mapped to JAL
    input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
    output decoder_ctrl_t decoder_ctrl_o
-   );
+);
 
-   localparam CUSTOM_EXT = 1;
+  localparam CUSTOM_EXT = 1;
 
   always_comb
   begin

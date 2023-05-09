@@ -115,7 +115,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   localparam REG_D_LSB  = 7;
 
   logic [31:0] instr;
-  logic [15:0] c_instr;                         // Compressed instruction
 
   // Register Read/Write Control
   logic [1:0]           rf_re;                  // Decoder only supports rs1, rs2
@@ -186,8 +185,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   logic [31:0]          imm_u_type;
   logic [31:0]          imm_uj_type;
   logic [31:0]          imm_z_type;
-  logic [31:0]          imm_ciw_type;
-  logic [31:0]          imm_cl_type;
 
   // Branch target address
   logic [31:0]          bch_target;
@@ -218,7 +215,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign sys_mret_insn_o = sys_mret_insn;
 
   assign instr = if_id_pipe_i.instr.bus_resp.rdata;
-  assign c_instr = if_id_pipe_i.compressed_instr;
 
   // Immediate extraction and sign extension
   assign imm_i_type   = { {20 {instr[31]}}, instr[31:20] };
@@ -226,27 +222,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign imm_sb_type  = { {19 {instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0 };
   assign imm_u_type   = { instr[31:12], 12'b0 };
   assign imm_uj_type  = { {12 {instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0 };
-
-  // Immediate extraction and sign extension (compressed instructions)
-  assign imm_ciw_type = { 22'b0, c_instr[10:7], c_instr[12:11], c_instr[5], c_instr[6], 2'b0 };
-  assign imm_cl_type  = { 25'b0, c_instr[5], c_instr[12:10], c_instr[6], 2'b0 };
-
-/*
-  assign imm_cfldsp_type = {22'b0, c_instr[4:2], c_instr[12], c_instr[6:5], 3'b0};
-  assign imm_caddi_type  = {{22{c_instr[12]}}, c_instr[12:12], c_instr[4:3], c_instr[5:5], c_instr[2:2], c_instr[6:6], 4'b0};
-  assign imm_clwsp_type  = {24'b0, c_instr[3:2], c_instr[12:12], c_instr[6:4], 2'b0};
-  assign imm_cld_type    = {24'b0, c_instr[6:5], c_instr[12:10], 3'b0};
-  assign imm_cswsp_type  = {24'b0, c_instr[8:7], c_instr[12:9], 2'b0};
-  assign imm_fsdp_type   = {24'b0, c_instr[9:7], c_instr[12:10], 2'b0};
-  assign imm_csrli_type  = {26'b0, c_instr[12:12], c_instr[6:2]};
-  assign imm_candi_type  = {{26{c_instr[12]}}, c_instr[12:12], c_instr[6:2]};
-  assign imm_cbeq_type   = {{23{c_instr[12]}}, c_instr[12:12], c_instr[6:5], c_instr[2:2], c_instr[11:10], c_instr[4:3], 1'b0};
-  assign imm_clui_type   = {{14{c_instr[12]}}, c_instr[12:12], c_instr[6:2], 12'b0};
-  assign imm_clsb_type   = {28'd0, c_instr[10], c_instr[6:5], c_instr[11]};
-  assign imm_clsh_type   = {27'd0, c_instr[11:10], c_instr[6:5], 1'b0};
-*/
-
-
 
   // Immediate for CSR manipulation (zero extended)
   assign imm_z_type  = { 27'b0, instr[REG_S1_MSB:REG_S1_LSB] };
@@ -358,8 +333,6 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       IMMB_S:      imm_b = imm_s_type;
       IMMB_U:      imm_b = imm_u_type;
       IMMB_PCINCR: imm_b = if_id_pipe_i.instr_meta.compressed ? 32'h2 : 32'h4;
-      IMMB_CIW:    imm_b = imm_ciw_type;
-      IMMB_CL:     imm_b = imm_cl_type;
       default:     imm_b = imm_i_type;
     endcase
   end
