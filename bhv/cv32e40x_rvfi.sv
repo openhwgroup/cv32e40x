@@ -1275,11 +1275,12 @@ module cv32e40x_rvfi
         // If the 2nd transfer in a split misaligned is blocked (by debug watchpoint, mpu or alignment check), the corresponding bits in rmask/wmaks will be cleared
         if (!lsu_split_2nd_xfer_wb) begin
           // 1st transfer of a split misaligned, or the only transfer in case of a single transfer
-          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_rmask [STAGE_WB];
-          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] <= mem_access_blocked_wb ? '0 : mem_wmask [STAGE_WB];
-          rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.addr;
-          rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32] <= ex_mem_trans.wdata;
-          rvfi_mem_prot [ (3*(memop_cnt+1))-1 -:  3] <= ex_mem_trans.prot;
+          rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4]   <= mem_access_blocked_wb ? '0 : mem_rmask [STAGE_WB];
+          rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4]   <= mem_access_blocked_wb ? '0 : mem_wmask [STAGE_WB];
+          rvfi_mem_addr [(32*(memop_cnt+1))-1 -: 32]   <= ex_mem_trans.addr;
+          rvfi_mem_wdata[(32*(memop_cnt+1))-1 -: 32]   <= ex_mem_trans.wdata;
+          // Using (2*memop_cnt+memop_cnt) rather than 3*memop_cnt. This is a workaround to avoid blackboxed multiplier in the slice boundary calculations
+          rvfi_mem_prot [(2*memop_cnt + memop_cnt) +: 3] <= ex_mem_trans.prot;
         end
         else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
           // 2nd transfer of a split misaligned is blocked. Clear related bits in rmask/wmask
