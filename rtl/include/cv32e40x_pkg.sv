@@ -781,13 +781,11 @@ typedef enum logic[1:0] {
                     } alu_op_b_mux_e;
 
 // Immediate b selection
-typedef enum logic[2:0] {
-                         IMMB_I      = 3'b000,
-                         IMMB_S      = 3'b001,
-                         IMMB_U      = 3'b010,
-                         IMMB_PCINCR = 3'b011,
-                         IMMB_CIW    = 3'b100,
-                         IMMB_CL    = 3'b101
+typedef enum logic[1:0] {
+                         IMMB_I      = 2'b00,
+                         IMMB_S      = 2'b01,
+                         IMMB_U      = 2'b10,
+                         IMMB_PCINCR = 2'b11
                          } imm_b_mux_e;
 
 // Operand c selection
