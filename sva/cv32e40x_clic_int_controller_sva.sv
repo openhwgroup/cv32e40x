@@ -32,7 +32,7 @@
 module cv32e40x_clic_int_controller_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  (
+(
    input logic        clk,
    input logic        rst_n,
 
@@ -48,9 +48,7 @@ module cv32e40x_clic_int_controller_sva
 
    input ctrl_fsm_t   ctrl_fsm,
    input dcsr_t       dcsr
-
-   );
-
+);
 
   // Check that a pending interrupt is taken as soon as possible after being enabled
    property p_clic_enable;
@@ -91,5 +89,6 @@ module cv32e40x_clic_int_controller_sva
 
   a_clic_disable: assert property(p_clic_disable)
     else `uvm_error("core", "Interrupt taken after disabling");
-endmodule // cv32e40x_cs_registers_sva
+
+endmodule
 
