@@ -1148,8 +1148,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
           // Mret to lower privilege mode clear mintthresh
           if (priv_lvl_n < PRIV_LVL_M) begin
-            mintthresh_n  <= 32'h00000000;
-            mintthresh_we <= 1'b1;
+            mintthresh_n  = 32'h00000000;
+            mintthresh_we = 1'b1;
           end
 
           if (ctrl_fsm_i.csr_restore_mret_ptr) begin
@@ -1176,8 +1176,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
           // Dret to lower privilege mode clear mintthresh
           if (priv_lvl_n < PRIV_LVL_M) begin
-            mintthresh_n  <= 32'h00000000;
-            mintthresh_we <= 1'b1;
+            mintthresh_n  = 32'h00000000;
+            mintthresh_we = 1'b1;
           end
         end
 
