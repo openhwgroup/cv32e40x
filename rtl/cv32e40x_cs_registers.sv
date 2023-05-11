@@ -932,12 +932,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           end
         end
 
-        CSR_MINTSTATUS: begin
-          if (CLIC) begin
-            mintstatus_we = 1'b1;
-          end
-        end
-
         CSR_MINTTHRESH: begin
           if (CLIC) begin
             mintthresh_we = 1'b1;

@@ -140,9 +140,10 @@ module cv32e40x_prefetcher import cv32e40x_pkg::*;
   begin
     if(rst_n == 1'b0)
     begin
-      state_q        <= IDLE;
-      trans_addr_q   <= '0;
+      state_q            <= IDLE;
+      trans_addr_q       <= '0;
       trans_ptr_access_q <= 1'b0;
+      trans_priv_lvl_q   <= PRIV_LVL_M;
     end
     else
     begin
