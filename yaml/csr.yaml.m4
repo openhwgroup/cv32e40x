@@ -4667,22 +4667,13 @@ ifelse(eval(ZC != 0), 1, [[[
   address: 0x017
   privilege_mode: U
   rv32:
-    - field_name: Base_31_10
+    - field_name: Base_31_6
       description: >
-        Upper bits of vector table base address, 1024 byte aligned
+        Table Jump Base Address, 64 byte aligned
       type: WARL
       reset_val: 0
       msb: 31
-      lsb: 10
-    - field_name: Base_9_6
-      description: >
-        Lower bits of vector table base address, 1024 byte aligned always 0
-      type: WARL
-      reset_val: 0
-      msb: 9
       lsb: 6
-      warl_legalize: |
-        val_out = val_in if val_in == 0 else val_orig
     - field_name: Mode
       description: >
         Jump table mode
