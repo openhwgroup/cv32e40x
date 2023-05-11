@@ -239,7 +239,7 @@ module cv32e40x_controller_fsm_sva
   //          lsu_err_wb_i[0] |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
   //    else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
 
-  // Check that fencei handshake is only exersiced when there's a fencei in the writeback stage
+  // Check that fencei handshake is only exercised when there is a fencei in the writeback stage
   a_fencei_hndshk_fencei_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
            fencei_flush_req_o |-> fencei_in_wb)
