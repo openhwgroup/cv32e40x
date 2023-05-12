@@ -170,14 +170,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  tdata2_rdata;
   logic                         tdata2_we;
 
-  logic [31:0]                  tdata3_rdata;
-  logic                         tdata3_we;
-
   logic [31:0]                  tinfo_rdata;
   logic                         tinfo_we;
-
-  logic [31:0]                  tcontrol_rdata;
-  logic                         tcontrol_we;
 
   // Debug
   dcsr_t                        dcsr_q, dcsr_n, dcsr_rdata;
@@ -509,27 +503,9 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end
 
-      CSR_TDATA3: begin
-        if (DBG_NUM_TRIGGERS > 0) begin
-          csr_rdata_int = tdata3_rdata;
-        end else begin
-          csr_rdata_int = '0;
-          illegal_csr_read = 1'b1;
-        end
-      end
-
       CSR_TINFO: begin
         if (DBG_NUM_TRIGGERS > 0) begin
           csr_rdata_int = tinfo_rdata;
-        end else begin
-          csr_rdata_int = '0;
-          illegal_csr_read = 1'b1;
-        end
-      end
-
-      CSR_TCONTROL: begin
-        if (DBG_NUM_TRIGGERS > 0) begin
-          csr_rdata_int = tcontrol_rdata;
         end else begin
           csr_rdata_int = '0;
           illegal_csr_read = 1'b1;
@@ -700,11 +676,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
     tdata2_we     = 1'b0;
 
-    tdata3_we     = 1'b0;
-
     tinfo_we      = 1'b0;
-
-    tcontrol_we   = 1'b0;
 
     // TODO:XIF add support for SD/XS/FS/VS
     mstatus_n     = csr_next_value(mstatus_t'{
@@ -975,18 +947,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           end
         end
 
-        CSR_TDATA3: begin
-          if (ctrl_fsm_i.debug_mode) begin
-            tdata3_we = 1'b1;
-          end
-        end
-
         CSR_TINFO: begin
           tinfo_we = 1'b1;
-        end
-
-        CSR_TCONTROL: begin
-          tcontrol_we = 1'b1;
         end
 
         CSR_DCSR: begin
@@ -1628,17 +1590,13 @@ dcsr_we        = 1'b1;
       .tselect_we_i        ( tselect_we            ),
       .tdata1_we_i         ( tdata1_we             ),
       .tdata2_we_i         ( tdata2_we             ),
-      .tdata3_we_i         ( tdata3_we             ),
       .tinfo_we_i          ( tinfo_we              ),
-      .tcontrol_we_i       ( tcontrol_we           ),
 
       // CSR read data outputs
       .tselect_rdata_o     ( tselect_rdata         ),
       .tdata1_rdata_o      ( tdata1_rdata          ),
       .tdata2_rdata_o      ( tdata2_rdata          ),
-      .tdata3_rdata_o      ( tdata3_rdata          ),
       .tinfo_rdata_o       ( tinfo_rdata           ),
-      .tcontrol_rdata_o    ( tcontrol_rdata        ),
 
       // IF stage inputs
       .pc_if_i             ( pc_if_i               ),

@@ -151,10 +151,6 @@
 .rvfi_csr_tinfo_wmask(),\
 .rvfi_csr_tinfo_rdata(),\
 .rvfi_csr_tinfo_wdata(),\
-.rvfi_csr_tcontrol_rmask(),\
-.rvfi_csr_tcontrol_wmask(),\
-.rvfi_csr_tcontrol_rdata(),\
-.rvfi_csr_tcontrol_wdata(),\
 .rvfi_csr_dcsr_rmask(),\
 .rvfi_csr_dcsr_wmask(),\
 .rvfi_csr_dcsr_rdata(),\

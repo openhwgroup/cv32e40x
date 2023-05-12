@@ -196,15 +196,9 @@ module cv32e40x_rvfi
    input logic [31:0]                         csr_tdata2_n_i,
    input logic [31:0]                         csr_tdata2_q_i,
    input logic                                csr_tdata2_we_i,
-   input logic [31:0]                         csr_tdata3_n_i,
-   input logic [31:0]                         csr_tdata3_q_i,
-   input logic                                csr_tdata3_we_i,
    input logic [31:0]                         csr_tinfo_n_i,
    input logic [31:0]                         csr_tinfo_q_i,
    input logic                                csr_tinfo_we_i,
-   input logic [31:0]                         csr_tcontrol_n_i,
-   input logic [31:0]                         csr_tcontrol_q_i,
-   input logic                                csr_tcontrol_we_i,
    input logic [31:0]                         csr_tselect_n_i,
    input logic [31:0]                         csr_tselect_q_i,
    input logic                                csr_tselect_we_i,
@@ -426,18 +420,14 @@ module cv32e40x_rvfi
    output logic [31:0]                        rvfi_csr_tselect_wmask,
    output logic [31:0]                        rvfi_csr_tselect_rdata,
    output logic [31:0]                        rvfi_csr_tselect_wdata,
-   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rmask, // 1-3 implemented
-   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wmask,
-   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_rdata,
-   output logic [ 3:0] [31:0]                 rvfi_csr_tdata_wdata,
+   output logic [ 2:0] [31:0]                 rvfi_csr_tdata_rmask, // 1-2 implemented
+   output logic [ 2:0] [31:0]                 rvfi_csr_tdata_wmask,
+   output logic [ 2:0] [31:0]                 rvfi_csr_tdata_rdata,
+   output logic [ 2:0] [31:0]                 rvfi_csr_tdata_wdata,
    output logic [31:0]                        rvfi_csr_tinfo_rmask,
    output logic [31:0]                        rvfi_csr_tinfo_wmask,
    output logic [31:0]                        rvfi_csr_tinfo_rdata,
    output logic [31:0]                        rvfi_csr_tinfo_wdata,
-   output logic [31:0]                        rvfi_csr_tcontrol_rmask,
-   output logic [31:0]                        rvfi_csr_tcontrol_wmask,
-   output logic [31:0]                        rvfi_csr_tcontrol_rdata,
-   output logic [31:0]                        rvfi_csr_tcontrol_wdata,
    output logic [31:0]                        rvfi_csr_dcsr_rmask,
    output logic [31:0]                        rvfi_csr_dcsr_wmask,
    output logic [31:0]                        rvfi_csr_dcsr_rdata,
@@ -1548,20 +1538,10 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.tdata[2]           = csr_tdata2_n_i;
   assign rvfi_csr_wmask_d.tdata[2]           = csr_tdata2_we_i ? '1 : '0;
 
-  assign rvfi_csr_rdata_d.tdata[3]           = csr_tdata3_q_i;
-  assign rvfi_csr_rmask_d.tdata[3]           = '1;
-  assign rvfi_csr_wdata_d.tdata[3]           = csr_tdata3_n_i;
-  assign rvfi_csr_wmask_d.tdata[3]           = csr_tdata3_we_i ? '1 : '0;
-
   assign rvfi_csr_rdata_d.tinfo              = csr_tinfo_q_i;
   assign rvfi_csr_rmask_d.tinfo              = '1;
   assign rvfi_csr_wdata_d.tinfo              = csr_tinfo_n_i;
   assign rvfi_csr_wmask_d.tinfo              = csr_tinfo_we_i ? '1 : '0;
-
-  assign rvfi_csr_rdata_d.tcontrol           = csr_tcontrol_q_i;
-  assign rvfi_csr_rmask_d.tcontrol           = '1;
-  assign rvfi_csr_wdata_d.tcontrol           = csr_tcontrol_n_i;
-  assign rvfi_csr_wmask_d.tcontrol           = csr_tcontrol_we_i ? '1 : '0;
 
   // Debug / Trace
   assign ex_csr_rdata_d.nmip                 = csr_dcsr_q_i[3]; // dcsr.nmip is autonomous. Propagate read value from EX stage
@@ -1902,17 +1882,13 @@ module cv32e40x_rvfi
   assign rvfi_csr_tselect_wmask           = rvfi_csr_wmask.tselect;
   assign rvfi_csr_tdata_rdata             = rvfi_csr_rdata.tdata;
   assign rvfi_csr_tdata_rmask[0]          = '0; // Does not exist
-  assign rvfi_csr_tdata_rmask[3:1]        = rvfi_csr_rmask.tdata[3:1];
+  assign rvfi_csr_tdata_rmask[2:1]        = rvfi_csr_rmask.tdata[2:1];
   assign rvfi_csr_tdata_wdata             = rvfi_csr_wdata.tdata;
   assign rvfi_csr_tdata_wmask             = rvfi_csr_wmask.tdata;
   assign rvfi_csr_tinfo_rdata             = rvfi_csr_rdata.tinfo;
   assign rvfi_csr_tinfo_rmask             = rvfi_csr_rmask.tinfo;
   assign rvfi_csr_tinfo_wdata             = rvfi_csr_wdata.tinfo;
   assign rvfi_csr_tinfo_wmask             = rvfi_csr_wmask.tinfo;
-  assign rvfi_csr_tcontrol_rdata          = rvfi_csr_rdata.tcontrol;
-  assign rvfi_csr_tcontrol_rmask          = rvfi_csr_rmask.tcontrol;
-  assign rvfi_csr_tcontrol_wdata          = rvfi_csr_wdata.tcontrol;
-  assign rvfi_csr_tcontrol_wmask          = rvfi_csr_wmask.tcontrol;
   assign rvfi_csr_dcsr_rdata              = rvfi_csr_rdata.dcsr;
   assign rvfi_csr_dcsr_rmask              = rvfi_csr_rmask.dcsr;
   assign rvfi_csr_dcsr_wdata              = rvfi_csr_wdata.dcsr;

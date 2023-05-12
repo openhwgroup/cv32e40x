@@ -44,17 +44,13 @@ import cv32e40x_pkg::*;
   input  logic        tselect_we_i,
   input  logic        tdata1_we_i,
   input  logic        tdata2_we_i,
-  input  logic        tdata3_we_i,
   input  logic        tinfo_we_i,
-  input  logic        tcontrol_we_i,
 
   // CSR read data outputs
   output logic [31:0] tselect_rdata_o,
   output logic [31:0] tdata1_rdata_o,
   output logic [31:0] tdata2_rdata_o,
-  output logic [31:0] tdata3_rdata_o,
   output logic [31:0] tinfo_rdata_o,
-  output logic [31:0] tcontrol_rdata_o,
 
   // IF stage inputs
   input  logic [31:0] pc_if_i,
@@ -84,9 +80,7 @@ import cv32e40x_pkg::*;
   // CSR write data
   logic [31:0] tselect_n;
   logic [31:0] tdata2_n;
-  logic [31:0] tdata3_n;
   logic [31:0] tinfo_n;
-  logic [31:0] tcontrol_n;
 
   // RVFI only signals
   logic [31:0] tdata1_n_r;
@@ -248,9 +242,7 @@ import cv32e40x_pkg::*;
           end
         end // tdata2_we_i
 
-        tdata3_n      = tdata3_rdata_o;   // Read only
         tinfo_n       = tinfo_rdata_o;    // Read only
-        tcontrol_n    = tcontrol_rdata_o; // Read only
       end
 
       // Calculate highest and lowest value of address[1:0] based on lsu_be_ex_i
@@ -463,10 +455,8 @@ import cv32e40x_pkg::*;
       end
 
 
-      assign tdata3_rdata_o   = 32'h00000000;
       assign tselect_rdata_o  = tselect_q;
       assign tinfo_rdata_o    = 32'h00008064; // Supported types 0x2, 0x5, 0x6 and 0xF
-      assign tcontrol_rdata_o = 32'h00000000;
 
       // Set trigger match for IF
       assign trigger_match_if_o = |trigger_match_if;
@@ -477,33 +467,28 @@ import cv32e40x_pkg::*;
       // Set trigger match for WB
       assign etrigger_wb_o = |etrigger_wb;
 
-      assign unused_signals = tinfo_we_i | tcontrol_we_i | tdata3_we_i | (|tinfo_n) | (|tdata3_n) | (|tcontrol_n) |
-                              (|tdata1_n_r) | (|tdata2_n_r) | tdata1_we_r | tdata2_we_r;
+      assign unused_signals = tinfo_we_i | (|tinfo_n) | (|tdata1_n_r) | (|tdata2_n_r) | tdata1_we_r | tdata2_we_r;
 
     end else begin : gen_no_triggers
       // Tie off outputs
       assign tdata1_rdata_o = '0;
       assign tdata2_rdata_o = '0;
-      assign tdata3_rdata_o = '0;
       assign tselect_rdata_o = '0;
       assign tinfo_rdata_o = '0;
-      assign tcontrol_rdata_o = '0;
       assign trigger_match_if_o = '0;
       assign trigger_match_ex_o = '0;
       assign etrigger_wb_o = '0;
       assign tdata1_n = '0;
       assign tdata2_n = '0;
-      assign tdata3_n = '0;
       assign tselect_n = '0;
       assign tinfo_n = '0;
-      assign tcontrol_n = '0;
       assign tdata1_n_r = '0;
       assign tdata2_n_r = '0;
       assign tdata1_we_r = 1'b0;
       assign tdata2_we_r = 1'b0;
 
-      assign unused_signals = (|tdata1_n) | (|tdata2_n) | (|tdata3_n) | (|tselect_n) | (|tinfo_n) | (|tcontrol_n) |
-                              (|csr_wdata_i) | tdata1_we_i | tdata2_we_i | tdata3_we_i | tselect_we_i | tinfo_we_i | tcontrol_we_i |
+      assign unused_signals = (|tdata1_n) | (|tdata2_n) | (|tselect_n) | (|tinfo_n) |
+                              (|csr_wdata_i) | tdata1_we_i | tdata2_we_i | tselect_we_i | tinfo_we_i |
                               (|tdata1_n_r) | (|tdata2_n_r) | tdata1_we_r | tdata2_we_r;
     end
   endgenerate
