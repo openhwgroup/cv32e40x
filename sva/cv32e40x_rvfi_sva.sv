@@ -517,15 +517,30 @@ end
     assign rvfi_mem.wdata = rvfi_mem_wdata;
     assign rvfi_mem.prot  = rvfi_mem_prot;
 
-`ifdef RVFI_SVA_CONST_DATA_OBI_GNT
-
     localparam MAX_GNT_DLY = 2;
 
-    // Need to constrain the delay on OBI gnt.
-    // All OBI transfers are assumed to be accepted when rvfi_mem_dly.valid is set
-    assume property (@(posedge clk_i) disable iff (!rst_ni)
-                     m_c_obi_data_if.s_req.req |-> ##[0:MAX_GNT_DLY] m_c_obi_data_if.s_gnt.gnt);
+    bit [$clog2(MAX_GNT_DLY+1):0]   obi_gnt_dly_cnt;
+    bit                             obi_gnt_delay_ok;
 
+    // Keep track of cycles with obi request but no grant
+    always_ff @(posedge clk_i, negedge rst_ni) begin
+      if(!rst_ni) begin
+        obi_gnt_dly_cnt <= '0;
+      end else begin
+        if(m_c_obi_data_if.s_req.req && !m_c_obi_data_if.s_gnt.gnt) begin
+          if (obi_gnt_dly_cnt <= MAX_GNT_DLY) begin
+            obi_gnt_dly_cnt <= obi_gnt_dly_cnt + 1;
+          end
+        end
+        else begin
+          obi_gnt_dly_cnt <= '0;
+        end
+      end
+    end
+
+    // Indicate that the OBI grant delay is small enough to allow the OBI FIFO to be populated
+    // before rvfi_mem_dly.valid is set
+    assign obi_gnt_delay_ok = obi_gnt_dly_cnt <= MAX_GNT_DLY;
 
     // Generate delayed version of rvfi_mem
     // Needed because write buffer can cause OBI tranfers to be accepted after it's signaled on RVFI
@@ -537,12 +552,6 @@ end
         rvfi_mem_dly <= $past(rvfi_mem, MAX_GNT_DLY-1);
       end
     end
-`else
-
-  // Asssertions related to writes will not be enabled, no need to delay rvfi_mem
-  assign rvfi_mem_dly = rvfi_mem;
-
-`endif
 
   // FIFOs for OBI transfers
   always_ff @(posedge clk_i, negedge rst_ni) begin
@@ -711,34 +720,30 @@ end
 
       a_rvfi_mem_consistency_read_prot:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     (rvfi_mem_read[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3]))
+                       rvfi_mem_read[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3])
         else `uvm_error("rvfi", "rvfi_mem_prot not consistent with OBI transfers for reads")
-
-`ifdef RVFI_SVA_CONST_DATA_OBI_GNT
-      // Assertions for write operations can only be included if OBI gnt is constrained
 
       a_rvfi_mem_consistency_write_addr:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     rvfi_mem_write[i_memop] |-> rvfi_mem_exp.addr[(32*i_memop) +: 32] == rvfi_mem_dly.addr[(32*i_memop) +: 32])
+                     obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.addr[(32*i_memop) +: 32] == rvfi_mem_dly.addr[(32*i_memop) +: 32])
         else `uvm_error("rvfi", "rvfi_mem_addr not consistent with OBI transfers for writes")
 
       a_rvfi_mem_consistency_write_wmask:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     rvfi_mem_write[i_memop] |-> rvfi_mem_exp.wmask[(4*i_memop) +: 4] == rvfi_mem_dly.wmask[(4*i_memop) +: 4])
+                     obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.wmask[(4*i_memop) +: 4] == rvfi_mem_dly.wmask[(4*i_memop) +: 4])
         else `uvm_error("rvfi", "rvfi_mem_wdata not consistent with OBI transfers")
 
       a_rvfi_mem_consistency_wdata:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     rvfi_mem_write[i_memop] |->
+                     obi_gnt_delay_ok && rvfi_mem_write[i_memop] |->
                        (rvfi_mem_exp.wdata[(32*i_memop) +: 32] & get_bitmask(rvfi_mem_exp.wmask[(4*i_memop) +: 4])) ==
                        (rvfi_mem_dly.wdata[(32*i_memop) +: 32] & get_bitmask(rvfi_mem_dly.wmask[(4*i_memop) +: 4])))
         else `uvm_error("rvfi", "rvfi_mem_wdata not consistent with OBI transfers")
 
       a_rvfi_mem_consistency_write_prot:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                     (rvfi_mem_write[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3]))
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3])
         else `uvm_error("rvfi", "rvfi_mem_prot not consistent with OBI transfers for writes")
-`endif
 
     end
 
