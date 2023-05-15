@@ -126,11 +126,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input logic         fencei_flush_ack_i,
 
   // Data OBI interface monitor
-  if_c_obi.monitor     m_c_obi_data_if,
+  cv32e40x_if_c_obi.monitor m_c_obi_data_if,
 
   // eXtension interface
-  if_xif.cpu_commit    xif_commit_if,
-  input                xif_csr_error_i
+  cv32e40x_if_xif.cpu_commit xif_commit_if,
+  input                      xif_csr_error_i
 );
 
    // FSM state encoding

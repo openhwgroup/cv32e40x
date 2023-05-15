@@ -73,7 +73,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
   output logic          wb_valid_o,
 
   // eXtension interface
-  if_xif.cpu_result     xif_result_if,
+  cv32e40x_if_xif.cpu_result xif_result_if,
 
   // Sticky WB outputs
   output logic          wpt_match_wb_o,

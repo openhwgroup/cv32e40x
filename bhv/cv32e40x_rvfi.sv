@@ -31,7 +31,7 @@ module cv32e40x_rvfi
    input logic                                rst_ni,
 
    // Non-pipeline Probes
-   if_c_obi.monitor                           m_c_obi_instr_if,
+   cv32e40x_if_c_obi.monitor                  m_c_obi_instr_if,
 
    //// IF Probes ////
    input logic                                if_valid_i,

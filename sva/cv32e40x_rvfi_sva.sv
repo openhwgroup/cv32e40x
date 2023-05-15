@@ -80,7 +80,7 @@ module cv32e40x_rvfi_sva
    input logic             wb_valid_lastop,
    input logic             etrigger_in_wb_i,
 
-   if_c_obi.monitor           m_c_obi_data_if,
+   cv32e40x_if_c_obi.monitor  m_c_obi_data_if,
    input logic [32*NMEM-1:0]  rvfi_mem_addr,
    input logic [ 4*NMEM-1:0]  rvfi_mem_rmask,
    input logic [ 4*NMEM-1:0]  rvfi_mem_wmask,

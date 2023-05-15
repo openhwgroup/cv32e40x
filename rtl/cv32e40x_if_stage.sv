@@ -65,7 +65,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic          trigger_match_i,
 
   // Instruction bus interface
-  if_c_obi.master       m_c_obi_instr_if,
+  cv32e40x_if_c_obi.master m_c_obi_instr_if,
 
   output if_id_pipe_t   if_id_pipe_o,           // IF/ID pipeline stage
   output logic [31:0]   pc_if_o,                // Program counter
@@ -83,8 +83,8 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic          id_ready_i,
 
   // eXtension interface
-  if_xif.cpu_compressed xif_compressed_if,      // XIF compressed interface
-  input  logic          xif_offloading_id_i     // ID stage attempts to offload an instruction
+  cv32e40x_if_xif.cpu_compressed xif_compressed_if,      // XIF compressed interface
+  input  logic                   xif_offloading_id_i     // ID stage attempts to offload an instruction
 );
 
   // ALBUF_DEPTH set to 3 as the alignment_buffer will need 3 entries to function correctly
