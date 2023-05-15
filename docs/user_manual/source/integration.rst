@@ -120,7 +120,7 @@ Parameters
 
 .. note::
    All eXtension interface parameters (``X_NUM_RS``, ``X_ID_WIDTH``, ``X_MEM_WIDTH``, ``X_RFR_WIDTH`` and ``X_RFW_WIDTH``)
-   must be set with values matching the actual ``if_xif`` instance and the coprocessor/interconnect available outside of |corev|.
+   must be set with values matching the actual ``cv32e40x_if_xif`` instance and the coprocessor/interconnect available outside of |corev|.
 
 .. table::
   :widths: 20 10 10 60

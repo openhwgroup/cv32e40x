@@ -97,8 +97,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   input  logic        ex_ready_i,     // EX stage is ready for new data
 
   // eXtension interface
-  if_xif.cpu_issue    xif_issue_if,
-  output logic        xif_offloading_o
+  cv32e40x_if_xif.cpu_issue xif_issue_if,
+  output logic              xif_offloading_o
 );
 
   // Source/Destination register instruction index

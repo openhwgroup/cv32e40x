@@ -89,8 +89,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   input  logic        ready_1_i,
 
   // eXtension interface
-  if_xif.cpu_mem        xif_mem_if,
-  if_xif.cpu_mem_result xif_mem_result_if
+  cv32e40x_if_xif.cpu_mem        xif_mem_if,
+  cv32e40x_if_xif.cpu_mem_result xif_mem_result_if
 );
 
   localparam DEPTH = 2;                         // Maximum number of outstanding transactions
