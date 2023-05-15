@@ -77,7 +77,7 @@ Non Maskable Interrupts
 
 Non Maskable Interrupts (NMIs) update ``mepc``, ``mcause`` and ``mstatus`` similar to regular interrupts.
 However, as the faults that result in NMIs are imprecise, the contents of ``mepc`` is not guaranteed to point to the instruction after the faulted load or store.
-The ``minsttatus`` CSR (which exists only if ``CLIC`` == 1) is not impacted by NMIs.
+The ``mintstatus`` CSR (which exists only if ``CLIC`` == 1) is not impacted by NMIs.
 
 .. note::
 
