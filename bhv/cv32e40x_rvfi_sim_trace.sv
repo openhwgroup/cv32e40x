@@ -27,7 +27,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module rvfi_sim_trace
+module cv32e40x_rvfi_sim_trace
   import cv32e40x_rvfi_pkg::*;
   #(parameter string ITB_PLUSARG = "itb_file",
     parameter string LOGFILE_PATH_PLUSARG = "log_file",
