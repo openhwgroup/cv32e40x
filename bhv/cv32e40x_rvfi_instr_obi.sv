@@ -38,7 +38,7 @@ module cv32e40x_rvfi_instr_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg:
   input logic                           prefetch_trans_ready_i,
   input logic                           prefetch_resp_valid_i,
 
-  if_c_obi.monitor                      m_c_obi_instr_if,
+  cv32e40x_if_c_obi.monitor             m_c_obi_instr_if,
 
   output rvfi_obi_instr_t               obi_instr                               // OBI address and response phase packet aligned to IF timing
 );

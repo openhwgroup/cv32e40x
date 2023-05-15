@@ -24,7 +24,7 @@
 // 
 // The 'c' in the interface names means 'Compressed'
 // since this interface is a subset of the full OBI spec.
-interface if_c_obi import cv32e40x_pkg::*;
+interface cv32e40x_if_c_obi import cv32e40x_pkg::*;
 #(
     parameter type REQ_TYPE  = obi_inst_req_t,
     parameter type RESP_TYPE = obi_inst_resp_t
@@ -49,4 +49,4 @@ interface if_c_obi import cv32e40x_pkg::*;
               s_gnt, s_rvalid, resp_payload
        );
 
-endinterface : if_c_obi
+endinterface : cv32e40x_if_c_obi

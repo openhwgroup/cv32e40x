@@ -45,7 +45,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   input  ctrl_fsm_t   ctrl_fsm_i,
 
   // output to data memory
-  if_c_obi.master     m_c_obi_data_if,
+  cv32e40x_if_c_obi.master m_c_obi_data_if,
 
   // ID/EX pipeline
   input id_ex_pipe_t  id_ex_pipe_i,
