@@ -83,7 +83,6 @@ import cv32e40x_pkg::*;
 
   // CSR write data
   logic [31:0] tselect_n;
-  logic [31:0] tdata1_n;
   logic [31:0] tdata2_n;
   logic [31:0] tdata3_n;
   logic [31:0] tinfo_n;
@@ -106,6 +105,9 @@ import cv32e40x_pkg::*;
       // Internal CSR write enables
       logic [DBG_NUM_TRIGGERS-1 : 0] tdata1_we_int;
       logic [DBG_NUM_TRIGGERS-1 : 0] tdata2_we_int;
+
+      // Next-values for tdata1
+      logic [31:0] tdata1_n[DBG_NUM_TRIGGERS];
 
       // CSR instance outputs
       logic [31:0] tdata1_q[DBG_NUM_TRIGGERS];
@@ -143,87 +145,95 @@ import cv32e40x_pkg::*;
       logic [31:0] exception_match[DBG_NUM_TRIGGERS];
 
       // Write data
+      // tdata1 has one _n value per implemented trigger to enable updating all hit-fields of
+      // mcontrol6 at the same time.
+      for (genvar idx=0; idx<DBG_NUM_TRIGGERS; idx++) begin : tdata1_wdata
+        always_comb begin
+          tdata1_n[idx]  = tdata1_rdata[idx];
+
+          if (tdata1_we_i && (tselect_rdata_o == idx)) begin
+            if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL) begin
+              // Mcontrol supports any value in tdata2, no need to check tdata2 before writing tdata1
+              tdata1_n[idx] = {
+                                TTYPE_MCONTROL,        // type    : address/data match
+                                1'b1,                  // dmode   : access from D mode only
+                                6'b000000,             // maskmax  : hardwired to zero
+                                1'b0,                  // hit     : hardwired to zero
+                                1'b0,                  // select  : hardwired to zero, only address matching
+                                1'b0,                  // timing  : hardwired to zero, only 'before' timing
+                                2'b00,                 // sizelo  : hardwired to zero, match any size
+                                4'b0001,               // action  : enter debug on match
+                                1'b0,                  // chain   : hardwired to zero
+                                mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
+                                csr_wdata_i[6],        // m       : match in machine mode
+                                1'b0,                  //         : hardwired to zero
+                                1'b0,                  // s       : hardwired to zer0
+                                mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
+                                csr_wdata_i[2],        // EXECUTE 2
+                                csr_wdata_i[1],        // STORE 1
+                                csr_wdata_i[0]         // LOAD 0
+                            };
+            end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) begin
+              // Mcontrol6 supports any value in tdata2, no need to check tdata2 before writing tdata1
+              tdata1_n[idx] = {
+                                TTYPE_MCONTROL6,       // type    : address/data match
+                                1'b1,                  // dmode   : access from D mode only
+                                2'b00,                 // zero  26:25
+                                3'b000,                // zero, vs, vu, hit 24:22
+                                1'b0,                  // zero, select 21
+                                1'b0,                  // zero, timing 20
+                                4'b0000,               // zero, size (match any size) 19:16
+                                4'b0001,               // action, WARL(1), enter debug 15:12
+                                1'b0,                  // zero, chain 11
+                                mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
+                                csr_wdata_i[6],        // M  6
+                                1'b0,                  // zero 5
+                                1'b0,                  // zero, S 4
+                                mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
+                                csr_wdata_i[2],        // EXECUTE 2
+                                csr_wdata_i[1],        // STORE 1
+                                csr_wdata_i[0]         // LOAD 0
+                              };
+            end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_ETRIGGER) begin
+              // Etrigger can only support a subset of possible values in tdata2, only update tdata1 if
+              // tdata2 contains a legal value for etrigger.
+
+              // Detect if any cleared bits in ETRIGGER_TDATA2_MASK are set in tdata2
+              if (|(tdata2_rdata_o & (~ETRIGGER_TDATA2_MASK))) begin
+                // Unsupported exception codes enabled, default to disabled trigger.
+                tdata1_n[idx] = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
+              end else begin
+                tdata1_n[idx] = {
+                                  TTYPE_ETRIGGER,        // type  : exception trigger
+                                  1'b1,                  // dmode : access from D mode only 27
+                                  1'b0,                  // hit   : WARL(0) 26
+                                  13'h0,                 // zero  : tied to zero 25:13
+                                  1'b0,                  // vs    : WARL(0) 12
+                                  1'b0,                  // vu    : WARL(0) 11
+                                  1'b0,                  // zero  : tied to zero 10
+                                  csr_wdata_i[9],        // m     : Match in machine mode 9
+                                  1'b0,                  // zero  : tied to zero 8
+                                  1'b0,                  // s     : WARL(0) 7
+                                  etrigger_u_resolve(csr_wdata_i[ETRIGGER_U]), // u     : Match in user mode 6
+                                  6'b000001              // action : WARL(1), enter debug on match
+                                };
+              end
+            end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_DISABLED) begin
+              // All tdata2 values are legal for a disabled trigger, no WARL on tdata1.
+              tdata1_n[idx] = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
+            end else begin
+              // No legal trigger type, set disabled trigger type 0xF
+              tdata1_n[idx] = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
+            end
+          end // tdata1_we_i
+        end
+      end //for
+
+      // Write data for tdata2 and tselect
       always_comb begin
         // Tselect is WARL (0 -> DBG_NUM_TRIGGERS-1)
         tselect_n = (csr_wdata_i < DBG_NUM_TRIGGERS) ? csr_wdata_i : tselect_rdata_o;
-        tdata1_n  = tdata1_rdata_o;
         tdata2_n  = tdata2_rdata_o;
-
-        if (tdata1_we_i) begin
-          if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL) begin
-            // Mcontrol supports any value in tdata2, no need to check tdata2 before writing tdata1
-            tdata1_n = {
-                        TTYPE_MCONTROL,        // type    : address/data match
-                        1'b1,                  // dmode   : access from D mode only
-                        6'b000000,             // maskmax  : hardwired to zero
-                        1'b0,                  // hit     : hardwired to zero
-                        1'b0,                  // select  : hardwired to zero, only address matching
-                        1'b0,                  // timing  : hardwired to zero, only 'before' timing
-                        2'b00,                 // sizelo  : hardwired to zero, match any size
-                        4'b0001,               // action  : enter debug on match
-                        1'b0,                  // chain   : hardwired to zero
-                        mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
-                        csr_wdata_i[6],        // m       : match in machine mode
-                        1'b0,                  //         : hardwired to zero
-                        1'b0,                  // s       : hardwired to zer0
-                        mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
-                        csr_wdata_i[2],        // EXECUTE 2
-                        csr_wdata_i[1],        // STORE 1
-                        csr_wdata_i[0]         // LOAD 0
-            };
-          end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) begin
-            // Mcontrol6 supports any value in tdata2, no need to check tdata2 before writing tdata1
-            tdata1_n = {
-                        TTYPE_MCONTROL6,       // type    : address/data match
-                        1'b1,                  // dmode   : access from D mode only
-                        2'b00,                 // zero  26:25
-                        3'b000,                // zero, vs, vu, hit 24:22
-                        1'b0,                  // zero, select 21
-                        1'b0,                  // zero, timing 20
-                        4'b0000,               // zero, size (match any size) 19:16
-                        4'b0001,               // action, WARL(1), enter debug 15:12
-                        1'b0,                  // zero, chain 11
-                        mcontrol2_6_match_resolve(csr_wdata_i[MCONTROL2_6_MATCH_HIGH:MCONTROL2_6_MATCH_LOW]), // match, WARL(0,2,3) 10:7
-                        csr_wdata_i[6],        // M  6
-                        1'b0,                  // zero 5
-                        1'b0,                  // zero, S 4
-                        mcontrol2_6_u_resolve(csr_wdata_i[MCONTROL2_6_U]),     // zero, U 3
-                        csr_wdata_i[2],        // EXECUTE 2
-                        csr_wdata_i[1],        // STORE 1
-                        csr_wdata_i[0]         // LOAD 0
-            };
-          end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_ETRIGGER) begin
-            // Etrigger can only support a subset of possible values in tdata2, only update tdata1 if
-            // tdata2 contains a legal value for etrigger.
-
-            // Detect if any cleared bits in ETRIGGER_TDATA2_MASK are set in tdata2
-            if (|(tdata2_rdata_o & (~ETRIGGER_TDATA2_MASK))) begin
-              // Unsupported exception codes enabled, default to disabled trigger.
-              tdata1_n = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
-            end else begin
-              tdata1_n = {
-                          TTYPE_ETRIGGER,        // type  : exception trigger
-                          1'b1,                  // dmode : access from D mode only 27
-                          1'b0,                  // hit   : WARL(0) 26
-                          13'h0,                 // zero  : tied to zero 25:13
-                          1'b0,                  // vs    : WARL(0) 12
-                          1'b0,                  // vu    : WARL(0) 11
-                          1'b0,                  // zero  : tied to zero 10
-                          csr_wdata_i[9],        // m     : Match in machine mode 9
-                          1'b0,                  // zero  : tied to zero 8
-                          1'b0,                  // s     : WARL(0) 7
-                          etrigger_u_resolve(csr_wdata_i[ETRIGGER_U]), // u     : Match in user mode 6
-                          6'b000001              // action : WARL(1), enter debug on match
-              };
-            end
-          end else if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_DISABLED) begin
-            // All tdata2 values are legal for a disabled trigger, no WARL on tdata1.
-            tdata1_n = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
-          end else begin
-            // No legal trigger type, set disabled trigger type 0xF
-            tdata1_n = {TTYPE_DISABLED, 1'b1, {27{1'b0}}};
-          end
-        end // tdata1_we_i
 
         // tdata2
         if (tdata2_we_i) begin
@@ -369,7 +379,7 @@ import cv32e40x_pkg::*;
         (
           .clk                ( clk                   ),
           .rst_n              ( rst_n                 ),
-          .wr_data_i          ( tdata1_n              ),
+          .wr_data_i          ( tdata1_n[idx]         ),
           .wr_en_i            ( tdata1_we_int[idx]    ),
           .rd_data_o          ( tdata1_q[idx]         )
         );
@@ -432,7 +442,14 @@ import cv32e40x_pkg::*;
         tdata1_we_r = tdata1_we_i || tselect_we_i;
         tdata2_we_r = tdata2_we_i || tselect_we_i;
 
-        tdata1_n_r = tdata1_n;
+        tdata1_n_r = tdata1_n[0];
+
+        for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
+          if(tselect_rdata_o == i) begin
+            tdata1_n_r = tdata1_n[i];
+          end
+        end
+
         tdata2_n_r = tdata2_n;
 
         if (tselect_we_i) begin
