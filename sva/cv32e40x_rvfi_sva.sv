@@ -86,7 +86,10 @@ module cv32e40x_rvfi_sva
    input logic [ 4*NMEM-1:0]  rvfi_mem_wmask,
    input logic [32*NMEM-1:0]  rvfi_mem_rdata,
    input logic [32*NMEM-1:0]  rvfi_mem_wdata,
-   input logic [ 3*NMEM-1:0]  rvfi_mem_prot
+   input logic [ 3*NMEM-1:0]  rvfi_mem_prot,
+   input logic [ 6*NMEM-1:0]  rvfi_mem_atop,
+   input logic [ 2*NMEM-1:0]  rvfi_mem_memtype,
+   input logic [ 1*NMEM-1:0]  rvfi_mem_dbg
 );
 
   if (CLIC) begin
@@ -446,6 +449,9 @@ end
       bit [32*NMEM-1:0] rdata;
       bit [32*NMEM-1:0] wdata;
       bit [ 3*NMEM-1:0] prot;
+      bit [ 6*NMEM-1:0] atop;
+      bit [ 2*NMEM-1:0] memtype;
+      bit [ 1*NMEM-1:0] dbg;
     } rvfi_mem_t;
 
     // Return number of memory operations based on rvfi_mem_rmaks/wmask
@@ -510,12 +516,15 @@ end
                                                          ((rvfi_trap.debug_cause == 3'h1) ||   // Debug Breakpoint
                                                           (rvfi_trap.debug_cause == 3'h2))));  // Debug trigger match
 
-    assign rvfi_mem.addr  = rvfi_mem_addr;
-    assign rvfi_mem.rmask = rvfi_mem_rmask;
-    assign rvfi_mem.wmask = rvfi_mem_wmask;
-    assign rvfi_mem.rdata = rvfi_mem_rdata;
-    assign rvfi_mem.wdata = rvfi_mem_wdata;
-    assign rvfi_mem.prot  = rvfi_mem_prot;
+    assign rvfi_mem.addr    = rvfi_mem_addr;
+    assign rvfi_mem.rmask   = rvfi_mem_rmask;
+    assign rvfi_mem.wmask   = rvfi_mem_wmask;
+    assign rvfi_mem.rdata   = rvfi_mem_rdata;
+    assign rvfi_mem.wdata   = rvfi_mem_wdata;
+    assign rvfi_mem.prot    = rvfi_mem_prot;
+    assign rvfi_mem.atop    = rvfi_mem_atop;
+    assign rvfi_mem.memtype = rvfi_mem_memtype;
+    assign rvfi_mem.dbg     = rvfi_mem_dbg;
 
     localparam MAX_GNT_DLY = 2;
 
@@ -628,12 +637,15 @@ end
       // Assemble expected transaction on RVFI, based on OBI FIFO
       always_comb begin
 
-        rvfi_mem_exp.addr [32*i_memop +: 32] = '0;
-        rvfi_mem_exp.rmask[ 4*i_memop +:  4] = '0;
-        rvfi_mem_exp.wmask[ 4*i_memop +:  4] = '0;
-        rvfi_mem_exp.rdata[32*i_memop +: 32] = '0;
-        rvfi_mem_exp.wdata[32*i_memop +: 32] = '0;
-        rvfi_mem_exp.prot [ 3*i_memop +:  3] = '0;
+        rvfi_mem_exp.addr    [32*i_memop +: 32] = '0;
+        rvfi_mem_exp.rmask   [ 4*i_memop +:  4] = '0;
+        rvfi_mem_exp.wmask   [ 4*i_memop +:  4] = '0;
+        rvfi_mem_exp.rdata   [32*i_memop +: 32] = '0;
+        rvfi_mem_exp.wdata   [32*i_memop +: 32] = '0;
+        rvfi_mem_exp.prot    [ 3*i_memop +:  3] = '0;
+        rvfi_mem_exp.atop    [ 6*i_memop +:  6] = '0;
+        rvfi_mem_exp.memtype [ 2*i_memop +:  2] = '0;
+        rvfi_mem_exp.dbg     [ 1*i_memop +:  1] = '0;
 
         exp_rvfi_mem_mask                    = '0;
         split_2nd_shift                      = '0;
@@ -686,8 +698,11 @@ end
           end
 
           // Addr and prot are equal for both transfers in a split transfer
-          rvfi_mem_exp.addr[(32*i_memop) +: 32] = data_obi_req_fifo[rd_ptr_memop].addr;
-          rvfi_mem_exp.prot[(3*i_memop)  +: 3]  = data_obi_req_fifo[rd_ptr_memop].prot;
+          rvfi_mem_exp.addr   [(32*i_memop) +: 32] = data_obi_req_fifo[rd_ptr_memop].addr;
+          rvfi_mem_exp.prot   [(3*i_memop)  +: 3]  = data_obi_req_fifo[rd_ptr_memop].prot;
+          rvfi_mem_exp.atop   [(6*i_memop)  +: 6]  = data_obi_req_fifo[rd_ptr_memop].atop;
+          rvfi_mem_exp.memtype[(2*i_memop)  +: 2]  = data_obi_req_fifo[rd_ptr_memop].memtype;
+          rvfi_mem_exp.dbg    [(1*i_memop)  +: 1]  = data_obi_req_fifo[rd_ptr_memop].dbg;
 
           if(rvfi_mem_read[i_memop]) begin
             rvfi_mem_exp.rmask[(4*i_memop) +: 4] = exp_rvfi_mem_mask;
@@ -723,6 +738,21 @@ end
                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3])
         else `uvm_error("rvfi", "rvfi_mem_prot not consistent with OBI transfers for reads")
 
+      a_rvfi_mem_consistency_read_atop:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.atop[(6*i_memop) +: 6] == rvfi_mem_dly.atop[(6*i_memop) +: 6])
+        else `uvm_error("rvfi", "rvfi_mem_atop not consistent with OBI transfers for reads")
+
+      a_rvfi_mem_consistency_read_memtype:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.memtype[(2*i_memop) +: 2] == rvfi_mem_dly.memtype[(2*i_memop) +: 2])
+        else `uvm_error("rvfi", "rvfi_mem_memtype not consistent with OBI transfers for reads")
+
+      a_rvfi_mem_consistency_read_dbg:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.dbg[(1*i_memop) +: 1] == rvfi_mem_dly.dbg[(1*i_memop) +: 1])
+        else `uvm_error("rvfi", "rvfi_mem_dbg not consistent with OBI transfers for reads")
+
       a_rvfi_mem_consistency_write_addr:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
                      obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.addr[(32*i_memop) +: 32] == rvfi_mem_dly.addr[(32*i_memop) +: 32])
@@ -745,6 +775,20 @@ end
                        obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.prot[(3*i_memop) +: 3] == rvfi_mem_dly.prot[(3*i_memop) +: 3])
         else `uvm_error("rvfi", "rvfi_mem_prot not consistent with OBI transfers for writes")
 
+      a_rvfi_mem_consistency_write_atop:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.atop[(6*i_memop) +: 6] == rvfi_mem_dly.atop[(6*i_memop) +: 6])
+        else `uvm_error("rvfi", "rvfi_mem_atop not consistent with OBI transfers for writes")
+
+      a_rvfi_mem_consistency_write_memtype:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                        obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.memtype[(2*i_memop) +: 2] == rvfi_mem_dly.memtype[(2*i_memop) +: 2])
+        else `uvm_error("rvfi", "rvfi_mem_memtype not consistent with OBI transfers for writes")
+
+      a_rvfi_mem_consistency_write_dbg:
+      assert property (@(posedge clk_i) disable iff (!rst_ni)
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.dbg[(1*i_memop) +: 1] == rvfi_mem_dly.dbg[(1*i_memop) +: 1])
+        else `uvm_error("rvfi", "rvfi_mem_dbg not consistent with OBI transfers for writes")
     end
 
   endgenerate
