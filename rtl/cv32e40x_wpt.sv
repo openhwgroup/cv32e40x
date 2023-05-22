@@ -94,7 +94,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
 
     case(state_q)
       WPT_IDLE: begin
-        if (trigger_match_i && core_trans_valid_i) begin
+        if (|trigger_match_i && core_trans_valid_i) begin
           // Remember which trigger(s) hit
           wpt_match_n = trigger_match_i;
 

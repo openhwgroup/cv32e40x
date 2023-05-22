@@ -42,8 +42,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   parameter m_ext_e      M_EXT           = M_NONE,
   parameter bit          DEBUG           = 1,
   parameter logic [31:0] DM_REGION_START = 32'hF0000000,
-  parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF,
-  parameter int          DBG_NUM_TRIGGERS = 1
+  parameter logic [31:0] DM_REGION_END   = 32'hF0003FFF
 )
 (
   input  logic          clk,
@@ -432,7 +431,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
         if_id_pipe_o.illegal_c_insn   <= seq_valid ? 1'b0 : illegal_c_insn;
 
         if_id_pipe_o.priv_lvl         <= prefetch_priv_lvl;
-        if_id_pipe_o.trigger_match    <= {{(32-DBG_NUM_TRIGGERS){1'b0}}, trigger_match_i[DBG_NUM_TRIGGERS-1:0]};
+        if_id_pipe_o.trigger_match    <= trigger_match_i;
         if_id_pipe_o.xif_id           <= xif_id;
         if_id_pipe_o.last_op          <= last_op_o;
         if_id_pipe_o.first_op         <= first_op_o;

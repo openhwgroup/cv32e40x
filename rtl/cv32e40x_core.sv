@@ -465,8 +465,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .M_EXT               ( M_EXT                    ),
     .DEBUG               ( DEBUG                    ),
     .DM_REGION_START     ( DM_REGION_START          ),
-    .DM_REGION_END       ( DM_REGION_END            ),
-    .DBG_NUM_TRIGGERS    ( DBG_NUM_TRIGGERS         )
+    .DM_REGION_END       ( DM_REGION_END            )
   )
   if_stage_i
   (
@@ -527,8 +526,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    ),
-    .CLIC                         ( CLIC                      ),
-    .DBG_NUM_TRIGGERS             ( DBG_NUM_TRIGGERS          )
+    .CLIC                         ( CLIC                      )
   )
   id_stage_i
   (
@@ -597,8 +595,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .X_EXT                      ( X_EXT                        ),
     .B_EXT                      ( B_EXT                        ),
-    .M_EXT                      ( M_EXT                        ),
-    .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS             )
+    .M_EXT                      ( M_EXT                        )
   )
   ex_stage_i
   (

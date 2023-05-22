@@ -139,6 +139,10 @@ import cv32e40x_pkg::*;
       // Exception trigger code match
       logic [31:0] exception_match[DBG_NUM_TRIGGERS];
 
+      // Resolve hit1+hit0 of mcontrol6
+      logic [1:0] mcontrol6_hit_resolved[DBG_NUM_TRIGGERS];
+
+
       // Write data
       // tdata1 has one _n value per implemented trigger to enable updating all hit-fields of
       // mcontrol6 at the same time.
@@ -146,6 +150,9 @@ import cv32e40x_pkg::*;
         always_comb begin
           tdata1_n[idx]  = tdata1_rdata[idx];
           tdata1_we_hit[idx] = 1'b0;
+
+          mcontrol6_hit_resolved[idx] = mcontrol6_hit_resolve({tdata1_rdata[idx][MCONTROL_6_HIT1], tdata1_rdata[idx][MCONTROL_6_HIT0]},
+                                                              {csr_wdata_i[MCONTROL_6_HIT1], csr_wdata_i[MCONTROL_6_HIT0]});
           if (tdata1_we_i && (tselect_rdata_o == idx)) begin
             if (csr_wdata_i[TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL) begin
               // Mcontrol supports any value in tdata2, no need to check tdata2 before writing tdata1
@@ -174,9 +181,9 @@ import cv32e40x_pkg::*;
                                 TTYPE_MCONTROL6,       // type    : address/data match
                                 1'b1,                  // dmode   : access from D mode only
                                 mcontrol6_uncertain_resolve(csr_wdata_i[MCONTROL_6_UNCERTAIN]), // uncertain  26
-                                mcontrol6_hit1_resolve(csr_wdata_i[MCONTROL_6_HIT1]), // hit1: 25
-                                2'b00,                // zero, vs, vu, hit 24:23
-                                mcontrol6_hit0_resolve(csr_wdata_i[MCONTROL_6_HIT0]), // hit0: 22
+                                mcontrol6_hit_resolved[idx][1], // hit1: 25
+                                2'b00,                // zero, vs, vu
+                                mcontrol6_hit_resolved[idx][0], // hit0: 22
                                 1'b0,                  // zero, select 21
                                 2'b00,                 // zero, 20:19
                                 3'b000,                // zero, size (match any size) 18:16
@@ -224,7 +231,7 @@ import cv32e40x_pkg::*;
             end
           end // tdata1_we_i
 
-          // Writes from the controller takes presedence over SW writes
+          // SW writes and writes from controller cannot happen at the same time.
           // Update bits {hit1, hit0} (WARL 0x0, 0x1)
           if (ctrl_fsm_i.debug_trigger_hit_update) begin
             if (tdata1_rdata[idx][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) begin

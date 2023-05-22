@@ -1477,20 +1477,13 @@ typedef struct packed {
     return 1'b0;
   endfunction
 
-  function automatic logic mcontrol6_hit1_resolve
+  function automatic logic [1:0] mcontrol6_hit_resolve
   (
-    logic next_value
+    logic [1:0] current_value,
+    logic [1:0] next_value
   );
-    // mcontrol6.hit1 is WARL(0x0)
-    return 1'b0;
-  endfunction
-
-  function automatic logic mcontrol6_hit0_resolve
-  (
-    logic next_value
-  );
-    // mcontrol6.hit0 is WARL(0, 1)
-    return next_value;
+    // mcontrol6.hit is WARL(0x0, 0x1)
+    return ((next_value != 2'b00) && (next_value != 2'b01)) ? current_value : next_value;
   endfunction
 
   function automatic logic etrigger_u_resolve

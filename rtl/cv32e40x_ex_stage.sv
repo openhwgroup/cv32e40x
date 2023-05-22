@@ -34,8 +34,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 #(
   parameter bit     X_EXT            = 1'b0,
   parameter b_ext_e B_EXT            = B_NONE,
-  parameter m_ext_e M_EXT            = M,
-  parameter int     DBG_NUM_TRIGGERS = 1
+  parameter m_ext_e M_EXT            = M
 )
 (
   input  logic        clk,
@@ -421,7 +420,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-        ex_wb_pipe_o.trigger_match  <= {{(32-DBG_NUM_TRIGGERS){1'b0}}, id_ex_pipe_i.trigger_match[DBG_NUM_TRIGGERS-1:0]};
+        ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
 
         // eXtension interface
         ex_wb_pipe_o.xif_en         <= ctrl_fsm_i.kill_xif ? 1'b0 : id_ex_pipe_i.xif_en;

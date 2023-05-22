@@ -331,7 +331,8 @@ module cv32e40x_wrapper
       #(.A_EXT(A_EXT),
         .DEBUG(DEBUG),
         .PMA_NUM_REGIONS(PMA_NUM_REGIONS),
-        .CLIC(CLIC))
+        .CLIC(CLIC),
+        .DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS))
       core_sva (// probed cs_registers signals
                 .cs_registers_mie_q               (core_i.cs_registers_i.mie_q),
                 .cs_registers_mepc_n              (core_i.cs_registers_i.mepc_n),

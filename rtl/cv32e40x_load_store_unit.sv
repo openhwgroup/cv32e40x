@@ -938,7 +938,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
                                             trans.we ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT
                                            ) : '0;
-      assign xif_mem_if.mem_resp.dbg     = |xif_wpt_match; // TODO:XIF Is one bit enough?
+      assign xif_mem_if.mem_resp.dbg     = |xif_wpt_match;
 
       // XIF memory result
       assign xif_mem_result_if.mem_result.id    = xif_id_q;
