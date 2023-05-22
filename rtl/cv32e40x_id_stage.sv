@@ -540,7 +540,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.pc                     <= 32'b0;
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.instr_meta             <= '0;
-      id_ex_pipe_o.trigger_match          <= 1'b0;
+      id_ex_pipe_o.trigger_match          <= '0;
 
       id_ex_pipe_o.first_op               <= 1'b0;
       id_ex_pipe_o.last_op                <= 1'b0;

@@ -29,7 +29,8 @@ module cv32e40x_core_sva
     parameter a_ext_e A_EXT = A_NONE,
     parameter bit     DEBUG = 1,
     parameter int     PMA_NUM_REGIONS = 0,
-    parameter bit     CLIC = 0
+    parameter bit     CLIC = 0,
+    parameter int     DBG_NUM_TRIGGERS = 1
   )
   (
   input logic        clk,
@@ -69,7 +70,7 @@ module cv32e40x_core_sva
   input lsu_atomic_e   lsu_atomic_wb,
   input logic          lsu_valid_wb,
   input logic          lsu_exception_wb,
-  input logic          lsu_wpt_match_wb,
+  input logic [31:0]   lsu_wpt_match_wb,
   input logic [31:0]   lsu_rdata_wb,
   input logic          lsu_exokay_wb,
 
@@ -486,7 +487,7 @@ end
       // All instructions from the A-extension write the register file
       a_all_atop_write_rf:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb != AT_NONE) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb
+                        (lsu_atomic_wb != AT_NONE) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb)
                         |->
                         rf_we_wb)
           else `uvm_error("core", "Atomic instruction did not write the register file")
@@ -494,7 +495,7 @@ end
       // SC.W which receives !exokay must write 1 to the register file
       a_atop_sc_fault_rf_wdata:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb &&
+                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb) &&
                         !lsu_exokay_wb
                         |->
                         (lsu_rdata_wb == 32'h1))
@@ -503,7 +504,7 @@ end
       // SC.W which receives exokay must write 0 to the register file
       a_atop_sc_success_rf_wdata:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb &&
+                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb) &&
                         lsu_exokay_wb
                         |->
                         (lsu_rdata_wb == 32'h0))
@@ -524,7 +525,7 @@ end
         assert property (@(posedge clk) disable iff (!rst_ni)
                         (ex_wb_pipe.lsu_en && ex_wb_pipe.instr_valid) &&   // Valid LSU instruction in WB
                         (lsu_atomic_wb != AT_NONE) &&                      // LSU instruction is atomic
-                        !(lsu_exception_wb || lsu_wpt_match_wb)            // No exception or watchpoint (it reached the bus)
+                        !(lsu_exception_wb || |lsu_wpt_match_wb)           // No exception or watchpoint (it reached the bus)
                         |->
                         !data_req_o &&
                         (cnt_q == 2'b01))
@@ -722,6 +723,17 @@ generate
       else `uvm_error("core", "Assertion a_single_step_no_irq failed")
 
     // todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
+
+    // Check that unused trigger bits remain zero
+    a_unused_trigger_bits:
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                    1'b1
+                    |->
+                    (|if_id_pipe.trigger_match[31:DBG_NUM_TRIGGERS] == 1'b0) &&
+                    (|id_ex_pipe.trigger_match[31:DBG_NUM_TRIGGERS] == 1'b0) &&
+                    (|ex_wb_pipe.trigger_match[31:DBG_NUM_TRIGGERS] == 1'b0) &&
+                    (|lsu_wpt_match_wb[31:DBG_NUM_TRIGGERS] == 1'b0))
+      else `uvm_error("core", "Unused trigger bits are not zero")
 
   end
 endgenerate

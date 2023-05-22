@@ -62,7 +62,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   input  logic [MTVT_ADDR_WIDTH-1:0]   mtvt_addr_i,            // Base address for CLIC vectoring
 
   input ctrl_fsm_t      ctrl_fsm_i,
-  input  logic          trigger_match_i,
+  input  logic [31:0]   trigger_match_i,
 
   // Instruction bus interface
   cv32e40x_if_c_obi.master m_c_obi_instr_if,
@@ -381,7 +381,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
   // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
   assign abort_op_o = instr_decompressed.bus_resp.err || (instr_decompressed.mpu_status != MPU_OK) ||
-                      (instr_decompressed.align_status != ALIGN_OK) || trigger_match_i;
+                      (instr_decompressed.align_status != ALIGN_OK) || |trigger_match_i;
 
   // Signal current privilege level of IF
   assign priv_lvl_if_o = prefetch_priv_lvl;
@@ -413,7 +413,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       if_id_pipe_o.illegal_c_insn   <= 1'b0;
       if_id_pipe_o.compressed_instr <= '0;
       if_id_pipe_o.priv_lvl         <= PRIV_LVL_M;
-      if_id_pipe_o.trigger_match    <= 1'b0;
+      if_id_pipe_o.trigger_match    <= '0;
       if_id_pipe_o.xif_id           <= '0;
       if_id_pipe_o.ptr              <= '0;
       if_id_pipe_o.last_op          <= 1'b0;

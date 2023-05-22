@@ -45,7 +45,11 @@ module cv32e40x_debug_triggers_sva
    input logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match_en,
    input privlvl_t    priv_lvl_ex_i,
    input lsu_atomic_e lsu_atomic_ex_i,
-   input logic        lsu_valid_ex_i
+   input logic        lsu_valid_ex_i,
+   input logic [31:0] trigger_match_if_wb,
+   input logic [31:0] trigger_match_ex_wb,
+   input logic        wb_valid_i,
+   input logic        tdata1_we_i
   );
 
 
@@ -85,6 +89,53 @@ module cv32e40x_debug_triggers_sva
                   |=>
                   $stable(tdata2_q)) // Checking stability of ALL tdata2, not just the one selected
     else `uvm_error("debug_triggers", "tdata2_q changed after set/clear with rs1==0")
+
+generate
+  for (genvar i=0; i<DBG_NUM_TRIGGERS; i++) begin
+    // Check that tdata1.hit0 is 1 and tdata1.hit1 is 0 when a mcontrol6 trigger matched when debug is entered
+    a_mcontrol6_hit_set:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (tdata1_q[i][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) &&
+                    (trigger_match_if_wb[i] || trigger_match_ex_wb[i]) &&
+                    wb_valid_i
+                    |=>
+                    (tdata1_q[i][MCONTROL_6_HIT0] == 1'b1) &&
+                    (tdata1_q[i][MCONTROL_6_HIT1] == 1'b0))
+      else `uvm_error("debug_triggers", "mcontrol6.hit0 not set on trigger match")
+
+    // Check that trigger that did not match has stable {hit1, hit0}
+    a_mcontrol6_not_hit_stable:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    (tdata1_q[i][TDATA1_TTYPE_HIGH:TDATA1_TTYPE_LOW] == TTYPE_MCONTROL6) &&
+                    |(trigger_match_if_wb | trigger_match_ex_wb) &&         // Any trigger matched
+                    !(trigger_match_if_wb[i] || trigger_match_ex_wb[i]) &&  // But not this one
+                    wb_valid_i
+                    |=>
+                    ($stable(tdata1_q[i][MCONTROL_6_HIT0])) &&
+                    ($stable(tdata1_q[i][MCONTROL_6_HIT1])))
+      else `uvm_error("debug_triggers", "mcontrol6.hit0/1 changed without a trigger match")
+  end
+endgenerate
+
+  // Check that SW writes to tdata1 cannot happen at the same time as the controller wants to upate hit bits in mcontrol6
+  a_tdata1_writes_unique:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (tdata1_we_i || ctrl_fsm_i.debug_trigger_hit_update)
+                  |->
+                  (tdata1_we_i != ctrl_fsm_i.debug_trigger_hit_update))
+    else `uvm_error("debug_triggers", "SW write to tdata1 at the same time as controller write.")
+
+  // Check that we cannot have trigger match from both IF and EX for the same trigger
+  a_if_ex_trig_exclusive:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  |(trigger_match_if_wb & trigger_match_ex_wb) == 1'b0)
+    else `uvm_error("debug_triggers", "Trigger match from both IF and EX for the same trigger should not happen")
+
+  // Check that DBG_NUM_TRIGGERS is <= 32
+  a_max_num_triggers:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                  (DBG_NUM_TRIGGERS <= 32))
+    else `uvm_error("debug_triggers", "DBG_NUM_TRIGGERS can max have the value of 32")
 
 generate
   if (A_EXT == A) begin : gen_amo_trigger_assert

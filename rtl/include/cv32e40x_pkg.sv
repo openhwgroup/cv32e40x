@@ -274,9 +274,7 @@ typedef enum logic[11:0] {
   CSR_TSELECT        = 12'h7A0,
   CSR_TDATA1         = 12'h7A1,
   CSR_TDATA2         = 12'h7A2,
-  CSR_TDATA3         = 12'h7A3,
   CSR_TINFO          = 12'h7A4,
-  CSR_TCONTROL       = 12'h7A5,
 
   // Debug/trace
   CSR_DCSR           = 12'h7B0,
@@ -702,13 +700,18 @@ parameter logic [31:0] TDATA1_RST_VAL = {
   1'b0};                 // LOAD 0
 
   // Bit position parameters for MCONTROL and MCONTROL6
+  parameter MCONTROL_6_UNCERTAIN   = 26;
+  parameter MCONTROL_6_HIT1        = 25;
+  parameter MCONTROL_6_HIT0        = 22;
   parameter MCONTROL2_6_MATCH_HIGH = 10;
   parameter MCONTROL2_6_MATCH_LOW  = 7;
   parameter MCONTROL2_6_M          = 6;
+  parameter MCONTROL_6_UNCERTAINEN = 5;
   parameter MCONTROL2_6_U          = 3;
   parameter MCONTROL2_6_EXECUTE    = 2;
   parameter MCONTROL2_6_STORE      = 1;
   parameter MCONTROL2_6_LOAD       = 0;
+
 
   parameter ETRIGGER_M = 9;
   parameter ETRIGGER_U = 6;
@@ -1084,7 +1087,7 @@ parameter obi_inst_req_t OBI_INST_REQ_RESET_VAL = '{
 typedef struct packed {
   obi_data_resp_t             bus_resp;
   mpu_status_e                mpu_status;
-  logic                       wpt_match;
+  logic [31:0]                wpt_match;
   align_status_e              align_status;
 } data_resp_t;
 
@@ -1145,7 +1148,7 @@ typedef struct packed {
   logic [15:0] compressed_instr;
   logic        illegal_c_insn;
   privlvl_t    priv_lvl;
-  logic        trigger_match;
+  logic [31:0] trigger_match;    // only DBG_NUM_TRIGGERS are implemented, free bits will be tied off
   logic [31:0] xif_id;           // ID of offloaded instruction
   logic [31:0] ptr;              // Flops to hold 32-bit pointer
   logic        first_op;         // First part of multi operation instruction
@@ -1203,7 +1206,7 @@ typedef struct packed {
   logic         illegal_insn;
 
   // Trigger match on insn
-  logic         trigger_match;
+  logic [31:0]  trigger_match;    // only DBG_NUM_TRIGGERS are implemented, free bits will be tied off
 
   // Register write control
   logic         rf_we;
@@ -1249,7 +1252,7 @@ typedef struct packed {
   logic         lsu_en;
 
   // Trigger match on insn
-  logic         trigger_match;
+  logic [31:0]  trigger_match;    // only DBG_NUM_TRIGGERS are implemented, free bits will be tied off
 
   // Signals for exception handling etc
   logic [31:0]  pc;
@@ -1349,6 +1352,8 @@ typedef struct packed {
   logic        debug_mode;             // Flag signalling we are in debug mode, valid for ID, EX and WB
   logic [2:0]  debug_cause;            // cause of debug entry
   logic        debug_csr_save;         // Update debug CSRs
+  logic [31:0] debug_trigger_hit;      // Mask for hit bits for mcontrol6 triggers
+  logic        debug_trigger_hit_update; // Signal that hit bits should be updated
   logic        debug_no_sleep;         // Debug prevents core from sleeping after WFI, etc.
   logic        debug_havereset;        // Signal to external debugger that we have reset
   logic        debug_running;          // Signal to external debugger that we are running (not in debug)
@@ -1454,6 +1459,31 @@ typedef struct packed {
   );
     // mcontrol2/6.u is WARL(0x0)
     return 1'b0;
+  endfunction
+
+  function automatic logic mcontrol6_uncertain_resolve
+  (
+    logic next_value
+  );
+    // mcontrol6.uncertain is WARL(0x0)
+    return 1'b0;
+  endfunction
+
+  function automatic logic mcontrol6_uncertainen_resolve
+  (
+    logic next_value
+  );
+    // mcontrol6.uncertainen is WARL(0x0)
+    return 1'b0;
+  endfunction
+
+  function automatic logic [1:0] mcontrol6_hit_resolve
+  (
+    logic [1:0] current_value,
+    logic [1:0] next_value
+  );
+    // mcontrol6.hit is WARL(0x0, 0x1)
+    return ((next_value != 2'b00) && (next_value != 2'b01)) ? current_value : next_value;
   endfunction
 
   function automatic logic etrigger_u_resolve

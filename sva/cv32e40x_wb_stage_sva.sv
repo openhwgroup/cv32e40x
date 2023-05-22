@@ -39,10 +39,10 @@ module cv32e40x_wb_stage_sva
   input ex_wb_pipe_t    ex_wb_pipe_i,
   input mpu_status_e    lsu_mpu_status_i,
   input mpu_status_e    lsu_mpu_status_q,
-  input logic           lsu_wpt_match_i,
+  input logic [31:0]    lsu_wpt_match_i,
   input logic           rf_we_wb_o,
   input logic           lsu_valid_q,
-  input logic           lsu_wpt_match_q,
+  input logic [31:0]    lsu_wpt_match_q,
   input logic           lsu_valid_i
 );
 
@@ -97,7 +97,7 @@ module cv32e40x_wb_stage_sva
   a_lsu_wb_valid:
     assert property (@(posedge clk) disable iff (!rst_n)
                     lsu_valid_i &&
-                    !(lsu_wpt_match_i || (lsu_mpu_status_i != MPU_OK))
+                    !(|lsu_wpt_match_i || (lsu_mpu_status_i != MPU_OK))
                     |->
                     wb_valid)
       else `uvm_error("wb_stage", "wb_valid not signaled immediately upon rvalid for LSU without WPT or MPU error")
@@ -109,8 +109,8 @@ generate
     assert property (@(posedge clk) disable iff (!rst_n)
                     lsu_valid_q
                     |->
-                    lsu_wpt_match_q &&
-                    $past(lsu_wpt_match_i))
+                    |lsu_wpt_match_q &&
+                    |$past(lsu_wpt_match_i))
       else `uvm_error("wb_stage", "LSU signal sticky for non-watchpoint cause")
 
     // A watchpoint trigger will be halted during its first cycle in WB, giving !wb_valid.
@@ -118,14 +118,14 @@ generate
     // know the core hit a watchpoint.
     a_wpt_wb_halt:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    lsu_wpt_match_i
+                    |lsu_wpt_match_i
                     |->
                     !wb_valid && ctrl_fsm_i.halt_wb)
       else `uvm_error("wb_stage", "WB stage not halted on a WPT match")
 
   a_wpt_wb_valid:
     assert property (@(posedge clk) disable iff (!rst_n)
-                    lsu_wpt_match_i
+                    |lsu_wpt_match_i
                     |=>
                     wb_valid)
       else `uvm_error("wb_stage", "WB stage not setting wb_valid on a WPT")

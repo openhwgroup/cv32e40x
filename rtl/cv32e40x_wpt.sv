@@ -34,7 +34,7 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    input logic  rst_n,
 
    // Input from debug_triggers module
-   input  logic           trigger_match_i,
+   input  logic [31:0]    trigger_match_i,
 
    // Interface towards mpu interface
    input  logic           mpu_trans_ready_i,
@@ -62,15 +62,17 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
    input logic            core_wpt_wait_i,
 
    // Report watchpoint triggers to the core immediatly (used in case core_wpt_wait_i is not asserted)
-   output logic           core_wpt_match_o
+   output logic [31:0]    core_wpt_match_o
    );
 
   logic        wpt_block_core;
   logic        wpt_block_bus;
   logic        wpt_trans_valid;
   logic        wpt_trans_ready;
-  logic        wpt_match;
+  logic [31:0] wpt_match;   // 1 bit per trigger, unused bits are tied to 0 in debug_triggers
   wpt_state_e  state_q, state_n;
+
+  logic [31:0] wpt_match_n, wpt_match_q;
 
   // FSM that will "consume" transfers with firing watchpoint triggers.
   // Upon trigger match, this FSM will prevent the transfer from going out on the bus
@@ -87,11 +89,14 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
     wpt_block_bus   = 1'b0;
     wpt_trans_valid = 1'b0;
     wpt_trans_ready = 1'b0;
-    wpt_match       = 1'b0;
+    wpt_match       = '0;
+    wpt_match_n     = wpt_match_q;
 
     case(state_q)
       WPT_IDLE: begin
-        if (trigger_match_i && core_trans_valid_i) begin
+        if (|trigger_match_i && core_trans_valid_i) begin
+          // Remember which trigger(s) hit
+          wpt_match_n = trigger_match_i;
 
           // Block transfer from going out on the bus.
           wpt_block_bus  = 1'b1;
@@ -123,7 +128,10 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
 
         // Set up WPT response towards the core
         wpt_trans_valid = 1'b1;
-        wpt_match       = 1'b1;
+        wpt_match       = wpt_match_q;
+
+        // Clear wpt_match_q
+        wpt_match_n     = '0;
 
         // Go back to IDLE uncoditionally.
         // The core is expected to always be ready for the response
@@ -137,9 +145,11 @@ module cv32e40x_wpt import cv32e40x_pkg::*;
   always_ff @(posedge clk, negedge rst_n) begin
     if (rst_n == 1'b0) begin
       state_q     <= WPT_IDLE;
+      wpt_match_q <= '0;
     end
     else begin
       state_q <= state_n;
+      wpt_match_q <= wpt_match_n;
     end
   end
 

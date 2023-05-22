@@ -68,7 +68,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   input  ex_wb_pipe_t ex_wb_pipe_i,
   input  mpu_status_e mpu_status_wb_i,            // MPU status (WB stage)
-  input  logic        wpt_match_wb_i,             // LSU watchpoint trigger in WB
+  input  logic [31:0] wpt_match_wb_i,             // LSU watchpoint trigger in WB
   input  align_status_e align_status_wb_i,        // Aligned status (atomics and mret pointers) in WB
 
   // Last operation bits

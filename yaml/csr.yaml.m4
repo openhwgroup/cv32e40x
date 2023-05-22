@@ -4564,36 +4564,25 @@ ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
 ]]])
 
 ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
-- csr: tdata3
-  description: >
-    Trigger Data Register 3
-  address: 0x7A3
-  privilege_mode: M
-  rv32:
-    - field_name: Zero
-      description: >
-        Not supported.
-      type: WARL
-      reset_val: 0
-      msb: 31
-      lsb: 0
-      warl_legalize: |
-        val_out = 0
-]]])
-
-ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
 - csr: tinfo
   description: >
     Trigger Info
   address: 0x7A4
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: Version
+      description: >
+        Implemented version of Sdtrig
+      type: R
+      reset_val: 0x1
+      msb: 31
+      lsb: 24
+    - field_name: RESERVED_23_16
       description: >
         Reserved
       type: WARL
       reset_val: 0
-      msb: 31
+      msb: 23
       lsb: 16
       warl_legalize: |
         val_out = 0
@@ -4604,60 +4593,6 @@ ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
       reset_val: 0x8064
       msb: 15
       lsb: 0
-]]])
-
-ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
-- csr: tcontrol
-  description: >
-    Trigger control
-  address: 0x7A5
-  privilege_mode: M
-  rv32:
-    - field_name: RESERVED_31_8
-      description: >
-        Reserved
-      type: WARL
-      reset_val: 0
-      msb: 31
-      lsb: 8
-      warl_legalize: |
-        val_out = 0
-    - field_name: MPTE
-      description: >
-        MPTE
-      type: WARL
-      reset_val: 0
-      msb: 7
-      lsb: 7
-      warl_legalize: |
-        val_out = 0
-    - field_name: RESERVED_6_4
-      description: >
-        Reserved
-      type: WARL
-      reset_val: 0
-      msb: 6
-      lsb: 4
-      warl_legalize: |
-        val_out = 0
-    - field_name: MTE
-      description: >
-        MTE
-      type: WARL
-      reset_val: 0
-      msb: 3
-      lsb: 3
-      warl_legalize: |
-        val_out = 0
-    - field_name: RESERVED_2_0
-      description: >
-        Reserved
-      type: WARL
-      reset_val: 0
-      msb: 2
-      lsb: 0
-      warl_legalize: |
-        val_out = 0
 ]]])
 
 ifelse(eval(ZC != 0), 1, [[[
