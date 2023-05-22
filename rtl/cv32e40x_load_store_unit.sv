@@ -56,7 +56,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic        interruptible_o,
 
   // Trigger match input
-  input logic         trigger_match_0_i,
+  input logic [31:0]  trigger_match_0_i,
 
   // Stage 0 outputs (EX)
   output logic        lsu_split_0_o,            // Misaligned access is split in two transactions (to controller)
@@ -73,7 +73,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic [1:0]  lsu_err_1_o,
   output logic [31:0] lsu_rdata_1_o,            // LSU read data
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
-  output logic        lsu_wpt_match_1_o,        // Address match trigger, WB timing.
+  output logic [31:0] lsu_wpt_match_1_o,        // Address match trigger, WB timing.
   output align_status_e lsu_align_status_1_o,   // Alignment status (for atomics), WB timing
   output lsu_atomic_e lsu_atomic_1_o,           // Is there an atomic in WB, and of which type.
 
@@ -194,7 +194,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   logic                  xif_req;       // The ongoing memory request comes from the XIF interface
   logic                  xif_mpu_err;   // The ongoing memory request caused an MPU error
-  logic                  xif_wpt_match; // The ongoing memory request caused a watchpoint trigger match
+  logic [31:0]           xif_wpt_match; // The ongoing memory request caused a watchpoint trigger match
   logic                  xif_ready_1;   // The LSU second stage is ready for an XIF transaction
   logic                  xif_res_q;     // The next memory result is for the XIF interface
   logic [X_ID_WIDTH-1:0] xif_id_q;      // Instruction ID of an XIF memory transaction
@@ -938,7 +938,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign xif_mem_if.mem_resp.exccode = xif_mpu_err ? (
                                             trans.we ? EXC_CAUSE_STORE_FAULT : EXC_CAUSE_LOAD_FAULT
                                            ) : '0;
-      assign xif_mem_if.mem_resp.dbg     = xif_wpt_match;
+      assign xif_mem_if.mem_resp.dbg     = |xif_wpt_match; // TODO:XIF Is one bit enough?
 
       // XIF memory result
       assign xif_mem_result_if.mem_result.id    = xif_id_q;

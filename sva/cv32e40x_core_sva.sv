@@ -69,7 +69,7 @@ module cv32e40x_core_sva
   input lsu_atomic_e   lsu_atomic_wb,
   input logic          lsu_valid_wb,
   input logic          lsu_exception_wb,
-  input logic          lsu_wpt_match_wb,
+  input logic [31:0]   lsu_wpt_match_wb,
   input logic [31:0]   lsu_rdata_wb,
   input logic          lsu_exokay_wb,
 
@@ -486,7 +486,7 @@ end
       // All instructions from the A-extension write the register file
       a_all_atop_write_rf:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb != AT_NONE) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb
+                        (lsu_atomic_wb != AT_NONE) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb)
                         |->
                         rf_we_wb)
           else `uvm_error("core", "Atomic instruction did not write the register file")
@@ -494,7 +494,7 @@ end
       // SC.W which receives !exokay must write 1 to the register file
       a_atop_sc_fault_rf_wdata:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb &&
+                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb) &&
                         !lsu_exokay_wb
                         |->
                         (lsu_rdata_wb == 32'h1))
@@ -503,7 +503,7 @@ end
       // SC.W which receives exokay must write 0 to the register file
       a_atop_sc_success_rf_wdata:
         assert property (@(posedge clk) disable iff (!rst_ni)
-                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !lsu_wpt_match_wb &&
+                        (lsu_atomic_wb == AT_SC) && lsu_valid_wb && !lsu_exception_wb && !(|lsu_wpt_match_wb) &&
                         lsu_exokay_wb
                         |->
                         (lsu_rdata_wb == 32'h0))
@@ -524,7 +524,7 @@ end
         assert property (@(posedge clk) disable iff (!rst_ni)
                         (ex_wb_pipe.lsu_en && ex_wb_pipe.instr_valid) &&   // Valid LSU instruction in WB
                         (lsu_atomic_wb != AT_NONE) &&                      // LSU instruction is atomic
-                        !(lsu_exception_wb || lsu_wpt_match_wb)            // No exception or watchpoint (it reached the bus)
+                        !(lsu_exception_wb || |lsu_wpt_match_wb)           // No exception or watchpoint (it reached the bus)
                         |->
                         !data_req_o &&
                         (cnt_q == 2'b01))

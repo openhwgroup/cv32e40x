@@ -73,7 +73,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  logic          abort_op_wb_i,              // WB stage contains an (to be) aborted instruction or sequence
   input  mpu_status_e   mpu_status_wb_i,            // MPU status (WB timing)
   input  align_status_e align_status_wb_i,          // Aligned status (atomics) in WB
-  input  logic          wpt_match_wb_i,             // LSU watchpoint trigger (WB)
+  input  logic [31:0]   wpt_match_wb_i,             // LSU watchpoint trigger (WB)
 
 
   // From LSU (WB)
@@ -178,7 +178,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic mret_ptr_in_wb; // CLIC pointer caused by mret is in WB
   logic dret_in_wb;
   logic ebreak_in_wb;
-  logic trigger_match_in_wb;   // mcontrol6 trigger in WB
+  logic trigger_match_in_wb;   // mcontrol2/6 trigger in WB
   logic etrigger_in_wb;        // exception trigger in WB
   logic xif_in_wb;
   logic clic_ptr_in_wb;   // CLIC pointer caused by directly acking an SHV is in WB (no mret)
@@ -399,7 +399,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // Trigger match in wb
   // Trigger_match during debug mode is masked in the trigger logic inside cs_registers.sv
-  assign trigger_match_in_wb = ((ex_wb_pipe_i.trigger_match || wpt_match_wb_i) && ex_wb_pipe_i.instr_valid);
+  assign trigger_match_in_wb = ((|ex_wb_pipe_i.trigger_match) || (|wpt_match_wb_i)) && ex_wb_pipe_i.instr_valid;
 
   // Only set the etrigger_in_wb flag when wb_valid is true (WB is not halted or killed).
   // If a higher priority event than taking an exception (NMI, external debug or interrupts) are present, wb_valid_i will be
@@ -689,6 +689,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     debug_cause_n               = DBG_CAUSE_NONE;
     debug_mode_n                = debug_mode_q;
     ctrl_fsm_o.debug_csr_save   = 1'b0;
+    ctrl_fsm_o.debug_trigger_hit = '0;          // Mask of which triggers did hit.
+    ctrl_fsm_o.debug_trigger_hit_update = 1'b0; // Signal that hit bits of mcontrol6 shall be written.
     ctrl_fsm_o.block_data_addr  = 1'b0;
 
     // Single step halting of IF
@@ -1129,6 +1131,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // Save CSRs
         ctrl_fsm_o.csr_save_cause = !(ebreak_in_wb && debug_mode_q);  // No CSR update for ebreak in debug mode
         ctrl_fsm_o.debug_csr_save = 1'b1;
+
+        // If a trigger was hit, signal that mcontrol6 hit1 and hit0 bits should be written.
+        // Only triggers configured as mcontrol6 will perform the actual write within debug_triggers.
+        if (debug_cause_q == DBG_CAUSE_TRIGGER) begin
+          ctrl_fsm_o.debug_trigger_hit_update = 1'b1;
+          ctrl_fsm_o.debug_trigger_hit = ex_wb_pipe_i.trigger_match | wpt_match_wb_i;
+        end
 
         // debug_cause_q set when decision was made to enter debug
         if (debug_cause_q != DBG_CAUSE_STEP) begin

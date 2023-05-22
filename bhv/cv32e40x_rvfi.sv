@@ -109,7 +109,7 @@ module cv32e40x_rvfi
    input logic                                csr_mscratchcsw_in_wb_i,
    input logic                                csr_mscratchcswl_in_wb_i,
    input logic                                csr_mnxti_in_wb_i,
-   input logic                                wpt_match_wb_i,
+   input logic [31:0]                         wpt_match_wb_i,
    input mpu_status_e                         mpu_status_wb_i,
    input align_status_e                       align_status_wb_i,
 
@@ -827,7 +827,7 @@ module cv32e40x_rvfi
 
   // Indicate that a data transfer was blocked before reaching the bus.
   logic         mem_access_blocked_wb;
-  assign mem_access_blocked_wb   = wpt_match_wb_i ||
+  assign mem_access_blocked_wb   = |wpt_match_wb_i ||
                                    (mpu_status_wb_i != MPU_OK) ||
                                    (align_status_wb_i != ALIGN_OK);
 

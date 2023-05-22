@@ -38,7 +38,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   parameter m_ext_e      M_EXT                  = M,
   parameter bit          X_EXT                  = 0,
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
-  parameter bit          CLIC                   = 1
+  parameter bit          CLIC                   = 1,
+  parameter int          DBG_NUM_TRIGGERS       = 1
 )
 (
   input  logic        clk,                    // Gated clock
@@ -540,7 +541,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.pc                     <= 32'b0;
       id_ex_pipe_o.instr                  <= INST_RESP_RESET_VAL;
       id_ex_pipe_o.instr_meta             <= '0;
-      id_ex_pipe_o.trigger_match          <= 1'b0;
+      id_ex_pipe_o.trigger_match          <= '0;
 
       id_ex_pipe_o.first_op               <= 1'b0;
       id_ex_pipe_o.last_op                <= 1'b0;
@@ -639,7 +640,7 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
           id_ex_pipe_o.instr                <= if_id_pipe_i.instr;
         end
 
-        id_ex_pipe_o.trigger_match          <= if_id_pipe_i.trigger_match;
+        id_ex_pipe_o.trigger_match          <= {{(32-DBG_NUM_TRIGGERS){1'b0}}, if_id_pipe_i.trigger_match[DBG_NUM_TRIGGERS-1:0]};
 
         // eXtension interface
         id_ex_pipe_o.xif_en                 <= xif_en;

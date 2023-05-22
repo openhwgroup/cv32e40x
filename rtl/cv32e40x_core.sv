@@ -258,7 +258,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        lsu_last_op_ex;
   lsu_atomic_e lsu_atomic_ex;
   mpu_status_e lsu_mpu_status_wb;
-  logic        lsu_wpt_match_wb;
+  logic [31:0] lsu_wpt_match_wb;
   align_status_e lsu_align_status_wb;
   logic [31:0] lsu_rdata_wb;
   logic [1:0]  lsu_err_wb;
@@ -281,7 +281,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic        data_stall_wb;
 
-  logic        wpt_match_wb;       // Sticky wpt_match from WB stage
+  logic [31:0] wpt_match_wb;       // Sticky wpt_match from WB stage
   mpu_status_e mpu_status_wb;      // Sticky mpu_status from WB stage
   align_status_e align_status_wb;  // Sticky align_status from WB stage
 
@@ -310,9 +310,11 @@ module cv32e40x_core import cv32e40x_pkg::*;
   dcsr_t       dcsr;
 
   // trigger match detected in trigger module (using IF timing)
-  logic        trigger_match_if;
+  // One bit per trigger (max 32 triggers)
+  logic [31:0] trigger_match_if;
   // trigger match detected in trigger module (using EX/LSU timing)
-  logic        trigger_match_ex;
+  // One bit per trigger (max 32 triggers)
+  logic [31:0] trigger_match_ex;
   // trigger match detected in trigger module (using WB timing, etrigger)
   logic        etrigger_wb;
 
@@ -463,7 +465,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .M_EXT               ( M_EXT                    ),
     .DEBUG               ( DEBUG                    ),
     .DM_REGION_START     ( DM_REGION_START          ),
-    .DM_REGION_END       ( DM_REGION_END            )
+    .DM_REGION_END       ( DM_REGION_END            ),
+    .DBG_NUM_TRIGGERS    ( DBG_NUM_TRIGGERS         )
   )
   if_stage_i
   (
@@ -524,7 +527,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .M_EXT                        ( M_EXT                     ),
     .X_EXT                        ( X_EXT                     ),
     .REGFILE_NUM_READ_PORTS       ( REGFILE_NUM_READ_PORTS    ),
-    .CLIC                         ( CLIC                      )
+    .CLIC                         ( CLIC                      ),
+    .DBG_NUM_TRIGGERS             ( DBG_NUM_TRIGGERS          )
   )
   id_stage_i
   (
@@ -593,7 +597,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   #(
     .X_EXT                      ( X_EXT                        ),
     .B_EXT                      ( B_EXT                        ),
-    .M_EXT                      ( M_EXT                        )
+    .M_EXT                      ( M_EXT                        ),
+    .DBG_NUM_TRIGGERS           ( DBG_NUM_TRIGGERS             )
   )
   ex_stage_i
   (

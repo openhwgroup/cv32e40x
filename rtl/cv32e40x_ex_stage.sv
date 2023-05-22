@@ -32,9 +32,10 @@
 
 module cv32e40x_ex_stage import cv32e40x_pkg::*;
 #(
-  parameter bit     X_EXT = 1'b0,
-  parameter b_ext_e B_EXT = B_NONE,
-  parameter m_ext_e M_EXT = M
+  parameter bit     X_EXT            = 1'b0,
+  parameter b_ext_e B_EXT            = B_NONE,
+  parameter m_ext_e M_EXT            = M,
+  parameter int     DBG_NUM_TRIGGERS = 1
 )
 (
   input  logic        clk,
@@ -151,7 +152,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
                                id_ex_pipe_i.instr.bus_resp.err               ||
                                (id_ex_pipe_i.instr.mpu_status != MPU_OK)     ||
                                (id_ex_pipe_i.instr.align_status != ALIGN_OK) ||
-                               id_ex_pipe_i.trigger_match)                   &&
+                               |id_ex_pipe_i.trigger_match)                  &&
                               id_ex_pipe_i.instr_valid;
 
   // ALU write port mux
@@ -348,7 +349,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.sys_wfi_insn       <= 1'b0;
       ex_wb_pipe_o.sys_wfe_insn       <= 1'b0;
 
-      ex_wb_pipe_o.trigger_match      <= 1'b0;
+      ex_wb_pipe_o.trigger_match      <= '0;
 
       ex_wb_pipe_o.lsu_en             <= 1'b0;
       ex_wb_pipe_o.csr_en             <= 1'b0;
@@ -420,7 +421,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
         // CSR illegal instruction detected in this stage, OR'ing in the status
         ex_wb_pipe_o.illegal_insn   <= id_ex_pipe_i.illegal_insn || csr_is_illegal;
-        ex_wb_pipe_o.trigger_match  <= id_ex_pipe_i.trigger_match;
+        ex_wb_pipe_o.trigger_match  <= {{(32-DBG_NUM_TRIGGERS){1'b0}}, id_ex_pipe_i.trigger_match[DBG_NUM_TRIGGERS-1:0]};
 
         // eXtension interface
         ex_wb_pipe_o.xif_en         <= ctrl_fsm_i.kill_xif ? 1'b0 : id_ex_pipe_i.xif_en;

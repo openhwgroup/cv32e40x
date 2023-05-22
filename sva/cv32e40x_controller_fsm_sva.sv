@@ -110,7 +110,7 @@ module cv32e40x_controller_fsm_sva
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i,
   input logic           etrigger_in_wb,
-  input logic           wpt_match_wb_i,
+  input logic [31:0]    wpt_match_wb_i,
   input logic           debug_req_i,
   input logic           fetch_enable_i,
   input logic           instr_req_o,
@@ -1073,7 +1073,7 @@ generate
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ctrl_fsm_cs == DEBUG_TAKEN) && (ex_wb_pipe_i.lsu_en && ex_wb_pipe_i.instr_valid)
                       |->
-                      $past(wpt_match_wb_i))
+                      $past(|wpt_match_wb_i))
         else `uvm_error("conroller", "LSU active in WB during DEBUG_TAKEN with no preceeding watchpoint trigger")
 
     // MRET in WB shall not update CSRs if WB stage is halted (debug entry)
@@ -1093,7 +1093,7 @@ generate
       assert property (@(posedge clk) disable iff (!rst_n)
                       (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) && ctrl_fsm_o.halt_wb
                       |->
-                      wpt_match_wb_i)
+                      |wpt_match_wb_i)
         else `uvm_error("controller", "LSU in WB halted without watchpoint trigger match")
     // Check that debug is always taken when a watchpoint trigger is arrives in WB
     // The watchpoint is halted during its first cycle in WB, thus checking during FUNCTIONAL state only,
@@ -1101,7 +1101,7 @@ generate
     // the controller will go back to FUNCTIONAL.
     a_wpt_debug_entry:
       assert property (@(posedge clk) disable iff (!rst_n)
-                      (ex_wb_pipe_i.instr_valid && wpt_match_wb_i) && (ctrl_fsm_cs == FUNCTIONAL)
+                      (ex_wb_pipe_i.instr_valid && |wpt_match_wb_i) && (ctrl_fsm_cs == FUNCTIONAL)
                       |->
                       (abort_op_wb_i && (ctrl_fsm_ns == DEBUG_TAKEN)))
         else `uvm_error("controller", "Debug not entered on a WPT match")
