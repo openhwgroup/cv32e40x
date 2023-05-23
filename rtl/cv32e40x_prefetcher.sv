@@ -58,8 +58,7 @@ module cv32e40x_prefetcher import cv32e40x_pkg::*;
   // Transaction request interface
   output logic                     trans_valid_o,           // Transaction request valid (to bus interface adapter)
   input  logic                     trans_ready_i,           // Transaction request ready (transaction gets accepted when trans_valid_o and trans_ready_i are both 1)
-  output logic [31:0]              trans_addr_o,            // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
-  output logic                     trans_ptr_o              // Transaction is fetching a pointer
+  output logic [31:0]              trans_addr_o             // Transaction address (only valid when trans_valid_o = 1). No stability requirements.
 );
 
 
@@ -78,8 +77,6 @@ module cv32e40x_prefetcher import cv32e40x_pkg::*;
   // Alignment buffer controls number of outstanding transactions
   // and will always be ready to accept responses.
   assign trans_valid_o = fetch_valid_i;
-
-  assign trans_ptr_o = fetch_ptr_access_o;
 
   assign fetch_ready_o = trans_valid_o && trans_ready_i;
 

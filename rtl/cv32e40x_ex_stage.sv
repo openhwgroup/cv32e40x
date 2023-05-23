@@ -150,7 +150,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign previous_exception = (id_ex_pipe_i.illegal_insn                     ||
                                id_ex_pipe_i.instr.bus_resp.err               ||
                                (id_ex_pipe_i.instr.mpu_status != MPU_OK)     ||
-                               (id_ex_pipe_i.instr.align_status != ALIGN_OK) ||
                                |id_ex_pipe_i.trigger_match)                  &&
                               id_ex_pipe_i.instr_valid;
 

@@ -100,7 +100,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Error propagation signals for bus, mpu and alignment checker (pointers)
   logic bus_err_unaligned, bus_err;
   mpu_status_e mpu_status_unaligned, mpu_status;
-  align_status_e align_status_unaligned, align_status;
 
   // resp_valid gated while flushing
   logic resp_valid_gated;
@@ -167,7 +166,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign instr        = (valid_q[rptr]) ? resp_q[rptr].bus_resp.rdata : resp_i.bus_resp.rdata;
   assign bus_err      = (valid_q[rptr]) ? resp_q[rptr].bus_resp.err   : resp_i.bus_resp.err;
   assign mpu_status   = (valid_q[rptr]) ? resp_q[rptr].mpu_status     : resp_i.mpu_status;
-  assign align_status = (valid_q[rptr]) ? resp_q[rptr].align_status   : resp_i.align_status;
 
 
   // Unaligned instructions will either be split across index 0 and 1, or index 0 and incoming data
@@ -190,10 +188,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                                    !(instr_is_clic_ptr_o || instr_is_mret_ptr_o || instr_is_tbljmp_ptr_o);
 
 
-  // Set mpu_status, align_status and bus error for unaligned instructions
+  // Set mpu_status and bus error for unaligned instructions
   always_comb begin
     mpu_status_unaligned = MPU_OK;
-    align_status_unaligned = ALIGN_OK;
     bus_err_unaligned = 1'b0;
     // There is valid data in q1 (valid q0 is implied)
     if(valid_q[rptr2]) begin
@@ -204,17 +201,11 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
           mpu_status_unaligned = MPU_RE_FAULT;
         end
 
-        if((resp_q[rptr2].align_status != ALIGN_OK) || (resp_q[rptr].align_status != ALIGN_OK)) begin
-          align_status_unaligned = ALIGN_RE_ERR;
-        end
-
         // Bus error from either entry
         bus_err_unaligned = (resp_q[rptr2].bus_resp.err || resp_q[rptr].bus_resp.err);
       end else begin
         // Compressed, use only mpu_status from q0
         mpu_status_unaligned = resp_q[rptr].mpu_status;
-
-        align_status_unaligned = resp_q[rptr].align_status;
 
         // bus error from q0
         bus_err_unaligned    = resp_q[rptr].bus_resp.err;
@@ -229,16 +220,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
             mpu_status_unaligned = MPU_RE_FAULT;
           end
 
-          if((resp_q[rptr].align_status != ALIGN_OK) || (resp_i.align_status != ALIGN_OK)) begin
-            align_status_unaligned = ALIGN_RE_ERR;
-          end
-
           // Bus error from q0 and resp_i
           bus_err_unaligned = (resp_q[rptr].bus_resp.err || resp_i.bus_resp.err);
         end else begin
           // There is unaligned data in q0 and it is compressed
           mpu_status_unaligned = resp_q[rptr].mpu_status;
-          align_status_unaligned = resp_q[rptr].align_status;
+
           // Bus error from q0
           bus_err_unaligned = resp_q[rptr].bus_resp.err;
         end
@@ -246,7 +233,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         // There is no data in the buffer, use input
         mpu_status_unaligned   = resp_i.mpu_status;
         bus_err_unaligned      = resp_i.bus_resp.err;
-        align_status_unaligned = resp_i.align_status;
       end
     end
   end
@@ -258,7 +244,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     instr_instr_o.bus_resp.rdata = instr;
     instr_instr_o.bus_resp.err   = bus_err;
     instr_instr_o.mpu_status     = mpu_status;
-    instr_instr_o.align_status   = align_status;
     instr_valid_o = 1'b0;
 
     // Invalidate output if we get killed
@@ -269,7 +254,6 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       instr_instr_o.bus_resp.rdata = instr_unaligned;
       instr_instr_o.bus_resp.err   = bus_err_unaligned;
       instr_instr_o.mpu_status     = mpu_status_unaligned;
-      instr_instr_o.align_status   = align_status_unaligned;
 
       if (!valid) begin
         // No instruction valid
