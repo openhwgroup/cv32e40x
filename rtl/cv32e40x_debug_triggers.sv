@@ -457,15 +457,20 @@ import cv32e40x_pkg::*;
         tdata2_we_r = tdata2_we_i || tselect_we_i;
 
         tdata1_n_r = tdata1_n[0];
+        tdata2_n_r = tdata2_n;
 
+        // Iterate over all triggers and pick tdata1_n_r and tdata1_we_r for the
+        // currently selected trigger.
         for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
           if(tselect_rdata_o == i) begin
             tdata1_n_r = tdata1_n[i];
+            // Using tdata1_we_int to include HW writes to mcontrol6
+            tdata1_we_r = tdata1_we_int[i] || tselect_we_i;
           end
         end
 
-        tdata2_n_r = tdata2_n;
-
+        // Make sure to update SW visible trigger CSRs on RVFI
+        // when tselect is written
         if (tselect_we_i) begin
           for (int i=0; i<DBG_NUM_TRIGGERS; i++) begin
             if(tselect_n == i) begin
