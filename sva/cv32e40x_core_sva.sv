@@ -44,6 +44,10 @@ module cv32e40x_core_sva
   input logic        mie_we,
   input logic [31:0] mip,
   input dcsr_t       dcsr,
+  input logic        if_valid,
+  input logic        id_ready,
+  input logic        last_op_if,
+  input logic        mret_pointer_if_i,
   input              if_id_pipe_t if_id_pipe,
   input id_ex_pipe_t id_ex_pipe,
   input logic        id_stage_id_valid,
@@ -328,9 +332,13 @@ always_ff @(posedge clk , negedge rst_ni)
     end
   endgenerate
 
-  // For checking single step, ID stage is used.
-  logic inst_taken;
-  assign inst_taken = id_stage_id_valid && ex_ready && last_op_id;
+  // Helper signal to detect instruction going from IF to ID
+  logic inst_taken_if;
+  assign inst_taken_if = if_valid && id_ready && last_op_if;
+
+  // Helper signal to detect instruction going from ID to EX
+  logic inst_taken_id;
+  assign inst_taken_id = id_stage_id_valid && ex_ready && last_op_id;
 
   // Support for single step assertion
   // In case of single step + taken interrupt, the first instruction
@@ -715,14 +723,30 @@ generate
 
     // Single step without interrupts
     // Should issue exactly one instruction from ID before entering debug_mode
-    a_single_step_no_irq :
+    a_single_step_no_irq_id :
     assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
-                    (inst_taken && dcsr.step && !ctrl_fsm.debug_mode)
-                    ##1 inst_taken [->1]
+                    (inst_taken_id && dcsr.step && !ctrl_fsm.debug_mode)
+                    ##1 inst_taken_id [->1]
                     |-> (ctrl_fsm.debug_mode && dcsr.step))
-      else `uvm_error("core", "Assertion a_single_step_no_irq failed")
+      else `uvm_error("core", "More than one instruction issued from ID to EX during single step")
 
-    // todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
+    // Single step without interrupts
+    // Should issue exactly one instruction from IF before entering debug_mode
+    // mret instructions which restart CLIC pointer fetches will cause two if_valid with last_op==1.
+    a_single_step_no_irq_if :
+    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
+                    (inst_taken_if && dcsr.step && !ctrl_fsm.debug_mode)
+                    ##1 (inst_taken_if && !mret_pointer_if_i) [->1]
+                    |-> (ctrl_fsm.debug_mode && dcsr.step))
+      else `uvm_error("core", "More than one instruction issued from IF to ID during single step")
+
+    a_single_step__minhv_no_irq_if :
+    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
+                    (inst_taken_if && dcsr.step && !ctrl_fsm.debug_mode) &&
+                    cs_registers_mcause_q.minhv
+                    ##1 inst_taken_if [->2]
+                    |-> (ctrl_fsm.debug_mode && dcsr.step))
+      else `uvm_error("core", "More than one instruction issued from IF to ID during single step")
 
     // Check that unused trigger bits remain zero
     a_unused_trigger_bits:
