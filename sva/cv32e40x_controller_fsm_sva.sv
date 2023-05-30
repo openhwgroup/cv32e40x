@@ -738,7 +738,7 @@ end
                     |=>
                     !ctrl_fsm_o.dbg_ack ||    // Cannot take debug
                     (((debug_cause_q == DBG_CAUSE_TRIGGER) && |wpt_match_wb_i) || // Unless we have a watchpoint trigger
-                     ((debug_cause_q == DBG_CAUSE_STEP) && (last_op_wb_i || abort_op_wb_i) && sequence_interruptible))) // Or we finished single stepping the instruction
+                     ((debug_cause_q == DBG_CAUSE_STEP) && (last_op_wb_i) && sequence_interruptible))) // Or we finished single stepping the instruction
     else `uvm_error("controller", "Sequence broken by non-watchpoint debug when no exception occurred")
 
   // A sequence that is in progress and the operation currently in WB has an exception can only enter debug because
