@@ -91,6 +91,11 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   localparam int unsigned ALBUF_DEPTH     = 3;
   localparam int unsigned ALBUF_CNT_WIDTH = $clog2(ALBUF_DEPTH);
 
+  // Calculate number of bits of mtvt_pc_mux to use in branch_addr_n for CLIC SHV interrupts.
+  // Minimum number of bits to use from ctrl_fsm.mtvt_pc_mux is four to keep 32-bit address 64B aligned.
+  // Otherwise the resulting concatenated address will be less than 32 bits.
+  localparam int unsigned CLIC_MUX_WIDTH = (CLIC_ID_WIDTH < 4) ? 4 : CLIC_ID_WIDTH;
+
   logic              if_ready;
 
   // prefetch buffer related signals
@@ -169,7 +174,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
       PC_TRAP_DBD:   branch_addr_n = {dm_halt_addr_i[31:2], 2'b0};
       PC_TRAP_DBE:   branch_addr_n = {dm_exception_addr_i[31:2], 2'b0};
       PC_TRAP_NMI:   branch_addr_n = {mtvec_addr_i, ctrl_fsm_i.nmi_mtvec_index, 2'b00};
-      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[CLIC_ID_WIDTH-1:0], 2'b00};
+      PC_TRAP_CLICV: branch_addr_n = {mtvt_addr_i, ctrl_fsm_i.mtvt_pc_mux[CLIC_MUX_WIDTH-1:0], 2'b00};
       // CLIC and Zc* spec requires to clear bit 0. This clearing is done in the alignment buffer.
       PC_POINTER :   branch_addr_n = if_id_pipe_o.ptr;
       // JVT + (index << 2)

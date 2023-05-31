@@ -28,9 +28,10 @@
 module cv32e40x_controller_fsm_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
-  #(  parameter bit X_EXT     = 1'b0,
-      parameter bit DEBUG     = 1'b0,
-      parameter bit CLIC      = 1'b0
+  #(  parameter bit          X_EXT         = 1'b0,
+      parameter bit          DEBUG         = 1'b0,
+      parameter bit          CLIC          = 1'b0,
+      parameter int unsigned CLIC_ID_WIDTH = 5
   )
 (
   input logic           clk,
@@ -638,6 +639,14 @@ if (CLIC) begin
                   |=>
                   $stable(mintstatus_i))
     else `uvm_error("controller", "mintstatus changed after taking an NMI")
+
+  // Check that unused bits of ctrl_fsm.mtvt_pc_mux is zero
+  if (CLIC_ID_WIDTH < 10) begin
+    a_unused_mtvt_bits:
+    assert property (@(posedge clk) disable iff (!rst_n)
+                    |ctrl_fsm_o.mtvt_pc_mux[9:CLIC_ID_WIDTH] == 1'b0)
+      else `uvm_error("controller", "Unused bits of ctrl_fsm_o.mtvt_pc_mux is not zero")
+  end
 
 end else begin // CLIC
   // Check that CLIC related signals are inactive when CLIC is not configured.
