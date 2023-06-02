@@ -91,6 +91,7 @@ module cv32e40x_controller_fsm_sva
   input logic           last_op_id_i,
   input logic           ex_ready_i,
   input logic           sequence_interruptible,
+  input logic           sequence_in_progress_wb,
   input logic           id_stage_haltable,
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
@@ -733,29 +734,29 @@ end
   // due to finishing the instruction if single stepped, or a watchpoint trigger fired on the operation in WB.
   a_no_exc_no_sequence_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    !sequence_interruptible &&  // Sequence is in progress (first_op done in WB)
-                    !exception_in_wb            // Operation in WB has no exception
+                    sequence_in_progress_wb && // Sequence is in progress (first_op done in WB)
+                    !exception_in_wb           // Operation in WB has no exception
                     |=>
                     !ctrl_fsm_o.dbg_ack ||    // Cannot take debug
-                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && |wpt_match_wb_i) || // Unless we have a watchpoint trigger
-                     ((debug_cause_q == DBG_CAUSE_STEP) && (last_op_wb_i) && sequence_interruptible))) // Or we finished single stepping the instruction
+                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && |wpt_match_wb_i && !sequence_in_progress_wb) || // Unless we have a watchpoint trigger
+                     ((debug_cause_q == DBG_CAUSE_STEP) && $past(last_op_wb_i) && !sequence_in_progress_wb))) // Or we finished single stepping the instruction
     else `uvm_error("controller", "Sequence broken by non-watchpoint debug when no exception occurred")
 
   // A sequence that is in progress and the operation currently in WB has an exception can only enter debug because
-  // of an exception trigger fired or the instruction is being stepped and the exception cause debug reentry.
+  // of an exception trigger fired or the instruction is being stepped and the exception caused debug reentry.
   a_exc_no_sequence_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    !sequence_interruptible &&  // Sequence is in progress (first_op done in WB)
-                    exception_in_wb             // Operation in WB has an exception
+                    sequence_in_progress_wb && // Sequence is in progress (first_op done in WB)
+                    exception_in_wb            // Operation in WB has an exception
                     |=>
                     !ctrl_fsm_o.dbg_ack ||    // Cannot take debug
-                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && $past(etrigger_wb_i)) || // Unless we took an exception trigger
-                     ((debug_cause_q == DBG_CAUSE_STEP) && $past(abort_op_wb_i))))     // Or a stepped instruction finished due to the exception
+                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && $past(etrigger_wb_i) && !sequence_in_progress_wb) || // Unless we took an exception trigger
+                     ((debug_cause_q == DBG_CAUSE_STEP) && $past(abort_op_wb_i) && !sequence_in_progress_wb)))     // Or a stepped instruction finished due to the exception
     else `uvm_error("controller", "Sequence broken by debug entry when exception occurred.")
 
   a_no_sequence_wb_kill:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible |-> !ctrl_fsm_o.kill_wb))
+                    (sequence_in_progress_wb |-> !ctrl_fsm_o.kill_wb))
     else `uvm_error("controller", "WB killed while sequence was in progress")
 
 /* todo: Bring back in if id_stage_haltable_alt can be correctly calculated.

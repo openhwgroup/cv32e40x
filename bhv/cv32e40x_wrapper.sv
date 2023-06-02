@@ -366,7 +366,7 @@ module cv32e40x_wrapper
                 .lsu_exception_wb                 (core_i.wb_stage_i.lsu_exception),
                 .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
                 .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
-                .mret_pointer_if_i                (core_i.if_stage_i.prefetch_is_mret_ptr),
+                .prefetch_is_mret_ptr_i           (core_i.if_stage_i.prefetch_is_mret_ptr),
                 .*);
 generate
 if (CLIC) begin : clic_asserts
