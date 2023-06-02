@@ -115,7 +115,24 @@ module cv32e40x_core_sva
   input logic [31:0] cs_registers_mepc_n,
   input mcause_t     cs_registers_csr_cause_i, // From controller
   input mcause_t     cs_registers_mcause_q,    // From cs_registers, flopped mcause
-  input mstatus_t    cs_registers_mstatus_q);
+  input mstatus_t    cs_registers_mstatus_q,
+
+  input logic        xif_compressed_valid,
+  input logic        xif_issue_valid,
+  input logic        xif_commit_valid,
+  input logic        xif_mem_ready,
+  input logic        xif_mem_result_valid,
+  input logic        xif_result_ready,
+
+  input logic        core_sleep_o,
+  input logic        fencei_flush_req_o,
+  input logic        debug_havereset_o,
+  input logic        debug_running_o,
+  input logic [1:0]  lsu_cnt_q,
+  input logic [1:0]  resp_filter_bus_cnt_q,
+  input logic [1:0]  resp_filter_core_cnt_q,
+  input write_buffer_state_e write_buffer_state
+);
 
 if (CLIC) begin
   property p_clic_mie_tieoff;
@@ -688,6 +705,27 @@ endproperty;
 a_no_irq_after_lsu: assert property(p_no_irq_after_lsu)
   else `uvm_error("core", "Interrupt taken after disabling");
 
+a_sleep_inactive_signals:
+assert property (@(posedge clk_i) disable iff (!rst_ni)
+                 (core_sleep_o == 1'b1)
+                 |->
+                 !(instr_req_o ||
+                   data_req_o  ||
+                   fencei_flush_req_o ||
+                   xif_compressed_valid ||
+                   xif_issue_valid ||
+                   xif_commit_valid ||
+                   xif_mem_ready ||
+                   xif_mem_result_valid ||
+                   xif_result_ready ||
+                   debug_havereset_o ||
+                   debug_halted_o) &&
+                 debug_running_o &&
+                 (lsu_cnt_q == 2'b00) &&
+                 (resp_filter_bus_cnt_q == 2'b00) &&
+                 (resp_filter_core_cnt_q == 2'b00) &&
+                 (write_buffer_state == WBUF_EMPTY))
+  else `uvm_error("core", "Signals active while core_sleep_o=1")
 
 
 generate

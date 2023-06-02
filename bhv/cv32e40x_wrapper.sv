@@ -368,6 +368,16 @@ module cv32e40x_wrapper
                 .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
                 .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
                 .prefetch_is_mret_ptr_i           (core_i.if_stage_i.prefetch_is_mret_ptr),
+                .xif_compressed_valid             (core_i.xif_compressed_if.compressed_valid),
+                .xif_issue_valid                  (core_i.xif_issue_if.issue_valid),
+                .xif_commit_valid                 (core_i.xif_commit_if.commit_valid),
+                .xif_mem_ready                    (core_i.xif_mem_if.mem_ready),
+                .xif_mem_result_valid             (core_i.xif_mem_result_if.mem_result_valid),
+                .xif_result_ready                 (core_i.xif_result_if.result_ready),
+                .lsu_cnt_q                        (core_i.load_store_unit_i.cnt_q),
+                .resp_filter_bus_cnt_q            (core_i.load_store_unit_i.response_filter_i.bus_cnt_q),
+                .resp_filter_core_cnt_q           (core_i.load_store_unit_i.response_filter_i.core_cnt_q),
+                .write_buffer_state               (core_i.load_store_unit_i.write_buffer_i.state),
                 .*);
 generate
 if (CLIC) begin : clic_asserts
