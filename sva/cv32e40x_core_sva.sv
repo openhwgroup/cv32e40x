@@ -333,7 +333,9 @@ always_ff @(posedge clk , negedge rst_ni)
     end
   endgenerate
 
-  // Helper signal to detect instruction going from IF to ID
+  // Count number of instruction going from IF to ID while not in debug mode
+  // Counting on first_op to avoid the case where a operation with last_op=0 will receive
+  // an abort_op later in the pipeline, effectively making it a last_op.
   logic [31:0] inst_taken_if;
   always_ff @(posedge clk , negedge rst_ni) begin
     if (rst_ni == 1'b0) begin
@@ -346,7 +348,10 @@ always_ff @(posedge clk , negedge rst_ni)
       end
     end
   end
-  // Helper signal to count instructions going from ID to EX while not in debug mode
+
+  // Count number of instruction going from ID to EX while not in debug mode
+  // Counting on first_op to avoid the case where a operation with last_op=0 will receive
+  // an abort_op later in the pipeline, effectively making it a last_op.
   logic [31:0] inst_taken_id;
   always_ff @(posedge clk , negedge rst_ni) begin
     if (rst_ni == 1'b0) begin
@@ -768,7 +773,7 @@ generate
                     dcsr.step &&
                     !ctrl_fsm.debug_mode
                     |->
-                    (inst_taken_if == 32'd1)                                                || // Exactly one instruction went from ID to EX
+                    (inst_taken_if == 32'd1)                                                || // Exactly one instruction went from IF to ID
                     (inst_taken_if == 32'd0) && (ctrl_fsm.debug_cause == DBG_CAUSE_HALTREQ) || // External debug before any instruction
                     (inst_taken_if == 32'd0) && $past(ctrl_fsm.irq_ack)                     || // Interrupt taken before any instruction
                     (inst_taken_if == 32'd0) && $past(ctrl_pending_nmi)                     || // NMI taken before any instruction
