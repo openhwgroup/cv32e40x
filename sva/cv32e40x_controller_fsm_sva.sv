@@ -92,6 +92,7 @@ module cv32e40x_controller_fsm_sva
   input logic           last_op_id_i,
   input logic           ex_ready_i,
   input logic           sequence_interruptible,
+  input logic           sequence_in_progress_wb,
   input logic           id_stage_haltable,
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
@@ -111,6 +112,7 @@ module cv32e40x_controller_fsm_sva
   input pipe_pc_mux_e   pipe_pc_mux_ctrl,
   input logic           ptr_in_if_i,
   input logic           etrigger_in_wb,
+  input logic           etrigger_wb_i,
   input logic [31:0]    wpt_match_wb_i,
   input logic           debug_req_i,
   input logic           fetch_enable_i,
@@ -737,15 +739,34 @@ end
                     (!sequence_interruptible |-> !(ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI))))
     else `uvm_error("controller", "Sequence broken by NMI")
 
-  a_no_sequence_ext_debug:
+  // A sequence that is in progress with no exception on the operation currently in WB can only enter debug mode
+  // due to finishing the instruction if single stepped, or a watchpoint trigger fired on the operation in WB.
+  a_no_exc_no_sequence_debug:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible |-> !(ctrl_fsm_o.dbg_ack && (debug_cause_q == DBG_CAUSE_HALTREQ)))) // todo: timing of (debug_cause_q == DBG_CAUSE_HALTREQ) seems wrong (and whole calsuse should not be needed)
-    else `uvm_error("controller", "Sequence broken by external debug")
+                    sequence_in_progress_wb && // Sequence is in progress (first_op done in WB)
+                    !exception_in_wb           // Operation in WB has no exception
+                    |=>
+                    !ctrl_fsm_o.dbg_ack ||    // Cannot take debug
+                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && |wpt_match_wb_i && !sequence_in_progress_wb) || // Unless we have a watchpoint trigger
+                     ((debug_cause_q == DBG_CAUSE_STEP) && $past(last_op_wb_i) && !sequence_in_progress_wb))) // Or we finished single stepping the instruction
+    else `uvm_error("controller", "Sequence broken by non-watchpoint debug when no exception occurred")
+
+  // A sequence that is in progress and the operation currently in WB has an exception can only enter debug because
+  // of an exception trigger fired or the instruction is being stepped and the exception caused debug reentry.
+  a_exc_no_sequence_debug:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    sequence_in_progress_wb && // Sequence is in progress (first_op done in WB)
+                    exception_in_wb            // Operation in WB has an exception
+                    |=>
+                    !ctrl_fsm_o.dbg_ack ||    // Cannot take debug
+                    (((debug_cause_q == DBG_CAUSE_TRIGGER) && $past(etrigger_wb_i) && !sequence_in_progress_wb) || // Unless we took an exception trigger
+                     ((debug_cause_q == DBG_CAUSE_STEP) && $past(abort_op_wb_i) && !sequence_in_progress_wb)))     // Or a stepped instruction finished due to the exception
+    else `uvm_error("controller", "Sequence broken by debug entry when exception occurred.")
 
   a_no_sequence_wb_kill:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (!sequence_interruptible |-> !ctrl_fsm_o.kill_wb))
-    else `uvm_error("controller", "Sequence broken by external debug")
+                    (sequence_in_progress_wb |-> !ctrl_fsm_o.kill_wb))
+    else `uvm_error("controller", "WB killed while sequence was in progress")
 
 /* todo: Bring back in if id_stage_haltable_alt can be correctly calculated.
   // Check that we do not allow ID stage to be halted for pending interrupts/debug if a sequence is not done

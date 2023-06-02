@@ -44,6 +44,10 @@ module cv32e40x_core_sva
   input logic        mie_we,
   input logic [31:0] mip,
   input dcsr_t       dcsr,
+  input logic        if_valid,
+  input logic        id_ready,
+  input logic        first_op_if,
+  input logic        prefetch_is_mret_ptr_i,
   input              if_id_pipe_t if_id_pipe,
   input id_ex_pipe_t id_ex_pipe,
   input logic        id_stage_id_valid,
@@ -65,6 +69,7 @@ module cv32e40x_core_sva
   input logic [31:0]   operand_b_id_i,
   input logic [31:0]   jalr_fw_id_i,
   input logic          last_op_id,
+  input logic          first_op_id,
   input logic [31:0]   rf_wdata_wb,
   input logic          rf_we_wb,
   input lsu_atomic_e   lsu_atomic_wb,
@@ -328,9 +333,38 @@ always_ff @(posedge clk , negedge rst_ni)
     end
   endgenerate
 
-  // For checking single step, ID stage is used.
-  logic inst_taken;
-  assign inst_taken = id_stage_id_valid && ex_ready && last_op_id;
+  // Count number of instruction going from IF to ID while not in debug mode
+  // Counting on first_op to avoid the case where a operation with last_op=0 will receive
+  // an abort_op later in the pipeline, effectively making it a last_op.
+  logic [31:0] inst_taken_if;
+  always_ff @(posedge clk , negedge rst_ni) begin
+    if (rst_ni == 1'b0) begin
+      inst_taken_if <= 32'd0;
+    end else begin
+      if (ctrl_fsm.debug_mode) begin
+        inst_taken_if <= 32'd0;
+      end else if (if_valid && id_ready && first_op_if) begin
+        inst_taken_if <= inst_taken_if + 32'd1;
+      end
+    end
+  end
+
+  // Count number of instruction going from ID to EX while not in debug mode
+  // Counting on first_op to avoid the case where a operation with last_op=0 will receive
+  // an abort_op later in the pipeline, effectively making it a last_op.
+  logic [31:0] inst_taken_id;
+  always_ff @(posedge clk , negedge rst_ni) begin
+    if (rst_ni == 1'b0) begin
+      inst_taken_id <= 32'd0;
+    end else begin
+      if (ctrl_fsm.debug_mode) begin
+        inst_taken_id <= 32'd0;
+      end else if (id_stage_id_valid && ex_ready && first_op_id) begin
+        inst_taken_id <= inst_taken_id + 32'd1;
+      end
+    end
+  end
+
 
   // Support for single step assertion
   // In case of single step + taken interrupt, the first instruction
@@ -713,16 +747,39 @@ generate
                       |-> (ctrl_fsm.debug_mode && dcsr.step))
       else `uvm_error("core", "Multiple instructions retired during single stepping")
 
-    // Single step without interrupts
-    // Should issue exactly one instruction from ID before entering debug_mode
-    a_single_step_no_irq :
-    assert property (@(posedge clk) disable iff (!rst_ni || interrupt_taken)
-                    (inst_taken && dcsr.step && !ctrl_fsm.debug_mode)
-                    ##1 inst_taken [->1]
-                    |-> (ctrl_fsm.debug_mode && dcsr.step))
-      else `uvm_error("core", "Assertion a_single_step_no_irq failed")
+    // Single step should issue exactly one instruction from IF (and ID) before entering debug_mode.
+    // Exception are for cases where the pipeline is killed before any instruction exits ID or there has been
+    // two inst_taken_id/if due to CLIC SHV or mret pointers.
+    // 1: CLIC SHV is taken after an instruction exits ID. This causes the CLIC pointer to pass through
+    //    the pipeline before the core can enter debug.
+    // 2: An mret instruction causes a CLIC pointer fecth (mcause.minhv==1). The pointer must reach WB
+    //    before the core can enter debug.
+    a_single_step_no_irq_id :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                      (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                      dcsr.step &&
+                      !ctrl_fsm.debug_mode
+                      |->
+                      (inst_taken_id == 32'd1)                                                || // Exactly one instruction went from ID to EX
+                      (inst_taken_id == 32'd0) && (ctrl_fsm.debug_cause == DBG_CAUSE_HALTREQ) || // External debug before any instruction
+                      (inst_taken_id == 32'd0) && $past(ctrl_fsm.irq_ack)                     || // Interrupt taken before any instruction
+                      (inst_taken_id == 32'd0) && $past(ctrl_pending_nmi)                     || // NMI taken before any instruction
+                      (inst_taken_id == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a second fetch for the pointer
+      else `uvm_error("core", "More than one instruction issued from ID to EX during single step")
 
-    // todo: add similar assertion as above to check that only one instruction moves from IF to ID while taking a single step (rename inst_taken to inst_taken_id and introduce similar inst_taken_if signal)
+    a_single_step_no_irq_if :
+    assert property (@(posedge clk) disable iff (!rst_ni)
+                    (ctrl_fsm_cs == DEBUG_TAKEN) &&
+                    dcsr.step &&
+                    !ctrl_fsm.debug_mode
+                    |->
+                    (inst_taken_if == 32'd1)                                                || // Exactly one instruction went from IF to ID
+                    (inst_taken_if == 32'd0) && (ctrl_fsm.debug_cause == DBG_CAUSE_HALTREQ) || // External debug before any instruction
+                    (inst_taken_if == 32'd0) && $past(ctrl_fsm.irq_ack)                     || // Interrupt taken before any instruction
+                    (inst_taken_if == 32'd0) && $past(ctrl_pending_nmi)                     || // NMI taken before any instruction
+                    (inst_taken_if == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a second fetch for the pointer
+
+      else `uvm_error("core", "More than one instruction issued from IF to ID during single step")
 
     // Check that unused trigger bits remain zero
     a_unused_trigger_bits:
