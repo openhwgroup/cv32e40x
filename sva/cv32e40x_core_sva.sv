@@ -764,7 +764,7 @@ generate
                       (inst_taken_id == 32'd0) && (ctrl_fsm.debug_cause == DBG_CAUSE_HALTREQ) || // External debug before any instruction
                       (inst_taken_id == 32'd0) && $past(ctrl_fsm.irq_ack)                     || // Interrupt taken before any instruction
                       (inst_taken_id == 32'd0) && $past(ctrl_pending_nmi)                     || // NMI taken before any instruction
-                      (inst_taken_id == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a seceond fetch for the pointer
+                      (inst_taken_id == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a second fetch for the pointer
       else `uvm_error("core", "More than one instruction issued from ID to EX during single step")
 
     a_single_step_no_irq_if :
@@ -777,7 +777,7 @@ generate
                     (inst_taken_if == 32'd0) && (ctrl_fsm.debug_cause == DBG_CAUSE_HALTREQ) || // External debug before any instruction
                     (inst_taken_if == 32'd0) && $past(ctrl_fsm.irq_ack)                     || // Interrupt taken before any instruction
                     (inst_taken_if == 32'd0) && $past(ctrl_pending_nmi)                     || // NMI taken before any instruction
-                    (inst_taken_if == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a seceond fetch for the pointer
+                    (inst_taken_if == 32'd2) && $past(ex_wb_pipe.instr_meta.clic_ptr || ex_wb_pipe.instr_meta.mret_ptr)) // A CLIC interrupt or mret caused a second fetch for the pointer
 
       else `uvm_error("core", "More than one instruction issued from IF to ID during single step")
 
