@@ -677,7 +677,7 @@ parameter MEPC_RESET_VAL               = 32'd0;
 parameter DPC_RESET_VAL                = 32'd0;
 parameter DSCRATCH0_RESET_VAL          = 32'd0;
 parameter DSCRATCH1_RESET_VAL          = 32'd0;
-parameter MINTTHRESH_RESET_VAL         = 8'h00;
+parameter MINTTHRESH_RESET_VAL         = 32'd0;
 parameter MIE_BASIC_RESET_VAL          = 32'd0;
 
 parameter logic [31:0] TDATA1_RST_VAL = {
