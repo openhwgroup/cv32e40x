@@ -232,7 +232,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
   logic [MTVT_ADDR_WIDTH-1:0] mtvt_addr;
 
-  logic [7:0]  mintthresh;
+  logic [7:0]  mintthresh_th;
   mintstatus_t mintstatus;
 
   mcause_t     mcause;
@@ -827,7 +827,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mepc_o                     ( mepc                   ),
     .mie_o                      ( mie                    ),
     .mintstatus_o               ( mintstatus             ),
-    .mintthresh_o               ( mintthresh             ),
+    .mintthresh_th_o            ( mintthresh_th          ),
     .mstatus_o                  ( mstatus                ),
     .mtvec_addr_o               ( mtvec_addr             ),
     .mtvec_mode_o               ( mtvec_mode             ),
@@ -1048,7 +1048,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
 
         // From cs_registers
         .mstatus_i            ( mstatus            ),
-        .mintthresh_i         ( mintthresh         ),
+        .mintthresh_th_i      ( mintthresh_th      ),
         .mintstatus_i         ( mintstatus         ),
         .mcause_i             ( mcause             ),
         .priv_lvl_i           ( priv_lvl           ),

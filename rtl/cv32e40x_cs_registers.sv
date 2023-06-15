@@ -64,7 +64,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [31:0]                   mepc_o,
   output logic [31:0]                   mie_o,
   output mintstatus_t                   mintstatus_o,
-  output logic [7:0]                    mintthresh_o,
+  output logic [7:0]                    mintthresh_th_o,
   output mstatus_t                      mstatus_o,
   output logic [24:0]                   mtvec_addr_o,
   output logic  [1:0]                   mtvec_mode_o,
@@ -1140,11 +1140,7 @@ dcsr_we        = 1'b1;
           mcause_n       = mcause_rdata;
           mcause_we      = 1'b1;
 
-          // Dret to lower privilege mode clear mintthresh
-          if (priv_lvl_n < PRIV_LVL_M) begin
-            mintthresh_n  = 32'h00000000;
-            mintthresh_we = 1'b1;
-          end
+          // Dret to lower privilege mode does not clear mintthresh
         end
 
       end //ctrl_fsm_i.csr_restore_dret
@@ -1555,7 +1551,7 @@ dcsr_we        = 1'b1;
   assign mepc_o        = mepc_rdata;
   assign mie_o         = mie_rdata;
   assign mintstatus_o  = mintstatus_rdata;
-  assign mintthresh_o  = mintthresh_rdata[7:0];
+  assign mintthresh_th_o  = mintthresh_rdata[7:0];
   assign mstatus_o     = mstatus_rdata;
   assign mtvec_addr_o  = mtvec_rdata.addr;
   assign mtvec_mode_o  = mtvec_rdata.mode;
