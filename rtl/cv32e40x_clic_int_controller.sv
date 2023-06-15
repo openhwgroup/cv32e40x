@@ -51,7 +51,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
 
   // From cs_registers
   input  mstatus_t                   mstatus_i,                 // Current mstatus from CSR
-  input  logic [7:0]                 mintthresh_i,              // Current interrupt threshold from CSR
+  input  logic [7:0]                 mintthresh_th_i,           // Current interrupt threshold from CSR
   input  mintstatus_t                mintstatus_i,              // Current mintstatus from CSR
   input  mcause_t                    mcause_i,                  // Current mcause from CSR
   input  privlvl_t                   priv_lvl_i,                // Current privilege level of core
@@ -112,7 +112,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   //
   // The interrupt-level threshold is only valid when running in the associated privilege mode.
 
-  assign effective_irq_level = (mintthresh_i > mintstatus_i.mil) ? mintthresh_i : mintstatus_i.mil;
+  assign effective_irq_level = (mintthresh_th_i > mintstatus_i.mil) ? mintthresh_th_i : mintstatus_i.mil;
 
   ///////////////////////////
   // Outputs to controller //
@@ -154,7 +154,7 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   // The mxnti path to interrupts does not take mstatus.mie or dcsr.stepie into account.
   assign mnxti_irq_pending_o = clic_irq_q &&
     (clic_irq_level_q > mcause_i.mpil) &&
-    (clic_irq_level_q > mintthresh_i)  &&
+    (clic_irq_level_q > mintthresh_th_i)  &&
     !clic_irq_shv_q;
 
   // If mnxti_irq_pending is true, the currently flopped ID and level will be sent to cs_registers
