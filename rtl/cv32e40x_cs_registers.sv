@@ -38,7 +38,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter bit          ZC_EXT               = 0,
   parameter bit          CLIC                 = 0,
   parameter int unsigned CLIC_ID_WIDTH        = 5,
-  parameter int unsigned CLIC_INTTHRESHBITS   = 8,
   parameter int unsigned NUM_MHPMCOUNTERS     = 1,
   parameter bit          DEBUG                = 1,
   parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
@@ -130,9 +129,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     (32'(MXL)             << 30);  // M-XLEN
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
-
-  // Set mask for minththresh based on number of bits implemented (CLIC_INTTHRESHBITS)
-  localparam CSR_MINTTHRESH_MASK = ((2 ** CLIC_INTTHRESHBITS )-1) << (8 - CLIC_INTTHRESHBITS);
 
   localparam logic [31:0] CSR_MTVT_MASK = {{MTVT_ADDR_WIDTH{1'b1}}, {(32-MTVT_ADDR_WIDTH){1'b0}}};
 
@@ -1487,17 +1483,7 @@ dcsr_we        = 1'b1;
   assign mintstatus_rdata   = mintstatus_q;
   assign mie_rdata          = mie_q;
 
-  // Implemented threshold bits are left justified, unimplemented bits are tied to 1.
-  // Special case when all 8 bits are implemented to avoid zero-replication
-  generate
-    if (CLIC_INTTHRESHBITS < 8) begin : gen_partial_thresh
-      // Unimplemented bits within [7:0] are tied to 1. Bits 31:8 always tied to 0.
-      assign mintthresh_rdata   = {mintthresh_q[31:(7-(CLIC_INTTHRESHBITS-1))], {(8-CLIC_INTTHRESHBITS) {1'b1}}};
-    end else begin : gen_full_thresh
-      // Bits 31:8 tied to 0, all bits within [7:0] are implemented in flipflops.
-      assign mintthresh_rdata   = mintthresh_q[31:0];
-    end
-  endgenerate
+  assign mintthresh_rdata   = mintthresh_q;
 
   // mnxti_rdata breaks the regular convension for CSRs. The read data used for read-modify-write is the mstatus_rdata,
   // while the value read and written back to the GPR is a pointer address if an interrupt is pending, or zero
