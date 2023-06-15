@@ -1321,11 +1321,6 @@ Detailed:
 
 This register holds the machine mode interrupt level threshold.
 
-.. note::
-  The ``CLIC_INTTHRESHBITS`` parameter specifies the number of bits actually implemented in the ``mintthresh.th`` field.
-  The implemented bits are kept left justified in the most-significant bits of the 8-bit field, with the lower unimplemented
-  bits treated as hardwired to 1.
-
 .. _csr-mscratchcsw:
 
 Machine Scratch Swap for Priv Mode Change (``mscratchcsw``)
