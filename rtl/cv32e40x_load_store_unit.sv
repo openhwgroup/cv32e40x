@@ -109,7 +109,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Align_check transaction request (to cv32e40x_align_check)
   logic           alcheck_trans_valid;
   logic           alcheck_trans_ready;
-  logic           alcheck_trans_pushpop;
   obi_data_req_t  alcheck_trans;
 
   // Transaction request to cv32e40x_mpu
@@ -131,7 +130,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Transaction response interface (from cv32e40x_align_check)
   logic           alcheck_resp_valid;
-  logic [31:0]    alcheck_resp_rdata;
   data_resp_t     alcheck_resp;
 
   // Transaction response interface (from cv32e40x_mpu)
