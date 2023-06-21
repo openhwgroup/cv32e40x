@@ -178,7 +178,7 @@ module cv32e40x_wb_stage import cv32e40x_pkg::*;
 
   // Append any MPU exception to abort_op
   // An abort_op_o = 1 will terminate a sequence, either to take an exception or debug due to trigger match.
-  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception) || (ex_wb_pipe_i.lsu_en && lsu_wpt_match);
+  assign abort_op_o = ex_wb_pipe_i.abort_op || ( ex_wb_pipe_i.lsu_en && lsu_exception) || (ex_wb_pipe_i.lsu_en && |lsu_wpt_match);
 
   // Export signal indicating WB stage stalled by load/store
   assign data_stall_o = ex_wb_pipe_i.lsu_en && !lsu_valid && instr_valid;

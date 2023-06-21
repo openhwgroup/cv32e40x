@@ -129,12 +129,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
                          (outstanding_cnt_q < 2)                                     &&
                          !(ptr_fetch_accepted_q && !ctrl_fsm_i.pc_set)               && // No fetch until next pc_set after accepted pointer fetches
                          (((instr_cnt_q - pop_q) == 'd0)                             ||
-                         ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == 2'd0) ||
+                         ((instr_cnt_q - pop_q) == 'd1 && outstanding_cnt_q == ALBUF_CNT_WIDTH'(0)) ||
                          ctrl_fsm_i.pc_set);
 
 
   // Busy if we expect any responses, or we have an active fetch_valid_o
-  assign prefetch_busy_o = (outstanding_cnt_q != 3'b000)|| fetch_valid_o;
+  assign prefetch_busy_o = (outstanding_cnt_q != ALBUF_CNT_WIDTH'(0))|| fetch_valid_o;
 
   // Indicate that there will be one pending transaction in the next cycle
   assign one_txn_pend_n = outstanding_cnt_n == ALBUF_CNT_WIDTH'(1);

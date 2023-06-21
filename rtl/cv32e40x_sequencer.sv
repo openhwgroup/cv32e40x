@@ -307,7 +307,7 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
           end
         end else if (seq_move_a2s) begin
           // addi s*, a0, 0
-          instr_o.bus_resp.rdata = {12'h000, 5'd10, 3'b000, sn_to_regnum(5'(instr[9:7])), OPCODE_OPIMM};
+          instr_o.bus_resp.rdata = {12'h000, 5'd10, 3'b000, sn_to_regnum({2'h0,instr[9:7]}), OPCODE_OPIMM};
           seq_state_n = S_DMOVE;
         end else if (seq_tbljmp_o) begin
           if (instr[9:7] == 3'b000) begin
@@ -323,7 +323,7 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
         end else if (seq_move_s2a) begin
           // move s to a
           // addi a0, s*, 0
-          instr_o.bus_resp.rdata = {12'h000, sn_to_regnum(5'(instr[9:7])), 3'b000, 5'd10, OPCODE_OPIMM};
+          instr_o.bus_resp.rdata = {12'h000, sn_to_regnum({2'h0,instr[9:7]}), 3'b000, 5'd10, OPCODE_OPIMM};
           seq_state_n = S_DMOVE;
         end
 
@@ -352,10 +352,10 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
         // Second half of double moves
         if (seq_move_a2s) begin
           // addi s*, a1, 0
-          instr_o.bus_resp.rdata = {12'h000, 5'd11, 3'b000, sn_to_regnum(5'(instr[4:2])), OPCODE_OPIMM};
+          instr_o.bus_resp.rdata = {12'h000, 5'd11, 3'b000, sn_to_regnum({2'h0,instr[4:2]}), OPCODE_OPIMM};
         end else begin
           // addi a1, s*, 0
-          instr_o.bus_resp.rdata = {12'h000, sn_to_regnum(5'(instr[4:2])), 3'b000, 5'd11, OPCODE_OPIMM};
+          instr_o.bus_resp.rdata = {12'h000, sn_to_regnum({2'h0,instr[4:2]}), 3'b000, 5'd11, OPCODE_OPIMM};
         end
 
         seq_state_n = S_IDLE;

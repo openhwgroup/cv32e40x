@@ -58,7 +58,7 @@ module cv32e40x_ff_one
     for (level = 0; level < NUM_LEVELS; level++) begin : gen_tree
     //------------------------------------------------------------
     if (level < NUM_LEVELS-1) begin : gen_non_root_level
-      for (l = 0; l < 2**level; l++) begin : gen_node
+      for (l = 0; l < 2**level; l++) begin : gen_node_non_root
         assign sel_nodes[2**level-1+l]   = sel_nodes[2**(level+1)-1+l*2] | sel_nodes[2**(level+1)-1+l*2+1];
         assign index_nodes[2**level-1+l] = (sel_nodes[2**(level+1)-1+l*2] == 1'b1) ?
                                            index_nodes[2**(level+1)-1+l*2] : index_nodes[2**(level+1)-1+l*2+1];
@@ -66,7 +66,7 @@ module cv32e40x_ff_one
     end
     //------------------------------------------------------------
     if (level == NUM_LEVELS-1) begin : gen_root_level
-      for (k = 0; k < 2**level; k++) begin : gen_node
+      for (k = 0; k < 2**level; k++) begin : gen_node_root
         // if two successive indices are still in the vector...
         if (k * 2 < LEN-1) begin : gen_two
           assign sel_nodes[2**level-1+k]   = in_i[k*2] | in_i[k*2+1];

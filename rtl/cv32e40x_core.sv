@@ -355,6 +355,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   // eXtension interface signals
   logic        xif_offloading_id;
 
+  logic        unused_signals;
+
   // Internal OBI interfaces
   cv32e40x_if_c_obi #(.REQ_TYPE(obi_inst_req_t), .RESP_TYPE(obi_inst_resp_t))  m_c_obi_instr_if();
   cv32e40x_if_c_obi #(.REQ_TYPE(obi_data_req_t), .RESP_TYPE(obi_data_resp_t))  m_c_obi_data_if();
@@ -482,7 +484,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvt_addr_i         ( mtvt_addr                ), // CLIC vector base
     .jvt_mode_i          ( jvt_mode                 ),
 
-    .m_c_obi_instr_if    ( m_c_obi_instr_if         ), // Instruction bus interface
+    .m_c_obi_instr_if    ( m_c_obi_instr_if.master  ), // Instruction bus interface
 
     .if_id_pipe_o        ( if_id_pipe               ),
 
@@ -674,7 +676,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ctrl_fsm_i            ( ctrl_fsm           ),
 
     // Data OBI interface
-    .m_c_obi_data_if       ( m_c_obi_data_if    ),
+    .m_c_obi_data_if       ( m_c_obi_data_if.master ),
 
     // Control signals
     .busy_o                ( lsu_busy           ),
@@ -991,7 +993,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .fencei_flush_req_o             ( fencei_flush_req_o     ),
 
     // Data OBI interface
-    .m_c_obi_data_if                ( m_c_obi_data_if        ),
+    .m_c_obi_data_if                ( m_c_obi_data_if.monitor),
 
     .id_ready_i                     ( id_ready               ),
     .id_valid_i                     ( id_valid               ),
@@ -1130,5 +1132,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .wdata_i            ( rf_wdata    ),
     .we_i               ( rf_we       )
   );
+
+
+  // Some signals are unused on purpose (typically they are used by RVFI code). Use them here for easier LINT waiving.
+  assign unused_signals = dbg_ack | irq_ack | (|irq_id) | (|irq_level) | (|irq_priv) | irq_shv;
 
 endmodule

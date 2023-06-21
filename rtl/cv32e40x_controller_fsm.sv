@@ -596,7 +596,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Mux used to select PC from the different pipeline stages
   always_comb begin
 
-    ctrl_fsm_o.pipe_pc = PC_WB;
+    ctrl_fsm_o.pipe_pc = ex_wb_pipe_i.pc;
 
     unique case (pipe_pc_mux_ctrl)
       PC_WB: ctrl_fsm_o.pipe_pc = ex_wb_pipe_i.pc;
