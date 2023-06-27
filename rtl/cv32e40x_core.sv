@@ -206,9 +206,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        abort_op_wb;
 
   // First op bits
-  logic        first_op_if;
   logic        first_op_id;
-  logic        first_op_ex;
 
   // Register file signals from ID/decoder to controller
   logic [REGFILE_NUM_READ_PORTS-1:0] rf_re_id;
@@ -497,7 +495,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ptr_in_if_o         ( ptr_in_if                ),
     .priv_lvl_if_o       ( priv_lvl_if              ),
 
-    .first_op_o          ( first_op_if              ),
     .last_op_o           ( last_op_if               ),
     .abort_op_o          ( abort_op_if              ),
 
@@ -639,8 +636,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .ex_ready_o                 ( ex_ready                     ),
     .ex_valid_o                 ( ex_valid                     ),
     .wb_ready_i                 ( wb_ready                     ),
-    .last_op_o                  ( last_op_ex                   ),
-    .first_op_o                 ( first_op_ex                  )
+    .last_op_o                  ( last_op_ex                   )
   );
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -1060,6 +1056,10 @@ module cv32e40x_core import cv32e40x_pkg::*;
         .mnxti_irq_id_o       ( mnxti_irq_id       ),
         .mnxti_irq_level_o    ( mnxti_irq_level    )
       );
+
+      logic unused_clic_signals;
+      assign unused_clic_signals = |mie;
+
     end else begin : gen_basic_interrupt
       cv32e40x_int_controller
       int_controller_i

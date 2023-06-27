@@ -951,6 +951,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       assign xif_mem_result_if.mem_result.rdata = '0;
       assign xif_mem_result_if.mem_result.err   = '0;
       assign xif_mem_result_if.mem_result.dbg   = '0;
+
+      logic unused_xif_signals;
+      assign unused_xif_signals = (|xif_id_q) | (|xif_wpt_match) | xif_mpu_err;
     end
   endgenerate
 

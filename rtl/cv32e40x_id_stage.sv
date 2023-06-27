@@ -778,6 +778,8 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_issue_if.issue_req.ecs       = '0;
       assign xif_issue_if.issue_req.ecs_valid = '0;
 
+      logic unused_xif_signals;
+      assign unused_xif_signals = xif_insn_reject | (|rf_illegal_raddr);
     end
   endgenerate
 

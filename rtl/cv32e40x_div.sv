@@ -110,7 +110,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
   // In case of negative op_b, invert op_b_i to count leading ones
   // and shift one less to preserve sign bit
-  assign op_b_alt = (~op_b_i << 1);
+  assign op_b_alt = {~op_b_i, 1'b0};
 
   always_comb
   begin
@@ -165,10 +165,19 @@ module cv32e40x_div import cv32e40x_pkg::*;
   assign comp_out = ((remainder_q == divisor_q) || ((remainder_q > divisor_q) ^ comp_inv_q)) &&
                     ((|remainder_q) || op_b_is_zero);
 
-  // Main adder and adder input muxes
+  // Adder input muxes
   assign add_b_mux = init_en ? 0 : remainder_q;
   assign add_a_mux = init_en ? op_a_i : divisor_q;
-  assign add_out   = init_remainder_pos ? add_b_mux + add_a_mux : add_b_mux - $signed(add_a_mux);
+
+  // Main adder
+  always_comb begin
+    if (init_remainder_pos) begin
+      add_out = add_b_mux + add_a_mux;
+    end
+    else begin
+      add_out = add_b_mux - $signed(add_a_mux);
+    end
+  end
 
   // Result mux, negate if necessary
   assign res_mux  = div_rem_q ? remainder_q : quotient_q;
@@ -180,10 +189,19 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
   assign cnt_d_dummy = 6'd32 - alu_shift_amt_o;
 
-  assign cnt_d = init_en        ? alu_shift_amt_o    :
-                 init_dummy_cnt ? cnt_d_dummy - 6'd1 : /*-1 because one cycle is used to update the counter*/
-                 !cnt_q_is_zero ? cnt_q       - 6'd1 :
-                 cnt_q;
+  always_comb begin
+    cnt_d = cnt_q;
+
+    if (init_en) begin
+      cnt_d = alu_shift_amt_o;
+    end
+    else if (init_dummy_cnt) begin
+      cnt_d = cnt_d_dummy - 6'd1; /*-1 because one cycle is used to update the counter*/
+    end
+    else if (!cnt_q_is_zero) begin
+      cnt_d = cnt_q - 6'd1;
+    end
+  end
 
   assign cnt_q_is_zero = !(|cnt_q);
 

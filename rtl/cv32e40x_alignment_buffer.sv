@@ -288,7 +288,13 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
     // Write response and update valid bit and write pointer
     if (resp_valid_gated) begin
       // Increase write pointer, wrap to zero if at last entry
-      wptr_n   = wptr < (ALBUF_DEPTH-1) ? wptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
+      if (wptr < (ALBUF_DEPTH-1)) begin
+        wptr_n =  wptr + ALBUF_CNT_WIDTH'(1);
+      end
+      else begin
+        wptr_n = ALBUF_CNT_WIDTH'(0);
+      end
+
       // Set fifo and valid write data
       resp_n   = resp_i;
       valid_int[wptr] = 1'b1;
@@ -315,7 +321,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
       end
 
       // Advance FIFO one step, wrap if at last entry
-      rptr_n = rptr < (ALBUF_DEPTH-1) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
+      if (rptr < (ALBUF_DEPTH-1)) begin
+        rptr_n = rptr + ALBUF_CNT_WIDTH'(1);
+      end
+      else begin
+        rptr_n = ALBUF_CNT_WIDTH'(0);
+      end
     end else begin
       // aligned case
       if (aligned_is_compressed) begin
@@ -327,7 +338,12 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
         addr_n = {addr_incr[31:2], 2'b00};
 
         // Advance FIFO one step, wrap if at last entry
-        rptr_n = rptr < (ALBUF_DEPTH-1) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
+        if (rptr < (ALBUF_DEPTH-1)) begin
+          rptr_n = rptr + ALBUF_CNT_WIDTH'(1);
+        end
+        else begin
+          rptr_n = ALBUF_CNT_WIDTH'(0);
+        end
       end
     end
 
@@ -340,7 +356,14 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   end
 
   // rptr2 will always be one higher than rptr
-  assign rptr2 = (rptr < (ALBUF_DEPTH-1)) ? rptr + ALBUF_CNT_WIDTH'(1) : ALBUF_CNT_WIDTH'(0);
+  always_comb begin
+    if (rptr < (ALBUF_DEPTH-1)) begin
+      rptr2 = rptr + ALBUF_CNT_WIDTH'(1);
+    end
+    else begin
+      rptr2 = ALBUF_CNT_WIDTH'(0);
+    end
+  end
 
   // Counting instructions in FIFO
   always_comb begin
