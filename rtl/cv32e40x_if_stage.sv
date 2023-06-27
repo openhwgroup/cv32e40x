@@ -74,7 +74,6 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic          ptr_in_if_o,            // The IF stage currently holds a pointer
   output privlvl_t      priv_lvl_if_o,          // Privilege level of the instruction currently in IF
 
-  output logic          first_op_o,
   output logic          last_op_o,
   output logic          abort_op_o,
 
@@ -151,6 +150,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   inst_resp_t        seq_instr;       // Instruction for sequenced operation
   logic              seq_tbljmp;      // Sequenced instruction is a table jump
   logic              seq_pushpop;     // Sequenced instruction is a push or pop
+  logic              first_op;
 
   logic              unused_signals;
 
@@ -335,9 +335,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   // Any other instruction will be single operation, and gets first_op=1.
   // Regular CLIC pointers are single operation with first_op == last_op == 1
   // CLIC pointers that are a side effect of mret instructions will have first_op == 0 and last_op == 1
-  assign first_op_o = seq_valid                ? seq_first :  // Sequencer controls first_op for sequenced instructions
-                      prefetch_is_mret_ptr     ? 1'b0      :  // clic pointer caused by mret, must be !first && last
-                                                 1'b1;        // Any other regular instructions are single operation.
+  assign first_op = seq_valid                ? seq_first :  // Sequencer controls first_op for sequenced instructions
+                    prefetch_is_mret_ptr     ? 1'b0      :  // clic pointer caused by mret, must be !first && last
+                                               1'b1;        // Any other regular instructions are single operation.
 
 
   // Set flag to indicate that instruction/sequence will be aborted due to known exceptions or trigger match
@@ -392,9 +392,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
 
         if_id_pipe_o.priv_lvl         <= prefetch_priv_lvl;
         if_id_pipe_o.trigger_match    <= trigger_match_i;
-        if_id_pipe_o.xif_id           <= xif_id;
+        if_id_pipe_o.xif_id           <= 32'(xif_id);
         if_id_pipe_o.last_op          <= last_op_o;
-        if_id_pipe_o.first_op         <= first_op_o;
+        if_id_pipe_o.first_op         <= first_op;
         if_id_pipe_o.abort_op         <= abort_op_o;
 
         // No PC update for tablejump pointer, PC of instruction itself is needed later.
