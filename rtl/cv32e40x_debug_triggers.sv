@@ -326,7 +326,6 @@ import cv32e40x_pkg::*;
         // Load/Store address match (EX)
         ///////////////////////////////////////
 
-        // todo: LSU address matching must be revisited once the atomics are implemented
         // As for instruction address match, the load/store address match happens before the a bus transaction is visible on the OBI bus.
         // For split misaligned transfers, each transfer is checked separately. This means that half a store may be visible externally even if
         // the second part matches tdata2 and debug is entered. For loads the RF write will not happen until the last part finished anyway, so no state update
