@@ -516,8 +516,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       wpt_trans.memtype = 2'b00;                           // Memory type is assigned in MPU
     end else begin
       // For last phase of misaligned/split transfer the address needs to be word aligned (as LSB of be will be set)
-      // todo: As part of the fix for https://github.com/openhwgroup/cv32e40x/issues/388 the following should be used as well:
-      // wpt_trans.addr   = split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr;
       wpt_trans.addr    = trans.atop[5] ? trans.addr : (split_q ? {trans.addr[31:2], 2'b00} + 'h4 : trans.addr);
       wpt_trans.we      = trans.we;
       wpt_trans.be      = be;

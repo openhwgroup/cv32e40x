@@ -40,7 +40,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   parameter int unsigned CLIC_ID_WIDTH        = 5,
   parameter int unsigned NUM_MHPMCOUNTERS     = 1,
   parameter bit          DEBUG                = 1,
-  parameter int          DBG_NUM_TRIGGERS     = 1, // todo: implement support for DBG_NUM_TRIGGERS != 1
+  parameter int          DBG_NUM_TRIGGERS     = 1,
   parameter int unsigned MTVT_ADDR_WIDTH      = 26
 )
 (
