@@ -3067,14 +3067,14 @@ ifelse(eval(CLINT != 0), 1, [[[
   address: 0x305
   privilege_mode: M
   rv32:
-    - field_name: BASE31TO7
+    - field_name: BASE_31_7
       description: >
         Trap-handler base address, always aligned to 128 bytes
       type: WARL
       reset_val: 0  # Note: assumes mtvec_i == 0
       msb: 31
       lsb: 7
-    - field_name: BASE6TO2
+    - field_name: BASE_6_2
       description: >
         Trap-handler base address, always aligned to 128 bytes
       type: WARL
