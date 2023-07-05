@@ -2196,7 +2196,7 @@ ifelse(eval(DEBUG != 0), 1, [[[
       reset_val: 4
       msb: 31
       lsb: 28
-    - field_name: RESERVED_27_18
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -2230,7 +2230,7 @@ ifelse(eval(DEBUG != 0), 1, [[[
       reset_val: 0
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_14
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -2407,7 +2407,7 @@ ifelse(eval(DEBUG != 0), 1, [[[
       lsb: 31
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_30_23
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WPRI
@@ -2514,6 +2514,11 @@ ifelse(eval(X_EXT != 0), 1, [[[
       reset_val: 3
       msb: 12
       lsb: 11
+      values:
+        machine: 3
+ifelse(eval(UMODE != 0), 1, [[[
+        user:    0
+]]])
       warl_legalize: |
         val_out = 0x3
 ifelse(eval(UMODE != 0), 1, [[[
@@ -2562,7 +2567,7 @@ ifelse(eval(X_EXT != 0), 1, [[[
       reset_val: 0
       msb: 5
       lsb: 5
-    - field_name: RESERVED_4_4
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WPRI
@@ -2577,7 +2582,7 @@ ifelse(eval(X_EXT != 0), 1, [[[
       reset_val: 0
       msb: 3
       lsb: 3
-    - field_name: RESERVED_2_2
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WPRI
@@ -2592,7 +2597,7 @@ ifelse(eval(X_EXT != 0), 1, [[[
       reset_val: 0
       msb: 1
       lsb: 1
-    - field_name: RESERVED_0_0
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WPRI
@@ -2924,7 +2929,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 16
-    - field_name: RESERVED_15_12
+    - field_name: RESERVED6
       description: >
         Always return zero
       type: WARL
@@ -2940,7 +2945,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 11
       lsb: 11
-    - field_name: RESERVED_10_10
+    - field_name: RESERVED5
       description: >
         Always return zero
       type: WARL
@@ -2958,7 +2963,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 9
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_8_8
+    - field_name: RESERVED4
       description: >
         Always return zero
       type: WARL
@@ -2974,7 +2979,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_6
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -2992,7 +2997,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 5
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_4_4
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -3008,7 +3013,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 3
       lsb: 3
-    - field_name: RESERVED_2_2
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -3026,7 +3031,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 1
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_0_0
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -3044,7 +3049,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x304
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_0
+    - field_name: RESERVED0
       description: >
         Reserved
       type: WARL
@@ -3062,14 +3067,14 @@ ifelse(eval(CLINT != 0), 1, [[[
   address: 0x305
   privilege_mode: M
   rv32:
-    - field_name: BASE_31_7
+    - field_name: BASE31TO7
       description: >
         Trap-handler base address, always aligned to 128 bytes
       type: WARL
       reset_val: 0  # Note: assumes mtvec_i == 0
       msb: 31
       lsb: 7
-    - field_name: BASE_6_2
+    - field_name: BASE6TO2
       description: >
         Trap-handler base address, always aligned to 128 bytes
       type: WARL
@@ -3096,6 +3101,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x305
   privilege_mode: M
   rv32:
+ifelse(eval(VERIF_HEADER != 0), 1, [[[
     - field_name: BASE_31_7
       description: >
         Trap-handler base address, always aligned to 128 bytes
@@ -3112,6 +3118,15 @@ ifelse(eval(CLIC != 0), 1, [[[
       lsb: 6
       warl_legalize: |
         val_out = 0
+]]], [[[dnl
+    - field_name: BASE
+      description: >
+        Trap-handler base address, always aligned to 128 bytes
+      type: WARL
+      reset_val: 0  # Note: assumes mtvec_i == 0
+      msb: 31
+      lsb: 6
+]]])
     - field_name: SUBMODE
       description: >
         Sub mode, reserved for future use
@@ -3139,6 +3154,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x307
   privilege_mode: M
   rv32:
+ifelse(eval(VERIF_HEADER != 0), 1, [[[
     - field_name: BASE_31_N
       description: >
         Trap-handler vector base address. Alignment depends on CLIC_ID_WIDTH parameter.
@@ -3155,7 +3171,16 @@ ifelse(eval(CLIC != 0), 1, [[[
       lsb: 6
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_5_0
+]]], [[[dnl
+    - field_name: BASE
+      description: >
+        Trap-handler vector base address. Alignment depends on CLIC_ID_WIDTH parameter.
+      type: WARL
+      reset_val: 0
+      msb: 31
+      lsb: 6
+]]])
+    - field_name: RESERVED0
       description: >
         Reserved
       type: R
@@ -3170,7 +3195,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x310
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_6
+    - field_name: RESERVED1
       description: >
         Reserved
       type: WPRI
@@ -3195,7 +3220,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       lsb: 4
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_3_0
+    - field_name: RESERVED0
       description: >
         Reserved
       type: WPRI
@@ -3225,7 +3250,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       reset_val: 1
       msb: 2
       lsb: 2
-    - field_name: RESERVED_1_1
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3248,7 +3273,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x323
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3276,7 +3301,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 1), 1, [[[
   address: 0x324
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3304,7 +3329,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 2), 1, [[[
   address: 0x325
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3332,7 +3357,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 3), 1, [[[
   address: 0x326
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3360,7 +3385,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 4), 1, [[[
   address: 0x327
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3388,7 +3413,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 5), 1, [[[
   address: 0x328
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3416,7 +3441,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 6), 1, [[[
   address: 0x329
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3444,7 +3469,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 7), 1, [[[
   address: 0x32a
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3472,7 +3497,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 8), 1, [[[
   address: 0x32b
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3500,7 +3525,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 9), 1, [[[
   address: 0x32c
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3528,7 +3553,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 10), 1, [[[
   address: 0x32d
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3556,7 +3581,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 11), 1, [[[
   address: 0x32e
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3584,7 +3609,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 12), 1, [[[
   address: 0x32f
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3612,7 +3637,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 13), 1, [[[
   address: 0x330
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3640,7 +3665,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 14), 1, [[[
   address: 0x331
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3668,7 +3693,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 15), 1, [[[
   address: 0x332
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3696,7 +3721,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 16), 1, [[[
   address: 0x333
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3724,7 +3749,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 17), 1, [[[
   address: 0x334
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3752,7 +3777,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 18), 1, [[[
   address: 0x335
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3780,7 +3805,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 19), 1, [[[
   address: 0x336
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3808,7 +3833,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 20), 1, [[[
   address: 0x337
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3836,7 +3861,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 21), 1, [[[
   address: 0x338
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3864,7 +3889,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 22), 1, [[[
   address: 0x339
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3892,7 +3917,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 23), 1, [[[
   address: 0x33a
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3920,7 +3945,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 24), 1, [[[
   address: 0x33b
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3948,7 +3973,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 25), 1, [[[
   address: 0x33c
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -3976,7 +4001,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 26), 1, [[[
   address: 0x33d
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -4004,7 +4029,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 27), 1, [[[
   address: 0x33e
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -4032,7 +4057,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 28), 1, [[[
   address: 0x33f
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_16
+    - field_name: RESERVED0
       description: >
         Reserved, hard coded 0
       type: WARL
@@ -4074,7 +4099,7 @@ ifelse(eval(NUM_MHPMCOUNTERS >= 29), 1, [[[
   address: 0x341
   privilege_mode: M
   rv32:
-    - field_name: EPC
+    - field_name: MEPC
       description: >
           Exception PC[31:1]
       type: WARL
@@ -4132,7 +4157,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       reset_val: 0
       msb: 27
       lsb: 27
-    - field_name: RESERVED_26_24
+    - field_name: RESERVED1
       description: >
         Reserved
       type: WARL
@@ -4148,7 +4173,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       reset_val: 0
       msb: 23
       lsb: 16
-    - field_name: RESERVED_15_12
+    - field_name: RESERVED0
       description: >
         Reserved
       type: WARL
@@ -4157,22 +4182,29 @@ ifelse(eval(UMODE != 0), 1, [[[
       lsb: 12
       warl_legalize: |
         val_out = 0
-    - field_name: Exccode_11
-      description: >
-          Exception Code
-      type: WARL
-      reset_val: 0
-      msb: 11
-      lsb: 11
-      warl_legalize: |
-        val_out = 0
-    - field_name: Exccode_10_0
+    - field_name: Exccode
       description: >
           Exception Code
       type: WLRL
       reset_val: 0
-      msb: 10
+      msb: 11
       lsb: 0
+      values:
+        instraccessfault:     1
+        illegalinstr:         2
+        breakpoint:           3
+        loadfault:            5
+        storefault:           7
+ifelse(eval(UMODE != 0), 1, [[[
+        ecallumode:           8
+]]])
+        ecallmmode:          11
+        instrbusfault:       24
+ifelse(eval(XSECURE != 0), 1, [[[
+        instrintegrityfault: 25
+]]])
+      warl_legalize: |
+          val_out = val_in & 0x000007ff
 ]]])
 
 ifelse(eval(CLINT != 0), 1, [[[
@@ -4189,22 +4221,29 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 31
-    - field_name: Exccode_30_11
-      description: >
-        Reserved
-      type: WARL
-      reset_val: 0
-      msb: 30
-      lsb: 11
-      warl_legalize: |
-        val_out = 0
-    - field_name: Exccode_10_0
+    - field_name: Exccode
       description: >
           Exception Code
       type: WLRL
       reset_val: 0
-      msb: 10
+      msb: 30
       lsb: 0
+      values:
+        instraccessfault:     1
+        illegalinstr:         2
+        breakpoint:           3
+        loadfault:            5
+        storefault:           7
+ifelse(eval(UMODE != 0), 1, [[[
+        ecallumode:           8
+]]])
+        ecallmmode:          11
+        instrbusfault:       24
+ifelse(eval(XSECURE != 0), 1, [[[
+        instrintegrityfault: 25
+]]])
+      warl_legalize: |
+          val_out = val_in & 0x000007ff
 ]]])
 
 - csr: mtval
@@ -4237,7 +4276,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 16
-    - field_name: RESERVED_15_12
+    - field_name: RESERVED6
       description: >
         Always return zero
       type: WARL
@@ -4253,7 +4292,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 11
       lsb: 11
-    - field_name: RESERVED_10_10
+    - field_name: RESERVED5
       description: >
         Always return zero
       type: WARL
@@ -4271,7 +4310,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 9
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_8_8
+    - field_name: RESERVED4
       description: >
         Always return zero
       type: WARL
@@ -4287,7 +4326,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_6
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -4305,7 +4344,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 5
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_4_4
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -4321,7 +4360,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       reset_val: 0
       msb: 3
       lsb: 3
-    - field_name: RESERVED_2_2
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -4339,7 +4378,7 @@ ifelse(eval(CLINT != 0), 1, [[[
       lsb: 1
       warl_legalize: |
         val_out = 0
-    - field_name: RESERVED_0_0
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -4357,7 +4396,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x344
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_0
+    - field_name: RESERVED0
       description: >
          Always zero
       type: WARL
@@ -4398,7 +4437,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 24
-    - field_name: RESERVED_23_16
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4428,7 +4467,7 @@ ifelse(eval(CLIC != 0), 1, [[[
   address: 0x347
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_8
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4577,7 +4616,7 @@ ifelse(eval(DBG_NUM_TRIGGERS >= 1), 1, [[[
       reset_val: 0x1
       msb: 31
       lsb: 24
-    - field_name: RESERVED_23_16
+    - field_name: RESERVED0
       description: >
         Reserved
       type: WARL
@@ -4602,7 +4641,7 @@ ifelse(eval(ZC != 0), 1, [[[
   address: 0x017
   privilege_mode: U
   rv32:
-    - field_name: Base_31_6
+    - field_name: Base
       description: >
         Table Jump Base Address, 64 byte aligned
       type: WARL
@@ -4670,7 +4709,7 @@ ifelse(eval(MARCHID == 0x15), 1, [[[
   address: 0xF13
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_20
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: R
@@ -4684,7 +4723,7 @@ ifelse(eval(MARCHID == 0x15), 1, [[[
       reset_val: 0
       msb: 19
       lsb: 16
-    - field_name: RESERVED_15_12
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: R
@@ -4698,7 +4737,7 @@ ifelse(eval(MARCHID == 0x15), 1, [[[
       reset_val: 0
       msb: 11
       lsb: 8
-    - field_name: RESERVED_7_4
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4731,7 +4770,7 @@ ifelse(eval(MARCHID == 0x15), 1, [[[
   address: 0xF15
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_0
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4747,7 +4786,7 @@ ifelse(eval(XSECURE != 0), 1, [[[
   address: 0xBF0
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_20
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: R
@@ -4761,7 +4800,7 @@ ifelse(eval(XSECURE != 0), 1, [[[
       reset_val: 0
       msb: 19
       lsb: 16
-    - field_name: RESERVED_15_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4884,7 +4923,7 @@ ifelse(eval(UMODE != 0), 1, [[[
   address: 0x30A
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_8
+    - field_name: RESERVED1
       description: >
         Hardwired to 0
       type: WPRI
@@ -4912,7 +4951,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       reset_val: 0
       msb: 5
       lsb: 4
-    - field_name: RESERVED_3_1
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: R
@@ -4935,7 +4974,7 @@ ifelse(eval(ZC != 0), 1, [[[
   address: 0x30C
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_3
+    - field_name: RESERVED1
       description: >
         Hard coded zero
       type: WARL
@@ -4951,7 +4990,7 @@ ifelse(eval(ZC != 0), 1, [[[
       reset_val: 0
       msb: 2
       lsb: 2
-    - field_name: RESERVED_1_0
+    - field_name: RESERVED0
       description: >
         Hard coded zero
       type: WARL
@@ -5030,7 +5069,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_0
+    - field_name: RESERVED0
       description: >
         Hardwired to 0
       type: WPRI
@@ -5118,7 +5157,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 1), 1, [[[
   address: 0x747
   privilege_mode: M
   rv32:
-    - field_name: RESERVED_31_10
+    - field_name: RESERVED1
       description: >
         Hardwired to 0
       type: WPRI
@@ -5139,7 +5178,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 1), 1, [[[
       reset_val: 0
       msb: 8
       lsb: 8
-    - field_name: RESERVED_7_3
+    - field_name: RESERVED0
       description: >
         Hardwired to 0
       type: WPRI
@@ -5202,7 +5241,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 4), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -5246,7 +5285,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 4), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -5290,7 +5329,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 4), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -5334,7 +5373,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 4), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -5387,7 +5426,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 8), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -5431,7 +5470,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 8), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -5475,7 +5514,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 8), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -5519,7 +5558,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 8), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -5572,7 +5611,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 12), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -5616,7 +5655,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 12), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -5660,7 +5699,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 12), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -5704,7 +5743,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 12), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -5757,7 +5796,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 16), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -5801,7 +5840,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 16), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -5845,7 +5884,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 16), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -5889,7 +5928,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 16), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -5942,7 +5981,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 20), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -5986,7 +6025,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 20), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6030,7 +6069,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 20), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6074,7 +6113,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 20), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -6127,7 +6166,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 24), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -6171,7 +6210,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 24), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6215,7 +6254,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 24), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6259,7 +6298,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 24), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -6312,7 +6351,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 28), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -6356,7 +6395,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 28), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6400,7 +6439,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 28), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6444,7 +6483,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 28), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -6497,7 +6536,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 32), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -6541,7 +6580,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 32), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6585,7 +6624,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 32), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6629,7 +6668,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 32), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -6682,7 +6721,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 36), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -6726,7 +6765,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 36), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6770,7 +6809,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 36), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6814,7 +6853,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 36), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -6867,7 +6906,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 40), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -6911,7 +6950,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 40), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -6955,7 +6994,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 40), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -6999,7 +7038,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 40), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7052,7 +7091,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 44), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -7096,7 +7135,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 44), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -7140,7 +7179,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 44), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -7184,7 +7223,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 44), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7237,7 +7276,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 48), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -7281,7 +7320,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 48), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -7325,7 +7364,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 48), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -7369,7 +7408,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 48), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7422,7 +7461,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 52), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -7466,7 +7505,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 52), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -7510,7 +7549,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 52), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -7554,7 +7593,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 52), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7607,7 +7646,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 56), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -7651,7 +7690,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 56), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -7695,7 +7734,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 56), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -7739,7 +7778,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 56), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7792,7 +7831,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 60), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -7836,7 +7875,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 60), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -7880,7 +7919,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 60), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -7924,7 +7963,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 60), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
@@ -7977,7 +8016,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 64), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 31
       lsb: 31
-    - field_name: RESERVED_30_29
+    - field_name: RESERVED3
       description: >
         Always return zero
       type: WARL
@@ -8021,7 +8060,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 64), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 23
       lsb: 23
-    - field_name: RESERVED_22_21
+    - field_name: RESERVED2
       description: >
         Always return zero
       type: WARL
@@ -8065,7 +8104,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 64), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 15
       lsb: 15
-    - field_name: RESERVED_14_13
+    - field_name: RESERVED1
       description: >
         Always return zero
       type: WARL
@@ -8109,7 +8148,7 @@ ifelse(eval(PMP_NUM_REGIONS >= 64), 1, [[[
       reset_val: 0  # Note: Based on PMPNCFG_DEFAULT
       msb: 7
       lsb: 7
-    - field_name: RESERVED_6_5
+    - field_name: RESERVED0
       description: >
         Always return zero
       type: WARL
