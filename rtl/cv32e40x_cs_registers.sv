@@ -284,9 +284,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [32-MTVT_ADDR_WIDTH-2-1:0] mnxti_irq_id;
 
   // Pad mnxti_irq_i with zeroes if CLIC_ID_WIDTH is not 4 or more.
-  assign mnxti_irq_id = (CLIC_ID_WIDTH < 4) ? {{(4-CLIC_ID_WIDTH){1'b0}}, mnxti_irq_id_i} : mnxti_irq_id_i;
-
-
+  generate
+    if (CLIC_ID_WIDTH < 4) begin : mnxti_irq_id_lt4
+      assign mnxti_irq_id = {{(4-CLIC_ID_WIDTH){1'b0}}, mnxti_irq_id_i};
+    end
+    else begin: mnxti_irq_id_ge4
+      assign mnxti_irq_id = mnxti_irq_id_i;
+    end
+  endgenerate
 
   // Local instr_valid for write portion (WB)
   // Not factoring in ctrl_fsm_i.halt_limited_wb. This signal is only set during SLEEP mode, and while in SLEEP
