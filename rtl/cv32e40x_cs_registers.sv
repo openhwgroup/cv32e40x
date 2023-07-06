@@ -280,6 +280,14 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic                         mscratchcswl_in_wb;
   logic                         mnxti_in_wb;
 
+  // Local padded version of mnxti_irq_id_i
+  logic [32-MTVT_ADDR_WIDTH-2-1:0] mnxti_irq_id;
+
+  // Pad mnxti_irq_i with zeroes if CLIC_ID_WIDTH is not 4 or more.
+  assign mnxti_irq_id = (CLIC_ID_WIDTH < 4) ? {{(4-CLIC_ID_WIDTH){1'b0}}, mnxti_irq_id_i} : mnxti_irq_id_i;
+
+
+
   // Local instr_valid for write portion (WB)
   // Not factoring in ctrl_fsm_i.halt_limited_wb. This signal is only set during SLEEP mode, and while in SLEEP
   // there cannot be any CSR instruction in WB.
@@ -1486,7 +1494,7 @@ dcsr_we        = 1'b1;
   // mnxti_rdata breaks the regular convension for CSRs. The read data used for read-modify-write is the mstatus_rdata,
   // while the value read and written back to the GPR is a pointer address if an interrupt is pending, or zero
   // if no interrupt is pending.
-  assign mnxti_rdata        = mnxti_irq_pending_i ? {mtvt_addr_o, mnxti_irq_id_i, 2'b00} : 32'h00000000;
+  assign mnxti_rdata        = mnxti_irq_pending_i ? {mtvt_addr_o, mnxti_irq_id, 2'b00} : 32'h00000000;
 
   // mscratchcsw_rdata breaks the regular convension for CSRs. Read data depends on mstatus.mpp
   // mscratch_rdata is returned if mstatus.mpp differs from PRIV_LVL_M, otherwise rs1 is returned.
