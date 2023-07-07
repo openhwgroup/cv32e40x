@@ -383,7 +383,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
   assign m_c_obi_data_if.s_gnt.gnt           = data_gnt_i;
   assign m_c_obi_data_if.s_rvalid.rvalid     = data_rvalid_i;
   assign m_c_obi_data_if.resp_payload.rdata  = data_rdata_i;
-  assign m_c_obi_data_if.resp_payload.err    = data_err_i;
+  assign m_c_obi_data_if.resp_payload.err[0] = data_err_i;
+  assign m_c_obi_data_if.resp_payload.err[1] = 1'b0; // Will be assigned in the response filter
   assign m_c_obi_data_if.resp_payload.exokay = data_exokay_i;
 
   assign debug_havereset_o = ctrl_fsm.debug_havereset;
