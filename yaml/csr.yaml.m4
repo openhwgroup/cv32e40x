@@ -4193,6 +4193,10 @@ ifelse(eval(UMODE != 0), 1, [[[
         instraccessfault:     1
         illegalinstr:         2
         breakpoint:           3
+ifelse(eval(UMODE == 0), 1, [[[
+        loadmisaligned:       4
+        storemisaligned:      6
+]]])
         loadfault:            5
         storefault:           7
 ifelse(eval(UMODE != 0), 1, [[[
