@@ -146,7 +146,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   obi_data_req_t  filter_trans;
   logic           filter_resp_valid;
   obi_data_resp_t filter_resp;
-  logic [1:0]     filter_err;
 
   // Transaction request (from cv32e40x_write_buffer to cv32e40x_data_obi_interface)
   logic           bus_trans_valid;
@@ -692,8 +691,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Validate bus_error on rvalid from the bus (WB stage)
   // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
-  // Todo: This bypasses the MPU, could be merged with mpu_status_e and passed through the MPU instead
-  assign lsu_err_1_o = xif_res_q ? '0 : filter_err;
+  assign lsu_err_1_o = xif_res_q ? '0 : resp.bus_resp.err;
 
   //////////////////////////////////////////////////////////////////////////////
   // WPT
@@ -869,7 +867,6 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
        .trans_i      ( filter_trans       ),
        .resp_valid_o ( filter_resp_valid  ),
        .resp_o       ( filter_resp        ),
-       .err_o        ( filter_err         ),
 
        .valid_o      ( buffer_trans_valid ),
        .ready_i      ( buffer_trans_ready ),
@@ -939,7 +936,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
       // XIF memory result
       assign xif_mem_result_if.mem_result.id    = xif_id_q;
       assign xif_mem_result_if.mem_result.rdata = rdata_ext;
-      assign xif_mem_result_if.mem_result.err   = filter_err[0]; // forward bus errors to coprocessor
+      assign xif_mem_result_if.mem_result.err   = resp.bus_resp.err[0]; // forward bus errors to coprocessor
       assign xif_mem_result_if.mem_result.dbg   = '0;            // TODO:XIF forward debug triggers
     end else begin : no_x_ext
       assign xif_mem_if.mem_resp.exc            = '0;

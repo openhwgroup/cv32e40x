@@ -1053,7 +1053,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic [DATA_DATA_WIDTH-1:0] rdata;
-  logic                       err;
+  logic [1:0]                 err; // bit0: Error from bus, bit1: 0 for load, 1 for store
   logic                       exokay;
 } obi_data_resp_t;
 
