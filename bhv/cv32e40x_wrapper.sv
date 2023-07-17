@@ -234,7 +234,7 @@ module cv32e40x_wrapper
                               .xif_commit_kill              (core_i.xif_commit_if.commit.commit_kill),
                               .xif_commit_valid             (core_i.xif_commit_if.commit_valid),
                               .first_op_if_i                (core_i.if_stage_i.first_op),
-                              .first_op_ex_i                (core_i.first_op_ex),
+                              .first_op_ex_i                (core_i.ex_stage_i.first_op),
                               .prefetch_valid_if_i          (core_i.if_stage_i.prefetch_valid),
                               .prefetch_is_tbljmp_ptr_if_i  (core_i.if_stage_i.prefetch_is_tbljmp_ptr),
                               .prefetch_is_mret_ptr_if_i    (core_i.if_stage_i.prefetch_is_mret_ptr),
