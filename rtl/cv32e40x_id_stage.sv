@@ -20,6 +20,7 @@
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                 Michael Platzer - michael.platzer@tuwien.ac.at             //
+//                 Aidan McNay - acm289@cornell.edu                           //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
