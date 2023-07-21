@@ -162,7 +162,7 @@ if (DEBUG) begin
   // Helper signal, indicating debug cause
   // Special case for debug entry from debug mode caused by EBREAK as it is not captured by debug_cause_i
   logic [2:0] debug_cause_int;
-  assign debug_cause_int = ebreak_in_wb_i ? 3'h1 : ctrl_fsm_i.debug_cause;
+  assign debug_cause_int = (ctrl_fsm_i.debug_mode && ebreak_in_wb_i) ? 3'h1 : ctrl_fsm_i.debug_cause;
 
   // Check that dbg_ack results in RVFI capturing a debug_cause
   // Ideally, we should assert that every dbg_ack eventually leads to rvfi_dbg,
