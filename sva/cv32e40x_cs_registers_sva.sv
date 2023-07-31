@@ -186,14 +186,24 @@ module cv32e40x_cs_registers_sva
 
 
   // Check csr_clear_minhv cannot happen at the same time as csr_save_cause or csr_restore_dret (would cause mcause_we conflict)
+  sequence seq_csr_clear_minhv;
+    ctrl_fsm_i.csr_clear_minhv;
+  endsequence
+
   property p_minhv_unique;
     @(posedge clk) disable iff (!rst_n)
-    (  ctrl_fsm_i.csr_clear_minhv -> !(ctrl_fsm_i.csr_save_cause || ctrl_fsm_i.csr_restore_dret));
+    (  seq_csr_clear_minhv |-> !(ctrl_fsm_i.csr_save_cause || ctrl_fsm_i.csr_restore_dret));
   endproperty;
 
-  a_minhv_unique: assert property(p_minhv_unique)
-    else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
+  if (CLIC) begin
+    a_minhv_unique: assert property(p_minhv_unique)
+      else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
 
+  end else begin
+    a_minhv_unique_nocover: assert property(
+      @(posedge clk) disable iff (!rst_n)
+       not seq_csr_clear_minhv);
+  end
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Asserts to check that the CSR flops remain unchanged if a set/clear has all_zero rs1

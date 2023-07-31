@@ -486,7 +486,7 @@ endgenerate
   a_no_wfi_wakeup_on_wfe:
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_cs == SLEEP) && ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_wfi_insn &&
-                    !(irq_wu_ctrl_i || pending_nmi) && wu_wfe_i && !pending_async_debug
+                    !(irq_wu_ctrl_i || pending_nmi) && wu_wfe_i && !pending_async_debug //TODO: krdosvik, wu_wfe_i is never set, wait for Henrik to add wfe agent
                     |=>
                     (ctrl_fsm_cs == SLEEP))
     else `uvm_error("controller", "WFI instruction woke up to wu_wfe_i")
