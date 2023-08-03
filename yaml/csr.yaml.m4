@@ -4193,7 +4193,7 @@ ifelse(eval(UMODE != 0), 1, [[[
         instraccessfault:     1
         illegalinstr:         2
         breakpoint:           3
-ifelse(eval(UMODE == 0), 1, [[[
+ifelse(eval(A_EXT != 0), 1, [[[
         loadmisaligned:       4
         storemisaligned:      6
 ]]])
