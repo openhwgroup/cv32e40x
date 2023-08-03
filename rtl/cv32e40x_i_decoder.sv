@@ -35,7 +35,7 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
    // from IF/ID pipeline
    input logic [31:0] instr_rdata_i,
    input logic        tbljmp_i,      // instruction is a tablejump, mapped to JAL
-   input  ctrl_fsm_t     ctrl_fsm_i, // todo:low each use of this signal needs a comment explaining why the signal from the controller is safe to be used with ID timing (probably add comment in FSM)
+   input  ctrl_fsm_t     ctrl_fsm_i,
    output decoder_ctrl_t decoder_ctrl_o
 );
 
@@ -307,6 +307,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               end
 
               12'h302: begin // mret
+                // Safe to use ctrl_fsm_i.debug_mode. It is either set to 1 on a debug entry after killing the pipeline or
+                // 0 after a dret which also kills the pipeline.
                 if (ctrl_fsm_i.debug_mode) begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
                 end else begin
@@ -315,6 +317,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
               end
 
               12'h7b2: begin // dret
+                // Safe to use ctrl_fsm_i.debug_mode. It is either set to 1 on a debug entry after killing the pipeline or
+                // 0 after a dret which also kills the pipeline.
                 if (ctrl_fsm_i.debug_mode) begin
                   decoder_ctrl_o.sys_dret_insn    =  1'b1;
                 end else begin
@@ -324,12 +328,18 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
 
               12'h105: begin // wfi
                 // Suppressing WFI in case of ctrl_fsm_i.debug_no_sleep to prevent sleeping when not allowed.
+                // Using ctrl_fsm_i.debug_no sleep is safe because the fan-ins can only change when the pipeline is killed:
+                //  ctrl_fsm_o.debug_no_sleep = debug_mode_q || dcsr_i.step; from the controller_fsm
+                //  debug_mode can only change after debug entry or dret, both kills the pipeline
+                //  dcsr_i.step can only change during debug mode, and will only take effect once outside of debug mode
+                //  which again requires a dret that kills the pipeline.
                 decoder_ctrl_o.sys_wfi_insn = ctrl_fsm_i.debug_no_sleep ? 1'b0 : 1'b1;
               end
 
               12'h8C0: begin // wfe
                 if (CUSTOM_EXT == 1) begin
                   // Suppressing WFE in case of ctrl_fsm_i.debug_no_sleep to prevent sleeping when not allowed.
+                  // See comment about usage of ctrl_fsm_i.debug_no_sleep for the WFI instruction.
                   decoder_ctrl_o.sys_wfe_insn = ctrl_fsm_i.debug_no_sleep ? 1'b0 : 1'b1;
                 end else begin
                   decoder_ctrl_o = DECODER_CTRL_ILLEGAL_INSN;
