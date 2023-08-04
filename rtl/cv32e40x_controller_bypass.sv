@@ -138,8 +138,6 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   //   - The hazard here is really between EX (CSR read) and WB (CSR write). This stall works by creating a bubble in EX while the the
   //     'offending' write moves to WB (mscratchcsw[l] stays in ID.) Since we don't squash bubbles this should be safe.
 
-  // todo:low:Above loop reasoning only applies to halt_id; for other pipeline stages a local instr_valid signal can maybe be used.
-
   // Detect when a CSR insn  in in EX or WB
   // mret, dret and CLIC pointers implicitly writes to CSR. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.
   assign csr_write_in_ex_wb = (
