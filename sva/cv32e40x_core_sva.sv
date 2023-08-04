@@ -55,6 +55,7 @@ module cv32e40x_core_sva
   input logic        irq_ack, // irq ack output
   input logic        irq_clic_shv, // ack'ed irq is a CLIC SHV
   input logic        irq_req_ctrl, // Interrupt controller request an interrupt
+  input logic        irq_wu_ctrl,
   input ex_wb_pipe_t ex_wb_pipe,
   input logic        wb_valid,
   input logic        branch_taken_in_ex,
@@ -131,7 +132,8 @@ module cv32e40x_core_sva
   input logic [1:0]  lsu_cnt_q,
   input logic [1:0]  resp_filter_bus_cnt_q,
   input logic [1:0]  resp_filter_core_cnt_q,
-  input write_buffer_state_e write_buffer_state
+  input write_buffer_state_e write_buffer_state,
+  input privlvl_t    priv_lvl
 );
 
 if (CLIC) begin
@@ -690,6 +692,21 @@ if (!CLIC) begin
 
   a_mip_mie_write_disable: assert property(p_mip_mie_write_disable)
     else `uvm_error("core", "Interrupt taken after disabling");
+
+  // If an interrupt wakeup is signalled while the core is in the SLEEP state, an interrupt
+  // request must be asserted in the next cycle if interrupts are globally enabled.
+  property p_req_after_wake;
+    @(posedge clk) disable iff (!rst_ni)
+    (  (ctrl_fsm_cs == SLEEP) &&  // Core is in sleep state
+        irq_wu_ctrl               // Wakeup requested
+        |=>
+        (irq_req_ctrl)  // interrupt must be requested
+        or
+        (!irq_req_ctrl && !(cs_registers_mstatus_q.mie || (priv_lvl < PRIV_LVL_M)))); // unless interrupts are disabled
+  endproperty;
+
+  a_req_after_wake: assert property(p_req_after_wake)
+    else `uvm_error("core", "No interrupt request after wakeup signal");
 end
 
 // Clearing external interrupts via a store instruction causes irq_i to go low the next cycle.
