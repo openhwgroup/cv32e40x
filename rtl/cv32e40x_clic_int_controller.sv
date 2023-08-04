@@ -122,6 +122,10 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   // and the incoming irq level is above the core's current effective interrupt level. Machine mode interrupts
   // during user mode shall always be taken if their level is > 0
 
+  // Cannot use flopped comparator results from the irq_wu_ctrl_o logic, as the effective_irq_level
+  // may change from one cycle to the next due to CSR updates. However, as the irq_wu_ctrl_o is only used
+  // when the core is in the SLEEP state (where no CSR updates can happen), an assertion exists to check that the cycle after a core wakes up
+  // due to an interupt the irq_req_ctrl_o must be asserted if global_irq_enable == 1;
   assign irq_req_ctrl_o = clic_irq_q && global_irq_enable &&
     ((priv_lvl_i == PRIV_LVL_M) ? (clic_irq_level_q > effective_irq_level) : (clic_irq_level_q > '0));
 
@@ -135,7 +139,6 @@ module cv32e40x_clic_int_controller import cv32e40x_pkg::*;
   // - priv mode == current, irq i is max (done in external CLIC), level > max(mintstatus.mil, mintthresh.th)
   // - priv mode  > current, irq i is max (done in external CLIC), level != 0
 
-  // todo: can we share the comparator below and flop the result for irq_req_ctrl_o?
   assign irq_wu_ctrl_o = clic_irq_i &&
     ((priv_lvl_i == PRIV_LVL_M) ? (clic_irq_level_i > effective_irq_level) : (clic_irq_level_i > '0));
 
