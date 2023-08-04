@@ -455,8 +455,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // If a CLIC SHV interrupt is taken during single step, a pointer that reaches WB will trigger the debug entry.
   //   - For un-faulted pointer fetches, the second fetch of the CLIC vectoring took place in ID, and the final SHV handler target address will be available from IF.
   //   - A faulted pointer fetch does not perform the second fetch. Instead the exception handler fetch will occur before entering debug due to stepping.
-  // todo: Likely flop the wb_valid/last_op/abort_op to be able to evaluate all debug reasons (debug_req when pointer is in WB is not allowed, while single step is allowed)
-  // todo: can this be merged with pending_sync_debug in the future?
+  //
+  // Unlike [a]synchrounous debug entries, single step does not halt the pipeline.
+  // This causes the reason for debug entry to 'disappear' as seen from the DEBUG_TAKEN state one cycle later.
+  // The signal pending_single_step should never be used outside of the FUNCTIONAL state.
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack || (pending_nmi && nmi_allowed)));
 
 
