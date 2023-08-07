@@ -117,7 +117,8 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    div_op_b_shifted;
 
   // Misc signals
-  logic           previous_exception;
+  logic           forced_nop; // Exception or trigger forces this instruction to be a nop with no enables active
+  logic           forced_nop_valid;
   logic           first_op;
 
   // Detect if we get an illegal CSR instruction
@@ -149,11 +150,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   // Exception happened during IF or ID, or trigger match in ID (converted to NOP).
   // signal needed for ex_valid to go high in such cases
-  assign previous_exception = (id_ex_pipe_i.illegal_insn                     ||
-                               id_ex_pipe_i.instr.bus_resp.err               ||
-                               (id_ex_pipe_i.instr.mpu_status != MPU_OK)     ||
-                               |id_ex_pipe_i.trigger_match)                  &&
-                              id_ex_pipe_i.instr_valid;
+  assign forced_nop = (id_ex_pipe_i.illegal_insn                     ||
+                       id_ex_pipe_i.instr.bus_resp.err               ||
+                       (id_ex_pipe_i.instr.mpu_status != MPU_OK)     ||
+                       |id_ex_pipe_i.trigger_match)                  &&
+                      id_ex_pipe_i.instr_valid;
 
   // ALU write port mux
   always_comb
@@ -220,8 +221,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   // |____/___|  \_/    /_/    |_| \_\_____|_|  |_| //
   //                                                //
   ////////////////////////////////////////////////////
-
-  // TODO:low COCO analysis. is it okay from a leakage perspective to use the ALU at all for DIV/REM instructions?
 
   generate
     if (M_EXT == M) begin: div
@@ -452,23 +451,29 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   assign sys_valid = 1'b1;
   assign sys_ready = wb_ready_i;
 
+  // Forced nop (exceptions or trigger matches) will pass through the EX stage in a single cycle.
+  assign forced_nop_valid = 1'b1;
+
+  // CLIC and mret pointers pass through the EX stage in a single cycle
+  assign clic_ptr_valid = 1'b1;
+  assign mret_ptr_valid = 1'b1;
+
   // EX stage is ready immediately when killed and otherwise when its functional units are ready,
   // unless the stage is being halted. The late (data_rvalid_i based) downstream wb_ready_i signal
   // fans into the ready signals of all functional units.
 
   assign ex_ready_o = ctrl_fsm_i.kill_ex || (alu_ready && csr_ready && sys_ready && mul_ready && div_ready && lsu_ready_i && xif_ready && !ctrl_fsm_i.halt_ex);
 
-  // TODO:ab Reconsider setting alu_en for exception/trigger instead of using 'previous_exception'
-  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)       ||
-                       (id_ex_pipe_i.csr_en && csr_valid)       ||
-                       (id_ex_pipe_i.sys_en && sys_valid)       ||
-                       (id_ex_pipe_i.mul_en && mul_valid)       ||
-                       (id_ex_pipe_i.div_en && div_valid)       ||
-                       (id_ex_pipe_i.lsu_en && lsu_valid_i)     ||
-                       (id_ex_pipe_i.xif_en && xif_valid)       ||
-                       (id_ex_pipe_i.instr_meta.clic_ptr)       || // todo: Should this instead have it's own _valid?
-                       (id_ex_pipe_i.instr_meta.mret_ptr)       || // todo: Should this instead have it's own _valid?
-                       previous_exception // todo:ab:remove
+  assign ex_valid_o = ((id_ex_pipe_i.alu_en && alu_valid)                   ||
+                       (id_ex_pipe_i.csr_en && csr_valid)                   ||
+                       (id_ex_pipe_i.sys_en && sys_valid)                   ||
+                       (id_ex_pipe_i.mul_en && mul_valid)                   ||
+                       (id_ex_pipe_i.div_en && div_valid)                   ||
+                       (id_ex_pipe_i.lsu_en && lsu_valid_i)                 ||
+                       (id_ex_pipe_i.xif_en && xif_valid)                   ||
+                       (id_ex_pipe_i.instr_meta.clic_ptr && clic_ptr_valid) ||
+                       (id_ex_pipe_i.instr_meta.mret_ptr && mret_ptr_valid) ||
+                       (forced_nop && forced_nop_valid)
                       ) && instr_valid;
 
   //---------------------------------------------------------------------------
