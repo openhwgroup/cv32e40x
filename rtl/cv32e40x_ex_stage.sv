@@ -103,8 +103,6 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [31:0]    div_result;
 
   // Gated enable signals factoring in instr_valid)
-  logic           mul_en_gated;
-  logic           div_en_gated;
   logic           lsu_en_gated;
 
   // Divider signals
@@ -116,6 +114,9 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   logic [5:0]     div_shift_amt;
   logic [31:0]    div_op_b_shifted;
 
+  // Multiplier signals
+  logic           mul_en;
+
   // Misc signals
   logic           previous_exception;
   logic           first_op;
@@ -126,14 +127,15 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
-  // todo: consider not factoring halt_ex into the mul/div/lsu_en_gated below
-  //       Halting EX currently reset state of these units. The IF stage sequencer is _not_ reset on a halt_if.
-  //       Maybe we need to split out valid and halt into the submodules?
-  assign mul_en_gated = id_ex_pipe_i.mul_en && instr_valid; // Factoring in instr_valid to kill mul instructions on kill/halt
-  assign div_en_gated = id_ex_pipe_i.div_en && instr_valid; // Factoring in instr_valid to kill div instructions on kill/halt
+  // The multiplier and divider both factors in halt_ex and kill_ex.
+  // MUL/DIV instructions in flight will keep state while halted, and reset state on kill.
+  assign mul_en = id_ex_pipe_i.mul_en && id_ex_pipe_i.instr_valid; // Valid MUL in EX, not affected by kill/halt
+  assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
+
+  // The lsu_en_gated factors in halt_ex and kill_ex via instr_valid.
+  // A halted or killed LSU instruction must not generate a data_req to ensure no OBI protocol is violated.
   assign lsu_en_gated = id_ex_pipe_i.lsu_en && instr_valid; // Factoring in instr_valid to suppress bus transactions on kill/halt
 
-  assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
 
   // If pipeline is handling a valid CSR AND the same instruction is accepted by the eXtension interface
   // we need to convert the instruction to an illegal instruction and signal commit_kill to the eXtension interface.
@@ -250,11 +252,10 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
          // Result
          .result_o           ( div_result                           ),
 
-         // divider enable, not affected by kill/halt
-         .div_en_i           ( div_en                               ),
-
          // Handshakes
-         .valid_i            ( div_en_gated                         ),
+         .halt_i             ( ctrl_fsm_i.halt_ex                   ),
+         .kill_i             ( ctrl_fsm_i.kill_ex                   ),
+         .valid_i            ( div_en                               ),
          .ready_o            ( div_ready                            ),
          .valid_o            ( div_valid                            ),
          .ready_i            ( wb_ready_i                           )
@@ -300,8 +301,11 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
          // Result
          .result_o        ( mul_result                    ),
 
+         .halt_i          ( ctrl_fsm_i.halt_ex            ),
+         .kill_i          ( ctrl_fsm_i.kill_ex            ),
+
          // Handshakes
-         .valid_i         ( mul_en_gated                  ),
+         .valid_i         ( mul_en                        ),
          .ready_o         ( mul_ready                     ),
          .valid_o         ( mul_valid                     ),
          .ready_i         ( wb_ready_i                    )

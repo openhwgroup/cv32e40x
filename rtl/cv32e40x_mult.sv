@@ -40,6 +40,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   output logic [31:0] result_o,
 
+  input  logic        halt_i,
+  input  logic        kill_i,
+
   output logic        ready_o,
   output logic        valid_o,
   input  logic        ready_i
@@ -115,7 +118,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     mulh_acc_next    = mulh_acc;
 
     // Case statement assumes valid_i = 1; the valid_i = 0 scenario
-    // is handled after the case statement.    
+    // is handled after the case statement.
     case (mulh_state)
       MUL_ALBL: begin
         if (operator_i == MUL_H) begin
@@ -126,10 +129,10 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         end
         else begin
           // Single cycle multiplication
-          valid_o         = 1'b1;
+          valid_o         = valid_i && !(halt_i || kill_i);
 
           if (ready_i) begin
-            ready_o        = 1'b1;
+            ready_o       = !halt_i || kill_i;
           end
         end
       end
@@ -150,12 +153,12 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       end
 
       MUL_AHBH: begin
-        valid_o           = 1'b1;
+        valid_o           = valid_i && !(halt_i || kill_i);
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
 
         if (ready_i) begin
-          ready_o         = 1'b1;
+          ready_o         = !halt_i || kill_i;
           mulh_state_next = MUL_ALBL;
           mulh_acc_next   = '0;
         end
@@ -163,8 +166,8 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       default: ;
     endcase
 
-    // Allow kill at any time
-    if (!valid_i) begin
+    // Allow kill at any time unless EX stage is halted
+    if (!valid_i || kill_i) begin
       mulh_state_next = MUL_ALBL;
       ready_o = 1'b1;
       valid_o = 1'b0;
@@ -177,8 +180,10 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       mulh_acc   <=  '0;
       mulh_state <= MUL_ALBL;
     end else begin
-      mulh_acc   <= mulh_acc_next;
-      mulh_state <= mulh_state_next;
+      if ((valid_i && !halt_i) || kill_i) begin
+        mulh_acc   <= mulh_acc_next;
+        mulh_state <= mulh_state_next;
+      end
     end
   end
 
