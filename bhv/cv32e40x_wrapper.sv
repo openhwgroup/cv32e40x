@@ -433,6 +433,10 @@ endgenerate
              .write_buffer_txn_bufferable       ('0),
              .write_buffer_txn_cacheable        ('0),
              .obi_if_state                      (core_i.if_stage_i.instruction_obi_i.state_q),
+             .lsu_split_0                       (1'b0),
+             .lsu_split_q                       (1'b0),
+             .lsu_ctrl_update                   (1'b0),
+             .ctrl_exception_wb                 (1'b0),
              .*);
 
   bind cv32e40x_mpu:
@@ -460,6 +464,10 @@ endgenerate
              .write_buffer_txn_bufferable       (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[0]),
              .write_buffer_txn_cacheable        (core_i.load_store_unit_i.write_buffer_i.trans_o.memtype[1]),
              .obi_if_state                      (cv32e40x_pkg::TRANSPARENT),
+             .lsu_split_0                       (core_i.load_store_unit_i.lsu_split_0_o),
+             .lsu_split_q                       (core_i.load_store_unit_i.split_q),
+             .lsu_ctrl_update                   (core_i.load_store_unit_i.ctrl_update),
+             .ctrl_exception_wb                 (core_i.controller_i.controller_fsm_i.exception_in_wb),
              .*);
 
   bind cv32e40x_lsu_response_filter :

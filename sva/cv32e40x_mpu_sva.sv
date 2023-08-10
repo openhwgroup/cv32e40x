@@ -84,7 +84,11 @@ module cv32e40x_mpu_sva import cv32e40x_pkg::*; import uvm_pkg::*;
    input logic        mpu_block_bus,
    input              mpu_state_e state_q,
    input logic        mpu_err,
-   input logic        load_access
+   input logic        load_access,
+   input logic        lsu_split_0,
+   input logic        lsu_split_q,
+   input logic        lsu_ctrl_update,
+   input logic        ctrl_exception_wb
    );
 
   // PMA assertions helper signals
@@ -450,5 +454,21 @@ if (DEBUG) begin
                   !bus_trans_bufferable)
         else `uvm_error("mpu", "Wrong attributes for non-atomic access to DM during debug mode")
 end
+
+generate
+  if (IS_INSTR_SIDE == 0) begin
+    a_misalign_err_block :
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      core_trans_valid_i &&   // MPU gets a valid transaction
+                      lsu_split_0 &&          // LSU is handling first part of split misaligned
+                      mpu_err     &&          // MPU gives an error
+                      lsu_ctrl_update         // LSU passes failed instruction to WB
+                      |=>                     // In the next cycle:
+                      lsu_split_q &&          // LSU is handling second half of split misaligned
+                      !core_trans_valid_i &&  // MPU shall not see a valid input
+                      ctrl_exception_wb)      // and controller shall see an exception
+        else `uvm_error("mpu", "Second part of split misaligned not suppressed on exception from the first")
+  end
+endgenerate
 endmodule : cv32e40x_mpu_sva
 
