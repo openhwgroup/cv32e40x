@@ -218,7 +218,6 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
   // In principle this is the same as "seq_en && valid_i"
   //   as the output of the above decode logic is equivalent to seq_en
   // We have valid outputs for any correctly decoded instruction, or when we are handling a tablejump pointer.
-  // todo: halting IF stage would imply !valid, can this be an issue?
   assign valid_o = ((seq_instr != INVALID_INST) || instr_is_tbljmp_ptr_i) && valid_i && !halt_i && !kill_i;
 
 
@@ -328,7 +327,6 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
         end
 
       end
-      // todo: Any instruction output while not in S_IDLE should not combinatorially depend on instr_rdata_i
       S_PUSH: begin
         seq_first_fsm = 1'b0;
         // sw rs2, current_stack_adj(sp)
