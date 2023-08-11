@@ -62,8 +62,6 @@ package cv32e40x_pkg;
 
 parameter ALU_OP_WIDTH = 6;
 
-  // TODO:low Could a smarter encoding be used here?
-
 // Note: Certain bits in alu_opcode_e are referred to directly in the ALU:
 //
 // - Bit 2: Right shift?
@@ -89,7 +87,6 @@ typedef enum logic [ALU_OP_WIDTH-1:0]
  ALU_B_ORN    = 6'b101110, // funct3 = 110, zbb
  ALU_B_ANDN   = 6'b101111, // funct3 = 111, zbb
 
- // Comparisons // todo: comparator operators do not need to be part of ALU operators
  ALU_EQ       = 6'b010000, // funct3 = 000
  ALU_NE       = 6'b010001, // funct3 = 001
  ALU_SLT      = 6'b011010, // funct3 = 010, signed(3)
@@ -1106,7 +1103,6 @@ typedef struct packed {
 } outstanding_t;
 
 // Instruction meta data
-// TODO: consider moving other instruction meta data to this struct. e.g. xxx_insn, pc, etc (but don't move stuff here that is specific to one functional unit)
 typedef struct packed
 {
   logic        compressed;
