@@ -36,6 +36,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
   input  logic        instr_fetch_access_i, // Indicate that ongoing access is an instruction fetch
   input  logic        atomic_access_i,      // Indicate that ongoing access is atomic
   input  logic        misaligned_access_i,  // Indicate that ongoing access is part of a misaligned access
+  input  logic        modified_access_i,    // Indicate that ongoing access is part of a modified access
   input  logic        load_access_i,        // Indicate that ongoing access is a load
   output logic        pma_err_o,
   output logic        pma_bufferable_o,
@@ -122,7 +123,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
     end
 
     // Misaligned access to I/O memory
-    if (misaligned_access_i && !pma_cfg.main) begin
+    if ((misaligned_access_i || modified_access_i) && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
     end
 
