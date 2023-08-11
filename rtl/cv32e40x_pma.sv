@@ -122,7 +122,7 @@ module cv32e40x_pma import cv32e40x_pkg::*;
       pma_err_o   = 1'b1;
     end
 
-    // Misaligned access to I/O memory
+    // Misaligned or modified access to I/O memory
     if ((misaligned_access_i || modified_access_i) && !pma_cfg.main) begin
       pma_err_o   = 1'b1;
     end
