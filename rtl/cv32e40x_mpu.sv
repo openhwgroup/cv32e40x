@@ -40,6 +40,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
 
    input logic  atomic_access_i,     // Indicate that ongoing access is atomic
    input logic  misaligned_access_i, // Indicate that ongoing access is part of a misaligned access
+   input logic  modified_access_i,   // Indicate that ongoing access is part of a modified access
 
    // Interface towards bus interface
    input logic  bus_trans_ready_i,
@@ -199,6 +200,7 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     .instr_fetch_access_i       ( instr_fetch_access      ),
     .atomic_access_i            ( atomic_access_i         ),
     .misaligned_access_i        ( misaligned_access_i     ),
+    .modified_access_i          ( modified_access_i       ),
     .load_access_i              ( load_access             ),
     .pma_err_o                  ( pma_err                 ),
     .pma_bufferable_o           ( bus_trans_bufferable    ),

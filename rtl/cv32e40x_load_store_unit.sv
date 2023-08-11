@@ -178,8 +178,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   logic           split_q;              // Currently performing the second address phase of a split misaligned load/store
                                         // Note that in the presence of a write buffer, split_q will align with acceptance of the second
                                         // transfer by the write buffer. This may not align with the OBI address phase.
-  logic           misaligned_halfword;  // Halfword is not naturally aligned, but no split is needed
+  logic           nonsplit_misaligned_halfword;  // Halfword is not naturally aligned, but no split is needed
   logic           misaligned_access;    // Access is not naturally aligned
+  logic           modified_access;      // Access is modified, e.g. non-naturally aligned access needs two bus transactions
 
   logic           filter_resp_busy;     // Response filter busy
 
@@ -451,9 +452,18 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     end
   endgenerate
 
-  // misaligned_access is high for both transfers of a misaligned transfer
-  // TODO: Give MPU a separate modified_access_i input
-  assign misaligned_access = split_q || lsu_split_0_o || misaligned_halfword || (xif_req && (xif_mem_if.mem_req.attr[0] || xif_mem_if.mem_req.attr[1]));
+  // Misaligned accesses occur for:
+  //
+  // - Both phases of a split misaligned access
+  // - For a misaligned halfword that does not require a split
+  // - When the XIF does a misaligned access
+  assign misaligned_access = split_q || lsu_split_0_o || nonsplit_misaligned_halfword || (xif_req && xif_mem_if.mem_req.attr[1]);
+
+  // Modified acccesses occur for:
+  //
+  // - Both phases of a split misaligned access
+  // - When the XIF does a modified access
+  assign modified_access = split_q || lsu_split_0_o || (xif_req && (xif_mem_if.mem_req.attr[0]));
 
   // Check for misaligned accesses that need a second memory access
   // If one is detected, this is signaled with lsu_split_0_o.
@@ -464,7 +474,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   always_comb
   begin
     lsu_split_0_o = 1'b0;
-    misaligned_halfword = 1'b0;
+    nonsplit_misaligned_halfword = 1'b0;
     if (valid_0_i && !xif_req && !split_q)
     begin
       case (trans.size)
@@ -478,7 +488,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
           if (trans.addr[1:0] == 2'b11)
             lsu_split_0_o = 1'b1;
           if (trans.addr[0] != 1'b0)
-            misaligned_halfword = 1'b1;
+            nonsplit_misaligned_halfword = 1'b1;
         end
         default:;
       endcase // case (trans.size)
@@ -793,6 +803,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     .rst_n                ( rst_n              ),
     .atomic_access_i      ( mpu_trans_atomic   ),
     .misaligned_access_i  ( misaligned_access  ),
+    .modified_access_i    ( modified_access    ),
 
     .core_one_txn_pend_n  ( cnt_is_one_next    ),
     .core_mpu_err_wait_i  ( consumer_resp_wait ),
