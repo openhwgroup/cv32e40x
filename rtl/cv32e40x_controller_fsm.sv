@@ -850,7 +850,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
             ctrl_fsm_o.kill_id = 1'b1;
             ctrl_fsm_o.kill_ex = 1'b1;
-            ctrl_fsm_o.kill_wb = 1'b0; // All write enables are suppressed, no need to kill WB.
+            // All write enables are suppressed, no need to kill WB.
+            // RVFI also needs wb_valid to be able to signal an exception on rvfi_valid/rvfi_trap.
+            ctrl_fsm_o.kill_wb = 1'b0;
 
             // Set pc to exception handler
             ctrl_fsm_o.pc_set = 1'b1;
@@ -1146,12 +1148,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.kill_id = 1'b1;
           ctrl_fsm_o.kill_ex = 1'b1;
           // Ebreak that causes debug entry should not be killed, otherwise RVFI will skip it
-          // Trigger match should also be signalled as not killed (all write enables are suppressed in ID), otherwise RVFI/ISS will not attempt to execute and detect trigger
+          // Trigger match should also be signalled as not killed (all write enables are suppressed in ID), otherwise RVFI will not properly signal a trigger match.
           // Exception trigger match should have nothing in WB, excepted instruction finished the previous cycle and set mepc and mcause due to the exception.
           // Ebreak during debug_mode restarts from dm_halt_addr, without CSR updates. Not killing ebreak due to the same RVFI/ISS reasons.
           // Neither ebreak nor trigger match have any state updates in WB. For trigger match, all write enables are suppressed in the ID stage.
           //   Thus this change is not visible to core state, only for RVFI use.
-          // todo: Move some logic to RVFI instead?
           ctrl_fsm_o.kill_wb = !((debug_cause_q == DBG_CAUSE_EBREAK) || (debug_cause_q == DBG_CAUSE_TRIGGER));
 
 
@@ -1241,7 +1242,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       if (lsu_err_wb_i[0] && !nmi_pending_q) begin
         // Set whenever an error occurs in WB for the LSU, unless we already have an NMI pending.
         // Later errors could overwrite the bit for load/store type, and with mtval the address would be overwritten.
-        // todo: if mtval is implemented, address must be sticky as well
         nmi_pending_q <= 1'b1;
         nmi_is_store_q <= lsu_err_wb_i[1];
       // Clear when the controller takes the NMI
