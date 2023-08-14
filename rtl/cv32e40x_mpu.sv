@@ -228,6 +228,4 @@ module cv32e40x_mpu import cv32e40x_pkg::*;
     end
   endgenerate
 
-// TODO:OE any way to check that the 2nd access of a failed misalgn will not reach the MPU?
-
 endmodule
