@@ -163,7 +163,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       default: ;
     endcase
 
-    // Allow kill at any time unless EX stage is halted
+    // Allow kill at any time
     if (!valid_i || kill_i) begin
       mulh_state_next = MUL_ALBL;
       ready_o = 1'b1;
