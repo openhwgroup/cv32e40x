@@ -130,10 +130,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         else begin
           // Single cycle multiplication
           valid_o         = valid_i && !(halt_i || kill_i);
-
-          if (ready_i) begin
-            ready_o       = !halt_i || kill_i;
-          end
+          ready_o         = (ready_i && !halt_i) || kill_i;
         end
       end
 
@@ -156,9 +153,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
         valid_o           = valid_i && !(halt_i || kill_i);
         mulh_a            = mulh_ah;
         mulh_b            = mulh_bh;
+        ready_o           = (ready_i && !halt_i) || kill_i;
 
         if (ready_i) begin
-          ready_o         = !halt_i || kill_i;
           mulh_state_next = MUL_ALBL;
           mulh_acc_next   = '0;
         end
@@ -180,7 +177,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       mulh_acc   <=  '0;
       mulh_state <= MUL_ALBL;
     end else begin
-      if ((valid_i && !halt_i) || kill_i) begin
+      if (!halt_i || kill_i) begin
         mulh_acc   <= mulh_acc_next;
         mulh_state <= mulh_state_next;
       end

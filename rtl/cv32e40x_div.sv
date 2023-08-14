@@ -260,8 +260,8 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
       DIV_FINISH: begin
         valid_o = valid_i && !(halt_i || kill_i); // No valid outputs while halted or killed
+        ready_o = (ready_i && !halt_i) || kill_i;
         if (ready_i) begin
-          ready_o    = !halt_i || kill_i;
           next_state = DIV_IDLE;
         end
       end
@@ -306,7 +306,7 @@ module cv32e40x_div import cv32e40x_pkg::*;
        res_inv_q   <= 1'b0;
     end else begin
       // If stage is halted, the divider should have no state updates
-      if ((valid_i && !halt_i) || kill_i) begin
+      if (!halt_i || kill_i) begin
        state       <= next_state;
        remainder_q <= remainder_d;
        divisor_q   <= divisor_d;
