@@ -127,7 +127,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
 
   assign instr_valid = id_ex_pipe_i.instr_valid && !ctrl_fsm_i.kill_ex && !ctrl_fsm_i.halt_ex;
 
-  // The multiplier and divider both factors in halt_ex and kill_ex.
+  // The multiplier and divider both factor in halt_ex and kill_ex.
   // MUL/DIV instructions in flight will keep state while halted, and reset state on kill.
   assign mul_en = id_ex_pipe_i.mul_en && id_ex_pipe_i.instr_valid; // Valid MUL in EX, not affected by kill/halt
   assign div_en = id_ex_pipe_i.div_en && id_ex_pipe_i.instr_valid; // Valid DIV in EX, not affected by kill/halt
