@@ -225,8 +225,9 @@ module cv32e40x_div import cv32e40x_pkg::*;
     divisor_en     = 1'b0;
     quotient_en    = 1'b0;
 
-    // Case statement assumes valid_i = 1; the valid_i = 0 scenario
-    // is handled after the case statement.
+    // Case statement assumes valid_i = 1, halt_i = 0 and kill_i = 0.
+    // the valid_i = 0 / halt_i = 1 / kill_i = 1 scenarios
+    // are handled after the case statement.
     case (state)
       DIV_IDLE: begin
         remainder_en = 1'b1;
@@ -259,9 +260,10 @@ module cv32e40x_div import cv32e40x_pkg::*;
       end
 
       DIV_FINISH: begin
-        valid_o = valid_i && !(halt_i || kill_i); // No valid outputs while halted or killed
-        ready_o = (ready_i && !halt_i) || kill_i;
+        valid_o = 1'b1;
+
         if (ready_i) begin
+          ready_o    = 1'b1;
           next_state = DIV_IDLE;
         end
       end
@@ -272,11 +274,31 @@ module cv32e40x_div import cv32e40x_pkg::*;
 
     // Allow kill at any time
     if (!valid_i || kill_i) begin
-      next_state = DIV_IDLE;
       ready_o    = 1'b1;
       valid_o    = 1'b0;
-    end
+      next_state = DIV_IDLE;
 
+      init_en        = 1'b0;
+      init_dummy_cnt = 1'b0;
+
+      remainder_en   = 1'b0;
+      divisor_en     = 1'b0;
+      quotient_en    = 1'b0;
+    end else begin
+      // Neither ready nor valid when halted
+      if (halt_i) begin
+        ready_o = 1'b0;
+        valid_o = 1'b0;
+        next_state     = state;
+
+        init_en        = 1'b0;
+        init_dummy_cnt = 1'b0;
+
+        remainder_en   = 1'b0;
+        divisor_en     = 1'b0;
+        quotient_en    = 1'b0;
+      end
+    end
   end
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -305,8 +327,13 @@ module cv32e40x_div import cv32e40x_pkg::*;
        comp_inv_q  <= 1'b0;
        res_inv_q   <= 1'b0;
     end else begin
-      // If stage is halted, the divider should have no state updates
-      if (!halt_i || kill_i) begin
+      // Update flops on valid input or when killed. No updates while halted.
+      // When a divide instruction is killed, the cnt_q will decrement unless
+      // the divider is finished in the same cycle as the kill.
+      // All flops below will keep their values until initialized for the next
+      // divide (init_en, remainder_en, divisor_en, quotient_en) and no flops
+      // are used between kill and init.
+      if ((valid_i && !halt_i) || kill_i) begin
        state       <= next_state;
        remainder_q <= remainder_d;
        divisor_q   <= divisor_d;
