@@ -34,7 +34,8 @@ The clock gating in the Sleep Unit is impacted by the following:
   |                                      |           | :ref:`wfi` and :ref:`wfe` for details.           |
   +--------------------------------------+-----------+--------------------------------------------------+
   | ``wu_wfe_i``                         | input     | Wake-up signal for custom **wfe** instruction.   |
-  |                                      |           | See :ref:`wfe` for details.                      |
+  |                                      |           | Positive level sensitive. See :ref:`wfe` for     |
+  |                                      |           | details.                                         |
   +--------------------------------------+-----------+--------------------------------------------------+
 
 Startup behavior
