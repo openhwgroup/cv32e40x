@@ -42,8 +42,8 @@ It follows these specifications:
 .. [RISC-V-RV32E] RISC-V Instruction Set Manual, Volume I: User-Level ISA, RV32E Base Integer Instruction Set, Document version 20191214-draft (January 31, 2023),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20230131-c0b298a/riscv-spec.pdf
 
-.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, f4ac44e0d5f6993562bc6826d01ef5fe09bd468e, May 18 2023,
-   https://github.com/riscv/riscv-debug-spec/blob/aae86220b32377db1066ea28a6011cefa743a1cd/riscv-debug-stable.pdf
+.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, bd6b01948dcd948ef280d83747eec560d1e7795f, June 23 2023,
+   https://github.com/riscv/riscv-debug-spec/blob/3c75bf39ed8d82e4e25191980966f8c701763fc2/riscv-debug-stable.pdf
 
 .. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 6/6/2023,
    https://github.com/riscv/riscv-fast-interrupt/blob/728cf7f2abd5202bf38615303a939cc9a234cf9c/clic.pdf
