@@ -47,6 +47,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
   input  logic [31:0] csr_rdata_i,
   input  logic        csr_illegal_i,
   input  logic        csr_mnxti_read_i,
+  input  csr_hz_t     csr_hz_i,
 
   // EX/WB pipeline
   output ex_wb_pipe_t ex_wb_pipe_o,
@@ -361,6 +362,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
       ex_wb_pipe_o.first_op           <= 1'b0;
       ex_wb_pipe_o.last_op            <= 1'b0;
       ex_wb_pipe_o.abort_op           <= 1'b0;
+      ex_wb_pipe_o.csr_impl_wr        <= 1'b0;
 
       ex_wb_pipe_o.priv_lvl           <= PRIV_LVL_M;
     end
@@ -399,6 +401,7 @@ module cv32e40x_ex_stage import cv32e40x_pkg::*;
           ex_wb_pipe_o.csr_wdata        <= id_ex_pipe_i.alu_operand_a;
           ex_wb_pipe_o.csr_op           <= id_ex_pipe_i.csr_op;
           ex_wb_pipe_o.csr_mnxti_access <= csr_mnxti_read_i;
+          ex_wb_pipe_o.csr_impl_wr      <= csr_hz_i.impl_wr_ex;
         end
 
         // Propagate signals needed for exception handling in WB

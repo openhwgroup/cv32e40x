@@ -243,6 +243,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   privlvl_t     priv_lvl;
 
   logic         csr_mnxti_read;
+  csr_hz_t      csr_hz;
 
   // CLIC signals for returning pointer addresses
   // when mnxti is accessed
@@ -322,7 +323,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        sys_en_id;
   logic        sys_mret_insn_id;
   logic        csr_en_raw_id;
-  csr_opcode_e csr_op_id;
   logic        csr_illegal;
 
   // CSR illegal in EX due to offloading and pipeline accept
@@ -559,7 +559,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .alu_jmpr_o                   ( alu_jmpr_id               ),
     .sys_mret_insn_o              ( sys_mret_insn_id          ),
     .csr_en_raw_o                 ( csr_en_raw_id             ),
-    .csr_op_o                     ( csr_op_id                 ),
     .alu_en_o                     ( alu_en_id                 ),
     .sys_en_o                     ( sys_en_id                 ),
 
@@ -614,6 +613,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_rdata_i                ( csr_rdata                    ),
     .csr_illegal_i              ( csr_illegal                  ),
     .csr_mnxti_read_i           ( csr_mnxti_read               ),
+    .csr_hz_i                   ( csr_hz                       ),
 
     // Branch decision
     .branch_decision_o          ( branch_decision_ex           ),
@@ -848,6 +848,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .csr_counter_read_o         ( csr_counter_read       ),
     .csr_mnxti_read_o           ( csr_mnxti_read         ),
     .csr_irq_enable_write_o     ( csr_irq_enable_write   ),
+    .csr_hz_o                   ( csr_hz                 ),
 
     // Interface to CSRs (SRAM like)
     .csr_rdata_o                ( csr_rdata              ),
@@ -940,7 +941,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .sys_en_id_i                    ( sys_en_id              ),
     .sys_mret_id_i                  ( sys_mret_insn_id       ),
     .csr_en_raw_id_i                ( csr_en_raw_id          ),
-    .csr_op_id_i                    ( csr_op_id              ),
     .first_op_id_i                  ( first_op_id            ),
 
     // LSU
@@ -970,6 +970,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvec_mode_i                   ( mtvec_mode             ),
     .mcause_i                       ( mcause                 ),
     .mintstatus_i                   ( mintstatus             ),
+    .csr_hz_i                       ( csr_hz                 ),
 
     // Trigger module
     .etrigger_wb_i                  ( etrigger_wb            ),

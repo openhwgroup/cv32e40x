@@ -85,6 +85,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // To controller_bypass
   output logic                          csr_counter_read_o,
   output logic                          csr_mnxti_read_o,
+  output csr_hz_t                       csr_hz_o,
 
   // Interface to CSRs (SRAM like)
   output logic [31:0]                   csr_rdata_o,
@@ -340,10 +341,11 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
   always_comb
   begin
-    illegal_csr_read   = 1'b0;
-    csr_counter_read_o = 1'b0;
-    csr_mnxti_read_o   = 1'b0;
-
+    illegal_csr_read    = 1'b0;
+    csr_counter_read_o  = 1'b0;
+    csr_mnxti_read_o    = 1'b0;
+    csr_hz_o.impl_re_ex = 1'b0;
+    csr_hz_o.impl_wr_ex = 1'b0;
     case (csr_raddr)
       // jvt: Jump vector table
       CSR_JVT:  begin
@@ -356,7 +358,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       // mstatus
-      CSR_MSTATUS: csr_rdata_int = mstatus_rdata;
+      CSR_MSTATUS: begin
+        csr_rdata_int = mstatus_rdata;
+        if (CLIC) begin
+          csr_hz_o.impl_wr_ex = 1'b1; // Writes to mcause aswell
+        end
+      end
 
       // misa
       CSR_MISA: csr_rdata_int = misa_rdata;
@@ -401,7 +408,12 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MEPC: csr_rdata_int = mepc_rdata;
 
       // mcause: exception cause
-      CSR_MCAUSE: csr_rdata_int = mcause_rdata;
+      CSR_MCAUSE: begin
+        csr_rdata_int = mcause_rdata;
+        if (CLIC) begin
+          csr_hz_o.impl_wr_ex = 1'b1; // Writes to mstatus as well
+        end
+      end
 
       // mtval
       CSR_MTVAL: csr_rdata_int = mtval_rdata;
@@ -416,6 +428,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // For mnxti, this is actually mstatus. The value written back to the GPR will be the address of
           // the function pointer to the interrupt handler. This is muxed in the WB stage.
           csr_rdata_int = mstatus_rdata;
+          csr_hz_o.impl_re_ex = 1'b1; // Reads mstatus
+          csr_hz_o.impl_wr_ex = 1'b1; // Writes mstatus, mcause and mintstatus
           csr_mnxti_read_o = 1'b1;
         end else begin
           csr_rdata_int    = '0;
@@ -451,6 +465,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // Safe to use mstatus_rdata here (EX timing), as there is a generic stall of the ID stage
           // whenever a CSR instruction follows another CSR instruction. Alternative implementation using
           // a local forward of mstatus_rdata is identical (SEC).
+          csr_hz_o.impl_re_ex = 1'b1; // Reads mstatus
+          csr_hz_o.impl_wr_ex = 1'b1; // Writes mscratch
           if (mstatus_rdata.mpp != PRIV_LVL_M) begin
             // Return mscratch for writing to GPR
             csr_rdata_int = mscratch_rdata;
@@ -472,6 +488,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
           // Safe to use mcause_rdata and mintstatus_rdata here (EX timing), as there is a generic stall of the ID stage
           // whenever a CSR instruction follows another CSR instruction. Alternative implementation using
           // a local forward of mcause_rdata and mintstatus_rdata is identical (SEC).
+          csr_hz_o.impl_re_ex = 1'b1; // Reads mcause and mintstatus
+          csr_hz_o.impl_wr_ex = 1'b1; // Writes mscratch
           if ((mcause_rdata.mpil == '0) != (mintstatus_rdata.mil == 0)) begin
             // Return mscratch for writing to GPR
             csr_rdata_int = mscratch_rdata;
@@ -488,6 +506,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_TSELECT: begin
         if (DBG_NUM_TRIGGERS > 0) begin
           csr_rdata_int = tselect_rdata;
+          csr_hz_o.impl_wr_ex = 1'b1; // Changing tselect may change tdata1 and tdata2 as well
         end else begin
           csr_rdata_int = '0;
           illegal_csr_read = 1'b1;
@@ -1553,6 +1572,12 @@ dcsr_we        = 1'b1;
     end
   endgenerate
 
+  // Set signals for explicit CSR hazard detection
+  assign csr_hz_o.expl_re_ex = id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid;
+  assign csr_hz_o.expl_raddr_ex = csr_raddr;
+
+  assign csr_hz_o.expl_we_ex = ex_wb_pipe_i.csr_en && ex_wb_pipe_i.instr_valid && (csr_op != CSR_OP_READ);
+  assign csr_hz_o.expl_waddr_ex = csr_waddr;
   ////////////////////////////////////////////////////////////////////////
   //
   // CSR outputs
