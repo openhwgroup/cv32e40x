@@ -45,7 +45,7 @@ Exceptions
   |              0 |             24 | Instruction bus fault                 | ``instr_err_i`` = 1 and ``instr_rvalid_i`` = 1 for instruction fetch      |
   +----------------+----------------+---------------------------------------+---------------------------------------------------------------------------+
 
-If an instruction raises multiple exceptions, the priority, from high to low, is as follows: 
+If an instruction raises multiple exceptions, the priority, from high to low, is as follows:
 
 * ``instruction access fault (1)``
 * ``instruction bus fault (24)``
@@ -57,7 +57,7 @@ If an instruction raises multiple exceptions, the priority, from high to low, is
 * ``store/AMO address misaligned (6)``
 * ``load address misaligned (4)``
 
-Exceptions in general cannot be disabled and are always active. 
+Exceptions in general cannot be disabled and are always active.
 All exceptions are precise.
 Whether the PMA will actually cause exceptions depends on its configuration.
 |corev|  raises an illegal instruction exception for any instruction in the RISC-V privileged and unprivileged specifications that is explicitly defined as being
@@ -185,10 +185,9 @@ which reflects an intended custom extension in the RISC-V CLINT mode interrupt a
 After reset, all interrupts, except for NMIs, are disabled.
 To enable any of the ``irq_i[31:0]`` interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enable bit in the ``mie`` CSR need to be set. For more information, see the :ref:`cs-registers` documentation.
 
-
 If multiple interrupts are pending, they are handled in the fixed priority order defined by [RISC-V-PRIV]_.
 The highest priority is given to the interrupt with the highest ID, except for the Machine Timer Interrupt, which has the lowest priority. So from high to low priority the interrupts are
-ordered as follows: 
+ordered as follows:
 
 * ``store bus fault NMI (1025)``
 * ``load bus fault NMI (1024)``
@@ -201,7 +200,7 @@ ordered as follows:
 * ``irq_i[7]``
 
 The ``irq_i[31:0]`` interrupt lines are level-sensitive. The NMIs are triggered by load/store bus fault events.
-To clear the ``irq_i[31:0]`` interrupts at the external source, |corev| relies on a software-based mechanism in which the interrupt handler signals completion of the handling routine to the interrupt source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
+To clear the ``irq_i[31:0]`` interrupts at the external source, |corev| relies on a software-based mechanism in which the interrupt handler clears the interrupt at the source, e.g., through a memory-mapped register, which then deasserts the corresponding interrupt line.
 
 In Debug Mode, all interrupts are ignored independent of ``mstatus.MIE`` and the content of the ``mie`` CSR.
 
@@ -318,9 +317,46 @@ also impacts the alignment requirement for the trap vector table, see :ref:`csr-
 
 Interrupt prioritization is mostly performed in the part of CLIC that is external to the core, with the exception that |corev| prioritizes all NMIs above interrupts received via ``clic_irq_i``.
 
+The ``clic_irq_i``, ``clic_irq_id_i``, ``clic_irq_level_i``, ``clic_irq_priv_i`` and ``clic_irq_shv_i`` signals are controlled via an externally memory mapped CLIC module.
+After reset, all interrupts, except for NMIs, are (at least globally) disabled.
+To enable any of the CLIC interrupts, both the global interrupt enable (``MIE``) bit in the ``mstatus`` CSR and the corresponding individual interrupt enables and levels in the external CLIC module must be configured.
+
+The external CLIC module prioritizes all interrupts and presents |corev| with the highest priority pending and enabled interrupt.
+|corev| will then prioritize the interrupts including NMI as follows:
+
+* ``store bus fault NMI (1025)``
+* ``load bus fault NMI (1024)``
+* ``clic_irq_i`` with index, level and selective hardware vectoring defined by ``clic_irq_id_i``, ``clic_irq_level_i`` and ``clic_irq_shv_i`` respectively.
+
+The ``clic_irq_i`` interrupt line is level-sensitive. The NMIs are triggered by load/store bus fault events.
+To clear the ``clic_irq_i`` interrupt at the external source, |corev| relies on a software-based mechanism in which the interrupt handler clears the interupt at the source, e.g., through a memory-mapped register.
+
+In Debug Mode, all interrupts are ignored independent of ``mstatus.MIE`` and the configuration of an external CLIC module.
+
+|corev| can trigger the following interrupts as reported in ``mcause``:
+
+.. table::
+  :widths: 10 10 40 40
+  :class: no-scrollbar-table
+
+  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
+  | Interrupt      | Exception Code | Description                                     | Scenario(s)                                                     |
+  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
+  |              1 |         0-1023 | CLIC interrupt                                  | ``clic_irq_i``, ``clic_irq_id_i``                               |
+  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
+  |              1 |           1024 | Load bus fault NMI (imprecise)                  | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for load           |
+  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
+  |              1 |           1025 | Store bus fault NMI (imprecise)                 | ``data_err_i`` = 1 and ``data_rvalid_i`` = 1 for store          |
+  +----------------+----------------+-------------------------------------------------+-----------------------------------------------------------------+
+
+.. note::
+
+   Load bus fault and store bus fault are handled as imprecise non-maskable interrupts
+   (as opposed to precise exceptions).
+
 Nested Interrupt Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-|corev| offers hardware support for nested interrupt handling when ``CLIC`` == 1. 
+|corev| offers hardware support for nested interrupt handling when ``CLIC`` == 1.
 
 CLIC extends interrupt preemption to support up to 256 interrupt levels for each privilege mode,
 where higher-numbered interrupt levels can preempt lower-numbered interrupt levels. See [RISC-V-CLIC]_ for details.
