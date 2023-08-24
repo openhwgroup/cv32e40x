@@ -839,7 +839,7 @@ module cv32e40x_rvfi
       // as asynchronous entries will kill the WB stage whereas synchronous entries will not.
       // Indicate that the trap is a synchronous trap into debug mode
       rvfi_trap_next.debug       = 1'b1;
-      // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
+      // Set cause of debug for next rvfi_trap
       rvfi_trap_next.debug_cause = ctrl_fsm_i.debug_cause;
     end
 
@@ -1047,8 +1047,6 @@ module cv32e40x_rvfi
         // debug cause is saved to propagate through rvfi pipeline together with next valid instruction
         if (pc_mux_debug) begin
           // Debug cause input only valid during debug taken
-          // Special case for debug entry from debug mode caused by EBREAK as it is not captured by ctrl_fsm_i.debug_cause
-          // A higher priority debug request (e.g. trigger match) will pull ebreak_in_wb_i low and allow the debug cause to propagate
           debug_cause[STAGE_IF] <=  ctrl_fsm_i.debug_cause;
 
           // If there is a trap in the pipeline when debug is taken, the trap will be suppressed but the side-effects will not.
