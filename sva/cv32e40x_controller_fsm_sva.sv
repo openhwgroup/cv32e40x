@@ -864,17 +864,6 @@ end
                   !ctrl_fsm_o.halt_wb)
   else `uvm_error("controller", "csr_restore_mret when WB is halted")
 
-  if (CLIC) begin
-    // CSR instructions should be stalled in ID if there is a CLIC or mret pointer in EX or WB (RAW hazard)
-    a_csr_stall_on_ptr:
-    assert property (@(posedge clk) disable iff (!rst_n)
-                    (csr_en_id_i && if_id_pipe_i.instr_valid) &&
-                    (((id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr) && id_ex_pipe_i.instr_valid) ||
-                    ((ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) && ex_wb_pipe_i.instr_valid))
-                    |->
-                    !id_valid_i)
-    else `uvm_error("controller", "CSR* not stalled in ID when CLIC pointer is in EX or WB")
-  end
 
 
   // When interrupts or debug is taken, the PC stored to dpc or mepc cannot come from a pointer

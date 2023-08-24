@@ -236,6 +236,17 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
       ctrl_byp_o.jalr_stall = 1'b0;
     end
 
+    ////////////////
+    // CSR stalls //
+    ////////////////
+
+    // Implicit CSR read in ID: Conservatively stall on any implicit CSR write in EX or WB
+    // Implicit CSR read in ID: Conservatively stall on any explicit CSR write in EX or WB
+    // Implicit CSR read in EX: Conservatively stall on any implicit CSR write in WB
+    // Implicit CSR read in EX: Conservatively stall on any explicit CSR write in WB
+    // Explicit CSR read in EX: Conservatively stall on any implicit CSR write in WB
+    // Explicit CSR read in EX: Precise stall on any explicit CSR write in WB
+
     // Stall ID because of an implicit CSR read is in ID while CSR (implicit or explicit) is written in EX/WB
     // This stall is very conservative as it stalls on any CSR access in EX or WB.
     // mret reads mcause and mepc (via controller_fsm) in the ID stage
