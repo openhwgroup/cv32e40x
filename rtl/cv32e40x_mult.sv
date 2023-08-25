@@ -40,6 +40,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
   output logic [31:0] result_o,
 
+  input  logic        halt_i,
+  input  logic        kill_i,
+
   output logic        ready_o,
   output logic        valid_o,
   input  logic        ready_i
@@ -114,8 +117,9 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     valid_o          = 1'b0;
     mulh_acc_next    = mulh_acc;
 
-    // Case statement assumes valid_i = 1; the valid_i = 0 scenario
-    // is handled after the case statement.    
+    // Case statement assumes valid_i = 1, halt_i = 0 and kill_i = 0.
+    // the valid_i = 0 / halt_i = 1 / kill_i = 1 scenarios
+    // are handled after the case statement.
     case (mulh_state)
       MUL_ALBL: begin
         if (operator_i == MUL_H) begin
@@ -129,7 +133,7 @@ module cv32e40x_mult import cv32e40x_pkg::*;
           valid_o         = 1'b1;
 
           if (ready_i) begin
-            ready_o        = 1'b1;
+            ready_o = 1'b1;
           end
         end
       end
@@ -164,11 +168,24 @@ module cv32e40x_mult import cv32e40x_pkg::*;
     endcase
 
     // Allow kill at any time
-    if (!valid_i) begin
+    if (!valid_i || kill_i) begin
       mulh_state_next = MUL_ALBL;
-      ready_o = 1'b1;
-      valid_o = 1'b0;
-      mulh_acc_next = '0;
+      valid_o         = 1'b0;
+      ready_o         = 1'b1;
+      mulh_acc_next   = '0;
+      mulh_shift      = 1'b0;
+      mulh_a          = mulh_al;
+      mulh_b          = mulh_bl;
+    end else begin
+      if (halt_i) begin
+        mulh_state_next = mulh_state;
+        valid_o         = 1'b0;
+        ready_o         = 1'b0;
+        mulh_acc_next   = mulh_acc;
+        mulh_shift      = 1'b0;
+        mulh_a          = mulh_al;
+        mulh_b          = mulh_bl;
+      end
     end
   end // always_comb
 
@@ -177,8 +194,11 @@ module cv32e40x_mult import cv32e40x_pkg::*;
       mulh_acc   <=  '0;
       mulh_state <= MUL_ALBL;
     end else begin
-      mulh_acc   <= mulh_acc_next;
-      mulh_state <= mulh_state_next;
+      // Update flops on valid input or when killed. No updates while halted.
+      if ((valid_i && !halt_i) || kill_i) begin
+        mulh_acc   <= mulh_acc_next;
+        mulh_state <= mulh_state_next;
+      end
     end
   end
 

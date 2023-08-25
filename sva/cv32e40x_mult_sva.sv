@@ -41,7 +41,9 @@ module cv32e40x_mult_sva
    input logic [16:0] mulh_bl,
    input logic [16:0] mulh_ah,
    input logic [16:0] mulh_bh,
-   input logic [33:0] int_result);
+   input logic [33:0] int_result,
+   input logic        halt_i,
+   input logic        kill_i);
 
   ////////////////////////////////////////
   ////  Assertions on module boundary ////
@@ -54,13 +56,16 @@ module cv32e40x_mult_sva
     assert property (@(posedge clk) disable iff (!rst_n)
                      (valid_i && (operator_i == MUL_M32)) |-> (result_o == mul_result))
       else `uvm_error("mult", "MUL result check failed")
-  a_mul_valid : // check that MUL result is immediately qualified by valid_o
+  a_mul_valid : // check that MUL result is immediately qualified by valid_o unless EX is halted or killed
     assert property (@(posedge clk) disable iff (!rst_n)
-                     (valid_i && (operator_i == MUL_M32)) |-> valid_o)
+                     (valid_i && (operator_i == MUL_M32) &&
+                     !(halt_i || kill_i))
+                     |->
+                     valid_o)
       else `uvm_error("mult", "MUL result wasn't immediately valid")
 
 
-  // Check result for all MULH flavors 
+  // Check result for all MULH flavors
   logic               mulh_result_valid;
   assign mulh_result_valid = ((operator_i == MUL_H) && valid_i) && valid_o;
 
