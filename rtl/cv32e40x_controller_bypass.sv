@@ -149,8 +149,8 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   assign csr_write_in_ex_wb = csr_write_in_ex || csr_write_in_wb;
 
   // Detect RAW hazard for explicit CSR accesses in EX vs WB
-  assign csr_expl_hz_ex = (csr_hz_i.expl_re_ex && csr_hz_i.expl_we_ex) &&
-                          (csr_hz_i.expl_raddr_ex == csr_hz_i.expl_waddr_ex);
+  assign csr_expl_hz_ex = (csr_hz_i.expl_re_ex && csr_hz_i.expl_we_wb) &&
+                          (csr_hz_i.expl_raddr_ex == csr_hz_i.expl_waddr_wb);
 
   /////////////////////////////////////////////////////////////
   //  ____  _        _ _    ____            _             _  //

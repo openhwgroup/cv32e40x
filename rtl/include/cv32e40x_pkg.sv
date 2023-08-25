@@ -722,9 +722,9 @@ parameter logic [31:0] TDATA1_RST_VAL = {
     logic impl_re_ex; // Implicit CSR read in EX
     logic impl_wr_ex; // Implicit CSR write in EX (will perform write in WB)
     logic expl_re_ex;
-    logic expl_we_ex;
+    logic expl_we_wb;
     csr_num_e expl_raddr_ex;
-    csr_num_e expl_waddr_ex;
+    csr_num_e expl_waddr_wb;
   } csr_hz_t;
 
 
