@@ -93,7 +93,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
 
   logic                              sys_mret_unqual_id;        // MRET in ID (not qualified with sys_en)
   logic                              csr_exp_unqual_id;         // Explicit CSR in ID (not qualified with csr_en)
-  logic                              csr_unqual_id;             // Explicit or implicit CSR in ID (not qualified)
+  logic                              csr_impl_rd_unqual_id;     // Implicit CSR read in ID (not qualified)
   logic                              jmpr_unqual_id;            // JALR in ID (not qualified with alu_en)
   logic                              tbljmp_unqual_id;          // Table jump in ID (not qualified with alu_en)
 
@@ -123,27 +123,27 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
   // Any implicit CSR reads from the ID stage
   // mret reads mepc and mcause
   // tablejumps read jvt
-  assign csr_unqual_id = sys_mret_unqual_id || tbljmp_unqual_id;
+  assign csr_impl_rd_unqual_id = sys_mret_unqual_id || tbljmp_unqual_id;
 
-  // Detect any implicit CSR write in EX
+  // Detect any implicit CSR write currently in in EX (actual write will happen in WB)
   // mret, dret and CLIC/mret pointers implicitly writes to CSRs. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.
   // Some CSR instructions perform writes to other CSRs, encoded by 'ex_wb_pipe_i.csr_impl_wr'
   assign csr_impl_write_in_ex = (id_ex_pipe_i.instr_valid &&
                                  (((id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn) || id_ex_pipe_i.instr_meta.clic_ptr || id_ex_pipe_i.instr_meta.mret_ptr) ||
-                                    id_ex_pipe_i.csr_en && csr_hz_i.impl_wr_ex));
+                                  (id_ex_pipe_i.csr_en && csr_hz_i.impl_wr_ex)));
 
   // Detect any implicit CSR write in WB
   // mret, dret and CLIC/mret pointers implicitly writes to CSRs. (dret is killing IF/ID/EX once it is in WB and can be disregarded here.
   // Some CSR instructions perform writes to other CSRs, encoded by 'ex_wb_pipe_i.csr_impl_wr'
   assign csr_impl_write_in_wb = (ex_wb_pipe_i.instr_valid &&
                                  (((ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn) || ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) ||
-                                    ex_wb_pipe_i.csr_en && ex_wb_pipe_i.csr_impl_wr));
+                                  (ex_wb_pipe_i.csr_en && ex_wb_pipe_i.csr_impl_wr)));
 
   // Detect implicit and explicit CSR writes in EX
-  assign csr_write_in_ex = (id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || csr_impl_write_in_ex));
+  assign csr_write_in_ex = id_ex_pipe_i.instr_valid && (id_ex_pipe_i.csr_en || csr_impl_write_in_ex);
 
   // Detect implicit and explicit CSR writes in WB
-  assign csr_write_in_wb = (ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || csr_impl_write_in_wb));
+  assign csr_write_in_wb = ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.csr_en || csr_impl_write_in_wb);
 
   // Any CSR access (implicit or explicit) in any of EX and WB stages
   assign csr_write_in_ex_wb = csr_write_in_ex || csr_write_in_wb;
@@ -251,7 +251,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // This stall is very conservative as it stalls on any CSR access in EX or WB.
     // mret reads mcause and mepc (via controller_fsm) in the ID stage
     // tablejumps read jvt in the ID stage
-    if (csr_unqual_id && csr_write_in_ex_wb) begin
+    if (csr_impl_rd_unqual_id && csr_write_in_ex_wb) begin
       ctrl_byp_o.csr_stall_id = 1'b1;
     end
 
