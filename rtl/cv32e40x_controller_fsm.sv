@@ -301,9 +301,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   //   An extra table jump flag is used in the logic for taken jumps to disinguish between
   //   regular jumps and table jumps.
   // Table jumps do an implicit read of the JVT CSR, so csr_stall must be accounted for.
-  assign jump_in_id = (jmp_id && !if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.jalr_stall) ||
-                      (jmp_id &&  if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.csr_stall ) ||
-                      (sys_mret_id && !ctrl_byp_i.csr_stall);
+  assign jump_in_id = (jmp_id && !if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.jalr_stall)    ||
+                      (jmp_id &&  if_id_pipe_i.instr_meta.tbljmp && !ctrl_byp_i.csr_stall_id ) ||
+                      (sys_mret_id && !ctrl_byp_i.csr_stall_id);
 
   // Blocking on branch_taken_q, as a jump has already been taken
   assign jump_taken_id = jump_in_id && !branch_taken_q;
@@ -651,7 +651,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     //   - If not checking for id_stage_haltable for interrupts and debug, the core could end up in a situation where it tries to create a bubble
     //     by halting ID, but the condition disallowing interrupt or debug will not disappear until the sequence currently handled by the ID stage
     //     is done. This would create an unrecoverable deadlock.
-    ctrl_fsm_o.halt_id          = (ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall || ctrl_byp_i.sleep_stall || ctrl_byp_i.mnxti_id_stall) ||
+    ctrl_fsm_o.halt_id          = (ctrl_byp_i.jalr_stall || ctrl_byp_i.load_stall || ctrl_byp_i.csr_stall_id || ctrl_byp_i.sleep_stall || ctrl_byp_i.mnxti_id_stall) ||
                                   ((pending_interrupt || pending_nmi || pending_nmi_early) && debug_interruptible && id_stage_haltable)                             ||
                                   ((pending_async_debug || pending_sync_debug) && id_stage_haltable);
 
@@ -663,7 +663,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     // Halting while handling atomics for the following two scenarios to avoid mix of atomics and non-atomics outstanding at the same time:
     //   - An atomic is in EX while there is an LSU instruction in WB (including atomics)
     //   - Any LSU instruction is in EX while there is an outstanding atomic in WB
-    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall || ctrl_byp_i.mnxti_ex_stall || ctrl_byp_i.atomic_stall;
+    ctrl_fsm_o.halt_ex          = ctrl_byp_i.minstret_stall || ctrl_byp_i.xif_exception_stall || ctrl_byp_i.irq_enable_stall ||
+                                  ctrl_byp_i.mnxti_ex_stall || ctrl_byp_i.atomic_stall || ctrl_byp_i.csr_stall_ex;
     ctrl_fsm_o.halt_wb          = 1'b0;
     ctrl_fsm_o.halt_limited_wb  = 1'b0;
 
