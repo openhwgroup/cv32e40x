@@ -329,7 +329,6 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic        xif_csr_error_ex;
 
   // irq signals
-  // TODO:AB Should find a proper suffix for signals from interrupt_controller
   logic        irq_req_ctrl;
   logic [9:0]  irq_id_ctrl;
   logic        irq_wu_ctrl;
