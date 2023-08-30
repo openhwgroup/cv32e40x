@@ -1675,6 +1675,10 @@ CSR Address: 0x7A2
 
 Reset Value: 0x0000_0000
 
+.. note::
+  Bits 4 and 6 for misaligned load and stores are WARL (0x0) when A_EXT == A_NONE. For any other value of A_EXT (A_ZALRSC or A)
+  the bits are WARL.
+
 Detailed:
 
 .. table::
@@ -1714,6 +1718,7 @@ Detailed:
 .. note::
    Accessible in Debug Mode or M-Mode, depending on ``tdata1.DMODE``.
    This register stores the currently selected exception codes for an exception trigger.
+
 
 .. _csr-tdata2-type-0x6:
 
