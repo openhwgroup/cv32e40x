@@ -941,10 +941,6 @@ parameter EXC_CAUSE_STORE_FAULT      = 11'h07;
 parameter EXC_CAUSE_ECALL_MMODE      = 11'h0B;
 parameter EXC_CAUSE_INSTR_BUS_FAULT  = 11'h18;
 
-parameter logic [31:0] ETRIGGER_TDATA2_MASK = (1 << EXC_CAUSE_INSTR_BUS_FAULT) | (1 << EXC_CAUSE_ECALL_MMODE) | (1 << EXC_CAUSE_STORE_FAULT) |
-                                              (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT) |
-                                              (1 << EXC_CAUSE_LOAD_MISALIGNED) | (1<<EXC_CAUSE_STORE_MISALIGNED);
-
 parameter INT_CAUSE_LSU_LOAD_FAULT  = 11'h400;
 parameter INT_CAUSE_LSU_STORE_FAULT = 11'h401;
 
