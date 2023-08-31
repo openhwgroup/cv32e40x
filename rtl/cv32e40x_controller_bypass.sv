@@ -260,7 +260,7 @@ module cv32e40x_controller_bypass import cv32e40x_pkg::*;
     // 2: or an explicit CSR read is in EX while any implicit write is in WB (conservative stall)
     // 3: or an explicit CSR read is in EX while an explicit CSR write to the same CSR is in WB. (exact stall)
     //
-    // Cases like accesses to mscratchcsw[l] and mnxti which reads multiple CSRs are handled by 1 above.
+    // Cases like accesses to mscratchcswl and mnxti which reads multiple CSRs are handled by 1 above.
     if ((csr_hz_i.impl_re_ex && csr_write_in_wb) ||
         (id_ex_pipe_i.csr_en && id_ex_pipe_i.instr_valid && csr_impl_write_in_wb) ||
         csr_expl_hz_ex) begin

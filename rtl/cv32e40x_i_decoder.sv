@@ -379,8 +379,8 @@ module cv32e40x_i_decoder import cv32e40x_pkg::*;
           endcase
 
           if (CLIC) begin
-            // The mscratchcsw[l] CSRs are only accessible using CSRRW with neither rd nor rs1 set to x0
-            if ((instr_rdata_i[31:20] == CSR_MSCRATCHCSW) || (instr_rdata_i[31:20] == CSR_MSCRATCHCSWL)) begin
+            // The mscratchcswl CSR is only accessible using CSRRW with neither rd nor rs1 set to x0
+            if (instr_rdata_i[31:20] == CSR_MSCRATCHCSWL) begin
               if (instr_rdata_i[14:12] == 3'b001) begin // CSRRW
                 if ((instr_rdata_i[11:7] == 5'b0) || (instr_rdata_i[19:15] == 5'b0)) begin
                   // rd or rs1 is zero, flag instruction as illegal

@@ -263,7 +263,6 @@ typedef enum logic[11:0] {
   CSR_MIP            = 12'h344,
   CSR_MNXTI          = 12'h345,
   CSR_MINTTHRESH     = 12'h347,
-  CSR_MSCRATCHCSW    = 12'h348,
   CSR_MSCRATCHCSWL   = 12'h349,
   CSR_MCLICBASE      = 12'h34A,
 
