@@ -351,9 +351,8 @@ generate
       else `uvm_error("cs_registers", "mepc not written with ctrl_fsm.pipe_pc when etrigger fires.");
 
     // Exception trigger shall cause dpc to point to first handler instruction and no instruction shall signal wb_valid the cycle after (while in DEBUG_TAKEN state)
-    // Excluding external debug and interrupts (halt_wb, kill_wb) as they (currently) both take priority over etrigger
+    // Excluding external debug and interrupts (halt_wb, kill_wb) as they both take priority over etrigger
     // Also checking that WB stage is empty after an exception trigger has been taken.
-    // todo: update when debug causes are updated, trigger match will not be highest priority
     property p_etrigger_dpc_write;
       logic [24:0] mtvec_at_trap;
       @(posedge clk) disable iff (!rst_n)
