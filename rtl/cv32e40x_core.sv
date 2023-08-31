@@ -896,6 +896,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .REGFILE_NUM_READ_PORTS         ( REGFILE_NUM_READ_PORTS ),
     .CLIC                           ( CLIC                   ),
     .CLIC_ID_WIDTH                  ( CLIC_ID_WIDTH          ),
+    .RV32                           ( RV32                   ),
     .DEBUG                          ( DEBUG                  )
   )
   controller_i
