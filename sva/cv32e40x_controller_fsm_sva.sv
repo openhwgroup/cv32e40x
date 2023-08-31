@@ -658,7 +658,6 @@ end else begin // CLIC
                   |->
                   (clic_ptr_in_progress_id_set != 1'b1)     &&
                   !ctrl_fsm_o.csr_cause.minhv       &&
-                  !ctrl_fsm_o.csr_clear_minhv       &&
                   !mcause_i.minhv                   &&
                   !if_id_pipe_i.instr_meta.clic_ptr &&
                   !id_ex_pipe_i.instr_meta.clic_ptr &&

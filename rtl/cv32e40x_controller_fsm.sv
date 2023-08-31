@@ -681,8 +681,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.csr_save_cause   = 1'b0;
     ctrl_fsm_o.csr_cause        = 32'h0;
 
-    ctrl_fsm_o.csr_clear_minhv  = 1'b0;
-
     pipe_pc_mux_ctrl            = PC_WB;
 
     exc_cause                   = 11'b0;
@@ -745,8 +743,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
           ctrl_fsm_o.csr_cause.exception_code = nmi_is_store_q ? INT_CAUSE_LSU_STORE_FAULT : INT_CAUSE_LSU_LOAD_FAULT;
 
-          // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
-          ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+          // Clear mcause.minhv when taking an NMI (only set when taking exceptions on CLIC/mret pointers)
+          ctrl_fsm_o.csr_cause.minhv  = 1'b0;
 
           if (CLIC) begin
             // Keep current interrupt level when taking NMIs
@@ -796,9 +794,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
 
-          // Default to keeping mcause.minhv. It will only be set to 1 when taking a CLIC SHV interrupt (or by a CSR write).
-          // For all other cases it keeps its value.
-          ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+          // Clear mcause.minhv when taking an interrupt. (only set when taking exceptions on CLIC/mret pointers)
+          ctrl_fsm_o.csr_cause.minhv  = 1'b0;
 
 
           if (CLIC) begin
@@ -810,9 +807,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
               ctrl_fsm_o.pc_mux = PC_TRAP_CLICV;
               clic_ptr_in_progress_id_set = 1'b1;
               ctrl_fsm_o.pc_set_clicv = 1'b1;
-              // When taking an SHV interrupt, always set minhv.
-              // Mcause.minhv will only be cleared when a successful pointer fetch is done, or when it is cleared by a CSR write.
-              ctrl_fsm_o.csr_cause.minhv = 1'b1;
             end else begin
               ctrl_fsm_o.pc_mux = PC_TRAP_IRQ;
             end
@@ -864,8 +858,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_save_cause = !debug_mode_q; // Do not update CSRs if in debug mode
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
 
-            // Keep mcause.minhv when taking exceptions and interrupts, only cleared on successful pointer fetches or CSR writes.
-            ctrl_fsm_o.csr_cause.minhv  = mcause_i.minhv;
+            // Set mcause.minhv if exception is for a CLIC or mret pointer. Otherwise clear it
+            ctrl_fsm_o.csr_cause.minhv = (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr);
 
           // Special insn
           end else if (wfi_in_wb || wfe_in_wb) begin
@@ -987,14 +981,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.kill_if = 1'b1;
 
             if (sys_mret_id) begin
-              // If the xcause.minhv bit is set for the previous privilege level (mcause.mpp) when an mret is in ID,
-              // the mret should restart the CLIC pointer fetch using mepc as a pointer to the pointer instead of jumping to
-              // the address in mepc. If mpp==PRIV_LVL_U, the (not existing) ucause.uinhv bit is assumed to be 0.
+              // If the mcause.minhv bit is set when an mret is in ID, the mret should restart the CLIC pointer fetch using mepc as
+              // a pointer to the pointer instead of jumping to the address in mepc.
               // This is done below by signalling pc_set_clicv along with pc_mux=PC_MRET. This will
-              // treat the mepc as an address to a CLIC pointer. The minhv flag will only be cleared
-              // when a pointer reaches the WB stage with no faults from fetching.
-              // ID stage is halted while it contains an mret and at the same time there are CSR writes (including CLIC pointers) EX or WB, hence it is safe to use mcause here.
-              if (mcause_i.minhv && (mcause_i.mpp == PRIV_LVL_M)) begin
+              // treat the mepc as an address to a CLIC pointer. The minhv flag will only be set when an exception is taken on a
+              // CLIC or mret pointer, and cleared when a trap for any other cause except debug is taken. It is also writeable by SW.
+              // ID stage is halted while it contains an mret and at the same time there are CSR writes (including CLIC pointers) in EX or WB, hence it is safe to use mcause here.
+              if (mcause_i.minhv) begin
                 // mcause.minhv set, exception occured during last pointer fetch (or SW wrote it)
                 // Do another pointer fetch from the address stored in mepc.
                 ctrl_fsm_o.pc_set = 1'b1;
@@ -1063,11 +1056,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_restore_mret_ptr  = !debug_mode_q;
           end
 
-          // CLIC pointer in WB
-          if (clic_ptr_in_wb && !ctrl_fsm_o.kill_wb && !ctrl_fsm_o.halt_wb && !exception_in_wb) begin
-            // Clear minhv if no exceptions are associated with the pointer
-            ctrl_fsm_o.csr_clear_minhv = 1'b1;
-          end
         end // !debug or interrupts
 
         // Single step debug entry or etrigger debug entry
