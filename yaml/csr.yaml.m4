@@ -4488,22 +4488,6 @@ ifelse(eval(CLIC != 0), 1, [[[
 ]]])
 
 ifelse(eval(CLIC != 0), 1, [[[
-- csr: mscratchcsw
-  description: >
-    Machine scratch swap for privilege mode change
-  address: 0x348
-  privilege_mode: M
-  rv32:
-    - field_name: MSCRATCHCSW
-      description: >
-        Machine scratch swap for privelege mode change
-      type: RW
-      reset_val: 0
-      msb: 31
-      lsb: 0
-]]])
-
-ifelse(eval(CLIC != 0), 1, [[[
 - csr: mscratchcswl
   description: >
     Machine scratch swap for privilege level change

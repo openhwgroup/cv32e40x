@@ -119,16 +119,6 @@ module cv32e40x_cs_registers_sva
     a_htrap_interrupt_level: assert property(p_htrap_interrupt_level)
       else `uvm_error("cs_registers", "Horizontal trap taken caused interrupt level to change");
 
-    // Check that mscratch do not update due to mscratchcsw if the conditions are not right
-    property p_mscratchcsw_mscratch;
-      @(posedge clk) disable iff (!rst_n)
-      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW) && (mstatus_q.mpp == PRIV_LVL_M)
-        |=> $stable(mscratch_q));
-    endproperty;
-
-    a_mscratchcsw_mscratch: assert property(p_mscratchcsw_mscratch)
-      else `uvm_error("cs_registers", "Mscratch not stable after mscratwchsw with mpp=M");
-
     // Check that mscratch do not update due to mscratchcswl if the conditions are not right
     property p_mscratchcswl_mscratch;
       @(posedge clk) disable iff (!rst_n)
