@@ -391,9 +391,6 @@ end
 
     else `uvm_error("rvfi", "No rvfi_valid or rvfi_trap for etrigger.")
 
-  /* TODO: Add back in.
-     Currently, the alignment buffer can interpret pointers as compressed instructions and pass on two "instructions" from the IF stage.
-     cv32e40x_rvfi_instr_obi will not be in sync with the alignment buffer until this is fixed. See https://github.com/openhwgroup/cv32e40x/issues/704
 
   // Check that cv32e40x_rvfi_instr_obi tracks alignment buffer
   a_rvfi_instr_obi_addr:
@@ -434,7 +431,6 @@ end
                      prefetch_valid_if_i && prefetch_ready_if_i && !prefetch_compressed_if_i && (prefetch_addr_if_i[1:0] != 2'b00 && (obi_instr_if.resp_payload.mpu_status == MPU_OK)) |->
                      obi_instr_fifo_q[obi_instr_rptr_q].req_payload.prot == obi_instr_fifo_q[obi_instr_rptr_q_inc].req_payload.prot)
       else `uvm_error("rvfi", "rvfi_instr_obi prot not the same for split transfers")
-  */
 
 
   // The following assertions and support logic check that memory transfers reported on rvfi_mem are consistent with LSU OBI transfers
