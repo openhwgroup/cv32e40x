@@ -172,7 +172,7 @@ module cv32e40x_cs_registers_sva
         mepc_we   // mepc is written
         |->
         (mcause_we && // mcause is written
-        mcause_n.minhv == ((ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr) && // pointer in WB
+        mcause_n.minhv == ((ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr)) && // pointer in WB
                            (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_mux == PC_TRAP_EXC)))                 // exception taken
         or
         csr_we_int // SW writes mepc
@@ -181,6 +181,22 @@ module cv32e40x_cs_registers_sva
 
     a_mepc_minhv_write: assert property(p_mepc_minhv_write)
       else `uvm_error("cs_registers", "mcause.minhv not updated correctly on mepc write.")
+
+    // Whenever mcause.minhv is changed mepc should also be written (or SW writes to mcause.minhv)
+    property p_minhv_mepc_write;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        mcause_we &&
+        (mcause_n.minhv != mcause_q.minhv)
+        |->
+        mepc_we
+        or
+        csr_we_int
+      );
+    endproperty;
+
+    a_minhv_mepc_write: assert property(p_minhv_mepc_write)
+      else `uvm_error("cs_registers", "mcause written without mepc written")
 
   end
 

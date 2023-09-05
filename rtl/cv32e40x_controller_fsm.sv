@@ -166,6 +166,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   logic branch_taken_n;
   logic branch_taken_q;
+  logic clic_ptr_in_ex;
 
   // WB signals
   logic exception_in_wb;
@@ -261,9 +262,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       clic_ptr_in_progress_id;
   logic       clic_ptr_in_progress_id_set;
   logic       clic_ptr_in_progress_id_clear;
-
-  // Signal for or'ing int signals not used by the RTL but are used by RVFI
-  logic       unused_signals;
 
   assign sequence_interruptible = !sequence_in_progress_wb;
 
@@ -410,6 +408,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // An offloaded instruction is in WB
   assign xif_in_wb = (ex_wb_pipe_i.xif_en && ex_wb_pipe_i.instr_valid);
 
+  // Regular CLIC pointer in EX (not caused by mret)
+  assign clic_ptr_in_ex = id_ex_pipe_i.instr_meta.clic_ptr && id_ex_pipe_i.instr_valid;
+
   // Regular CLIC pointer in WB (not caused by mret)
   assign clic_ptr_in_wb = ex_wb_pipe_i.instr_meta.clic_ptr && ex_wb_pipe_i.instr_valid;
 
@@ -471,9 +472,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     if (CLIC) begin : gen_clic_pointer_flag
       // A CLIC pointer may be in the pipeline from the moment we start fetching (clic_ptr_in_progress_id == 1)
       // or while a pointer is in the EX or WB stages.
-      assign clic_ptr_in_pipeline = (id_ex_pipe_i.instr_valid && id_ex_pipe_i.instr_meta.clic_ptr) ||
-                                    (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.instr_meta.clic_ptr) ||
-                                    clic_ptr_in_progress_id;
+      assign clic_ptr_in_pipeline = clic_ptr_in_ex || clic_ptr_in_wb || clic_ptr_in_progress_id;
     end else begin : gen_basic_pointer_flag
       assign clic_ptr_in_pipeline = 1'b0;
     end
@@ -862,7 +861,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.csr_cause.exception_code = exception_cause_wb;
 
             // Set mcause.minhv if exception is for a CLIC or mret pointer. Otherwise clear it
-            ctrl_fsm_o.csr_cause.minhv = (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr);
+            ctrl_fsm_o.csr_cause.minhv = clic_ptr_in_wb || mret_ptr_in_wb;
 
           // Special insn
           end else if (wfi_in_wb || wfe_in_wb) begin
@@ -1456,8 +1455,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_running   = debug_fsm_cs[RUNNING_INDEX];
   assign ctrl_fsm_o.debug_halted    = debug_fsm_cs[HALTED_INDEX];
 
-  // Tie off unused signals
-  assign unused_signals = clic_ptr_in_wb;
 
 
   //---------------------------------------------------------------------------
