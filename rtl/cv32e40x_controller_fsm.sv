@@ -34,7 +34,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   parameter bit          X_EXT         = 0,
   parameter bit          DEBUG         = 1,
   parameter bit          CLIC          = 0,
-  parameter int unsigned CLIC_ID_WIDTH = 5
+  parameter int unsigned CLIC_ID_WIDTH = 5,
+  parameter rv32_e       RV32          = RV32I
 )
 (
   // Clocks and reset

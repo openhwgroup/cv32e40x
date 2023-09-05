@@ -31,7 +31,8 @@ module cv32e40x_controller_fsm_sva
   #(  parameter bit          X_EXT         = 1'b0,
       parameter bit          DEBUG         = 1'b0,
       parameter bit          CLIC          = 1'b0,
-      parameter int unsigned CLIC_ID_WIDTH = 5
+      parameter int unsigned CLIC_ID_WIDTH = 5,
+      parameter rv32_e       RV32          = RV32I
   )
 (
   input logic           clk,
@@ -130,7 +131,10 @@ module cv32e40x_controller_fsm_sva
   input logic           dret_in_wb,
   input logic           csr_flush_ack_q,
   input logic           clic_ptr_in_id,
-  input logic           mret_ptr_in_id
+  input logic           mret_ptr_in_id,
+  input logic           alu_jmpr_id_i,
+  input logic [31:0]    jalr_fw_id_i,
+  input logic [REGFILE_WORD_WIDTH-1:0] rf_mem_i [(RV32 == RV32I) ? 32 : 16]
 );
 
 
@@ -153,15 +157,27 @@ module cv32e40x_controller_fsm_sva
                      jump_taken |=> !jump_taken)
       else `uvm_error("controller", "Two jumps back-to-back are taken")
 
-/* todo: fix
   // Check that a jump is taken only when ID is not killed
   a_valid_jump :
     assert property (@(posedge clk)
                      jump_taken |-> if_id_pipe_i.instr_valid && !ctrl_fsm_o.kill_id)
-      else `uvm_error("controller", "Jump taken while ID is halted or killed")
-*/
+      else `uvm_error("controller", "Jump taken while ID is killed")
 
-// Check that xret does not coincide with CSR write (to avoid using wrong return address)
+  // Check that register used for JALR target calculation is stable from the jump is taken from ID until the JALR retires from WB.
+  property p_jalr_stable_target;
+    logic [4:0] jalr_rs_id;
+    logic [31:0] rf_at_jump_id;
+    @(posedge clk) disable iff (!rst_n)
+      ((jump_taken && alu_jmpr_id_i,                                                                              // When JALR is taken from ID,
+        rf_at_jump_id = jalr_fw_id_i,                                                                             // Store (possibly forwarded) RF value used for target calculation
+        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                    // Store RS from JALR instruction
+        ##1 !(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1] // Wait for JALR to retire from WB (while not being killed)
+        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                               // Check that RF value is consistent with the value used for jump target calculation
+  endproperty : p_jalr_stable_target
+
+  a_jalr_stable_target: assert property(p_jalr_stable_target) else `uvm_error("controller", "Assertion a_jalr_stable_target failed");
+
+  // Check that xret does not coincide with CSR write (to avoid using wrong return address)
   // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
   // as its write action happens before the xret CSR usage
   property p_xret_csr;

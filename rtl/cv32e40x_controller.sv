@@ -36,6 +36,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
   parameter int unsigned REGFILE_NUM_READ_PORTS = 2,
   parameter bit          CLIC                   = 0,
   parameter int unsigned CLIC_ID_WIDTH          = 5,
+  parameter rv32_e       RV32                   = RV32I,
   parameter bit          DEBUG                  = 1
 )
 (
@@ -151,6 +152,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
     .X_EXT                       ( X_EXT                    ),
     .CLIC                        ( CLIC                     ),
     .CLIC_ID_WIDTH               ( CLIC_ID_WIDTH            ),
+    .RV32                        ( RV32                     ),
     .DEBUG                       ( DEBUG                    )
   )
   controller_fsm_i
