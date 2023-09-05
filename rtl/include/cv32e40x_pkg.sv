@@ -1370,7 +1370,6 @@ typedef struct packed {
   logic        csr_restore_mret_ptr; // Restore CSR due to mret followed by CLIC
   logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
-  logic        csr_clear_minhv;     // Clear the mcause.minhv field
   logic        pending_nmi;         // An NMI is pending (for dcsr.nmip)
 
   // Performance counter events
