@@ -169,11 +169,11 @@ module cv32e40x_controller_fsm_sva
     logic [4:0] jalr_rs_id;
     logic [31:0] rf_at_jump_id;
     @(posedge clk) disable iff (!rst_n)
-      ((jump_taken && alu_jmpr_id_i,                                                                              // When JALR is taken from ID,
-        rf_at_jump_id = jalr_fw_id_i,                                                                             // Store (possibly forwarded) RF value used for target calculation
-        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                    // Store RS from JALR instruction
-        ##1 !(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1] // Wait for JALR to retire from WB (while not being killed)
-        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                               // Check that RF value is consistent with the value used for jump target calculation
+      ((jump_taken && alu_jmpr_id_i,                                                                                // When JALR is taken from ID,
+        rf_at_jump_id = jalr_fw_id_i,                                                                               // Store (possibly forwarded) RF value used for target calculation
+        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                      // Store RS from JALR instruction
+        ##1 (!(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1]) // Wait for JALR to retire from WB (while not being killed)
+        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                                 // Check that RF value is consistent with the value used for jump target calculation
   endproperty : p_jalr_stable_target
 
   a_jalr_stable_target: assert property(p_jalr_stable_target) else `uvm_error("controller", "Assertion a_jalr_stable_target failed");
