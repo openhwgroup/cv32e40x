@@ -75,7 +75,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   input  align_status_e align_status_wb_i,          // Aligned status (atomics) in WB
   input  logic [31:0]   wpt_match_wb_i,             // LSU watchpoint trigger (WB)
 
-
   // From LSU (WB)
   input  logic        data_stall_wb_i,            // WB stalled by LSU
   input  logic        lsu_valid_wb_i,             // LSU instruction in WB is valid
@@ -282,8 +281,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // index 0 for non-vectored CLINT mode and CLIC mode, 0xF for vectored CLINT mode
   assign ctrl_fsm_o.nmi_mtvec_index = (mtvec_mode_i == 2'b01) ? 5'hF : 5'h0;
 
-
-
   ////////////////////////////////////////////////////////////////////
   // ID stage
 
@@ -291,8 +288,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Checking validity of jump/mret instruction with if_id_pipe_i.instr_valid and the respective alu_en/sys_en.
   // Using the ID stage local instr_valid would bring halt_id and kill_id into the equation
   // causing a path from data_rvalid to instr_addr_o/instr_req_o/instr_memtype_o via pc_set.
-
-
 
   assign sys_mret_id = sys_en_id_i && sys_mret_id_i && if_id_pipe_i.instr_valid;
   assign jmp_id      = alu_en_id_i && alu_jmp_id_i  && if_id_pipe_i.instr_valid;
@@ -429,7 +424,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // This CSR bit shall not be gated by debug mode or step without stepie
   assign ctrl_fsm_o.pending_nmi = nmi_pending_q;
 
-  // Debug //
+  // Debug
 
   // Single step will need to finish insn in WB, including LSU
   // LSU will now set valid_1_o only for second part of misaligned instructions.
@@ -464,7 +459,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // This causes the reason for debug entry to 'disappear' as seen from the DEBUG_TAKEN state one cycle later.
   // The signal pending_single_step should never be used outside of the FUNCTIONAL state.
   assign pending_single_step = (!debug_mode_q && dcsr_i.step && ((wb_valid_i && (last_op_wb_i || abort_op_wb_i)) || non_shv_irq_ack || (pending_nmi && nmi_allowed)));
-
 
   // Detect if there is a live CLIC pointer in the pipeline
   // This should block debug and interrupts
@@ -753,7 +747,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
             ctrl_fsm_o.irq_level = mintstatus_i.mil;
           end
 
-
           // Save pc from oldest valid instruction
           if (ex_wb_pipe_i.instr_valid) begin
             pipe_pc_mux_ctrl = PC_WB;
@@ -796,9 +789,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           ctrl_fsm_o.csr_save_cause  = 1'b1;
           ctrl_fsm_o.csr_cause.irq = 1'b1;
 
-          // Clear mcause.minhv when taking an interrupt. (only set when taking exceptions on CLIC/mret pointers)
+          // Clear mcause.minhv when taking an interrupt (only set when taking exceptions on CLIC/mret pointers)
           ctrl_fsm_o.csr_cause.minhv  = 1'b0;
-
 
           if (CLIC) begin
             ctrl_fsm_o.csr_cause.exception_code = {1'b0, irq_id_ctrl_i};
