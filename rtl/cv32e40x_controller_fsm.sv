@@ -262,6 +262,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   logic       clic_ptr_in_progress_id_set;
   logic       clic_ptr_in_progress_id_clear;
 
+  // Signal for or'ing int signals not used by the RTL but are used by RVFI
+  logic       unused_signals;
+
   assign sequence_interruptible = !sequence_in_progress_wb;
 
   assign id_stage_haltable = !(sequence_in_progress_id || clic_ptr_in_progress_id);
@@ -1452,6 +1455,9 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign ctrl_fsm_o.debug_havereset = debug_fsm_cs[HAVERESET_INDEX];
   assign ctrl_fsm_o.debug_running   = debug_fsm_cs[RUNNING_INDEX];
   assign ctrl_fsm_o.debug_halted    = debug_fsm_cs[HALTED_INDEX];
+
+  // Tie off unused signals
+  assign unused_signals = clic_ptr_in_wb;
 
 
   //---------------------------------------------------------------------------
