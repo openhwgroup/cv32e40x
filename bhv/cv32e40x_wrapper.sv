@@ -249,6 +249,7 @@ module cv32e40x_wrapper
                               .rf_mem_i                     (core_i.register_file_wrapper_i.register_file_i.mem),
                               .alu_jmpr_id_i                (core_i.alu_jmpr_id),
                               .jalr_fw_id_i                 (core_i.id_stage_i.jalr_fw),
+                              .response_filter_bus_cnt_q_i  (core_i.load_store_unit_i.response_filter_i.bus_cnt_q),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
