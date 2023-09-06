@@ -521,9 +521,28 @@ endgenerate
 `endif //  `ifndef COREV_ASSERT_OFF
 
     cv32e40x_core_log
-     #(
+     #(   .ENABLE                ( CORE_LOG_ENABLE       ),
+          .RV32                  ( RV32                  ),
+          .A_EXT                 ( A_EXT                 ),
+          .B_EXT                 ( B_EXT                 ),
+          .M_EXT                 ( M_EXT                 ),
+          .X_EXT                 ( X_EXT                 ),
+          .X_NUM_RS              ( X_NUM_RS              ),
+          .X_ID_WIDTH            ( X_ID_WIDTH            ),
+          .X_MEM_WIDTH           ( X_MEM_WIDTH           ),
+          .X_RFR_WIDTH           ( X_RFR_WIDTH           ),
+          .X_RFW_WIDTH           ( X_RFW_WIDTH           ),
+          .X_MISA                ( X_MISA                ),
+          .X_ECS_XS              ( X_ECS_XS              ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
-          .ENABLE                ( CORE_LOG_ENABLE       )
+          .CLIC                  ( CLIC                  ),
+          .CLIC_ID_WIDTH         ( CLIC_ID_WIDTH         ),
+          .DEBUG                 ( DEBUG                 ),
+          .DM_REGION_START       ( DM_REGION_START       ),
+          .DM_REGION_END         ( DM_REGION_END         ),
+          .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
+          .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
+          .PMA_CFG               ( PMA_CFG               )
      )
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
