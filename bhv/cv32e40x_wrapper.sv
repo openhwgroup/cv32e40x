@@ -682,7 +682,7 @@ endgenerate
          .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
          .csr_mhpmevent_n_i        ( core_i.cs_registers_i.mhpmevent_n                                    ),
          .csr_mhpmevent_q_i        ( core_i.cs_registers_i.mhpmevent_rdata                                ),
-         .csr_mhpmevent_we_i       ( {31'h0, core_i.cs_registers_i.mhpmevent_we} << // todo:ok: Add write enable for each register
+         .csr_mhpmevent_we_i       ( {31'h0, core_i.cs_registers_i.mhpmevent_we} <<
                                      core_i.cs_registers_i.csr_waddr[4:0] ),
          .csr_mscratch_n_i         ( core_i.cs_registers_i.mscratch_n                                     ),
          .csr_mscratch_q_i         ( core_i.cs_registers_i.mscratch_rdata                                 ),
