@@ -369,7 +369,7 @@ module cv32e40x_wrapper
                 .mie_we                           (core_i.cs_registers_i.mie_we),
                 .lsu_exception_wb                 (core_i.wb_stage_i.lsu_exception),
                 .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
-                .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
+                .lsu_exokay_wb                    (core_i.load_store_unit_i.resp.bus_resp.exokay),
                 .prefetch_is_mret_ptr_i           (core_i.if_stage_i.prefetch_is_mret_ptr),
                 .first_op_if                      (core_i.if_stage_i.first_op),
                 .xif_compressed_valid             (core_i.xif_compressed_if.compressed_valid),
