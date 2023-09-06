@@ -670,11 +670,11 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
   assign id_valid_o = (instr_valid && !xif_waiting);
 
   assign first_op_o  = if_id_pipe_i.first_op;
-  // An mret with mcause.minhv set and mcause.mpp = PRIV_LVL_M will cause a pointer fetch, and that pointer fetch is the last operation of the mret.
+  // An mret with mcause.minhv set  will cause a pointer fetch, and that pointer fetch is the last operation of the mret.
   // Mrets with the mcause conditions not true will be normal single operation instructions.
-  // Using CSR signals below is safe, as any implicit or explicit CSR read in ID stage is halted if there is an implicit or explicit CSR write
+  // Using CSR signals below is safe, as any implicit CSR read in ID stage is halted if there is an implicit or explicit CSR write
   // in either EX or WB at the same time.
-  assign last_op_o   = (sys_en && sys_mret_insn && mcause_i.minhv && (mcause_i.mpp == PRIV_LVL_M)) ? 1'b0 : if_id_pipe_i.last_op;
+  assign last_op_o   = (sys_en && sys_mret_insn && mcause_i.minhv) ? 1'b0 : if_id_pipe_i.last_op;
   assign abort_op_o  = if_id_pipe_i.abort_op || ctrl_byp_i.id_stage_abort;
   //---------------------------------------------------------------------------
   // eXtension interface
