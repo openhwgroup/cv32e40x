@@ -197,33 +197,35 @@ instruction exception.
     :name: Control and Status Register Map (additional CSRs for User mode support)
     :class: no-scrollbar-table
 
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | CSR address       |   Name         | Privilege  | Parameter  |   Description                                      |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | Machine CSRs                                                                                                      |
-    +===================+================+============+============+====================================================+
-    | 0x306             | ``mcounteren`` | MRW        |            | Machine Counter Enable                             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x30A             | ``menvcfg``    | MRW        |            | Machine Environment Configuration (lower 32 bits)  |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x30C             | ``mstateen0``  | MRW        |            | Machine state enable 0 (lower 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x30D             | ``mstateen1``  | MRW        |            | Machine state enable 1 (lower 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x30E             | ``mstateen2``  | MRW        |            | Machine state enable 2 (lower 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x30F             | ``mstateen3``  | MRW        |            | Machine state enable 3 (lower 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x31A             | ``menvcfgh``   | MRW        |            | Machine Environment Configuration (upper 32 bits)  |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x31C             | ``mstateen0h`` | MRW        |            | Machine state enable 0 (upper 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x31D             | ``mstateen1h`` | MRW        |            | Machine state enable 1 (upper 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x31E             | ``mstateen2h`` | MRW        |            | Machine state enable 2 (upper 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
-    | 0x31F             | ``mstateen3h`` | MRW        |            | Machine state enable 3 (upper 32 bits)             |
-    +-------------------+----------------+------------+------------+----------------------------------------------------+
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | CSR address       |   Name          | Privilege  | Parameter    |   Description                                      |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | Machine CSRs                                                                                                         |
+    +===================+=================+============+==============+====================================================+
+    | 0x306             | ``mcounteren``  | MRW        |              | Machine Counter Enable                             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x30A             | ``menvcfg``     | MRW        |              | Machine Environment Configuration (lower 32 bits)  |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x30C             | ``mstateen0``   | MRW        |              | Machine state enable 0 (lower 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x30D             | ``mstateen1``   | MRW        |              | Machine state enable 1 (lower 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x30E             | ``mstateen2``   | MRW        |              | Machine state enable 2 (lower 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x30F             | ``mstateen3``   | MRW        |              | Machine state enable 3 (lower 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x31A             | ``menvcfgh``    | MRW        |              | Machine Environment Configuration (upper 32 bits)  |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x31C             | ``mstateen0h``  | MRW        |              | Machine state enable 0 (upper 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x31D             | ``mstateen1h``  | MRW        |              | Machine state enable 1 (upper 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x31E             | ``mstateen2h``  | MRW        |              | Machine state enable 2 (upper 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x31F             | ``mstateen3h``  | MRW        |              | Machine state enable 3 (upper 32 bits)             |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
+    | 0x348             | ``mscratchcsw`` | MRW        | ``CLIC`` = 1 | Conditional scratch swap on priv mode change       |
+    +-------------------+-----------------+------------+--------------+----------------------------------------------------+
 
 .. only:: PMP
 
@@ -1013,6 +1015,38 @@ Detailed:
     | 31:0  | WARL (0x0) | Hardwired to 0.                                                  |
     +-------+------------+------------------------------------------------------------------+
 
+
+  .. _csr-mscratchcsw:
+
+  Machine Scratch Swap for Priv Mode Change (``mscratchcsw``)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  CSR Address: 0x348
+
+  Reset Value: 0x0000_0000
+
+  Include Condition: ``CLIC`` = 1
+
+  Detailed:
+
+  .. table::
+    :widths: 10 20 70
+    :class: no-scrollbar-table
+
+    +-------------+------------+-------------------------------------------------------------------------+
+    |   Bit #     |   R/W      |           Description                                                   |
+    +=============+============+=========================================================================+
+    | 31:0        |   RW       | **MSCRATCHCSW**: Machine scratch swap for privilege mode change         |
+    +-------------+------------+-------------------------------------------------------------------------+
+
+  Scratch swap register for multiple privilege modes.
+
+  .. note::
+    Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcsw``.
+    The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcsw`` are implementation-defined.
+    |corev| will treat such instructions as illegal instructions.
+
+
 Machine Counter-Inhibit Register (``mcountinhibit``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1318,36 +1352,6 @@ Detailed:
   +-------------+------------+-------------------------------------------------------------------------+
 
 This register holds the machine mode interrupt level threshold.
-
-.. _csr-mscratchcsw:
-
-Machine Scratch Swap for Priv Mode Change (``mscratchcsw``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-CSR Address: 0x348
-
-Reset Value: 0x0000_0000
-
-Include Condition: ``CLIC`` = 1
-
-Detailed:
-
-.. table::
-  :widths: 10 20 70
-  :class: no-scrollbar-table
-
-  +-------------+------------+-------------------------------------------------------------------------+
-  |   Bit #     |   R/W      |           Description                                                   |
-  +=============+============+=========================================================================+
-  | 31:0        |   RW       | **MSCRATCHCSW**: Machine scratch swap for privilege mode change         |
-  +-------------+------------+-------------------------------------------------------------------------+
-
-Scratch swap register for multiple privilege modes.
-
-.. note::
-  Only the read-modify-write (swap/CSRRW) operation is useful for ``mscratchcsw``.
-  The behavior of the non-CSRRW variants (i.e. CSRRS/C, CSRRWI, CSRRS/CI) and CSRRW variants with **rd** = **x0** or **rs1** = **x0** on ``mscratchcsw`` are implementation-defined.
-  |corev| will treat such instructions as illegal instructions.
 
 .. _csr-mscratchcswl:
 
