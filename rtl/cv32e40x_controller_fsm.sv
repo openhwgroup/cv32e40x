@@ -434,7 +434,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   assign single_step_allowed = 1'b1;
 
   /*
-  Debug spec 1.0.0 (unratified as of Aug 9th '21)
   "If control is transferred to a trap handler while executing the instruction, then Debug Mode is
   re-entered immediately after the PC is changed to the trap handler, and the appropriate tval and
   cause registers are updated. In this case none of the trap handler is executed, and if the cause was
@@ -1189,7 +1188,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   end
 
   // Wakeup from sleep
-  assign ctrl_fsm_o.wake_from_sleep = pending_nmi || irq_wu_ctrl_i || pending_async_debug || debug_mode_q || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
+  assign ctrl_fsm_o.wake_from_sleep = pending_nmi || irq_wu_ctrl_i || pending_async_debug || (wfe_in_wb && wu_wfe_i); // Only WFE wakes up for wfe_wu_i
   assign ctrl_fsm_o.debug_no_sleep = debug_mode_q || dcsr_i.step;
 
   ////////////////////
