@@ -1471,7 +1471,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mhartid_rdata      = mhartid_i;
   assign mconfigptr_rdata   = 32'h0;
 
-  // Only user mode is supported
+  // Only machine mode is supported
   assign priv_lvl_rdata     = PRIV_LVL_M;
   assign priv_lvl_q         = PRIV_LVL_M;
   assign priv_lvl_lsu_o     = PRIV_LVL_M;
