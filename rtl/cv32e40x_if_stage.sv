@@ -81,6 +81,9 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
   output logic          if_valid_o,
   input  logic          id_ready_i,
 
+  // Privilege mode
+  input privlvlctrl_t   priv_lvl_ctrl_i,
+
   // eXtension interface
   cv32e40x_if_xif.cpu_compressed xif_compressed_if,      // XIF compressed interface
   input  logic                   xif_offloading_id_i     // ID stage attempts to offload an instruction
@@ -200,6 +203,7 @@ module cv32e40x_if_stage import cv32e40x_pkg::*;
     .rst_n                    ( rst_n                       ),
 
     .ctrl_fsm_i               ( ctrl_fsm_i                  ),
+    .priv_lvl_ctrl_i          ( priv_lvl_ctrl_i             ),
 
     .branch_addr_i            ( {branch_addr_n[31:1], 1'b0} ),
 

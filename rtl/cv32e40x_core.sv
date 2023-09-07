@@ -240,6 +240,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic csr_wr_in_wb_flush;
   logic csr_irq_enable_write;
 
+  privlvl_t     priv_lvl_lsu;
+  privlvlctrl_t priv_lvl_if_ctrl;
+
   privlvl_t     priv_lvl;
 
   logic         csr_mnxti_read;
@@ -502,6 +505,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .if_valid_o          ( if_valid                 ),
     .id_ready_i          ( id_ready                 ),
 
+    // Privilege level
+    .priv_lvl_ctrl_i     ( priv_lvl_if_ctrl         ),
+
     // eXtension interface
     .xif_compressed_if   ( xif_compressed_if        ),
     .xif_offloading_id_i ( xif_offloading_id        )
@@ -705,6 +711,9 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .lsu_align_status_1_o  ( lsu_align_status_wb),
     .lsu_atomic_1_o        ( lsu_atomic_wb      ),
 
+    // Privilege level
+    .priv_lvl_lsu_i        ( priv_lvl_lsu       ),
+
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
     .ready_0_o             ( lsu_ready_0        ),
@@ -831,6 +840,8 @@ module cv32e40x_core import cv32e40x_pkg::*;
     .mtvec_mode_o               ( mtvec_mode             ),
     .mtvt_addr_o                ( mtvt_addr              ),
 
+    .priv_lvl_if_ctrl_o         ( priv_lvl_if_ctrl       ),
+    .priv_lvl_lsu_o             ( priv_lvl_lsu           ),
     .priv_lvl_o                 ( priv_lvl               ),
 
     // ID/EX pipeline

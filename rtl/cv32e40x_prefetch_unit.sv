@@ -37,6 +37,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
   input  logic        rst_n,
 
   input  ctrl_fsm_t   ctrl_fsm_i,
+  input  privlvlctrl_t priv_lvl_ctrl_i,
 
   input  logic [31:0] branch_addr_i,
 
@@ -114,6 +115,7 @@ module cv32e40x_prefetch_unit import cv32e40x_pkg::*;
     .rst_n                 ( rst_n                   ),
 
     .ctrl_fsm_i            ( ctrl_fsm_i              ),
+    .priv_lvl_ctrl_i       ( priv_lvl_ctrl_i         ),
 
     .branch_addr_i         ( branch_addr_i           ),
     .prefetch_busy_o       ( prefetch_busy_o         ),
