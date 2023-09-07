@@ -119,16 +119,6 @@ module cv32e40x_cs_registers_sva
     a_htrap_interrupt_level: assert property(p_htrap_interrupt_level)
       else `uvm_error("cs_registers", "Horizontal trap taken caused interrupt level to change");
 
-    // Check that mscratch do not update due to mscratchcsw if the conditions are not right
-    property p_mscratchcsw_mscratch;
-      @(posedge clk) disable iff (!rst_n)
-      (  ex_wb_pipe_i.csr_en && (csr_waddr == CSR_MSCRATCHCSW) && (mstatus_q.mpp == PRIV_LVL_M)
-        |=> $stable(mscratch_q));
-    endproperty;
-
-    a_mscratchcsw_mscratch: assert property(p_mscratchcsw_mscratch)
-      else `uvm_error("cs_registers", "Mscratch not stable after mscratwchsw with mpp=M");
-
     // Check that mscratch do not update due to mscratchcswl if the conditions are not right
     property p_mscratchcswl_mscratch;
       @(posedge clk) disable iff (!rst_n)
@@ -173,6 +163,41 @@ module cv32e40x_cs_registers_sva
     a_mcause_mstatus_alias: assert property(p_mcause_mstatus_alias)
       else `uvm_error("cs_registers", "mcause.mpp and mcause.mpie not aliased correctly")
 
+    // Whenever mepc is written by HW, mcause.minhv must also be written with the correct value.
+    // mcause.minhv is only set when an exception is taken on a CLIC or mret pointer
+    // SW can still write both mepc and mcause independently
+    property p_mepc_minhv_write;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        mepc_we   // mepc is written
+        |->
+        (mcause_we && // mcause is written
+        mcause_n.minhv == ((ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr)) && // pointer in WB
+                           (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_mux == PC_TRAP_EXC)))                 // exception taken
+        or
+        csr_we_int // SW writes mepc
+      );
+    endproperty;
+
+    a_mepc_minhv_write: assert property(p_mepc_minhv_write)
+      else `uvm_error("cs_registers", "mcause.minhv not updated correctly on mepc write.")
+
+    // Whenever mcause.minhv is changed mepc should also be written (or SW writes to mcause.minhv)
+    property p_minhv_mepc_write;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        mcause_we &&
+        (mcause_n.minhv != mcause_q.minhv)
+        |->
+        mepc_we
+        or
+        csr_we_int
+      );
+    endproperty;
+
+    a_minhv_mepc_write: assert property(p_minhv_mepc_write)
+      else `uvm_error("cs_registers", "mcause written without mepc written")
+
   end
 
   // Check that no csr instruction can be in WB during sleep when ctrl_fsm.halt_limited_wb is set
@@ -183,27 +208,6 @@ module cv32e40x_cs_registers_sva
 
   a_halt_limited_wb: assert property(p_halt_limited_wb)
     else `uvm_error("cs_registers", "CSR in WB while halt_limited_wb is set");
-
-
-  // Check csr_clear_minhv cannot happen at the same time as csr_save_cause or csr_restore_dret (would cause mcause_we conflict)
-  sequence seq_csr_clear_minhv;
-    ctrl_fsm_i.csr_clear_minhv;
-  endsequence
-
-  property p_minhv_unique;
-    @(posedge clk) disable iff (!rst_n)
-    (  seq_csr_clear_minhv |-> !(ctrl_fsm_i.csr_save_cause || ctrl_fsm_i.csr_restore_dret));
-  endproperty;
-
-  if (CLIC) begin
-    a_minhv_unique: assert property(p_minhv_unique)
-      else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
-
-  end else begin
-    a_minhv_unique_nocover: assert property(
-      @(posedge clk) disable iff (!rst_n)
-       not seq_csr_clear_minhv);
-  end
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Asserts to check that the CSR flops remain unchanged if a set/clear has all_zero rs1
@@ -361,9 +365,8 @@ generate
       else `uvm_error("cs_registers", "mepc not written with ctrl_fsm.pipe_pc when etrigger fires.");
 
     // Exception trigger shall cause dpc to point to first handler instruction and no instruction shall signal wb_valid the cycle after (while in DEBUG_TAKEN state)
-    // Excluding external debug and interrupts (halt_wb, kill_wb) as they (currently) both take priority over etrigger
+    // Excluding external debug and interrupts (halt_wb, kill_wb) as they both take priority over etrigger
     // Also checking that WB stage is empty after an exception trigger has been taken.
-    // todo: update when debug causes are updated, trigger match will not be highest priority
     property p_etrigger_dpc_write;
       logic [24:0] mtvec_at_trap;
       @(posedge clk) disable iff (!rst_n)

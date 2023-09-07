@@ -31,7 +31,8 @@ module cv32e40x_controller_fsm_sva
   #(  parameter bit          X_EXT         = 1'b0,
       parameter bit          DEBUG         = 1'b0,
       parameter bit          CLIC          = 1'b0,
-      parameter int unsigned CLIC_ID_WIDTH = 5
+      parameter int unsigned CLIC_ID_WIDTH = 5,
+      parameter rv32_e       RV32          = RV32I
   )
 (
   input logic           clk,
@@ -91,6 +92,7 @@ module cv32e40x_controller_fsm_sva
   input logic           first_op_ex_i,
   input logic           last_op_id_i,
   input logic           ex_ready_i,
+  input logic           id_ready_i,
   input logic           sequence_interruptible,
   input logic           sequence_in_progress_wb,
   input logic           id_stage_haltable,
@@ -130,7 +132,10 @@ module cv32e40x_controller_fsm_sva
   input logic           dret_in_wb,
   input logic           csr_flush_ack_q,
   input logic           clic_ptr_in_id,
-  input logic           mret_ptr_in_id
+  input logic           mret_ptr_in_id,
+  input logic           alu_jmpr_id_i,
+  input logic [31:0]    jalr_fw_id_i,
+  input logic [REGFILE_WORD_WIDTH-1:0] rf_mem_i [(RV32 == RV32I) ? 32 : 16]
 );
 
 
@@ -153,15 +158,27 @@ module cv32e40x_controller_fsm_sva
                      jump_taken |=> !jump_taken)
       else `uvm_error("controller", "Two jumps back-to-back are taken")
 
-/* todo: fix
   // Check that a jump is taken only when ID is not killed
   a_valid_jump :
     assert property (@(posedge clk)
                      jump_taken |-> if_id_pipe_i.instr_valid && !ctrl_fsm_o.kill_id)
-      else `uvm_error("controller", "Jump taken while ID is halted or killed")
-*/
+      else `uvm_error("controller", "Jump taken while ID is killed")
 
-// Check that xret does not coincide with CSR write (to avoid using wrong return address)
+  // Check that register used for JALR target calculation is stable from the jump is taken from ID until the JALR retires from WB.
+  property p_jalr_stable_target;
+    logic [4:0] jalr_rs_id;
+    logic [31:0] rf_at_jump_id;
+    @(posedge clk) disable iff (!rst_n)
+      ((jump_taken && alu_jmpr_id_i,                                                                                // When JALR is taken from ID,
+        rf_at_jump_id = jalr_fw_id_i,                                                                               // Store (possibly forwarded) RF value used for target calculation
+        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                      // Store RS from JALR instruction
+        ##1 (!(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1]) // Wait for JALR to retire from WB (while not being killed)
+        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                                 // Check that RF value is consistent with the value used for jump target calculation
+  endproperty : p_jalr_stable_target
+
+  a_jalr_stable_target: assert property(p_jalr_stable_target) else `uvm_error("controller", "Assertion a_jalr_stable_target failed");
+
+  // Check that xret does not coincide with CSR write (to avoid using wrong return address)
   // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
   // as its write action happens before the xret CSR usage
   property p_xret_csr;
@@ -191,20 +208,35 @@ module cv32e40x_controller_fsm_sva
       else `uvm_error("controller", "Interrupt taken while oustanding transactions are pending")
 
   // Ensure <stage>.instr_valid is zero following a kill_<prev_stage>
- /* TODO:OK:low Failing when bubble is inserted in ID (id_ready_o==0) when WFI is in EX.
-            Will investigate how to solve. Agreed that this assertion is maybe too strict. We only need to guarantee that if a stage is killed, that the instruction in that stage never reaches the following stage with instr_valid = 1 (it doesn't need instr_valid of the next stage 0 in the following cycle.
+
+  // Support logic to indicate that IF has been killed, and not yet received a new instruction from the prefetcher
+  logic kill_if_no_prefetch_valid;
+  always_ff @(posedge clk, negedge rst_n) begin
+    if(!rst_n) begin
+      kill_if_no_prefetch_valid <= 1'b0;
+    end
+    else begin
+      if (ctrl_fsm_o.kill_if) begin
+        kill_if_no_prefetch_valid <= 1'b1;
+      end
+      else if (prefetch_valid_if_i) begin
+        kill_if_no_prefetch_valid <= 1'b0;
+      end
+    end
+  end
+
+  // If IF is killed and ID is ready before a new instruction arrives, if_id_pipe_i.instr_valid must be 0
   a_kill_if :
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (ctrl_fsm_o.kill_if) |=> (if_id_pipe_i.instr_valid == 1'b0) )
-    else `uvm_error("controller", "if_id_pipe.instr_valid not zero after kill_if")
-*/
-/* TODO:OK:low Failing when a DIV instruction is being executed
-           Causes ex_ready to be 0. Will be fixed then divider is interruptable
+                    kill_if_no_prefetch_valid && $past(id_ready_i) |-> (if_id_pipe_i.instr_valid == 1'b0) )
+    else `uvm_error("controller", "if_id_pipe_i.instr_valid not zero after kill_if")
+
+  // If ID is killed, id_ex_pipe_i.instr_valid must be 0 following the next ex_ready_i
   a_kill_id :
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (ctrl_fsm_o.kill_id) |=> (id_ex_pipe_i.instr_valid == 1'b0) )
+                    ctrl_fsm_o.kill_id ##0 ex_ready_i[->1] |=> (id_ex_pipe_i.instr_valid == 1'b0) )
     else `uvm_error("controller", "id_ex_pipe.instr_valid not zero after kill_id")
-*/
+
   a_kill_ex :
   assert property (@(posedge clk) disable iff (!rst_n)
                     (ctrl_fsm_o.kill_ex && !ctrl_fsm_o.halt_wb) |=> (ex_wb_pipe_i.instr_valid == 1'b0) )
@@ -348,8 +380,8 @@ generate;
 
     // Assert that a CSR instruction that is accepted by both eXtension interface and pipeline
     // causes an illegal instruction
-    // TODO: The checks for mpu_status and bus_resp.err below can be removed once the
-    //       xif offload is fully implemented (no offload if mpu or bus error occured in IF)
+    // todo:xif The checks for mpu_status and bus_resp.err below can be removed once the
+    //           xif offload is fully implemented (no offload if mpu or bus error occured in IF)
     a_duplicate_csr_illegal:
       assert property (@(posedge clk) disable iff (!rst_n)
                       ex_valid_i && wb_ready_i && (id_ex_pipe_i.xif_en && id_ex_pipe_i.xif_meta.accepted) && id_ex_pipe_i.csr_en && !csr_illegal_i &&
@@ -658,7 +690,6 @@ end else begin // CLIC
                   |->
                   (clic_ptr_in_progress_id_set != 1'b1)     &&
                   !ctrl_fsm_o.csr_cause.minhv       &&
-                  !ctrl_fsm_o.csr_clear_minhv       &&
                   !mcause_i.minhv                   &&
                   !if_id_pipe_i.instr_meta.clic_ptr &&
                   !id_ex_pipe_i.instr_meta.clic_ptr &&

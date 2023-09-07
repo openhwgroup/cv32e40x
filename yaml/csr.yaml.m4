@@ -4487,7 +4487,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       lsb: 0
 ]]])
 
-ifelse(eval(CLIC != 0), 1, [[[
+ifelse(eval((CLIC != 0) && (UMODE != 0)), 1, [[[
 - csr: mscratchcsw
   description: >
     Machine scratch swap for privilege mode change

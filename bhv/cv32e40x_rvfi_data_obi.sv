@@ -46,7 +46,7 @@ module cv32e40x_rvfi_data_obi import cv32e40x_pkg::*; import cv32e40x_rvfi_pkg::
     lsu_data_trans_o = buffer_trans_i;
 
     // Align Memory write data
-    lsu_data_trans_o.wdata = buffer_trans_wdata_ror;
+    lsu_data_trans_o.wdata = buffer_trans_wdata_ror[31:0];
   end
 
 endmodule

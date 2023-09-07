@@ -225,7 +225,8 @@ module cv32e40x_wrapper
         #(.X_EXT(X_EXT),
           .DEBUG(DEBUG),
           .CLIC(CLIC),
-          .CLIC_ID_WIDTH(CLIC_ID_WIDTH))
+          .CLIC_ID_WIDTH(CLIC_ID_WIDTH),
+          .RV32(RV32))
         controller_fsm_sva   (
                               .lsu_outstanding_cnt          (core_i.load_store_unit_i.cnt_q),
                               .rf_we_wb_i                   (core_i.wb_stage_i.rf_we_wb_o  ),
@@ -244,6 +245,9 @@ module cv32e40x_wrapper
                               .instr_req_o                  (core_i.instr_req_o),
                               .instr_dbg_o                  (core_i.instr_dbg_o),
                               .mstatus_i                    (core_i.cs_registers_i.mstatus_rdata),
+                              .rf_mem_i                     (core_i.register_file_wrapper_i.register_file_i.mem),
+                              .alu_jmpr_id_i                (core_i.alu_jmpr_id),
+                              .jalr_fw_id_i                 (core_i.id_stage_i.jalr_fw),
                               .*);
   bind cv32e40x_cs_registers:
     core_i.cs_registers_i
@@ -365,7 +369,7 @@ module cv32e40x_wrapper
                 .mie_we                           (core_i.cs_registers_i.mie_we),
                 .lsu_exception_wb                 (core_i.wb_stage_i.lsu_exception),
                 .lsu_wpt_match_wb                 (core_i.wb_stage_i.lsu_wpt_match),
-                .lsu_exokay_wb                    (core_i.data_exokay_i), // todo: Could poke into LSU, but this signal is fed directly through the LSU
+                .lsu_exokay_wb                    (core_i.load_store_unit_i.resp.bus_resp.exokay),
                 .prefetch_is_mret_ptr_i           (core_i.if_stage_i.prefetch_is_mret_ptr),
                 .first_op_if                      (core_i.if_stage_i.first_op),
                 .xif_compressed_valid             (core_i.xif_compressed_if.compressed_valid),
@@ -517,9 +521,28 @@ endgenerate
 `endif //  `ifndef COREV_ASSERT_OFF
 
     cv32e40x_core_log
-     #(
+     #(   .ENABLE                ( CORE_LOG_ENABLE       ),
+          .RV32                  ( RV32                  ),
+          .A_EXT                 ( A_EXT                 ),
+          .B_EXT                 ( B_EXT                 ),
+          .M_EXT                 ( M_EXT                 ),
+          .X_EXT                 ( X_EXT                 ),
+          .X_NUM_RS              ( X_NUM_RS              ),
+          .X_ID_WIDTH            ( X_ID_WIDTH            ),
+          .X_MEM_WIDTH           ( X_MEM_WIDTH           ),
+          .X_RFR_WIDTH           ( X_RFR_WIDTH           ),
+          .X_RFW_WIDTH           ( X_RFW_WIDTH           ),
+          .X_MISA                ( X_MISA                ),
+          .X_ECS_XS              ( X_ECS_XS              ),
           .NUM_MHPMCOUNTERS      ( NUM_MHPMCOUNTERS      ),
-          .ENABLE                ( CORE_LOG_ENABLE       )
+          .CLIC                  ( CLIC                  ),
+          .CLIC_ID_WIDTH         ( CLIC_ID_WIDTH         ),
+          .DEBUG                 ( DEBUG                 ),
+          .DM_REGION_START       ( DM_REGION_START       ),
+          .DM_REGION_END         ( DM_REGION_END         ),
+          .DBG_NUM_TRIGGERS      ( DBG_NUM_TRIGGERS      ),
+          .PMA_NUM_REGIONS       ( PMA_NUM_REGIONS       ),
+          .PMA_CFG               ( PMA_CFG               )
      )
     core_log_i(
           .clk_i              ( core_i.id_stage_i.clk              ),
@@ -616,7 +639,7 @@ endgenerate
          .wpt_match_wb_i           ( core_i.wb_stage_i.wpt_match_wb_o                                     ),
          .mpu_status_wb_i          ( core_i.wb_stage_i.mpu_status_wb_o                                    ),
          .align_status_wb_i        ( core_i.wb_stage_i.align_status_wb_o                                  ),
-         .csr_mscratchcsw_in_wb_i  ( core_i.cs_registers_i.mscratchcsw_in_wb                              ),
+         .csr_mscratchcsw_in_wb_i  ( 1'b0                             /* Not implemented in cv32e40x */   ),
          .csr_mscratchcswl_in_wb_i ( core_i.cs_registers_i.mscratchcswl_in_wb                             ),
          .csr_mnxti_in_wb_i        ( core_i.cs_registers_i.mnxti_in_wb                                    ),
 
@@ -661,7 +684,7 @@ endgenerate
          .csr_mcountinhibit_we_i   ( core_i.cs_registers_i.mcountinhibit_we                               ),
          .csr_mhpmevent_n_i        ( core_i.cs_registers_i.mhpmevent_n                                    ),
          .csr_mhpmevent_q_i        ( core_i.cs_registers_i.mhpmevent_rdata                                ),
-         .csr_mhpmevent_we_i       ( {31'h0, core_i.cs_registers_i.mhpmevent_we} << // todo:ok: Add write enable for each register
+         .csr_mhpmevent_we_i       ( {31'h0, core_i.cs_registers_i.mhpmevent_we} <<
                                      core_i.cs_registers_i.csr_waddr[4:0] ),
          .csr_mscratch_n_i         ( core_i.cs_registers_i.mscratch_n                                     ),
          .csr_mscratch_q_i         ( core_i.cs_registers_i.mscratch_rdata                                 ),
@@ -684,9 +707,9 @@ endgenerate
          .csr_mintthresh_n_i       ( core_i.cs_registers_i.mintthresh_n                                   ),
          .csr_mintthresh_q_i       ( core_i.cs_registers_i.mintthresh_rdata                               ),
          .csr_mintthresh_we_i      ( core_i.cs_registers_i.mintthresh_we                                  ),
-         .csr_mscratchcsw_n_i      ( core_i.cs_registers_i.mscratchcsw_n                                  ),
-         .csr_mscratchcsw_q_i      ( core_i.cs_registers_i.mscratchcsw_rdata                              ),
-         .csr_mscratchcsw_we_i     ( core_i.cs_registers_i.mscratchcsw_we                                 ),
+         .csr_mscratchcsw_n_i      ( 32'd0                              /* Not implemented in cv32e40x */ ),
+         .csr_mscratchcsw_q_i      ( 32'd0                              /* Not implemented in cv32e40x */ ),
+         .csr_mscratchcsw_we_i     (  1'b0                              /* Not implemented in cv32e40x */ ),
          .csr_mscratchcswl_n_i     ( core_i.cs_registers_i.mscratchcswl_n                                 ),
          .csr_mscratchcswl_q_i     ( core_i.cs_registers_i.mscratchcswl_rdata                             ),
          .csr_mscratchcswl_we_i    ( core_i.cs_registers_i.mscratchcswl_we                                ),
@@ -718,14 +741,15 @@ endgenerate
          .csr_marchid_i            ( core_i.cs_registers_i.marchid_rdata                                  ),
          .csr_mhartid_i            ( core_i.cs_registers_i.mhartid_rdata                                  ),
          .csr_mimpid_i             ( core_i.cs_registers_i.mimpid_rdata                                   ),
-         // TODO Tie relevant signals below to RTL
          .csr_mstatush_n_i         ( core_i.cs_registers_i.mstatush_n                                     ),
          .csr_mstatush_q_i         ( core_i.cs_registers_i.mstatush_rdata                                 ),
          .csr_mstatush_we_i        ( core_i.cs_registers_i.mstatush_we                                    ),
          .csr_tselect_n_i          ( core_i.cs_registers_i.debug_triggers_i.tselect_n                     ),
          .csr_tselect_q_i          ( core_i.cs_registers_i.tselect_rdata                                  ),
          .csr_tselect_we_i         ( core_i.cs_registers_i.tselect_we                                     ),
-
+         .csr_mconfigptr_n_i       ( core_i.cs_registers_i.mconfigptr_n                                   ),
+         .csr_mconfigptr_q_i       ( core_i.cs_registers_i.mconfigptr_rdata                               ),
+         .csr_mconfigptr_we_i      ( core_i.cs_registers_i.mconfigptr_we                                  ),
          .csr_mcounteren_n_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_q_i       ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mcounteren_we_i      ( '0                                    /* Not supported in cv32e40x*/ ),
@@ -741,9 +765,6 @@ endgenerate
          .csr_mseccfgh_n_i         ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mseccfgh_q_i         ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_mseccfgh_we_i        ( '0                                    /* Not supported in cv32e40x*/ ),
-         .csr_mconfigptr_n_i       ( '0                                                                   ),
-         .csr_mconfigptr_q_i       ( '0                                                                   ),
-         .csr_mconfigptr_we_i      ( '0                                                                   ),
          .csr_menvcfg_n_i          ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_menvcfg_q_i          ( '0                                    /* Not supported in cv32e40x*/ ),
          .csr_menvcfg_we_i         ( '0                                    /* Not supported in cv32e40x*/ ),

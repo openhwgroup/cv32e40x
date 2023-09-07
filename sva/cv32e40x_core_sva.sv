@@ -149,7 +149,6 @@ if (CLIC) begin
   endproperty
   a_clic_mip_tieoff : assert property(p_clic_mip_tieoff) else `uvm_error("core", "MIP not tied to 0 in CLIC mode")
 
-  //todo: add CLIC related assertions (level thresholds etc)
 end else begin
   // CLIC == 0
   // Check that a taken IRQ is actually enabled (e.g. that we do not react to an IRQ that was just disabled in MIE)
