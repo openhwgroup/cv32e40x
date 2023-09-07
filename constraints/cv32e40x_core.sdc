@@ -45,9 +45,7 @@ set in_delay_irq          [expr $clock_period * 0.50]
 set in_delay_wfe          [expr $clock_period * 0.50]
 
 # Delay for CLIC
-# todo: set final constraints for CLIC signals
-set in_delay_clic         [expr $clock_period * 0.50]
-set out_delay_clic        [expr $clock_period * 0.50]
+set in_delay_clic         [expr $clock_period * 0.70]
 
 # Input delays for early signals
 
@@ -134,10 +132,6 @@ set wfe_input_ports [list \
 # CLIC Input ports
 set clic_input_ports [list \
     clic_irq*_i* \
-]
-# CLIC Output ports
-set clic_output_ports [list \
-    clic_irq*_o* \
 ]
 
 # Early Input ports (ideally from register)
@@ -272,12 +266,11 @@ set all_clock_ports $clock_ports
 
 set all_other_input_ports  [remove_from_collection [all_inputs]  [get_ports [list $all_clock_ports $obi_input_ports $irq_input_ports $wfe_input_ports $clic_input_ports $early_input_ports $fencei_input_ports $xif_input_ports $xif_input_ports_result_data $xif_mem_if_input_ports]]]
 
-set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $clic_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
+set all_other_output_ports [remove_from_collection [all_outputs] [get_ports [list $all_clock_ports $obi_output_ports $sleep_output_ports $fencei_output_ports $xif_output_ports $xif_output_ports_data_late $xif_output_ports_control_late $xif_mem_result_if_rdata $xif_mem_result_if_valid]]]
 
 # IRQs
 set_input_delay  $in_delay_irq          [get_ports $irq_input_ports        ] -clock clk_i
 set_input_delay  $in_delay_clic         [get_ports $clic_input_ports       ] -clock clk_i
-set_output_delay $out_delay_clic        [get_ports $clic_output_ports      ] -clock clk_i
 
 # WFE
 set_input_delay  $in_delay_wfe          [get_ports $wfe_input_ports        ] -clock clk_i
