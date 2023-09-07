@@ -58,6 +58,8 @@
 .rvfi_mem_wmask(),\
 .rvfi_mem_rdata(),\
 .rvfi_mem_wdata(),\
+.rvfi_mem_exokay(),\
+.rvfi_mem_err(),\
 .rvfi_mem_prot(),\
 .rvfi_mem_atop(),\
 .rvfi_mem_memtype(),\

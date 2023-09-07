@@ -104,6 +104,8 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
+   input logic                                lsu_exokay_wb_i,
+   input logic [1:0]                          lsu_err_wb_i,
    input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
    input logic                                csr_mscratchcsw_in_wb_i,
@@ -328,6 +330,8 @@ module cv32e40x_rvfi
    output logic [ 4*NMEM-1:0]                 rvfi_mem_wmask,
    output logic [32*NMEM-1:0]                 rvfi_mem_rdata,
    output logic [32*NMEM-1:0]                 rvfi_mem_wdata,
+   output logic [ 1*NMEM-1:0]                 rvfi_mem_exokay,
+   output logic [ 2*NMEM-1:0]                 rvfi_mem_err,
    output logic [ 3*NMEM-1:0]                 rvfi_mem_prot,
    output logic [ 6*NMEM-1:0]                 rvfi_mem_atop,
    output logic [ 2*NMEM-1:0]                 rvfi_mem_memtype,
@@ -978,6 +982,8 @@ module cv32e40x_rvfi
       rvfi_mem_rdata     <= '0;
       rvfi_mem_wmask     <= '0;
       rvfi_mem_wdata     <= '0;
+      rvfi_mem_exokay    <= '0;
+      rvfi_mem_err       <= '0;
       rvfi_mem_prot      <= '0;
       rvfi_mem_memtype   <= '0;
       rvfi_mem_atop      <= '0;
@@ -1263,6 +1269,8 @@ module cv32e40x_rvfi
           rvfi_mem_rdata     <= '0;
           rvfi_mem_wmask     <= '0;
           rvfi_mem_wdata     <= '0;
+          rvfi_mem_exokay    <= '0;
+          rvfi_mem_err       <= '0;
           rvfi_mem_prot      <= '0;
           rvfi_mem_atop      <= '0;
           rvfi_mem_memtype   <= '0;
@@ -1298,7 +1306,9 @@ module cv32e40x_rvfi
 
         // Propagate rdata from LSU to rvfi_mem.
         // For split misaligned transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
-        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_rdata [(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= (mem_rmask [STAGE_WB] || (mem_wmask [STAGE_WB] && ex_mem_trans.atop[5])) ? lsu_exokay_wb_i : '0;
+        rvfi_mem_err   [ (2*(memop_cnt+1))-1 -:  2] <= (mem_rmask [STAGE_WB] || (mem_wmask [STAGE_WB] && ex_mem_trans.atop[5])) ? lsu_err_wb_i : '0;
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
