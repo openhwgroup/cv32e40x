@@ -77,6 +77,9 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output align_status_e lsu_align_status_1_o,   // Alignment status (for atomics), WB timing
   output lsu_atomic_e lsu_atomic_1_o,           // Is there an atomic in WB, and of which type.
 
+  // Privilege mode
+  input              privlvl_t priv_lvl_lsu_i,
+
   // Handshakes
   input  logic        valid_0_i,                // Handshakes for first LSU stage (EX)
   output logic        ready_0_o,                // LSU ready for new data in EX stage
@@ -211,7 +214,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
     trans.we    = id_ex_pipe_i.lsu_we;
     trans.size  = id_ex_pipe_i.lsu_size;
     trans.wdata = id_ex_pipe_i.operand_c;
-    trans.mode  = PRIV_LVL_M; // Machine mode
+    trans.mode  = priv_lvl_lsu_i;
     trans.dbg   = ctrl_fsm_i.debug_mode;
 
     trans.atop  = id_ex_pipe_i.lsu_atop;

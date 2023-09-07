@@ -33,6 +33,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   // Controller fsm inputs
   input  ctrl_fsm_t      ctrl_fsm_i,
 
+  // Privilige level control
+  input privlvlctrl_t    priv_lvl_ctrl_i,
+
   // Branch control
   input  logic [31:0]    branch_addr_i,
   output logic           prefetch_busy_o,
@@ -103,6 +106,9 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // resp_valid gated while flushing
   logic resp_valid_gated;
+
+  // Privilege level for the IF stage
+  privlvl_t instr_priv_lvl_q;
 
   // CLIC vectoring
   // Flag for signalling that results is a CLIC function pointer
@@ -624,7 +630,32 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
   assign fetch_ptr_access_o = (ctrl_fsm_i.pc_set && (ctrl_fsm_i.pc_set_clicv || ctrl_fsm_i.pc_set_tbljmp));
 
   // Set privilege level to prefetcher
-  assign fetch_priv_lvl_o = PRIV_LVL_M;
+  // Privilege level must be updated immediatly to allow the
+  // IF stage to do PMP checks with the correct privilege level
+  //
+  // When an mret is in the ID stage, a jump is performed and the privilege level may be changed.
+  // When the privilege level changes, priv_lvl_ctrl_i.priv_lvl_set is 1, and the new privilege level
+  // is visible on priv_lvl_ctrl_i.priv_lvl. When priv_lvl_set is 0, the privilege level
+  // as seen from the WB stage (flop output) is visible on priv_lvl_ctrl_i.priv_lvl.
+  //
+  // This means that in the time between the mret jump and privilege level change in ID and the time when
+  // the mret retires in WB, the old privilege level is visible on pvi_lvl_ctrl_i.priv_lvl.
+  // To ensure the correct privilege level for prefetches, the alignment_buffer remembers the last commanded
+  // privilege level in the instr_priv_lvl_q flops.
+  assign fetch_priv_lvl_o = priv_lvl_ctrl_i.priv_lvl_set ? priv_lvl_ctrl_i.priv_lvl:
+                            instr_priv_lvl_q;
+
+  // Privilege level for the IF stage
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      instr_priv_lvl_q <= PRIV_LVL_M;
+    end
+    else begin
+      if (priv_lvl_ctrl_i.priv_lvl_set) begin
+        instr_priv_lvl_q <= priv_lvl_ctrl_i.priv_lvl;
+      end
+    end
+  end
 
   // Set privilege level to IF stage
   assign instr_priv_lvl_o = fetch_priv_lvl_i;
