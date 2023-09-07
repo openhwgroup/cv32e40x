@@ -631,7 +631,7 @@ module cv32e40x_alignment_buffer import cv32e40x_pkg::*;
 
   // Set privilege level to prefetcher
   // Privilege level must be updated immediatly to allow the
-  // IF stage to do PMP checks with the correct privilege level
+  // IF stage to do access permission checks with the correct privilege level
   //
   // When an mret is in the ID stage, a jump is performed and the privilege level may be changed.
   // When the privilege level changes, priv_lvl_ctrl_i.priv_lvl_set is 1, and the new privilege level
