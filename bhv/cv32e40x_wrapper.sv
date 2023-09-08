@@ -490,6 +490,7 @@ endgenerate
 
   bind cv32e40x_sequencer:
     core_i.if_stage_i.gen_seq.sequencer_i
+    #(.RV32(RV32))
       cv32e40x_sequencer_sva
         sequencer_sva (.ex_wb_pipe_i         (core_i.ex_wb_pipe                                      ),
                        .wb_valid_i           (core_i.wb_stage_i.wb_valid_o                           ),

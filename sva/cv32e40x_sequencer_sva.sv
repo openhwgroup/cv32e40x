@@ -29,6 +29,9 @@
 module cv32e40x_sequencer_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+ #(
+   parameter rv32_e    RV32 = RV32I
+ )
 (
   input  logic           clk,
   input  logic           rst_n,
@@ -93,9 +96,10 @@ module cv32e40x_sequencer_sva
   // 1 clearing of a0
   // 1 return
   // Total sequence length = 16 -> must signal seq_last_o on counter value 'd15
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd6 (counter value is 'd5)
   a_max_seq_len_popretz:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  valid_i && (seq_instr == POPRETZ) && (instr_cnt_q == 'd15)
+                  valid_i && (seq_instr == POPRETZ) && (instr_cnt_q == ((RV32 == RV32E) ? 'd5 : 'd15))
                   |->
                   seq_last_o)
       else `uvm_error("sequencer", "popretz sequence too long")
@@ -106,11 +110,12 @@ module cv32e40x_sequencer_sva
   // 1 stack pointer update
   // 1 return
   // Total sequence length = 15
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd5
   a_max_seq_len_popret:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == POPRET)
                     |->
-                    (instr_cnt_q < 'd15))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd5 : 'd15)))
         else `uvm_error("sequencer", "popret sequence too long")
 
 
@@ -119,11 +124,12 @@ module cv32e40x_sequencer_sva
   // 13 register loads
   // 1 stack pointer update
   // Total sequence length = 14
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd4
   a_max_seq_len_pop:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == POP)
                     |->
-                    (instr_cnt_q < 'd14))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd4 : 'd14)))
         else `uvm_error("sequencer", "pop sequence too long")
 
   // Check max sequence length
@@ -131,11 +137,12 @@ module cv32e40x_sequencer_sva
   // 13 register stores
   // 1 stack pointer update
   // Total sequence length = 14
+  // For RV32E, max number of register stores is 3 -> total sequence length is 'd4
   a_max_seq_len_push:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == PUSH)
                     |->
-                    (instr_cnt_q < 'd14))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd4 : 'd14)))
         else `uvm_error("sequencer", "push sequence too long")
 
   // Check max sequence length
