@@ -41,12 +41,8 @@ and zero stall on the data-side memory interface.
   | Integer Computational | 1                                    | Integer Computational Instructions are defined in the       |
   |                       |                                      | RISCV-V RV32I Base Integer Instruction Set.                 |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
-  | CSR Access            | 4 (mstatus, mepc, mtvec, mcause,     | CSR Access Instruction are defined in 'Zicsr' of the        |
-  |                       | mcycle, minstret, mhpmcounter*,      | RISC-V specification.                                       |
-  |                       | mcycleh, minstreth, mhpmcounter*h,   |                                                             |
-  |                       | mcountinhibit, mhpmevent*, dscr,     |                                                             |
-  |                       | dpc, dscratch0, dscratch1, privlv)   |                                                             |
-  |                       |                                      |                                                             |
+  | CSR Access            | 4 (jvt)                              | CSR Access Instruction are defined in 'Zicsr' of the        |
+  |                       |                                      | RISC-V specification.                                       |
   |                       | 1 (all the other CSRs)               |                                                             |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
   | Load/Store            | 1                                    | Load/Store is handled in 1 bus transaction using both EX    |
@@ -87,11 +83,25 @@ and zero stall on the data-side memory interface.
   |                       | 4 (target is a non-word-aligned      | EX stage and will cause a flush of the IF stage (including  |
   |                       | non-RVC instruction)                 | prefetch buffer) and ID stage.                              |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
-  | Instruction Fence     | 5                                    | The FENCE.I instruction as defined in 'Zifencei' of the     |
+  | Instruction Fence     | 5                                    | The FENCE[.I] instructions are defined in 'Zifencei' of the |
   |                       |                                      | RISC-V specification. Internally it is implemented as a     |
   |                       | 6 (target is a non-word-aligned      | jump to the instruction following the fence. The jump       |
   |                       | non-RVC instruction)                 | performs the required flushing as described above.          |
+  |                       |                                      | A FENCE.I instruction will not complete until the external  |
+  |                       |                                      | handshake has been completed.                               |
   +-----------------------+--------------------------------------+-------------------------------------------------------------+
+  | Zba, Zbb, Zbc, Zbs    | 1                                    | All instructions from Zba, Zbb, Zbc, Zbs take 1 cycle.      |
+  +-----------------------+--------------------------------------+-------------------------------------------------------------+
+  | Zcmt                  | 2                                    | Tablejumps take 2 cycles.                                   |
+  +-----------------------+--------------------------------------+-------------------------------------------------------------+
+  | Zcmp                  | 2 - 18                               | The number of cycles depend on the number of registers      |
+  |                       |                                      | saved or restored by the instructions.                      |
+  +-----------------------+--------------------------------------+-------------------------------------------------------------+
+  | Zca, Zcb              | 1                                    | Instructions from Zca and Zcv take 1 cycle.                 |
+  +-----------------------+--------------------------------------+-------------------------------------------------------------+
+  | WFI, WFE              | 1 -                                  | Instructions causing sleep will not retire until wakeup.    |
+  +-----------------------+--------------------------------------+-------------------------------------------------------------+
+
 
 Hazards
 -------
@@ -100,7 +110,16 @@ The |corev| experiences a 1 cycle penalty on the following hazards.
 
  * Load data hazard (in case the instruction immediately following a load uses the result of that load)
  * Jump register (jalr) data hazard (in case that a jalr depends on the result of an immediately preceding non-load instruction)
+ * Any implicit CSR read in ID (mret or table jump) while any implicit or explicit CSR access is in the WB stage
+ * Implicit CSR read in EX while any implicit or explicit CSR write is in WB
+ * Explicit CSR read in EX while any implicit CSR write is in WB
+ * Explicit CSR read in EX while there is a RAW hazard with an explicit CSR write in WB.
 
 The |corev| experiences a 2 cycle penalty on the following hazards.
 
  * Jump register (jalr) data hazard (in case that a jalr depends on the result of an immediately preceding load instruction)
+ * Any implicit CSR read in ID (mret or table jump) while any implicit or explicit CSR access is in the EX stage
+
+.. note::
+  Implicit CSR reads are reads performed by non-CSR instructions or CSR instructions reading multiple CSR values.
+  Explicit CSR reads and writes are CSR instructions accessing the CSR encoded in the instruction word.
