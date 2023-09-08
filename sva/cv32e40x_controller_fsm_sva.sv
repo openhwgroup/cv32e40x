@@ -136,6 +136,7 @@ module cv32e40x_controller_fsm_sva
   input logic           alu_jmpr_id_i,
   input logic [31:0]    jalr_fw_id_i,
   input logic [REGFILE_WORD_WIDTH-1:0] rf_mem_i [(RV32 == RV32I) ? 32 : 16],
+  input logic [1:0]     response_filter_bus_cnt_q_i,
   input logic           non_shv_irq_ack
 );
 
@@ -265,15 +266,22 @@ module cv32e40x_controller_fsm_sva
           (ex_wb_pipe_i.sys_en && (ex_wb_pipe_i.sys_wfi_insn || ex_wb_pipe_i.sys_wfe_insn) && ex_wb_pipe_i.instr_valid) |-> !(id_ex_pipe_i.lsu_en) )
     else `uvm_error("controller", "LSU instruction follows WFI or WFE")
 
-
-  // Check that lsu_err_wb_i can only be active when an LSU instruction is valid in WB
+  // Check that lsu_err_wb_i==2'b01 (load error) can only be true when an LSU instruction is valid in WB
   // Not using wb_valid, as that is only active for the second half of misaligned.
   // bus error may also be active on the first half, thus checking only for active LSU in WB.
-  // Todo: Modify to account for response filter (bufferable writes)
-  //a_lsu_err_wb :
-  //  assert property (@(posedge clk) disable iff (!rst_n)
-  //          lsu_err_wb_i[0] |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)
-  //    else `uvm_error("controller", "lsu_error in WB with no valid LSU instruction")
+  a_lsu_load_err_wb :
+    assert property (@(posedge clk) disable iff (!rst_n)
+            lsu_err_wb_i == 2'b01                                 // Upon LSU error on load
+            |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)  // There must be a valid LSU instruction in WB
+      else `uvm_error("controller", "LSU load error in WB with no valid LSU instruction")
+
+  // Check that lsu_err_wb_i==2'b11 (store error) can only be true when an LSU instruction is valid in WB, or there's an outstanding OBI transfer
+  a_lsu_store_err_wb :
+    assert property (@(posedge clk) disable iff (!rst_n)
+            lsu_err_wb_i == 2'b11                                 // Upon LSU error on store
+            |-> (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) // There must be a valid LSU instruction in WB
+            ||  (response_filter_bus_cnt_q_i != '0))              // Or an outstanding transfer on the bus (taking buffered writes into account)
+      else `uvm_error("controller", "LSU store error in WB with no valid LSU instruction or outstanding transfers on the bus")
 
   // Check that fencei handshake is only exercised when there is a fencei in the writeback stage
   a_fencei_hndshk_fencei_wb :

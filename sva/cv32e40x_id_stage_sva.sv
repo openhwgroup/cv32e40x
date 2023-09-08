@@ -61,37 +61,6 @@ module cv32e40x_id_stage_sva
   input logic           jmp_taken_id_ctrl_i
 );
 
-/* todo: check and fix/remove
-      // Check that instruction after taken branch is flushed (more should actually be flushed, but that is not checked here)
-      // and that EX stage is ready to receive flushed instruction immediately
-      property p_branch_taken_ex;
-        @(posedge clk) disable iff (!rst_n) (branch_taken_ex == 1'b1) |-> ((ex_ready_i == 1'b1) &&
-                                                                           (alu_en == 1'b0) &&
-                                                                           (mul_en == 1'b0) &&
-                                                                           (rf_we == 1'b0) &&
-                                                                           (lsu_en == 1'b0));
-      endproperty
-
-      a_branch_taken_ex : assert property(p_branch_taken_ex) else `uvm_error("id_stage", "Assertion p_branch_taken_ex failed")
-*/
-
-/* todo: check and fix/remove
-      // Check that if IRQ PC update does not coincide with IRQ related CSR write
-      // MIE is excluded from the check because it has a bypass.
-      property p_irq_csr;
-        @(posedge clk) disable iff (!rst_n)
-          (pc_set_o &&
-           ((pc_mux_o == PC_TRAP_EXC) || (pc_mux_o == PC_TRAP_IRQ)) &&
-           id_ex_pipe_o.csr_access && (id_ex_pipe_o.csr_op != CSR_OP_READ)) |->
-                                  ((id_ex_pipe_o.alu_operand_b[11:0] != CSR_MSTATUS) &&
-                                   (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MEPC) &&
-                                   (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MCAUSE) &&
-                                   (id_ex_pipe_o.alu_operand_b[11:0] != CSR_MTVEC));
-      endproperty
-
-      a_irq_csr : assert property(p_irq_csr) else `uvm_error("id_stage", "Assertion p_irq_csr failed")
-*/
-
   // Check that illegal instruction has no other side effects
   // If XIF accepts instruction, rf_we may still be 1
   a_illegal_1 :
