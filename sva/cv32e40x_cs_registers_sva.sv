@@ -163,6 +163,41 @@ module cv32e40x_cs_registers_sva
     a_mcause_mstatus_alias: assert property(p_mcause_mstatus_alias)
       else `uvm_error("cs_registers", "mcause.mpp and mcause.mpie not aliased correctly")
 
+    // Whenever mepc is written by HW, mcause.minhv must also be written with the correct value.
+    // mcause.minhv is only set when an exception is taken on a CLIC or mret pointer
+    // SW can still write both mepc and mcause independently
+    property p_mepc_minhv_write;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        mepc_we   // mepc is written
+        |->
+        (mcause_we && // mcause is written
+        mcause_n.minhv == ((ex_wb_pipe_i.instr_valid && (ex_wb_pipe_i.instr_meta.clic_ptr || ex_wb_pipe_i.instr_meta.mret_ptr)) && // pointer in WB
+                           (ctrl_fsm_i.pc_set && ctrl_fsm_i.pc_mux == PC_TRAP_EXC)))                 // exception taken
+        or
+        csr_we_int // SW writes mepc
+      );
+    endproperty;
+
+    a_mepc_minhv_write: assert property(p_mepc_minhv_write)
+      else `uvm_error("cs_registers", "mcause.minhv not updated correctly on mepc write.")
+
+    // Whenever mcause.minhv is changed mepc should also be written (or SW writes to mcause.minhv)
+    property p_minhv_mepc_write;
+      @(posedge clk) disable iff (!rst_n)
+      (
+        mcause_we &&
+        (mcause_n.minhv != mcause_q.minhv)
+        |->
+        mepc_we
+        or
+        csr_we_int
+      );
+    endproperty;
+
+    a_minhv_mepc_write: assert property(p_minhv_mepc_write)
+      else `uvm_error("cs_registers", "mcause written without mepc written")
+
   end
 
   // Check that no csr instruction can be in WB during sleep when ctrl_fsm.halt_limited_wb is set
@@ -173,27 +208,6 @@ module cv32e40x_cs_registers_sva
 
   a_halt_limited_wb: assert property(p_halt_limited_wb)
     else `uvm_error("cs_registers", "CSR in WB while halt_limited_wb is set");
-
-
-  // Check csr_clear_minhv cannot happen at the same time as csr_save_cause or csr_restore_dret (would cause mcause_we conflict)
-  sequence seq_csr_clear_minhv;
-    ctrl_fsm_i.csr_clear_minhv;
-  endsequence
-
-  property p_minhv_unique;
-    @(posedge clk) disable iff (!rst_n)
-    (  seq_csr_clear_minhv |-> !(ctrl_fsm_i.csr_save_cause || ctrl_fsm_i.csr_restore_dret));
-  endproperty;
-
-  if (CLIC) begin
-    a_minhv_unique: assert property(p_minhv_unique)
-      else `uvm_error("cs_registers", "csr_save_cause at the same time as csr_clear_minhv.");
-
-  end else begin
-    a_minhv_unique_nocover: assert property(
-      @(posedge clk) disable iff (!rst_n)
-       not seq_csr_clear_minhv);
-  end
 
   /////////////////////////////////////////////////////////////////////////////////////////
   // Asserts to check that the CSR flops remain unchanged if a set/clear has all_zero rs1

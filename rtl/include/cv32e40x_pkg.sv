@@ -468,6 +468,12 @@ typedef enum logic[1:0] {
 
 parameter privlvl_t PRIV_LVL_LOWEST = PRIV_LVL_M;
 
+// Struct used for setting privilege level
+typedef struct packed {
+  logic        priv_lvl_set;
+  privlvl_t    priv_lvl;
+} privlvlctrl_t;
+
 // Machine Vendor ID - OpenHW JEDEC ID is '2 decimal (bank 13)'
 parameter MVENDORID_OFFSET = 7'h2;      // Final byte without parity bit
 parameter MVENDORID_BANK = 25'hC;       // Number of continuation codes
@@ -1370,7 +1376,6 @@ typedef struct packed {
   logic        csr_restore_mret_ptr; // Restore CSR due to mret followed by CLIC
   logic        csr_restore_dret;    // Restore CSR due to dret
   logic        csr_save_cause;      // Update CSRs
-  logic        csr_clear_minhv;     // Clear the mcause.minhv field
   logic        pending_nmi;         // An NMI is pending (for dcsr.nmip)
 
   // Performance counter events

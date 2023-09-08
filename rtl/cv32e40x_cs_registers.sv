@@ -71,6 +71,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   output logic [MTVT_ADDR_WIDTH-1:0]    mtvt_addr_o,
 
   output privlvl_t                      priv_lvl_o,
+  output privlvlctrl_t                  priv_lvl_if_ctrl_o,
+  output privlvl_t                      priv_lvl_lsu_o,
 
   // ID/EX pipeline
   input id_ex_pipe_t                    id_ex_pipe_i,
@@ -243,9 +245,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   logic [31:0]                  mtval_n, mtval_rdata;                           // No CSR module instance
   logic                         mtval_we;                                       // Not used in RTL (used by RVFI)
 
-  privlvl_t                     priv_lvl_n, priv_lvl_q, priv_lvl_rdata; // todo: Use the priv_* signals as much as possible as in the 40S
+  privlvl_t                     priv_lvl_n, priv_lvl_q, priv_lvl_rdata;
   logic                         priv_lvl_we;
-  logic [1:0]                   priv_lvl_q_int;
 
   // Detect JVT writes (requires pipeline flush)
   logic                         csr_wr_in_wb;
@@ -1024,7 +1025,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
                                     cause     : ctrl_fsm_i.debug_cause,
                                     default   : 'd0
                                   };
-dcsr_we        = 1'b1;
+          dcsr_we        = 1'b1;
 
           dpc_n          = ctrl_fsm_i.pipe_pc;
           dpc_we         = 1'b1;
@@ -1106,11 +1107,6 @@ dcsr_we        = 1'b1;
             mintthresh_n  = 32'h00000000;
             mintthresh_we = 1'b1;
           end
-
-          if (ctrl_fsm_i.csr_restore_mret_ptr) begin
-            // Clear mcause.minhv if the mret also caused a successful CLIC pointer fetch
-            mcause_n.minhv = 1'b0;
-          end
         end
       end //ctrl_fsm_i.csr_restore_mret
 
@@ -1134,22 +1130,6 @@ dcsr_we        = 1'b1;
 
       end //ctrl_fsm_i.csr_restore_dret
 
-      // Clear mcause.minhv on successful CLIC pointer fetches
-      // This only happens for CLIC pointer that did not originate from an mret.
-      // In the case of mret restarting CLIC pointer fetches, minhv is cleared while
-      // ctrl_fsm_i.csr_restore_mret_ptr is asserted.
-      ctrl_fsm_i.csr_clear_minhv: begin
-        if (CLIC) begin
-          // Keep mcause values, only clear minhv bit.
-          mcause_n = mcause_rdata;
-          mcause_n.minhv = 1'b0;
-          mcause_we = 1'b1;
-
-          // Not really needed, but allows for asserting mstatus_we == mcause_we to check aliasing formally
-          mstatus_n  = mstatus_rdata;
-          mstatus_we = 1'b1;
-        end
-      end
       default:;
     endcase
 
@@ -1491,7 +1471,12 @@ dcsr_we        = 1'b1;
   assign mhartid_rdata      = mhartid_i;
   assign mconfigptr_rdata   = 32'h0;
 
+  // Only machine mode is supported
   assign priv_lvl_rdata     = PRIV_LVL_M;
+  assign priv_lvl_q         = PRIV_LVL_M;
+  assign priv_lvl_lsu_o     = PRIV_LVL_M;
+  assign priv_lvl_if_ctrl_o.priv_lvl     = PRIV_LVL_M;
+  assign priv_lvl_if_ctrl_o.priv_lvl_set = 1'b0;
 
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
   assign dcsr_rdata = DEBUG ? {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]} : 32'h0;

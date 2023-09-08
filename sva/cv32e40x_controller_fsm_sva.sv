@@ -136,7 +136,8 @@ module cv32e40x_controller_fsm_sva
   input logic           alu_jmpr_id_i,
   input logic [31:0]    jalr_fw_id_i,
   input logic [REGFILE_WORD_WIDTH-1:0] rf_mem_i [(RV32 == RV32I) ? 32 : 16],
-  input logic [1:0]     response_filter_bus_cnt_q_i
+  input logic [1:0]     response_filter_bus_cnt_q_i,
+  input logic           non_shv_irq_ack
 );
 
 
@@ -170,11 +171,11 @@ module cv32e40x_controller_fsm_sva
     logic [4:0] jalr_rs_id;
     logic [31:0] rf_at_jump_id;
     @(posedge clk) disable iff (!rst_n)
-      ((jump_taken && alu_jmpr_id_i,                                                                              // When JALR is taken from ID,
-        rf_at_jump_id = jalr_fw_id_i,                                                                             // Store (possibly forwarded) RF value used for target calculation
-        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                    // Store RS from JALR instruction
-        ##1 !(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1] // Wait for JALR to retire from WB (while not being killed)
-        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                               // Check that RF value is consistent with the value used for jump target calculation
+      ((jump_taken && alu_jmpr_id_i,                                                                                // When JALR is taken from ID,
+        rf_at_jump_id = jalr_fw_id_i,                                                                               // Store (possibly forwarded) RF value used for target calculation
+        jalr_rs_id = if_id_pipe_i.instr.bus_resp.rdata[19:15])                                                      // Store RS from JALR instruction
+        ##1 (!(ctrl_fsm_o.kill_ex || ctrl_fsm_o.kill_wb) throughout (ex_wb_pipe_i.alu_jmp_qual && wb_valid_i)[->1]) // Wait for JALR to retire from WB (while not being killed)
+        |-> rf_mem_i[jalr_rs_id] == rf_at_jump_id);                                                                 // Check that RF value is consistent with the value used for jump target calculation
   endproperty : p_jalr_stable_target
 
   a_jalr_stable_target: assert property(p_jalr_stable_target) else `uvm_error("controller", "Assertion a_jalr_stable_target failed");
@@ -698,7 +699,6 @@ end else begin // CLIC
                   |->
                   (clic_ptr_in_progress_id_set != 1'b1)     &&
                   !ctrl_fsm_o.csr_cause.minhv       &&
-                  !ctrl_fsm_o.csr_clear_minhv       &&
                   !mcause_i.minhv                   &&
                   !if_id_pipe_i.instr_meta.clic_ptr &&
                   !id_ex_pipe_i.instr_meta.clic_ptr &&
@@ -1137,6 +1137,24 @@ generate
                         etrigger_in_wb |-> exception_in_wb)
         else `uvm_error("controller", "etrigger_in_wb when there is no exception in WB")
 
+    a_no_etrig_on_halt_or_kill:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                        (ctrl_fsm_o.halt_wb || ctrl_fsm_o.kill_wb)
+                        |->
+                        !etrigger_in_wb)
+        else `uvm_error("controller", "etrigger_in_wb when WB is halted or killed")
+
+    a_no_step_on_halt_or_kill:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                        (ctrl_fsm_o.halt_wb || ctrl_fsm_o.kill_wb) // WB is halted or killed
+                        |->
+                        !pending_single_step                       // No single step should be pending
+                        or
+                        non_shv_irq_ack                            // Unless we ack an non-shv interrupt (kills WB)
+                        or
+                        (pending_nmi && nmi_allowed))              // or we take an NMI (kills WB)
+        else `uvm_error("controller", "pending single step when WB is halted or killed")
+
      // Only halt LSU instruction in WB for watchpoint trigger matches
     a_halt_lsu_wb:
       assert property (@(posedge clk) disable iff (!rst_n)
@@ -1199,6 +1217,13 @@ generate
                       (ctrl_fsm_cs == DEBUG_TAKEN) &&
                       (debug_cause_q == DBG_CAUSE_STEP))
         else `uvm_error("controller", "Wrong debug cause when taking an interrupt during single stepping")
+
+    a_no_sleep_during_debug:
+      assert property (@(posedge clk) disable iff (!rst_n)
+                      (ctrl_fsm_cs == SLEEP)
+                      |->
+                      !debug_mode_q)
+      else `uvm_error("controller", "Debug mode during SLEEP not allowed")
 
 if (CLIC) begin
     // While single stepping, debug cause shall be set to 'trigger' if a pointer for a SHV CLIC interrupt arrives in WB

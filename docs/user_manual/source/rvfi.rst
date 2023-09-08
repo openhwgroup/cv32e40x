@@ -325,38 +325,43 @@ The ``rvfi_mode`` signal shows the *current* privilege mode as opposed to the *e
 
 ``rvfi_instr_prot`` indicates the value of OBI prot used for fetching the retired instruction. Note that this will be undefined upon access faults.
 
-Trace output file
+Simulation trace
 -----------------
 
-Tracing can be enabled during simulation by defining **CV32E40X_TRACE_EXECUTION**. All traced instructions are written to a log file.
-The log file is named ``trace_rvfi.log``.
+The module ``cv32e40x_rvfi_sim_trace`` can be bound to ``cv32e40x_rvfi`` to enable tracing capabilities.
+``cv32e40x_rvfi_sim_trace`` supports trace output to log file and trace annotation in waveforms.
+
+Trace annotation in waveforms is enabled by providing the path to an .itb file through the simulation plusarg ``itb_file``. The name of the plusarg can be overridden through the ``cv32e40x_rvfi_sim_trace`` parameter ``ITB_PLUSARG``.
+The struct ``itrace`` in ``cv32e40x_rvfi_sim_trace`` will contain information about the most recently retired instruction.
+
+Trace output to log is enabled by providing log file path through the simulation plusarg ``log_file``. The name of the plusarg can be overridden through the ``cv32e40x_rvfi_sim_trace`` parameter ``LOGFILE_PATH_PLUSARG``.
 
 Trace output format
 -------------------
 
-The trace output is in tab-separated columns.
+The trace log file format is as described below.
 
-1.  **PC**: The program counter
-2.  **Instr**: The executed instruction (base 16).
-    32 bit wide instructions (8 hex digits) are uncompressed instructions, 16 bit wide instructions (4 hex digits) are compressed instructions.
-3.  **rs1_addr** Register read port 1 source address, 0x0 if not used by instruction
-4.  **rs1_data** Register read port 1 read data, 0x0 if not used by instruction
-5.  **rs2_addr** Register read port 2 source address, 0x0 if not used by instruction
-6.  **rs2_data** Register read port 2 read data, 0x0 if not used by instruction
-7.  **rd_addr**  Register write port 1 destination address, 0x0 if not used by instruction
-8.  **rd_data**  Register write port 1 write data, 0x0 if not used by instruction
-9.  **mem_addr** Memory address for instructions accessing memory
-10. **rvfi_mem_rmask** Bitmask specifying which bytes in ``rvfi_mem_rdata`` contain valid read data
-11. **rvfi_mem_wmask** Bitmask specifying which bytes in ``rvfi_mem_wdata`` contain valid write data
-12. **rvfi_mem_rdata** The data read from memory address specified in ``mem_addr``
-13. **rvfi_mem_wdata** The data written to memory address specified in ``mem_addr``
+1.  **pc**: The program counter
+2.  **rs1(data)** Register read port 1 source register and read data
+3.  **rs2(data)** Register read port 2 source register and read data
+4.  **rd(data)**  Register write port 1 destination register and write data
+5.  **memaddr** Memory address for instructions accessing memory
+6.  **rmask** Bitmask specifying which bytes in ``rdata`` contain valid read data
+7.  **rdata** The data read from memory address specified in ``memaddr``
+8.  **wmask** Bitmask specifying which bytes in ``wdata`` contain valid write data
+9.  **wdata** The data written to memory address specified in ``memaddr``
+10. **Assembly** Assembly code. This column is only populated if an itb file is provided
 
 .. code-block:: text
 
-   PC        Instr     rs1_addr  rs1_rdata  rs2_addr  rs2_rdata  rd_addr  rd_wdata    mem_addr mem_rmask mem_wmask mem_rdata mem_wdata
-   00001f9c  14c70793        0e   000096c8        0c   00000000       0f  00009814    00009814         0         0  00000000  00000000
-   00001fa0  14f72423        0e   000096c8        0f   00009814       00  00000000    00009810         0         f  00000000  00009814
-   00001fa4  0000bf6d        1f   00000000        1b   00000000       00  00000000    00001fa6         0         0  00000000  00000000
-   00001f5e  000043d8        0f   00009814        04   00000000       0e  00000000    00009818         f         0  00000000  00000000
-   00001f60  0000487d        00   00000000        1f   00000000       10  0000001f    0000001f         0         0  00000000  00000000
+   pc         | rs1 (   data   ) | rs2 (   data   ) | rd  (   data   ) | memaddr    | rmask  | rdata      | wmask  | wdata      ||  Assembly
+   0x00000080 | x0  (0x00000000) | x0  (0x00000000) | x3  (0x00013080) | 0x00013080 | 0x0000 | 0x00000000 | 0x0000 | 0x00000000 ||   auipc x3,0x13
+   0x00000084 | x3  (0x00013080) | x0  (0x00000000) | x3  (0x00013610) | 0x00013610 | 0x0000 | 0x00000000 | 0x0000 | 0x00000000 ||   addi x3,x3,1424
+   0x00000088 | x0  (0x00000000) | x0  (0x00000000) | x10 (0x00000088) | 0x00000088 | 0x0000 | 0x00000000 | 0x0000 | 0x00000000 ||   auipc x10,0x0
+   0x0000008c | x10 (0x00000088) | x0  (0x00000000) | x10 (0x00000400) | 0x00000400 | 0x0000 | 0x00000000 | 0x0000 | 0x00000000 ||   addi x10,x10,888
 
+The waveform annotation for the same trace is depicted below:
+
+.. figure:: ../images/rvfi_trace.png
+   :name: Trace waveform annotation
+   :align: center
