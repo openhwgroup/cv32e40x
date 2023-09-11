@@ -230,7 +230,7 @@ module cv32e40x_sequencer_sva
     ((wb_valid_i && ex_wb_pipe_i.rf_we && (ex_wb_pipe_i.rf_waddr == 'h2) &&
      (ex_wb_pipe_i.instr.bus_resp.rdata[15:8] == 8'b101_11110) && (ex_wb_pipe_i.instr.bus_resp.rdata[1:0] == 2'b10)) // Stack pointer update at end of popret.
      |->
-     ##1 1'b1                                                                                                        // We'll always have a bubble becuase the jump is stalled due to RA write in WB (before stack pointer update)
+     ##1 1'b1                                                                                                        // We'll always have a bubble because the jump is stalled due to RA write in WB (before stack pointer update)
      ##1 wb_valid_i && ex_wb_pipe_i.rf_we && ex_wb_pipe_i.alu_jmp_qual && ex_wb_pipe_i.instr_meta.pushpop            // Jump in WB
      );
   endproperty : p_pushpop_atomic_end_sequence_popret
