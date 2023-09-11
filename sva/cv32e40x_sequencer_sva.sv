@@ -29,6 +29,9 @@
 module cv32e40x_sequencer_sva
   import uvm_pkg::*;
   import cv32e40x_pkg::*;
+ #(
+   parameter rv32_e    RV32 = RV32I
+ )
 (
   input  logic           clk,
   input  logic           rst_n,
@@ -46,7 +49,11 @@ module cv32e40x_sequencer_sva
   input  logic           instr_is_tbljmp_ptr_i,
   input  logic           instr_is_clic_ptr_i,
   input  logic           instr_is_mret_ptr_i,
-  input  logic           seq_tbljmp_o
+  input  logic           seq_tbljmp_o,
+  input  ex_wb_pipe_t    ex_wb_pipe_i,
+  input  logic           wb_valid_i,
+  input  logic           exception_in_wb_i,
+  input  logic           pending_sync_debug_i
 );
 
   // After kill, all state must be reset.
@@ -82,9 +89,6 @@ module cv32e40x_sequencer_sva
                       |=> ($stable(instr_cnt_q) && $stable(seq_state_q)))
       else `uvm_error("sequencer", "Counter or state not stable while halted")
 
-  // todo: add assertion to check that atomic part cannot be killed -- how? Depends on when operations are done in WB
-
-
   // Check max sequence length
   // POPRETZ with rlist ra, s0-s11
   // 13 register loads
@@ -92,9 +96,10 @@ module cv32e40x_sequencer_sva
   // 1 clearing of a0
   // 1 return
   // Total sequence length = 16 -> must signal seq_last_o on counter value 'd15
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd6 (counter value is 'd5)
   a_max_seq_len_popretz:
   assert property (@(posedge clk) disable iff (!rst_n)
-                  valid_i && (seq_instr == POPRETZ) && (instr_cnt_q == 'd15)
+                  valid_i && (seq_instr == POPRETZ) && (instr_cnt_q == ((RV32 == RV32E) ? 'd5 : 'd15))
                   |->
                   seq_last_o)
       else `uvm_error("sequencer", "popretz sequence too long")
@@ -105,11 +110,12 @@ module cv32e40x_sequencer_sva
   // 1 stack pointer update
   // 1 return
   // Total sequence length = 15
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd5
   a_max_seq_len_popret:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == POPRET)
                     |->
-                    (instr_cnt_q < 'd15))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd5 : 'd15)))
         else `uvm_error("sequencer", "popret sequence too long")
 
 
@@ -118,11 +124,12 @@ module cv32e40x_sequencer_sva
   // 13 register loads
   // 1 stack pointer update
   // Total sequence length = 14
+  // For RV32E, max number of register loads is 3 -> total sequence length is 'd4
   a_max_seq_len_pop:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == POP)
                     |->
-                    (instr_cnt_q < 'd14))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd4 : 'd14)))
         else `uvm_error("sequencer", "pop sequence too long")
 
   // Check max sequence length
@@ -130,11 +137,12 @@ module cv32e40x_sequencer_sva
   // 13 register stores
   // 1 stack pointer update
   // Total sequence length = 14
+  // For RV32E, max number of register stores is 3 -> total sequence length is 'd4
   a_max_seq_len_push:
     assert property (@(posedge clk) disable iff (!rst_n)
                     valid_i && (seq_instr == PUSH)
                     |->
-                    (instr_cnt_q < 'd14))
+                    (instr_cnt_q < ((RV32 == RV32E) ? 'd4 : 'd14)))
         else `uvm_error("sequencer", "push sequence too long")
 
   // Check max sequence length
@@ -172,5 +180,61 @@ module cv32e40x_sequencer_sva
                     |=>
                     (instr_cnt_q == '0))
         else `uvm_error("sequencer", "Should not count when handling table jumps")
-endmodule
 
+
+  // Support logic. Sticky bit indicating synchronous exception or syncronous debug during a push or pop sequence
+  logic        pushpop_sync_exc_or_dbg_q;
+
+  always_ff @(posedge clk, negedge rst_n) begin
+    if (!rst_n) begin
+      pushpop_sync_exc_or_dbg_q <= 1'b0;
+    end
+    else begin
+      if (wb_valid_i && ex_wb_pipe_i.instr_meta.pushpop && ex_wb_pipe_i.first_op) begin
+        // Clear pushpop_sync_exc_or_dbg_q when a new push or pop starts
+        pushpop_sync_exc_or_dbg_q <= 1'b0;
+      end
+      else begin
+        // Register if there's a synchronous exception or synchronous debug entry
+        pushpop_sync_exc_or_dbg_q <= pushpop_sync_exc_or_dbg_q || exception_in_wb_i || pending_sync_debug_i;
+      end
+    end
+  end
+
+  // Check that "end sequence", starting with stack pointer update, is never initiated if there was a synchronous exception or synchronous debug entry earlier in the sequence
+  property p_pushpop_sp_update;
+    @(posedge clk) disable iff (!rst_n)
+      ((ex_wb_pipe_i.instr_meta.pushpop && ex_wb_pipe_i.rf_we && (ex_wb_pipe_i.rf_waddr == 'h2)) // Stack pointer update during push/pop
+       |-> !pushpop_sync_exc_or_dbg_q
+       );
+  endproperty : p_pushpop_sp_update
+
+  a_pushpop_sp_update: assert property(p_pushpop_sp_update) else `uvm_error("controller", "Assertion a_pushpop_sp_update failed");
+
+  // Check that popretz "end sequence", is not interrupted or stalled
+  property p_pushpop_atomic_end_sequence_popretz;
+  @(posedge clk) disable iff (!rst_n)
+    ((wb_valid_i && ex_wb_pipe_i.rf_we && (ex_wb_pipe_i.rf_waddr == 'h2) &&
+     (ex_wb_pipe_i.instr.bus_resp.rdata[15:8] == 8'b101_11100) && (ex_wb_pipe_i.instr.bus_resp.rdata[1:0] == 2'b10))                             // Stack pointer update at end of popretz.
+     |->
+     ##1 wb_valid_i && ex_wb_pipe_i.rf_we && (ex_wb_pipe_i.rf_waddr == 'hA) && (ex_wb_pipe_i.rf_wdata == 'h0) && ex_wb_pipe_i.instr_meta.pushpop // Write 0 to A0 must retire in next cycle
+     ##1 wb_valid_i && ex_wb_pipe_i.rf_we && ex_wb_pipe_i.alu_jmp_qual                                        && ex_wb_pipe_i.instr_meta.pushpop // Jump in WB
+     );
+  endproperty : p_pushpop_atomic_end_sequence_popretz
+
+  a_pushpop_atomic_end_sequence_popretz: assert property(p_pushpop_atomic_end_sequence_popretz) else `uvm_error("controller", "Assertion a_pushpop_atomic_end_sequence_popretz failed");
+
+  // Check that popret "end sequence", is not interrupted or stalled
+  property p_pushpop_atomic_end_sequence_popret;
+  @(posedge clk) disable iff (!rst_n)
+    ((wb_valid_i && ex_wb_pipe_i.rf_we && (ex_wb_pipe_i.rf_waddr == 'h2) &&
+     (ex_wb_pipe_i.instr.bus_resp.rdata[15:8] == 8'b101_11110) && (ex_wb_pipe_i.instr.bus_resp.rdata[1:0] == 2'b10)) // Stack pointer update at end of popret.
+     |->
+     ##1 1'b1                                                                                                        // We'll always have a bubble because the jump is stalled due to RA write in WB (before stack pointer update)
+     ##1 wb_valid_i && ex_wb_pipe_i.rf_we && ex_wb_pipe_i.alu_jmp_qual && ex_wb_pipe_i.instr_meta.pushpop            // Jump in WB
+     );
+  endproperty : p_pushpop_atomic_end_sequence_popret
+
+  a_pushpop_atomic_end_sequence_popret: assert property(p_pushpop_atomic_end_sequence_popret) else `uvm_error("controller", "Assertion a_pushpop_atomic_end_sequence_popret failed");
+
+endmodule
