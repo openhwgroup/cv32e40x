@@ -1346,7 +1346,6 @@ ifelse(eval(ZICNTR != 0), 1, [[[
     Lower 32-bit Machine Performance Monitoring Counter
   address: 0xC03
   privilege_mode: U
-  # TODO:silabs-robin  Wrong privmode
   rv32:
     - field_name: Count
       description: >
@@ -2499,7 +2498,6 @@ ifelse(eval(UMODE != 0), 1, [[[
         val_out = 0
 ifelse(eval(X_EXT != 0), 1, [[[
     - field_name: FS
-      # TODO:silabs-robin "X_EXT" means 2 different things
       description: >
         FPU Extension Context Status.
       type: RW
@@ -3234,15 +3232,15 @@ ifelse(eval(VERIF_HEADER != 0), 1, [[[
   address: 0x320
   privilege_mode: M
   rv32:
-    - field_name: Selectors_31_4
+    - field_name: Selectors_31_3
       description: >
-        Selectors for mhpmcounter31..4 inhibit (assuming NUM_MHPMCOUNTER set to 1)
+        Selectors for mhpmcounter31..3 inhibit (assuming NUM_MHPMCOUNTER set to 1)
       type: WARL
-      reset_val: 0
+      reset_val: 1
       msb: 31
       lsb: 3
       warl_legalize: |
-        val_out = 0
+        val_out = val_in & 1
     - field_name: IR
       description: >
         Inhibit minstret counting
@@ -4228,7 +4226,8 @@ ifelse(eval(CLINT != 0), 1, [[[
     - field_name: Exccode
       description: >
           Exception Code
-      type: WLRL
+      # Note: Type is actually "type: WLRL", but the test gen script need WARL.
+      type: WARL
       reset_val: 0
       msb: 30
       lsb: 0
@@ -4971,7 +4970,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       lsb: 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen0
   description: >
     Machine state enable 0
@@ -5005,7 +5004,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen1
   description: >
     Machine state enable 1
@@ -5023,7 +5022,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen2
   description: >
     Machine state enable 2
@@ -5041,7 +5040,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen3
   description: >
     Machine state enable 3
@@ -5082,7 +5081,7 @@ ifelse(eval(UMODE != 0), 1, [[[
       lsb: 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen0h
   description: >
     Machine state enable 0 upper 32 bits
@@ -5100,7 +5099,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen1h
   description: >
     Machine state enable 1 upper 32 bits
@@ -5118,7 +5117,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen2h
   description: >
     Machine state enable 2 upper 32 bits
@@ -5136,7 +5135,7 @@ ifelse(eval(ZC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(ZC != 0), 1, [[[
+ifelse(eval(ZC != 0 && UMODE), 1, [[[
 - csr: mstateen3h
   description: >
     Machine state enable 3 upper 32 bits

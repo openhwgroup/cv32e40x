@@ -853,13 +853,14 @@ module cv32e40x_rvfi
       rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code[5:0]; // All synchronous exceptions fit in lower 6 bits
       rvfi_trap_next.clicptr         = clic_ptr_wb_i;
 
-      // Separate exception causes with the same ecseption cause code
+      // Separate exception causes with the same exception cause code
       case (ctrl_fsm_i.csr_cause.exception_code)
         EXC_CAUSE_INSTR_FAULT : begin
           rvfi_trap_next.cause_type = instr_pmp_err[STAGE_WB] ? 2'h1 : 2'h0;
         end
         EXC_CAUSE_BREAKPOINT : begin
-          // Todo: Add support for trigger match exceptions when implemented in rtl
+          // etrigger.action=0 is not implemented, cause_type is always 0 upon breakpoint exceptions
+          rvfi_trap_next.cause_type = 2'h0;
         end
         EXC_CAUSE_LOAD_FAULT : begin
           rvfi_trap_next.cause_type = mem_err[STAGE_WB];
