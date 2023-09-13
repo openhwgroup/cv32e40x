@@ -99,6 +99,7 @@ module cv32e40x_controller_fsm_sva
   input logic           prefetch_valid_if_i,
   input logic           prefetch_is_tbljmp_ptr_if_i,
   input logic           prefetch_is_mret_ptr_if_i,
+  input logic           prefetch_is_clic_ptr_if_i,
   input logic           abort_op_id_i,
   input mcause_t        mcause_i,
   input logic           lsu_trans_valid_i,
@@ -744,23 +745,17 @@ end
   end
 
   // Check if we are allowed to halt the ID stage.
-  // If ID stage contains a non-first operation, we cannot halt ID as that
+  // If ID stage contains a non-first, non-aborted operation, we cannot halt ID as that
   // could cause a deadlock because a sequence cannot finish through ID.
-  // If ID stage does not contain a valid instruction, the same check is performed
-  // for the IF stage (although this is likely not needed).
-  // todo: This logic currently does not match the RTL version when not gating instruction in IF due to exceptions.
-  //       Assertions checking SVA vs RTL commented out.
   logic id_stage_haltable_alt;
   always_comb begin
     if (if_id_pipe_i.instr_valid) begin
-      id_stage_haltable_alt = first_op_id_i;
-    end else if (prefetch_valid_if_i) begin
-      id_stage_haltable_alt = first_op_if_i;
+      id_stage_haltable_alt = first_op_id_i || if_id_pipe_i.abort_op;
     end else begin
-      // If no instruction is ready in the whole pipeline (including IF), then there are nothing in progress
-      // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer or
-      // a CLIC pointer that is a side effect of an mret
-      id_stage_haltable_alt = !(prefetch_is_tbljmp_ptr_if_i || prefetch_is_mret_ptr_if_i);
+      // If no instruction is ready in ID, then there is nothing in progress
+      // and we should safely be able to halt ID unless the IF stage is waiting for a table jump pointer,
+      // mret pointer or CLIC pointer
+      id_stage_haltable_alt = !(prefetch_is_tbljmp_ptr_if_i || prefetch_is_mret_ptr_if_i || prefetch_is_clic_ptr_if_i);
     end
   end
 
@@ -808,14 +803,13 @@ end
                     (sequence_in_progress_wb |-> !ctrl_fsm_o.kill_wb))
     else `uvm_error("controller", "WB killed while sequence was in progress")
 
-/* todo: Bring back in if id_stage_haltable_alt can be correctly calculated.
   // Check that we do not allow ID stage to be halted for pending interrupts/debug if a sequence is not done
   // in the ID stage.
   a_id_stage_haltable:
   assert property (@(posedge clk) disable iff (!rst_n)
-                    (id_stage_haltable_alt == id_stage_haltable))
+                    (id_stage_haltable |-> id_stage_haltable_alt))
     else `uvm_error("controller", "id_stage_haltable not correct")
-*/
+
   // Assert that we have no pc_set in the same cycle as a CSR write in WB requires flushing of the pipeline
   a_csr_wr_in_wb_no_fetch:
   assert property (@(posedge clk) disable iff (!rst_n)
