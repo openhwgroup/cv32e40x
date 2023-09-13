@@ -589,7 +589,7 @@ end
       // Populate OBI resp FIFO
       if (m_c_obi_data_if.s_rvalid.rvalid) begin
         data_obi_resp_fifo[wr_resp_ptr] <= m_c_obi_data_if.resp_payload;
-        // obi_data_resp_t use two bits to report err, but rvfi reports it as at only 1 bit as that is the RVFI standard.
+        // obi_data_resp_t uses two bits to report err, but rvfi reports it as only 1 bit (as that is the RVFI standard).
         data_obi_resp_fifo[wr_resp_ptr].err <= {1'b0, m_c_obi_data_if.resp_payload.err[0]};
         wr_resp_ptr <= wr_resp_ptr + 1'b1;
       end
