@@ -87,7 +87,7 @@ module cv32e40x_rvfi_sva
    input logic [32*NMEM-1:0]  rvfi_mem_rdata,
    input logic [32*NMEM-1:0]  rvfi_mem_wdata,
    input logic [ 1*NMEM-1:0]  rvfi_mem_exokay,
-   input logic [ 2*NMEM-1:0]  rvfi_mem_err,
+   input logic [ 1*NMEM-1:0]  rvfi_mem_err,
    input logic [ 3*NMEM-1:0]  rvfi_mem_prot,
    input logic [ 6*NMEM-1:0]  rvfi_mem_atop,
    input logic [ 2*NMEM-1:0]  rvfi_mem_memtype,
@@ -449,7 +449,7 @@ end
       bit [32*NMEM-1:0] rdata;
       bit [32*NMEM-1:0] wdata;
       bit [ 1*NMEM-1:0] exokay;
-      bit [ 2*NMEM-1:0] err;
+      bit [ 1*NMEM-1:0] err;
       bit [ 3*NMEM-1:0] prot;
       bit [ 6*NMEM-1:0] atop;
       bit [ 2*NMEM-1:0] memtype;
@@ -589,7 +589,8 @@ end
       // Populate OBI resp FIFO
       if (m_c_obi_data_if.s_rvalid.rvalid) begin
         data_obi_resp_fifo[wr_resp_ptr] <= m_c_obi_data_if.resp_payload;
-        data_obi_resp_fifo[wr_resp_ptr].err <= {data_obi_req_fifo[wr_resp_ptr].we, m_c_obi_data_if.resp_payload.err[0]};
+        // obi_data_resp_t use two bits to report err, but rvfi reports it as at only 1 bit as that is the RVFI standard.
+        data_obi_resp_fifo[wr_resp_ptr].err <= {1'b0, m_c_obi_data_if.resp_payload.err[0]};
         wr_resp_ptr <= wr_resp_ptr + 1'b1;
       end
     end
@@ -642,8 +643,8 @@ end
       bit [31:0] split_2nd_wdata;
       bit [31:0] split_1st_rdata;
       bit [31:0] split_2nd_rdata;
-      bit [1:0]  split_1st_err;
-      bit [1:0]  split_2nd_err;
+      bit        split_1st_err;
+      bit        split_2nd_err;
       bit [2:0]  split_2nd_shift;
 
       bit [$clog2(OBI_FIFO_SIZE)-1:0] rd_ptr_memop, rd_ptr_memop_inc;
@@ -657,7 +658,7 @@ end
         rvfi_mem_exp.rdata   [32*i_memop +: 32] = '0;
         rvfi_mem_exp.wdata   [32*i_memop +: 32] = '0;
         rvfi_mem_exp.exokay  [ 1*i_memop +:  1] = '0;
-        rvfi_mem_exp.err     [ 2*i_memop +:  2] = '0;
+        rvfi_mem_exp.err     [ 1*i_memop +:  1] = '0;
         rvfi_mem_exp.prot    [ 3*i_memop +:  3] = '0;
         rvfi_mem_exp.atop    [ 6*i_memop +:  6] = '0;
         rvfi_mem_exp.memtype [ 2*i_memop +:  2] = '0;
@@ -705,7 +706,7 @@ end
             rvfi_mem_exp.rdata[(32*i_memop) +: 32] = split_1st_rdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]) |
                                                      split_2nd_rdata << (8 * split_2nd_shift);
 
-            rvfi_mem_exp.err[( 2*i_memop) +:  2] = split_1st_err << 2|
+            rvfi_mem_exp.err[( 1*i_memop) +:  1] = split_1st_err << 1|
                                                      split_2nd_err;
 
           end
@@ -720,7 +721,7 @@ end
 
             rvfi_mem_exp.rdata[(32*i_memop) +: 32] = data_obi_resp_fifo[rd_ptr_memop].rdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]);
 
-            rvfi_mem_exp.err[( 2*i_memop) +:  2] = data_obi_resp_fifo[rd_ptr_memop].err;
+            rvfi_mem_exp.err  [(1*i_memop) +:   1] = data_obi_resp_fifo[rd_ptr_memop].err;
 
           end
 
@@ -783,15 +784,14 @@ end
 
       a_rvfi_mem_consistency_read_exokay:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                        //rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked |-> //todo: krdosvik, cannot use this alternative untill correct assume of exokay
-                        rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked && rvfi_mem_dly.atop[(6*i_memop)+5] |->
+                        rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked |->
                         rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_exokay not consistent with OBI transfers for reads")
 
       a_rvfi_mem_consistency_read_err:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
                         rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked |->
-                        rvfi_mem_exp.err[(2*i_memop) +: 2] == rvfi_mem_dly.err[(2*i_memop) +: 2])
+                        rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_err not consistent with OBI transfers for reads")
 
 
@@ -834,17 +834,16 @@ end
 
       a_rvfi_mem_consistency_write_exokay:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                       //obi_gnt_delay_ok && rvfi_mem_write[i_memop] //&& !rvfi_mem_dly.ld_str_blocked //todo: krdosvik, cannot use this alternative untill correct assume of exokay
-                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && rvfi_mem_dly.atop[(6*i_memop)+5] //&& !rvfi_mem_dly.ld_str_blocked
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && rvfi_mem_dly.atop[(6*i_memop)+5]
                        |->
                        rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_exokay not consistent with OBI transfers for writes")
 
       a_rvfi_mem_consistency_write_err:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && rvfi_mem_dly.atop[(6*i_memop)+5] //&& !rvfi_mem_dly.ld_str_blocked
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && rvfi_mem_dly.atop[(6*i_memop)+5]
                        |->
-                       rvfi_mem_exp.err[(2*i_memop) +: 2] == rvfi_mem_dly.err[(2*i_memop) +: 2])
+                       rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_err not consistent with OBI transfers for writes")
 
     end
