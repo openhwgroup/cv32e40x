@@ -426,10 +426,6 @@ if (CLIC) begin
   // External debug entry and interrupts (including NMIs) are not allowed to be taken while there is
   // a live pointer in WB (IF-ID: guarded by POINTER_FETCH STATE, EX-WB: guarded by clic_ptr_in_pipeline).
   //   - this could cause the address of the pointer to end up in DPC, making dret jumping to a mtvt entry instead of an instruction.
-  /*
-      todo: Reintroduce (and update) when debug single step logic has been updated and POINTER_FETCH state removed.
-             -should likely flop the event that causes single step entry to evaluate all debug reasons
-              when the pipeline is guaranteed to not disallow any debug reason to enter debug.
   a_single_step_with_irq_shv :
     assert property (@(posedge clk) disable iff (!rst_ni)
                       (dcsr.step && !ctrl_fsm.debug_mode && irq_ack && irq_clic_shv)
@@ -439,7 +435,6 @@ if (CLIC) begin
                       or
                          (!wb_valid until (ctrl_debug_mode_n && (ctrl_debug_cause_n == DBG_CAUSE_HALTREQ)))) // external debug happened before pointer reached WB
       else `uvm_error("core", "Assertion a_single_step_with_irq_shv failed")
-*/
 
 end else begin
   // Interrupt taken during single stepping.
