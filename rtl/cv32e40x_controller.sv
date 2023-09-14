@@ -79,7 +79,7 @@ module cv32e40x_controller import cv32e40x_pkg::*;
 
   // LSU
   input  logic        data_stall_wb_i,            // WB stalled by LSU
-  input  logic [1:0]  lsu_err_wb_i,               // LSU bus error in WB stage
+  input  lsu_err_wb_t lsu_err_wb_i,               // LSU bus error in WB stage
   input  logic        lsu_busy_i,                 // LSU is busy with outstanding transfers or is initiating a new transfer
   input  logic        lsu_bus_busy_i,             // LSU is busy with outstanding transfers
   input  logic        lsu_interruptible_i,        // LSU may be interrupted

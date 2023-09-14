@@ -262,7 +262,7 @@ module cv32e40x_core import cv32e40x_pkg::*;
   logic [31:0] lsu_wpt_match_wb;
   align_status_e lsu_align_status_wb;
   logic [31:0] lsu_rdata_wb;
-  logic [1:0]  lsu_err_wb;
+  lsu_err_wb_t lsu_err_wb;
   lsu_atomic_e lsu_atomic_wb;
 
   logic        lsu_valid_0;             // Handshake with EX

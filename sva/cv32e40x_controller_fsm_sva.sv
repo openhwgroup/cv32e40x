@@ -61,7 +61,7 @@ module cv32e40x_controller_fsm_sva
   input logic           csr_illegal_i,
   input logic           pending_single_step,
   input logic           trigger_match_in_wb,
-  input logic [1:0]     lsu_err_wb_i,
+  input lsu_err_wb_t    lsu_err_wb_i,
   input logic           wb_valid_i,
   input logic           fencei_in_wb,
   input logic           fencei_flush_req_o,
@@ -272,14 +272,14 @@ module cv32e40x_controller_fsm_sva
   // bus error may also be active on the first half, thus checking only for active LSU in WB.
   a_lsu_load_err_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-            lsu_err_wb_i == 2'b01                                 // Upon LSU error on load
+            (lsu_err_wb_i.bus_err && !lsu_err_wb_i.store)         // Upon LSU error on load
             |-> ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en)  // There must be a valid LSU instruction in WB
       else `uvm_error("controller", "LSU load error in WB with no valid LSU instruction")
 
   // Check that lsu_err_wb_i==2'b11 (store error) can only be true when an LSU instruction is valid in WB, or there's an outstanding OBI transfer
   a_lsu_store_err_wb :
     assert property (@(posedge clk) disable iff (!rst_n)
-            lsu_err_wb_i == 2'b11                                 // Upon LSU error on store
+            (lsu_err_wb_i.bus_err && lsu_err_wb_i.store)          // Upon LSU error on store
             |-> (ex_wb_pipe_i.instr_valid && ex_wb_pipe_i.lsu_en) // There must be a valid LSU instruction in WB
             ||  (response_filter_bus_cnt_q_i != '0))              // Or an outstanding transfer on the bus (taking buffered writes into account)
       else `uvm_error("controller", "LSU store error in WB with no valid LSU instruction or outstanding transfers on the bus")

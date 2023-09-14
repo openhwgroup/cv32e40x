@@ -1061,7 +1061,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic [DATA_DATA_WIDTH-1:0] rdata;
-  logic [1:0]                 err; // bit0: Error from bus, bit1: 0 for load, 1 for store
+  logic [1:0]                 err;
   logic                       exokay;
 } obi_data_resp_t;
 
@@ -1122,6 +1122,12 @@ typedef struct packed
   logic        tbljmp;
   logic        pushpop;    // Operation is part of a push/pop sequence.
 } instr_meta_t;
+
+typedef struct packed
+{
+  logic        bus_err;
+  logic        store;
+} lsu_err_wb_t;
 
 // Struct for carrying eXtension interface information
 typedef struct packed

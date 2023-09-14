@@ -70,7 +70,7 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   output logic [3:0]  lsu_be_o,
 
   // Stage 1 outputs (WB)
-  output logic [1:0]  lsu_err_1_o,
+  output lsu_err_wb_t lsu_err_1_o,
   output logic [31:0] lsu_rdata_1_o,            // LSU read data
   output mpu_status_e lsu_mpu_status_1_o,       // MPU (PMA) status, response/WB timing. To controller and wb_stage
   output logic [31:0] lsu_wpt_match_1_o,        // Address match trigger, WB timing.
@@ -704,7 +704,8 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
 
   // Validate bus_error on rvalid from the bus (WB stage)
   // For bufferable transfers, this can happen many cycles after the pipeline control logic has seen the filtered resp_valid
-  assign lsu_err_1_o = xif_res_q ? '0 : resp.bus_resp.err;
+  assign lsu_err_1_o.bus_err = xif_res_q ? 1'b0 : resp.bus_resp.err[0];
+  assign lsu_err_1_o.store   = xif_res_q ? 1'b0 : resp.bus_resp.err[1];
 
   //////////////////////////////////////////////////////////////////////////////
   // WPT

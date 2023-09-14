@@ -69,7 +69,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
 
   // From WB stage
   input  ex_wb_pipe_t   ex_wb_pipe_i,
-  input  logic [1:0]    lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
+  input  lsu_err_wb_t   lsu_err_wb_i,               // LSU caused bus_error in WB stage, gated with data_rvalid_i inside load_store_unit
   input  logic          last_op_wb_i,               // WB stage contains the last operation of an instruction
   input  logic          abort_op_wb_i,              // WB stage contains an (to be) aborted instruction or sequence
   input  mpu_status_e   mpu_status_wb_i,            // MPU status (WB timing)
@@ -414,12 +414,12 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // Using flopped version to avoid paths from data_err_i/data_rvalid_i to instr_* outputs
   assign pending_nmi = nmi_pending_q;
 
-  // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i[0]
+  // Early version of the pending_nmi signal, using the unflopped lsu_err_wb_i.bus_err
   // This signal is used for halting the ID stage in the same cycle as the bus error arrives.
   // This ensures that any instruction in the ID stage that may depend on the result of the faulted load
   // will not propagate to the EX stage. For cycles after lsu_err_wb_i[0] is
   // high, ID stage will be halted due to pending_nmi and !nmi_allowed.
-  assign pending_nmi_early =  lsu_err_wb_i[0];
+  assign pending_nmi_early =  lsu_err_wb_i.bus_err;
 
   // dcsr.nmip will always see a pending nmi if nmi_pending_q is set.
   // This CSR bit shall not be gated by debug mode or step without stepie
@@ -1222,11 +1222,11 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
       nmi_pending_q <= 1'b0;
       nmi_is_store_q <= 1'b0;
     end else begin
-      if (lsu_err_wb_i[0] && !nmi_pending_q) begin
+      if (lsu_err_wb_i.bus_err && !nmi_pending_q) begin
         // Set whenever an error occurs in WB for the LSU, unless we already have an NMI pending.
         // Later errors could overwrite the bit for load/store type, and with mtval the address would be overwritten.
         nmi_pending_q <= 1'b1;
-        nmi_is_store_q <= lsu_err_wb_i[1];
+        nmi_is_store_q <= lsu_err_wb_i.store;
       // Clear when the controller takes the NMI
       end else if (ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_TRAP_NMI)) begin
         nmi_pending_q <= 1'b0;
