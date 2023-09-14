@@ -230,13 +230,18 @@ For |corev|, the ``rvfi_mem`` interface has been expanded to support multiple me
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_rdata
    output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_wdata
    output [NRET * NMEM * 3    - 1 : 0]   rvfi_mem_prot
+   output [NRET * NMEM * 6    - 1 : 0]   rvfi_mem_atop
+   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_err
+   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_exokay
+   output [NRET * NMEM * 2    - 1 : 0]   rvfi_mem_memtype
 
 Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, starting at ``NMEM=1``.
 
 Instructions with a single memory operation (e.g. all RV32I instructions), including split misaligned transfers, will only use NMEM = 1.
 Instructions with multiple memory operations (e.g. the push and pop instructions from Zcmp) use NMEM > 1 in case multiple memory operations actually occur.
 ``rvfi_mem_prot`` indicates the value of OBI prot used for the memory access or accesses. Note that this will be undefined upon access faults.
-
+``rvfi_mem_memtype`` indicates the memory type attributes associated with each memory operation (i.e cacheable or bufferable).
+``rvfi_mem_atop`` indicates the type of atomic transaction as specified in [OPENHW-OBI]_.
 
 For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
 
