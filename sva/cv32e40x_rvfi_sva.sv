@@ -589,8 +589,6 @@ end
       // Populate OBI resp FIFO
       if (m_c_obi_data_if.s_rvalid.rvalid) begin
         data_obi_resp_fifo[wr_resp_ptr] <= m_c_obi_data_if.resp_payload;
-        // obi_data_resp_t uses two bits to report err, but rvfi reports it as only 1 bit (as that is the RVFI standard).
-        data_obi_resp_fifo[wr_resp_ptr].err <= {1'b0, m_c_obi_data_if.resp_payload.err[0]};
         wr_resp_ptr <= wr_resp_ptr + 1'b1;
       end
     end
@@ -696,8 +694,8 @@ end
             split_1st_rdata    = data_obi_resp_fifo[rd_ptr_memop].rdata     & get_bitmask(data_obi_req_fifo[rd_ptr_memop].be);
             split_2nd_rdata    = data_obi_resp_fifo[rd_ptr_memop_inc].rdata & get_bitmask(data_obi_req_fifo[rd_ptr_memop_inc].be);
 
-            split_1st_err    = data_obi_resp_fifo[rd_ptr_memop].err;
-            split_2nd_err    = data_obi_resp_fifo[rd_ptr_memop_inc].err;
+            split_1st_err    = data_obi_resp_fifo[rd_ptr_memop].err[0];
+            split_2nd_err    = data_obi_resp_fifo[rd_ptr_memop_inc].err[0];
 
             // Align rdata/wdata to correspond to expected rdata/wdata on RVFI
             rvfi_mem_exp.wdata[(32*i_memop) +: 32] = split_1st_wdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]) |
@@ -721,7 +719,7 @@ end
 
             rvfi_mem_exp.rdata[(32*i_memop) +: 32] = data_obi_resp_fifo[rd_ptr_memop].rdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]);
 
-            rvfi_mem_exp.err  [(1*i_memop) +:   1] = data_obi_resp_fifo[rd_ptr_memop].err;
+            rvfi_mem_exp.err  [(1*i_memop) +:   1] = data_obi_resp_fifo[rd_ptr_memop].err[0];
 
           end
 

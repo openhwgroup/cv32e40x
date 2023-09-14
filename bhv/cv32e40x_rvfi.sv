@@ -1311,8 +1311,9 @@ module cv32e40x_rvfi
 
         // Report OBI exokay and err on rvfi for all read transaction, but only for atomic write transaction
         // OBI responses are not nessessarly recived by the time non-atomic instructions are reported on RVFI
-        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4]) || (|rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] && ex_mem_trans.atop[5])) ? lsu_exokay_wb_i : '0;
-        rvfi_mem_err   [ (2*(memop_cnt+1))-1 -:  2] <= ((|rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4]) || (|rvfi_mem_wmask[ (4*(memop_cnt+1))-1 -:  4] && ex_mem_trans.atop[5])) ? lsu_err_wb_i[0] : '0;
+        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && ex_mem_trans.atop[5])) ? lsu_exokay_wb_i : '0;
+        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && ex_mem_trans.atop[5])) ? lsu_err_wb_i[0] : '0;
+
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
