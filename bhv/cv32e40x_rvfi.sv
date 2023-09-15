@@ -1309,10 +1309,10 @@ module cv32e40x_rvfi
         // For split misaligned transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
         rvfi_mem_rdata [(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
 
-        // Report OBI exokay and err on rvfi for all read transaction, but only for atomic write transaction
-        // OBI responses are not nessessarly recived by the time non-atomic instructions are reported on RVFI
-        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && ex_mem_trans.atop[5])) ? lsu_exokay_wb_i : '0;
-        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && ex_mem_trans.atop[5])) ? lsu_err_wb_i[0] : '0;
+        // Report OBI exokay and err on RVFI for all read transactions, but only for non-bufferable and atomic write transactions.
+        // OBI responses are not necessarily received by the time bufferable non-atomic instructions are reported on RVFI
+        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!ex_mem_trans.memtype[1] || ex_mem_trans.atop[5]))) ? lsu_exokay_wb_i : '0;
+        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!ex_mem_trans.memtype[1] || ex_mem_trans.atop[5]))) ? lsu_err_wb_i[0] : '0;
 
 
         // Update rvfi_gpr for writes to RF
