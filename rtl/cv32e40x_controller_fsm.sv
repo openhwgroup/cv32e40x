@@ -316,10 +316,10 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // EX stage
   // Branch taken for valid branch instructions in EX with valid decision
 
-  assign branch_in_ex = id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid && branch_decision_ex_i;
+  assign branch_in_ex = id_ex_pipe_i.alu_bch && id_ex_pipe_i.alu_en && id_ex_pipe_i.instr_valid;
 
   // Blocking on branch_taken_q, as a branch ha already been taken
-  assign branch_taken_ex = branch_in_ex && !branch_taken_q;
+  assign branch_taken_ex = branch_in_ex && !branch_taken_q && branch_decision_ex_i;
 
   // Exception in WB if the following evaluates to 1
   // Not checking for ex_wb_pipe_i.last_op to enable exceptions to be taken as soon as possible for
@@ -492,7 +492,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // If the core woke up from sleep due to interrupts, the wakeup reason will be honored
   // by not allowing async debug the cycle after wakeup.
   assign async_debug_allowed = lsu_interruptible_i && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline && sequence_interruptible &&
-                               !woke_to_interrupt_q && !(ctrl_fsm_cs == SLEEP);
+                               !woke_to_interrupt_q && !csr_flush_ack_q && !(ctrl_fsm_cs == SLEEP);
 
   // synchronous debug entry have far fewer restrictions than asynchronous entries. In principle synchronous debug entry should have the same
   // 'allowed' signal as exceptions - that is it should always be possible.
@@ -551,13 +551,13 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
   // When a CLIC pointer is in the pipeline stages EX or WB, we must block interrupts.
   //   - Interrupt would otherwise kill the pointer and use the address of the pointer for mepc. A following mret would then return to the mtvt table, losing program progress.
   assign interrupt_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline &&
-                             sequence_interruptible && !interrupt_blanking_q && !(ctrl_fsm_cs == SLEEP);
+                             sequence_interruptible && !interrupt_blanking_q && !csr_flush_ack_q && !(ctrl_fsm_cs == SLEEP);
 
   // Allowing NMI's follow the same rule as regular interrupts, except we don't need to regard blanking of NMIs after a load/store.
   // If the core woke up from sleep due to either debug or regular interrupts, the wakeup reason is honored by not allowing NMIs in the cycle after
   // waking up to such an event.
   assign nmi_allowed = lsu_interruptible_i && debug_interruptible && !fencei_ongoing && !xif_in_wb && !clic_ptr_in_pipeline &&
-                       sequence_interruptible && !(woke_to_debug_q || woke_to_interrupt_q) && !(ctrl_fsm_cs == SLEEP);
+                       sequence_interruptible && !(woke_to_debug_q || woke_to_interrupt_q) && !csr_flush_ack_q && !(ctrl_fsm_cs == SLEEP);
 
   // Do not allow interrupts if in debug mode, or single stepping without dcsr.stepie set.
   assign debug_interruptible = !(debug_mode_q || (dcsr_i.step && !dcsr_i.stepie));
