@@ -242,8 +242,13 @@ Instructions with multiple memory operations (e.g. the push and pop instructions
 ``rvfi_mem_prot`` indicates the value of OBI prot used for the memory access or accesses. Note that this will be undefined upon access faults.
 ``rvfi_mem_memtype`` indicates the memory type attributes associated with each memory operation (i.e cacheable or bufferable).
 ``rvfi_mem_atop`` indicates the type of atomic transaction as specified in [OPENHW-OBI]_.
+``rvfi_mem_exokay``  indicates the status of ``data_exokay_i`` for loads, non-bufferable stores and atomic instructions.
+``rvfi_mem_err`` indicates if a load, non-bufferable store or atomic instruction got a bus error.
 
 For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
+
+.. note::
+  ``rvfi_mem_exokay`` and ``rvfi_mem_err`` will not be reported for bufferable writes (tied to zero). Bufferable writes may get their responses after the instructions have retired.
 
 **CSR Signals**
 
