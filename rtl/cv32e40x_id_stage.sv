@@ -462,13 +462,19 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
     .tbljmp_first_i                  ( tbljmp_first              )
   );
 
-  // Speculatively read all source registers for illegal instr, might be required by coprocessor
-  // Non-offloaded instructions will use maximum two read ports (rf_re from decoder is two bits, rf_re_o may be two or three bits wide)
-  // Todo:XIF Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
-  //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
-  //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
-  //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
-  assign rf_re_o        = illegal_insn ? '1 : REGFILE_NUM_READ_PORTS'(rf_re);
+  generate
+    if (X_EXT) begin : x_ext_rf_re
+      // Speculatively read all source registers for illegal instr, might be required by coprocessor
+      // Non-offloaded instructions will use maximum two read ports (rf_re from decoder is two bits, rf_re_o may be two or three bits wide)
+      // Todo:XIF Too conservative, causes load_use stalls on offloaded instruction when the operands may not be needed at all.
+      //       issue_valid depends on halt_id (and data_rvalid) via the local instr_valid.
+      //       Can issue_valid be made fast by using the registered instr_valid and only factor in kill_id and not halt_id?
+      //       Maybe it is ok to have a late issue_valid, as accept signal will depend on late rs_valid anyway?
+      assign rf_re_o = illegal_insn ? '1 : REGFILE_NUM_READ_PORTS'(rf_re);
+    end else begin : no_x_ext_rf_re
+      assign rf_re_o = rf_re;
+    end
+  endgenerate
 
   // Register writeback is enabled either by the decoder or by the XIF
   assign rf_we          = rf_we_dec || xif_we;

@@ -131,6 +131,8 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     (32'(1)               << 23) | // X - Non-standard extensions present
     (32'(MXL)             << 30);  // M-XLEN
 
+  localparam bit          ZICNTR = 1'b1;
+
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
 
   localparam logic [31:0] CSR_MTVT_MASK = {{MTVT_ADDR_WIDTH{1'b1}}, {(32-MTVT_ADDR_WIDTH){1'b0}}};
@@ -556,11 +558,21 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_TIME: begin
-        csr_rdata_int = time_i[31:0];
+        if (ZICNTR) begin : zicntr
+          csr_rdata_int = time_i[31:0];
+        end else begin : no_zicntr
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_TIMEH: begin
-        csr_rdata_int = time_i[63:32];
+        if (ZICNTR) begin : zicntr
+          csr_rdata_int = time_i[63:32];
+        end else begin : no_zicntr
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
       end
 
       // Hardware Performance Monitor
@@ -573,19 +585,26 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MHPMCOUNTER16, CSR_MHPMCOUNTER17, CSR_MHPMCOUNTER18, CSR_MHPMCOUNTER19,
       CSR_MHPMCOUNTER20, CSR_MHPMCOUNTER21, CSR_MHPMCOUNTER22, CSR_MHPMCOUNTER23,
       CSR_MHPMCOUNTER24, CSR_MHPMCOUNTER25, CSR_MHPMCOUNTER26, CSR_MHPMCOUNTER27,
-      CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31,
-      CSR_CYCLE,
-      CSR_INSTRET,
-      CSR_HPMCOUNTER3,
+      CSR_MHPMCOUNTER28, CSR_MHPMCOUNTER29, CSR_MHPMCOUNTER30, CSR_MHPMCOUNTER31 : begin
+        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
+        csr_counter_read_o = 1'b1;
+      end
+
+      CSR_CYCLE, CSR_INSTRET, CSR_HPMCOUNTER3,
       CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
       CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
       CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
       CSR_HPMCOUNTER16, CSR_HPMCOUNTER17, CSR_HPMCOUNTER18, CSR_HPMCOUNTER19,
       CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
       CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
-      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31: begin
-        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
-        csr_counter_read_o = 1'b1;
+      CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31 : begin
+        if (ZICNTR) begin : zicntr
+          csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
+          csr_counter_read_o = 1'b1;
+        end else begin : no_zicntr
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
       end
 
       CSR_MCYCLEH,
@@ -597,19 +616,26 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_MHPMCOUNTER16H, CSR_MHPMCOUNTER17H, CSR_MHPMCOUNTER18H, CSR_MHPMCOUNTER19H,
       CSR_MHPMCOUNTER20H, CSR_MHPMCOUNTER21H, CSR_MHPMCOUNTER22H, CSR_MHPMCOUNTER23H,
       CSR_MHPMCOUNTER24H, CSR_MHPMCOUNTER25H, CSR_MHPMCOUNTER26H, CSR_MHPMCOUNTER27H,
-      CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H,
-      CSR_CYCLEH,
-      CSR_INSTRETH,
-      CSR_HPMCOUNTER3H,
+      CSR_MHPMCOUNTER28H, CSR_MHPMCOUNTER29H, CSR_MHPMCOUNTER30H, CSR_MHPMCOUNTER31H: begin
+        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
+        csr_counter_read_o = 1'b1;
+      end
+
+      CSR_CYCLEH, CSR_INSTRETH, CSR_HPMCOUNTER3H,
       CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
       CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
       CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
       CSR_HPMCOUNTER16H, CSR_HPMCOUNTER17H, CSR_HPMCOUNTER18H, CSR_HPMCOUNTER19H,
       CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
       CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
-      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H: begin
-        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
-        csr_counter_read_o = 1'b1;
+      CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H  : begin
+        if (ZICNTR) begin : zicntr
+          csr_rdata_int       = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
+          csr_counter_read_o  = 1'b1;
+        end else begin : no_zicntr
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
       end
 
       // mvendorid: Machine Vendor ID
