@@ -330,6 +330,16 @@ module cv32e40x_controller_fsm_sva
                      fencei_flush_req_o |-> !lsu_busy_i)
       else `uvm_error("controller", "Fencei handshake active while lsu_busy_o = 1")
 
+  // Check that mret in debug mode results in illegal instruction exception
+  a_mret_dbg_mode_illegal :
+    assert property (@(posedge clk) disable iff (!rst_n)
+                     // Disregard higher priority exceptions and trigger match
+                      !((ex_wb_pipe_i.instr.mpu_status != MPU_OK) || ex_wb_pipe_i.instr.bus_resp.err || trigger_match_in_wb) &&
+                      // Check for mret in instruction word and debug mode
+                      ((ex_wb_pipe_i.instr.bus_resp.rdata == 32'h30200073) && debug_mode_q && wb_valid_i)
+                      |-> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
+      else `uvm_error("controller", "mret in debug mode not flagged as illegal")
+
   // assert that NMI's are not reported on irq_ack
   // Exception for the case where the core wakes from SLEEP due to an interrupt
   //   - in that case the interrupt is honored while there may be a pending nmi.
