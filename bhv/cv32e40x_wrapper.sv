@@ -37,6 +37,7 @@
   `include "cv32e40x_register_file_sva.sv"
   `include "cv32e40x_wpt_sva.sv"
   `include "cv32e40x_debug_triggers_sva.sv"
+  `include "cv32e40x_parameter_sva.sv"
 `endif
 
 `include "cv32e40x_wrapper.vh"
@@ -168,6 +169,18 @@ module cv32e40x_wrapper
 `ifndef COREV_ASSERT_OFF
 
   // RTL Assertions
+
+  bind cv32e40x_core: core_i cv32e40x_parameter_sva
+    #(
+      .PMA_NUM_REGIONS (PMA_NUM_REGIONS ),
+      .PMA_CFG         (PMA_CFG         ),
+      .DM_REGION_START (DM_REGION_START ),
+      .DM_REGION_END   (DM_REGION_END   ),
+      .DBG_NUM_TRIGGERS(DBG_NUM_TRIGGERS),
+      .CLIC_ID_WIDTH   (CLIC_ID_WIDTH   ),
+      .NUM_MHPMCOUNTERS(NUM_MHPMCOUNTERS)
+      )
+  param_sva(.*);
 
   bind cv32e40x_if_stage:
     core_i.if_stage_i cv32e40x_if_stage_sva #(.CLIC(CLIC)) if_stage_sva
