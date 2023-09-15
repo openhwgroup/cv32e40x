@@ -558,18 +558,18 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_TIME: begin
-        if (ZICNTR) begin : zicntr
+        if (ZICNTR) begin : zicntr_time
           csr_rdata_int = time_i[31:0];
-        end else begin : no_zicntr
+        end else begin : no_zicntr_time
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
       end
 
       CSR_TIMEH: begin
-        if (ZICNTR) begin : zicntr
+        if (ZICNTR) begin : zicntr_timeh
           csr_rdata_int = time_i[63:32];
-        end else begin : no_zicntr
+        end else begin : no_zicntr_timeh
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
@@ -598,10 +598,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
       CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
       CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31 : begin
-        if (ZICNTR) begin : zicntr
+        if (ZICNTR) begin : zicntr_counters
           csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
           csr_counter_read_o = 1'b1;
-        end else begin : no_zicntr
+        end else begin : no_zicntr_counters
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
@@ -629,10 +629,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
       CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
       CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H  : begin
-        if (ZICNTR) begin : zicntr
+        if (ZICNTR) begin : zicntr_hcounters
           csr_rdata_int       = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
           csr_counter_read_o  = 1'b1;
-        end else begin : no_zicntr
+        end else begin : no_zicntr_hcounters
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
