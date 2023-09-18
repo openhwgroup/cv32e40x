@@ -131,6 +131,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
     (32'(1)               << 23) | // X - Non-standard extensions present
     (32'(MXL)             << 30);  // M-XLEN
 
+  localparam bit          ZIHPM  = 1'b1;
   localparam bit          ZICNTR = 1'b1;
 
   localparam logic [31:0] MISA_VALUE = CORE_MISA | (X_EXT ? X_MISA : 32'h0000_0000);
@@ -590,7 +591,28 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         csr_counter_read_o = 1'b1;
       end
 
-      CSR_CYCLE, CSR_INSTRET, CSR_HPMCOUNTER3,
+
+      CSR_CYCLE, CSR_INSTRET : begin
+        if (ZICNTR) begin : zicntr_counters
+          csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
+          csr_counter_read_o = 1'b1;
+        end else begin : no_zicntr_counters
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+
+      CSR_CYCLEH, CSR_INSTRETH : begin
+        if (ZICNTR) begin : zicntr_hcounters
+        csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
+          csr_counter_read_o = 1'b1;
+        end else begin : no_zicntr_hcounters
+          csr_rdata_int    = '0;
+          illegal_csr_read = 1'b1;
+        end
+      end
+
+      CSR_HPMCOUNTER3,
       CSR_HPMCOUNTER4,  CSR_HPMCOUNTER5,  CSR_HPMCOUNTER6,  CSR_HPMCOUNTER7,
       CSR_HPMCOUNTER8,  CSR_HPMCOUNTER9,  CSR_HPMCOUNTER10, CSR_HPMCOUNTER11,
       CSR_HPMCOUNTER12, CSR_HPMCOUNTER13, CSR_HPMCOUNTER14, CSR_HPMCOUNTER15,
@@ -598,10 +620,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER20, CSR_HPMCOUNTER21, CSR_HPMCOUNTER22, CSR_HPMCOUNTER23,
       CSR_HPMCOUNTER24, CSR_HPMCOUNTER25, CSR_HPMCOUNTER26, CSR_HPMCOUNTER27,
       CSR_HPMCOUNTER28, CSR_HPMCOUNTER29, CSR_HPMCOUNTER30, CSR_HPMCOUNTER31 : begin
-        if (ZICNTR) begin : zicntr_counters
+        if (ZIHPM) begin : zihpm_counters
           csr_rdata_int = mhpmcounter_rdata[csr_raddr[4:0]][31:0];
           csr_counter_read_o = 1'b1;
-        end else begin : no_zicntr_counters
+        end else begin : no_zihpm_counters
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
@@ -621,7 +643,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         csr_counter_read_o = 1'b1;
       end
 
-      CSR_CYCLEH, CSR_INSTRETH, CSR_HPMCOUNTER3H,
+      CSR_HPMCOUNTER3H,
       CSR_HPMCOUNTER4H,  CSR_HPMCOUNTER5H,  CSR_HPMCOUNTER6H,  CSR_HPMCOUNTER7H,
       CSR_HPMCOUNTER8H,  CSR_HPMCOUNTER9H,  CSR_HPMCOUNTER10H, CSR_HPMCOUNTER11H,
       CSR_HPMCOUNTER12H, CSR_HPMCOUNTER13H, CSR_HPMCOUNTER14H, CSR_HPMCOUNTER15H,
@@ -629,10 +651,10 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       CSR_HPMCOUNTER20H, CSR_HPMCOUNTER21H, CSR_HPMCOUNTER22H, CSR_HPMCOUNTER23H,
       CSR_HPMCOUNTER24H, CSR_HPMCOUNTER25H, CSR_HPMCOUNTER26H, CSR_HPMCOUNTER27H,
       CSR_HPMCOUNTER28H, CSR_HPMCOUNTER29H, CSR_HPMCOUNTER30H, CSR_HPMCOUNTER31H  : begin
-        if (ZICNTR) begin : zicntr_hcounters
-          csr_rdata_int       = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
-          csr_counter_read_o  = 1'b1;
-        end else begin : no_zicntr_hcounters
+        if (ZIHPM) begin : zihpm_hcounters
+          csr_rdata_int      = mhpmcounter_rdata[csr_raddr[4:0]][63:32];
+          csr_counter_read_o = 1'b1;
+        end else begin : no_zihpm_hcounters
           csr_rdata_int    = '0;
           illegal_csr_read = 1'b1;
         end
