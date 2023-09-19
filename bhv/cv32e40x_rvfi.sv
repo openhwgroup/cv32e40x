@@ -630,6 +630,9 @@ module cv32e40x_rvfi
   //Propagating from EX stage
   obi_data_req_t     ex_mem_trans;
   obi_data_req_t     ex_mem_trans_2;
+  logic              ex_mem_atomic;
+  logic              ex_mem_lr_sc;
+  logic              ex_mem_nonbufferable;
   mem_err_t [3:0]    mem_err;
 
   logic              lsu_split_2nd_xfer_wb;
@@ -735,6 +738,12 @@ module cv32e40x_rvfi
   assign insn_rs2    = rvfi_insn[24:20];
   assign insn_funct7 = rvfi_insn[31:25];
   assign insn_csr    = rvfi_insn[31:20];
+
+  // OBI memory accesses
+  assign ex_mem_atomic        = ex_mem_trans.atop[5];
+  assign ex_mem_lr_sc        = (ex_mem_trans.atop == 6'h23 || ex_mem_trans.atop == 6'h22);
+  assign ex_mem_nonbufferable = !(ex_mem_trans.memtype[0] || (lsu_split_2nd_xfer_wb && ex_mem_trans_2.memtype[0]));
+
 
   cv32e40x_rvfi_instr_obi
   rvfi_instr_obi_i
@@ -1315,9 +1324,9 @@ module cv32e40x_rvfi
 
         // Report OBI exokay and err on RVFI for all read transactions, but only for non-bufferable and atomic write transactions.
         // OBI responses are not necessarily received by the time bufferable non-atomic instructions are reported on RVFI
-        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!(ex_mem_trans.memtype[0] | (ex_mem_trans_2.memtype[0] & lsu_split_2nd_xfer_wb)) || ex_mem_trans.atop[5]))) ? lsu_exokay_wb_i : '0;
-        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!(ex_mem_trans.memtype[0] | (ex_mem_trans_2.memtype[0] & lsu_split_2nd_xfer_wb)) || ex_mem_trans.atop[5]))) ? lsu_err_wb_i[0] : '0;
-
+        // Exokay is only valid for the LR.W/D and SC.W/D instructions
+        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && ex_mem_lr_sc)) ? lsu_exokay_wb_i : '0;
+        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && (ex_mem_nonbufferable || ex_mem_atomic))) ? lsu_err_wb_i[0] : '0;
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin

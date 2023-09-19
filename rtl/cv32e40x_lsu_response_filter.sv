@@ -168,6 +168,6 @@ module cv32e40x_lsu_response_filter
   // bus_resp goes straight through
   assign resp_o.rdata  = resp_i.rdata;
   assign resp_o.err    = {outstanding_q[bus_cnt_q].store, (resp_valid_i && resp_i.err[0])};
-  assign resp_o.exokay = (resp_valid_i && resp_i.exokay);
+  assign resp_o.exokay = resp_i.exokay;
 
 endmodule
