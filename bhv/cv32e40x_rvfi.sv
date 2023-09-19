@@ -629,6 +629,7 @@ module cv32e40x_rvfi
 
   //Propagating from EX stage
   obi_data_req_t     ex_mem_trans;
+  obi_data_req_t     ex_mem_trans_2;
   mem_err_t [3:0]    mem_err;
 
   logic              lsu_split_2nd_xfer_wb;
@@ -954,6 +955,7 @@ module cv32e40x_rvfi
       mem_rmask          <= '0;
       mem_wmask          <= '0;
       ex_mem_trans       <= '0;
+      ex_mem_trans_2     <= '0;
       mem_err            <= {4{MEM_ERR_IO_ALIGN}};
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
@@ -1183,6 +1185,8 @@ module cv32e40x_rvfi
           // The second part of the split misaligned access is suppressed to keep
           // the start address and data for the whole misaligned transfer
           ex_mem_trans <= lsu_data_trans;
+        end else begin
+          ex_mem_trans_2 <= (rvfi_valid) ? '0 : lsu_data_trans;
         end
 
         // Capture cause of LSU exception for the cases that can have multiple reasons for an exception
@@ -1311,8 +1315,8 @@ module cv32e40x_rvfi
 
         // Report OBI exokay and err on RVFI for all read transactions, but only for non-bufferable and atomic write transactions.
         // OBI responses are not necessarily received by the time bufferable non-atomic instructions are reported on RVFI
-        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!ex_mem_trans.memtype[1] || ex_mem_trans.atop[5]))) ? lsu_exokay_wb_i : '0;
-        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!ex_mem_trans.memtype[1] || ex_mem_trans.atop[5]))) ? lsu_err_wb_i[0] : '0;
+        rvfi_mem_exokay[ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!(ex_mem_trans.memtype[0] | (ex_mem_trans_2.memtype[0] & lsu_split_2nd_xfer_wb)) || ex_mem_trans.atop[5]))) ? lsu_exokay_wb_i : '0;
+        rvfi_mem_err   [ (1*(memop_cnt+1))-1 -:  1] <= ((|mem_rmask [STAGE_WB] && !mem_access_blocked_wb) || (|mem_wmask [STAGE_WB] && !mem_access_blocked_wb && (!(ex_mem_trans.memtype[0] | (ex_mem_trans_2.memtype[0] & lsu_split_2nd_xfer_wb)) || ex_mem_trans.atop[5]))) ? lsu_err_wb_i[0] : '0;
 
 
         // Update rvfi_gpr for writes to RF
