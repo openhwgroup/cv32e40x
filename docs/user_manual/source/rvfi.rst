@@ -240,10 +240,41 @@ Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, 
 Instructions with a single memory operation (e.g. all RV32I instructions), including split misaligned transfers, will only use NMEM = 1.
 Instructions with multiple memory operations (e.g. the push and pop instructions from Zcmp) use NMEM > 1 in case multiple memory operations actually occur.
 ``rvfi_mem_prot`` indicates the value of OBI prot used for the memory access or accesses. Note that this will be undefined upon access faults.
-``rvfi_mem_memtype`` indicates the memory type attributes associated with each memory operation (i.e cacheable or bufferable).
+``rvfi_mem_memtype`` indicates the memory type attributes associated with each memory operation (i.e cacheable or bufferable). For misaligned transactions that are
+split in two memory operations ``rvfi_mem_memtype`` will only report the type attribute for the first memory operation.
 ``rvfi_mem_atop`` indicates the type of atomic transaction as specified in [OPENHW-OBI]_.
-``rvfi_mem_exokay``  indicates the status of ``data_exokay_i`` for loads, non-bufferable stores and atomic instructions.
-``rvfi_mem_err`` indicates if a load, non-bufferable store or atomic instruction got a bus error.
+``rvfi_mem_exokay``  indicates the status of ``data_exokay_i`` for loads, non-bufferable stores and atomic instructions. For split transactions, ``rvfi_mem_exokay`` will only
+be 1 if both transactions receive ``data_exokay_i == 1``.
+``rvfi_mem_err`` indicates if a load, non-bufferable store or atomic instruction got a bus error. :numref:`rvfi_mem_err encoding for different transaction types` shows how
+different memory transactions report ``rvfi_mem_err``.
+
+.. table:: rvfi_mem_err encoding for different transaction types
+  :name: rvfi_mem_err encoding for different transaction types
+  :widths: 60 5 5 5 60
+  :class: no-scrollbar-table
+
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Instruction type    | Split   | Bufferable (1) | Bufferable (2) |  rvfi_mem_err                  |
+  +=====================+=========+================+================+================================+
+  | Load                | No      | N/A            | N/A            | data_err_i                     |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Load                | Yes     | N/A            | N/A            | data_err_i(1) OR data_err_i(2) |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | No      | No             | N/A            | data_err_i                     |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | No      | Yes            | N/A            | 0                              |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | Yes     | No             | No             | data_err_i(1) OR data_err_i(2) |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | Yes     | Yes            | Yes            | 0                              |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | Yes     | Yes            | No             | data_err_i(2)                  |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+  | Store               | Yes     | No             | Yes            | data_err_i(1)                  |
+  +---------------------+---------+----------------+----------------+--------------------------------+
+
+``rvfi_mem_rdata`` will report the read data for load instructions. In case of split misaligned transactions this read data is the combination of the two transfers.
+
 
 For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not always be 4 byte aligned. For misaligned accesses the start address of the transfer is reported (i.e. the start address of the first sub-transfer).
 
