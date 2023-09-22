@@ -1322,8 +1322,8 @@ module cv32e40x_rvfi
           // For split access, rvfi_mem_err and rvfi_mem_exokay are based on both misaligned accesses.
           // But, as mentioned above, we disregard the reported OBI err and exokay signals from bufferable write transactions.
 
-          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_exokay[ (7'd1*(memop_cnt+7'd1))-7'd1 -:  1] && ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_exokay_wb_i : '0);
-          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_err   [ (7'd1*(memop_cnt+7'd1))-7'd1 -:  1] || ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_err_wb_i[0] : '0);
+          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_exokay[ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] && ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_exokay_wb_i : '0);
+          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_err   [ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] || ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_err_wb_i[0] : '0);
         end
 
         else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
