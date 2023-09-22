@@ -243,9 +243,9 @@ Instructions with multiple memory operations (e.g. the push and pop instructions
 ``rvfi_mem_memtype`` indicates the memory type attributes associated with each memory operation (i.e cacheable or bufferable). For misaligned transactions that are
 split in two memory operations ``rvfi_mem_memtype`` will only report the type attribute for the first memory operation.
 ``rvfi_mem_atop`` indicates the type of atomic transaction as specified in [OPENHW-OBI]_.
-``rvfi_mem_exokay``  indicates the status of ``data_exokay_i`` for loads, non-bufferable stores and atomic instructions. For split transactions, ``rvfi_mem_exokay`` will only
+``rvfi_mem_exokay``  indicates the status of ``data_exokay_i`` for loads, non-bufferable stores and atomic instructions (and signals 0 otherwise). For split transactions, ``rvfi_mem_exokay`` will only
 be 1 if both transactions receive ``data_exokay_i == 1``.
-``rvfi_mem_err`` indicates if a load, non-bufferable store or atomic instruction got a bus error. :numref:`rvfi_mem_err encoding for different transaction types` shows how
+``rvfi_mem_err`` indicates if a load, non-bufferable store or atomic instruction got a bus error (and signals 0 otherwise). :numref:`rvfi_mem_err encoding for different transaction types` shows how
 different memory transactions report ``rvfi_mem_err``.
 
 .. table:: rvfi_mem_err encoding for different transaction types
