@@ -718,7 +718,7 @@ end
 
             rvfi_mem_exp.rdata[(32*i_memop) +: 32] = data_obi_resp_fifo[rd_ptr_memop].rdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]);
 
-            rvfi_mem_exp.err  [(1*i_memop) +:   1] = data_obi_resp_fifo[rd_ptr_memop].err[0];
+            rvfi_mem_exp.err  [(1*i_memop) +:   1] = data_obi_resp_fifo[rd_ptr_memop].err[0] && !data_obi_req_fifo[rd_ptr_memop].memtype[0];
 
           end
 
