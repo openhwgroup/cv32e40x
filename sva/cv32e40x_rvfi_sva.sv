@@ -781,14 +781,12 @@ end
 
       a_rvfi_mem_consistency_read_exokay:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                        rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked |->
-                        rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
+                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_exokay not consistent with OBI transfers for reads")
 
       a_rvfi_mem_consistency_read_err:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                        rvfi_mem_read[i_memop] && !rvfi_mem_dly.ld_str_blocked |->
-                        rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
+                        rvfi_mem_read[i_memop] |-> rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_err not consistent with OBI transfers for reads")
 
 
@@ -831,16 +829,12 @@ end
 
       a_rvfi_mem_consistency_write_exokay:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && (!rvfi_mem_dly.memtype[(2*i_memop)+0] || rvfi_mem_dly.atop[(6*i_memop)+5])
-                       |->
-                       rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.exokay[(1*i_memop) +: 1] == rvfi_mem_dly.exokay[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_exokay not consistent with OBI transfers for writes")
 
       a_rvfi_mem_consistency_write_err:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && (!rvfi_mem_dly.memtype[(2*i_memop)+0] || rvfi_mem_dly.atop[(6*i_memop)+5])
-                       |->
-                       rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] |-> rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_err not consistent with OBI transfers for writes")
 
     end
