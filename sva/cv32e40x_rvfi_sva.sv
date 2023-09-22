@@ -694,8 +694,8 @@ end
             split_1st_rdata    = data_obi_resp_fifo[rd_ptr_memop].rdata     & get_bitmask(data_obi_req_fifo[rd_ptr_memop].be);
             split_2nd_rdata    = data_obi_resp_fifo[rd_ptr_memop_inc].rdata & get_bitmask(data_obi_req_fifo[rd_ptr_memop_inc].be);
 
-            split_1st_err    = data_obi_resp_fifo[rd_ptr_memop].err[0];
-            split_2nd_err    = data_obi_resp_fifo[rd_ptr_memop_inc].err[0];
+            split_1st_err    = data_obi_resp_fifo[rd_ptr_memop].err[0] && !data_obi_req_fifo[rd_ptr_memop].memtype[0];
+            split_2nd_err    = data_obi_resp_fifo[rd_ptr_memop_inc].err[0] && !data_obi_req_fifo[rd_ptr_memop_inc].memtype[0];
 
             // Align rdata/wdata to correspond to expected rdata/wdata on RVFI
             rvfi_mem_exp.wdata[(32*i_memop) +: 32] = split_1st_wdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]) |
@@ -704,8 +704,7 @@ end
             rvfi_mem_exp.rdata[(32*i_memop) +: 32] = split_1st_rdata >> (8 * data_obi_req_fifo[rd_ptr_memop].addr[1:0]) |
                                                      split_2nd_rdata << (8 * split_2nd_shift);
 
-            rvfi_mem_exp.err[( 1*i_memop) +:  1] = split_1st_err << 1|
-                                                     split_2nd_err;
+            rvfi_mem_exp.err[( 1*i_memop) +:  1] = split_1st_err | split_2nd_err;
 
           end
           else begin
@@ -729,7 +728,7 @@ end
           rvfi_mem_exp.atop   [(6*i_memop)  +: 6]  = data_obi_req_fifo[rd_ptr_memop].atop;
           rvfi_mem_exp.memtype[(2*i_memop)  +: 2]  = data_obi_req_fifo[rd_ptr_memop].memtype;
           rvfi_mem_exp.dbg    [(1*i_memop)  +: 1]  = data_obi_req_fifo[rd_ptr_memop].dbg;
-          rvfi_mem_exp.exokay [(1*i_memop)  +: 1]  = data_obi_resp_fifo[rd_ptr_memop].exokay;
+          rvfi_mem_exp.exokay [(1*i_memop)  +: 1]  = data_obi_resp_fifo[rd_ptr_memop].exokay && !data_obi_req_fifo[rd_ptr_memop].memtype[0];
 
           if(rvfi_mem_read[i_memop]) begin
             rvfi_mem_exp.rmask[(4*i_memop) +: 4] = exp_rvfi_mem_mask;
@@ -839,7 +838,7 @@ end
 
       a_rvfi_mem_consistency_write_err:
       assert property (@(posedge clk_i) disable iff (!rst_ni)
-                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && !rvfi_mem_dly.ld_str_blocked && !split_transfer && (!rvfi_mem_dly.memtype[(2*i_memop)+0] || rvfi_mem_dly.atop[(6*i_memop)+5])
+                       obi_gnt_delay_ok && rvfi_mem_write[i_memop] && (!rvfi_mem_dly.memtype[(2*i_memop)+0] || rvfi_mem_dly.atop[(6*i_memop)+5])
                        |->
                        rvfi_mem_exp.err[(1*i_memop) +: 1] == rvfi_mem_dly.err[(1*i_memop) +: 1])
         else `uvm_error("rvfi", "rvfi_mem_err not consistent with OBI transfers for writes")
