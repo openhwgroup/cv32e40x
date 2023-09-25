@@ -668,7 +668,7 @@ Detailed:
   | 1:0     | WARL (0x0, 0x1)  | **MODE**: Interrupt handling mode. 0x0 = non-vectored CLINT mode, 0x1 = vectored CLINT mode.                  |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01}.
+Out of reset ``mtvec`` has the value of 32'h00000001. This value is not observable by SW as ``mtvec`` is initialized to {**mtvec_addr_i[31:7]**, 5'b0, 2'b01} when ``fetch_enable_i`` is asserted the first time after reset release.
 
 When an exception or an interrupt is encountered, the core jumps to the corresponding
 handler using the content of the ``mtvec[31:7]`` as base address. Both non-vectored CLINT mode and vectored CLINT mode
@@ -710,7 +710,7 @@ Detailed:
   | 1:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-The initial value of ``mtvec`` is equal to {**mtvec_addr_i[31:7]**, 1'b0, 6'b000011}.
+Out of reset ``mtvec`` has the value of 32'h00000003. This value is not observable by SW as ``mtvec`` is initialized to {**mtvec_addr_i[31:7]**, 1'b0, 6'b000011} when ``fetch_enable_i`` is asserted the first time after reset release.
 
 Upon an NMI in CLIC mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
 
