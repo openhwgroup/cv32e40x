@@ -710,7 +710,7 @@ Detailed:
   | 1:0     | WARL (0x3)       | **MODE**: Interrupt handling mode. Always CLIC mode.                                                          |
   +---------+------------------+---------------------------------------------------------------------------------------------------------------+
 
-Out of reset ``mtvec`` has the value of 32'h00000003. This value is not observable by SW as ``mtvec`` is initialized to {**mtvec_addr_i[31:7]**, 1'b0, 6'b00000011} when ``fetch_enable_i`` is asserted the first time after reset.
+Out of reset ``mtvec`` has the value of 32'h00000003. This value is not observable by SW as ``mtvec`` is initialized to {**mtvec_addr_i[31:7]**, 1'b0, 6'b000011} when ``fetch_enable_i`` is asserted the first time after reset release.
 
 Upon an NMI in CLIC mode the core jumps to **mtvec[31:7]**, 5'h0, 2'b00} (i.e. index 0).
 
