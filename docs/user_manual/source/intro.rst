@@ -42,8 +42,8 @@ It follows these specifications:
 .. [RISC-V-RV32E] RISC-V Instruction Set Manual, Volume I: User-Level ISA, RV32E Base Integer Instruction Set, Document version 20191214-draft (January 31, 2023),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20230131-c0b298a/riscv-spec.pdf
 
-.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, bd6b01948dcd948ef280d83747eec560d1e7795f, June 23 2023,
-   https://github.com/riscv/riscv-debug-spec/blob/3c75bf39ed8d82e4e25191980966f8c701763fc2/riscv-debug-stable.pdf
+.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, 27d602966ae72e70568e4951ab90c393a6930ae4, September 11 2023,
+   https://github.com/riscv/riscv-debug-spec/blob/2c8f38a0a46cd07f908057c5463c4b6810462146/riscv-debug-stable.pdf
 
 .. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 8/1/2023,
    https://github.com/riscv/riscv-fast-interrupt/blob/a187c10e07604bce977546f8ebdf362e35bcad27/clic.pdf
@@ -68,7 +68,7 @@ It follows these specifications:
 
 Many features in the RISC-V specification are optional, and |corev| can be parameterized to enable or disable some of them.
 
-|corev| supports one of the following base integer instruction sets: 
+|corev| supports one of the following base integer instruction sets:
 
 .. list-table:: |corev| Base Instruction Set
    :header-rows: 1
