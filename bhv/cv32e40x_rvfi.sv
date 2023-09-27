@@ -104,6 +104,8 @@ module cv32e40x_rvfi
    input logic [4:0]                          rf_addr_wb_i,
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
+   input logic                                lsu_exokay_wb_i,
+   input logic [1:0]                          lsu_err_wb_i,
    input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
    input logic                                csr_mscratchcsw_in_wb_i,
@@ -328,6 +330,8 @@ module cv32e40x_rvfi
    output logic [ 4*NMEM-1:0]                 rvfi_mem_wmask,
    output logic [32*NMEM-1:0]                 rvfi_mem_rdata,
    output logic [32*NMEM-1:0]                 rvfi_mem_wdata,
+   output logic [ 1*NMEM-1:0]                 rvfi_mem_exokay,
+   output logic [ 1*NMEM-1:0]                 rvfi_mem_err,
    output logic [ 3*NMEM-1:0]                 rvfi_mem_prot,
    output logic [ 6*NMEM-1:0]                 rvfi_mem_atop,
    output logic [ 2*NMEM-1:0]                 rvfi_mem_memtype,
@@ -625,6 +629,7 @@ module cv32e40x_rvfi
 
   //Propagating from EX stage
   obi_data_req_t     ex_mem_trans;
+  obi_data_req_t     ex_mem_trans_2;
   mem_err_t [3:0]    mem_err;
 
   logic              lsu_split_2nd_xfer_wb;
@@ -730,6 +735,7 @@ module cv32e40x_rvfi
   assign insn_rs2    = rvfi_insn[24:20];
   assign insn_funct7 = rvfi_insn[31:25];
   assign insn_csr    = rvfi_insn[31:20];
+
 
   cv32e40x_rvfi_instr_obi
   rvfi_instr_obi_i
@@ -950,6 +956,7 @@ module cv32e40x_rvfi
       mem_rmask          <= '0;
       mem_wmask          <= '0;
       ex_mem_trans       <= '0;
+      ex_mem_trans_2     <= '0;
       mem_err            <= {4{MEM_ERR_IO_ALIGN}};
       ex_csr_rdata       <= '0;
       rvfi_dbg           <= '0;
@@ -979,6 +986,8 @@ module cv32e40x_rvfi
       rvfi_mem_rdata     <= '0;
       rvfi_mem_wmask     <= '0;
       rvfi_mem_wdata     <= '0;
+      rvfi_mem_exokay    <= '0;
+      rvfi_mem_err       <= '0;
       rvfi_mem_prot      <= '0;
       rvfi_mem_memtype   <= '0;
       rvfi_mem_atop      <= '0;
@@ -1174,9 +1183,13 @@ module cv32e40x_rvfi
         lsu_split_xfer_wb     <= lsu_split_0_ex_i;
 
         if (!lsu_split_q_ex_i) begin
-          // The second part of the split misaligned access is suppressed to keep
+          // The first part of the split misaligned access is preserved to keep
           // the start address and data for the whole misaligned transfer
           ex_mem_trans <= lsu_data_trans;
+        end else begin
+          // ex_mem_trans_2 holds the second part of the split misaligned access.
+          // (We only use this signal to check the obi packet's memtype)
+          ex_mem_trans_2 <= lsu_data_trans;
         end
 
         // Capture cause of LSU exception for the cases that can have multiple reasons for an exception
@@ -1264,6 +1277,8 @@ module cv32e40x_rvfi
           rvfi_mem_rdata     <= '0;
           rvfi_mem_wmask     <= '0;
           rvfi_mem_wdata     <= '0;
+          rvfi_mem_exokay    <= '0;
+          rvfi_mem_err       <= '0;
           rvfi_mem_prot      <= '0;
           rvfi_mem_atop      <= '0;
           rvfi_mem_memtype   <= '0;
@@ -1290,7 +1305,27 @@ module cv32e40x_rvfi
           rvfi_mem_atop    [ ((4*memop_cnt) + (2*memop_cnt)) +:  6] <= ex_mem_trans.atop;
           rvfi_mem_memtype [ (2*(memop_cnt+1))-1 -:  2]  <= ex_mem_trans.memtype;
           rvfi_mem_dbg     [ (1*(memop_cnt+1))-1 -:  1]  <= ex_mem_trans.dbg;
+
+
+          // Report OBI exokay and err on RVFI for all read transactions, for non-bufferable write transactions, and for all atomic transactions (which are always treated as non-bufferable).
+          // For bufferable write transactions exokay and err are reported as 0 on RVFI (no matter what is signaled over OBI) as the response for bufferable write transactions is not
+          // guaranteed to be received in time to be reported on RVFI together with the instruction retirement.
+          //
+          // The err response for bufferable write transactions can lead to an NMI. The exokay response for bufferable write transactions is ignored by the CPU (in fact it is also
+          // ignored for most other transactions as it is only used for SC.W instructions).
+
+          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_exokay_wb_i : '0;
+          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_err_wb_i[0] : '0;
         end
+
+        else if (lsu_split_2nd_xfer_wb && !mem_access_blocked_wb) begin
+          // For split access, rvfi_mem_err and rvfi_mem_exokay are based on both misaligned accesses.
+          // But, as mentioned above, we disregard the reported OBI err and exokay signals from bufferable write transactions.
+
+          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_exokay[ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] && ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_exokay_wb_i : '0);
+          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_err   [ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] || ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_err_wb_i[0] : '0);
+        end
+
         else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
           // 2nd transfer of a split misaligned is blocked. Clear related bits in rmask/wmask
           rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] <= rvfi_mem_rmask[ (4*(memop_cnt+1))-1 -:  4] & ~split_2nd_mask(rvfi_mem_addr[1:0]);
@@ -1299,7 +1334,7 @@ module cv32e40x_rvfi
 
         // Propagate rdata from LSU to rvfi_mem.
         // For split misaligned transfers, lsu_rdata_wb_i is valid when the 2nd transfer has completed
-        rvfi_mem_rdata[(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
+        rvfi_mem_rdata [(32*(memop_cnt+1))-1 -: 32] <= lsu_rdata_wb_i;
 
         // Update rvfi_gpr for writes to RF
         if (rf_we_wb_i) begin
