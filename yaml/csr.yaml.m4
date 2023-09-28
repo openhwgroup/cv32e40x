@@ -4139,7 +4139,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       description: >
           Alias for mstatus.MPP
       type: WARL
-      reset_val: 0
+      reset_val: 3
       msb: 29
       lsb: 28
       warl_legalize: |
@@ -4183,7 +4183,11 @@ ifelse(eval(UMODE != 0), 1, [[[
     - field_name: Exccode
       description: >
           Exception Code
+ifelse(eval(VERIF_HEADER != 0), 1, [[[
+      type: WARL  # "warl_legalize" does nothing without "WARL".
+]]], [[[dnl
       type: WLRL
+]]])
       reset_val: 0
       msb: 11
       lsb: 0
@@ -4410,7 +4414,7 @@ ifelse(eval(CLIC != 0), 1, [[[
         val_out = 0
 ]]])
 
-ifelse(eval(CLIC != 0), 1, [[[
+ifelse(eval(CLIC != 0 && READONLY != 0), 1, [[[
 - csr: mnxti
   description: >
     Machine next interrupt
@@ -4426,7 +4430,7 @@ ifelse(eval(CLIC != 0), 1, [[[
       lsb: 0
 ]]])
 
-ifelse(eval(CLIC != 0), 1, [[[
+ifelse(eval(CLIC != 0 && READONLY != 0), 1, [[[
 - csr: mintstatus
   description: >
     Machine interrupt status
@@ -4502,7 +4506,7 @@ ifelse(eval((CLIC != 0) && (UMODE != 0)), 1, [[[
       lsb: 0
 ]]])
 
-ifelse(eval(CLIC != 0), 1, [[[
+ifelse(eval(CLIC != 0 && READONLY != 0), 1, [[[
 - csr: mscratchcswl
   description: >
     Machine scratch swap for privilege level change
