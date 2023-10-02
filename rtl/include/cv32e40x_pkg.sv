@@ -1123,6 +1123,12 @@ typedef struct packed
   logic        pushpop;    // Operation is part of a push/pop sequence.
 } instr_meta_t;
 
+typedef struct packed
+{
+  logic        bus_err;
+  logic        store;
+} lsu_err_wb_t;
+
 // Struct for carrying eXtension interface information
 typedef struct packed
 {
