@@ -105,7 +105,7 @@ module cv32e40x_rvfi
    input logic [31:0]                         rf_wdata_wb_i,
    input logic [31:0]                         lsu_rdata_wb_i,
    input logic                                lsu_exokay_wb_i,
-   input logic [1:0]                          lsu_err_wb_i,
+   input lsu_err_wb_t                         lsu_err_wb_i,
    input logic                                mret_ptr_wb_i,
    input logic                                clic_ptr_wb_i,
    input logic                                csr_mscratchcsw_in_wb_i,
@@ -1314,16 +1314,16 @@ module cv32e40x_rvfi
           // The err response for bufferable write transactions can lead to an NMI. The exokay response for bufferable write transactions is ignored by the CPU (in fact it is also
           // ignored for most other transactions as it is only used for SC.W instructions).
 
-          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_exokay_wb_i : '0;
-          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_err_wb_i[0] : '0;
+          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_exokay_wb_i      : '0;
+          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= !mem_access_blocked_wb && (|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans.memtype[0])) ? lsu_err_wb_i.bus_err : '0;
         end
 
         else if (lsu_split_2nd_xfer_wb && !mem_access_blocked_wb) begin
           // For split access, rvfi_mem_err and rvfi_mem_exokay are based on both misaligned accesses.
           // But, as mentioned above, we disregard the reported OBI err and exokay signals from bufferable write transactions.
 
-          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_exokay[ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] && ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_exokay_wb_i : '0);
-          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_err   [ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] || ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_err_wb_i[0] : '0);
+          rvfi_mem_exokay  [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_exokay[ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] && ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_exokay_wb_i      : '0);
+          rvfi_mem_err     [ (1*(memop_cnt+1))-1 -:  1] <= rvfi_mem_err   [ (1'b1*(memop_cnt+1'b1))-1'b1 -:  1] || ((|mem_rmask [STAGE_WB] || (|mem_wmask [STAGE_WB] && !ex_mem_trans_2.memtype[0])) ? lsu_err_wb_i.bus_err : '0);
         end
 
         else if (lsu_split_2nd_xfer_wb && mem_access_blocked_wb) begin
