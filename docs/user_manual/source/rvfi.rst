@@ -281,6 +281,12 @@ For cores as |corev| that support misaligned access ``rvfi_mem_addr`` will not a
 .. note::
   ``rvfi_mem_exokay`` and ``rvfi_mem_err`` will not be reported for bufferable writes (tied to zero). Bufferable writes may get their responses after the instructions have retired.
 
+.. note::
+  RVFI for |corev| currently has limited support for AMO instructions.
+  AMO instructions will only set ``rvfi_mem_wmask`` and not ``rvfi_mem_rmask``.
+  The value written to memory by AMO (read-modify-write) instructions is modified outside of |corev| before being written to memory. This results in the value of ``rvfi_mem_wdata`` to not reflect the value written to memory.
+  See :ref:`amo_operations` for details on AMO instructions.
+
 **CSR Signals**
 
 To reduce the number of signals in the RVFI interface, a vectorized CSR interface has been introduced for register ranges.

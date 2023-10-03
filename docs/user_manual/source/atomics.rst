@@ -27,6 +27,8 @@ to perform any type of atomic transaction (including ``lr.w`` and ``sc.w``) on r
 .. note::
   An ``mret`` instruction will **not** clear the reservation set, and thus trap handlers must execute a ``sc.w`` if needed before executing ``mret``.
 
+.. _amo_operations:
+
 Atomic Memory Operations
 ------------------------
 
