@@ -66,7 +66,7 @@ The instruction bus interface is compliant to the OBI protocol (see [OPENHW-OBI]
 The |corev| instruction fetch interface does not
 implement the following optional OBI signals: ``we``, ``be``, ``wdata``, ``auser``, ``wuser``, ``aid``, ``mid``,
 ``rready``, ``ruser``, ``rid``, ``atop``, ``reqpar``, ``gntpar``, ``achk``, ``exokay``, ``rvalidpar``, ``rreadypar``, ``rchk``.
-These signals can be thought of as being tied off as specified in the OBI specification. The |corev| instruction fetch interface can
+These signals can be thought of as being tied off as specified in [OPENHW-OBI]_. The |corev| instruction fetch interface can
 cause up to two outstanding transactions.
 
 :numref:`obi-instruction-basic` and :numref:`obi-instruction-multiple-outstanding` show example timing diagrams of the protocol.
