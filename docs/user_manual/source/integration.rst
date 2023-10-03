@@ -287,3 +287,14 @@ Interfaces
   | ``xif_result_if``       | eXtension result interface, see :ref:`x_result_if`                         |
   +-------------------------+----------------------------------------------------------------------------+
 
+Unimplemented OBI signals
+-------------------------
+
+The |corev| instruction fetch interface does not implement the following optional OBI signals:
+``we``, ``be``, ``wdata``, ``auser``, ``wuser``, ``aid``, ``mid``, ``rready``, ``ruser``, ``rid``, ``atop``, ``reqpar``, ``gntpar``, ``achk``, ``exokay``, ``rvalidpar``, ``rreadypar``, ``rchk``.
+These signals can be thought of as being tied off as specified in the OBI specification.
+
+The |corev| data interface does not implement the following optional OBI signals:
+``auser``, ``wuser``, ``aid``, ``mid``, ``rready``, ``ruser``, ``rid``, ``reqpar``, ``gntpar``, ``achk``, ``rvalidpar``, ``rreadypar``, ``rchk``.
+These signals can be thought of as being tied off as specified in the OBI specification.
+

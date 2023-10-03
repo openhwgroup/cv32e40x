@@ -69,8 +69,8 @@ Protocol
 --------
 
 The data bus interface is compliant to the OBI protocol (see [OPENHW-OBI]_ for detailed signal and protocol descriptions).
-The |corev| data interface does not implement
-the following optional OBI signals: ``auser``, ``wuser``, ``aid``, ``mid``, ``rready``, ``ruser``, ``rid``.
+The |corev| data interface does not implement the following optional OBI signals:
+``auser``, ``wuser``, ``aid``, ``mid``, ``rready``, ``ruser``, ``rid``, ``reqpar``, ``gntpar``, ``achk``, ``rvalidpar``, ``rreadypar``, ``rchk``.
 These signals can be thought of as being tied off as specified in the OBI
 specification. The |corev| data interface can cause up to two outstanding
 transactions.
