@@ -161,6 +161,7 @@ module cv32e40x_align_check import cv32e40x_pkg::*;
   assign core_resp_o.bus_resp     = bus_resp_i;
   assign core_resp_o.align_status = align_status;
   assign core_resp_o.mpu_status   = MPU_OK;  // Assigned in the MPU (upstream), tied off to MPU_OK here.
+  assign core_resp_o.wpt_match    = '0;      // Assigned in the watchpoint unit (upstream), tied off to zero here.
 
   // Detect alignment error
   assign align_err = align_check_en_i && misaligned_access_i;
