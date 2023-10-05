@@ -169,23 +169,24 @@ module cv32e40x_mult import cv32e40x_pkg::*;
 
     // Allow kill at any time
     if (!valid_i || kill_i) begin
-      mulh_state_next = MUL_ALBL;
       valid_o         = 1'b0;
       ready_o         = 1'b1;
-      mulh_acc_next   = '0;
       mulh_shift      = 1'b0;
       mulh_a          = mulh_al;
       mulh_b          = mulh_bl;
     end else begin
       if (halt_i) begin
-        mulh_state_next = mulh_state;
         valid_o         = 1'b0;
         ready_o         = 1'b0;
-        mulh_acc_next   = mulh_acc;
         mulh_shift      = 1'b0;
         mulh_a          = mulh_al;
         mulh_b          = mulh_bl;
       end
+    end
+
+    if (kill_i) begin
+      mulh_state_next = MUL_ALBL;
+      mulh_acc_next   = '0;
     end
   end // always_comb
 

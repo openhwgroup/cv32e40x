@@ -276,6 +276,15 @@ module cv32e40x_div import cv32e40x_pkg::*;
     if (!valid_i || kill_i) begin
       ready_o    = 1'b1;
       valid_o    = 1'b0;
+    end else begin
+      // Neither ready nor valid when halted
+      if (halt_i) begin
+        ready_o = 1'b0;
+        valid_o = 1'b0;
+      end
+    end
+
+    if (kill_i) begin
       next_state = DIV_IDLE;
 
       init_en        = 1'b0;
@@ -284,20 +293,6 @@ module cv32e40x_div import cv32e40x_pkg::*;
       remainder_en   = 1'b0;
       divisor_en     = 1'b0;
       quotient_en    = 1'b0;
-    end else begin
-      // Neither ready nor valid when halted
-      if (halt_i) begin
-        ready_o = 1'b0;
-        valid_o = 1'b0;
-        next_state     = state;
-
-        init_en        = 1'b0;
-        init_dummy_cnt = 1'b0;
-
-        remainder_en   = 1'b0;
-        divisor_en     = 1'b0;
-        quotient_en    = 1'b0;
-      end
     end
   end
 
