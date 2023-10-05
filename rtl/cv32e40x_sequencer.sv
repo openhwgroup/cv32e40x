@@ -118,6 +118,11 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
           instr_cnt_q <= '0;
           seq_state_q <= S_IDLE;
         end
+
+        // When halt_i == 1, no state change should occur. Checked with a_seq_halt_stable within cv32e40x_sequencer_sva.sv
+        // When a sequence is done, instr_cnt_q should be zero and seq_state_q should be S_IDLE. Checked with a_done_state within cv32e40x_sequencer_sva.sv
+        // When (!valid_o && !halt_i) instr_cnt_q should be zero and seq_state_q should be S_IDLE (no instruction was emitted and state should be the initial state)
+        //   Checked by a_idle_state within cv32e40x_sequencer_sva.sv
       end
     end
   end // always_ff
