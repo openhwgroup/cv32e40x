@@ -68,6 +68,11 @@ module cv32e40x_sequencer_sva
                     (valid_o && seq_last_o && ready_i) |=> ((instr_cnt_q == '0) && (seq_state_q == S_IDLE)))
       else `uvm_error("sequencer", "Sequencer state not reset after finishing sequence")
 
+  a_idle_state:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (!valid_o && !halt_i) |=> ((instr_cnt_q == '0) && (seq_state_q == S_IDLE)))
+      else `uvm_error("sequencer", "Sequencer state not reset after finishing sequence")
+
   // Kill implies ready and not valid
   a_seq_kill:
   assert property (@(posedge clk) disable iff (!rst_n)
