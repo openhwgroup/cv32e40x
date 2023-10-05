@@ -97,27 +97,27 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
       instr_cnt_q <= '0;
       seq_state_q <= S_IDLE;
     end else begin
-      if (valid_o && ready_i) begin
+      if (valid_o && ready_i) begin // Implies !halt_i && !kill_i
         // Exclude tablejumps and tablejump pointers from increasing the counter.
         // To remain SEC clean, the prefetcher is ack'ed on a tablejump. If the tablejump
         // has a bus error or mpu error, the instruction after the tablejump may reach EX before the pipeline is killed.
         // If this next instruction is a load or store, the starting value for the stack adjustment will be wrong and the LSU
         // outputs may get affected. If one changes to not ack the prefetcher on table jumps, this exclusion can likely be removed.
-        if (!seq_last_o && !seq_tbljmp_o && !instr_is_tbljmp_ptr_i) begin
-          instr_cnt_q <= instr_cnt_q + 1'd1;
+        if (!seq_last_o) begin
+          if (!seq_tbljmp_o && !instr_is_tbljmp_ptr_i) begin
+            instr_cnt_q <= instr_cnt_q + 1'd1;
+          end
         end else begin
           instr_cnt_q <= '0;
         end
 
         seq_state_q <= seq_state_n;
-      end
-
-      if ((!valid_o && !halt_i) || kill_i) begin
-        // Whenever we have no valid outputs and are not halted, reset counter to 0.
-        // In case both halt_i and kill_i are high, kill_i takes precedence.
-        // Not resetting if halted, as we might have to continue the sequence after being unhalted.
-        instr_cnt_q <= '0;
-        seq_state_q <= seq_state_n;
+      end else begin
+        // Reset state and counter when killed
+        if (kill_i) begin
+          instr_cnt_q <= '0;
+          seq_state_q <= S_IDLE;
+        end
       end
     end
   end // always_ff
@@ -421,11 +421,10 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
       end
     endcase
 
-    // If there is no valid output or we are killed: default to ready_fsm and set state to IDLE.
-    // No reset if !valid while halted, as we may need to continue the sequence after being unhalted.
+    // If there is no valid output or we are killed: default to ready_fsm==1 (fans into if_ready).
+    // No ready_fsm if !valid while halted, as we cannot accept a new instruction while halted.
     if ((!valid_o && !halt_i) || kill_i) begin
       ready_fsm = 1'b1;
-      seq_state_n = S_IDLE;
     end
   end
 
