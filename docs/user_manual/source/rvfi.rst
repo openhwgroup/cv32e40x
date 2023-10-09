@@ -60,6 +60,47 @@ The ``rvfi_dbg_mode`` signal is high if the instruction was executed in debug mo
 
 Whenever |corev| has a pending NMI, the ``rvfi_nmip`` will signal this. ``rvfi_nmip[0]`` will be 1 whenever an NMI is pending, while ``rvfi_nmip[1]`` will be 0 for loads and 1 for stores.
 
+**Memory interface signals**
+
+|corev| RVFI memory signals ``rvfi_mem_``  are extended to support multiple memory operations per instruction and the following signals have been added:
+
+.. code-block:: verilog
+
+  output [ 1*NMEM-1:0] rvfi_mem_exokay,
+  output [ 1*NMEM-1:0] rvfi_mem_err,
+  output [ 3*NMEM-1:0] rvfi_mem_prot,
+  output [ 6*NMEM-1:0] rvfi_mem_atop,
+  output [ 2*NMEM-1:0] rvfi_mem_memtype,
+  output [ NMEM-1  :0] rvfi_mem_dbg
+
+**Integer register read/write**
+
+The integer register read/write signals have been extended to support multiple register file operations per instruction.
+
+.. code-block:: verilog
+
+   output [32*32-1:0] rvfi_gpr_rdata,
+   output [31:0]      rvfi_gpr_rmask,
+   output [32*32-1:0] rvfi_gpr_wdata,
+   output [31:0]      rvfi_gpr_wmask
+
+**Instruction fetch attributes**
+
+|corev| RVFI has been extended with the following signals for reporting attributes used when fetching an instruction.
+
+.. code-block:: verilog
+
+   output [2:0] rvfi_instr_prot,
+   output [1:0] rvfi_instr_memtype,
+   output       rvfi_instr_dbg
+
+**rvfi_trap and rvfi_intr**
+
+These two signals have been extended, see :ref:`rvfi_compatibility`.
+
+
+.. _rvfi_compatibility:
+
 Compatibility
 -------------
 
@@ -224,16 +265,17 @@ For |corev|, the ``rvfi_mem`` interface has been expanded to support multiple me
 
 .. code-block:: verilog
 
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_addr
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_addr
    output [NRET * NMEM * XLEN/8 - 1 : 0] rvfi_mem_rmask
    output [NRET * NMEM * XLEN/8 - 1 : 0] rvfi_mem_wmask
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_rdata
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_wdata
-   output [NRET * NMEM * 3    - 1 : 0]   rvfi_mem_prot
-   output [NRET * NMEM * 6    - 1 : 0]   rvfi_mem_atop
-   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_err
-   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_exokay
-   output [NRET * NMEM * 2    - 1 : 0]   rvfi_mem_memtype
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_rdata
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_wdata
+   output [NRET * NMEM * 3      - 1 : 0] rvfi_mem_prot
+   output [NRET * NMEM * 6      - 1 : 0] rvfi_mem_atop
+   output [NRET * NMEM * 1      - 1 : 0] rvfi_mem_err
+   output [NRET * NMEM * 1      - 1 : 0] rvfi_mem_exokay
+   output [NRET * NMEM * 2      - 1 : 0] rvfi_mem_memtype
+   output [       NMEM          - 1 : 0] rvfi_mem_dbg
 
 Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, starting at ``NMEM=1``.
 
