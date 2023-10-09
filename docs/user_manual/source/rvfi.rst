@@ -86,7 +86,7 @@ The integer register read/write signals have been extended to support multiple r
 
 **Instruction fetch attributes**
 
-|corev| RVFI has been extended with the following signals for reporting attributes used when fetching and instruction.
+|corev| RVFI has been extended with the following signals for reporting attributes used when fetching an instruction.
 
 .. code-block:: verilog
 
@@ -265,17 +265,17 @@ For |corev|, the ``rvfi_mem`` interface has been expanded to support multiple me
 
 .. code-block:: verilog
 
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_addr
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_addr
    output [NRET * NMEM * XLEN/8 - 1 : 0] rvfi_mem_rmask
    output [NRET * NMEM * XLEN/8 - 1 : 0] rvfi_mem_wmask
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_rdata
-   output [NRET * NMEM * XLEN - 1 : 0]   rvfi_mem_wdata
-   output [NRET * NMEM * 3    - 1 : 0]   rvfi_mem_prot
-   output [NRET * NMEM * 6    - 1 : 0]   rvfi_mem_atop
-   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_err
-   output [NRET * NMEM * 1    - 1 : 0]   rvfi_mem_exokay
-   output [NRET * NMEM * 2    - 1 : 0]   rvfi_mem_memtype
-   output [ NMEM-1  :0]                  rvfi_mem_dbg
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_rdata
+   output [NRET * NMEM * XLEN   - 1 : 0] rvfi_mem_wdata
+   output [NRET * NMEM * 3      - 1 : 0] rvfi_mem_prot
+   output [NRET * NMEM * 6      - 1 : 0] rvfi_mem_atop
+   output [NRET * NMEM * 1      - 1 : 0] rvfi_mem_err
+   output [NRET * NMEM * 1      - 1 : 0] rvfi_mem_exokay
+   output [NRET * NMEM * 2      - 1 : 0] rvfi_mem_memtype
+   output [       NMEM          - 1 : 0] rvfi_mem_dbg
 
 Instructions will populate the ``rvfi_mem`` outputs with incrementing ``NMEM``, starting at ``NMEM=1``.
 
