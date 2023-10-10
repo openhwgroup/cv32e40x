@@ -1940,6 +1940,6 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign unused_signals = mstatush_we | misa_we | mip_we | mvendorid_we |
     marchid_we | mimpid_we | mhartid_we | mconfigptr_we | mtval_we | (|mnxti_n) | mscratchcswl_we |
     (|mscratchcswl_rdata) | (|mscratchcswl_n) |mscratchcswl_in_wb | mnxti_in_wb |
-    (|mtval_n) | (|mconfigptr_n) | (|mhartid_n) | (|mimpid_n) | (|marchid_n) | (|mvendorid_n) | (|mip_n) | (|misa_n) | (|mstatush_n);
+    (|mtval_n) | (|mconfigptr_n) | (|mhartid_n) | (|mimpid_n) | (|marchid_n) | (|mvendorid_n) | (|mip_n) | (|misa_n) | (|mstatush_n) | (|priv_lvl_q);
 
 endmodule

@@ -686,7 +686,6 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
     ctrl_fsm_o.debug_csr_save   = 1'b0;
     ctrl_fsm_o.debug_trigger_hit = '0;          // Mask of which triggers did hit.
     ctrl_fsm_o.debug_trigger_hit_update = 1'b0; // Signal that hit bits of mcontrol6 shall be written.
-    ctrl_fsm_o.block_data_addr  = 1'b0;
 
     // Single step halting of IF
     single_step_halt_if_n       = single_step_halt_if_q;
