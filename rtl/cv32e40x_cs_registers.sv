@@ -1520,7 +1520,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign mconfigptr_rdata   = 32'h0;
 
   // Only machine mode is supported
-  assign priv_lvl_rdata     = PRIV_LVL_M;
+  assign priv_lvl_rdata     = priv_lvl_q;
   assign priv_lvl_q         = PRIV_LVL_M;
   assign priv_lvl_lsu_o     = PRIV_LVL_M;
   assign priv_lvl_if_ctrl_o.priv_lvl     = PRIV_LVL_M;

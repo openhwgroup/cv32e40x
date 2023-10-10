@@ -1348,10 +1348,6 @@ typedef struct packed {
                                       // Setting to 11 bits (max), unused bits will be tied off
   logic [4:0]  nmi_mtvec_index;       // Offset into mtvec when taking an NMI
 
-  // To WB stage
-  logic        block_data_addr;       // To LSU to prevent data_addr_wb_i updates between error and taken NMI
-
-
   logic        irq_ack;               // Irq has been taken
   logic [9:0]  irq_id;                // Id of taken irq. Max width (1024 interrupts), unused bits will be tied off
   logic [7:0]  irq_level;             // Level of taken irq (CLIC only)
