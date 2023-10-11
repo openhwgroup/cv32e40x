@@ -1331,7 +1331,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
         // If debug entry is caused by a watchpoint address trigger, then abort_op_wb_i will be 1 and a debug entry is initiated.
         // This must also cause the sequence_in_progress_wb to be reset as the sequence is effectively terminated, although the instruction itself is not killed or completed
         // in a normal manner. As the WB stage is halted for debug entry on a watchcpoint trigger, wb_valid_i is zero.
-        if (ex_wb_pipe_i.instr_valid && wpt_match_wb_i && abort_op_wb_i) begin
+        if (ex_wb_pipe_i.instr_valid && (|wpt_match_wb_i) && abort_op_wb_i) begin
           sequence_in_progress_wb <= 1'b0;
         end
       end
