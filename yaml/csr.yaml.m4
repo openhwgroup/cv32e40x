@@ -5076,12 +5076,19 @@ ifelse(eval(UMODE != 0), 1, [[[
       reset_val: 0
       msb: 31
       lsb: 31
+    - field_name: PBMTE
+      description: >
+        Hardwired to 0
+      type: R
+      reset_val: 0
+      msb: 30
+      lsb: 30
     - field_name: RESERVED0
       description: >
         Hardwired to 0
       type: WPRI
       reset_val: 0
-      msb: 30
+      msb: 29
       lsb: 0
 ]]])
 
