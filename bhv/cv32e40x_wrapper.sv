@@ -411,6 +411,8 @@ if (CLIC) begin : clic_asserts
                                  .ctrl_fsm_cs             (core_i.controller_i.controller_fsm_i.ctrl_fsm_cs),
                                  .ctrl_fsm                (core_i.ctrl_fsm),
                                  .dcsr                    (core_i.dcsr),
+                                 .ex_wb_pipe_i            (core_i.ex_wb_pipe),
+                                 .last_op_wb_i            (core_i.last_op_wb),
                                  .*);
 end
 endgenerate

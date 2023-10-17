@@ -1129,8 +1129,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
         end
       end //ctrl_fsm_i.csr_save_cause
 
-      ctrl_fsm_i.csr_restore_mret,
-      ctrl_fsm_i.csr_restore_mret_ptr: begin // MRET
+      ctrl_fsm_i.csr_restore_mret: begin // MRET
         priv_lvl_n     = privlvl_t'(mstatus_rdata.mpp);
         priv_lvl_we    = 1'b1;
 
