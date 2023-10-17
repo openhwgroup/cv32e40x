@@ -41,6 +41,8 @@ module cv32e40x_controller_fsm_sva
   input ctrl_fsm_t      ctrl_fsm_o,
   input ctrl_byp_t      ctrl_byp_i,
   input logic           jump_taken_id,
+  input logic           branch_in_ex,
+  input logic           branch_taken_q,
   input logic           branch_taken_ex,
   input logic           branch_decision_ex_i,
   input ctrl_state_e    ctrl_fsm_cs,
@@ -180,6 +182,19 @@ module cv32e40x_controller_fsm_sva
   endproperty : p_jalr_stable_target
 
   a_jalr_stable_target: assert property(p_jalr_stable_target) else `uvm_error("controller", "Assertion a_jalr_stable_target failed");
+
+  // Check that a JALR instruction which reads x0 gets zero as result on jalr_fw_id_i.
+  property p_jalr_target_x0;
+    logic [4:0] jalr_rs_id;
+    logic [31:0] rf_at_jump_id;
+    @(posedge clk) disable iff (!rst_n)
+      (jump_taken && alu_jmpr_id_i && !(|if_id_pipe_i.instr.bus_resp.rdata[19:15])
+      |->
+      jalr_fw_id_i == 32'd0);
+
+  endproperty : p_jalr_target_x0
+
+  a_jalr_target_x0: assert property(p_jalr_target_x0) else `uvm_error("controller", "Assertion a_jalr_target_x0 failed");
 
   // Check that xret does not coincide with CSR write (to avoid using wrong return address)
   // This check is more strict than really needed; a CSR instruction would be allowed in EX as long
@@ -339,6 +354,44 @@ module cv32e40x_controller_fsm_sva
                       ((ex_wb_pipe_i.instr.bus_resp.rdata == 32'h30200073) && debug_mode_q && wb_valid_i)
                       |-> exception_in_wb && (exception_cause_wb == EXC_CAUSE_ILLEGAL_INSN))
       else `uvm_error("controller", "mret in debug mode not flagged as illegal")
+
+  // Helper logic to make assertion look cleaner
+  // Same logic as in the bypass module, but duplicated here to catch any changes in bypass
+  // that could lead to undetected errors
+  logic csrw_ex_wb;
+  assign csrw_ex_wb = (
+                        ((id_ex_pipe_i.csr_en || (id_ex_pipe_i.sys_en && id_ex_pipe_i.sys_mret_insn)) && id_ex_pipe_i.instr_valid) ||
+                        ((ex_wb_pipe_i.csr_en || (ex_wb_pipe_i.sys_en && ex_wb_pipe_i.sys_mret_insn)) && ex_wb_pipe_i.instr_valid)
+                      );
+
+  // Check that mret is stalled in ID if CSR writes (explicit and implicit)
+  // are present in EX or WB. Exluding the case where the second part of an mret is in ID while the first part
+  // is in either EX or WB.
+  a_mret_id_halt :
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    ((sys_en_id_i && sys_mret_id_i) && if_id_pipe_i.instr_valid && csrw_ex_wb)
+                    |-> (!id_valid_i && ctrl_fsm_o.halt_id))
+    else `uvm_error("controller", "mret not halted in ID when CSR write is present in EX or WB")
+
+  // Assert that branches (that are not already taken) are always taken in the first cycle of EX, unless EX is killed or halted
+  // What we really want to check with this assertion is that a branch taken always results
+  // in a pc_set to PC_BRANCH.
+  // If the branch is not taken in the first cycle of EX, caution must be taken to avoid e.g. a jump in
+  // ID taking presedence over the branch in EX.
+
+  a_branch_in_ex_taken_first_cycle:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    ($rose(branch_in_ex && branch_decision_ex_i) && !branch_taken_q && !(ctrl_fsm_o.halt_ex || ctrl_fsm_o.kill_ex) |->
+                    ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_BRANCH) &&
+                    ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id)); // For SECURE=1, branch instructions are bot in ID and EX when branch is taken, do not kill ID.
+
+  // When flushing the pipeline due to CSR updates in WB, make sure there we don't initiate transactions on the data interface
+  // and that there are no outstanding transactions from the LSU point of view.
+  // There might still be outstanding transactions in the write buffer, which is why we can't check that data_req_o==0
+  a_csr_wr_in_wb_flush_no_obi:
+  assert property (@(posedge clk) disable iff (!rst_n)
+                    (csr_wr_in_wb_flush_i) |-> (lsu_outstanding_cnt == 2'b00) && !lsu_trans_valid_i)
+    else `uvm_error("controller", "Flushing pipeline when the LSU have outstanding transactions")
 
   // assert that NMI's are not reported on irq_ack
   // Exception for the case where the core wakes from SLEEP due to an interrupt
