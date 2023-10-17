@@ -124,6 +124,20 @@ module cv32e40x_rvfi_sva
     `uvm_error("rvfi",
       $sformatf("Every irq_ack should be followed by the corresponding rvfi_intr"));
 
+  // rvfi_intr.intr shall also have rvfi_intr.exception or rvfi_intr.interrupt set at the same time
+  property p_rvfi_intr_interrupt_exception;
+    @(posedge clk_i) disable iff (!rst_ni)
+    rvfi_intr.intr
+      |->
+        (rvfi_intr.interrupt ||
+        rvfi_intr.exception);
+  endproperty : p_rvfi_intr_interrupt_exception
+
+  a_rvfi_intr_interrupt_exception: assert property (p_rvfi_intr_interrupt_exception)
+  else
+    `uvm_error("rvfi",
+      $sformatf("rvfi_intr.intr set without rvfi_intr.exception or rvfi_intr.interrupt"));
+
 
   // Sequence used to locate rvfi_valid following rvfi_valid with prereq set
   sequence s_goto_next_rvfi_valid(prereq);
