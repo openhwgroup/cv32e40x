@@ -383,7 +383,7 @@ module cv32e40x_controller_fsm_sva
   assert property (@(posedge clk) disable iff (!rst_n)
                     ($rose(branch_in_ex && branch_decision_ex_i) && !branch_taken_q && !(ctrl_fsm_o.halt_ex || ctrl_fsm_o.kill_ex) |->
                     ctrl_fsm_o.pc_set && (ctrl_fsm_o.pc_mux == PC_BRANCH) &&
-                    ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id)); // For SECURE=1, branch instructions are bot in ID and EX when branch is taken, do not kill ID.
+                    ctrl_fsm_o.kill_if && ctrl_fsm_o.kill_id));
 
   // When flushing the pipeline due to CSR updates in WB, make sure there we don't initiate transactions on the data interface
   // and that there are no outstanding transactions from the LSU point of view.
