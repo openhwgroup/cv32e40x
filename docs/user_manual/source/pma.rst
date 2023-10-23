@@ -34,7 +34,7 @@ Memory ranges can be defined as either main (``main=1``) or I/O (``main=0``).
 Code execution is allowed from main memory and main memory is considered to be idempotent. Non-aligned transactions are supported in main memory.
 Modifiable transactions are supported in main memory.
 
-Code execution is not allowed from I/O regions and an instruction access fault (exception code 1) is raised when attempting to execute from such regions. 
+Code execution is not allowed from I/O regions and an instruction access fault (exception code 1) is raised when attempting to execute from such regions.
 I/O regions are considered to be non-idempotent and therefore the PMA will prevent speculative accesses to such regions.
 Non-aligned transactions are not supported in I/O regions. An attempt to perform a non-naturally aligned load access to an I/O region causes a precise
 load access fault (exception code 5). An attempt to perform a non-naturally aligned store access to an I/O region causes a precise store access fault (exception code 7).
@@ -83,3 +83,34 @@ For such accesses the PMA configuration and default attribution rules are ignore
  * The access is treated as a non-bufferable access.
  * The access is treated as a non-cacheable access.
  * The access is treated as an access to a region without support for atomic operations.
+
+Instructions with multiple memory operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some instructions may perform multiple memory operations. These can be misaligned load and store instructions that require two memory operations to complete, or
+any of the instructions ``cm.push``, ``cm.pop``, ``cm.popret`` or ``cm.popretz`` from the Zc extension. Common for all these is that the different memory operations
+within the same instruction may get attributed from different regions of the PMA, depending on the address used. In case any of the memory operations get blocked by the PMA, an exception will be raised as soon as it is detected.
+This means that for some instructions the core may get partial state updates or perform some stores of an instruction without fully completing the instruction due to an exception.
+If any of the mentioned instructions gets a PMA error on the first memory operation, no state update will occur before taking the exception.
+:numref:`Impacts of PMA error on multi memory operation instructions` shows how the different instructions behave upon PMA errors on different memory operations.
+
+.. table:: Impacts of PMA error on multi memory operation instructions
+  :name: Impacts of PMA error on multi memory operation instructions
+  :widths: 10 10 80
+  :class: no-scrollbar-table
+
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  |   Instruction Type    |  Memory operation  |                         Description                         |
+  +=======================+====================+=============================================================+
+  | Misaligned load       | 1                  | Exception taken, no state updates.                          |
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  | Misaligned load       | 2                  | Exception taken, no state updates.                          |
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  | Misaligned store      | 1                  | Exception taken, no state updates.                          |
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  | Misaligned store      | 2                  | Exception taken, first store visible outside of |corev|.    |
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  | Zc*                   | 1                  | Exception taken, no state updates.                          |
+  +-----------------------+--------------------+-------------------------------------------------------------+
+  | Zc*                   | 2 -                | Exception taken, partial state update and/or visible stores.|
+  +-----------------------+--------------------+-------------------------------------------------------------+
