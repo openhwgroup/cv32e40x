@@ -32,7 +32,8 @@ package cv32e40x_rvfi_pkg;
   typedef enum logic [1:0] { // Memory error types
     MEM_ERR_IO_ALIGN          = 2'h0,
     MEM_ERR_ATOMIC            = 2'h1,
-    MEM_ERR_PMP               = 2'h2
+    MEM_ERR_PMP               = 2'h2,
+    MEM_ERR_ATOMIC_MISALIGN   = 2'h3
   } mem_err_t;
 
   typedef struct packed { // Autonomously updated CSRs

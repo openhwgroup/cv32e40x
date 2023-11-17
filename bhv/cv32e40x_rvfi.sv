@@ -82,6 +82,7 @@ module cv32e40x_rvfi
    input logic                                lsu_pma_err_ex_i,
    input logic                                lsu_pma_atomic_ex_i,
    input pma_cfg_t                            lsu_pma_cfg_ex_i,
+   input logic                                lsu_atomic_align_err_ex_i,
    input logic                                lsu_misaligned_ex_i,
    input obi_data_req_t                       buffer_trans_ex_i,
    input logic                                buffer_trans_valid_ex_i,
@@ -870,12 +871,6 @@ module cv32e40x_rvfi
         EXC_CAUSE_STORE_FAULT : begin
           rvfi_trap_next.cause_type = mem_err[STAGE_WB];
         end
-        EXC_CAUSE_LOAD_MISALIGNED : begin
-          rvfi_trap_next.cause_type = 2'h0;
-        end
-        EXC_CAUSE_STORE_MISALIGNED : begin
-          rvfi_trap_next.cause_type = 2'h0;
-        end
         default : begin
           // rvfi_trap_next.cause_type is only set for exception codes that can have multiple causes
         end
@@ -1195,8 +1190,9 @@ module cv32e40x_rvfi
         // Capture cause of LSU exception for the cases that can have multiple reasons for an exception
         // These are currently load and store access faults trigger by misaligned access to i/o regions,
         // atomic accesses to regions not enabled for atomics or accesses blocked by PMP.
-        mem_err [STAGE_WB]  = lsu_pma_err_misaligned_ex    ? MEM_ERR_IO_ALIGN          : // Non-natrually aligned access to !main
+        mem_err [STAGE_WB]  = lsu_pma_err_misaligned_ex    ? MEM_ERR_IO_ALIGN          : // Non-naturally aligned access to !main
                               lsu_pma_err_atomic_ex        ? MEM_ERR_ATOMIC            : // Any atomic to non-atomic PMA region
+                              lsu_atomic_align_err_ex_i    ? MEM_ERR_ATOMIC_MISALIGN   : // Misaligned atomic
                                                              MEM_ERR_PMP;                // PMP error
 
         // Read autonomuos CSRs from EX perspective

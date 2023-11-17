@@ -269,7 +269,7 @@ if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
   // cause_type MEM_ERR_IO_ALIGN
   //
   // Misaligned atomics which are otherwise not blocked by the PMA (cfg is main and atomic) shall use either
-  // EXC_CAUSE_LOAD_MISALIGNED or EXC_CAUSE_STORE_MISALIGNED with cause_type MEM_ERR_IO_ALIGN.
+  // EXC_CAUSE_LOAD_FAULT or EXC_CAUSE_STORE_FAULT with cause_type MEM_ERR_ATOMIC_MISALIGN.
   a_aligned_lr_access_fault_trap:
   assert property (@(posedge clk_i) disable iff (!rst_ni)
                   pc_mux_exception && (lsu_atomic_wb_i == AT_LR) && lsu_en_wb_i &&
@@ -286,8 +286,8 @@ if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
-                  (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_MISALIGNED))
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC_MISALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_FAULT))
                   or
                   ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_LOAD_FAULT))
@@ -312,8 +312,8 @@ if ((A_EXT == A) || (A_EXT == ZALRSC)) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
-                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_MISALIGNED))
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC_MISALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
                   or
                   ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
@@ -340,8 +340,8 @@ if (A_EXT == A) begin
                   lsu_split_q_wb_i
                   |=>
                   rvfi_valid &&
-                  ((rvfi_trap.cause_type == MEM_ERR_IO_ALIGN) &&
-                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_MISALIGNED))
+                  ((rvfi_trap.cause_type == MEM_ERR_ATOMIC_MISALIGN) &&
+                  (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
                   or
                   ((rvfi_trap.cause_type == MEM_ERR_ATOMIC) &&
                   (rvfi_trap.exception_cause == EXC_CAUSE_STORE_FAULT))
