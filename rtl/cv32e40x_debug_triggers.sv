@@ -77,11 +77,9 @@ import cv32e40x_pkg::*;
   output logic        etrigger_wb_o        // Exception trigger match
 );
 
-  // Set mask for supported exception codes for exception triggers.
-  // Codes 4 and 6 for misaligned load/stores can only occur when A_EXT != A_NONE
+  // Set mask for supported exception codes for exception triggers
   localparam logic [31:0] ETRIGGER_TDATA2_MASK = (1 << EXC_CAUSE_INSTR_BUS_FAULT) | (1 << EXC_CAUSE_ECALL_MMODE) | (1 << EXC_CAUSE_STORE_FAULT) |
-                                                   (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT) |
-                                                   (32'(A_EXT != A_NONE) << EXC_CAUSE_LOAD_MISALIGNED) | (32'(A_EXT != A_NONE) << EXC_CAUSE_STORE_MISALIGNED);
+                                                   (1 << EXC_CAUSE_LOAD_FAULT) | (1 << EXC_CAUSE_BREAKPOINT) | (1 << EXC_CAUSE_ILLEGAL_INSN) | (1 << EXC_CAUSE_INSTR_FAULT);
 
 
   // CSR write data

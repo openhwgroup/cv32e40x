@@ -353,8 +353,8 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
                                 !dcsr_i.ebreakm && !debug_mode_q)                                                            ? EXC_CAUSE_BREAKPOINT       :
                               (mpu_status_wb_i == MPU_WR_FAULT)                                                              ? EXC_CAUSE_STORE_FAULT      :
                               (mpu_status_wb_i == MPU_RE_FAULT)                                                              ? EXC_CAUSE_LOAD_FAULT       :
-                              (align_status_wb_i == ALIGN_WR_ERR)                                                            ? EXC_CAUSE_STORE_MISALIGNED :
-                                                                                                                               EXC_CAUSE_LOAD_MISALIGNED;
+                              (align_status_wb_i == ALIGN_WR_ERR)                                                            ? EXC_CAUSE_STORE_FAULT      :
+                                                                                                                               EXC_CAUSE_LOAD_FAULT;
 
   assign ctrl_fsm_o.exception_cause_wb = exception_cause_wb;
 
