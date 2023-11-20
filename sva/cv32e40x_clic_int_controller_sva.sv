@@ -50,7 +50,10 @@ module cv32e40x_clic_int_controller_sva
    input ctrl_state_e ctrl_fsm_cs,
 
    input ctrl_fsm_t   ctrl_fsm,
-   input dcsr_t       dcsr
+   input dcsr_t       dcsr,
+
+   input ex_wb_pipe_t ex_wb_pipe_i,
+   input logic        last_op_wb_i
 );
 
   // Check that a pending interrupt is taken as soon as possible after being enabled
@@ -59,7 +62,11 @@ module cv32e40x_clic_int_controller_sva
     ( !irq_req_ctrl_o
        ##1
        irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie))
-       |-> (ctrl_pending_interrupt && ctrl_interrupt_allowed));
+       |->
+       ((ctrl_pending_interrupt && ctrl_interrupt_allowed) || // Interrupt pendinding and allowed to be taken
+        ($past(ex_wb_pipe_i.instr_valid) && $past(ex_wb_pipe_i.sys_en) && $past(ex_wb_pipe_i.sys_mret_insn) && !$past(last_op_wb_i)) &&
+        (ctrl_pending_interrupt && !ctrl_interrupt_allowed)) // Interrupts enabled by mret mid-sequence, not allowed to be taken
+    );
   endproperty;
 
   a_clic_enable: assert property(p_clic_enable)
@@ -72,7 +79,8 @@ module cv32e40x_clic_int_controller_sva
       ##1                        // Next cycle
       irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie)) && // Interrupt pending but irq inputs are unchanged
       (ctrl_fsm_cs != DEBUG_TAKEN) &&  // Make sure we are not handling a debug entry already (could be a single stepped mret enabling interrupts for instance)
-      !(ctrl_pending_nmi || ctrl_pending_async_debug)   // No pending events with higher priority than interrupts are taking place
+      !(ctrl_pending_nmi || ctrl_pending_async_debug) &&  // No pending events with higher priority than interrupts are taking place
+      ctrl_interrupt_allowed                              // and interrupts are allowed (mret which restarts pointer fetch may reenable interrupts before the sequence is finished)
       |->
       ctrl_fsm.irq_ack  // We must take the interrupt if enabled (mret or CSR write) and no NMI or external debug is pending
     );

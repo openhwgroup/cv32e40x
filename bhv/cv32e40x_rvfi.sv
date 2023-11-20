@@ -626,6 +626,7 @@ module cv32e40x_rvfi
   logic [31:0]       pc_wb_past;
   logic [4:0]        rd_addr_wb_past;
   logic [31:0]       rd_wdata_wb_past;
+  privlvl_t          priv_lvl_wb_past;
 
 
   //Propagating from EX stage
@@ -659,6 +660,12 @@ module cv32e40x_rvfi
   rvfi_csr_map_t rvfi_csr_rmask;
   rvfi_csr_map_t rvfi_csr_wdata;
   rvfi_csr_map_t rvfi_csr_wmask;
+
+  // CSR inputs for handling mret pointers with mret in WB_PAST stage
+  rvfi_csr_map_t rvfi_csr_rdata_wb_past;
+  rvfi_csr_map_t rvfi_csr_wdata_wb_past;
+  rvfi_csr_map_t rvfi_csr_rmask_wb_past;
+  rvfi_csr_map_t rvfi_csr_wmask_wb_past;
 
   // Reads from autonomous registers propagate from EX stage
   rvfi_auto_csr_map_t ex_csr_rdata;
@@ -854,7 +861,7 @@ module cv32e40x_rvfi
       // Indicate synchronous (non-debug entry) trap
       rvfi_trap_next.exception       = 1'b1;
       rvfi_trap_next.exception_cause = ctrl_fsm_i.csr_cause.exception_code[5:0]; // All synchronous exceptions fit in lower 6 bits
-      rvfi_trap_next.clicptr         = clic_ptr_wb_i;
+      rvfi_trap_next.clicptr         = clic_ptr_wb_i || mret_ptr_wb_i;
 
       // Separate exception causes with the same exception cause code
       case (ctrl_fsm_i.csr_cause.exception_code)
@@ -1222,7 +1229,7 @@ module cv32e40x_rvfi
         rvfi_rd_wdata   <= mret_ptr_wb ? rd_wdata_wb_past : rd_wdata_wb;
 
         // Read/Write CSRs
-        // No mret pointer muxing, CSR updates for mret with CLIC pointer happens when the pointer reachces WB.
+        // Muxing values for mret/mret pointers happens on the inputs (*_d) below
         rvfi_csr_rdata  <= rvfi_csr_rdata_d;
         rvfi_csr_rmask  <= rvfi_csr_rmask_d;
         rvfi_csr_wdata  <= rvfi_csr_wdata_d;
@@ -1238,7 +1245,7 @@ module cv32e40x_rvfi
         rvfi_instr_memtype <= mret_ptr_wb ? instr_req[STAGE_WB_PAST].memtype : instr_req[STAGE_WB].memtype;
         rvfi_instr_dbg     <= mret_ptr_wb ? instr_req[STAGE_WB_PAST].dbg     : instr_req[STAGE_WB].dbg;
 
-        rvfi_mode      <= priv_lvl_i;
+        rvfi_mode      <= mret_ptr_wb ? priv_lvl_wb_past : priv_lvl_i;
 
         rvfi_dbg       <= mret_ptr_wb ? debug_cause[STAGE_WB_PAST] : debug_cause[STAGE_WB];
         rvfi_dbg_mode  <= mret_ptr_wb ? debug_mode [STAGE_WB_PAST] : debug_mode[STAGE_WB];
@@ -1265,6 +1272,14 @@ module cv32e40x_rvfi
         instr_rdata_wb_past         <= instr_rdata_wb_i;
         rd_addr_wb_past             <= rd_addr_wb;
         rd_wdata_wb_past            <= rd_wdata_wb;
+
+        // Remember CSR reads/writes for instruction in WB
+        rvfi_csr_rdata_wb_past <= rvfi_csr_rdata_d;
+        rvfi_csr_wdata_wb_past <= rvfi_csr_wdata_d;
+        rvfi_csr_rmask_wb_past <= rvfi_csr_rmask_d;
+        rvfi_csr_wmask_wb_past <= rvfi_csr_wmask_d;
+
+        priv_lvl_wb_past       <= priv_lvl_i;
 
         // Clear rvfi_mem and rvfi_gpr on first op
         if (first_op_wb_i) begin
@@ -1446,10 +1461,14 @@ module cv32e40x_rvfi
   assign rvfi_csr_wmask_d.jvt                = csr_jvt_we_i ? '1 : '0;
 
   // Machine trap setup
-  assign rvfi_csr_rdata_d.mstatus            = csr_mstatus_q_i;
+  // If an mret pointer is in WB, capture CSR rdata as seen by the mret instruction.
+  // Write mask/data are either from the mret (if pointer fetch is successful) or the pointer fetch  (if it generates an exception)
+  assign rvfi_csr_rdata_d.mstatus            = mret_ptr_wb ? rvfi_csr_rdata_wb_past.mstatus : csr_mstatus_q_i;
   assign rvfi_csr_rmask_d.mstatus            = '1;
-  assign rvfi_csr_wdata_d.mstatus            = csr_mstatus_n_i;
-  assign rvfi_csr_wmask_d.mstatus            = csr_mstatus_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mstatus            = mret_ptr_wb ? (csr_mstatus_we_i ? csr_mstatus_n_i : rvfi_csr_wdata_wb_past.mstatus)
+                                                           : csr_mstatus_n_i;
+  assign rvfi_csr_wmask_d.mstatus            = mret_ptr_wb ? (csr_mstatus_we_i ? '1 : rvfi_csr_wmask_wb_past.mstatus)
+                                                           : (csr_mstatus_we_i ? '1 : '0);
 
   assign rvfi_csr_rdata_d.mstatush           = csr_mstatush_q_i;
   assign rvfi_csr_rmask_d.mstatush           = '1;
@@ -1501,10 +1520,14 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mepc               = csr_mepc_n_i;
   assign rvfi_csr_wmask_d.mepc               = csr_mepc_we_i ? '1 : '0;
 
-  assign rvfi_csr_rdata_d.mcause             = csr_mcause_q_i;
+  // If an mret pointer is in WB, capture CSR rdata as seen by the mret instruction.
+  // Write mask/data are either from the mret (if pointer fetch is successful) or the pointer fetch  (if it generates an exception)
+  assign rvfi_csr_rdata_d.mcause             = mret_ptr_wb ? rvfi_csr_rdata_wb_past.mcause : csr_mcause_q_i;
   assign rvfi_csr_rmask_d.mcause             = '1;
-  assign rvfi_csr_wdata_d.mcause             = csr_mcause_n_i;
-  assign rvfi_csr_wmask_d.mcause             = csr_mcause_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mcause             = mret_ptr_wb ? (csr_mcause_we_i ? csr_mcause_n_i : rvfi_csr_wdata_wb_past.mcause)
+                                                           : csr_mcause_n_i;
+  assign rvfi_csr_wmask_d.mcause             = mret_ptr_wb ? (csr_mcause_we_i ? '1 : rvfi_csr_wmask_wb_past.mcause)
+                                                           : (csr_mcause_we_i ? '1 : '0);
 
   assign rvfi_csr_rdata_d.mtval              = '0;
   assign rvfi_csr_rmask_d.mtval              = '1;
@@ -1526,15 +1549,22 @@ module cv32e40x_rvfi
   assign rvfi_csr_wdata_d.mnxti              = csr_mnxti_n_i;
   assign rvfi_csr_wmask_d.mnxti              = csr_mnxti_we_i ? '1 : '0;
 
-  assign rvfi_csr_rdata_d.mintstatus         = csr_mintstatus_q_i;
+  // If an mret pointer is in WB, capture CSR rdata as seen by the mret instruction.
+  // Write mask/data are either from the mret (if pointer fetch is successful) or the pointer fetch  (if it generates an exception)
+  assign rvfi_csr_rdata_d.mintstatus         = mret_ptr_wb ? rvfi_csr_rdata_wb_past.mintstatus : csr_mintstatus_q_i;
   assign rvfi_csr_rmask_d.mintstatus         = '1;
-  assign rvfi_csr_wdata_d.mintstatus         = csr_mintstatus_n_i;
-  assign rvfi_csr_wmask_d.mintstatus         = csr_mintstatus_we_i ? '1 : '0;
-
-  assign rvfi_csr_rdata_d.mintthresh         = csr_mintthresh_q_i;
+  assign rvfi_csr_wdata_d.mintstatus         = mret_ptr_wb ? (csr_mintstatus_we_i ? csr_mintstatus_n_i : rvfi_csr_wdata_wb_past.mintstatus)
+                                                           : csr_mintstatus_n_i;
+  assign rvfi_csr_wmask_d.mintstatus         = mret_ptr_wb ? (csr_mintstatus_we_i ? '1 : rvfi_csr_wmask_wb_past.mintstatus)
+                                                           : (csr_mintstatus_we_i ? '1 : '0);
+  // If an mret pointer is in WB, capture CSR rdata as seen by the mret instruction.
+  // Write mask/data are either from the mret (if pointer fetch is successful) or the pointer fetch  (if it generates an exception)
+  assign rvfi_csr_rdata_d.mintthresh         = mret_ptr_wb ? rvfi_csr_rdata_wb_past.mintthresh : csr_mintthresh_q_i;
   assign rvfi_csr_rmask_d.mintthresh         = '1;
-  assign rvfi_csr_wdata_d.mintthresh         = csr_mintthresh_n_i;
-  assign rvfi_csr_wmask_d.mintthresh         = csr_mintthresh_we_i ? '1 : '0;
+  assign rvfi_csr_wdata_d.mintthresh         = mret_ptr_wb ? (csr_mintthresh_we_i ? csr_mintthresh_n_i : rvfi_csr_wdata_wb_past.mintthresh)
+                                                           : csr_mintthresh_n_i;
+  assign rvfi_csr_wmask_d.mintthresh         = mret_ptr_wb ? (csr_mintthresh_we_i ? '1 : rvfi_csr_wmask_wb_past.mintthresh)
+                                                           : (csr_mintthresh_we_i ? '1 : '0);
 
   assign rvfi_csr_rdata_d.mscratchcsw        = csr_mscratchcsw_q_i;
   assign rvfi_csr_rmask_d.mscratchcsw        = csr_mscratchcsw_in_wb_i ? '1 : '0;
