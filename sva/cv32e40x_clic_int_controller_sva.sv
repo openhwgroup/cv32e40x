@@ -64,7 +64,8 @@ module cv32e40x_clic_int_controller_sva
        irq_req_ctrl_o && $stable(clic_irq_q) && $stable(clic_irq_level_q) && !(ctrl_fsm.debug_mode || (dcsr.step && !dcsr.stepie))
        |->
        ((ctrl_pending_interrupt && ctrl_interrupt_allowed) || // Interrupt pendinding and allowed to be taken
-        ($past(ex_wb_pipe_i.instr_valid) && $past(ex_wb_pipe_i.sys_en) && $past(ex_wb_pipe_i.sys_mret_insn) && !$past(last_op_wb_i))) // Interrupts enabled by mret mid-sequence
+        ($past(ex_wb_pipe_i.instr_valid) && $past(ex_wb_pipe_i.sys_en) && $past(ex_wb_pipe_i.sys_mret_insn) && !$past(last_op_wb_i)) &&
+        (ctrl_pending_interrupt && !ctrl_interrupt_allowed)) // Interrupts enabled by mret mid-sequence, not allowed to be taken
     );
   endproperty;
 
