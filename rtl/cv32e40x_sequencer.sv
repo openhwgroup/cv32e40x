@@ -83,7 +83,8 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
 
   logic                ready_fsm;
 
-  logic                dmove_legal_dest;
+  logic                dmove_legal_dest_s2a;
+  logic                dmove_legal_dest_a2s;
   logic                pushpop_legal_rlist;
 
   assign instr = instr_i.bus_resp.rdata;
@@ -136,11 +137,14 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
   assign pushpop_legal_rlist = (RV32 == RV32I) ? (rlist > 4'h3) :
                                (rlist < 4'h7) && (rlist > 4'h3);
 
-  // rs1 must be different from rs2
+  // cm.mva01s: allows rs1' and rs2' to be the same register
   // For RV32E, S2-S11 are not present
-  assign dmove_legal_dest = (RV32 == RV32I) ? (instr[9:7] != instr[4:2]) :
-                            (instr[9:7] != instr[4:2]) && (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
+  assign dmove_legal_dest_s2a = (RV32 == RV32I) ? 1'b1 : (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
 
+  // cm.mvsa01: rs1' must be different from rs2'
+  // For RV32E, S2-S11 are not present
+  assign dmove_legal_dest_a2s = (RV32 == RV32I) ? (instr[9:7] != instr[4:2]) :
+                                (instr[9:7] != instr[4:2]) && (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
   always_comb
   begin
     seq_instr     = INVALID_INST;
@@ -164,13 +168,15 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
             end
 
             3'b011: begin
-              if (dmove_legal_dest) begin
-                if (instr[6:5] == 2'b11) begin
-                  // cm.mva01s
+              if (instr[6:5] == 2'b11) begin
+                // cm.mva01s
+                if (dmove_legal_dest_s2a) begin
                   seq_instr = MVA01S;
                   seq_move_s2a = 1'b1;
-                end else if (instr[6:5] == 2'b01) begin
-                  // cm.mvsa01
+                end
+              end else if (instr[6:5] == 2'b01) begin
+                // cm.mvsa01
+                if (dmove_legal_dest_a2s) begin
                   seq_instr = MVSA01;
                   seq_move_a2s = 1'b1;
                 end
