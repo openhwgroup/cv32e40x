@@ -137,11 +137,11 @@ module cv32e40x_sequencer import cv32e40x_pkg::*;
   assign pushpop_legal_rlist = (RV32 == RV32I) ? (rlist > 4'h3) :
                                (rlist < 4'h7) && (rlist > 4'h3);
 
-  // cm.mva01s: allows rs1' and rs2' to be the same register
+  // cm.mva01s: allows r1s' and r2s' to be the same register
   // For RV32E, S2-S11 are not present
   assign dmove_legal_dest_s2a = (RV32 == RV32I) ? 1'b1 : (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
 
-  // cm.mvsa01: rs1' must be different from rs2'
+  // cm.mvsa01: r1s' must be different from r2s'
   // For RV32E, S2-S11 are not present
   assign dmove_legal_dest_a2s = (RV32 == RV32I) ? (instr[9:7] != instr[4:2]) :
                                 (instr[9:7] != instr[4:2]) && (instr[9:7] < 3'h2) && (instr[4:2] < 3'h2);
