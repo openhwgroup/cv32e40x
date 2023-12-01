@@ -42,11 +42,11 @@ It follows these specifications:
 .. [RISC-V-RV32E] RISC-V Instruction Set Manual, Volume I: User-Level ISA, RV32E Base Integer Instruction Set, Document version 20191214-draft (January 31, 2023),
    https://github.com/riscv/riscv-isa-manual/releases/download/draft-20230131-c0b298a/riscv-spec.pdf
 
-.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, f5b2ed3bb0eefcca075e99f3a8eece06e8d60063, October 12 2023,
-   https://github.com/riscv/riscv-debug-spec/blob/51f5a29c0126d69f314079fb4f1197876aca7622/riscv-debug-stable.pdf
+.. [RISC-V-DEBUG] RISC-V Debug Support, version 1.0-STABLE, ece9f185e7e348aafca75418d0f1540b2dfd0ff6, November 7 2023,
+   https://github.com/riscv/riscv-debug-spec/blob/24d2ea065737fc184670a6d09fb314e1a66109f5/riscv-debug-stable.pdf
 
-.. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 9/1/2023,
-   https://github.com/riscv/riscv-fast-interrupt/blob/894a16ce89dcf2c084dd951866448c2e756d3efa/clic.pdf
+.. [RISC-V-CLIC] Core-Local Interrupt Controller (CLIC) RISC-V Privileged Architecture Extensions, version 0.9-draft, 10/10/2023,
+   https://github.com/riscv/riscv-fast-interrupt/blob/514ddb112c8f9418ca6850d90292d4c1f9807049/clic.pdf
 
 .. [RISC-V-ZBA_ZBB_ZBC_ZBS] RISC-V Bit Manipulation ISA-extensions, Version 1.0.0-38-g865e7a7, 2021-06-28,
    https://github.com/riscv/riscv-bitmanip/releases/download/1.0.0/bitmanip-1.0.0-38-g865e7a7.pdf
