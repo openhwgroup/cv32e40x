@@ -110,13 +110,13 @@ import cv32e40x_pkg::*;
       logic [31:0] tdata1_n[DBG_NUM_TRIGGERS];
 
       // CSR instance outputs
-      logic [31:0] tdata1_q[DBG_NUM_TRIGGERS];
-      logic [31:0] tdata2_q[DBG_NUM_TRIGGERS];
+      logic [31:0] tdata1_q[DBG_NUM_TRIGGERS-1:0];
+      logic [31:0] tdata2_q[DBG_NUM_TRIGGERS-1:0];
       logic [31:0] tselect_q;
 
       // CSR read data, possibly WARL resolved
-      logic [31:0] tdata1_rdata[DBG_NUM_TRIGGERS];
-      logic [31:0] tdata2_rdata[DBG_NUM_TRIGGERS];
+      logic [31:0] tdata1_rdata[DBG_NUM_TRIGGERS-1:0];
+      logic [31:0] tdata2_rdata[DBG_NUM_TRIGGERS-1:0];
 
       // IF, EX and WB stages trigger match
       logic [DBG_NUM_TRIGGERS-1 : 0] trigger_match_if;
@@ -129,7 +129,7 @@ import cv32e40x_pkg::*;
       // LSU address match signals
       logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match_en;
       logic [DBG_NUM_TRIGGERS-1 : 0] lsu_addr_match;
-      logic [3:0]                    lsu_byte_addr_match[DBG_NUM_TRIGGERS];
+      logic [3:0]                    lsu_byte_addr_match[DBG_NUM_TRIGGERS-1:0];
 
       // Enable matching based on privilege level per trigger
       logic [DBG_NUM_TRIGGERS-1 : 0] priv_lvl_match_en_if;
@@ -142,7 +142,7 @@ import cv32e40x_pkg::*;
       logic [31:0] lsu_addr_high;     // The highest accessed address of an LSU transaction
 
       // Exception trigger code match
-      logic [31:0] exception_match[DBG_NUM_TRIGGERS];
+      logic [31:0] exception_match[DBG_NUM_TRIGGERS-1:0];
 
       // Resolve hit1+hit0 of mcontrol6
       logic [1:0] mcontrol6_hit_resolved[DBG_NUM_TRIGGERS];
