@@ -20,6 +20,7 @@
 //                 Halfdan Bechmann - halfdan.bechmann@silabs.com             //
 //                 Øystein Knauserud - oystein.knauserud@silabs.com           //
 //                 Michael Platzer - michael.platzer@tuwien.ac.at             //
+//                 Aidan McNay - acm289@cornell.edu                           //
 //                                                                            //
 // Design Name:    Instruction Decode Stage                                   //
 // Project Name:   RI5CY                                                      //
@@ -692,20 +693,33 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       // remember whether an instruction was accepted or rejected (required if EX stage is not ready)
       // TODO:XIF check whether this state machine should be put back in its initial state when the instruction in ID gets killed
       logic xif_accepted_q, xif_rejected_q;
+      logic xif_we_q, xif_exception_q, xif_dualwrite_q, xif_loadstore_q;
 
       assign xif_en = xif_insn_accept || xif_insn_reject;
 
       always_ff @(posedge clk, negedge rst_n) begin : ID_XIF_STATE_REGISTERS
         if (rst_n == 1'b0) begin
-          xif_accepted_q <= 1'b0;
-          xif_rejected_q <= 1'b0;
+          xif_accepted_q  <= 1'b0;
+          xif_rejected_q  <= 1'b0;
+          xif_we_q        <= 1'b0;
+          xif_exception_q <= 1'b0;
+          xif_dualwrite_q <= 1'b0;
+          xif_loadstore_q <= 1'b0;
         end else begin
           if ( (id_valid_o && ex_ready_i) || ctrl_fsm_i.kill_id ) begin
-            xif_accepted_q <= 1'b0;
-            xif_rejected_q <= 1'b0;
+            xif_accepted_q  <= 1'b0;
+            xif_rejected_q  <= 1'b0;
+            xif_we_q        <= 1'b0;
+            xif_exception_q <= 1'b0;
+            xif_dualwrite_q <= 1'b0;
+            xif_loadstore_q <= 1'b0;
           end else begin
-            xif_accepted_q <= xif_insn_accept;
-            xif_rejected_q <= xif_insn_reject;
+            xif_accepted_q  <= xif_insn_accept;
+            xif_rejected_q  <= xif_insn_reject;
+            xif_we_q        <= xif_issue_if.issue_resp.writeback;
+            xif_exception_q <= xif_issue_if.issue_resp.exc;
+            xif_dualwrite_q <= xif_issue_if.issue_resp.dualwrite;
+            xif_loadstore_q <= xif_issue_if.issue_resp.loadstore;
           end
         end
       end
@@ -755,11 +769,20 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       assign xif_insn_accept = (xif_issue_if.issue_valid && xif_issue_if.issue_ready &&  xif_issue_if.issue_resp.accept) || xif_accepted_q;
       assign xif_insn_reject = (xif_issue_if.issue_valid && xif_issue_if.issue_ready && !xif_issue_if.issue_resp.accept) || xif_rejected_q;
 
-      // TODO:XIF These may be missed if issue_valid retracts before ID goes to EX. Need to check for sticky accept as well
-      assign xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
-      assign xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
-      assign xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;
-      assign xif_loadstore = xif_issue_if.issue_valid && xif_issue_if.issue_resp.loadstore;
+      // Select XIF Control signals (checking for sticky accepts)
+      always_comb begin
+        if( xif_accepted_q || xif_rejected_q ) begin
+          xif_we        = xif_we_q;
+          xif_exception = xif_exception_q;
+          xif_dualwrite = xif_dualwrite_q;
+          xif_loadstore = xif_loadstore_q;
+        end else begin
+          xif_we        = xif_issue_if.issue_valid && xif_issue_if.issue_resp.writeback;
+          xif_exception = xif_issue_if.issue_valid && xif_issue_if.issue_resp.exc;
+          xif_dualwrite = xif_issue_if.issue_valid && xif_issue_if.issue_resp.dualwrite;
+          xif_loadstore = xif_issue_if.issue_valid && xif_issue_if.issue_resp.loadstore;
+        end
+      end
 
     end else begin : no_x_ext
 
