@@ -1483,7 +1483,7 @@ module cv32e40x_controller_fsm import cv32e40x_pkg::*;
           commit_valid_q <= 1'b0;
           commit_kill_q  <= 1'b0;
         end else begin
-          if ((ex_valid_i && wb_ready_i) || ctrl_fsm_o.kill_ex) begin
+          if (ex_ready_i) begin
             commit_valid_q <= 1'b0;
             commit_kill_q  <= 1'b0;
           end else begin
