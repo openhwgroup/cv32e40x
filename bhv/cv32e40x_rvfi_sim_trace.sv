@@ -48,15 +48,6 @@ module cv32e40x_rvfi_sim_trace
    input logic [32*NMEM-1:0] rvfi_mem_wdata
    );
 
-  typedef struct      {
-    bit [32*16-1:0]  c_file;
-    bit [32*16-1:0]  c_func;
-    int              c_line;
-    logic [31:0]     addr;
-    logic [31:0]     mcode;
-    bit [32*16-1:0]  asm;
-  } trace_t;
-
   localparam trace_t TRACE_UNKNOWN = '{c_func : "NA",
                                        c_file : "NA",
                                        c_line : -1,
@@ -70,7 +61,7 @@ module cv32e40x_rvfi_sim_trace
   int                 elements_found, asmlen, num_memop, num_trace_lines;
   string              filename, logfilename, line;
   string              asms[5];
-  string              asm_string, rvfi_info_string;
+  string              asm_string, rvfi_info_string, tmp_asm_string;
   bit                 itb_file_ok, logfile_ok;
 
   // Return number of memory operations based on rvfi_mem_rmask/wmask
@@ -182,16 +173,21 @@ module cv32e40x_rvfi_sim_trace
                                          tmp_trace.addr, tmp_trace.c_func, tmp_trace.c_file, tmp_trace.c_line, tmp_trace.mcode, asmlen, asms[0], asms[1], asms[2], asms[3], asms[4]);
 
                 if (elements_found > 6) begin
+
+                  tmp_asm_string = "";
+
                   // Fetch assembly instruction
                   for (int i=0; i < asmlen; i++) begin
                     if(asms[i] == "#") break; // Disregard comments
 
                     // Concatenate assembly instruction
-                    $cast(tmp_trace.asm,  $sformatf("%-0s %-0s", tmp_trace.asm, asms[i]));
+                    tmp_asm_string = $sformatf("%-0s %-0s", tmp_asm_string, asms[i]);
                   end
 
+                  // Cast string using streaming operator
+                  tmp_trace.asm = { >> {tmp_asm_string}};
+
                   imap[tmp_trace.addr] = tmp_trace;
-                  tmp_trace.asm = "";
                 end
               end
             end
