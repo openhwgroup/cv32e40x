@@ -95,7 +95,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   // Interrupts
   input  logic [31:0]                   mip_i,
   input  logic                          mnxti_irq_pending_i,
-  input  logic [CLIC_ID_WIDTH-1:0]    mnxti_irq_id_i,
+  input  logic [CLIC_ID_WIDTH-1:0]      mnxti_irq_id_i,
   input  logic [7:0]                    mnxti_irq_level_i,
   output logic                          clic_pa_valid_o,        // CSR read data is an address to a function pointer
   output logic [31:0]                   clic_pa_o,              // Address to CLIC function pointer
@@ -265,13 +265,13 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
 
 
   // Performance Counter Signals
-  logic [31:0] [63:0]           mhpmcounter_q;                                  // Performance counters
+  logic [63:0]                  mhpmcounter_q[31:0];                            // Performance counters
   logic [31:0] [63:0]           mhpmcounter_n;                                  // Performance counters next value
   logic [31:0] [63:0]           mhpmcounter_rdata;                              // Performance counters next value
   logic [31:0] [1:0]            mhpmcounter_we;                                 // Performance counters write enable
   logic [31:0] [31:0]           mhpmevent_q, mhpmevent_n, mhpmevent_rdata;      // Event enable
   logic [31:0]                  mcountinhibit_q, mcountinhibit_n, mcountinhibit_rdata; // Performance counter inhibit
-  logic [NUM_HPM_EVENTS-1:0]    hpm_events;                                     // Events for performance counters
+  logic                         hpm_events[NUM_HPM_EVENTS-1:0];                 // Events for performance counters
   logic [31:0] [63:0]           mhpmcounter_increment;                          // Increment of mhpmcounter_q
   logic [31:0]                  mhpmcounter_write_lower;                        // Write 32 lower bits of mhpmcounter_q
   logic [31:0]                  mhpmcounter_write_upper;                        // Write 32 upper bits mhpmcounter_q
@@ -519,7 +519,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_DCSR: begin
-        if (DEBUG) begin
+        if (DEBUG != 0) begin
           csr_rdata_int = dcsr_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
@@ -529,7 +529,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_DPC: begin
-        if (DEBUG) begin
+        if (DEBUG != 0) begin
           csr_rdata_int = dpc_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
@@ -539,7 +539,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_DSCRATCH0: begin
-        if (DEBUG) begin
+        if (DEBUG != 0) begin
           csr_rdata_int = dscratch0_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
@@ -549,7 +549,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
       end
 
       CSR_DSCRATCH1: begin
-        if (DEBUG) begin
+        if (DEBUG != 0) begin
           csr_rdata_int = dscratch1_rdata;
           illegal_csr_read = !ctrl_fsm_i.debug_mode;
         end else begin
@@ -1229,7 +1229,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   );
 
   generate
-    if (DEBUG) begin : gen_debug_csr
+    if (DEBUG != 0) begin : gen_debug_csr
       cv32e40x_csr
       #(
         .WIDTH      (32                 ),
@@ -1526,7 +1526,7 @@ module cv32e40x_cs_registers import cv32e40x_pkg::*;
   assign priv_lvl_if_ctrl_o.priv_lvl_set = 1'b0;
 
   // dcsr_rdata factors in the flop outputs and the nmip bit from the controller
-  assign dcsr_rdata = DEBUG ? {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]} : 32'h0;
+  assign dcsr_rdata = (DEBUG != 0) ? {dcsr_q[31:4], ctrl_fsm_i.pending_nmi, dcsr_q[2:0]} : 32'h0;
 
 
   assign mcause_rdata = mcause_q;
