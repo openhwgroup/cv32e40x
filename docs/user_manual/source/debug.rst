@@ -185,5 +185,5 @@ Scenario 3 : Exit Program Buffer & Restart Debug Code
 
 Executing the ``ebreak`` instruction when the core is in Debug Mode shall result in the following actions:
 
-- The core remains in Debug Mode and execution jumps back to the beginning of the debug code located at ``dm_halt_addr_i``
+- The core re-enters Debug Mode (without actually having ever left Debug Mode) by jumping jumps back to the beginning of the debug code located at ``dm_halt_addr_i``
 - None of the CSRs are modified
