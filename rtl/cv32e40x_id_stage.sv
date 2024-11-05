@@ -516,6 +516,9 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
       id_ex_pipe_o.csr_en                 <= 1'b0;
       id_ex_pipe_o.csr_op                 <= CSR_OP_READ;
 
+      id_ex_pipe_o.lsu_operand_a          <= 32'b0;
+      id_ex_pipe_o.lsu_operand_b          <= 32'b0;
+      id_ex_pipe_o.lsu_operand_c          <= 32'b0;
       id_ex_pipe_o.lsu_en                 <= 1'b0;
       id_ex_pipe_o.lsu_we                 <= 1'b0;
       id_ex_pipe_o.lsu_size               <= 2'b0;
@@ -561,15 +564,15 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         // Operands
         if (alu_op_a_mux_sel != OP_A_NONE) begin
-          id_ex_pipe_o.alu_operand_a        <= operand_a;               // Used by most ALU, CSR and LSU instructions
+          id_ex_pipe_o.alu_operand_a        <= operand_a;               // Used by most ALU and CSR instructions
         end
         if (alu_op_b_mux_sel != OP_B_NONE) begin
-          id_ex_pipe_o.alu_operand_b        <= operand_b;               // Used by most ALU, CSR and LSU instructions
+          id_ex_pipe_o.alu_operand_b        <= operand_b;               // Used by most ALU and CSR instructions
         end
 
         if (op_c_mux_sel != OP_C_NONE)
         begin
-          id_ex_pipe_o.operand_c            <= operand_c;               // Used by LSU stores and some ALU instructions
+          id_ex_pipe_o.operand_c            <= operand_c;               // Used by some ALU instructions
         end
 
         id_ex_pipe_o.alu_en                 <= alu_en;
@@ -604,6 +607,10 @@ module cv32e40x_id_stage import cv32e40x_pkg::*;
 
         id_ex_pipe_o.lsu_en                 <= lsu_en;
         if (lsu_en) begin
+          // Dedicated LSU operand registers to prevent ALU operands from being visible at the data memory interface
+          id_ex_pipe_o.lsu_operand_a        <= operand_a;
+          id_ex_pipe_o.lsu_operand_b        <= operand_b;
+          id_ex_pipe_o.lsu_operand_c        <= operand_c;               // Used by LSU stores
           id_ex_pipe_o.lsu_we               <= lsu_we;
           id_ex_pipe_o.lsu_size             <= lsu_size;
           id_ex_pipe_o.lsu_sext             <= lsu_sext;
