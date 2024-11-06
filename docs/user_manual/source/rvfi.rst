@@ -1,7 +1,7 @@
 .. _rvfi:
 
-RISC-V Formal Interface
-=======================
+RISC-V Formal Interface (RVFI)
+==============================
 
 .. note::
 
