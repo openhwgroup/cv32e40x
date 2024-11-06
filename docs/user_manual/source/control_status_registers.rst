@@ -1,7 +1,7 @@
 .. _cs-registers:
 
-Control and Status Registers
-============================
+Control and Status Registers (CSRs)
+===================================
 
 CSR Map
 -------
