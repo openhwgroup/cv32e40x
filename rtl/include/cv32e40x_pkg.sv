@@ -1193,6 +1193,9 @@ typedef struct packed {
   csr_opcode_e  csr_op;
 
   // LSU
+  logic [31:0]  lsu_operand_a;
+  logic [31:0]  lsu_operand_b;
+  logic [31:0]  lsu_operand_c;
   logic         lsu_en;
   logic         lsu_we;
   logic [1:0]   lsu_size;

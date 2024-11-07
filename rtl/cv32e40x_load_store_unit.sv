@@ -210,10 +210,10 @@ module cv32e40x_load_store_unit import cv32e40x_pkg::*;
   // Transaction (before aligner)
   // Generate address from operands (atomic memory transactions do not use an address offset computation)
   always_comb begin
-    trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.alu_operand_a : (id_ex_pipe_i.alu_operand_a + id_ex_pipe_i.alu_operand_b);
+    trans.addr  = id_ex_pipe_i.lsu_atop[5] ? id_ex_pipe_i.lsu_operand_a : (id_ex_pipe_i.lsu_operand_a + id_ex_pipe_i.lsu_operand_b);
     trans.we    = id_ex_pipe_i.lsu_we;
     trans.size  = id_ex_pipe_i.lsu_size;
-    trans.wdata = id_ex_pipe_i.operand_c;
+    trans.wdata = id_ex_pipe_i.lsu_operand_c;
     trans.mode  = priv_lvl_lsu_i;
     trans.dbg   = ctrl_fsm_i.debug_mode;
 
